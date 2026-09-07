@@ -2110,6 +2110,7 @@ export interface WorkflowDefinition {
     | "finish-pinned"
     | "cancel-on-deactivate";
   subject: WorkflowSubjectDefinition;
+  instanceCommands?: WorkflowInstanceCommandPolicies;
   startAt: string;
   inputSchema: Record<string, unknown> & {
     type: "object";
@@ -2133,6 +2134,11 @@ export interface WorkflowDefinition {
     };
   };
   nodes: Record<string, WorkflowNode>;
+}
+
+export interface WorkflowInstanceCommandPolicies {
+  withdraw?: { beforeFact: string };
+  terminate?: { capability: string; beforeFact?: string };
 }
 
 export interface WorkflowSubjectDefinition {

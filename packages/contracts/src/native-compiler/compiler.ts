@@ -1,4 +1,5 @@
 import { projectNativeDataResourceViewV2 } from './data-surface.js';
+import { validateWorkflowInstanceCommandPolicies } from './workflow-instance-policy.js';
 import * as crypto from 'crypto';
 import {
   OPENXIANGDA_COMPILER_CONTRACT_VERSION as OPENXIANGDA_V2_COMPILER_CONTRACT_VERSION,
@@ -572,6 +573,12 @@ export function compileRequiredPlatformCapabilitiesV3(
             declaration: config.workflows,
           },
         ]
+      : []),
+    ...(config.workflows.definitions.some((item: JsonObject) => item.definition.instanceCommands !== undefined)
+      ? [{
+          code: 'workflow.instance-cancellation-policy' as const,
+          declaration: config.workflows.definitions.filter((item: JsonObject) => item.definition.instanceCommands !== undefined),
+        }]
       : []),
     ...(usesBusinessProcess
       ? [
@@ -5294,6 +5301,17 @@ function validateWorkflowReferences(config: JsonObject) {
       resources,
       `${pointer}/definition/subject`
     );
+    const policyErrors = validateWorkflowInstanceCommandPolicies(definition, {
+      appCode: config.appCode,
+      capabilities: config.authz.capabilities.map((item: JsonObject) => item.code),
+      fields: new Map((resources.get(definition.subject.resourceCode)?.schema.fields || [])
+        .map((field: JsonObject) => [field.code, field])),
+    });
+    if (policyErrors.length) {
+      fail('NATIVE_WORKFLOW_INSTANCE_COMMAND_POLICY_INVALID', `${pointer}/definition/instanceCommands`, {
+        errors: policyErrors,
+      });
+    }
     if (definition.title === definition.code) {
       fail(
         'NATIVE_WORKFLOW_USER_TITLE_REQUIRED',
@@ -5643,7 +5661,7 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
       'nodes',
     ],
     pointer,
-    ['organizationContext']
+    ['organizationContext', 'instanceCommands']
   );
   equal(
     definition.schemaVersion,

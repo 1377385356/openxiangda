@@ -37,6 +37,64 @@ Head、实例/任务版本、允许的命令集合与 CSRF。命令请求只提�
 `expectedTaskVersion`/`expectedInstanceVersion` 不再是合同。冲突必须刷新 Surface，
 不得自动重放旧意图。
 
+### 撤回与业务终止策略
+
+需要按业务时间限制取消时，在固定 Workflow definition 中声明：
+
+```ts
+instanceCommands: {
+  withdraw: { beforeFact: 'startsAt' },
+  terminate: {
+    capability: 'app:reservation-center:meeting:cancel',
+    beforeFact: 'startsAt',
+  },
+},
+```
+
+`beforeFact` 必须是 `inputSchema` 中 required 的根字段，类型为
+`string`、格式为 `date-time`，并通过 `subject.factProjection` 映射到非空
+`datetime` 业务字段。例如定义与模型的相关部分为：
+
+```ts
+// Workflow definition
+inputSchema: {
+  type: 'object',
+  additionalProperties: false,
+  required: ['startsAt'],
+  properties: { startsAt: { type: 'string', format: 'date-time' } },
+},
+subject: {
+  resourceCode: 'meetings',
+  factProjection: { startsAt: 'startsAt' },
+},
+// meetings 模型字段
+fields: [{ code: 'startsAt', label: '开始时间', type: 'datetime', required: true }],
+```
+
+时间值必须携带 `Z` 或 `±HH:mm` 时区，可省略秒的小数部分或使用 1–3 位小数，
+例如 `2026-09-08T09:00:00+08:00`、`2026-09-08T01:00:00.000Z`。
+标准字段和 Data API 将 datetime 规范化为毫秒 ISO 字符串后冻结为事实。
+平台在锁定实例后，
+按数据库当前时间严格判断 `当前时间 < 截止时间`；事先取得 token 不能绕过
+后续的时限或授权检查。缺失或非法事实拒绝执行。Surface 到期禁用操作，
+应用收到冲突后刷新详情，不自动换幂等键重试。
+
+撤回始终只允许发起人。终止允许原应用超级管理员，或当前角色并集拥有
+所声明精确 capability 的用户；capability 必须在同一应用显式声明，不支持
+通配符。该授权同时允许读取对应流程实例的详情及时间线，包括完成后查阅；
+不授予审批、抄送、改派、删除、普通数据读取或管理后台权限。撤销 capability
+后读取和终止权限都失效。撤回、终止均要求填写原因；超级管理员也遵守已声明时限。
+
+不声明 `instanceCommands` 时沿用既有行为；只为终止授权时可以省略其
+`beforeFact`。声明策略的交付包自动要求平台能力
+`workflow.instance-cancellation-policy`，旧平台无法激活该应用版本。
+已经固定该策略的实例存在期间，平台回滚也必须保留策略执行能力。
+发布新 definition 不会改写旧实例固定的 definition 版本，因此不会给旧实例
+补上截止时间或业务管理员终止授权。升级前应盘点存量实例，按各自原定义完成
+或由原有授权主体处置；不要通过重发事件或改写事实迁移策略。已使用新策略的
+实例在截止后及终态仍允许当前被授权的业务管理员查阅，撤销其 capability
+也会撤销这些存量实例的详情读取权限。
+
 ## 事实和消息投影
 
 Workflow 在同一 PostgreSQL 事务中提交状态、fact 和 outbox。每个实例使用严格单调的 `instanceSequence`，每位审批人拥有独立 participant 生命周期。

@@ -5321,6 +5321,30 @@ export const workflowDefinitionSchema = {
     acceptedCommandDeactivationPolicy: {
       enum: ["finish-pinned", "cancel-on-deactivate"],
     },
+    instanceCommands: {
+      type: "object",
+      additionalProperties: false,
+      minProperties: 1,
+      properties: {
+        withdraw: {
+          type: "object",
+          additionalProperties: false,
+          required: ["beforeFact"],
+          properties: {
+            beforeFact: { type: "string", pattern: "^[A-Za-z][A-Za-z0-9_]{0,62}$" },
+          },
+        },
+        terminate: {
+          type: "object",
+          additionalProperties: false,
+          required: ["capability"],
+          properties: {
+            capability: { type: "string", maxLength: 255, pattern: "^app:[a-z][a-z0-9]*(?:-[a-z0-9]+)*:[A-Za-z0-9:._-]+$" },
+            beforeFact: { type: "string", pattern: "^[A-Za-z][A-Za-z0-9_]{0,62}$" },
+          },
+        },
+      },
+    },
     subject: {
       type: "object",
       additionalProperties: false,

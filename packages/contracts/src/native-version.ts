@@ -17,6 +17,7 @@ export const PLATFORM_CAPABILITY_CONTRACT_VERSIONS = {
   "events-v2": "1.0.0",
   "events.durable-receipts": "1.0.0",
   "workflow-kernel-v2": "1.0.0",
+  "workflow.instance-cancellation-policy": "1.0.0",
   "business-process.durable-command": "1.0.0",
   "workflow.fresh-command-token": "1.0.0",
   "notification-hub-v2": "1.0.0",

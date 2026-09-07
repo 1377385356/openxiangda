@@ -1761,6 +1761,9 @@ function runtimeProtocolCapabilities(config: OpenXiangdaAppConfig) {
     ...(config.workflows?.activations.length
       ? ['workflow-kernel-v2', 'workflow.fresh-command-token']
       : []),
+    ...((config.workflows?.definitions || []).some(item => item.definition.instanceCommands !== undefined)
+      ? ['workflow.instance-cancellation-policy']
+      : []),
     ...(config.frontend.authentication
       ? ['authentication.application-login-surface']
       : []),

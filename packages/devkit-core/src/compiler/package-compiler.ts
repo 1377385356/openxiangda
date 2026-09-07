@@ -128,6 +128,12 @@ export function requiredPlatformCapabilitiesFromConfiguration(
     },
   };
   const usages: Array<{ code: PlatformCapabilityCode; declaration: unknown }> = [
+    ...(config.workflows.definitions.some(item => item.definition.instanceCommands !== undefined)
+      ? [{
+          code: 'workflow.instance-cancellation-policy' as const,
+          declaration: config.workflows.definitions.filter(item => item.definition.instanceCommands !== undefined),
+        }]
+      : []),
     ...(namedInputSourceDefinitions.length ? [{ code: 'workflow.named-input-sources' as const, declaration: namedInputSourceDefinitions }] : []),
     { code: 'application-native-2', declaration: runtimeUsage },
     { code: 'authz.native-batch-explain', declaration: authzUsage },

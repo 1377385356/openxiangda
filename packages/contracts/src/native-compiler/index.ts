@@ -6,6 +6,8 @@ export * from './scope-source-field-path.js';
 export * from './field-query-path.js';
 export * from './compiler.js';
 export * from './data-policy-expression.js';
+export * from './workflow-instance-policy.js';
+export type { WorkflowInstanceCommandPolicies } from '../types.js';
 export type { RequiredPlatformCapabilityContract, PlatformCapabilityCode } from '../types.js';
 
 /** 构建器按实际共享规则生成；不随应用、环境或凭据改变。 */

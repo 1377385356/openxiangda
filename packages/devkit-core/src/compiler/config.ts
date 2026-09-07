@@ -6,6 +6,7 @@ import {
   PLATFORM_EVENT_TYPES_V2,
   nativePlatformCapabilityCatalog,
   validateDataResource,
+  validateWorkflowInstanceCommandPolicies,
   WORKFLOW_SUMMARY_MAX_FIELDS,
   WORKFLOW_SUMMARY_TEXT_LONG_MAX_BYTES,
   isWorkflowSummaryFieldType,
@@ -3806,6 +3807,20 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
         diagnostics.push(
           diagnostic('APP_CONFIG_WORKFLOW_DEFINITION_INVALID', error, path)
         );
+      }
+      const policyResource = object((Array.isArray(data.resources) ? data.resources : []).find(
+        resource => object(resource).code === definition.subject?.resourceCode
+      ));
+      const policyFields = object(policyResource.schema).fields;
+      for (const error of validateWorkflowInstanceCommandPolicies(definition, {
+        appCode,
+        capabilities: declaredCapabilities.map(item => string(object(item).code)),
+        fields: new Map((Array.isArray(policyFields) ? policyFields : []).map(raw => {
+          const field = object(raw);
+          return [string(field.code), { type: string(field.type), nullable: field.nullable === true }];
+        })),
+      })) {
+        diagnostics.push(diagnostic('APP_CONFIG_WORKFLOW_INSTANCE_COMMAND_POLICY_INVALID', error, `${path}.definition.instanceCommands`));
       }
       const key = `${definition.code}:${version}`;
       if (definitionByKey.has(key)) {
