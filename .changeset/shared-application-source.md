@@ -2,6 +2,7 @@
 "openxiangda-contracts": minor
 "openxiangda-devkit-core": minor
 "openxiangda-cli": minor
+"openxiangda": patch
 "openxiangda-skill-kit": patch
 ---
 
