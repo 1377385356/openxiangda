@@ -35,6 +35,7 @@ pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ skill install --force
 | 任务 | 参考 |
 | --- | --- |
 | 安装、登录、创建、连接开发 | [开始开发](references/getting-started.md) |
+| 源码仓库、换电脑、旧项目导入、提交推送与重试 | [应用源码](references/getting-started.md#应用源码)；先用 `source status` 读取实际绑定 |
 | 模糊想法、模块发现、PRD、权限与架构设计 | [产品设计](references/product-design.md)、[交互模式](references/interaction-patterns.md) |
 | 理解需求与选择能力 | [开发流程](references/development.md)、[架构](references/concepts.md) |
 | 模型、CRUD、字段与移动表单 | [业务模块](references/application-foundation.md)、[字段](references/field-components.md) |
@@ -78,6 +79,8 @@ pnpm exec openxiangda --mcp-stdio --cwd <workspace>
 开发开始先同步绑定仓库的远端默认主分支。开发完成包括源码、生成契约与必要记录的提交、推送和主线整合；发布从干净且同步的主分支冻结候选。任务分支已推送不代表进入主线。同一工作区保持一个写者，不覆盖其他会话未提交内容。日常 dev/check 可验证未提交源码。
 
 平台启用源码托管时，create 自动建仓并首次推送。后续每轮开发完成使用 `pnpm openxiangda source push -m "变更说明"` 提交并推送；已有提交可省略 `-m`。新电脑或初始化中断使用 `source setup`，迁入外部仓库使用 `source setup --import` 并保留原远端。凭据只存入系统凭据管理器，不手写进 URL 或项目文件；冲突按正常 Git 合并处理，不强推覆盖。
+
+已有项目先执行 `source status`；仓库绑定和地址以平台返回为准，不猜测地址或另建个人仓库。提交前检查 Git 差异；`source push -m` 会提交所有未忽略更改，存在其他任务改动时应只提交本轮文件，再不带 `-m` 推送。源码操作使用 CLI，当前没有独立的 source MCP 工具。凭据配置成功后无需每轮重新配置；托管未启用或权限不足时保留原工作区并报告具体原因。
 
 只验证时运行 check/check_app；授权部署时直接 deploy/deploy_app，它已经包含检查并默认跟踪平台完成，长步骤持续反馈阶段和耗时。生产显式复用成功测试运行。观察中断用 status <运行ID> --watch 或 deployment_status.watch 继续查询原运行。登录、创建及长期 dev 使用 CLI/终端，分别记录本地验证、部署激活和真实业务验收。
 

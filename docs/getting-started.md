@@ -65,6 +65,33 @@ pnpm openxiangda source push -m "完成本轮应用开发"
 其他分支、标签和 Git LFS 对象需按实际迁移范围另外推送。`source push` 省略 `-m` 时只推送
 已有提交；带 `-m` 时提交当前所有未忽略更改。源码入口位于平台应用运营的“应用源码”。
 
+| 当前场景 | 执行方式 |
+| --- | --- |
+| 新应用 | 正常执行 `create`，平台启用后自动建仓、配置凭据和首次推送 |
+| 已有项目首次交接给另一个 AI | 先读 `context --json` 和 `source status`，沿用项目绑定与版本 |
+| 换电脑或初始化中断 | 在应用目录执行 `pnpm openxiangda source setup`；已有提交及未提交修改会保留 |
+| 从个人远端迁入 | 明确迁入后运行 `source setup --import`，原远端保留为 `external-source` |
+| 本轮修改完成 | 检查差异后运行 `source push -m "AppSpec: <本轮变更ID> 变更说明"`；多个任务共享目录时先精确提交本轮文件，再不带 `-m` 推送 |
+| 准备部署 | 先把本轮提交合入并推送远端默认分支，再从干净且同步的主分支执行 `deploy` |
+
+新仓库默认使用 `main`；导入时，尚无默认分支的空仓库会采用当前分支（例如 `master`）。
+已有远端默认分支不会因在任务分支运行 setup 而改变。源码操作使用 CLI/终端；
+MCP 的 `docs_read` 可以读取本说明，当前没有独立的源码操作 MCP 工具。
+
+| 错误或状态 | 处理 |
+| --- | --- |
+| `enabled: false` | 平台尚未启用托管，沿用当前工作区；由平台管理员配置后再接入 |
+| `APPLICATION_SOURCE_ORIGIN_CONFLICT` | 核实平台绑定和现有 origin；仅在明确迁入时使用 `--import` |
+| `APPLICATION_SOURCE_CREDENTIAL_HELPER_REQUIRED` / `APPLICATION_SOURCE_CREDENTIAL_NOT_STORED` | 安装或解锁系统凭据管理器，再重试 setup；不把密码写入 URL、项目或明文凭据文件 |
+| 403 / 应用管理权限不足 | 核对当前平台账号及应用管理员资格；由已有应用管理员添加权限 |
+| `APPLICATION_SOURCE_PROVIDER_UNAVAILABLE` / `APPLICATION_SOURCE_PROVIDER_FAILED` | 保留原应用和目录，待 Git 服务恢复后重试同一操作 |
+| 推送被拒绝或主线已前进 | 先 fetch 并查看差异，按项目规则合并解决冲突后重试，不强推覆盖 |
+| `APPLICATION_SOURCE_COMMIT_NOT_PUSHED` | 在绑定仓库推送原提交，核对 source status 和远端 SHA 后重试部署 |
+
+应用创建人和新增应用管理员拥有对应仓库管理权限，不需要另行维护 Git 角色。
+本期不自动同步权限撤销或删除。不要向应用开发者索要 Forgejo 平台管理员 Token；
+个人凭据由已登录的平台账号获取，配置成功后可长期复用。
+
 ## 检查与交付 {#delivery}
 
 只检查时运行 `pnpm openxiangda check`。需要部署测试环境时直接运行 `pnpm openxiangda deploy`，它已包含检查、测试和构建；无需再连续重复运行全部脚本。
