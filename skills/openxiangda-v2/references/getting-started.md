@@ -26,6 +26,23 @@ pnpm openxiangda dev
 
 进入项目后使用 `pnpm openxiangda`，由项目依赖和锁文件决定版本。查看使用资料运行 `pnpm openxiangda docs`；查看单一主题运行 `pnpm openxiangda docs frontend`。安装到其他 AI 工具时使用 `skill install --destination <Skill根目录>`。
 
+### 内部支持协作
+
+统一入口在成功创建应用、V1 workspace init/skill bootstrap 和 skill install 后检查 DWS。缺失时安装审核过的官方稳定版和完整 multi 技能（包括 shared、misc/profile 等跨技能引用），复用可用版本；不会自动登录、加入群或发送消息。支持接入结果独立于应用创建，JSON 创建结果保持原结构，接入进度写 stderr。
+
+```bash
+pnpm openxiangda support status --json
+pnpm openxiangda support bootstrap
+pnpm openxiangda support login
+pnpm openxiangda support join
+```
+
+首次 OAuth 由用户完成，SSH 使用 `support login --device`。支持侧保存 DWS 精确 profile 指针，多账号可传 `--profile <corpId:userId>`；不修改 DWS 或平台默认账号。通道来自外置配置，`join` 原样打开邀请链接，由用户在钉钉完成加入，再执行 `status` 回读。群可访问、成员身份与组织限制分别报告；钉钉负责真实权限判断，不凭链接推定。
+
+等待授权、入群、网络或安装权限时可以继续独立开发。离线/CI 创建和技能安装可加 `--skip-support`，之后运行 `support bootstrap` 恢复。完整官方技能由 DWS 自身安装/备份；自动接入使用 DWS 的 all 目标检测宿主，应用技能安装的 --agent 只决定应用技能位置。`support bootstrap --force --agent <DWS目标宿主>` 可显式指定 DWS 宿主并刷新。`support --help` 查看命令，支持命令无需应用依赖已安装；独立 V1 引擎没有这些分发命令，应使用新版统一入口，保留原 V1 项目版本。
+
+本地接入指针位于 `${XDG_CONFIG_HOME:-~/.config}/openxiangda/support.json`，只保存 profile 和技能安装回执，不保存 Token。普通支持咨询与持续讨论遵循安装的 `openxiangda-support` 技能及用户授权；后台唤醒须有真实宿主监听或定时任务。
+
 ## 项目结构 {#workspace}
 
 ```text

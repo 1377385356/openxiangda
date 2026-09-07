@@ -4,7 +4,7 @@
     {
       "name": "openxiangda-v2",
       "description": "使用 OpenXiangda 2.0 从模糊业务想法、已有资料或具体变更出发，通过对话发现模块、完成详细产品设计，再开发、检查和交付应用。维护 1.x 应用时使用对应的 1.x 技能。",
-      "sha256": "65277e1488c828317a85ac547e565878c5347f3a15aca05d1c9dfa1120b64e3d"
+      "sha256": "b49dc2b5fb33c15aa29810467b980ef85493da5d07fafd2a23be6f6b55a59845"
     }
   ]
 }

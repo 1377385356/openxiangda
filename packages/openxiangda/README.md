@@ -10,6 +10,8 @@ pnpm openxiangda skill install --workspace . --force
 pnpm openxiangda dev
 ```
 
+创建和技能安装默认检查内部支持协作所需的 DWS。`support status --json` 查看状态，`support bootstrap` 安装/复用官方完整技能，`support login` 引导 OAuth，`support join` 打开配置中的原邀请链接，由用户在钉钉完成加入。等待接入不阻塞应用工作；离线/CI 可加 `--skip-support`。咨询和持续跟进使用随统一入口安装的 `openxiangda-support` 技能，V1/V2 保持各自项目引擎。
+
 应用导入统一子路径：
 
 | 子路径 | 用途 |

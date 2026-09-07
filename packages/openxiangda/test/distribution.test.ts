@@ -134,3 +134,19 @@ test('version comparisons and offline release metadata handle alpha to stable wi
   assert.throws(() => flagValue(['--cwd'], '--cwd'), /ARGUMENT_REQUIRED/);
   assert.throws(() => flagValue(['--cwd=a', '--cwd=b'], '--cwd'), /ARGUMENT_INVALID/);
 });
+
+test('successful create keeps engine JSON and exit status when support installation is unavailable', t => {
+  const f = fixture(t);
+  const launcher = pathToFileURL(join(import.meta.dirname, '../bin/distribution/launcher.js')).href;
+  const run = (extra: string[]) => spawnSync(process.execPath, ['--input-type=module', '-e', `import {launch} from ${JSON.stringify(launcher)}; await launch(${JSON.stringify(f.launcher)}, ['create','example','--json',...${JSON.stringify(extra)}]);`], {
+    cwd: f.root, encoding: 'utf8', env: { ...process.env, PATH: '', XDG_CONFIG_HOME: join(f.root, 'config') },
+  });
+  const result = run([]);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout).argv, ['create', 'example', '--json']);
+  assert.equal(JSON.parse(result.stderr).data.state, 'dws_unavailable');
+  const skipped = run(['--skip-support']);
+  assert.equal(skipped.status, 0);
+  assert.deepEqual(JSON.parse(skipped.stdout).argv, ['create', 'example', '--json']);
+  assert.equal(skipped.stderr, '');
+});

@@ -4,6 +4,7 @@ import { dirname, join, resolve } from 'node:path';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import { fail, flagValue, readJson } from './workspace.js';
+import { bootstrapSupport } from './support.js';
 
 export async function installDistributionSkills(context, args) {
   const workspace = flagValue(args, '--workspace');
@@ -33,6 +34,7 @@ export async function installDistributionSkills(context, args) {
     }
     const router = join(source, 'openxiangda');
     cpSync(join(context.packageRoot, 'launcher-skill/openxiangda'), router, { recursive: true });
+    cpSync(join(context.packageRoot, 'launcher-skill/openxiangda-support'), join(source, 'openxiangda-support'), { recursive: true });
     const file = join(router, 'SKILL.md');
     writeFileSync(file, readFileSync(file, 'utf8').replaceAll('__OPENXIANGDA_VERSION__', context.manifest.version));
     const names = readdirSync(source, { withFileTypes: true }).filter(entry => entry.isDirectory()).map(entry => entry.name).sort();
@@ -45,7 +47,8 @@ export async function installDistributionSkills(context, args) {
       const { refreshWorkspaceGuidance } = await importEngineModule(context.engine.packageRoot, 'openxiangda-skill-kit');
       guidance = refreshWorkspaceGuidance(resolve(workspace), guidanceTemplate);
     }
-    return { destinations, installed: names, engineVersion: context.engine.version, generation: context.engine.generation, dryRun: args.includes('--dry-run'), ...(guidance ? { guidance } : {}) };
+    const support = await bootstrapSupport(context.packageRoot, args);
+    return { destinations, installed: names, engineVersion: context.engine.version, generation: context.engine.generation, dryRun: args.includes('--dry-run'), support, ...(guidance ? { guidance } : {}) };
   } finally { rmSync(staging, { recursive: true, force: true }); }
 }
 

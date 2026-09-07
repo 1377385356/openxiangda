@@ -30,6 +30,8 @@ pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ skill install --force
 
 ## 按任务选择资料
 
+平台契约疑问、诊断和产品/架构咨询使用同次分发的 `openxiangda-support` 技能。统一入口创建和技能刷新会检查 DWS；用 `support status --json` 查看待授权、待用户入群或可访问状态，独立应用工作继续推进。实际发送与后续操作遵循用户已有授权。
+
 只读当前任务相关专题。以下参考由中文使用文档生成，与 CLI/MCP 正文同源：
 
 | 任务 | 参考 |

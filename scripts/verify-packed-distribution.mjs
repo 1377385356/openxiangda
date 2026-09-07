@@ -242,7 +242,7 @@ function assertPackagedGuidance(root) {
   const agents = join(root, 'AGENTS.md');
   const ownText = '\n## 项目测试约定\n保留本项目内容\n';
   writeFileSync(agents, readFileSync(agents, 'utf8') + ownText);
-  const installed = JSON.parse(runCaptured('pnpm', ['exec', 'openxiangda', 'skill', 'install', '--workspace', root, '--force', '--json'], root, { stdoutOnly: true }));
+  const installed = JSON.parse(runCaptured('pnpm', ['exec', 'openxiangda', 'skill', 'install', '--workspace', root, '--force', '--skip-support', '--json'], root, { stdoutOnly: true }));
   if (!installed.ok || !readFileSync(agents, 'utf8').endsWith(ownText)) fail('PACKED_GUIDANCE_OVERWROTE_PROJECT_RULES');
   const skill = readFileSync(join(root, '.agents/skills/openxiangda-v2/SKILL.md'), 'utf8');
   if (!skill.includes(`openxiangda@${version}`)) fail('PACKED_PROJECT_SKILL_VERSION_INVALID');

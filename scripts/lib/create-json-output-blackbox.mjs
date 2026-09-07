@@ -30,6 +30,7 @@ export async function verifyCreateJsonOutputBoundary(options) {
   const homeRoot = join(scratchRoot, "home");
   const binRoot = join(scratchRoot, "bin");
   const invocationMarker = join(scratchRoot, "pnpm-invocations.jsonl");
+  const supportMarker = join(scratchRoot, "unexpected-support-invocation");
   let platformRequestCount = 0;
   const server = createServer((request, response) => {
     platformRequestCount += 1;
@@ -44,6 +45,11 @@ export async function verifyCreateJsonOutputBoundary(options) {
   mkdirSync(homeRoot, { recursive: true });
   mkdirSync(binRoot, { recursive: true });
   writeFakePnpm(join(binRoot, "pnpm"));
+  for (const command of ['dws', 'npm']) {
+    const file = join(binRoot, command);
+    writeFileSync(file, `#!/usr/bin/env node\nrequire('node:fs').writeFileSync(${JSON.stringify(supportMarker)}, ${JSON.stringify(command)}); process.exit(97);\n`);
+    chmodSync(file, 0o755);
+  }
 
   try {
     await listen(server);
@@ -365,6 +371,7 @@ export async function verifyCreateJsonOutputBoundary(options) {
     for (const invocation of invocations) {
       assert.deepEqual(invocation.args, ["install"]);
     }
+    assert.equal(existsSync(supportMarker), false, 'Create engine smoke must not invoke real support setup');
   } finally {
     await close(server);
     rmSync(scratchRoot, { recursive: true, force: true });

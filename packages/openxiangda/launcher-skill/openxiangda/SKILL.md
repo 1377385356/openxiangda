@@ -15,6 +15,8 @@ description: Identify OpenXiangda V1 or V2 workspaces and select the matching pr
 
 ## 升级与说明
 
+- 平台支持协作读取同次安装的 `$openxiangda-support`。创建和技能刷新默认检查 DWS；`openxiangda support status --json` 查看接入状态，`support bootstrap` 补齐官方全套技能，`support login` 完成 OAuth，`support join` 打开配置链接由用户加入。等待用户或网络恢复不阻塞应用开发。支持命令归统一入口，V1/V2 业务和平台登录绑定保持原有所有者。
+
 - `openxiangda update check` 按项目代际检查稳定更新；离线时可继续使用本地能力。
 - `openxiangda update install --target workspace` 更新本项目同代工具链。升级后检查源码与锁文件差异，并执行项目验证。
 - `openxiangda update install --target launcher` 更新全局统一入口，需要 Node.js 24。此操作不转换已有项目。

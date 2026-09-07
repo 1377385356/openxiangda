@@ -3,17 +3,19 @@ import { flagValue, fail } from './workspace.js';
 import { update } from './update.js';
 import { assessMigration } from './migrate.js';
 import { installDistributionSkills } from './skills.js';
+import { supportOperation } from './support.js';
 
 export async function distributionCommand(context, args) {
   const command = args[0];
   const skillInstall = command === 'skill' && args[1] === 'install';
-  if (!['version', 'update', 'changelog', 'migrate'].includes(command) && !skillInstall) return false;
+  if (!['version', 'update', 'changelog', 'migrate', 'support'].includes(command) && !skillInstall) return false;
   validateArguments(command, args.slice(1));
   if (args.includes('--help') || args.includes('-h')) {
-    process.stdout.write('openxiangda version [--json]\nopenxiangda update check|install [--target workspace|launcher] [--dry-run] [--json]\nopenxiangda changelog [version] [--json]\nopenxiangda migrate assess --to v2 [--json]\nopenxiangda skill install [--workspace <directory> | --destination <directory>] [--agent codex|claude|qoder|dual] [--force] [--dry-run]\n以上命令支持 --cwd <directory>。新应用默认 V2，项目升级保持原代际。\n');
+    process.stdout.write('openxiangda version [--json]\nopenxiangda update check|install [--target workspace|launcher] [--dry-run] [--json]\nopenxiangda changelog [version] [--json]\nopenxiangda migrate assess --to v2 [--json]\nopenxiangda skill install [--workspace <directory> | --destination <directory>] [--agent codex|claude|qoder|dual] [--force] [--dry-run] [--skip-support]\nopenxiangda support status|bootstrap|login|join [--profile <corpId:userId>] [--agent <DWS agent>] [--device] [--force] [--dry-run] [--json]\n以上命令支持 --cwd <directory>。新应用默认 V2，项目升级保持原代际。支持接入等待用户操作时不阻塞应用创建。\n');
     return true;
   }
   let data;
+  if (command === 'support') data = await supportOperation(context.packageRoot, args);
   if (skillInstall) data = await installDistributionSkills(context, args);
   if (command === 'version') data = {
     productVersion: context.manifest.version,
@@ -38,8 +40,8 @@ export async function distributionCommand(context, args) {
 }
 
 function validateArguments(command, args) {
-  const booleans = new Set(['--json', '--help', '-h', ...(command === 'skill' ? ['--force', '--dry-run'] : command === 'update' ? ['--dry-run'] : [])]);
-  const values = new Set(['--cwd', ...({ update: ['--target', '--registry'], changelog: ['--registry'], migrate: ['--to'], skill: ['--workspace', '--destination', '--dest', '--agent'] }[command] || [])]);
+  const booleans = new Set(['--json', '--help', '-h', ...(command === 'skill' ? ['--force', '--dry-run', '--skip-support'] : command === 'support' ? ['--force', '--dry-run', '--device'] : command === 'update' ? ['--dry-run'] : [])]);
+  const values = new Set(['--cwd', ...({ update: ['--target', '--registry'], changelog: ['--registry'], migrate: ['--to'], skill: ['--workspace', '--destination', '--dest', '--agent'], support: ['--profile', '--agent'] }[command] || [])]);
   const seen = new Set(); let positionals = 0;
   for (let i = 0; i < args.length; i++) {
     const argument = args[i], key = argument.split('=')[0];

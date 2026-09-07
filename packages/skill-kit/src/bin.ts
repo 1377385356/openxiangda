@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { resolve } from 'node:path';
 import { homedir } from 'node:os';
+import { readFile } from 'node:fs/promises';
 import {
   installSkills,
   resolveDefaultSkillsRoot,
@@ -27,9 +28,12 @@ if (command === 'install') {
   const result = await installSkills({ skillsRoot, destination, force });
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 } else {
-  const rootArgument = args.find(argument => !argument.startsWith('-'));
+  const rootArgument = args.find((argument, index) => !argument.startsWith('-') && args[index - 1] !== '--distribution-commands');
   const skillsRoot = resolve(process.cwd(), rootArgument || defaultSkillsRoot);
-  const issues = await validateSkills(skillsRoot);
+  const metadataFile = optionValue('--distribution-commands');
+  const metadata = metadataFile ? JSON.parse(await readFile(resolve(metadataFile), 'utf8')) : null;
+  if (metadata && (metadata.schemaVersion !== 'openxiangda.distribution-commands/v1' || !Array.isArray(metadata.commands) || metadata.commands.some((command: unknown) => typeof command !== 'string' || !/^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+$/.test(command)))) throw new Error('DISTRIBUTION_COMMAND_METADATA_INVALID');
+  const issues = await validateSkills(skillsRoot, { distributionCommandIds: metadata?.commands });
   if (issues.length) {
     for (const issue of issues) process.stderr.write(`${issue.skill}: ${issue.message} (${issue.file})\n`);
     process.exitCode = 1;

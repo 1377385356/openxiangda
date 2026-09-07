@@ -73,10 +73,10 @@ const FORBIDDEN_V2_TERMS = [
   /\bopenxiangda-(?:admin|compiler|field-kit|testing|user|workflow)\b/i,
 ];
 
-const knownCommandIds = new Set<string>(DEVKIT_COMMANDS.map(command => command.id));
 const REQUIRED_REFERENCES = DOCUMENTATION_TOPICS.map(topic => documentationReferenceFile(topic.id));
 
-export async function validateSkills(skillsRoot: string): Promise<SkillValidationIssue[]> {
+export async function validateSkills(skillsRoot: string, options: { distributionCommandIds?: readonly string[] } = {}): Promise<SkillValidationIssue[]> {
+  const knownCommandIds = new Set<string>([...DEVKIT_COMMANDS.map(command => command.id), ...(options.distributionCommandIds || [])]);
   const skills = await loadSkills(skillsRoot);
   const knownSkills = new Set(skills.map(skill => skill.name));
   const issues: SkillValidationIssue[] = [];
@@ -128,7 +128,7 @@ export async function validateSkills(skillsRoot: string): Promise<SkillValidatio
         }
       }
       for (const command of extractCommands(source)) {
-        const commandId = toCommandId(command);
+        const commandId = toCommandId(command, knownCommandIds);
         if (!commandId || !knownCommandIds.has(commandId)) {
           add(
             `Unknown 2.0 CLI command reference: openxiangda ${command}`,
@@ -328,7 +328,7 @@ function extractLocalMarkdownLinks(source: string) {
     .map(reference => reference.split('#')[0]!);
 }
 
-function toCommandId(command: string) {
+function toCommandId(command: string, knownCommandIds: Set<string>) {
   const tokens = command.split(/\s+/).filter(token => token && !token.startsWith('-'));
   if (!tokens[0]) return undefined;
   for (let length = Math.min(tokens.length, 4); length >= 1; length -= 1) {

@@ -19,6 +19,11 @@ import {
 } from '../src/index.js';
 import { installSkillTransaction } from '../src/internal/skill-installer.js';
 
+async function distributionOptions() {
+  const metadata = JSON.parse(await readFile(resolve(import.meta.dirname, '../../openxiangda/bin/distribution/support-commands.json'), 'utf8'));
+  return { distributionCommandIds: metadata.commands };
+}
+
 test('validates and seals exactly one deterministic skill distribution', async () => {
   const root = await fixture();
   assert.deepEqual(await validateSkills(root), []);
@@ -43,6 +48,16 @@ test('validates and seals exactly one deterministic skill distribution', async (
   await writeSkill(resolve(root, 'openxiangda-v2-extra'), 'openxiangda-v2-extra');
   assert.equal((await validateSkills(root)).length > 0, true);
   await assert.rejects(() => createSkillManifest(root), /SKILL_SET_INVALID/);
+});
+
+test('recognizes executable distribution support actions without admitting invented commands', async () => {
+  const root = await fixture();
+  const file = resolve(root, 'openxiangda-v2/references/getting-started.md');
+  await writeFile(file, '# Support\n\nopenxiangda support status\nopenxiangda support bootstrap\nopenxiangda support login\nopenxiangda support join\n');
+  assert.ok((await validateSkills(root)).length > 0);
+  assert.deepEqual(await validateSkills(root, await distributionOptions()), []);
+  await writeFile(file, '# Unsupported\n\nopenxiangda support redeem\n');
+  assert.ok((await validateSkills(root, await distributionOptions())).some(issue => issue.message.includes('Unknown 2.0 CLI command')));
 });
 
 test('installs the canonical skill and retires only managed legacy layouts', async () => {
@@ -168,7 +183,7 @@ test('recursively rejects broken links, unknown commands, and retired identity/p
 
 test('Chinese guidance routes anonymous access and current backend contracts', async () => {
   const skillRoot = resolve(import.meta.dirname, '../../../skills/openxiangda-v2');
-  assert.deepEqual(await validateSkills(resolve(skillRoot, '..')), []);
+  assert.deepEqual(await validateSkills(resolve(skillRoot, '..'), await distributionOptions()), []);
   const skill = await readFile(resolve(skillRoot, 'SKILL.md'), 'utf8');
   assert.match(skill, /references\/public-access\.md/);
   const publicAccess = await readFile(resolve(skillRoot, 'references/public-access.md'), 'utf8');
