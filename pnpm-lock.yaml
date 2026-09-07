@@ -42,7 +42,7 @@ importers:
         specifier: 2.0.2
         version: link:../mcp
       openxiangda-skill-kit:
-        specifier: 2.0.2
+        specifier: 2.0.3
         version: link:../skill-kit
     devDependencies:
       tsx:
@@ -144,7 +144,7 @@ importers:
         specifier: 0.3.7
         version: 0.3.7
       openxiangda-cli:
-        specifier: 2.2.0
+        specifier: 2.2.1
         version: link:../cli
       openxiangda-contracts:
         specifier: 2.2.0
@@ -162,7 +162,7 @@ importers:
         specifier: 2.0.2
         version: link:../nest
       openxiangda-skill-kit:
-        specifier: 2.0.2
+        specifier: 2.0.3
         version: link:../skill-kit
       xlsx:
         specifier: https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz
