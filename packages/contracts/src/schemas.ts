@@ -4435,6 +4435,15 @@ export const platformCapabilitiesSchema = {
     apiVersion: { const: "v2" },
     contractVersion: { const: OPENXIANGDA_CONTRACT_VERSION },
     platformVersion: nonEmptyString,
+    sourceHosting: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['provider', 'enabled'],
+      properties: {
+        provider: { const: 'forgejo' },
+        enabled: { type: 'boolean' },
+      },
+    },
     features: {
       type: "object",
       maxProperties: 256,

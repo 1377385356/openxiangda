@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.2.2",
+  "title": "源码托管能力发现契约修复",
+  "status": "reviewed",
+  "summary": "补齐平台已提供的可选 sourceHosting 字段，修复严格预检拒绝平台能力响应的问题。",
+  "newFeatures": ["本次修复已有能力声明，不要求应用使用托管仓库。"],
+  "fixes": ["闭合 Schema 接受 Forgejo provider 和布尔 enabled，同时拒绝未知字段和无效类型。"],
+  "affectedUsers": ["连接已提供 sourceHosting 能力字段的平台的 V2 应用开发者。"],
+  "compatibility": {
+    "node": ">=24",
+    "workspaceGenerations": ["v1", "v2"],
+    "v1Policy": "V1 引擎与应用契约不变。",
+    "platformPolicy": "兼容包含或未包含可选源码托管能力的平台。"
+  },
+  "upgradeSteps": ["将应用 openxiangda 精确依赖升级为 2.2.2，更新锁文件并重新执行正式部署预检。"],
+  "knownLimitations": ["其他未知平台字段仍按闭合契约拒绝。"],
+  "issues": []
+}

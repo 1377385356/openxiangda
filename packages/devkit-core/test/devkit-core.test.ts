@@ -1198,6 +1198,16 @@ function assertPlatformCapabilitiesInvalid(capabilities: PlatformCapabilities) {
   );
 }
 
+test('validates optional source hosting from the platform without opening the capability envelope', () => {
+  const base = platformCapabilitiesFixture();
+  for (const sourceHosting of [undefined, { provider: 'forgejo' as const, enabled: false }, { provider: 'forgejo' as const, enabled: true }]) {
+    assert.doesNotThrow(() => assertApplicationContractCompatible({ ...base, ...(sourceHosting ? { sourceHosting } : {}) }, CURRENT_APPLICATION_CONTRACT));
+  }
+  for (const sourceHosting of [{ provider: 'other', enabled: true }, { provider: 'forgejo', enabled: 'true' }, { provider: 'forgejo' }, { provider: 'forgejo', enabled: true, secret: 'forbidden' }]) {
+    assertPlatformCapabilitiesInvalid({ ...base, sourceHosting } as unknown as PlatformCapabilities);
+  }
+});
+
 const validateStudioCapabilities = new Ajv2020({
   allErrors: true,
   strict: false,
