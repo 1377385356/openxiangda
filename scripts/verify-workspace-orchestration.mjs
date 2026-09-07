@@ -183,7 +183,7 @@ for (const [scriptName, expected] of Object.entries(releaseScripts)) {
 assertReleaseCiEntrypoints({
   gitlabSource: readFileSync(resolve(repositoryRoot, ".gitlab-ci.yml"), "utf8"),
   mirrorSource: readFileSync(resolve(repositoryRoot, ".gitea/workflows/release.yml"), "utf8"),
-  githubSource: readFileSync(resolve(repositoryRoot, '.github/workflows/ci.yml'), 'utf8'),
+  githubSource: readFileSync(resolve(repositoryRoot, '.github/workflows/source-checks.yml'), 'utf8'),
 });
 
 const releasePublisherSource = readFileSync(

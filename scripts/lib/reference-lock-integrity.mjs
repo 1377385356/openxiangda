@@ -19,7 +19,7 @@ export function assertReferenceLockArtifactIntegrities(lockPath, artifacts) {
   return { checked };
 }
 
-function packageIntegrity(source, packageKey) {
+export function packageIntegrity(source, packageKey) {
   const escaped = packageKey.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const header = new RegExp(`^  ['\"]?${escaped}['\"]?:\\s*$`, "m").exec(
     source

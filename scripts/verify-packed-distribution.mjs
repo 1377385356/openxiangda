@@ -378,6 +378,12 @@ function assertRepeatablePack(packageName, expectedTarball) {
 }
 
 function assertPublicCliSurface(root) {
+  const facade = readJson(join(findInstalledPackage(root, 'openxiangda'), 'package.json'));
+  const legacyRoot = findInstalledDependency(root, 'openxiangda', 'openxiangda-legacy');
+  const legacy = readJson(join(legacyRoot, 'package.json'));
+  if (legacy.name !== 'openxiangda' || `npm:openxiangda@${legacy.version}` !== facade.dependencies['openxiangda-legacy'] || !legacy.version.startsWith('1.')) {
+    fail('PACKED_LEGACY_ENGINE_IDENTITY_MISMATCH');
+  }
   for (const secondBin of ["create-openxiangda", "openxiangda-mcp"]) {
     if (existsSync(join(root, "node_modules", ".bin", secondBin))) {
       fail(`packed installation exposed a second developer bin: ${secondBin}`);

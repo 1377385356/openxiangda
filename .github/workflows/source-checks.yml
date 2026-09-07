@@ -1,4 +1,4 @@
-name: Verify OpenXiangda source
+name: OpenXiangda source checks
 on:
   pull_request:
   push:

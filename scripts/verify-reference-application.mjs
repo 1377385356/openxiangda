@@ -14,6 +14,7 @@ import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 import { referenceRegistryConfiguration } from "./lib/reference-registry.mjs";
+import { seedReferenceLegacyEngine } from "./lib/reference-legacy-engine.mjs";
 import { resolveDockerPublishedPort } from "./lib/docker-published-port.mjs";
 import { assertReferenceLockArtifactIntegrities } from "./lib/reference-lock-integrity.mjs";
 import {
@@ -140,6 +141,8 @@ try {
     { encoding: "utf8", mode: 0o600 }
   );
 
+  const legacy = await seedReferenceLegacyEngine({ repositoryRoot, registryUrl, registryToken });
+  process.stdout.write(`Prepared verified auxiliary ${legacy.name}@${legacy.version} in the isolated registry.\n`);
   for (const item of publishedCandidates) {
     let tarball = item.tarball;
     if (!tarball) {
