@@ -16,7 +16,7 @@ export async function installDistributionSkills(context, args) {
   const source = join(staging, 'skills');
   try {
     const guidanceTemplate = workspace && context.engine.generation === 'v2' && !args.includes('--dry-run')
-      ? readFileSync(join(context.engine.packageRoot, 'docs/AGENTS.md'), 'utf8') : undefined;
+      ? readFileSync(join(context.engine.packageRoot, 'documentation/AGENTS.md'), 'utf8') : undefined;
     if (context.engine.generation === 'v1') {
       const require = createRequire(join(context.engine.packageRoot, 'package.json'));
       const { installSkills } = require(join(context.engine.packageRoot, 'lib/skills.js'));
