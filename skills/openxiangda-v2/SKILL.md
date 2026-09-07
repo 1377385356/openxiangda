@@ -82,6 +82,8 @@ pnpm exec openxiangda --mcp-stdio --cwd <workspace>
 
 已有项目先执行 `source status`；仓库绑定和地址以平台返回为准，不猜测地址或另建个人仓库。提交前检查 Git 差异；`source push -m` 会提交所有未忽略更改，存在其他任务改动时应只提交本轮文件，再不带 `-m` 推送。源码操作使用 CLI，当前没有独立的 source MCP 工具。凭据配置成功后无需每轮重新配置；托管未启用或权限不足时保留原工作区并报告具体原因。
 
+支持排查只有平台地址和仓库 URL 时，先运行 `source resolve <仓库URL> --base-url <平台> --json`，再用 `source clone <仓库URL> <新目录> --base-url <平台> --json` 获取源码，可选 `--branch`。无需预先创建工作区，不猜 appCode，不安装或运行应用脚本；使用当前平台登录账号与系统 Git 凭据。平台既有 `PLATFORM_ADMIN` 可管理共享服务全部仓库，应用管理员只管理对应应用仓库。完整契约见[应用源码](references/getting-started.md#应用源码)。
+
 只验证时运行 check/check_app；授权部署时直接 deploy/deploy_app，它已经包含检查并默认跟踪平台完成，长步骤持续反馈阶段和耗时。生产显式复用成功测试运行。观察中断用 status <运行ID> --watch 或 deployment_status.watch 继续查询原运行。登录、创建及长期 dev 使用 CLI/终端，分别记录本地验证、部署激活和真实业务验收。
 
 失败保留错误码、指针与原候选。结果不确定先查平台，不生成新的随机幂等键掩盖原运行；仅执行平台允许的恢复。升级项目后刷新资料并重启旧 MCP 连接。

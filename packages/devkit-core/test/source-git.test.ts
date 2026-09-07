@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { chmodSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { initializeSourceGit, installSourceCredential, pushSourceGit } from '../src/source-git.js';
+import { cloneSourceGit, initializeSourceGit, installSourceCredential, pushSourceGit } from '../src/source-git.js';
 
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), 'oxa-source-'));
@@ -104,6 +104,46 @@ test('stores and verifies credentials through the native helper without a plaint
     assert.ok(config.includes('helper = \n') && config.includes('helper = osxkeychain'));
   } finally {
     if (previous === undefined) delete process.env.GIT_EXEC_PATH; else process.env.GIT_EXEC_PATH = previous;
+    f.cleanup();
+  }
+});
+
+test('clones the requested branch without installing dependencies, executing scripts, hooks or filters', { skip: process.platform !== 'darwin' }, () => {
+  const f = fixture();
+  const previousExec = process.env.GIT_EXEC_PATH;
+  const previousGlobal = process.env.GIT_CONFIG_GLOBAL;
+  try {
+    initializeSourceGit(f.workspace, f.repository, f.identity);
+    const marker = join(f.root, 'must-not-execute');
+    writeFileSync(join(f.workspace, 'package.json'), JSON.stringify({ scripts: { prepare: `touch ${marker}` } }));
+    writeFileSync(join(f.workspace, '.gitattributes'), '*.txt filter=bomb\n');
+    writeFileSync(join(f.workspace, 'readme.txt'), 'source');
+    const initial = pushSourceGit(f.workspace, f.repository, 'Initial');
+    f.git('push', 'origin', 'HEAD:refs/heads/support/review');
+    const helpers = join(f.root, 'helpers'); mkdirSync(helpers);
+    const storage = join(f.root, 'test-helper-store');
+    const executable = join(helpers, 'git-credential-osxkeychain');
+    writeFileSync(executable, '#!/bin/sh\ncase "$1" in\nstore) cat > "' + storage + '" ;;\nget) cat "' + storage + '" ;;\nesac\n');
+    chmodSync(executable, 0o700);
+    const config = join(f.root, 'gitconfig');
+    const hooks = join(f.root, 'hooks'); mkdirSync(hooks);
+    writeFileSync(join(hooks, 'post-checkout'), `#!/bin/sh\ntouch ${marker}\n`);
+    chmodSync(join(hooks, 'post-checkout'), 0o700);
+    writeFileSync(config, `[url "${f.remote}"]\n insteadOf = https://git.example.test/app.git\n[core]\n hooksPath = ${hooks}\n[filter "bomb"]\n smudge = touch ${marker}\n`);
+    process.env.GIT_EXEC_PATH = helpers;
+    process.env.GIT_CONFIG_GLOBAL = config;
+    const target = join(f.root, 'cloned');
+    const result = cloneSourceGit(target, { ...f.identity, username: 'source-test', password: 'fixture-password',
+      repository: { ...f.repository, cloneUrl: 'https://git.example.test/app.git' } }, 'support/review');
+    assert.equal(result.commit, initial.commit);
+    assert.equal(result.branch, 'support/review');
+    assert.equal(readFileSync(join(target, 'readme.txt'), 'utf8'), 'source');
+    assert.equal(existsSync(marker), false);
+    assert.equal(existsSync(join(target, 'node_modules')), false);
+    assert.throws(() => cloneSourceGit(target, { ...f.identity, username: 'u', password: 'p', repository: f.repository }), /TARGET_EXISTS/);
+  } finally {
+    if (previousExec === undefined) delete process.env.GIT_EXEC_PATH; else process.env.GIT_EXEC_PATH = previousExec;
+    if (previousGlobal === undefined) delete process.env.GIT_CONFIG_GLOBAL; else process.env.GIT_CONFIG_GLOBAL = previousGlobal;
     f.cleanup();
   }
 });

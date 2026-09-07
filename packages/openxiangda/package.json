@@ -142,6 +142,8 @@
     "status": "reviewed",
     "summary": "私有化平台通过共享 Forgejo 管理应用源码。创建应用时自动初始化私有仓库并推送代码，应用管理员自动获得仓库管理权限，开发者使用长期 Git 凭据。",
     "newFeatures": [
+      "既有 PLATFORM_ADMIN 自动获得共享 Git 服务全部已有和新建仓库的管理权限。",
+      "source resolve/clone 支持仅凭平台与仓库 URL、使用当前登录态读取源码，不安装或执行应用脚本。",
       "新增 source status、source setup 和 source push 命令，支持初始化恢复和已有工作区接入。",
       "创建应用后自动提交并推送初始源码，通过系统凭据管理器保存个人 Git 凭据。",
       "配套平台支持首次部署前浏览源码及最近提交，并核验部署关联的提交已经推送。"
@@ -178,7 +180,7 @@
       "新源码功能不依赖 Studio；Studio 旧代码移除属于独立后续工作。"
     ],
     "issues": [],
-    "sha256": "84347575a9494667fc9f315b27fc44f7242bb48b8ce2893e2f50de246440f53a",
+    "sha256": "f7341eb21e1489c684ee03eed31568063dfad01bfe345f914552bd51b7357f84",
     "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.1.1"
   }
 }

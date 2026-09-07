@@ -11,6 +11,14 @@ helper, without placing secrets in a workspace or command result. Studio is reti
 and is not used by the new source path. No tenant Git organization or revocation
 workflow is introduced.
 
+Release amendment approved on 2026-09-08: existing PLATFORM_ADMIN users receive
+Forgejo site administrator access to all repositories, including other creators'
+older and later repositories. The source resolve/clone CLI accepts explicit platform
+and repository URLs before any workspace exists, uses the current platform session,
+and resolves app identity from the existing backend binding. Clones do not install
+dependencies, load app configuration, execute hooks/global filters, or recurse into
+submodules. Unknown bindings and occupied targets fail without replacement.
+
 The CLI consumes a repository returned by application provisioning, initializes and
 pushes once, and exposes source status/setup/push for recovery and task completion.
 It preserves conflicting external remotes unless import is explicit, keeps local

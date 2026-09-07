@@ -519,6 +519,17 @@ export class OpenXiangdaControlPlaneClient {
       `/openxiangda-api/v2/applications/${encodeURIComponent(appCode)}/source`);
   }
 
+  async resolveSourceRepository(repository: string) {
+    return this.json<{ appCode: string; name: string; repository: ApplicationSourceRepository }>(
+      `/openxiangda-api/v2/application-source/resolve?repository=${encodeURIComponent(repository)}`);
+  }
+
+  async repositoryCredential(repository: string) {
+    return this.json<ApplicationSourceCredential & { appCode: string }>(
+      '/openxiangda-api/v2/application-source/credential',
+      { method: 'POST', body: JSON.stringify({ repository }) });
+  }
+
   async sourceCredential(appCode: string) {
     return this.json<ApplicationSourceCredential>(
       `/openxiangda-api/v2/applications/${encodeURIComponent(appCode)}/source/credential`,

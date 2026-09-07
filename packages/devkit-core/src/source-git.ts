@@ -1,12 +1,12 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import type { ApplicationSourceCredential, ApplicationSourceRepository } from 'openxiangda-contracts';
 
-function run(root: string, args: string[], input?: string, optional = false): string {
+function run(root: string, args: string[], input?: string, optional = false, isolated = false): string {
   const result = spawnSync('git', args, {
     cwd: root, encoding: 'utf8', input, timeout: 120_000, maxBuffer: 2 * 1024 * 1024,
-    env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+    env: { ...process.env, GIT_TERMINAL_PROMPT: '0', ...(isolated ? { GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: process.platform === 'win32' ? 'NUL' : '/dev/null' } : {}) },
   });
   if (result.status !== 0 && !optional) {
     // Credential helpers may echo their input on failure; never relay their output.
@@ -14,6 +14,24 @@ function run(root: string, args: string[], input?: string, optional = false): st
     throw new Error(`APPLICATION_SOURCE_GIT_FAILED: git ${args[0]} ${detail}`);
   }
   return result.status === 0 ? String(result.stdout || '').trim() : '';
+}
+
+export function cloneSourceGit(root: string, credential: ApplicationSourceCredential, requestedBranch?: string) {
+  root = resolve(root);
+  if (existsSync(root)) throw new Error('APPLICATION_SOURCE_TARGET_EXISTS: 克隆目标目录必须不存在');
+  const branch = requestedBranch || credential.repository.defaultBranch;
+  mkdirSync(root, { recursive: true });
+  run(root, ['init', '--template=', '-b', branch]);
+  // Do not execute hooks, global checkout filters or submodule code in a support clone.
+  run(root, ['config', '--local', 'core.hooksPath', join(root, '.git', 'disabled-hooks')]);
+  run(root, ['remote', 'add', 'origin', credential.repository.cloneUrl]);
+  installSourceCredential(root, credential);
+  run(root, ['check-ref-format', `refs/heads/${branch}`]);
+  run(root, ['fetch', '--no-recurse-submodules', 'origin', `refs/heads/${branch}:refs/remotes/origin/${branch}`]);
+  run(root, ['checkout', '--no-recurse-submodules', '-B', branch, `refs/remotes/origin/${branch}`], undefined, false, true);
+  run(root, ['branch', '--set-upstream-to', `origin/${branch}`, branch]);
+  const commit = run(root, ['rev-parse', 'HEAD']);
+  return { root, repository: credential.repository.cloneUrl, branch, commit };
 }
 
 export function installSourceCredential(root: string, credential: ApplicationSourceCredential): void {

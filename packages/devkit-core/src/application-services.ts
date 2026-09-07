@@ -1,5 +1,5 @@
 import type { DeploymentStrategy } from 'openxiangda-contracts';
-import { initializeSourceGit, installSourceCredential, pushSourceGit } from './source-git.js';
+import { cloneSourceGit, initializeSourceGit, installSourceCredential, pushSourceGit } from './source-git.js';
 import { randomUUID } from "node:crypto";
 import { publishedDeliverySource, assertDeliverySourceUnchanged, DeliverySourceError } from './delivery-source.js';
 import { operationStage, skippedOperationStage, updateOperationStage } from './operation-progress.js';
@@ -507,6 +507,20 @@ export class OpenXiangdaApplicationServices {
     const workspace = await this.workspace(root);
     return this.ok('source.status', workspace.context.workspace,
       await (await this.client(workspace.root)).sourceStatus(workspace.config.app.code));
+  }
+
+  async sourceFromUrl(input: { baseUrl: string; repository: string; directory?: string; branch?: string }) {
+    const baseUrl = normalizePlatformBaseUrl(input.baseUrl);
+    const session = await OpenXiangdaDeveloperSession.load();
+    if (!session) throw new Error('OPENXIANGDA_AUTH_REQUIRED');
+    session.assertPlatform(baseUrl);
+    const client = new OpenXiangdaControlPlaneClient({ baseUrl, tokenProvider: session });
+    const resolved = await client.resolveSourceRepository(input.repository);
+    const identity = { appCode: resolved.appCode, name: resolved.name, root: resolve(input.directory || process.cwd()) };
+    if (!input.directory) return this.ok('source.resolve', identity, { baseUrl, ...resolved });
+    const credential = await client.repositoryCredential(resolved.repository.cloneUrl);
+    const cloned = cloneSourceGit(input.directory, credential, input.branch);
+    return this.ok('source.clone', identity, { baseUrl, appCode: resolved.appCode, ...cloned });
   }
 
   async setupSource(root?: string, input: { importOrigin?: boolean; initialCommit?: boolean } = {}) {

@@ -92,6 +92,38 @@ MCP 的 `docs_read` 可以读取本说明，当前没有独立的源码操作 MC
 本期不自动同步权限撤销或删除。不要向应用开发者索要 Forgejo 平台管理员 Token；
 个人凭据由已登录的平台账号获取，配置成功后可长期复用。
 
+### 从平台和仓库 URL 获取源码
+
+无需本地工作区，使用本 Skill 随包精确版本或已安装的对应 CLI：
+
+```bash
+pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ auth status --base-url <平台> --json
+pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ source resolve <仓库URL> --base-url <平台> --json
+pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ source clone <仓库URL> <新目录> --base-url <平台> --json
+```
+
+登录缺失或站点不匹配时，先按该平台执行 login。resolve 根据平台已经登记的绑定返回
+`appCode/name/repository`，不猜应用代码；clone 使用当前账号配置长期凭据后检出源码，
+返回 `root/baseUrl/appCode/repository/branch/commit`。`--branch <分支>` 可指定分支，
+省略时使用 Forgejo 实际默认分支。目标目录必须不存在；失败时保留目录供检查。
+克隆不会加载应用配置、安装依赖、执行应用脚本或递归拉取子模块，并禁用 checkout hooks
+和全局过滤器；需要 LFS 内容时在审查后单独处理。
+
+既有 `PLATFORM_ADMIN` 平台管理员映射为共享 Forgejo 管理员，可完整管理已有及以后创建的
+全部仓库，不受应用创建人或应用成员登记限制。平台应用管理员保持对应仓库管理权限。
+该规则没有新增平台角色，也不扩展普通应用成员的权限。
+
+正式 API 均位于平台 `/service/openxiangda-api/v2` 下，使用现有登录态：
+
+| API | 请求及响应 data |
+| --- | --- |
+| `GET /application-source/resolve?repository=<编码后的仓库URL>` | 接受平台登记的 cloneUrl 或 webUrl，返回 `{ appCode, name, repository }`；不返回凭据 |
+| `POST /application-source/credential` | JSON `{ "repository": "仓库URL" }`，返回 `{ appCode, repository, username, password, name, email }`，响应 `Cache-Control: no-store` |
+| `POST /application-source/administrators/reconcile` | 仅平台管理员；同步已有 PLATFORM_ADMIN 到 Git，返回 `{ synchronized }`，不返回凭据 |
+
+使用 CLI 时无需自行调用凭据 API；支持工具不得记录其响应或另建身份体系。
+未登记的外部仓库先在原工作区执行 `source setup --import`，再使用平台返回的仓库 URL。
+
 ## 检查与交付 {#delivery}
 
 只检查时运行 `pnpm openxiangda check`。需要部署测试环境时直接运行 `pnpm openxiangda deploy`，它已包含检查、测试和构建；无需再连续重复运行全部脚本。
