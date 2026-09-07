@@ -15,6 +15,8 @@ export async function installDistributionSkills(context, args) {
   const staging = mkdtempSync(join(tmpdir(), 'openxiangda-skills-'));
   const source = join(staging, 'skills');
   try {
+    const guidanceTemplate = workspace && context.engine.generation === 'v2' && !args.includes('--dry-run')
+      ? readFileSync(join(context.engine.packageRoot, 'docs/AGENTS.md'), 'utf8') : undefined;
     if (context.engine.generation === 'v1') {
       const require = createRequire(join(context.engine.packageRoot, 'package.json'));
       const { installSkills } = require(join(context.engine.packageRoot, 'lib/skills.js'));
@@ -41,8 +43,7 @@ export async function installDistributionSkills(context, args) {
     let guidance;
     if (workspace && context.engine.generation === 'v2' && !args.includes('--dry-run')) {
       const { refreshWorkspaceGuidance } = await importEngineModule(context.engine.packageRoot, 'openxiangda-skill-kit');
-      const { workspaceGuidanceTemplatePath } = await importEngineModule(context.engine.packageRoot, 'openxiangda-devkit-core');
-      guidance = refreshWorkspaceGuidance(resolve(workspace), readFileSync(workspaceGuidanceTemplatePath(), 'utf8'));
+      guidance = refreshWorkspaceGuidance(resolve(workspace), guidanceTemplate);
     }
     return { destinations, installed: names, engineVersion: context.engine.version, generation: context.engine.generation, dryRun: args.includes('--dry-run'), ...(guidance ? { guidance } : {}) };
   } finally { rmSync(staging, { recursive: true, force: true }); }
