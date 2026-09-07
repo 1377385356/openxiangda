@@ -200,7 +200,9 @@ test('desktop and mobile share the detail frame and keep approval history in its
   assert.match(mobile, /oxa-record-detail-mobile/);
   const history = renderToStaticMarkup(createElement(App, null, createElement(WorkflowTimelineSection, { timeline })));
   for (const pattern of [/oxa-workflow-operation-opinion/, />意见</, /ant-avatar/, /default-avatar\.png/]) assert.match(history, pattern);
-  for (const pattern of [/同意申请。/g, /王岚/g, />周宁</g, /请周宁继续办理。/g, /2026\/9\/2 10:05:00/g]) assert.equal((history.match(pattern) || []).length, 1);
+  for (const pattern of [/同意申请。/g, /王岚/g, />周宁</g, /请周宁继续办理。/g]) assert.equal((history.match(pattern) || []).length, 1);
+  const localCompletionTime = new Date('2026-09-02T02:05:00.000Z').toLocaleString('zh-CN');
+  assert.equal(history.split(localCompletionTime).length - 1, 1);
   for (const markup of [desktop, mobile]) {
     assert.match(markup, /合同用印申请/);
     assert.match(markup, /商务运营部/);
