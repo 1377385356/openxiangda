@@ -28,7 +28,9 @@ finish before commands run; this adds no lock or parallel writer.
 
 ## Release, Bounds And Verification
 
-Publish a reviewed patch Changeset for openxiangda. Preserve immutable 2.0.0
+Publish a reviewed patch Changeset for openxiangda and openxiangda-cli. The
+CLI bundles template package manifests that must reference the patched root,
+so both packages belong to this release unit. Preserve immutable 2.0.0
 bytes and dependent package versions chosen by Changesets. Rollback is a
 project-local version pin, with the known old discovery limitation.
 Use a pnpm-style symlink fixture whose CLI exists only beside the physical
