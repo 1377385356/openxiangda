@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -65,13 +65,13 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.2.1",
-    "openxiangda-contracts": "2.2.0",
-    "openxiangda-devkit-core": "2.2.0",
+    "openxiangda-cli": "2.2.2",
+    "openxiangda-contracts": "2.2.1",
+    "openxiangda-devkit-core": "2.2.1",
     "openxiangda-legacy": "npm:openxiangda@1.0.268",
-    "openxiangda-mcp": "2.0.2",
-    "openxiangda-nest": "2.0.2",
-    "openxiangda-skill-kit": "2.0.3",
+    "openxiangda-mcp": "2.0.3",
+    "openxiangda-nest": "2.0.3",
+    "openxiangda-skill-kit": "2.0.4",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -137,24 +137,19 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.2.0",
-    "title": "OpenXiangda 内部支持协作接入",
+    "version": "2.2.1",
+    "title": "原生数据事件接收契约修复",
     "status": "reviewed",
-    "summary": "统一入口为 V1/V2 应用开发提供内部支持协作接入，检查官方 DWS 与技能，复用精确账号，并提供授权、打开群邀请和持续案例跟进入口。",
+    "summary": "修复当前平台原生数据事件在 Nest 自动化接收端的 Schema 不匹配，保持签名验证和幂等回执边界。",
     "newFeatures": [
-      "新增 support status、bootstrap、login、join，应用创建和技能刷新后检查支持通道接入状态。",
-      "缺少 DWS 时安装官方稳定版 1.0.61，并安装官方完整 multi 技能；已有可用稳定版本可以复用。",
-      "增加跨 V1/V2 支持技能，涵盖平台契约咨询、源码诊断上下文、产品架构评审和已授权案例的引用跟进。",
-      "使用外置支持通道配置，按原始邀请链接打开钉钉，由用户完成加入。"
+      "本次为事件契约修复，不新增业务能力。"
     ],
     "fixes": [
-      "支持接入失败或等待用户操作时保留独立状态，不改变应用创建成功结果；进度写入 stderr，保持引擎 JSON 输出。",
-      "使用保存的精确 DWS profile，不按显示姓名或列表顺序猜测账号，不切换平台或 DWS 全局登录身份。",
-      "命令发现由统一分发层维护，技能校验显式接收分发命令，保持 V2 核心与两代引擎边界。"
+      "移除事件数据体已经退役的 capturePlanRevision 必填要求；捕获身份继续由平台不可变事件账本持有。",
+      "接收当前用户角色并集 user_union 操作人的签名事件，并同步类型与开发测试夹具。"
     ],
     "affectedUsers": [
-      "通过统一入口创建应用、初始化工作区或刷新技能的 V1/V2 开发者。",
-      "在内部支持通道中继续已授权平台咨询和故障排查的开发 AI。"
+      "使用当前原生 Data API 并通过 Nest 消费数据事件的 OpenXiangda 2.0 应用。"
     ],
     "compatibility": {
       "node": ">=24",
@@ -162,25 +157,17 @@
         "v1",
         "v2"
       ],
-      "v1Policy": "V1 项目保持原代际、版本锁定与登录绑定；支持接入由统一分发入口提供。",
-      "platformPolicy": "本次工具发布不要求更新平台镜像；源码诊断仍需目标平台已启用正式源码托管并授予当前账号访问权限。",
-      "dws": "最低稳定版 1.0.61；OAuth 与加入群需要用户在官方流程中完成。",
-      "releaseChannels": "latest / stable-v2：V2 正式版；legacy-v1：V1 维护版；alpha：预发布。"
+      "v1Policy": "V1 引擎与应用契约不变。",
+      "platformPolicy": "适用于由不可变捕获计划驱动的当前 V2 原生事件；应用需重新部署接收端。"
     },
     "upgradeSteps": [
-      "在 Node.js 24 环境安装统一入口：npm install -g openxiangda@2.2.0。",
-      "运行 openxiangda support bootstrap 检查安装与完整技能；离线或 CI 初始化可使用 --skip-support，之后再恢复。",
-      "运行 openxiangda support status --json 查看实际状态；需要时执行 support login，SSH 可使用 --device。",
-      "尚不能访问支持群时运行 support join，在钉钉完成加入后重新检查状态；已有授权案例继续引用原消息跟进。"
+      "将 V2 应用的 openxiangda 精确依赖升级为 2.2.1，更新锁文件并通过标准测试部署后验证事件回执。"
     ],
     "knownLimitations": [
-      "可读取群仅证明当前账号的访问能力，不能单独证明群成员身份或组织限制；命令返回独立验证状态。",
-      "技能不会唤醒已经结束的开发任务，后台继续需要宿主实际监听或定时任务。",
-      "安装、授权和群访问依赖网络及组织配置；新的真实用户入群与双方协作须单独现场验收，替身测试不构成真人验收。",
-      "本包提供接入与协作指导，常驻支持服务及知识库由各自私有服务独立部署。"
+      "升级不会自动重放历史失败事件；按原事件和应用幂等标识使用平台运维操作恢复。"
     ],
     "issues": [],
-    "sha256": "638817e7e1d8c9cb99de6b9d41716828d241e31905c9bd0565cb94e43b9ee991",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.2.0"
+    "sha256": "e56c78fce73cb156731028349b67a784f3aa1bae5073fb16d0b84fafd3b4011f",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.2.1"
   }
 }
