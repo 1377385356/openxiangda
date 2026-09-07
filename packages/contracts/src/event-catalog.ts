@@ -51,7 +51,6 @@ export const DATA_RECORD_EVENT_DATA_SCHEMA_V2 = {
     'projection',
     'actor',
     'cause',
-    'capturePlanRevision',
   ],
   properties: {
     resourceCode: { type: 'string', minLength: 1, maxLength: 128 },
@@ -74,6 +73,7 @@ export const DATA_RECORD_EVENT_DATA_SCHEMA_V2 = {
         principalType: {
           enum: [
             'user',
+            'user_union',
             'application',
             'developer',
             'workflow',
@@ -94,7 +94,6 @@ export const DATA_RECORD_EVENT_DATA_SCHEMA_V2 = {
         depth: { type: 'integer', minimum: 0, maximum: 16 },
       },
     },
-    capturePlanRevision: { type: 'integer', minimum: 0 },
   },
 } as const;
 

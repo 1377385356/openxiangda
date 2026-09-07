@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import test from "node:test";
+import { Ajv2020 } from "ajv/dist/2020.js";
 import {
   SCHEMA_VERSIONS,
+  DATA_RECORD_EVENT_DATA_SCHEMA_V2,
   eventDeliverySignatureContentV2,
   sha256Digest,
 } from "openxiangda-contracts";
@@ -43,6 +45,8 @@ test("builds bounded canonical data v2 fixtures and evaluates subscription filte
     },
     projection: { code: "INS-001", name: "质谱仪", secret: "not-selected" },
   });
+  const validate = new Ajv2020({ strict: false }).compile(DATA_RECORD_EVENT_DATA_SCHEMA_V2);
+  assert.equal(validate(event.data), true, JSON.stringify(validate.errors));
   const filter = {
     resourceCodes: ["instruments"],
     changedFields: { allOf: ["status"], noneOf: ["deletedAt"] },

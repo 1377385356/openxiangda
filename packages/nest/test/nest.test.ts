@@ -132,9 +132,8 @@ function eventBody(input: {
       revision: 1,
       changedFields: [],
       projection: {},
-      actor: { principalType: "user", subjectId: "user-1" },
+      actor: { principalType: "user_union", subjectId: "user-1" },
       cause: { eventId: null, subscriptionCode: null, depth: 0 },
-      capturePlanRevision: 1,
       ...(input.data || {}),
     },
     tenantid: "tenant-1",
@@ -2818,6 +2817,15 @@ test("event receiver verifies HMAC and suppresses duplicate side effects", async
     receiptStatus: "succeeded",
   });
   assert.equal(duplicate.duplicate, true);
+  assert.equal(handler.mock.callCount(), 1);
+  const invalidBody = eventBody({
+    id: "invalid-actor",
+    type: "openxiangda.data.record.created.v2",
+    recordId: "record-1",
+    data: { actor: { principalType: "untrusted", subjectId: "user-1" } },
+  });
+  await assert.rejects(() => receiver.accept(eventHandler,
+    eventHeaders(invalidBody, secret, "invalid-delivery"), invalidBody, handler));
   assert.equal(handler.mock.callCount(), 1);
 });
 

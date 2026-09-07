@@ -1811,6 +1811,7 @@ export interface DataEventFieldChange {
 export interface EventActor {
   principalType:
     | "user"
+    | "user_union"
     | "application"
     | "developer"
     | "workflow"
@@ -1835,7 +1836,6 @@ export interface DataRecordEventData extends Record<string, unknown> {
   projection: Record<string, unknown | EventValueDigest>;
   actor: EventActor;
   cause: EventCause;
-  capturePlanRevision: number;
 }
 
 export interface WorkflowFactEventData extends Record<string, unknown> {

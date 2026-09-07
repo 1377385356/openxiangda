@@ -128,9 +128,8 @@ export function dataRecordEventFixture(
           changedFields.map(field => [field, { before: "before", after: "after" }])
         ),
       projection: options.projection || {},
-      actor: { principalType: "user", subjectId: "user-test" },
+      actor: { principalType: "user_union", subjectId: "user-test" },
       cause: { eventId: null, subscriptionCode: null, depth: 0 },
-      capturePlanRevision: 1,
     },
   };
 }
