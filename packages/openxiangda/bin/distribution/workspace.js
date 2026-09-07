@@ -45,6 +45,7 @@ export function discoverWorkspace(cwd) {
 }
 
 export function packageEngine(packageRoot, generation, source, declaredVersion = null) {
+  packageRoot = realpathSync(packageRoot);
   const manifest = readJson(join(packageRoot, 'package.json'));
   const major = generation === 'v1' ? '1' : '2';
   if (manifest.name !== 'openxiangda' || !manifest.version?.startsWith(`${major}.`)) {

@@ -68,6 +68,24 @@ test('subdirectory V1 execution preserves arguments, exit code and login environ
   assert.equal(data.documentation, null); assert.equal(data.version, 'v1');
 });
 
+test('pnpm-linked workspace resolves the CLI beside the physical selected package', t => {
+  const f = fixture(t);
+  f.put('app/openxiangda.config.ts');
+  f.put('app/package.json', { devDependencies: { openxiangda: '2.0.0' } });
+  f.put('app/node_modules/.pnpm/openxiangda@2.0.0/node_modules/openxiangda/package.json', {
+    name: 'openxiangda', version: '2.0.0',
+  });
+  f.put('app/node_modules/.pnpm/openxiangda@2.0.0/node_modules/openxiangda-cli/package.json', {
+    name: 'openxiangda-cli', version: '2.0.0', exports: { './run': './run.cjs' },
+  });
+  f.put('app/node_modules/.pnpm/openxiangda@2.0.0/node_modules/openxiangda-cli/run.cjs', '');
+  symlinkSync('.pnpm/openxiangda@2.0.0/node_modules/openxiangda', join(f.root, 'app/node_modules/openxiangda'));
+  const engine = resolveEngine(discoverWorkspace(join(f.root, 'app')), f.launcher);
+  assert.equal(engine.source, 'workspace');
+  assert.equal(engine.packageRoot, realpathSync(join(f.root, 'app/node_modules/openxiangda')));
+  assert.equal(engine.entry, join(engine.packageRoot, '../openxiangda-cli/run.cjs'));
+});
+
 test('workspace and launcher updates stay in their intended generation and dependency scope', t => {
   const f = fixture(t); f.put('old/app-workspace.config.ts');
   f.put('old/package.json', { dependencies: { openxiangda: '1.0.267' } });
