@@ -3352,6 +3352,16 @@ export interface PlatformCapabilities {
       schemaVersion: typeof RUNTIME_CAPACITY_PREFLIGHT_SCHEMA;
       endpointTemplate: '/openxiangda-api/v2/applications/{appCode}/runtime-capacity-preflight';
     };
+    backendImageUpload?: {
+      schemaVersion: 'openxiangda.backend-image-upload/v2';
+      owner: 'platform';
+      available: boolean;
+      platform: 'linux/amd64';
+      format: 'oci-layout';
+      maxChunkBytes: number;
+      maxImageBytes: number;
+      endpointTemplate: '/openxiangda-api/v2/applications/{appCode}/backend-images';
+    };
     backendImageBuild: {
       owner: "developer-cli";
       available: boolean;

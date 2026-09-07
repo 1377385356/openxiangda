@@ -1738,10 +1738,11 @@ export class OpenXiangdaApplicationServices {
       ? input.backendImage
         ? input.backendImage
         : (
-            await operationStage('backend-image', '构建并推送后端镜像', () => publishBackendImage({
+            await operationStage('backend-image', '构建并上传后端镜像', () => publishBackendImage({
               root: workspace.root,
               backendRoot: workspace.config.backend.root,
               target: backendImageBuildTarget(capabilities, workspace.config.app.code),
+              uploader: client,
               ...(workspace.context.workspace.revision
                 ? { sourceRevision: workspace.context.workspace.revision }
                 : {}),

@@ -1,4 +1,5 @@
 import { runCommandProcess } from './command-process.js';
+import { uploadBackendOciLayout, type BackendImageUploader } from './backend-image-upload.js';
 import {
   existsSync,
   mkdtempSync,
@@ -22,6 +23,7 @@ const SHA256_DIGEST = /^sha256:[a-f0-9]{64}$/;
 export interface BackendImageBuildTarget {
   repository: string;
   platform: "linux/amd64";
+  upload?: { appCode: string; maxImageBytes: number };
 }
 
 export interface PublishedBackendImage extends BackendImageBuildTarget {
@@ -44,6 +46,23 @@ export function backendImageBuildTarget(
   capabilities: PlatformCapabilities,
   appCode: string
 ): BackendImageBuildTarget {
+  const upload = capabilities.deployment?.backendImageUpload;
+  if (upload) {
+    if (upload.schemaVersion !== 'openxiangda.backend-image-upload/v2' || upload.owner !== 'platform' ||
+      upload.platform !== 'linux/amd64' || upload.format !== 'oci-layout' ||
+      upload.endpointTemplate !== '/openxiangda-api/v2/applications/{appCode}/backend-images' ||
+      upload.maxChunkBytes !== 8 * 1024 * 1024 || !Number.isSafeInteger(upload.maxImageBytes) || upload.maxImageBytes < 1) {
+      throw new BackendImageBuildError('OPENXIANGDA_BACKEND_IMAGE_BUILD_CONFIG_INVALID', '平台镜像上传合同无效');
+    }
+    if (!upload.available) {
+      throw new BackendImageBuildError('OPENXIANGDA_BACKEND_IMAGE_UPLOAD_UNAVAILABLE', '平台镜像上传尚未启用，请联系平台管理员');
+    }
+    if (!/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(appCode)) {
+      throw new BackendImageBuildError('OPENXIANGDA_BACKEND_IMAGE_APP_CODE_INVALID', '应用代码无效');
+    }
+    return { repository: `openxiangda-local/${appCode}-server`, platform: upload.platform,
+      upload: { appCode, maxImageBytes: upload.maxImageBytes } };
+  }
   const build = capabilities.deployment?.backendImageBuild;
   if (
     !build ||
@@ -144,6 +163,7 @@ export async function publishBackendImage(input: {
   sourceRevision?: string;
   target: BackendImageBuildTarget;
   dockerExecutable?: string;
+  uploader?: BackendImageUploader;
 }): Promise<PublishedBackendImage> {
   const root = resolve(input.root);
   const dockerfile = resolve(root, input.backendRoot, "Dockerfile");
@@ -184,6 +204,32 @@ export async function publishBackendImage(input: {
       "OPENXIANGDA_DOCKER_BUILDX_REQUIRED",
       "当前 Docker CLI 未提供可用的 Buildx"
     );
+  }
+
+  if (input.target.upload) {
+    if (!input.uploader) {
+      throw new BackendImageBuildError('OPENXIANGDA_BACKEND_IMAGE_UPLOADER_REQUIRED', '缺少平台登录态镜像上传通道');
+    }
+    const scratch = mkdtempSync(join(tmpdir(), 'openxiangda-oci-'));
+    const directory = join(scratch, 'image');
+    try {
+      const built = await runDocker(docker, ['buildx', 'build', '--file', dockerfile,
+        '--platform', input.target.platform, '--provenance=false', '--sbom=false',
+        '--tag', input.target.repository,
+        '--output', `type=oci,dest=${directory},tar=false`, root], root);
+      if (built.error || built.status !== 0) {
+        if (/oci exporter is not supported|exporter.*oci.*not supported/i.test(built.output)) {
+          throw new BackendImageBuildError('OPENXIANGDA_DOCKER_OCI_EXPORT_REQUIRED',
+            '当前 Docker builder 不支持 OCI 导出。请启用 Docker Desktop 的 containerd image store，或执行 docker buildx create --driver docker-container --use 后重试');
+        }
+        if (/cannot connect|daemon is not running|is the docker daemon running/i.test(built.output)) {
+          throw buildFailure(built.output);
+        }
+        throw new BackendImageBuildError('OPENXIANGDA_BACKEND_IMAGE_BUILD_FAILED', '本地后端镜像构建失败');
+      }
+      const uploaded = await uploadBackendOciLayout({ directory, ...input.target.upload, uploader: input.uploader });
+      return { repository: uploaded.reference.split('@')[0]!, platform: input.target.platform, ...uploaded };
+    } finally { rmSync(scratch, { recursive: true, force: true }); }
   }
 
   const scratch = mkdtempSync(join(tmpdir(), "openxiangda-buildx-"));

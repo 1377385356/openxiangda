@@ -4465,6 +4465,18 @@ export const platformCapabilitiesSchema = {
             endpointTemplate: { const: '/openxiangda-api/v2/applications/{appCode}/runtime-capacity-preflight' },
           },
         },
+        backendImageUpload: {
+          type: 'object', additionalProperties: false,
+          required: ['schemaVersion', 'owner', 'available', 'platform', 'format', 'maxChunkBytes', 'maxImageBytes', 'endpointTemplate'],
+          properties: {
+            schemaVersion: { const: 'openxiangda.backend-image-upload/v2' },
+            owner: { const: 'platform' }, available: { type: 'boolean' },
+            platform: { const: 'linux/amd64' }, format: { const: 'oci-layout' },
+            maxChunkBytes: { const: 8388608 },
+            maxImageBytes: { type: 'integer', minimum: 1 },
+            endpointTemplate: { const: '/openxiangda-api/v2/applications/{appCode}/backend-images' },
+          },
+        },
         backendImageBuild: {
           type: "object",
           additionalProperties: false,

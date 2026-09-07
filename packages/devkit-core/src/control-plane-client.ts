@@ -79,6 +79,7 @@ import {
   type WorkflowTimeline,
 } from "openxiangda-contracts/browser";
 import { Agent, fetch as undiciFetch } from "undici";
+import type { BackendImageUploadReceipt } from './backend-image-upload.js';
 
 type FetchLike = (
   input: string | URL | Request,
@@ -852,6 +853,26 @@ export class OpenXiangdaControlPlaneClient {
       if (error instanceof ControlPlaneError && error.status === 404 && error.code === 'DELIVERY_ARTIFACT_NOT_FOUND') return null;
       throw error;
     }
+  }
+
+  async beginBackendImage(appCode: string, input: { digest: string; manifest: string }) {
+    return this.json<BackendImageUploadReceipt>(
+      `/openxiangda-api/v2/applications/${encodeURIComponent(appCode)}/backend-images`,
+      { method: 'POST', body: JSON.stringify(input), signal: AbortSignal.timeout(90000) });
+  }
+
+  async uploadBackendImageChunk(appCode: string, digest: string, blobDigest: string, offset: number, content: Uint8Array) {
+    return this.request<{ offset: number; complete: boolean }>(
+      `/openxiangda-api/v2/applications/${encodeURIComponent(appCode)}/backend-images/${encodeURIComponent(digest)}/blobs/${encodeURIComponent(blobDigest)}?offset=${offset}`,
+      { method: 'POST', body: new Blob([Uint8Array.from(content)]),
+        headers: { 'Content-Type': 'application/octet-stream' }, signal: AbortSignal.timeout(90000) },
+      this.artifactUploadFetch);
+  }
+
+  async completeBackendImage(appCode: string, digest: string) {
+    return this.json<BackendImageUploadReceipt>(
+      `/openxiangda-api/v2/applications/${encodeURIComponent(appCode)}/backend-images/${encodeURIComponent(digest)}/complete`,
+      { method: 'POST', body: '{}', signal: AbortSignal.timeout(90000) });
   }
 
   async uploadArtifact(input: UploadArtifactInput) {
