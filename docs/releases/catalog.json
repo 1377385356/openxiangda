@@ -3,45 +3,6 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
-      "version": "2.0.1",
-      "title": "OpenXiangda pnpm 工作区识别修复",
-      "status": "reviewed",
-      "summary": "修复独立安装的统一入口进入 pnpm 工作区时无法找到项目 CLI 的问题，继续严格使用该项目锁定的同代引擎。",
-      "newFeatures": [
-        "本次为 2.0.0 的修复发布，没有新增应用能力。"
-      ],
-      "fixes": [
-        "从 pnpm 符号链接指向的真实包目录解析 openxiangda-cli，避免 WORKSPACE_ENGINE_DEPENDENCY_MISSING。"
-      ],
-      "affectedUsers": [
-        "使用全局或独立安装的统一入口维护 pnpm 工作区的开发者。"
-      ],
-      "compatibility": {
-        "node": ">=24",
-        "workspaceGenerations": [
-          "v1",
-          "v2"
-        ],
-        "v1Policy": "V1 应用保持原代际、版本锁定与登录绑定。",
-        "platformPolicy": "没有新增平台能力要求，部署仍执行目标平台预检。",
-        "backendBuild": "Nest 镜像继续由开发者电脑上的 Docker 构建。",
-        "releaseChannels": "latest / stable-v2：V2 正式版；legacy-v1：V1 维护版；alpha：预发布。"
-      },
-      "upgradeSteps": [
-        "在 Node.js 24 环境安装统一入口：npm install -g openxiangda@2.0.1。",
-        "在项目及其子目录运行 openxiangda version --json，核对工作区代际、项目引擎版本和解析来源。",
-        "需要更新 V2 项目依赖时运行 openxiangda update install --target workspace，检查锁文件并完成项目验收。"
-      ],
-      "knownLimitations": [
-        "独立入口更新不会自动升级项目锁定的工具链，也不会迁移 V1 应用。",
-        "已发布的 2.0.0 保持不可变；本修复不代表平台部署或业务验收已完成。"
-      ],
-      "issues": [],
-      "sha256": "6bba13f70a956b58412da587fc9d7b50dd279fea809eae2461dd3515321a83dd",
-      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.0.1"
-    },
-    {
-      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.0.0",
       "title": "OpenXiangda 2.0 正式版",
       "status": "reviewed",
