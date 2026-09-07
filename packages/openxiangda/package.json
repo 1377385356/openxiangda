@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -65,13 +65,13 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.2.2",
-    "openxiangda-contracts": "2.2.1",
-    "openxiangda-devkit-core": "2.2.1",
+    "openxiangda-cli": "2.2.3",
+    "openxiangda-contracts": "2.2.2",
+    "openxiangda-devkit-core": "2.2.2",
     "openxiangda-legacy": "npm:openxiangda@1.0.268",
-    "openxiangda-mcp": "2.0.3",
-    "openxiangda-nest": "2.0.3",
-    "openxiangda-skill-kit": "2.0.4",
+    "openxiangda-mcp": "2.0.4",
+    "openxiangda-nest": "2.0.4",
+    "openxiangda-skill-kit": "2.0.5",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -137,19 +137,18 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.2.1",
-    "title": "原生数据事件接收契约修复",
+    "version": "2.2.2",
+    "title": "源码托管能力发现契约修复",
     "status": "reviewed",
-    "summary": "修复当前平台原生数据事件在 Nest 自动化接收端的 Schema 不匹配，保持签名验证和幂等回执边界。",
+    "summary": "补齐平台已提供的可选 sourceHosting 字段，修复严格预检拒绝平台能力响应的问题。",
     "newFeatures": [
-      "本次为事件契约修复，不新增业务能力。"
+      "本次修复已有能力声明，不要求应用使用托管仓库。"
     ],
     "fixes": [
-      "移除事件数据体已经退役的 capturePlanRevision 必填要求；捕获身份继续由平台不可变事件账本持有。",
-      "接收当前用户角色并集 user_union 操作人的签名事件，并同步类型与开发测试夹具。"
+      "闭合 Schema 接受 Forgejo provider 和布尔 enabled，同时拒绝未知字段和无效类型。"
     ],
     "affectedUsers": [
-      "使用当前原生 Data API 并通过 Nest 消费数据事件的 OpenXiangda 2.0 应用。"
+      "连接已提供 sourceHosting 能力字段的平台的 V2 应用开发者。"
     ],
     "compatibility": {
       "node": ">=24",
@@ -158,16 +157,16 @@
         "v2"
       ],
       "v1Policy": "V1 引擎与应用契约不变。",
-      "platformPolicy": "适用于由不可变捕获计划驱动的当前 V2 原生事件；应用需重新部署接收端。"
+      "platformPolicy": "兼容包含或未包含可选源码托管能力的平台。"
     },
     "upgradeSteps": [
-      "将 V2 应用的 openxiangda 精确依赖升级为 2.2.1，更新锁文件并通过标准测试部署后验证事件回执。"
+      "将应用 openxiangda 精确依赖升级为 2.2.2，更新锁文件并重新执行正式部署预检。"
     ],
     "knownLimitations": [
-      "升级不会自动重放历史失败事件；按原事件和应用幂等标识使用平台运维操作恢复。"
+      "其他未知平台字段仍按闭合契约拒绝。"
     ],
     "issues": [],
-    "sha256": "e56c78fce73cb156731028349b67a784f3aa1bae5073fb16d0b84fafd3b4011f",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.2.1"
+    "sha256": "e45a418150e90adc8658db171afe3bbfef27bb53f6521b7d3cb237decc6dca94",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.2.2"
   }
 }
