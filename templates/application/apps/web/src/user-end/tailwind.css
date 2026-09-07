@@ -1,0 +1,5 @@
+/* User-page utilities only; the application owns its document reset. */
+@import "tailwindcss/theme.css";
+@import "tailwindcss/utilities.css";
+
+@source "../";

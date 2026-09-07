@@ -1,0 +1,59 @@
+{
+  "name": "openxiangda-cli",
+  "version": "2.0.0-alpha.187",
+  "description": "OpenXiangda 2.0 应用生命周期命令、创建器与模板。",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./run": "./bin/run.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "bin/",
+    "dist/",
+    "template/",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node ../../scripts/prune-package-dist.mjs && tsc -p tsconfig.json",
+    "build:release": "node ../../scripts/prune-package-dist.mjs && pnpm build",
+    "prepack": "pnpm build:release && node scripts/prepare-template.mjs",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "node scripts/prepare-template.mjs && tsx --test test/*.test.ts && node ../../scripts/verify-cli-blackbox.mjs"
+  },
+  "dependencies": {
+    "@oclif/core": "4.13.3",
+    "openxiangda-contracts": "2.0.0-alpha.95",
+    "openxiangda-devkit-core": "2.0.0-alpha.122",
+    "openxiangda-mcp": "2.0.0-alpha.122",
+    "openxiangda-skill-kit": "2.0.0-alpha.148"
+  },
+  "devDependencies": {
+    "tsx": "4.23.12",
+    "typescript": "5.9.3"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "oclif": {
+    "bin": "openxiangda",
+    "dirname": "openxiangda",
+    "commands": "./dist/commands",
+    "topicSeparator": " "
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/1377385356/openxiangda.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/1377385356/openxiangda",
+  "bugs": {
+    "url": "https://github.com/1377385356/openxiangda/issues"
+  }
+}

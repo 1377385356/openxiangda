@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="openxiangda-runtime-base" content="/" />
+    <meta name="openxiangda-app-code" content="field-protocol-fixture" />
+    <meta name="openxiangda-environment" content="preproduction" />
+    <title>Field protocol acceptance</title>
+    <style>
+      html { background-color: rgb(248, 249, 250); }
+      body { color: rgb(31, 32, 33); font-size: 17px; font-family: monospace; }
+      a { color: rgb(101, 42, 140); }
+      output[data-saved-values] { display: block; overflow-wrap: anywhere; }
+    </style>
+  </head>
+  <body>
+    <a id="outside-mobile" href="#root">页面外部链接</a>
+    <div id="root"></div>
+    <script type="module" src="/platform-e2e/field-protocol-fixture.tsx"></script>
+  </body>
+</html>

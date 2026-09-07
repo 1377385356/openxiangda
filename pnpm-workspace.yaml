@@ -1,0 +1,17 @@
+packages:
+  - packages/*
+  - templates/application
+  - templates/application/apps/*
+  - templates/application/packages/*
+
+linkWorkspacePackages: true
+
+# pnpm 10 blocks dependency lifecycle scripts by default. Keep the reviewed
+# native toolchain explicit and fail installation if a future dependency adds
+# an unreviewed build script.
+strictDepBuilds: true
+onlyBuiltDependencies:
+  - core-js
+  - core-js-pure
+  - esbuild
+  - es5-ext

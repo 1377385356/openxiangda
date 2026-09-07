@@ -1,0 +1,59 @@
+{
+  "name": "openxiangda-devkit-core",
+  "version": "2.0.0-alpha.122",
+  "description": "OpenXiangda 2.0 的编译、开发、检查、部署与中文资料服务。",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./client": {
+      "types": "./dist/control-plane-client.d.ts",
+      "import": "./dist/control-plane-client.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "import": "./dist/testing.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/",
+    "templates/backend/Dockerfile",
+    "templates/backend/package.json",
+    "templates/backend/tsconfig.json",
+    "templates/backend/src/",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "build:release": "node ../../scripts/prune-package-dist.mjs && pnpm build",
+    "prepack": "pnpm build:release",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "tsx --test test/*.test.ts"
+  },
+  "dependencies": {
+    "ajv": "8.20.0",
+    "cron-parser": "5.4.0",
+    "openxiangda-contracts": "2.0.0-alpha.95",
+    "esbuild": "0.28.2",
+    "typescript": "5.9.3",
+    "undici": "6.28.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/1377385356/openxiangda.git",
+    "directory": "packages/devkit-core"
+  },
+  "homepage": "https://github.com/1377385356/openxiangda",
+  "bugs": {
+    "url": "https://github.com/1377385356/openxiangda/issues"
+  }
+}

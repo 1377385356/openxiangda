@@ -1,0 +1,15 @@
+.component-defaults-page {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  padding: 24px;
+}
+
+.component-defaults-panel {
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: var(--ant-border-radius);
+  background: var(--ant-color-bg-container);
+  padding: 24px;
+  color: var(--ant-color-text);
+  box-shadow: var(--ant-box-shadow-tertiary);
+}

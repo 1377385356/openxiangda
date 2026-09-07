@@ -1,0 +1,23 @@
+# OpenXiangda 2.0 中文使用资料
+
+通过项目锁定版本的 `pnpm openxiangda docs` 或 MCP `docs_read` 读取同版本正文。
+
+- [安装与开始开发](./getting-started.md)：主题 ID `getting-started`
+- [对话发现与详细产品设计](./product-design.md)：主题 ID `product-design`
+- [页面交互模式与体验评审](./interaction-patterns.md)：主题 ID `interaction-patterns`
+- [需求与开发流程](./development.md)：主题 ID `development`
+- [业务模型与标准 CRUD](./application-foundation.md)：主题 ID `application-foundation`
+- [需求、设计与交付记录](./appspec.md)：主题 ID `appspec`
+- [架构与能力所有者](./concepts.md)：主题 ID `concepts`
+- [页面与标准组件扩展](./frontend.md)：主题 ID `frontend`
+- [字段、表单与移动控件](./field-components.md)：主题 ID `field-components`
+- [数据查询与权限](./data-authz.md)：主题 ID `data-authz`
+- [无账号的匿名公开访问](./public-access.md)：主题 ID `public-access`
+- [审批、事件与通知](./workflow-events.md)：主题 ID `workflow-events`
+- [按需后端与业务动作](./backend.md)：主题 ID `backend`
+- [应用管理与有效配置](./administration.md)：主题 ID `administration`
+- [检查与真实业务验收](./testing.md)：主题 ID `testing`
+- [部署、生产晋级与恢复](./delivery.md)：主题 ID `delivery`
+- [版本升级与资料刷新](./upgrading.md)：主题 ID `upgrading`
+- [CLI 命令参考](./reference/cli.md)：主题 ID `cli`
+- [MCP 配置与工具参考](./reference/mcp.md)：主题 ID `mcp`

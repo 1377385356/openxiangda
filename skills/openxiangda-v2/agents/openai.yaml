@@ -1,0 +1,4 @@
+interface:
+  display_name: "OpenXiangda 2.0"
+  short_description: "开发、校验与交付 OpenXiangda 2.0 应用"
+  default_prompt: "使用 $openxiangda-v2 按当前项目版本开发和验证应用。"

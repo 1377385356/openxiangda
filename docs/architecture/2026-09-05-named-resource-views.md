@@ -1,0 +1,86 @@
+# Named standard resource views
+
+Status: implementation follows the user's request to continue the confirmed
+platform foundation. This is the remaining standard-page unit of batch B.
+
+## Evidence and owner
+
+`materializeApplicationModules` currently rejects a second CRUD selection for
+the same model. Generated page codes, paths, display preferences and form drafts
+are keyed only by resource. A second screen therefore requires copied application
+UI or risks reusing another screen's settings and draft.
+
+The application declares named presentations; the platform compiler owns their
+canonical Surface metadata, routes and menu references. DataResource remains the
+sole model, Data API remains the mutation owner and existing authorization remains
+authoritative. Views select presentation; they do not grant access or filter rows
+as a security boundary. This round does not add personal saved query collections.
+
+## Decisions and contracts
+
+- Allow multiple `crud` entries per model, using unique optional `code` and `name`
+  for named views. The existing unnamed selection keeps its existing paths.
+  Models with only named views have no implicit unnamed CRUD pages.
+- Store bounded named view projections in the existing DataResource Surface.
+  Each projection selects list/form/detail fields, grouping, generated operations
+  and mobile availability. Field types, codecs, validation, capabilities and
+  mutation owner remain defined once on the resource.
+- Generated named routes use `/admin/resources/<resource>/views/<view>` and the
+  existing create/detail/edit suffixes, with their mobile equivalents. Navigation
+  explicitly references a resource and optional view code; no automatic menu is
+  introduced. Unknown views and colliding routes fail compilation.
+- Reuse the existing standard page renderer with the chosen Surface projection.
+  View changes remount its lifecycle, and list preferences include the view code.
+  Drawer, full screen and new-page navigation retain the same selected view.
+- Add an optional view code to the existing authenticated draft scope. An additive
+  SQL migration stores it in the existing draft table; no second draft store.
+  Listing, restore, CAS updates, deletion and submission must agree on the view.
+  Capacity stays bounded per user/resource, across all views.
+- Named create views must include writable required fields; a smaller edit/read
+  view can explicitly omit create. Hidden/system fields are never made editable
+  by a view. Input errors must point to the declaration that caused them.
+
+## Failure, concurrency and bounds
+
+At most 20 named views per resource; codes use the existing stable-code format.
+Field selections are unique, ordered and refer to existing visible fields. Query
+limits and field-type support remain unchanged. Missing/deleted view references
+fail explicitly. Draft view mismatches cannot move values between forms; failed
+writes preserve current input and existing revision/idempotency rules.
+
+## Rollback and blast radius
+
+Only 2.0 contracts/compiler/runtime, matched Native server validation and the
+existing draft service change. Stable 1.x is outside the write scope. No business
+table is duplicated or migrated. The draft column is additive and old unnamed
+drafts keep the empty/default scope. Application packages/configuration may roll
+back while retaining the new server and additive draft migration. Do not roll
+the server back to a version that ignores view scope while named drafts exist:
+its old query would merge them into the default draft list. A complete server
+rollback therefore requires a verified absence of named drafts. Removed views
+remain unavailable for restore; their drafts retain the normal expiry and can
+be accessed again only after the application restores that view declaration.
+Applications declaring named views require the matching server.
+No registry publication, environment deployment or production write is included.
+
+## Falsifiable verification
+
+Compile two named views of one model and prove there is one storage schema and
+one unchanged capability/field-policy set. Verify route/menu closure, view-specific
+field order/groups, no implicit default pages, invalid/duplicate/hidden references,
+required create fields, mobile availability and route-collision rejection.
+Server compilation must reproduce the frontend contracts from the same real
+toolchain artifact. Exercise PC/mobile navigation, drawer/new-page scope, separate
+display preferences and drafts, cancellation, failure and revision handling in
+an independently installed candidate application. Run affected gates, server
+regression/build/lint and migration verification. Report source, package and remote
+real-account/database acceptance separately.
+
+## Source verification, 2026-09-05
+
+- `pnpm verify:affected`: 28/28 tasks; contracts 58, devkit 202 and runtime 139 tests pass.
+- The real compiler fixture is regenerated by `scripts/generate-named-resource-views-fixture.mts` and pinned under `packages/contracts/test/fixtures/named-resource-views.json`. The devkit checks byte equality, and the Native server independently recompiles those bytes. The prior 43-resource default-view corpus also passes.
+- Server regression: 5 suites / 54 tests, build and 174 SQL migration static checks pass. Changed Surface/draft files pass ESLint. The compiler file retains exactly the baseline 37 Prettier errors and one unused-variable warning; a comparison of rule/message sets confirms no added lint issue. No unrelated formatting sweep is included.
+- Browser focus: desktop named-list settings, grouped drawer, draft isolation, new-page handoff and mobile restore/submit pass; screenshots reviewed at 1280×720 and 390×844.
+- Seven candidate tarballs passed fresh independent installation, application checks/build, deterministic package output and tamper rejection. Browser regression: 53 passed, 6 skipped (three live database bridge cases are not configured; three workflow cases do not apply to the empty template). Documentation build passes.
+- Registry publication, migration execution, deployment and remote authenticated/database acceptance remain pending. Migration rollback requires the boundary above.

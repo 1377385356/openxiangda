@@ -1,0 +1,9 @@
+[
+  {"input":"首段<div>第二段</div><div>第三段</div>","expected":"首段<p>第二段</p><p>第三段</p>"},
+  {"input":"<DIV class=\"pasted\" onclick=\"steal()\">正文</DIV><div><br></div>","expected":"<p>正文</p><p><br /></p>"},
+  {"input":"<div>外层<div>内层</div>尾部</div>","expected":"<p>外层</p><p>内层</p>尾部<p></p>"},
+  {"input":"<div><ul><li>条目</li></ul><div>后段</div></div>","expected":"<p></p><ul><li>条目</li></ul><p>后段</p><p></p>"},
+  {"input":"<div>安全<script>alert(1)</script><a href=\"javascript:steal()\">链接</a><img src=\"https://foreign.test/a.png\" onerror=\"steal()\"></div>","expected":"<p>安全<a rel=\"noopener noreferrer\">链接</a></p>"},
+  {"input":"<p>已有段落</p><p><br></p>","expected":"<p>已有段落</p><p><br /></p>"},
+  {"input":"<div>表前</div><table><tbody><tr><td>表格</td></tr></tbody></table><div>表后</div>","expected":"<p>表前</p><table><tbody><tr><td>表格</td></tr></tbody></table><p>表后</p>"}
+]

@@ -1,0 +1,27 @@
+stages:
+  - verify
+
+variables:
+  GIT_DEPTH: "0"
+  TURBO_TELEMETRY_DISABLED: "1"
+  PNPM_STORE_DIR: "$CI_BUILDS_DIR/openxiangda-pnpm-store"
+  npm_config_store_dir: "$CI_BUILDS_DIR/openxiangda-pnpm-store"
+  NPM_CONFIG_USERCONFIG: "$CI_PROJECT_DIR/.git/ci.npmrc"
+
+default:
+  image: node:24
+  before_script:
+    - corepack enable
+    - corepack prepare pnpm@10.15.1 --activate
+    - pnpm install --frozen-lockfile --store-dir "$PNPM_STORE_DIR"
+
+verify_affected:
+  stage: verify
+  variables:
+    TURBO_SCM_BASE: "$CI_COMMIT_BEFORE_SHA"
+    TURBO_SCM_HEAD: "$CI_COMMIT_SHA"
+  script:
+    - pnpm verify:affected
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'

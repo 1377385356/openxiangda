@@ -1,0 +1,59 @@
+{
+  "name": "openxiangda-contracts",
+  "version": "2.0.0-alpha.95",
+  "description": "OpenXiangda 2.0 的共享类型、协议与 JSON Schema。",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "import": "./dist/browser.js"
+    },
+    "./native-compiler": {
+      "types": "./dist/native-compiler/index.d.ts",
+      "import": "./dist/native-compiler/index.js",
+      "require": "./dist/native-compiler/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "typesVersions": {
+    "*": {
+      "native-compiler": [
+        "dist/native-compiler/index.d.ts"
+      ]
+    }
+  },
+  "files": [
+    "dist/",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/build-native-compiler.mjs",
+    "build:release": "node ../../scripts/prune-package-dist.mjs && pnpm build",
+    "prepack": "pnpm build:release",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "tsx --test test/*.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "24.3.0",
+    "esbuild": "0.28.2"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/1377385356/openxiangda.git",
+    "directory": "packages/contracts"
+  },
+  "homepage": "https://github.com/1377385356/openxiangda",
+  "bugs": {
+    "url": "https://github.com/1377385356/openxiangda/issues"
+  }
+}

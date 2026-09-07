@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="openxiangda-runtime-base" content="/" />
+    <meta name="openxiangda-app-code" content="field-protocol-fixture" />
+    <meta name="openxiangda-environment" content="preproduction" />
+    <title>移动表单组件</title>
+    <style>
+      body { margin: 0; }
+      .reference-form { min-height: 100dvh; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .reference-form .oxa-mobile-header { position: sticky; top: 0; z-index: 5; }
+      .reference-form .reference-group { margin: 0 12px 16px; padding: 0 16px; background: white; border-radius: 10px; }
+      .reference-form .reference-group > div:last-child .oxa-mobile-field { border-bottom: 0; }
+      .reference-form .reference-group-title { font-size: 14px; font-weight: 400; color: #888; padding: 0 24px; margin: 20px 0 10px; }
+      .reference-form .reference-content { padding-bottom: 86px; }
+      .reference-form [data-field-code] { scroll-margin-top: 82px; }
+      .reference-form output { display: none; }
+      .reference-form .reference-notice { padding: 8px 24px; color: #1677ff; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/platform-e2e/mobile-reference-fixture.tsx"></script>
+  </body>
+</html>

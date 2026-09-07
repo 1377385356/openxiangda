@@ -1,0 +1,28 @@
+{
+  "name": "openxiangda-application",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.15.1",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "openxiangda": "openxiangda",
+    "prepare": "pnpm workspace:build",
+    "workspace:build": "pnpm --filter @app/contracts build",
+    "predev": "pnpm workspace:build",
+    "dev": "openxiangda dev",
+    "dev:web": "pnpm --filter @app/web dev",
+    "precheck": "pnpm workspace:build",
+    "check": "pnpm --recursive check",
+    "pretest": "pnpm workspace:build",
+    "test": "pnpm --recursive test",
+    "test:e2e": "pnpm --filter @app/web test:e2e",
+    "build": "pnpm --recursive build"
+  },
+  "devDependencies": {
+    "openxiangda": "workspace:*",
+    "typescript": "5.9.3"
+  }
+}

@@ -1,0 +1,14 @@
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+.openxiangda/
+.turbo/
+.turbopack/
+.umi/
+.umi-production/
+.codegraph/
+.env
+*.log
+.DS_Store

@@ -1,0 +1,138 @@
+{
+  "name": "openxiangda",
+  "version": "2.0.0-alpha.114",
+  "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./core": {
+      "types": "./dist/core.d.ts",
+      "import": "./dist/core.js"
+    },
+    "./config": {
+      "types": "./dist/config.d.ts",
+      "import": "./dist/config.js"
+    },
+    "./field-kit": {
+      "types": "./dist/field-kit.d.ts",
+      "import": "./dist/field-kit.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js"
+    },
+    "./react/styles.css": "./dist/browser/styles.css",
+    "./mobile": {
+      "types": "./dist/mobile.d.ts",
+      "import": "./dist/mobile.js"
+    },
+    "./mobile/styles.css": "./dist/browser/mobile-fields.css",
+    "./nest": {
+      "types": "./dist/nest.d.ts",
+      "import": "./dist/nest.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "import": "./dist/testing.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "openxiangda": "./bin/run.js"
+  },
+  "files": [
+    "bin/",
+    "dist/",
+    "skills/",
+    "documentation/",
+    "launcher-skill/",
+    "releases/",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node ../../scripts/prune-package-dist.mjs && tsc -p tsconfig.json && node scripts/copy-assets.mjs",
+    "build:release": "node ../../scripts/prune-package-dist.mjs && pnpm build",
+    "prepack": "pnpm build:release && node scripts/prepare-skills.mjs",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "tsx --import ./test/register-styles.mjs --test test/*.test.ts"
+  },
+  "dependencies": {
+    "antd-mobile": "5.42.3",
+    "dayjs": "1.11.18",
+    "docx-preview": "0.3.7",
+    "openxiangda-cli": "2.0.0-alpha.187",
+    "openxiangda-legacy": "npm:openxiangda@1.0.267",
+    "openxiangda-contracts": "2.0.0-alpha.95",
+    "openxiangda-devkit-core": "2.0.0-alpha.122",
+    "openxiangda-mcp": "2.0.0-alpha.122",
+    "openxiangda-nest": "2.0.0-alpha.107",
+    "openxiangda-skill-kit": "2.0.0-alpha.148",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+  },
+  "peerDependencies": {
+    "@ant-design/icons": ">=6 <7",
+    "@nestjs/common": ">=11 <12",
+    "@nestjs/core": ">=11 <12",
+    "@nestjs/platform-fastify": ">=11 <12",
+    "@refinedev/core": ">=5 <6",
+    "antd": ">=6 <7",
+    "react": ">=19 <20",
+    "react-dom": ">=19 <20",
+    "react-router-dom": ">=7 <8",
+    "reflect-metadata": ">=0.2 <1",
+    "rxjs": ">=7 <8"
+  },
+  "peerDependenciesMeta": {
+    "@nestjs/common": {
+      "optional": true
+    },
+    "@nestjs/core": {
+      "optional": true
+    },
+    "@nestjs/platform-fastify": {
+      "optional": true
+    },
+    "reflect-metadata": {
+      "optional": true
+    },
+    "rxjs": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@ant-design/icons": "6.2.3",
+    "@nestjs/common": "11.1.29",
+    "@nestjs/core": "11.1.29",
+    "@nestjs/platform-fastify": "11.1.29",
+    "@refinedev/core": "5.0.12",
+    "@types/node": "24.13.3",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "antd": "6.4.3",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-router-dom": "7.8.2",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2",
+    "tsx": "4.23.12",
+    "typescript": "5.9.3"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/1377385356/openxiangda.git",
+    "directory": "packages/openxiangda"
+  },
+  "homepage": "https://github.com/1377385356/openxiangda",
+  "bugs": {
+    "url": "https://github.com/1377385356/openxiangda/issues"
+  }
+}

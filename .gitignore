@@ -1,0 +1,14 @@
+node_modules/
+.codegraph/
+.turbo/
+packages/*/dist/
+packages/cli/template/
+packages/skill-kit/skills/
+packages/openxiangda/skills/
+packages/skill-kit/docs/
+docs/.vitepress/dist/
+docs/.vitepress/cache/
+docs/.vitepress/.temp/
+
+packages/openxiangda/documentation/
+packages/openxiangda/releases/
