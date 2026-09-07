@@ -11,7 +11,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const SUCCESS_STDOUT = "fake-pnpm: resolving dependencies\n";
@@ -22,6 +22,8 @@ const FAILURE_STDERR =
   "//packages.invalid/:_authToken=stderr-install-secret\nAuthorization: Bearer install-secret\n";
 
 export async function verifyCreateJsonOutputBoundary(options) {
+  const cliRoot = options.source?.configRoot || dirname(dirname(options.cliEntry));
+  const expectedCliVersion = JSON.parse(readFileSync(join(cliRoot, 'package.json'), 'utf8')).version;
   const scratchRoot = mkdtempSync(
     join(tmpdir(), `openxiangda-create-json-${options.label}-`)
   );
@@ -254,7 +256,8 @@ export async function verifyCreateJsonOutputBoundary(options) {
       const firstInitialization = assertStudioInitialization(
         firstStudio,
         false,
-        scratchRoot
+        scratchRoot,
+        expectedCliVersion
       );
       studioInvocationCount += 1;
 
@@ -273,7 +276,8 @@ export async function verifyCreateJsonOutputBoundary(options) {
       const repeatedInitialization = assertStudioInitialization(
         repeatedStudio,
         true,
-        scratchRoot
+        scratchRoot,
+        expectedCliVersion
       );
       assert.equal(
         repeatedInitialization.workspaceDigest,
@@ -535,7 +539,7 @@ function parseEvents(stdout) {
     .map(line => JSON.parse(line));
 }
 
-function assertStudioInitialization(result, reused, scratchRoot) {
+function assertStudioInitialization(result, reused, scratchRoot, expectedCliVersion) {
   const completed = result.value.at(-1).payload.result;
   const initialization = completed.data.studioInitialization;
   assert.equal(
@@ -550,7 +554,7 @@ function assertStudioInitialization(result, reused, scratchRoot) {
   assert.equal(initialization.workspace.reused, reused);
   assert.match(initialization.bindingDigest, /^sha256:[0-9a-f]{64}$/);
   assert.match(initialization.workspaceDigest, /^sha256:[0-9a-f]{64}$/);
-  assert.match(initialization.cliVersion, /^2\.0\.0-alpha\.\d+$/);
+  assert.equal(initialization.cliVersion, expectedCliVersion);
   assert.equal(initialization.protocolVersion, "openxiangda.studio-workspace/v2");
   assert.match(initialization.compiler.configurationDigest, /^[0-9a-f]{64}$/);
   assert.match(initialization.compiler.contractDigest, /^[0-9a-f]{64}$/);

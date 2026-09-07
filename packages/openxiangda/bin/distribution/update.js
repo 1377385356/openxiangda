@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { bundledRelease, compareVersions, registryMetadata, VERSION } from './releases.js';
+import { bundledRelease, compareVersions, registryMetadata, VERSION, GENERATION_CHANNEL } from './releases.js';
 import { fail, flagValue, readJson } from './workspace.js';
 
 export function updatePlan(context, args, metadata) {
@@ -14,7 +14,7 @@ export function updatePlan(context, args, metadata) {
   }
   const currentVersion = target === 'launcher' ? context.manifest.version : context.engine.version;
   const plan = {
-    target, generation, channel: generation, currentVersion, version: metadata.version,
+    target, generation, channel: GENERATION_CHANNEL[generation], currentVersion, version: metadata.version,
     updateAvailable: compareVersions(metadata.version, currentVersion) > 0,
     compatibility: metadata.engines || {}, release: metadata.openxiangdaRelease || { version: metadata.version, available: false },
     cwd: target === 'workspace' ? context.workspace.root : process.cwd(),
@@ -48,7 +48,7 @@ export function update(context, args) {
   const target = flagValue(args, '--target') || (context.workspace ? 'workspace' : 'launcher');
   if (!['workspace', 'launcher'].includes(target)) fail('DISTRIBUTION_UPDATE_TARGET_INVALID', target);
   if (target === 'workspace' && !context.workspace) fail('DISTRIBUTION_WORKSPACE_REQUIRED', '请在项目中执行 workspace 升级');
-  const channel = target === 'launcher' ? 'v2' : context.workspace?.generation || 'v2';
+  const channel = GENERATION_CHANNEL[target === 'launcher' ? 'v2' : context.workspace?.generation || 'v2'];
   let metadata;
   try { metadata = registryMetadata(channel, flagValue(args, '--registry')); }
   catch (error) {

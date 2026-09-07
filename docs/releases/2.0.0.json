@@ -15,19 +15,28 @@
     "项目工具链升级与全局入口升级明确分开；V1 维护渠道不再改写 latest。",
     "两代 Skill 使用独立入口，V1 安装不再覆盖统一入口或清理 V2 Skill。"
   ],
-  "affectedUsers": ["新建应用的开发者", "需要继续维护 V1 工作区的开发者", "从 V2 alpha 升级的现有用户"],
+  "affectedUsers": [
+    "新建应用的开发者",
+    "需要继续维护 V1 工作区的开发者",
+    "从 V2 alpha 升级的现有用户"
+  ],
   "compatibility": {
     "node": ">=24",
-    "workspaceGenerations": ["v1", "v2"],
+    "workspaceGenerations": [
+      "v1",
+      "v2"
+    ],
     "v1Policy": "保持现有配置、数据、流程、登录绑定与项目工具链代际；原 V1 CLI 可继续使用其原运行环境。",
     "platformPolicy": "V2 应用部署前按平台 capabilities 和配置验证器预检；工具版本不能代替平台实际部署版本。",
-    "backendBuild": "Nest 镜像由开发者电脑上的 Docker 构建；普通 React/Nest 连接开发不要求本地平台或数据库。"
+    "backendBuild": "Nest 镜像由开发者电脑上的 Docker 构建；普通 React/Nest 连接开发不要求本地平台或数据库。",
+    "releaseChannels": "latest / stable-v2：V2 正式版；legacy-v1：V1 维护版；alpha：预发布。npm 不允许把 v1/v2 作为标签。"
   },
   "upgradeSteps": [
     "在 Node.js 24 环境安装统一入口：npm install -g openxiangda@2.0.0。",
     "进入已有项目运行 openxiangda version --json，核对工作区代际、实际引擎和解析来源。",
     "运行 openxiangda update check 查看本项目更新；需要升级时执行 openxiangda update install --target workspace。",
-    "检查依赖与锁文件差异，刷新本项目 Skill，并完成项目检查、测试环境和真实角色业务验收后再晋级生产。"
+    "检查依赖与锁文件差异，刷新本项目 Skill，并完成项目检查、测试环境和真实角色业务验收后再晋级生产。",
+    "V2 能力满足、项目仍在测试阶段且迁移成本可控时，优先建议 V1 项目采用 V2；先完成项目评估、设计确认和迁移验收。"
   ],
   "knownLimitations": [
     "V1 到 V2 首期仅提供本地源码迁移评估，不读取远端业务数据，也不自动迁移应用。",

@@ -5,6 +5,7 @@ import { fail, readJson } from './workspace.js';
 
 export const VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
 export const RELEASE_REPOSITORY = 'https://github.com/1377385356/openxiangda';
+export const GENERATION_CHANNEL = { v1: 'legacy-v1', v2: 'stable-v2' };
 
 export function bundledRelease(packageRoot, version) {
   const file = join(packageRoot, 'releases', `${version}.json`);
@@ -17,7 +18,8 @@ export function bundledRelease(packageRoot, version) {
 }
 
 export function registryMetadata(selector, registry = 'https://registry.npmjs.org') {
-  if (!VERSION.test(selector) && !['v1', 'v2', 'latest', 'alpha'].includes(selector)) fail('DISTRIBUTION_VERSION_INVALID', selector);
+  selector = GENERATION_CHANNEL[selector] || selector;
+  if (!VERSION.test(selector) && !['legacy-v1', 'stable-v2', 'latest', 'alpha'].includes(selector)) fail('DISTRIBUTION_VERSION_INVALID', selector);
   const url = new URL(registry);
   if (url.username || url.password || url.protocol !== 'https:' && !['127.0.0.1', 'localhost'].includes(url.hostname)) fail('DISTRIBUTION_REGISTRY_INVALID', 'registry 必须为 HTTPS 地址');
   const result = spawnSync('npm', ['view', `openxiangda@${selector}`, '--json', `--registry=${url.href}`], {

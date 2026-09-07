@@ -15,7 +15,7 @@ export function releaseDistTagsMatch({ policy, actualTags }) {
 export function releaseChannelPolicy({ candidateVersion, prereleaseTag, priorTags }) {
   const prerelease = parseReleaseVersion(candidateVersion).pre;
   if (!prerelease.length) {
-    return { latest: candidateVersion, prerelease: null, stable: { tag: 'v2', version: candidateVersion } };
+    return { latest: candidateVersion, prerelease: null, stable: { tag: 'stable-v2', version: candidateVersion } };
   }
   if (!prereleaseTag || prerelease[0] !== prereleaseTag) {
     throw new Error(
@@ -54,7 +54,7 @@ export function releaseDistTagsAreRecoverable({
       if (actual !== prior) return false;
       continue;
     }
-    if (name === "latest" || name === prereleaseTag || (name === 'v2' && !parseReleaseVersion(candidateVersion).pre.length)) {
+    if (name === "latest" || name === prereleaseTag || (name === 'stable-v2' && !parseReleaseVersion(candidateVersion).pre.length)) {
       if (actual !== prior && actual !== candidateVersion) return false;
       continue;
     }

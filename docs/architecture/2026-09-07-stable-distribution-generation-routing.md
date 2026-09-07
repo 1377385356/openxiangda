@@ -17,13 +17,15 @@
 
 V1 app-workspace.config.ts 及有效 .openxiangda/state.json 绑定保持原样；V2 openxiangda.config.ts/openxiangda-app.config.ts 保持原样。新 create 只创建 V2。平台继续唯一拥有用户、权限、业务数据、环境、部署状态；工具升级不会迁移应用业务数据。
 
+用户补充选型原则：V1 项目的 V2 能力覆盖已满足、仍处测试阶段且迁移成本可控时，主动优先建议采用 V2。工具的安全代际识别不等于长期选型建议；条件未知时明确列为待确认，跨代迁移仍需项目设计、数据/流程映射、验收和回滚。
+
 ## 公开合同
 
 - version --json 返回 distributionVersion、generation、engineVersion、engineSource、workspaceRoot。
 - update check 与 update install --target workspace|launcher：有工作区默认 workspace，否则 launcher；workspace 只升级原代际的项目依赖，launcher 更新统一入口。检查展示说明与平台兼容要求，执行使用检查阶段解析出的精确版本。
 - changelog [version] 读取随包资料或可信发布仓库中的指定版本；网络失败不影响本地资料及其他操作。
 - migrate assess --to v2 只读列出 V1 模型、页面、流程、权限和数据迁移风险；不生成、发布或切换应用。
-- latest/v2 为 V2 正式渠道，v1 为独立维护渠道，alpha 为预发布。V1 发布不得改写 latest。
+- latest/stable-v2 为 V2 正式渠道，legacy-v1 为独立维护渠道，alpha 为预发布。V1 发布不得改写 latest。
 
 ## 失败、并发、安全与资源边界
 
@@ -40,3 +42,7 @@ GitHub 工具仓库从审查后的源码基线建立，私有历史保留，来�
 ## 可证伪验收
 
 从 npm tarball 验证 V1/V2/空目录、子目录、混合标记、缺失依赖、代际冲突、信号与退出码、本地版本优先、V1 维护更新后新应用仍默认 V2、两套 Skill 与登录态互不覆盖。验证 read-only 命令不写工作区；版本说明离线可读；发布渠道互不覆盖；GitHub 重试不重复发 npm 包。完整正式候选通过 verify:release 与既有真实应用交付验收，逐项区分源码、registry、平台部署和真实角色结果。
+
+### npm 渠道名称约束（发布前实测）
+
+npm 拒绝 v1/v2 标签，因为它们是合法 SemVer 范围。产品代际名称保持 V1/V2，npm 维护标签采用 legacy-v1 / stable-v2；latest 与 stable-v2 同步指向 V2 正式版，alpha 保留原值。发布、更新检查和平台说明均使用这一映射。依据：npm-dist-tag 官方 Caveats 与本次发布前校验错误，尚未写入 registry。

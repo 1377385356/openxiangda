@@ -27,13 +27,13 @@ test("release tags converge only when latest and the prerelease channel agree", 
   );
 });
 
-test("a stable release requires both latest and v2", () => {
+test("a stable release requires both latest and stable-v2", () => {
   const policy = releaseChannelPolicy({ candidateVersion: '2.0.0', priorTags: {}, prereleaseTag: null });
   assert.equal(releaseDistTagsMatch({ policy, actualTags: { latest: '2.0.0' } }), false);
   assert.equal(
     releaseDistTagsMatch({
       policy,
-      actualTags: { latest: "2.0.0", v2: '2.0.0', alpha: "2.0.0-alpha.15" },
+      actualTags: { latest: "2.0.0", 'stable-v2': '2.0.0', alpha: "2.0.0-alpha.15" },
     }),
     true
   );
@@ -84,15 +84,15 @@ test("a stable release owns latest and no prerelease channel", () => {
       prereleaseTag: null,
       priorTags: { latest: "1.9.0" },
     }),
-    { latest: "2.0.0", prerelease: null, stable: { tag: 'v2', version: '2.0.0' } }
+    { latest: "2.0.0", prerelease: null, stable: { tag: 'stable-v2', version: '2.0.0' } }
   );
 });
 
-test('stable publication recovery permits v2 only and preserves the v1 maintenance channel', () => {
-  const input = { candidateVersion: '2.0.0', prereleaseTag: null, priorTags: { latest: '1.0.268', v1: '1.0.268' }, candidatePublished: true };
-  assert.equal(releaseDistTagsAreRecoverable({ ...input, actualTags: { latest: '2.0.0', v2: '2.0.0', v1: '1.0.268' } }), true);
-  assert.equal(releaseDistTagsAreRecoverable({ ...input, actualTags: { latest: '2.0.0', v2: '2.0.0', v1: '2.0.0' } }), false);
-  assert.equal(releaseDistTagsAreRecoverable({ ...input, candidatePublished: false, actualTags: { latest: '1.0.268', v1: '1.0.268', v2: '2.0.0' } }), false);
+test('stable publication recovery permits stable-v2 only and preserves the legacy-v1 maintenance channel', () => {
+  const input = { candidateVersion: '2.0.0', prereleaseTag: null, priorTags: { latest: '1.0.268', 'legacy-v1': '1.0.268' }, candidatePublished: true };
+  assert.equal(releaseDistTagsAreRecoverable({ ...input, actualTags: { latest: '2.0.0', 'stable-v2': '2.0.0', 'legacy-v1': '1.0.268' } }), true);
+  assert.equal(releaseDistTagsAreRecoverable({ ...input, actualTags: { latest: '2.0.0', 'stable-v2': '2.0.0', 'legacy-v1': '2.0.0' } }), false);
+  assert.equal(releaseDistTagsAreRecoverable({ ...input, candidatePublished: false, actualTags: { latest: '1.0.268', 'legacy-v1': '1.0.268', 'stable-v2': '2.0.0' } }), false);
 });
 
 test("a mismatched prerelease channel fails closed", () => {

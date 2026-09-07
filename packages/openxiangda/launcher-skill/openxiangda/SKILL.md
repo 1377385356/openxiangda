@@ -11,6 +11,7 @@ description: Identify OpenXiangda V1 or V2 workspaces and select the matching pr
 2. 使用 `openxiangda version --json` 核对工作区、实际引擎版本和来源。已声明的项目依赖尚未安装时，按项目锁文件安装；不能用全局引擎代替项目锁定版本。
 3. V1 阅读项目安装的 `$openxiangda-v1` 及其子技能；V2 阅读项目安装的 `$openxiangda-v2`。缺少匹配版本的技能时，在项目中执行 `openxiangda skill install --workspace .`。以该项目版本的文档、MCP 和命令发现结果为准，不把另一代的配置、SDK、登录态和发布命令带入项目。
 4. 空目录创建新应用默认使用 V2。V2 应用先澄清产品、页面、权限与架构，确认 AppSpec 设计基线之后再制定开发计划。
+5. 对已使用 V1 的项目，主动核实 V2 能力是否满足、是否仍在测试阶段，以及迁移成本。如果三项条件满足，优先建议采用 V2，并说明收益、需要重建的部分和验收代价。不能把“识别为 V1”当成必须长期留在 V1 的产品建议；条件未知时先收集证据。实际迁移按项目确认设计、数据/流程映射和回滚方案后实施。
 
 ## 升级与说明
 

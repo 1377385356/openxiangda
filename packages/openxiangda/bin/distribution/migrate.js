@@ -37,6 +37,16 @@ export function assessMigration(context, args) {
   return {
     schemaVersion: 'openxiangda.migration-assessment/v1', from: 'v1', to: 'v2', root, readOnly: true,
     engineVersion: context.engine.version, scanned: { files, bytes }, complete: skipped.length === 0, skipped, inventory,
+    recommendation: {
+      preferredGeneration: 'v2',
+      policy: 'V2 能力满足、项目仍在测试阶段且迁移成本可控时，优先建议采用 V2。',
+      decision: '条件待确认；本地源码指针不能证明能力覆盖、上线阶段或迁移成本。',
+      criteria: [
+        { code: 'capability-fit', status: 'needs-confirmation', question: 'V2 是否覆盖项目需要的模型、页面、权限、流程与外部集成？' },
+        { code: 'project-stage', status: 'needs-confirmation', question: '项目是否仍在测试阶段，已有多少真实数据和在途流程？' },
+        { code: 'migration-cost', status: 'needs-confirmation', question: '重建、数据映射、测试和切换的成本是否可控？' },
+      ],
+    },
     assessment: [
       { area: 'resources', pointers: inventory.resources.length, decision: '逐项确认业务模型、字段、关联和服务端约束，再映射到 V2 Data API；V1 表单标识不直接作为 V2 模型。' },
       { area: 'workflows', pointers: inventory.workflows.length, decision: '核对节点、审批人规则、JS_CODE 副作用、通知和在途实例；在途流程须制定独立切换方案。' },

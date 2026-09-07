@@ -74,10 +74,12 @@ test('workspace and launcher updates stay in their intended generation and depen
   const context = { manifest: { version: '2.0.0' }, engine: { version: '1.0.267' }, workspace: discoverWorkspace(join(f.root, 'old')) };
   const legacy = updatePlan(context, ['update', 'install'], { version: '1.0.268' });
   assert.equal(legacy.target, 'workspace'); assert.ok(!legacy.args.includes('--global'));
+  assert.equal(legacy.channel, 'legacy-v1');
   assert.ok(legacy.args.includes('--save-prod')); assert.ok(legacy.args.includes('openxiangda@1.0.268'));
   assert.throws(() => updatePlan(context, ['update', 'install'], { version: '2.0.0' }), /GENERATION_MISMATCH/);
   const global = updatePlan(context, ['update', 'install', '--target=launcher'], { version: '2.0.1' });
   assert.equal(global.generation, 'v2'); assert.ok(global.args.includes('--global'));
+  assert.equal(global.channel, 'stable-v2');
   f.put('old/pnpm-lock.yaml'); f.put('old/package-lock.json');
   assert.throws(() => updatePlan(context, ['update'], { version: '1.0.268' }), /PACKAGE_MANAGER_CONFLICT/);
 });

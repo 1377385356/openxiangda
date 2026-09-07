@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.0.0-alpha.114",
+  "version": "2.0.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -65,13 +65,13 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.0.0-alpha.187",
-    "openxiangda-legacy": "npm:openxiangda@1.0.267",
-    "openxiangda-contracts": "2.0.0-alpha.95",
-    "openxiangda-devkit-core": "2.0.0-alpha.122",
-    "openxiangda-mcp": "2.0.0-alpha.122",
-    "openxiangda-nest": "2.0.0-alpha.107",
-    "openxiangda-skill-kit": "2.0.0-alpha.148",
+    "openxiangda-cli": "2.0.0",
+    "openxiangda-contracts": "2.0.0",
+    "openxiangda-devkit-core": "2.0.0",
+    "openxiangda-legacy": "npm:openxiangda@1.0.268",
+    "openxiangda-mcp": "2.0.0",
+    "openxiangda-nest": "2.0.0",
+    "openxiangda-skill-kit": "2.0.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -134,5 +134,55 @@
   "homepage": "https://github.com/1377385356/openxiangda",
   "bugs": {
     "url": "https://github.com/1377385356/openxiangda/issues"
+  },
+  "openxiangdaRelease": {
+    "schemaVersion": "openxiangda.release-notes/v1",
+    "version": "2.0.0",
+    "title": "OpenXiangda 2.0 正式版",
+    "status": "reviewed",
+    "summary": "以统一入口使用两代工作区，新应用默认采用 V2。V2 提供从需求设计到 React 应用、平台数据权限和应用交付的完整工具链。",
+    "newFeatures": [
+      "统一入口识别最近的 V1/V2 工作区，优先使用项目已安装的锁定引擎；无本地 V1 引擎的旧工作区使用随入口固定的 V1 维护引擎。",
+      "新应用默认 V2：自然语言澄清产品需求，形成产品、页面、权限和架构设计基线，确认后再制定开发计划。",
+      "V2 提供标准 PC/移动端 CRUD、字段组件、Data API 权限、流程与协作能力；默认本地 React 连接平台测试环境，Nest 后端按需使用。",
+      "提供版本识别、分代更新、随包更新说明和 V1 到 V2 的只读迁移评估。"
+    ],
+    "fixes": [
+      "全局入口切换到 V2 后，旧 V1 工作区仍由 V1 执行，不再因同名命令使用错误代际。",
+      "项目工具链升级与全局入口升级明确分开；V1 维护渠道不再改写 latest。",
+      "两代 Skill 使用独立入口，V1 安装不再覆盖统一入口或清理 V2 Skill。"
+    ],
+    "affectedUsers": [
+      "新建应用的开发者",
+      "需要继续维护 V1 工作区的开发者",
+      "从 V2 alpha 升级的现有用户"
+    ],
+    "compatibility": {
+      "node": ">=24",
+      "workspaceGenerations": [
+        "v1",
+        "v2"
+      ],
+      "v1Policy": "保持现有配置、数据、流程、登录绑定与项目工具链代际；原 V1 CLI 可继续使用其原运行环境。",
+      "platformPolicy": "V2 应用部署前按平台 capabilities 和配置验证器预检；工具版本不能代替平台实际部署版本。",
+      "backendBuild": "Nest 镜像由开发者电脑上的 Docker 构建；普通 React/Nest 连接开发不要求本地平台或数据库。",
+      "releaseChannels": "latest / stable-v2：V2 正式版；legacy-v1：V1 维护版；alpha：预发布。npm 不允许把 v1/v2 作为标签。"
+    },
+    "upgradeSteps": [
+      "在 Node.js 24 环境安装统一入口：npm install -g openxiangda@2.0.0。",
+      "进入已有项目运行 openxiangda version --json，核对工作区代际、实际引擎和解析来源。",
+      "运行 openxiangda update check 查看本项目更新；需要升级时执行 openxiangda update install --target workspace。",
+      "检查依赖与锁文件差异，刷新本项目 Skill，并完成项目检查、测试环境和真实角色业务验收后再晋级生产。",
+      "V2 能力满足、项目仍在测试阶段且迁移成本可控时，优先建议 V1 项目采用 V2；先完成项目评估、设计确认和迁移验收。"
+    ],
+    "knownLimitations": [
+      "V1 到 V2 首期仅提供本地源码迁移评估，不读取远端业务数据，也不自动迁移应用。",
+      "源码扫描不会证明远端权限、流程和数据完整性；迁移须按项目制定映射、演练和回滚方案。",
+      "内网或离线环境可读取随包说明；联网检查失败时保留当前工具与项目。",
+      "内部支持 Agent 独立交付和验收，不随此 npm 版本自动部署。"
+    ],
+    "issues": [],
+    "sha256": "a6100370946d253328c924c19f6577bac383c4633e3650d69b7ad378486ae880",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.0.0"
   }
 }
