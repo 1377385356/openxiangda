@@ -1,5 +1,6 @@
 import { writeDevelopmentFixture } from "./lib/development-records-fixture.mjs";
 import { NATIVE_CONFIGURATION_VALIDATOR_DIGEST, compileNativeApplicationConfiguration } from '../packages/contracts/dist/native-compiler/index.js';
+import { PLATFORM_CAPABILITY_CONTRACT_VERSIONS } from '../packages/contracts/dist/index.js';
 import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
 import { createServer } from "node:http";
@@ -562,7 +563,7 @@ async function handlePlatformRequest(request, response) {
       codes.map(code => [
         code,
         {
-          contractVersion: "1.0.0",
+          contractVersion: PLATFORM_CAPABILITY_CONTRACT_VERSIONS[code] || "1.0.0",
           status:
             code === "data.native-golden-crud"
               ? goldenCrudStatus

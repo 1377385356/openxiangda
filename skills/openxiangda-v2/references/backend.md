@@ -45,9 +45,26 @@ operation、事件消费者、人员提供器，然后运行 `pnpm openxiangda c
 
 只读前置条件使用 `record-exists` 或 `record-match`，它们不要求同记录 mutation，
 但仍执行 read capability、字段权限与行级授权。需要与数据库当前时间比较时使用
-`databaseNowAssertion('publishAt', 'lte')`；平台用一次 PostgreSQL transaction time
-完成所有断言，并把该时间作为 `evaluatedAt` 存入幂等回执。相同幂等键重放不会重新
+`databaseNowAssertion('publishAt', 'lte')`；平台在守卫行锁及写入前校验完成后，
+用一次 PostgreSQL `clock_timestamp()` 完成所有动态断言，并把该接受时刻作为
+`evaluatedAt` 存入幂等回执。它不是最终提交时刻。相同幂等键重放不会重新
 读取当前时间。不得把 `Date.now()`、SQL 表达式、时区偏移或调用方时钟塞入断言。
+
+新建或更新的时间窗口使用 `operation-time`，直接引用本次操作提交的 datetime 字段：
+
+```ts
+const guards = [
+  { kind: 'operation-time', operationIndex: 0, field: 'startsAt',
+    operator: 'gt', offsetMilliseconds: 0, errorCode: 'OPENXIANGDA_NOT_FUTURE' },
+  { kind: 'operation-time', operationIndex: 0, field: 'startsAt',
+    operator: 'lte', offsetMilliseconds: 2592000000, errorCode: 'OPENXIANGDA_TOO_FAR' },
+];
+```
+
+上述规则表示第一个 create/update 操作的 startsAt 必须晚于平台接受时刻，
+且最多提前 30 天。字段须已声明、可写，并在操作 data 中提供带 Z 或显式偏移的
+ISO 时间字符串；不接受空值、嵌套路径、引用或表达式。offsetMilliseconds 是
+最多正负 366 天的整数，所有时间条件共享一个接受时刻。需要平台 Data API 1.1.0。
 
 
 ## 业务动作与普通查询 {#business-action}

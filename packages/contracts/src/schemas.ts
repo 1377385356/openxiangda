@@ -3393,6 +3393,18 @@ const dataTransactionGuard = {
   oneOf: [
     {
       type: "object", additionalProperties: false,
+      required: ["kind", "operationIndex", "field", "operator", "offsetMilliseconds", "errorCode"],
+      properties: {
+        kind: { const: "operation-time" },
+        operationIndex: { type: "integer", minimum: 0, maximum: 99 },
+        field: dataFieldCode,
+        operator: { enum: ["eq", "neq", "gt", "gte", "lt", "lte"] },
+        offsetMilliseconds: { type: "integer", minimum: -31622400000, maximum: 31622400000 },
+        errorCode: { type: "string", pattern: "^OPENXIANGDA_[A-Z0-9_]{1,96}$" },
+      },
+    },
+    {
+      type: "object", additionalProperties: false,
       required: ["kind", "userId", "roleCode", "errorCode"],
       properties: {
         kind: { const: "role-member" },

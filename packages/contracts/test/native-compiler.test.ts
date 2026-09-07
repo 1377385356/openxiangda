@@ -14,8 +14,8 @@ function input(config = JSON.parse(corpus.configuration.canonical)) {
   };
 }
 
-test('one shared validator preserves the original platform golden projection across ESM and CJS', () => {
-  const expected = 'cc1d97030a4d59489d8281eb607689d59e77844f9f1f3facfe3d097398da439e';
+test('one shared validator preserves the reviewed platform projection across ESM and CJS', () => {
+  const expected = '8d0559ab7ee397a973e236163029660103b1269be8147d8d5bfe80e3624a95c7';
   const a = esm.compileNativeApplicationConfiguration(input());
   const b = cjs.compileNativeApplicationConfiguration(input());
   assert.deepEqual(a, b);

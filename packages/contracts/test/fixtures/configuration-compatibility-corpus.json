@@ -32,7 +32,7 @@
     },
     {
       "code": "data-api-v2",
-      "contractVersion": "1.0.0",
+      "contractVersion": "1.1.0",
       "usageDigest": "sha256:4e184918fb990e00445268b5a079b8ce09d61dade9f0df2b6c2519d69c93468e"
     },
     {

@@ -811,6 +811,30 @@ export function validateDataTransactionRequest(
       );
       return;
     }
+    if (guard.kind === 'operation-time') {
+      const allowed = ['kind', 'operationIndex', 'field', 'operator', 'offsetMilliseconds', 'errorCode'];
+      if (Object.keys(guard).length !== allowed.length ||
+        Object.keys(guard).some(key => !allowed.includes(key)) ||
+        !Number.isSafeInteger(guard.operationIndex) || Number(guard.operationIndex) < 0 ||
+        Number(guard.operationIndex) > 99 || !Number.isSafeInteger(guard.offsetMilliseconds) ||
+        Math.abs(Number(guard.offsetMilliseconds)) > 31622400000 ||
+        typeof guard.field !== 'string' || !/^[A-Za-z][A-Za-z0-9_]{0,62}$/.test(guard.field) ||
+        !DATA_TRANSACTION_FIELD_OPERATORS.has(String(guard.operator)) ||
+        !DATA_TRANSACTION_ERROR_CODE_PATTERN.test(String(guard.errorCode))) {
+        diagnostics.push(diagnostic('DATA_TRANSACTION_OPERATION_TIME_INVALID',
+          `${path} requires a bounded operation index, field, comparison, millisecond offset and OPENXIANGDA_* error code`, path));
+      }
+      const operation = Array.isArray(value.operations) ? value.operations[Number(guard.operationIndex)] : undefined;
+      const literal = isRecord(operation) && isRecord(operation.data) ? operation.data[String(guard.field)] : undefined;
+      if (!isRecord(operation) || !['create', 'update'].includes(String(operation.operation)) ||
+        typeof literal !== 'string' || literal.length > 64 ||
+        !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/i.test(literal) ||
+        !Number.isFinite(Date.parse(literal))) {
+        diagnostics.push(diagnostic('DATA_TRANSACTION_OPERATION_TIME_INPUT_INVALID',
+          `${path} must bind a literal datetime in an existing create/update operation`, path));
+      }
+      return;
+    }
     if (guard.kind === 'role-member') {
       const allowed = ['kind', 'userId', 'roleCode', 'errorCode'];
       if (Object.keys(guard).some(key => !allowed.includes(key)) ||

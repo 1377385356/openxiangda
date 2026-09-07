@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.4.0",
+  "title": "事务接受时刻与预约时间窗口",
+  "status": "reviewed",
+  "summary": "增加绑定提交字段的时间守卫，统一在锁等待结束后使用平台数据库时间判断业务期限。",
+  "newFeatures": ["operation-time 守卫可检查 create/update 中的 datetime 字段，支持正负 366 天以内的整数毫秒偏移和六种比较。"],
+  "fixes": ["动态时间条件使用守卫锁及写入前校验完成后的数据库接受时刻，成功重放保持原 evaluatedAt。"],
+  "affectedUsers": ["需要预约窗口、截止时间、签到时间或并发事务时间条件的 V2 应用开发者。"],
+  "compatibility": {
+    "node": ">=24",
+    "workspaceGenerations": ["v1", "v2"],
+    "v1Policy": "V1 引擎和已有应用契约不变。",
+    "platformPolicy": "新编译的数据应用要求 Data API 1.1.0 和匹配的共享校验器；平台预检拒绝不支持该能力的目标。"
+  },
+  "upgradeSteps": ["将应用精确依赖升级至 openxiangda 2.4.0，更新锁文件并刷新技能资料。", "平台部署匹配版本后执行正式检查、测试发布、数据库截止和真实角色验收。"],
+  "knownLimitations": ["evaluatedAt 是动态条件的接受时刻，不是最终数据库提交时刻。", "字段必须是声明且可写的 datetime 字面值，不支持空值、嵌套路径或操作引用。", "工具包发布不代表平台已部署或应用业务验收已通过。"],
+  "issues": []
+}

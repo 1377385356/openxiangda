@@ -1615,13 +1615,22 @@ export type DataTransactionRecordAssertion =
       rightField: string;
     }
   | {
-      /** Compare one declared datetime field with database transaction time. */
+      /** Compare one declared datetime field with post-lock acceptance time. */
       kind: "database-now";
       field: string;
       operator: "eq" | "neq" | "gt" | "gte" | "lt" | "lte";
     };
 
 export type DataTransactionGuard =
+  | {
+      /** Compare an actual create/update datetime with database acceptance time plus offset. */
+      kind: "operation-time";
+      operationIndex: number;
+      field: string;
+      operator: "eq" | "neq" | "gt" | "gte" | "lt" | "lte";
+      offsetMilliseconds: number;
+      errorCode: string;
+    }
   | {
       /** 仅供声明了 platformAccess.roleAssertions 的受信业务动作使用。 */
       kind: "role-member";
@@ -1670,7 +1679,7 @@ export interface DataTransactionRequest {
 export interface DataTransactionResult {
   schemaVersion: typeof SCHEMA_VERSIONS.dataTransactionResult;
   idempotencyKey: string;
-  /** Database transaction time used by every dynamic guard assertion. */
+  /** Post-lock database acceptance time used by every dynamic guard assertion. */
   evaluatedAt?: IsoDateTime;
   replayed: boolean;
   items: Array<

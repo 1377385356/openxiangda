@@ -1854,6 +1854,33 @@ test('transaction contract accepts only bounded database-time assertions', () =>
   );
 });
 
+test('operation-time binds bounded guards to literal operation datetimes', () => {
+  const guard = { kind: 'operation-time', operationIndex: 0, field: 'startsAt',
+    operator: 'gt', offsetMilliseconds: 0, errorCode: 'OPENXIANGDA_NOT_FUTURE' };
+  const input = { schemaVersion: SCHEMA_VERSIONS.dataTransactionRequest, idempotencyKey: 'time-1',
+    guards: [guard], operations: [{ operation: 'create', resourceCode: 'meetings',
+      data: { startsAt: '2026-09-08T10:00:00+08:00' } }] };
+  assert.doesNotThrow(() => assertDataTransactionRequest(input));
+  for (const delta of [{ operationIndex: -1 }, { operationIndex: 1 }, { operationIndex: 0.5 },
+    { offsetMilliseconds: 31622400001 }, { offsetMilliseconds: -31622400001 },
+    { offsetMilliseconds: '0' }, { field: 'startsAt.value' }, { value: 'now' }, { operator: 'sql' }]) {
+    assert.throws(() => assertDataTransactionRequest({ ...input, guards: [{ ...guard, ...delta }] }), ContractValidationError);
+  }
+  for (const startsAt of [null, undefined, {}, { operationIndex: 0, field: 'id' },
+    'bad', '2026-09-08T10:00:00']) {
+    assert.throws(() => assertDataTransactionRequest({ ...input, operations: [{
+      ...input.operations[0], data: { startsAt },
+    }] }), ContractValidationError);
+  }
+  for (const operation of ['increment', 'delete', 'emitEvent']) {
+    assert.throws(() => assertDataTransactionRequest({ ...input, operations: [{
+      ...input.operations[0], operation,
+    }] }), ContractValidationError);
+  }
+  assert.equal(contractSchemas.dataTransactionRequest.properties.guards.items.oneOf.some(
+    item => item.properties.kind.const === 'operation-time'), true);
+});
+
 test('transaction contract permits only direct references to prior create ids', () => {
   const transaction: DataTransactionRequest = {
     schemaVersion: SCHEMA_VERSIONS.dataTransactionRequest,
