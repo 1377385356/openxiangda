@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -65,13 +65,13 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.0.1",
-    "openxiangda-contracts": "2.0.0",
-    "openxiangda-devkit-core": "2.0.0",
+    "openxiangda-cli": "2.1.0",
+    "openxiangda-contracts": "2.1.0",
+    "openxiangda-devkit-core": "2.1.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.268",
-    "openxiangda-mcp": "2.0.0",
-    "openxiangda-nest": "2.0.0",
-    "openxiangda-skill-kit": "2.0.0",
+    "openxiangda-mcp": "2.0.1",
+    "openxiangda-nest": "2.0.1",
+    "openxiangda-skill-kit": "2.0.1",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -137,18 +137,21 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.0.1",
-    "title": "OpenXiangda pnpm 工作区识别修复",
+    "version": "2.1.0",
+    "title": "OpenXiangda 平台托管应用镜像上传",
     "status": "reviewed",
-    "summary": "修复独立安装的统一入口进入 pnpm 工作区时无法找到项目 CLI 的问题，继续严格使用该项目锁定的同代引擎。",
+    "summary": "应用 Nest 后端在本机构建为 OCI 镜像后，通过平台登录态分片上传。平台负责应用归属校验、镜像存储和运行时拉取，开发者无需取得平台维护者个人镜像仓库的推送权限。",
     "newFeatures": [
-      "本次为 2.0.0 的修复发布，没有新增应用能力。"
+      "发现并优先使用平台 backendImageUpload 能力，导出 linux/amd64 OCI 镜像并上传有界分片。",
+      "上传前校验本地镜像大小和摘要，复用已完成的镜像回执，并恢复分片传输中断。"
     ],
     "fixes": [
-      "从 pnpm 符号链接指向的真实包目录解析 openxiangda-cli，避免 WORKSPACE_ENGINE_DEPENDENCY_MISSING。"
+      "启用平台上传后，应用部署不再依赖开发者对平台维护者镜像仓库的推送权限。",
+      "Docker classic image store 不支持 OCI 导出时，返回明确的 builder 配置指引。"
     ],
     "affectedUsers": [
-      "使用全局或独立安装的统一入口维护 pnpm 工作区的开发者。"
+      "声明可选 Nest 后端并通过 CLI 或 MCP 部署的 OpenXiangda 2.0 应用开发者。",
+      "维护共享应用运行时及平台镜像存储的平台管理员。"
     ],
     "compatibility": {
       "node": ">=24",
@@ -157,21 +160,23 @@
         "v2"
       ],
       "v1Policy": "V1 应用保持原代际、版本锁定与登录绑定。",
-      "platformPolicy": "没有新增平台能力要求，部署仍执行目标平台预检。",
-      "backendBuild": "Nest 镜像继续由开发者电脑上的 Docker 构建。",
+      "platformPolicy": "平台托管上传需要匹配的后端、Registry 和网关发布，并启用 backendImageUpload；旧平台继续使用既有构建合同。",
+      "backendBuild": "可选 Nest 后端仍在开发者电脑上使用 Docker Buildx 构建，需要支持 OCI exporter 的 builder。",
       "releaseChannels": "latest / stable-v2：V2 正式版；legacy-v1：V1 维护版；alpha：预发布。"
     },
     "upgradeSteps": [
-      "在 Node.js 24 环境安装统一入口：npm install -g openxiangda@2.0.1。",
-      "在项目及其子目录运行 openxiangda version --json，核对工作区代际、项目引擎版本和解析来源。",
-      "需要更新 V2 项目依赖时运行 openxiangda update install --target workspace，检查锁文件并完成项目验收。"
+      "平台管理员先按部署运行手册准备镜像存储与凭据，再部署匹配的后端和网关。",
+      "在 Node.js 24 环境安装统一入口：npm install -g openxiangda@2.1.0。",
+      "更新 V2 项目锁定的工具链并刷新项目资料，核对平台上传能力后运行项目的 openxiangda deploy。"
     ],
     "knownLimitations": [
-      "独立入口更新不会自动升级项目锁定的工具链，也不会迁移 V1 应用。",
-      "已发布的 2.0.0 保持不可变；本修复不代表平台部署或业务验收已完成。"
+      "当前仅支持 linux/amd64 单平台 OCI 镜像；默认单镜像上限为 1Gi，由平台配置控制。",
+      "已声明但未启用的平台上传能力会阻止部署，避免回退到个人镜像仓库推送。",
+      "镜像保留与垃圾回收由平台运维单独管理；现有版本仍可能需要历史镜像进行部署或回滚。",
+      "托管镜像开始使用后，后端回滚必须保留 Registry、持久卷、凭据和网关读取路由。"
     ],
     "issues": [],
-    "sha256": "6bba13f70a956b58412da587fc9d7b50dd279fea809eae2461dd3515321a83dd",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.0.1"
+    "sha256": "d7f6a21ddc37b3d2439350bf17f5f4575192168944dc33efb15460f7d1854aff",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.1.0"
   }
 }
