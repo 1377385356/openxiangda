@@ -28,6 +28,7 @@ const expected = [
   "docs",
   "admin",
   "create",
+  "source",
   "dev",
   "check",
   "accept",

@@ -1,4 +1,5 @@
 import type { DeploymentStrategy } from 'openxiangda-contracts';
+import type { ApplicationSourceRepository, ApplicationSourceCredential } from 'openxiangda-contracts';
 import {
   RUNTIME_CAPACITY_PREFLIGHT_SCHEMA,
   type RuntimeCapacityPreflight,
@@ -511,6 +512,29 @@ export class OpenXiangdaControlPlaneClient {
       ),
       { method: "POST", body }
     );
+  }
+
+  async sourceStatus(appCode: string) {
+    return this.json<{ enabled: boolean; repository: ApplicationSourceRepository | null }>(
+      `/openxiangda-api/v2/applications/${encodeURIComponent(appCode)}/source`);
+  }
+
+  async sourceCredential(appCode: string) {
+    return this.json<ApplicationSourceCredential>(
+      `/openxiangda-api/v2/applications/${encodeURIComponent(appCode)}/source/credential`,
+      { method: 'POST', body: '{}' });
+  }
+
+  async verifySource(appCode: string, source: AppPackage['source']) {
+    return this.json<{ managed: boolean; commit?: string }>(
+      `/openxiangda-api/v2/applications/${encodeURIComponent(appCode)}/source/verify`,
+      { method: 'POST', body: JSON.stringify(source) });
+  }
+
+  async completeSourceSetup(appCode: string, input: { branch: string; commit: string }) {
+    return this.json<{ repository: ApplicationSourceRepository; commit: string }>(
+      `/openxiangda-api/v2/applications/${encodeURIComponent(appCode)}/source/complete-setup`,
+      { method: 'POST', body: JSON.stringify(input) });
   }
 
   async provisionApplication(

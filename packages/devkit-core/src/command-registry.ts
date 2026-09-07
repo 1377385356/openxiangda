@@ -14,6 +14,7 @@ export const DEVKIT_COMMANDS = [
   { id: "docs", operation: "docs", summary: "按主题和章节读取当前版本中文资料", risk: "read" },
   { id: "admin", operation: "admin", summary: "只读查看应用管理能力和流程节点运行配置", risk: "read" },
   { id: "create", operation: "create", summary: "创建、绑定并初始化应用", risk: "deploy", studioJsonEvents: true },
+  { id: 'source', operation: 'source', summary: '配置应用源码仓库、查看状态或提交推送', risk: 'deploy' },
   { id: "dev", operation: "dev", summary: "连接平台测试数据启动本地 Web，按需启动 Nest", risk: "write-local", studioJsonEvents: true },
   { id: "check", operation: "check", summary: "生成契约并在目标平台预检后执行检查、测试和构建", risk: "write-local", studioJsonEvents: true },
   { id: "accept", operation: "accept", summary: "按计划准备可选的真实预发验收身份", risk: "deploy" },

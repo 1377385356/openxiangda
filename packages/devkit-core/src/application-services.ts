@@ -1,4 +1,5 @@
 import type { DeploymentStrategy } from 'openxiangda-contracts';
+import { initializeSourceGit, installSourceCredential, pushSourceGit } from './source-git.js';
 import { randomUUID } from "node:crypto";
 import { publishedDeliverySource, assertDeliverySourceUnchanged, DeliverySourceError } from './delivery-source.js';
 import { operationStage, skippedOperationStage, updateOperationStage } from './operation-progress.js';
@@ -500,6 +501,34 @@ export class OpenXiangdaApplicationServices {
     const client = await this.client(workspace.root);
     return this.ok("admin.workflow", workspace.context.workspace,
       await client.workflowNodeConfigurations(workspace.config.app.code, workflowCode, environment));
+  }
+
+  async sourceStatus(root?: string) {
+    const workspace = await this.workspace(root);
+    return this.ok('source.status', workspace.context.workspace,
+      await (await this.client(workspace.root)).sourceStatus(workspace.config.app.code));
+  }
+
+  async setupSource(root?: string, input: { importOrigin?: boolean; initialCommit?: boolean } = {}) {
+    const workspace = await this.workspace(root);
+    const client = await this.client(workspace.root);
+    const credential = await client.sourceCredential(workspace.config.app.code);
+    initializeSourceGit(workspace.root, credential.repository, credential, input.importOrigin);
+    installSourceCredential(workspace.root, credential);
+    const source = pushSourceGit(workspace.root, credential.repository,
+      input.initialCommit ? 'Initialize OpenXiangda application' : undefined, true);
+    const completed = await client.completeSourceSetup(workspace.config.app.code, { branch: source.branch, commit: source.commit });
+    return this.ok('source.setup', workspace.context.workspace, { repository: completed.repository, source });
+  }
+
+  async pushSource(root?: string, message?: string) {
+    const workspace = await this.workspace(root);
+    const client = await this.client(workspace.root);
+    const status = await client.sourceStatus(workspace.config.app.code);
+    if (!status.repository) throw new Error('APPLICATION_SOURCE_NOT_INITIALIZED: 先运行 openxiangda source setup');
+    const source = pushSourceGit(workspace.root, status.repository, message);
+    await client.verifySource(workspace.config.app.code, { ...source, dirty: false });
+    return this.ok('source.push', workspace.context.workspace, source);
   }
 
   async provisionApplication(root?: string) {

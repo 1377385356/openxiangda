@@ -302,12 +302,16 @@ export default class Create extends OpenXiangdaCommand {
       });
     }
 
+    const source = provision.data?.sourceRepository
+      ? await this.services.setupSource(root, { initialCommit: true })
+      : undefined;
     return this.present({
       ok: true,
       operation: "create",
       workspace: { appCode, name, root },
       data: {
         workspace,
+        ...(source ? { source: source.data } : {}),
         link: link.data,
         provision: provision.data,
       },

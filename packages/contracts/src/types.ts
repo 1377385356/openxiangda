@@ -250,7 +250,25 @@ export interface RuntimeEnvironment {
   updatedAt: IsoDateTime;
 }
 
+export interface ApplicationSourceRepository {
+  provider: 'forgejo';
+  repositoryId: string;
+  repositoryName: string;
+  cloneUrl: string;
+  webUrl: string;
+  defaultBranch: string;
+}
+
+export interface ApplicationSourceCredential {
+  repository: ApplicationSourceRepository;
+  username: string;
+  password: string;
+  name: string;
+  email: string;
+}
+
 export interface ProvisionedApplication {
+  sourceRepository?: ApplicationSourceRepository;
   schemaVersion: typeof SCHEMA_VERSIONS.application;
   created: boolean;
   application: {
@@ -3337,6 +3355,7 @@ export interface RuntimeCapacityPreflight {
 }
 
 export interface PlatformCapabilities {
+  sourceHosting?: { provider: 'forgejo'; enabled: boolean };
   schemaVersion: typeof SCHEMA_VERSIONS.platformCapabilities;
   apiVersion: "v2";
   contractVersion: typeof OPENXIANGDA_CONTRACT_VERSION;

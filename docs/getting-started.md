@@ -47,6 +47,24 @@ AppSpec 随开发持续维护：测试发布前补齐总纲、关联变更与验
 
 纯 CRUD 修改优先使用标准模型、字段和页面；跨模型事务或外部副作用再选择后端。角色、行和字段权限在平台执行。详见[开发流程](./development.md)、[模型与标准 CRUD](./application-foundation.md)和[按需后端](./backend.md)。
 
+## 应用源码
+
+平台启用源码托管后，`create` 自动建立应用私有仓库、配置长期 Git 凭据并推送首次提交。
+应用管理员自动拥有对应仓库管理员权限；无需注册另一套账号。凭据存入系统凭据管理器，
+macOS 使用 Keychain，Windows 使用 Git Credential Manager，Linux 使用已安装的
+Git Credential Manager 或 libsecret。新电脑首次使用需重新执行源码配置。
+
+```bash
+pnpm openxiangda source status
+pnpm openxiangda source setup
+pnpm openxiangda source push -m "完成本轮应用开发"
+```
+
+创建或推送中断后，在原目录重试。已有外部仓库使用 `source setup --import`，原 `origin`
+保留为 `external-source`；当前分支的历史随推送保留，不执行强推，也不自动合并冲突。
+其他分支、标签和 Git LFS 对象需按实际迁移范围另外推送。`source push` 省略 `-m` 时只推送
+已有提交；带 `-m` 时提交当前所有未忽略更改。源码入口位于平台应用运营的“应用源码”。
+
 ## 检查与交付 {#delivery}
 
 只检查时运行 `pnpm openxiangda check`。需要部署测试环境时直接运行 `pnpm openxiangda deploy`，它已包含检查、测试和构建；无需再连续重复运行全部脚本。
