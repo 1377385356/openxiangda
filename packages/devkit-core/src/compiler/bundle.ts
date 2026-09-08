@@ -1516,6 +1516,7 @@ function compileCapabilities(
     for (const [fieldCode, policy] of Object.entries(
       resource.fieldPolicies || {}
     ).sort(([left], [right]) => compare(left, right))) {
+      if (isDataAuditMetadataField(fieldCode)) continue;
       for (const operation of ['read', 'create', 'update'] as const) {
         const codes = policy[operation];
         if (!Array.isArray(codes)) continue;

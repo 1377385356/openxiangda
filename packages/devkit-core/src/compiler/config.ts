@@ -3,6 +3,7 @@ import { nativeFieldRequiresCreateInputV2 } from 'openxiangda-contracts/native-c
 import {
   SCHEMA_VERSIONS,
   DATA_AUDIT_METADATA_FIELDS,
+  isDataAuditMetadataField,
   DATA_FIELD_TYPES,
   PLATFORM_EVENT_TYPES_V2,
   nativePlatformCapabilityCatalog,
@@ -5584,11 +5585,12 @@ function validateCapabilityClosure(
   for (const raw of declarations) catalog.add(string(object(raw).code));
   const data = object(config.data);
   const catalogOwners = new Map<string, string>();
+  const references: Array<{ capability: string; path: string }> = [];
   for (const raw of declarations) {
     const code = string(object(raw).code);
     if (code) catalogOwners.set(code, 'authz.capabilities');
   }
-  for (const rawResource of Array.isArray(data.resources) ? data.resources : []) {
+  for (const [resourceIndex, rawResource] of (Array.isArray(data.resources) ? data.resources : []).entries()) {
     const resource = object(rawResource);
     const resourceOwner = `data.resources.${string(resource.code)}`;
     Object.values(object(resource.capabilities)).forEach(value => {
@@ -5596,11 +5598,18 @@ function validateCapabilityClosure(
       registerCapabilityOwner(code, resourceOwner, catalogOwners, diagnostics);
       catalog.add(code);
     });
-    Object.values(object(resource.fieldPolicies)).forEach(rawPolicy => {
+    Object.entries(object(resource.fieldPolicies)).forEach(([fieldCode, rawPolicy]) => {
       const policy = object(rawPolicy);
       for (const key of ['read', 'create', 'update'] as const) {
         for (const value of Array.isArray(policy[key]) ? policy[key] : []) {
           const code = string(value);
+          if (isDataAuditMetadataField(fieldCode)) {
+            references.push({
+              capability: code,
+              path: `data.resources[${resourceIndex}].fieldPolicies.${fieldCode}.${key}`,
+            });
+            continue;
+          }
           registerCapabilityOwner(
             code,
             resourceOwner,
@@ -5612,7 +5621,6 @@ function validateCapabilityClosure(
       }
     });
   }
-  const references: Array<{ capability: string; path: string }> = [];
   const authz = object(config.authz);
   (Array.isArray(authz.roles) ? authz.roles : []).forEach((rawRole, index) => {
     const role = object(rawRole);

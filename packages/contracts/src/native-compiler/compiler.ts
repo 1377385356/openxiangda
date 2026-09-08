@@ -1556,6 +1556,7 @@ function compileCapabilities(config: JsonObject) {
     for (const [fieldCode, rawPolicy] of Object.entries(
       resource.fieldPolicies
     )) {
+      if (isDataAuditMetadataField(fieldCode)) continue;
       const policy = object(rawPolicy, `${pointer}/fieldPolicies/${fieldCode}`);
       for (const operation of ['read', 'create', 'update']) {
         if (!Array.isArray(policy[operation])) continue;
@@ -4191,6 +4192,16 @@ function validateAuthorizationReferences(
   config.data.resources.forEach((rawResource: unknown, index: number) => {
     const resourcePointer = `/config/data/resources/${index}`;
     const resource = object(rawResource, resourcePointer);
+    for (const [fieldCode, rawPolicy] of Object.entries(resource.fieldPolicies || {})) {
+      if (!isDataAuditMetadataField(fieldCode)) continue;
+      const pointer = `${resourcePointer}/fieldPolicies/${fieldCode}/read`;
+      const policy = object(rawPolicy, `${resourcePointer}/fieldPolicies/${fieldCode}`);
+      for (const capability of uniqueStrings(policy.read || [], pointer, 2000)) {
+        if (!capabilityCodes.has(capability)) {
+          fail('NATIVE_CAPABILITY_REFERENCE_MISSING', pointer);
+        }
+      }
+    }
     const surface =
       resource.surface === undefined
         ? {}
