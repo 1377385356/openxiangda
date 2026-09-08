@@ -1,6 +1,6 @@
 {
   "name": "openxiangda-cli",
-  "version": "2.2.13",
+  "version": "2.2.14",
   "description": "OpenXiangda 2.0 应用生命周期命令、创建器与模板。",
   "type": "module",
   "main": "./dist/index.js",
