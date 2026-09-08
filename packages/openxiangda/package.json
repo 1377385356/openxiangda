@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.7.0",
+  "version": "2.7.1",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -67,13 +67,13 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.2.9",
+    "openxiangda-cli": "2.2.10",
     "openxiangda-contracts": "2.5.0",
-    "openxiangda-devkit-core": "2.4.1",
+    "openxiangda-devkit-core": "2.4.2",
     "openxiangda-legacy": "npm:openxiangda@1.0.268",
-    "openxiangda-mcp": "2.0.7",
+    "openxiangda-mcp": "2.0.8",
     "openxiangda-nest": "2.1.0",
-    "openxiangda-skill-kit": "2.0.11",
+    "openxiangda-skill-kit": "2.0.12",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -139,39 +139,33 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.7.0",
-    "title": "应用统一保护未保存内容",
+    "version": "2.7.1",
     "status": "reviewed",
-    "summary": "自定义表单可注册未保存状态，应用统一处理站内跳转、浏览器历史和刷新关闭提示。",
-    "newFeatures": [
-      "增加 useUnsavedChangesGuard，聚合多个表单的未保存状态，取消导航保留输入和原位置，提交成功后解除保护。"
-    ],
+    "title": "OpenXiangda 2.7.1：修复可选后端连接开发",
+    "summary": "连接开发按应用配置启动本地 Nest，绑定平台活动应用版本与开发会话，支持已激活前端应用首次启用本地后端。",
+    "newFeatures": [],
     "fixes": [
-      "补齐原 BrowserRouter 无法使用标准 useBlocker 导致自定义表单浏览器前进后退未受保护的问题。"
+      "不再要求应用手动补根目录 dev:server；使用 backend.root 包内 dev 入口。纯前端应用不启动 Nest。",
+      "补齐本地 Nest 所需活动应用版本描述；本地修改的后端使用开发会话标签，不冒充已部署镜像。",
+      "开发会话目标发生变化时停止子进程并撤销原会话，防止环境与运行时身份不一致。"
     ],
     "affectedUsers": [
-      "有自定义录入页面、异步提交或未知结果恢复的 V2 应用开发者。"
+      "使用 dev 连接平台测试环境的纯前端和按需 Nest 应用开发者。"
     ],
-    "compatibility": {
-      "node": ">=24",
-      "workspaceGenerations": [
-        "v1",
-        "v2"
-      ],
-      "v1Policy": "V1 引擎和已有应用不变。",
-      "platformPolicy": "公共 React 路由生命周期调整，无服务端契约或数据库变更；应用仍使用既有 Routes、Link 和 navigate。"
-    },
     "upgradeSteps": [
-      "精确升级到 openxiangda 2.7.0 并刷新技能资料。",
-      "在应用入口内使用 useUnsavedChangesGuard，涵盖未保存内容和结果未知状态，验证成功后解除以及取消后的输入保留。"
+      "通过项目正式升级流程采用 openxiangda 2.7.1，刷新项目资料并重启旧 MCP 与 dev 进程。",
+      "保留根目录 dev:web，确认配置的后端包具有 dev 启动脚本。"
     ],
     "knownLimitations": [
-      "原生刷新/关闭提示受浏览器限制，不能自定义提示文字。",
-      "该能力不持久化草稿或代替原提交回执恢复；应用不得直接操作 history.pushState。",
-      "包发布、应用部署与真实业务验收分别验证。"
+      "需要平台已有激活应用版本；联调数据写入仍发生在选定远端环境。",
+      "本次修复不改变线上应用制品或生产部署。"
     ],
+    "compatibility": {
+      "node": ">=20",
+      "platform": "支持 Application v2 开发会话及活动 AppVersion 的平台"
+    },
     "issues": [],
-    "sha256": "e8af0fc7c484cad1dc59ce982432e6a2fd4451d7f455141edc2d6128a057542e",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.7.0"
+    "sha256": "e41e1335745bee007fff4e7a4119c73bb14eddcfbce188ef1834f35056372426",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.7.1"
   }
 }

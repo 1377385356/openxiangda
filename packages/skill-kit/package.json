@@ -1,6 +1,6 @@
 {
   "name": "openxiangda-skill-kit",
-  "version": "2.0.11",
+  "version": "2.0.12",
   "description": "OpenXiangda 2.0 中文 AI 技能的校验、分发与安装。",
   "type": "module",
   "main": "./dist/index.js",
@@ -24,7 +24,7 @@
     "test": "tsx --test test/*.test.ts"
   },
   "dependencies": {
-    "openxiangda-devkit-core": "2.4.1"
+    "openxiangda-devkit-core": "2.4.2"
   },
   "devDependencies": {
     "tsx": "4.23.12",
