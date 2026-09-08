@@ -471,6 +471,27 @@ test("verifies a Gateway invocation with the current user role union", async () 
   );
 });
 
+test("queries original process commands with current identity and encoded bounded filters", async () => {
+  const requests: Array<{ url: string; init?: RequestInit }> = [];
+  const client = new OpenXiangdaPlatformClient(options(async (input, init) => {
+    requests.push({ url: String(input), init });
+    return response({ schemaVersion: SCHEMA_VERSIONS.businessProcessCommandList, items: [], nextCursor: null });
+  }));
+  await client.listBusinessProcessCommands('Bearer invocation-token', {
+    environmentKey: 'preproduction', resourceCode: 'records', recordId: 'record/1',
+    workflowCode: 'review', operationCode: 'submit', pageSize: 2, beforeCommandId: 'command/1',
+  }, { code: 'records.read-process', requiredCapability: 'app:reference-app:process:read' });
+  const url = new URL(requests[0]!.url);
+  assert.equal(url.pathname, '/openxiangda-api/v2/applications/reference-app/business-process/commands');
+  assert.deepEqual(Object.fromEntries(url.searchParams), {
+    environmentKey: 'preproduction', resourceCode: 'records', recordId: 'record/1',
+    workflowCode: 'review', operationCode: 'submit', pageSize: '2', beforeCommandId: 'command/1',
+  });
+  assert.equal(new Headers(requests[0]!.init?.headers).get('Authorization'), 'Bearer invocation-token');
+  assert.equal(requests[0]!.init?.body, undefined);
+  assert.equal(requests[0]!.init?.method ?? 'GET', 'GET');
+});
+
 test("posts operation proof to the current-initiator directory endpoint", async () => {
   const requests: Array<{ url: string; init?: RequestInit }> = [];
   const client = new OpenXiangdaPlatformClient(
@@ -2420,7 +2441,7 @@ test("durable business process SDK sends only verified Named Action proof", asyn
   );
 });
 
-test("durable business process SDK reads typed receipt and revision poll", async () => {
+test("durable business process SDK reads receipt, poll and declared subject history", async () => {
   const operation = {
     code: "applications.submit",
     method: "POST" as const,
@@ -2454,6 +2475,10 @@ test("durable business process SDK reads typed receipt and revision poll", async
       cursor: { afterRevision: 0, revision: 1 },
       nextPoll: { afterRevision: 1, retryAfterMs: 500 },
     })),
+    listBusinessProcessCommands: test.mock.fn(async (...args: any[]) => ({
+      schemaVersion: SCHEMA_VERSIONS.businessProcessCommandList,
+      items: [command], nextCursor: null,
+    })),
   };
   const process = new OpenXiangdaBusinessProcessService(
     {
@@ -2474,6 +2499,20 @@ test("durable business process SDK reads typed receipt and revision poll", async
   assert.equal(platform.businessProcessReceipt.mock.calls.length, 1);
   assert.equal(platform.businessProcessPoll.mock.calls.length, 1);
   assert.equal(platform.businessProcessPoll.mock.calls[0]!.arguments[2], 0);
+  const input = { resourceCode: 'applications', recordId: 'record-1', workflowCode: 'application-approval' };
+  const history = await process.list(input);
+  assert.equal(history.items[0], command);
+  assert.deepEqual(platform.listBusinessProcessCommands.mock.calls[0]!.arguments, [
+    'Bearer invocation-token', { ...input, environmentKey: 'preproduction' },
+    { code: operation.code, requiredCapability: operation.requiredCapability },
+  ]);
+  await assert.rejects(() => process.list({ ...input, workflowCode: 'not-declared' }),
+    /OPENXIANGDA_BUSINESS_PROCESS_WORKFLOW_NOT_DECLARED/u);
+  await assert.rejects(() => process.list({ ...input, workflowCode: '' }),
+    /OPENXIANGDA_BUSINESS_PROCESS_WORKFLOW_NOT_DECLARED/u);
+  assert.equal(platform.listBusinessProcessCommands.mock.callCount(), 1);
+  command.workflowCode = 'not-declared';
+  await assert.rejects(() => process.list(input), /OPENXIANGDA_BUSINESS_PROCESS_COMMAND_WORKFLOW_NOT_DECLARED/u);
 });
 
 test("request-scoped Workflow SDK uses the current user union", async () => {

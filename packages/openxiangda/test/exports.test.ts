@@ -15,6 +15,7 @@ import {
   listRoleManagementGrants,
   listRoleMemberships,
   loadBusinessProcessReceipt,
+  listBusinessProcessCommands,
   loadAuthorizationMutationReceipt,
   loadRoleManagementCatalog,
   pollBusinessProcessCommand,
@@ -574,9 +575,12 @@ test('uses typed durable process receipt and revision poll endpoints', async () 
   try {
     await loadBusinessProcessReceipt('command/1');
     await pollBusinessProcessCommand('command/1', 4);
+    await listBusinessProcessCommands({ resourceCode: 'records', recordId: 'record/1',
+      workflowCode: 'review', operationCode: 'submit', pageSize: 2, beforeCommandId: 'command/1' });
     assert.deepEqual(requests, [
       '/service/openxiangda-api/v2/applications/root-package-test/business-process/commands/command%2F1/receipt',
       '/service/openxiangda-api/v2/applications/root-package-test/business-process/commands/command%2F1/poll?afterRevision=4',
+      '/service/openxiangda-api/v2/applications/root-package-test/business-process/commands?environmentKey=preproduction&resourceCode=records&recordId=record%2F1&workflowCode=review&operationCode=submit&pageSize=2&beforeCommandId=command%2F1',
     ]);
     await assert.rejects(
       () => pollBusinessProcessCommand('command/1', -1),

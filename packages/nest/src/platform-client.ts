@@ -39,6 +39,8 @@ import type {
   WorkflowTimeline,
   BusinessProcessAnswer,
   BusinessProcessCommand,
+  BusinessProcessCommandQuery,
+  BusinessProcessCommandList,
   BusinessProcessCommit,
   BusinessProcessPoll,
   BusinessProcessReceipt,
@@ -444,6 +446,25 @@ export class OpenXiangdaPlatformClient {
         headers: this.identityHeaders(authorization, null, businessAction),
         body: JSON.stringify(input),
       }
+    );
+  }
+
+  async listBusinessProcessCommands(
+    authorization: string,
+    input: BusinessProcessCommandQuery,
+    businessAction: OpenXiangdaBusinessActionContext,
+  ): Promise<BusinessProcessCommandList> {
+    const query = new URLSearchParams({
+      environmentKey: input.environmentKey,
+      resourceCode: input.resourceCode,
+      recordId: input.recordId,
+    });
+    for (const key of ['workflowCode', 'operationCode', 'pageSize', 'beforeCommandId'] as const) {
+      if (input[key] !== undefined) query.set(key, String(input[key]));
+    }
+    return await this.request<BusinessProcessCommandList>(
+      `${this.businessProcessPath()}/commands?${query}`,
+      { headers: this.identityHeaders(authorization, null, businessAction) },
     );
   }
 

@@ -136,6 +136,7 @@ export const SCHEMA_VERSIONS = {
   businessProcessCommand: "openxiangda.business-process.command/v2",
   businessProcessReceipt: "openxiangda.business-process-receipt/v2",
   businessProcessPoll: "openxiangda.business-process-poll/v2",
+  businessProcessCommandList: "openxiangda.business-process-command-list/v2",
   processCommandSurface: "openxiangda.process-command-surface/v2",
   businessProcessAnswer: "openxiangda.business-process-answer/v2",
   businessProcessRetry: "openxiangda.business-process-retry/v2",
@@ -2465,6 +2466,22 @@ export interface BusinessProcessCommand {
   replayed: boolean;
   createdAt: IsoDateTime;
   updatedAt: IsoDateTime;
+}
+
+export interface BusinessProcessCommandQuery {
+  environmentKey: 'preproduction' | 'production';
+  resourceCode: string;
+  recordId: string;
+  workflowCode?: string;
+  operationCode?: string;
+  pageSize?: number;
+  beforeCommandId?: string;
+}
+
+export interface BusinessProcessCommandList {
+  schemaVersion: typeof SCHEMA_VERSIONS.businessProcessCommandList;
+  items: BusinessProcessCommand[];
+  nextCursor: string | null;
 }
 
 /** Immutable idempotency receipt plus the current durable command projection. */

@@ -27,7 +27,7 @@
     },
     {
       "code": "business-process.durable-command",
-      "contractVersion": "1.0.0",
+      "contractVersion": "1.1.0",
       "usageDigest": "sha256:ce31ed7df204c175f35b7f9538d533cba3e1e6c827fe3ffcc22e17a064eabc41"
     },
     {

@@ -34,6 +34,13 @@ operation、事件消费者、人员提供器，然后运行 `pnpm openxiangda c
 
 下方代码是接入片段，模型与角色需要在应用中显式声明。独立的完整示例由工具链维护者在新建应用中做打包验收。
 
+业务记录已创建但详情缺少原流程命令 ID 时，使用
+`OpenXiangdaBusinessProcessService.list({ resourceCode, recordId, workflowCode, operationCode })`。
+`workflowCode` 必须显式提供且属于当前 Named Action 的 `platformAccess.workflow.codes`；
+SDK 继承当前环境与身份，平台沿用发起人或既有超级管理员的命令权限。返回有界
+`items/nextCursor`，分页与多次流程的选择规则见[前端](frontend.md)。找回后使用原
+`receipt/poll/surface`；查询不重放提交、不生成第二份命令状态。
+
 自定义 operation 的 capability 必须先在 `authz.capabilities` 以
 `kind: 'backend'` 声明，再由 operation 和允许调用它的角色共同引用。普通资源 CRUD
 能力仍由编译器生成，不写入显式 capability catalog。

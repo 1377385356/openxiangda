@@ -1,4 +1,7 @@
 export type {
+  BusinessProcessCommand,
+  BusinessProcessCommandQuery,
+  BusinessProcessCommandList,
   DataAuditEntry,
   DataAuditPage,
   DataAggregateMeasureType,

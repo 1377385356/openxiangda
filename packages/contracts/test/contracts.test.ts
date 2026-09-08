@@ -295,6 +295,7 @@ test('publishes strict durable business process wire contracts', () => {
     'businessProcessRetry',
     'businessProcessReceipt',
     'businessProcessPoll',
+    'businessProcessCommandList',
   ] as const) {
     assert.equal(contractSchemas[key].additionalProperties, false);
   }

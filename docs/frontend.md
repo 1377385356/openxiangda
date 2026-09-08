@@ -202,6 +202,15 @@ renderer，但共享同一授权与命令生命周期。主决策操作固定在
 `nextPoll` 继续读取直到 `terminal`，再消费 typed command/surface。不要把 accepted 当作提交失败，
 也不要对平台端点发起未类型化的 `fetch`。
 
+从列表重新进入业务详情、尚未收到流程投影时，用
+`listBusinessProcessCommands({ resourceCode, recordId, workflowCode, operationCode })`
+查找原命令。环境由当前平台入口提供，只返回当前用户原本可读的命令。默认 20 条，
+`pageSize` 最大 50；用返回的 `nextCursor` 作为下一页的 `beforeCommandId`。
+结果按创建时间和 ID 倒序排列，不自动认定最新一条就是本次提交；按业务约束确认
+原命令后继续原 receipt/poll/surface。同一记录可能有多次流程，不能任意取首条，
+也不能为恢复 ID 再创建一次流程。此能力需要 `business-process.durable-command` 1.1.0，
+新包通过现有发布前检查核对平台版本。拥有业务记录读取权限不代表拥有他人的流程命令权限。
+
 资源用 `mutationOwner: 'native' | 'action' | 'readonly' | 'workflow'` 声明 mutation owner，
 并可用 `generated.list/detail/create/update/delete` 精确选择标准 surface。非 Native owner
 不能生成或向应用角色授予 Native mutation；零可写业务字段不能开放 create/update。

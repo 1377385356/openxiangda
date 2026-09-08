@@ -50,6 +50,8 @@ import {
   type ApplicationLogoutReceiptV2,
   type BusinessProcessAnswer,
   type BusinessProcessCommand,
+  type BusinessProcessCommandQuery,
+  type BusinessProcessCommandList,
   type BusinessProcessPoll,
   type BusinessProcessReceipt,
   type BusinessProcessRetry,
@@ -1991,6 +1993,24 @@ export async function commitStandardProcess(
         environmentKey: currentEnvironmentKey(),
       } satisfies StandardProcessCommit),
     },
+  );
+}
+
+/** Find readable original commands when entering from a subject record. */
+export async function listBusinessProcessCommands(
+  input: Omit<BusinessProcessCommandQuery, 'environmentKey'>,
+  signal?: AbortSignal,
+): Promise<BusinessProcessCommandList> {
+  const query = new URLSearchParams({
+    environmentKey: currentEnvironmentKey(),
+    resourceCode: input.resourceCode,
+    recordId: input.recordId,
+  });
+  for (const key of ['workflowCode', 'operationCode', 'pageSize', 'beforeCommandId'] as const) {
+    if (input[key] !== undefined) query.set(key, String(input[key]));
+  }
+  return await request<BusinessProcessCommandList>(
+    `${businessProcessBase()}/commands?${query}`, { signal },
   );
 }
 

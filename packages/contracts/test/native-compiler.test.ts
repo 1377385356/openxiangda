@@ -15,7 +15,7 @@ function input(config = JSON.parse(corpus.configuration.canonical)) {
 }
 
 test('one shared validator preserves the reviewed platform projection across ESM and CJS', () => {
-  const expected = '8d0559ab7ee397a973e236163029660103b1269be8147d8d5bfe80e3624a95c7';
+  const expected = 'df2836af06f119b343bb7207633e51686d18e19ee7edcf1d7a19a3936142fc00';
   const a = esm.compileNativeApplicationConfiguration(input());
   const b = cjs.compileNativeApplicationConfiguration(input());
   assert.deepEqual(a, b);
@@ -23,6 +23,7 @@ test('one shared validator preserves the reviewed platform projection across ESM
   assert.equal(a.projections.data.value.resources.length, corpus.counts.resources);
   assert.equal(a.projections.events.value.producers.length, corpus.counts.eventProducers);
   assert.deepEqual(a.requiredPlatformCapabilities, corpus.requiredPlatformCapabilities);
+  assert.equal(a.requiredPlatformCapabilities.find(item => item.code === 'business-process.durable-command')?.contractVersion, '1.1.0');
   assert.match(esm.NATIVE_CONFIGURATION_VALIDATOR_DIGEST, /^[a-f0-9]{64}$/);
   assert.equal(esm.NATIVE_CONFIGURATION_VALIDATOR_DIGEST, cjs.NATIVE_CONFIGURATION_VALIDATOR_DIGEST);
 });

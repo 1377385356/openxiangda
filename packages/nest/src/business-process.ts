@@ -4,6 +4,8 @@ import {
   SCHEMA_VERSIONS,
   type BusinessProcessAnswer,
   type BusinessProcessCommand,
+  type BusinessProcessCommandQuery,
+  type BusinessProcessCommandList,
   type BusinessProcessCommit,
   type BusinessProcessPoll,
   type BusinessProcessReceipt,
@@ -45,6 +47,22 @@ export class OpenXiangdaBusinessProcessService {
       },
       context.action
     );
+  }
+
+  async list(
+    input: Omit<BusinessProcessCommandQuery, 'environmentKey' | 'workflowCode'> & { workflowCode: string },
+  ): Promise<BusinessProcessCommandList> {
+    if (!input.workflowCode) {
+      throw new UnauthorizedException('OPENXIANGDA_BUSINESS_PROCESS_WORKFLOW_NOT_DECLARED');
+    }
+    const context = this.context(input.workflowCode);
+    const page = await this.platform.listBusinessProcessCommands(
+      context.authorization,
+      { ...input, environmentKey: context.environmentKey },
+      context.action,
+    );
+    for (const command of page.items) this.assertDeclared(command, [input.workflowCode]);
+    return page;
   }
 
   async status(commandId: string): Promise<BusinessProcessCommand> {

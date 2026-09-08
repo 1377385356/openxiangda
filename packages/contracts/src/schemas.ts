@@ -5817,6 +5817,18 @@ export const businessProcessCommandSchema = {
   },
 } as const;
 
+export const businessProcessCommandListSchema = {
+  $id: SCHEMA_VERSIONS.businessProcessCommandList,
+  type: "object",
+  additionalProperties: false,
+  required: ["schemaVersion", "items", "nextCursor"],
+  properties: {
+    schemaVersion: { const: SCHEMA_VERSIONS.businessProcessCommandList },
+    items: { type: "array", maxItems: 50, items: { $ref: SCHEMA_VERSIONS.businessProcessCommand } },
+    nextCursor: { anyOf: [businessProcessUuid, { type: "null" }] },
+  },
+} as const;
+
 export const businessProcessReceiptSchema = {
   $id: SCHEMA_VERSIONS.businessProcessReceipt,
   type: "object",
@@ -8414,6 +8426,7 @@ export const contractSchemas = {
   businessProcessCommand: businessProcessCommandSchema,
   businessProcessReceipt: businessProcessReceiptSchema,
   businessProcessPoll: businessProcessPollSchema,
+  businessProcessCommandList: businessProcessCommandListSchema,
   processCommandSurface: processCommandSurfaceSchema,
   businessProcessAnswer: businessProcessAnswerSchema,
   businessProcessRetry: businessProcessRetrySchema,
