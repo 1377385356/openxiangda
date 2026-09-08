@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.8.0",
+  "version": "2.8.1",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -67,13 +67,13 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.2.11",
-    "openxiangda-contracts": "2.6.0",
-    "openxiangda-devkit-core": "2.5.0",
+    "openxiangda-cli": "2.2.12",
+    "openxiangda-contracts": "2.6.1",
+    "openxiangda-devkit-core": "2.5.1",
     "openxiangda-legacy": "npm:openxiangda@1.0.268",
-    "openxiangda-mcp": "2.0.9",
-    "openxiangda-nest": "2.1.1",
-    "openxiangda-skill-kit": "2.0.13",
+    "openxiangda-mcp": "2.0.10",
+    "openxiangda-nest": "2.1.2",
+    "openxiangda-skill-kit": "2.0.14",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -139,34 +139,32 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.8.0",
+    "version": "2.8.1",
     "status": "reviewed",
-    "title": "OpenXiangda 2.8.0：审计信息读取权限",
-    "summary": "模型声明审计信息读取权限，统一保护记录元数据、查询和变更历史。",
-    "newFeatures": [
-      "模型及直接资源可声明 audit.read，使用现有能力和角色成员权限控制四个审计元数据字段与历史读取。",
-      "标准详情页随受权记录元数据显示变更历史入口，PC 和移动端保持一致。"
-    ],
+    "title": "OpenXiangda 2.8.1：修复审计权限能力引用",
+    "summary": "审计读取策略正确复用已有能力，保留原能力定义，并拒绝缺失引用。",
+    "newFeatures": [],
     "fixes": [
-      "修复业务字段已经受限时，创建人和更新人仍可能通过系统元数据泄露的问题。"
+      "修复 audit.read 引用已有管理能力时错误报告 catalog owner 冲突的问题。",
+      "本地与平台编译器一致地保留能力原定义；审计策略不再自动补建未声明能力，跨资源引用不依赖资源排序。"
     ],
     "affectedUsers": [
-      "需要对忙碌、匿名化或受限业务投影隐藏操作人身份的应用开发者。"
+      "使用 audit.read 能力数组控制审计信息的应用开发者。"
     ],
     "upgradeSteps": [
-      "先部署支持 data.audit-read-access 的平台组合，再升级应用到 openxiangda 2.8.0。",
-      "在需要限制的模型声明 audit: { read: false }，或声明授予管理角色的能力数组，并执行真实角色验收。"
+      "平台采用 openxiangda-contracts 2.6.1 后，应用升级到 openxiangda 2.8.1 并重新生成和检查。",
+      "audit.read 引用现有应用能力；独立审计能力须先在 authz.capabilities 声明并按需授予角色。"
     ],
     "knownLimitations": [
-      "省略 audit 保留原有读取行为；应用可信后端和现有超级管理员权限保持原有语义。",
-      "受限应用启用后不可回退到忽略审计策略的后端；须保留兼容平台组合或先撤销该应用用户访问。"
+      "省略 audit 保留原有读取行为，能力数组保持 all-of 与同一角色成员字段和行授权规则。",
+      "受限应用启用后仍须保留支持 data.audit-read-access 的兼容平台组合。"
     ],
     "compatibility": {
       "node": ">=24",
-      "platform": "声明审计读取规则需要 data.audit-read-access 1.0.0"
+      "platform": "openxiangda-contracts 2.6.1 与 data.audit-read-access 1.0.0"
     },
     "issues": [],
-    "sha256": "be1a9505a8b3b3a1148e1f6ce4a1a34a271e7e790f1134b8b546d7146e0eb96d",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.8.0"
+    "sha256": "354f1883a5cbd7d5bcf32d94fbabbb4ec362df5abecec99ed78e2d687dff94b7",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.8.1"
   }
 }

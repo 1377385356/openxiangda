@@ -1,6 +1,6 @@
 {
   "name": "openxiangda-devkit-core",
-  "version": "2.5.0",
+  "version": "2.5.1",
   "description": "OpenXiangda 2.0 的编译、开发、检查、部署与中文资料服务。",
   "type": "module",
   "main": "./dist/index.js",
@@ -38,7 +38,7 @@
   "dependencies": {
     "ajv": "8.20.0",
     "cron-parser": "5.4.0",
-    "openxiangda-contracts": "2.6.0",
+    "openxiangda-contracts": "2.6.1",
     "esbuild": "0.28.2",
     "typescript": "5.9.3",
     "undici": "6.28.0"

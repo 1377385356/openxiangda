@@ -3,6 +3,36 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.8.1",
+      "status": "reviewed",
+      "title": "OpenXiangda 2.8.1：修复审计权限能力引用",
+      "summary": "审计读取策略正确复用已有能力，保留原能力定义，并拒绝缺失引用。",
+      "newFeatures": [],
+      "fixes": [
+        "修复 audit.read 引用已有管理能力时错误报告 catalog owner 冲突的问题。",
+        "本地与平台编译器一致地保留能力原定义；审计策略不再自动补建未声明能力，跨资源引用不依赖资源排序。"
+      ],
+      "affectedUsers": [
+        "使用 audit.read 能力数组控制审计信息的应用开发者。"
+      ],
+      "upgradeSteps": [
+        "平台采用 openxiangda-contracts 2.6.1 后，应用升级到 openxiangda 2.8.1 并重新生成和检查。",
+        "audit.read 引用现有应用能力；独立审计能力须先在 authz.capabilities 声明并按需授予角色。"
+      ],
+      "knownLimitations": [
+        "省略 audit 保留原有读取行为，能力数组保持 all-of 与同一角色成员字段和行授权规则。",
+        "受限应用启用后仍须保留支持 data.audit-read-access 的兼容平台组合。"
+      ],
+      "compatibility": {
+        "node": ">=24",
+        "platform": "openxiangda-contracts 2.6.1 与 data.audit-read-access 1.0.0"
+      },
+      "issues": [],
+      "sha256": "354f1883a5cbd7d5bcf32d94fbabbb4ec362df5abecec99ed78e2d687dff94b7",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.8.1"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.8.0",
       "status": "reviewed",
       "title": "OpenXiangda 2.8.0：审计信息读取权限",
