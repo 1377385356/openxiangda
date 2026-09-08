@@ -41,6 +41,28 @@ DataQuery 使用有界 where 条件树，支持 and/or/not。标准列表的筛�
 
 ## 标准后台扩展
 
+### 未保存内容的离开保护
+
+自定义表单可在 `OpenXiangdaApplication` 内调用
+`useUnsavedChangesGuard({ when, message? })`。`when` 包含未保存表单、正在提交或
+结果尚不确定的状态；成功后清除，组件卸载时自动注销。多个表单由应用入口统一汇总，
+不需要应用创建路由或拦截 document 点击。
+
+```tsx
+useUnsavedChangesGuard({
+  when: !result && (hasDraft || pending || hasUnresolvedIntent),
+  message: '会议尚未提交完成，离开将丢失当前填写内容。',
+});
+```
+
+站内使用 React Router 的 `Link` 或 `navigate`，前进/后退与程序跳转使用同一确认框。
+确认框打开时保留第一次目标，取消后继续原地编辑。刷新、关闭和文档跳转使用浏览器
+原生提示，其文案和是否展示受浏览器限制。保存成功可在状态清除后的 effect 中跳转。
+该 hook 只保护导航，不持久化草稿或恢复提交回执；业务数据仍由各自既有能力负责。
+不要直接调用 `history.pushState` 或修改路由内部状态。
+
+### 应用时区
+
 如业务采用固定时区，在现有 `OpenXiangdaApplication` 传可选 `timeZone`，例如
 `Asia/Shanghai`。标准表单、审批摘要和各中心时间随同一 UI Provider 展示，应用无需
 修改设备时区或保存第二份时间。具体控件参数见[字段组件](field-components.md)。

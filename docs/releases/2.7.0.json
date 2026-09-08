@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.7.0",
+  "title": "应用统一保护未保存内容",
+  "status": "reviewed",
+  "summary": "自定义表单可注册未保存状态，应用统一处理站内跳转、浏览器历史和刷新关闭提示。",
+  "newFeatures": ["增加 useUnsavedChangesGuard，聚合多个表单的未保存状态，取消导航保留输入和原位置，提交成功后解除保护。"],
+  "fixes": ["补齐原 BrowserRouter 无法使用标准 useBlocker 导致自定义表单浏览器前进后退未受保护的问题。"],
+  "affectedUsers": ["有自定义录入页面、异步提交或未知结果恢复的 V2 应用开发者。"],
+  "compatibility": {
+    "node": ">=24",
+    "workspaceGenerations": ["v1", "v2"],
+    "v1Policy": "V1 引擎和已有应用不变。",
+    "platformPolicy": "公共 React 路由生命周期调整，无服务端契约或数据库变更；应用仍使用既有 Routes、Link 和 navigate。"
+  },
+  "upgradeSteps": ["精确升级到 openxiangda 2.7.0 并刷新技能资料。", "在应用入口内使用 useUnsavedChangesGuard，涵盖未保存内容和结果未知状态，验证成功后解除以及取消后的输入保留。"],
+  "knownLimitations": ["原生刷新/关闭提示受浏览器限制，不能自定义提示文字。", "该能力不持久化草稿或代替原提交回执恢复；应用不得直接操作 history.pushState。", "包发布、应用部署与真实业务验收分别验证。"],
+  "issues": []
+}

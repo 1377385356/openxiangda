@@ -162,7 +162,7 @@ test('owns one router/runtime/shell composition for generated admin and user rou
     new URL('../src/browser/application.tsx', import.meta.url),
     'utf8',
   );
-  assert.equal((source.match(/<BrowserRouter\b/g) || []).length, 1);
+  assert.equal((source.match(/<ApplicationRouter\b/g) || []).length, 1);
   assert.equal((source.match(/<RuntimeBoundary\b/g) || []).length, 1);
   assert.equal((source.match(/<Refine\b/g) || []).length, 1);
   assert.match(source, /contribution\.route\.surface === 'admin'/);
@@ -175,7 +175,7 @@ test('owns one router/runtime/shell composition for generated admin and user rou
   assert.match(source, /routeManifestIndex\.manifest\.routes\.flatMap/);
   assert.match(source, /path=\{entry\.mobile\.path\}/);
   assert.match(source, /<StandardRouteDeviceNegotiator index=\{routeManifestIndex\} \/>/);
-  assert.match(source, /<BrowserRouter basename=\{applicationBasename\(\)\}>/);
+  assert.match(source, /<ApplicationRouter basename=\{applicationBasename\(\)\}>/);
   assert.match(source, /navigate\(targetUrl, \{ replace: true, state: location\.state \}\)/);
   assert.match(source, /redirectKey\.current && redirectKey\.current !== key/);
   assert.match(source, /function StandardRouteDeviceNegotiator[\s\S]*?useEffect\(\(\) => \{/);

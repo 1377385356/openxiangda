@@ -12,7 +12,6 @@ import {
   type ReactNode,
 } from 'react';
 import {
-  BrowserRouter,
   Navigate,
   Route,
   Routes,
@@ -21,6 +20,7 @@ import {
   useParams,
 } from 'react-router-dom';
 import { OpenXiangdaUiProvider } from './ui-provider';
+import { ApplicationRouter } from './navigation-guard';
 import { createApplicationProvider } from './data-provider';
 import { RuntimeBoundary, useRuntime } from './runtime';
 import {
@@ -830,7 +830,7 @@ export function OpenXiangdaApplication({
       <OpenXiangdaResourceDefinitionsProvider definitions={resourceDefinitions}>
         <OpenXiangdaWorkflowDefinitionsProvider definitions={workflows}>
           <OpenXiangdaUiProvider timeZone={timeZone}>
-            <BrowserRouter basename={applicationBasename()}>
+            <ApplicationRouter basename={applicationBasename()}>
               <GlobalRequestLoading />
               <StandardRouteDeviceNegotiator index={routeManifestIndex} />
               <RuntimeBoundary
@@ -931,7 +931,7 @@ export function OpenXiangdaApplication({
                   </Routes>
                 </Refine>
               </RuntimeBoundary>
-            </BrowserRouter>
+            </ApplicationRouter>
           </OpenXiangdaUiProvider>
         </OpenXiangdaWorkflowDefinitionsProvider>
       </OpenXiangdaResourceDefinitionsProvider>

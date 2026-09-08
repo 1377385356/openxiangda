@@ -14,6 +14,7 @@ export default mergeConfig(applicationConfig, {
       'workflow-entry.e2e.html',
       'login-return.e2e.html',
       'zoned-time.e2e.html',
+      'guard-navigation.e2e.html',
     ],
   },
 });
