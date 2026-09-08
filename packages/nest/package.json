@@ -1,6 +1,6 @@
 {
   "name": "openxiangda-nest",
-  "version": "2.0.6",
+  "version": "2.0.7",
   "description": "OpenXiangda 2.0 的受信 NestJS 业务后端集成。",
   "type": "module",
   "main": "./dist/index.js",
