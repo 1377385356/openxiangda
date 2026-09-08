@@ -1,4 +1,4 @@
-import { projectDataResourceView } from 'openxiangda-contracts';
+import { DATA_AUDIT_METADATA_FIELDS, isDataAuditMetadataField, projectDataResourceView } from 'openxiangda-contracts';
 import { nativeFieldRequiresCreateInputV2 } from 'openxiangda-contracts/native-compiler';
 import { createHash } from 'node:crypto';
 import {
@@ -1840,8 +1840,10 @@ function normalizeDataResource(resource: DataResource): DataResource {
       ? { dataPolicyCode: resource.dataPolicyCode }
       : {}),
     fieldPolicies: Object.fromEntries(
-      resource.schema.fields
-        .map(field => [field.code, resource.fieldPolicies?.[field.code]] as const)
+      [...resource.schema.fields.map(field => field.code),
+        ...DATA_AUDIT_METADATA_FIELDS.filter(code =>
+          Object.prototype.hasOwnProperty.call(resource.fieldPolicies || {}, code))]
+        .map(code => [code, resource.fieldPolicies?.[code]] as const)
         .sort(([left], [right]) => compare(left, right))
         .map(([fieldCode, policy]) => [
           fieldCode,
@@ -1854,7 +1856,7 @@ function normalizeDataResource(resource: DataResource): DataResource {
               : {}),
             ...(policy && Object.prototype.hasOwnProperty.call(policy, 'update')
               ? { update: uniqueSorted(policy.update || []) }
-              : { update: [] }),
+              : isDataAuditMetadataField(fieldCode) ? {} : { update: [] }),
             ...(policy?.mask ? { mask: policy.mask } : {}),
           },
         ])

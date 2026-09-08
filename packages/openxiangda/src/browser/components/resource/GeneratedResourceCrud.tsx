@@ -1,5 +1,5 @@
 import { PresentationTime, usePresentationTimeZone } from '../../presentation-time';
-import { projectDataResourceView } from 'openxiangda-contracts/browser';
+import { DATA_AUDIT_METADATA_FIELDS, projectDataResourceView } from 'openxiangda-contracts/browser';
 import {
   CloseOutlined,
   ExpandOutlined,
@@ -970,6 +970,8 @@ function NativeResourceDetailPage({ definition, paths, variant, recordId, onDism
     isAdminContributionAllowed(item, hasCapability)
   );
   const [auditExpanded, setAuditExpanded] = useState(false);
+  const auditVisible = Boolean(record && DATA_AUDIT_METADATA_FIELDS.every(code =>
+    Object.prototype.hasOwnProperty.call(record, code)));
   const readable = (field: SurfaceField) => fieldReadable(field, hasReadCapability, identity.isAppSuperAdmin);
   const fields = selectedSurfaceFields(definition.surface, 'detail').filter(readable);
   const titleField = selectedSurfaceFields(definition.surface, 'list').find(field =>
@@ -997,9 +999,9 @@ function NativeResourceDetailPage({ definition, paths, variant, recordId, onDism
         <RecordDetailSections groups={fieldsBySection(definition.surface, 'detail').map(group => ({ ...group, fields: group.fields.filter(readable) }))}
           renderValue={field => field.type === 'subtable' ? <SubtableValueDisplay field={field} mobile={variant === 'mobile'} parentRecordId={record.id} />
             : <SurfaceFieldValue field={field} mobile={variant === 'mobile'} resourceCode={definition.code} value={record[field.key]} />} />
-        <Collapse className="oxa-audit-collapse" activeKey={auditExpanded ? ['audit'] : []} expandIconPlacement="end"
+        {auditVisible && <Collapse className="oxa-audit-collapse" activeKey={auditExpanded ? ['audit'] : []} expandIconPlacement="end"
           onChange={keys => setAuditExpanded((Array.isArray(keys) ? keys : [keys]).includes('audit'))}
-          items={[{ key: 'audit', label: '变更记录', children: auditExpanded ? <RecordChangeHistory resourceCode={definition.code} recordId={record.id} surface={definition.surface} readable={readable} /> : null }]} />
+          items={[{ key: 'audit', label: '变更记录', children: auditExpanded ? <RecordChangeHistory resourceCode={definition.code} recordId={record.id} surface={definition.surface} readable={readable} /> : null }]} />}
         {detailContributions.map(contribution => <Fragment key={contribution.code}>{contribution.render({ record, resource: definition.code, refresh: () => query.query.refetch() })}</Fragment>)}
       </>}
   </RecordDetailFrame>;

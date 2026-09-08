@@ -1,3 +1,4 @@
+import { DATA_AUDIT_METADATA_FIELDS } from './native-compiler/data-audit-access.js';
 import {
   CONFIGURATION_COMPATIBILITY_CAPABILITY,
   OPENXIANGDA_COMPILER_CONTRACT_VERSION,
@@ -2633,6 +2634,10 @@ export const dataResourceSchema = {
     },
     fieldPolicies: {
       type: "object",
+      properties: Object.fromEntries(DATA_AUDIT_METADATA_FIELDS.map(code => [code, {
+        type: 'object', additionalProperties: false, required: ['read'],
+        properties: { read: { type: 'array', uniqueItems: true, maxItems: 20, items: nonEmptyString } },
+      }])),
       additionalProperties: {
         type: "object",
         additionalProperties: false,

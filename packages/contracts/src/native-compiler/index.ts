@@ -1,4 +1,5 @@
 export * from './data-surface.js';
+export * from './data-audit-access.js';
 export * from './field-query-plan.js';
 export * from './data-field.js';
 export * from './field-physical-plan.js';

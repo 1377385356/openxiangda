@@ -2,6 +2,7 @@ import { materializeApplicationModules, type AppModuleDeclaration } from './appl
 import { nativeFieldRequiresCreateInputV2 } from 'openxiangda-contracts/native-compiler';
 import {
   SCHEMA_VERSIONS,
+  DATA_AUDIT_METADATA_FIELDS,
   DATA_FIELD_TYPES,
   PLATFORM_EVENT_TYPES_V2,
   nativePlatformCapabilityCatalog,
@@ -224,6 +225,8 @@ export interface AppDataResourceDeclaration {
     delete?: boolean;
   };
   fields: AppDataFieldDeclaration[];
+  /** Read access to provenance metadata and record history; omission preserves defaults. */
+  audit?: { read: string[] | false };
   invariants?: DataResource['invariants'];
   list?: {
     fields?: string[];
@@ -6042,7 +6045,8 @@ export function materializeDataResource(
     ...(declaration.detailRouteCode
       ? { detailRouteCode: { ...declaration.detailRouteCode } }
       : {}),
-    fieldPolicies: Object.fromEntries(
+    fieldPolicies: {
+      ...Object.fromEntries(
       declaration.fields.map(field => [
         field.code,
         {
@@ -6052,7 +6056,13 @@ export function materializeDataResource(
           ...(field.access?.mask ? { mask: field.access.mask } : {}),
         },
       ])
-    ),
+      ),
+      ...(declaration.audit === undefined ? {} : Object.fromEntries(
+        DATA_AUDIT_METADATA_FIELDS.map(code => [code, {
+          read: declaration.audit!.read === false ? [] : [...declaration.audit!.read],
+        }])
+      )),
+    },
   };
 }
 
@@ -6076,6 +6086,7 @@ export function validateAppDeclaration(value: unknown): Diagnostic[] {
     'mobile',
     'dataPolicyCode',
     'detailRouteCode',
+    'audit',
   ]);
   const fieldKeys = new Set([
     'code',
@@ -6121,6 +6132,19 @@ export function validateAppDeclaration(value: unknown): Diagnostic[] {
       }
     }
     const fields = Array.isArray(resource.fields) ? resource.fields : [];
+    let auditValid = true;
+    if (resource.audit !== undefined) {
+      const audit = object(resource.audit);
+      const read = audit.read;
+      if (!resource.audit || typeof resource.audit !== 'object' || Array.isArray(resource.audit) ||
+        Object.keys(audit).some(key => key !== 'read') ||
+        (read !== false && (!Array.isArray(read) || read.length < 1 || read.length > 20 ||
+          read.some(value => typeof value !== 'string' || !value.trim()) || new Set(read).size !== read.length))) {
+        auditValid = false;
+        diagnostics.push(diagnostic('APP_CONFIG_DATA_AUDIT_READ_INVALID',
+          'audit.read 必须为 false 或不重复的非空 capability 数组（最多 20 项）', `${resourcePath}.audit`));
+      }
+    }
     const mutationOwner = string(resource.mutationOwner) || 'native';
     const generated = object(resource.generated);
     if (!['native', 'action', 'readonly', 'workflow'].includes(mutationOwner)) {
@@ -6175,7 +6199,7 @@ export function validateAppDeclaration(value: unknown): Diagnostic[] {
       return;
     }
     const declaredCodes = new Set<string>();
-    let materializable = true;
+    let materializable = auditValid;
     fields.forEach((rawField, fieldIndex) => {
       const field = object(rawField);
       const fieldPath = `${resourcePath}.fields[${fieldIndex}]`;

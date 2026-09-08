@@ -102,6 +102,23 @@ async function editablePlatform(page: Page, fixtureMode = 'business') {
   return state;
 }
 
+for (const mobile of [false, true]) {
+  for (const auditAllowed of [false, true]) {
+    test(`detail history follows authorized metadata (${mobile ? 'mobile' : 'desktop'}, ${auditAllowed})`, async ({page}) => {
+      if (mobile) await page.setViewportSize({width:390,height:844});
+      const state = await editablePlatform(page);
+      for (const row of state.records) {
+        if (auditAllowed) Object.assign(row, {created_by:'authorized-actor',updated_by:'authorized-actor'});
+        else { delete (row as any).created_at; delete (row as any).updated_at; }
+      }
+      await page.goto(`${mobile ? '/m' : ''}/admin/resources/resource-01/record-1`);
+      await expect(page.locator('.oxa-record-detail-sections')).toBeVisible();
+      await expect(page.locator('.oxa-audit-collapse')).toHaveCount(auditAllowed ? 1 : 0);
+      if (!auditAllowed) await expect(page.locator('.oxa-record-detail')).not.toContainText('authorized-actor');
+    });
+  }
+}
+
 test('named views share records while keeping columns, drawer routes and drafts separate', async ({ page }, testInfo) => {
   const state = await editablePlatform(page, 'named');
   const base = '/admin/resources/resource-01/views';

@@ -1,4 +1,5 @@
 export * from './canonical.js';
+export * from './native-compiler/data-audit-access.js';
 export * from './ai.js';
 export * from './field-values.js';
 export * from './event-catalog.js';

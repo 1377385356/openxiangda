@@ -12,3 +12,4 @@ export * from './workflow-summary.js';
 export * from './workflow-detail.js';
 export * from './validation.js';
 export * from './workflow-correction.js';
+export * from './native-compiler/data-audit-access.js';

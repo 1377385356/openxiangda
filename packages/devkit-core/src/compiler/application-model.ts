@@ -14,6 +14,7 @@ export interface AppDataModelDeclaration {
   code: string;
   name: string;
   fields: readonly AppModelFieldDeclaration[];
+  audit?: AppDataResourceDeclaration['audit'];
   mutationOwner?: AppDataResourceDeclaration['mutationOwner'];
   invariants?: AppDataResourceDeclaration['invariants'];
   dataPolicyCode?: string | null;
@@ -171,6 +172,7 @@ export function materializeApplicationModules(modules: readonly AppModuleDeclara
         ...(model.mutationOwner ? { mutationOwner: model.mutationOwner } : {}),
         ...(model.invariants ? { invariants: model.invariants } : {}),
         ...(model.dataPolicyCode ? { dataPolicyCode: model.dataPolicyCode } : {}),
+        ...(model.audit !== undefined ? { audit: model.audit } : {}),
         generated: {
           list: Boolean(view), detail: Boolean(view),
           create: Boolean(view) && native, update: Boolean(view) && native,

@@ -1,4 +1,5 @@
 import { projectNativeDataResourceViewV2 } from './data-surface.js';
+import { hasDataAuditReadPolicy, isDataAuditMetadataField } from './data-audit-access.js';
 import { validateWorkflowInstanceCommandPolicies } from './workflow-instance-policy.js';
 import * as crypto from 'crypto';
 import {
@@ -488,6 +489,9 @@ export function compileRequiredPlatformCapabilitiesV3(
             declaration: dataUsage,
           },
         ]
+      : []),
+    ...(resources.some(hasDataAuditReadPolicy)
+      ? [{ code: 'data.audit-read-access' as const, declaration: dataUsage }]
       : []),
     ...(requiresDirectoryV2
       ? [
@@ -5977,7 +5981,7 @@ function validateResource(raw: any, pointer: string, appCode: string) {
     `${pointer}/fieldPolicies`
   );
   for (const [fieldCode, rawPolicy] of Object.entries(fieldPolicies)) {
-    if (!fieldCodes.has(fieldCode)) {
+    if (!fieldCodes.has(fieldCode) && !isDataAuditMetadataField(fieldCode)) {
       fail(
         'NATIVE_DATA_FIELD_POLICY_FIELD_MISSING',
         `${pointer}/fieldPolicies/${fieldCode}`
@@ -5985,6 +5989,14 @@ function validateResource(raw: any, pointer: string, appCode: string) {
     }
     const policyPointer = `${pointer}/fieldPolicies/${fieldCode}`;
     const policy = object(rawPolicy, policyPointer);
+    if (isDataAuditMetadataField(fieldCode)) {
+      exactKeys(policy, ['read'], policyPointer, true);
+      if (!Array.isArray(policy.read) || policy.read.length > 20 ||
+        policy.read.some(value => typeof value !== 'string' || !value.trim()) ||
+        new Set(policy.read).size !== policy.read.length) {
+        fail('NATIVE_DATA_AUDIT_READ_POLICY_INVALID', `${policyPointer}/read`);
+      }
+    }
     exactKeys(
       policy,
       ['read', 'create', 'update', 'mask'],

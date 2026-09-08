@@ -1,4 +1,5 @@
 import { validateDataResourceViews } from './data-view-validation.js';
+import { isDataAuditMetadataField } from './native-compiler/data-audit-access.js';
 import {
   CURRENT_APPLICATION_CONTRACT,
   OPENXIANGDA_CONTRACT_VERSION,
@@ -705,7 +706,7 @@ export function validateDataResource(value: unknown): Diagnostic[] {
     ? value.fieldPolicies
     : {};
   for (const field of Object.keys(fieldPolicies)) {
-    if (!fieldCodes.has(field)) {
+    if (!fieldCodes.has(field) && !isDataAuditMetadataField(field)) {
       diagnostics.push(
         diagnostic(
           'DATA_RESOURCE_FIELD_POLICY_UNKNOWN_FIELD',
@@ -715,6 +716,14 @@ export function validateDataResource(value: unknown): Diagnostic[] {
       );
     }
     const policy = isRecord(fieldPolicies[field]) ? fieldPolicies[field] : {};
+    if (isDataAuditMetadataField(field) &&
+      (Object.keys(policy).some(key => key !== 'read') ||
+        !Array.isArray(policy.read) || policy.read.length > 20 ||
+        policy.read.some(value => typeof value !== 'string' || !value.trim()) ||
+        new Set(policy.read).size !== policy.read.length)) {
+      diagnostics.push(diagnostic('DATA_RESOURCE_AUDIT_READ_POLICY_INVALID',
+        '审计元数据只允许有界 read capability 数组，空数组禁止读取', `fieldPolicies.${field}`));
+    }
     for (const key of Object.keys(policy)) {
       if (!['read', 'create', 'update', 'mask'].includes(key)) {
         diagnostics.push(

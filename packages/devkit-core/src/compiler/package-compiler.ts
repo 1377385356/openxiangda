@@ -4,6 +4,7 @@ import {
   PLATFORM_CAPABILITY_CONTRACT_VERSIONS,
   SCHEMA_VERSIONS,
   assertAppPackage,
+  hasDataAuditReadPolicy,
   sha256Digest,
   type AppArtifact,
   type AppPackage,
@@ -128,6 +129,9 @@ export function requiredPlatformCapabilitiesFromConfiguration(
     },
   };
   const usages: Array<{ code: PlatformCapabilityCode; declaration: unknown }> = [
+    ...(config.data.resources.some(hasDataAuditReadPolicy)
+      ? [{ code: 'data.audit-read-access' as const, declaration: dataUsage }]
+      : []),
     ...(config.workflows.definitions.some(item => item.definition.instanceCommands !== undefined)
       ? [{
           code: 'workflow.instance-cancellation-policy' as const,
