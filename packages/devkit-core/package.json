@@ -1,6 +1,6 @@
 {
   "name": "openxiangda-devkit-core",
-  "version": "2.6.0",
+  "version": "2.6.1",
   "description": "OpenXiangda 2.0 的编译、开发、检查、部署与中文资料服务。",
   "type": "module",
   "main": "./dist/index.js",

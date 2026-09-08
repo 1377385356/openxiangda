@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.9.2",
+  "version": "2.9.3",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -67,13 +67,13 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.2.14",
+    "openxiangda-cli": "2.2.15",
     "openxiangda-contracts": "2.7.0",
-    "openxiangda-devkit-core": "2.6.0",
+    "openxiangda-devkit-core": "2.6.1",
     "openxiangda-legacy": "npm:openxiangda@1.0.268",
-    "openxiangda-mcp": "2.0.11",
+    "openxiangda-mcp": "2.0.12",
     "openxiangda-nest": "2.1.3",
-    "openxiangda-skill-kit": "2.0.15",
+    "openxiangda-skill-kit": "2.0.16",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -139,35 +139,33 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.9.2",
+    "version": "2.9.3",
     "status": "reviewed",
-    "title": "OpenXiangda 2.9.2：查询操作数修正与模板版本联动",
-    "summary": "修复标准客户端将成员包含查询的单值改成数组导致400的问题，并补齐根包和CLI模板的发布版本联动。",
+    "title": "OpenXiangda 2.9.3：明确记录用户授权的性能延期",
+    "summary": "修复功能验收完成但用户已延期性能时无法正式晋级的问题，保留原测量并明确区分性能通过与延期。",
     "newFeatures": [],
     "fixes": [
-      "has操作保持单个稳定标识；in、between、hasAny、hasAll保留数组全部值，不再复用快捷筛选推断操作数形状。",
-      "显式查询path保持原值路径；单项快照和级联控件选择仍转为稳定查询值。",
-      "列表、批量列表和导出使用相同修正，应用无需修改正确的DataWhere条件。",
-      "发布版本规划在写入版本前拒绝缺少CLI配套Changeset的根包升级，避免模板变更到不可变包检查阶段才被发现。"
+      "AppSpec验收报告支持有授权人、实际时间、来源、证据及后续安排的performanceDeferral。",
+      "延期时保留真实超标测量，返回deferred与overBudget统计，生产阶段明确显示性能未通过。",
+      "没有授权延期时仍要求性能测量达标；延期不豁免功能AC、证据、原测试版本和制品绑定。"
     ],
     "affectedUsers": [
-      "使用openxiangda/core显式where成员筛选、数组操作或子值路径查询的V2应用。"
+      "已由用户明确延期性能验收、需要按实际范围完成V2功能交付的应用开发者。"
     ],
     "upgradeSteps": [
-      "将应用的公开openxiangda依赖升级到2.9.2，重新检查并发布测试候选。",
-      "复测参与人归属、数组区间筛选及导出；生产晋级复用验收通过的原测试制品。"
+      "更新项目的openxiangda依赖至2.9.3并刷新项目技能；已有测试制品可以沿用，不因验收工具升级而重建。",
+      "依据实际用户决定填写延期记录，保留成功与失败测量；正式spec verify后提交推送报告，用原TEST运行晋级。"
     ],
     "knownLimitations": [
-      "快捷filters的既有界面语义不变；字段类型、行权限与查询边界仍由平台Data API验证。",
-      "本补丁不改变业务数据、权限或数据库结构；新增CRUD列表开关仍需平台采用contracts2.7.0。",
-      "2.9.1仅为被发布门禁拦截的未发布候选；其查询修正随2.9.2正式交付。"
+      "结构验证不证明授权或证据内容真实；不得制造用户确认、提高阈值或仅保留成功样本。",
+      "本次仅修复开发交付记录契约，不修复性能，也不修改平台后端、业务数据或运行时权限。"
     ],
     "compatibility": {
       "node": ">=24",
-      "platform": "openxiangda-contracts 2.7.0"
+      "platform": "沿用openxiangda-contracts 2.7.0，无新增平台能力要求"
     },
     "issues": [],
-    "sha256": "9989af7b2e2b9e5eaf81bf19b1307366a35b07522082b384918882f8db05d61c",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.9.2"
+    "sha256": "aea11cf79206afaae7d6a98eb72506bd71f13752ca6178e459d5395cde4b10a8",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.9.3"
   }
 }
