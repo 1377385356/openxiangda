@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.6.0",
+  "version": "2.7.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -67,13 +67,13 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.2.8",
+    "openxiangda-cli": "2.2.9",
     "openxiangda-contracts": "2.5.0",
     "openxiangda-devkit-core": "2.4.1",
     "openxiangda-legacy": "npm:openxiangda@1.0.268",
     "openxiangda-mcp": "2.0.7",
     "openxiangda-nest": "2.1.0",
-    "openxiangda-skill-kit": "2.0.10",
+    "openxiangda-skill-kit": "2.0.11",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -139,18 +139,18 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.6.0",
-    "title": "统一应用时区与日期时间输入",
+    "version": "2.7.0",
+    "title": "应用统一保护未保存内容",
     "status": "reviewed",
-    "summary": "应用可指定业务展示时区，标准字段、审批详情、待办、通知和审计时间统一显示，日期时间输入仍保存 UTC。",
+    "summary": "自定义表单可注册未保存状态，应用统一处理站内跳转、浏览器历史和刷新关闭提示。",
     "newFeatures": [
-      "OpenXiangdaApplication 和 OpenXiangdaUiProvider 接受可选 timeZone；日期时间字段可覆盖时区并声明 min、max 和 minuteStep。"
+      "增加 useUnsavedChangesGuard，聚合多个表单的未保存状态，取消导航保留输入和原位置，提交成功后解除保护。"
     ],
     "fixes": [
-      "修复设备时区不同导致日期时间编辑和公共详情、中心时间不一致的问题，拒绝夏令时不存在或重复的本地时间。"
+      "补齐原 BrowserRouter 无法使用标准 useBlocker 导致自定义表单浏览器前进后退未受保护的问题。"
     ],
     "affectedUsers": [
-      "需要固定业务时区或限制日期时间输入的 V2 应用开发者。"
+      "有自定义录入页面、异步提交或未知结果恢复的 V2 应用开发者。"
     ],
     "compatibility": {
       "node": ">=24",
@@ -159,19 +159,19 @@
         "v2"
       ],
       "v1Policy": "V1 引擎和已有应用不变。",
-      "platformPolicy": "展示与输入能力，无新增服务端契约或数据库迁移。未配置时区和限制的应用保留设备本地行为。"
+      "platformPolicy": "公共 React 路由生命周期调整，无服务端契约或数据库变更；应用仍使用既有 Routes、Link 和 navigate。"
     },
     "upgradeSteps": [
-      "将应用精确依赖升级至 openxiangda 2.6.0，更新锁文件并刷新技能资料。",
-      "在应用入口指定业务 timeZone，验证 PC 和移动端编辑、审批摘要与各中心显示。"
+      "精确升级到 openxiangda 2.7.0 并刷新技能资料。",
+      "在应用入口内使用 useUnsavedChangesGuard，涵盖未保存内容和结果未知状态，验证成功后解除以及取消后的输入保留。"
     ],
     "knownLimitations": [
-      "时区只影响呈现；服务端仍须独立验证业务时间窗口和授权。",
-      "手机指定时区的日期时间滚轮提供当前选择前后各 365 天并按限制收窄；夏令时重复时间需选择其他无歧义时间。",
-      "包发布、应用部署和实际业务验收分别验证。"
+      "原生刷新/关闭提示受浏览器限制，不能自定义提示文字。",
+      "该能力不持久化草稿或代替原提交回执恢复；应用不得直接操作 history.pushState。",
+      "包发布、应用部署与真实业务验收分别验证。"
     ],
     "issues": [],
-    "sha256": "ba11ac3a69cbd9dd27e339c1d84642af99e107ca1170f0876b8be0583abda79f",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.6.0"
+    "sha256": "e8af0fc7c484cad1dc59ce982432e6a2fd4451d7f455141edc2d6128a057542e",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.7.0"
   }
 }
