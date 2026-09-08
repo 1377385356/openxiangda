@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.4.1",
+  "version": "2.5.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -65,13 +65,13 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.2.6",
-    "openxiangda-contracts": "2.4.0",
-    "openxiangda-devkit-core": "2.4.0",
+    "openxiangda-cli": "2.2.7",
+    "openxiangda-contracts": "2.5.0",
+    "openxiangda-devkit-core": "2.4.1",
     "openxiangda-legacy": "npm:openxiangda@1.0.268",
-    "openxiangda-mcp": "2.0.6",
-    "openxiangda-nest": "2.0.7",
-    "openxiangda-skill-kit": "2.0.8",
+    "openxiangda-mcp": "2.0.7",
+    "openxiangda-nest": "2.1.0",
+    "openxiangda-skill-kit": "2.0.9",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -137,17 +137,18 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.4.1",
-    "title": "事件处理器依赖作用域修复",
+    "version": "2.5.0",
+    "title": "按业务记录恢复原流程命令",
     "status": "reviewed",
-    "summary": "事件处理器可正常注入请求级通知服务，签名与回执校验后再由所属 Nest 模块解析依赖。",
-    "newFeatures": [],
+    "summary": "浏览器和 Nest 可在重新进入详情时按业务记录查找原流程命令，继续原回执和进度查询。",
+    "newFeatures": [
+      "增加当前用户范围的流程命令分页查询，支持精确记录、流程和操作筛选，每页最多 50 条。"
+    ],
     "fixes": [
-      "修复请求级依赖使事件处理器构造函数未执行、handle 调用失败的问题。",
-      "同名 provider 严格按所属模块解析，并发投递与失败重试使用独立作用域；静态单例继续复用。"
+      "补齐业务记录已提交但流程事件尚未投影时，从列表重新进入详情无法定位原命令的恢复路径。"
     ],
     "affectedUsers": [
-      "使用 Nest 签名事件处理器及请求级通知服务或瞬态依赖的 V2 应用开发者。"
+      "使用 Business Process 原子提交业务数据与流程的 V2 应用开发者。"
     ],
     "compatibility": {
       "node": ">=24",
@@ -155,19 +156,20 @@
         "v1",
         "v2"
       ],
-      "v1Policy": "V1 引擎与已有应用契约不变。",
-      "platformPolicy": "沿用 2.4.0 的 Data API 1.1.0 要求；事件签名、回执、身份与部署协议不变。"
+      "v1Policy": "V1 引擎和已有应用不变。",
+      "platformPolicy": "使用 Business Process 的新编译包要求 durable-command 1.1.0 和匹配的共享校验器；旧客户端继续兼容。"
     },
     "upgradeSteps": [
-      "将应用精确依赖升级至 openxiangda 2.4.1，刷新工作区资料并重新检查。",
-      "重新发布应用后验证真实事件、通知送达、重复投递与失败恢复。"
+      "将应用精确依赖升级至 openxiangda 2.5.0，更新锁文件并刷新技能资料。",
+      "平台部署匹配版本后执行检查和测试发布，验证重新进入详情时恢复原命令而不重复提交。"
     ],
     "knownLimitations": [
-      "事件作用域的 REQUEST 不含用户授权，sendFromEvent 仅在已验证的事件执行期间可用。",
-      "SDK 测试通过不代表真实平台通知送达或应用业务验收已完成。"
+      "查询沿用原命令的发起人或既有超级管理员权限，记录读取权限不授予他人命令访问。",
+      "同一记录可能有多次流程，应用须根据业务约束选择原命令，不能任意选择第一条。",
+      "包发布、平台部署和实际业务验收分别验证。"
     ],
     "issues": [],
-    "sha256": "f81f626e3fb91069c4f5d94da48a80400ae3fca5e3b55ab0d77e0a7c82dc7681",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.4.1"
+    "sha256": "35a3bd6f8f97d3261243e1c65e2876a946448c5af455f43ababf18bd8f6f3653",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.5.0"
   }
 }
