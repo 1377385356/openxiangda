@@ -131,7 +131,7 @@ export function verifyBusinessAcceptance(root: string, run: DeploymentRun, expec
     if (!existsSync(path) || lstatSync(path).size > 1024 * 1024) throw new Error('验收报告缺失或超过 1 MiB');
     const report = JSON.parse(readFileSync(path, 'utf8'));
     if (report.schemaVersion !== 'openxiangda.business-verification/v1' || report.appCode !== run.appCode || report.sourceDeploymentId !== run.id || report.packageDigest !== run.packageDigest || !expected.changeId || report.changeId !== expected.changeId || run.status !== 'succeeded' || run.environment.kind !== 'preproduction') throw new Error('验收报告未绑定指定成功测试运行、包摘要与变更');
-    if (!Number.isFinite(Date.parse(report.recordedAt)) || !Array.isArray(report.scenarios) || !report.scenarios.length || report.scenarios.length > 500 || !Array.isArray(report.performance) || !report.performance.length || report.performance.length > 100) throw new Error('报告需要记录时间、具体场景与性能测量');
+    if (!Number.isFinite(Date.parse(report.recordedAt)) || !Array.isArray(report.scenarios) || !report.scenarios.length || report.scenarios.length > 500 || !Array.isArray(report.performance) || report.performance.length > 100) throw new Error('报告需要记录时间、具体场景与性能测量数组');
     const seen = new Set<string>();
     for (const scenario of report.scenarios) {
       if (!/^AC-[A-Z0-9-]+$/.test(scenario.id) || seen.has(scenario.id) || scenario.status !== 'passed' || !meaningful(String(scenario.observation || '')) || !String(scenario.actor || '').trim() || !Array.isArray(scenario.evidence) || !scenario.evidence.some((value: unknown) => typeof value === 'string' && value.trim().length >= 4)) throw new Error('验收场景必须有唯一 AC ID、已通过结果、实际角色、观察与证据引用；失败或未测场景不能晋级');
@@ -139,11 +139,28 @@ export function verifyBusinessAcceptance(root: string, run: DeploymentRun, expec
       if (!scenario.evidence.every(evidenceExists)) throw new Error('场景证据需要工作区内实际存在的文件或 HTTPS 引用');
     }
     if (expected.acceptanceIds.some(id => !seen.has(id))) throw new Error('测试版本计划中的验收场景尚未全部覆盖');
-    for (const measurement of report.performance) {
-      if (!meaningful(String(measurement.scenario || '')) || !meaningful(String(measurement.sample || '')) || typeof measurement.targetMs !== 'number' || !Number.isFinite(measurement.targetMs) || measurement.targetMs <= 0 || typeof measurement.observedMs !== 'number' || !Number.isFinite(measurement.observedMs) || measurement.observedMs < 0 || measurement.observedMs > measurement.targetMs || !Array.isArray(measurement.evidence) || !measurement.evidence.length) throw new Error('性能记录需要真实样本、目标毫秒数、实测毫秒数及证据；超出目标时先评估并修复');
-      if (!measurement.evidence.every(evidenceExists)) throw new Error('性能证据需要工作区内实际存在的文件或 HTTPS 引用');
+    const deferral = report.performanceDeferral;
+    if (deferral !== undefined) {
+      const text = (value: unknown) => typeof value === 'string' && value.trim().length > 0 && value.length <= 4000 && !/^(TBD|TODO|待确认|待补充|无。?)$/i.test(value.trim());
+      if (!deferral || deferral.status !== 'deferred'
+        || !text(deferral.reason) || !meaningful(deferral.reason)
+        || !text(deferral.followUp) || !meaningful(deferral.followUp)
+        || !text(deferral.authorizedBy) || !text(deferral.authorizationSource)
+        || typeof deferral.authorizedAt !== 'string' || !Number.isFinite(Date.parse(deferral.authorizedAt))
+        || Date.parse(deferral.authorizedAt) > Date.parse(report.recordedAt)
+        || !Array.isArray(deferral.evidence) || !deferral.evidence.length || deferral.evidence.length > 100
+        || !deferral.evidence.every(evidenceExists)) throw new Error('性能延期需要 deferred 状态、具体原因与后续安排、真实授权人/时间/来源及有效证据；不得将延期写成通过');
     }
-    return { ok: true, path: local, sourceDeploymentId: run.id, packageDigest: run.packageDigest, scenarios: report.scenarios.length, diagnostics };
+    if (!report.performance.length && !deferral) throw new Error('报告需要实际性能测量；用户明确延期时记录 performanceDeferral，不能用空数组冒充通过');
+    let overBudget = 0;
+    for (const measurement of report.performance) {
+      if (!measurement || !meaningful(String(measurement.scenario || '')) || !meaningful(String(measurement.sample || '')) || typeof measurement.targetMs !== 'number' || !Number.isFinite(measurement.targetMs) || measurement.targetMs <= 0 || typeof measurement.observedMs !== 'number' || !Number.isFinite(measurement.observedMs) || measurement.observedMs < 0 || !Array.isArray(measurement.evidence) || !measurement.evidence.length) throw new Error('性能记录需要真实样本、目标毫秒数、实测毫秒数及证据；延期也不能省略或伪造已有测量');
+      if (!measurement.evidence.every(evidenceExists)) throw new Error('性能证据需要工作区内实际存在的文件或 HTTPS 引用');
+      if (measurement.observedMs > measurement.targetMs) overBudget++;
+    }
+    if (overBudget && !deferral) throw new Error('性能测量超出目标；先评估并修复，或记录用户实际授权的 performanceDeferral，不得改写原失败');
+    const performance = { status: deferral ? 'deferred' as const : 'passed' as const, measurements: report.performance.length, overBudget, ...(deferral ? { deferral } : {}) };
+    return { ok: true, path: local, sourceDeploymentId: run.id, packageDigest: run.packageDigest, scenarios: report.scenarios.length, performance, diagnostics };
   } catch (error) {
     diagnostics.push(issue('APPSPEC_BUSINESS_ACCEPTANCE_REQUIRED', `生产晋级前需要该测试版本的实际验收报告：${(error as Error).message}`, local));
     return { ok: false, path: local, sourceDeploymentId: run.id, packageDigest: run.packageDigest, scenarios: 0, diagnostics };

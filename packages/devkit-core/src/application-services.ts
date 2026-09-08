@@ -2103,7 +2103,15 @@ export class OpenXiangdaApplicationServices {
       }
       // 原测试提交中的设计基线也必须有效，当前主线的补写不能补签旧版本。
       diagnostics.push(...testedLifecycle.design.diagnostics);
-      const acceptance = await operationStage('business-acceptance', '核对原测试版本的业务验收报告', async () => verifyBusinessAcceptance(workspace.root, source, testedLifecycle));
+      const acceptance = await operationStage('business-acceptance', '核对原测试版本的业务验收报告', async () => {
+        const result = verifyBusinessAcceptance(workspace.root, source, testedLifecycle);
+        if (result.ok) updateOperationStage('business-acceptance', result.performance?.status === 'deferred'
+          ? '功能验收已核对；性能按用户授权延期（未通过）' : '原测试版本业务与性能验收已核对', {
+          sourceDeploymentId: result.sourceDeploymentId, packageDigest: result.packageDigest,
+          scenarios: result.scenarios, performance: result.performance,
+        });
+        return result;
+      });
       diagnostics.push(...acceptance.diagnostics);
     } catch (error) {
       return [this.configurationCompatibilityDiagnostic(error)];

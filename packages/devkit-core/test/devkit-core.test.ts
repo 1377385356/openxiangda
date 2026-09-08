@@ -19,6 +19,7 @@ import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createServer } from "node:net";
 import test from "node:test";
+import { withOperationProgress } from '../src/operation-progress.js';
 import { Ajv2020 } from "ajv/dist/2020.js";
 import {
   CURRENT_APPLICATION_CONTRACT,
@@ -2618,9 +2619,27 @@ test("promotes to production only after verifying the exact preproduction versio
     later.app.name = 'Later mainline requirements';
     writeFileSync(join(root, 'openxiangda.config.ts'), `export default ${JSON.stringify(later)};\n`);
     gitCommand(root, 'add', '.'); gitCommand(root, 'commit', '-m', 'later requirements'); gitCommand(root, 'push', 'origin', 'master');
-    const historical = await services.deployProduction(root, source.id);
+    const acceptancePath = join(root, `appspec/verification/${source.id}.json`);
+    const originalAcceptance = JSON.parse(readFileSync(acceptancePath, 'utf8'));
+    writeFileSync(acceptancePath, JSON.stringify({
+      ...originalAcceptance,
+      performance: [...originalAcceptance.performance, { ...originalAcceptance.performance[0], targetMs: 3000, observedMs: 5765 }],
+      performanceDeferral: {
+        status: 'deferred', reason: '协议夹具明确将性能验收移交独立任务，保留原失败。',
+        followUp: '后续由协议夹具中的维护者执行性能修复和验收。',
+        authorizedBy: '协议测试用户（非真实授权）', authorizedAt: '2026-09-06T07:00:00Z',
+        authorizationSource: 'SRC-TEST-001', evidence: ['appspec/verification/protocol-fixture.txt'],
+      },
+    }));
+    gitCommand(root, 'add', '.'); gitCommand(root, 'commit', '-m', 'record explicit performance deferral'); gitCommand(root, 'push', 'origin', 'master');
+    const historical = await withOperationProgress('deploy', undefined, () => services.deployProduction(root, source.id));
     assert.equal(historical.ok, true, JSON.stringify(historical.diagnostics));
     assert.equal((promoted[1] as any).appVersionId, 'version-1');
+    const acceptanceStage = (historical.data as any).execution.stages.find((stage: any) => stage.stage === 'business-acceptance');
+    assert.equal(acceptanceStage.details.performance.status, 'deferred');
+    assert.equal(acceptanceStage.details.performance.overBudget, 1);
+    assert.equal(acceptanceStage.details.packageDigest, source.packageDigest);
+    assert.match(acceptanceStage.label, /延期（未通过）/);
 
     writeFileSync(join(root, "uncommitted.txt"), "dirty");
     const dirty = await services.deployProduction(root, source.id);

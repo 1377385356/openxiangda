@@ -101,6 +101,26 @@ pnpm openxiangda spec check
 
 本地证据路径必须位于工作区内且文件存在；长期报告也可引用 HTTPS 证据。工具核对引用格式、版本绑定、场景覆盖与数值，不替代对截图、业务含义或外部证据真实性的评估。授权角色成功和禁止角色拒绝分别验证；支持范围之外的渠道在需求范围与未覆盖清单中明确说明。
 
+用户明确将性能验收延期时，在同一报告增加 `performanceDeferral`：
+
+```json
+{
+  "performanceDeferral": {
+    "status": "deferred",
+    "reason": "用户实际决定延期的原因与本期范围",
+    "followUp": "后续负责方、处理安排及保留的未完成事项",
+    "authorizedBy": "实际授权人；若由代理转达，注明真实来源及转达关系",
+    "authorizedAt": "实际授权时间ISO8601，不能晚于报告记录时间",
+    "authorizationSource": "实际用户消息或需求来源的稳定引用",
+    "evidence": ["appspec/product/actual-user-decisions.md"]
+  }
+}
+```
+
+以上仍是格式示例，不代表发生了授权。`performance` 保留已取得的真实测量，包括超标样本；确实未测时可为 `[]`。不得仅挑选成功样本、提高目标或删除原失败来美化结果。延期原因、后续安排、授权人、时间、来源和证据必须完整；工具不从超时或 AI 判断推断授权。由代理转达用户决定时，证据应定位实际用户答复，授权时间取该决定的记录时间，报告生成时间另写 `recordedAt`。
+
+`spec verify` / MCP 返回 `performance.status: "deferred"`、测量条数和 `overBudget` 数量；生产阶段同时显示“性能按用户授权延期（未通过）”。这表示该版本的功能验收满足本次交付范围，性能仍未通过。没有延期记录时，缺少测量或超标仍阻断；延期不能豁免任何失败、未测或缺失的 AC，也不能改变原 TEST 版本、包摘要、设计基线和生产授权。结构检查不能证明授权、证据内容或实际体验真实。
+
 ```bash
 pnpm openxiangda spec verify --deployment <测试运行ID>
 # 报告也可显式指定；生产晋级按运行 ID 读取默认路径

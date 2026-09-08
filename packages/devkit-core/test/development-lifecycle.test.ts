@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -70,6 +70,61 @@ test('历史独立分页，超过旧文件预算不挤占当前资料；稳定 I
     const selected = inspectAppSpec(directory, contract, 'history-99');
     assert.match(selected.archivedChanges[0]?.content || '', /历史正文 99/);
     assert.ok(selected.contextBudget.contentBytes <= selected.contextBudget.maximumBytes);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('性能延期是有授权证据的未通过状态，保留失败测量且不豁免任何功能或版本门禁', () => {
+  const directory = root();
+  try {
+    writeDevelopmentFixture(directory, contract.appCode);
+    const plan = developmentLifecycle(directory, contract);
+    const run = { id: 'test-deferral-1', appCode: contract.appCode, packageDigest: 'a'.repeat(64), status: 'succeeded', environment: { kind: 'preproduction' } } as any;
+    const report = writeVerificationFixture(directory, run);
+    const path = join(directory, `appspec/verification/${run.id}.json`);
+    const deferral = {
+      status: 'deferred', reason: '协议夹具模拟用户明确将性能交由独立任务处理。',
+      followUp: '协议夹具保留原失败记录，后续由指定维护者复核性能。',
+      authorizedBy: '协议测试用户（非真实授权）', authorizedAt: '2026-09-06T07:00:00Z',
+      authorizationSource: 'SRC-TEST-001', evidence: ['appspec/verification/protocol-fixture.txt'],
+    };
+    const check = (value: unknown, actualRun = run, actualPlan = plan) => {
+      writeFileSync(path, JSON.stringify(value));
+      return verifyBusinessAcceptance(directory, actualRun, actualPlan);
+    };
+    assert.equal(check(report).performance?.status, 'passed');
+    assert.equal(check({ ...report, performance: [] }).ok, false);
+    const empty = check({ ...report, performance: [], performanceDeferral: deferral });
+    assert.equal(empty.ok, true);
+    assert.equal(empty.performance?.status, 'deferred');
+    assert.equal(empty.performance?.measurements, 0);
+    const mixed = { ...report, performanceDeferral: deferral, performance: [report.performance[0], { ...report.performance[0], observedMs: 5765, targetMs: 3000 }] };
+    const accepted = check(mixed);
+    assert.equal(accepted.ok, true);
+    assert.equal(accepted.performance?.status, 'deferred');
+    assert.equal(accepted.performance?.overBudget, 1);
+    assert.equal(accepted.performance?.measurements, 2);
+    assert.equal(check({ ...mixed, performanceDeferral: undefined }).ok, false);
+    assert.equal(check({ ...report, performanceDeferral: deferral }).performance?.status, 'deferred');
+    for (const field of Object.keys(deferral)) {
+      const incomplete: Record<string, unknown> = { ...deferral }; delete incomplete[field];
+      assert.equal(check({ ...report, performanceDeferral: incomplete }).ok, false, field);
+    }
+    for (const invalid of [null, {}, { ...deferral, status: 'passed' }, { ...deferral, authorizedAt: '2026-09-07T00:00:00Z' }, { ...deferral, authorizedAt: 'invalid' }, { ...deferral, authorizedBy: 'TODO' }, { ...deferral, authorizationSource: 'TBD' }, { ...deferral, reason: 'x'.repeat(4001) }, { ...deferral, evidence: ['missing.json'] }, { ...deferral, evidence: ['../outside.json'] }]) {
+      assert.equal(check({ ...report, performanceDeferral: invalid }).ok, false, JSON.stringify(invalid));
+    }
+    symlinkSync(join(directory, 'appspec/verification/protocol-fixture.txt'), join(directory, 'appspec/verification/link.txt'));
+    assert.equal(check({ ...mixed, performanceDeferral: { ...deferral, evidence: ['appspec/verification/link.txt'] } }).ok, false);
+    for (const invalid of [null, { ...report.performance[0], targetMs: 0 }, { ...report.performance[0], observedMs: -1 }, { ...report.performance[0], observedMs: null }, { ...report.performance[0], evidence: ['missing.json'] }]) {
+      assert.equal(check({ ...mixed, performance: [invalid] }).ok, false);
+    }
+    for (const status of ['failed', 'deferred', 'unknown']) {
+      assert.equal(check({ ...mixed, scenarios: [{ ...report.scenarios[0], status }] }).ok, false);
+    }
+    assert.equal(check({ ...mixed, scenarios: [] }).ok, false);
+    assert.equal(check(mixed, run, { ...plan, acceptanceIds: ['AC-APP-001', 'AC-APP-002'] }).ok, false);
+    assert.equal(check(mixed, { ...run, packageDigest: 'b'.repeat(64) }).ok, false);
+    assert.equal(check(mixed, { ...run, id: 'other-run' }).ok, false);
+    assert.equal(check(mixed, { ...run, environment: { kind: 'production' } }).ok, false);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
 
