@@ -20,6 +20,20 @@ test("rejects a physical CLI release without the coupled root release", () => {
   );
 });
 
+test("rejects a root release without versioning its CLI packaged template", () => {
+  assert.throws(
+    () => assertBootstrapReleaseCoupling(['---\n"openxiangda": patch\n---\n']),
+    /ROOT_TEMPLATE_CLI_CHANGESET_REQUIRED/
+  );
+  assert.doesNotThrow(() => assertBootstrapReleaseCoupling([
+    '---\n"openxiangda": patch\n---\n',
+    '---\n"openxiangda-cli": patch\n---\n',
+  ]));
+  assert.doesNotThrow(() => assertBootstrapReleaseCoupling([
+    '---\n"openxiangda-contracts": patch\n---\n',
+  ]));
+});
+
 test("requires the root-package version token in every source Skill", () => {
   const source = "pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ login";
   assert.equal(

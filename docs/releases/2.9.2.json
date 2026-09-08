@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.9.2",
+  "status": "reviewed",
+  "title": "OpenXiangda 2.9.2：查询操作数修正与模板版本联动",
+  "summary": "修复标准客户端将成员包含查询的单值改成数组导致400的问题，并补齐根包和CLI模板的发布版本联动。",
+  "newFeatures": [],
+  "fixes": [
+    "has操作保持单个稳定标识；in、between、hasAny、hasAll保留数组全部值，不再复用快捷筛选推断操作数形状。",
+    "显式查询path保持原值路径；单项快照和级联控件选择仍转为稳定查询值。",
+    "列表、批量列表和导出使用相同修正，应用无需修改正确的DataWhere条件。",
+    "发布版本规划在写入版本前拒绝缺少CLI配套Changeset的根包升级，避免模板变更到不可变包检查阶段才被发现。"
+  ],
+  "affectedUsers": [
+    "使用openxiangda/core显式where成员筛选、数组操作或子值路径查询的V2应用。"
+  ],
+  "upgradeSteps": [
+    "将应用的公开openxiangda依赖升级到2.9.2，重新检查并发布测试候选。",
+    "复测参与人归属、数组区间筛选及导出；生产晋级复用验收通过的原测试制品。"
+  ],
+  "knownLimitations": [
+    "快捷filters的既有界面语义不变；字段类型、行权限与查询边界仍由平台Data API验证。",
+    "本补丁不改变业务数据、权限或数据库结构；新增CRUD列表开关仍需平台采用contracts2.7.0。",
+    "2.9.1仅为被发布门禁拦截的未发布候选；其查询修正随2.9.2正式交付。"
+  ],
+  "compatibility": {
+    "node": ">=24",
+    "platform": "openxiangda-contracts 2.7.0"
+  },
+  "issues": []
+}

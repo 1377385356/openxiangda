@@ -11,6 +11,12 @@ export function assertBootstrapReleaseCoupling(changesetSources) {
         "version the application-facing openxiangda root in the same release unit"
     );
   }
+  if (changesRoot && !changesCli) {
+    throw new Error(
+      "ROOT_TEMPLATE_CLI_CHANGESET_REQUIRED: an openxiangda root release changes " +
+        "the CLI packaged template pins and must version openxiangda-cli in the same release unit"
+    );
+  }
 }
 
 export function assertBootstrapVersionToken(source) {
