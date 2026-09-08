@@ -9,11 +9,24 @@ export function loadReleaseNotes(root, version) {
   if (notes.schemaVersion !== 'openxiangda.release-notes/v1' || notes.version !== version || notes.status !== 'reviewed') throw new Error('RELEASE_NOTES_NOT_REVIEWED');
   for (const key of ['title', 'summary']) if (typeof notes[key] !== 'string' || notes[key].trim().length < 4) throw new Error(`RELEASE_NOTES_SECTION_REQUIRED: ${key}`);
   for (const key of ['newFeatures', 'fixes', 'affectedUsers', 'upgradeSteps', 'knownLimitations']) {
-    if (!Array.isArray(notes[key]) || !notes[key].length || notes[key].some(item => typeof item !== 'string' || !item.trim())) throw new Error(`RELEASE_NOTES_SECTION_REQUIRED: ${key}`);
+    const optionalCategory = key === 'newFeatures' || key === 'fixes';
+    if (!Array.isArray(notes[key]) || (!optionalCategory && !notes[key].length) || notes[key].some(item => typeof item !== 'string' || !item.trim())) throw new Error(`RELEASE_NOTES_SECTION_REQUIRED: ${key}`);
   }
+  if (!notes.newFeatures.length && !notes.fixes.length) throw new Error('RELEASE_NOTES_CHANGE_REQUIRED');
   if (!notes.compatibility?.node || !Array.isArray(notes.issues)) throw new Error('RELEASE_NOTES_COMPATIBILITY_REQUIRED');
   const sha256 = createHash('sha256').update(JSON.stringify(notes)).digest('hex');
   return { ...notes, sha256, url: `https://github.com/1377385356/openxiangda/releases/tag/v${version}` };
+}
+
+export function validatePlannedReleaseNotes(root, plan) {
+  if (!Array.isArray(plan?.releases)) throw new Error('RELEASE_VERSION_PLAN_INVALID');
+  const selected = plan.releases.filter(item => item.name === 'openxiangda');
+  if (selected.length > 1) throw new Error('RELEASE_VERSION_PLAN_INVALID');
+  const version = selected.length
+    ? selected[0].newVersion
+    : JSON.parse(readFileSync(resolve(root, 'packages/openxiangda/package.json'), 'utf8')).version;
+  if (typeof version !== 'string' || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) throw new Error('RELEASE_VERSION_PLAN_INVALID');
+  return version.includes('-') ? null : loadReleaseNotes(root, version);
 }
 
 export function renderReleaseNotes(notes) {

@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -7,7 +8,7 @@ import {
   assertBootstrapVersionToken,
 } from "./lib/cli-bootstrap-state.mjs";
 import { pendingChangesetIds } from "./lib/release-changeset-state.mjs";
-import { materializeReleaseNotes } from './lib/release-notes.mjs';
+import { materializeReleaseNotes, validatePlannedReleaseNotes } from './lib/release-notes.mjs';
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 assertAuthoritativeCleanMainline();
@@ -21,6 +22,15 @@ assertBootstrapReleaseCoupling(
     readFileSync(resolve(repositoryRoot, ".changeset", `${id}.md`), "utf8")
   )
 );
+
+const planDirectory = mkdtempSync(resolve(tmpdir(), 'openxiangda-version-plan-'));
+try {
+  const planPath = resolve(planDirectory, 'plan.json');
+  run('pnpm', ['exec', 'changeset', 'status', '--output', planPath]);
+  validatePlannedReleaseNotes(repositoryRoot, JSON.parse(readFileSync(planPath, 'utf8')));
+} finally {
+  rmSync(planDirectory, { recursive: true, force: true });
+}
 
 run("pnpm", ["exec", "changeset", "version"]);
 materializeReleaseNotes(repositoryRoot);
