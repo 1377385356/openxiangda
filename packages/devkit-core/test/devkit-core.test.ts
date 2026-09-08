@@ -179,6 +179,7 @@ server.listen(port, "127.0.0.1");
     const secretSessionToken = "dev-session-token-must-not-leak";
     const result = await runConnectedDevelopment({
       root,
+      backendRoot: "services/api",
       appCode: "reference-app",
       platformBaseUrl,
       environment: {
@@ -190,6 +191,7 @@ server.listen(port, "127.0.0.1");
           activatedByDeploymentId: "deployment-1",
           revision: 3,
           revisions: { backend: "backend-1" },
+          activeAppVersion: { id: "version-1", appCode: "reference-app", version: "1.2.3" },
         },
       } as any,
       developerSession: {
@@ -203,6 +205,7 @@ server.listen(port, "127.0.0.1");
           mode: "manifest-overlay",
           manifestOverlay: true,
           manifestDigest: "a".repeat(64),
+          environment: { id: "environment-test", key: "preproduction", activeAppVersionId: "version-1", headRevision: 3 },
         }),
         current: async () => ({
           id: "session-1",
@@ -210,6 +213,7 @@ server.listen(port, "127.0.0.1");
           mode: "manifest-overlay",
           manifestOverlay: true,
           manifestDigest: "a".repeat(64),
+          environment: { id: "environment-test", key: "preproduction", activeAppVersionId: "version-1", headRevision: 3 },
         }),
         refresh: async () => ({
           id: "session-1",
@@ -217,6 +221,7 @@ server.listen(port, "127.0.0.1");
           mode: "manifest-overlay",
           manifestOverlay: true,
           manifestDigest: "a".repeat(64),
+          environment: { id: "environment-test", key: "preproduction", activeAppVersionId: "version-1", headRevision: 3 },
         }),
         revoke: async token => { revoked.push(token); },
       },
@@ -228,7 +233,7 @@ server.listen(port, "127.0.0.1");
         assert.equal(remoteResponse.status, 200);
         const localResponse = await fetch(`${session.urls.proxy}/api/probe`);
         const local = await localResponse.json() as any;
-        assert.equal(local.script, "dev:server");
+        assert.equal(local.script, "dev");
         assert.equal(local.headers["x-openxiangda-connected-dev"], "1");
         assert.equal(local.headers.authorization, `Bearer ${secretDeveloperToken}`);
         assert.equal(
@@ -239,7 +244,7 @@ server.listen(port, "127.0.0.1");
           `${session.urls.proxy}/service/openxiangda-app-api/v2/reference-app/preproduction/api/probe`
         );
         const appApi = await appApiResponse.json() as any;
-        assert.equal(appApi.script, "dev:server");
+        assert.equal(appApi.script, "dev");
         assert.equal(appApi.url, "/api/probe");
         await fetch(`${session.urls.web}/__test/stop`);
       },
@@ -293,6 +298,7 @@ test("connected development revokes a malformed grant before failing", async () 
             mode: "published-resources",
             manifestOverlay: true,
             manifestDigest: null,
+            environment: { id: "environment-test", key: "preproduction", activeAppVersionId: "version-1", headRevision: 1 },
           }),
           current: async () => {
             throw new Error("not reached");
@@ -348,6 +354,7 @@ import { runConnectedDevelopment } from ${JSON.stringify(connectedSource)};
 const root = process.env.OPENXIANGDA_TEST_ROOT;
 const result = await runConnectedDevelopment({
   root,
+  backendRoot: "services/api",
   appCode: "reference-app",
   platformBaseUrl: "http://127.0.0.1:9/service",
   environment: {
@@ -359,6 +366,7 @@ const result = await runConnectedDevelopment({
       activatedByDeploymentId: "deployment-1",
       revision: 3,
       revisions: { backend: "backend-1" },
+      activeAppVersion: { id: "version-1", appCode: "reference-app", version: "1.2.3" },
     },
   },
   developerSession: { getAccessToken: async () => "developer-token" },
@@ -370,6 +378,7 @@ const result = await runConnectedDevelopment({
       mode: "published-resources",
       manifestOverlay: false,
       manifestDigest: "${"a".repeat(64)}",
+      environment: { id: "environment-test", key: "preproduction", activeAppVersionId: "version-1", headRevision: 3 },
     }),
     current: async () => { throw new Error("current is not used"); },
     refresh: async () => { throw new Error("refresh is not due"); },

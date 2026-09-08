@@ -2341,6 +2341,7 @@ export class OpenXiangdaApplicationServices {
           mode: value.mode,
           manifestOverlay: value.manifestOverlay,
           manifestDigest: value.manifestDigest,
+          environment: value.environment,
         } as const;
       },
       current: async (token: string) => {
@@ -2354,6 +2355,7 @@ export class OpenXiangdaApplicationServices {
           mode: value.mode,
           manifestOverlay: value.manifestOverlay,
           manifestDigest: value.manifestDigest,
+          environment: value.environment,
         } as const;
       },
       refresh: async (token: string) => {
@@ -2367,6 +2369,7 @@ export class OpenXiangdaApplicationServices {
           mode: value.mode,
           manifestOverlay: value.manifestOverlay,
           manifestDigest: value.manifestDigest,
+          environment: value.environment,
         } as const;
       },
       revoke: async (token: string) => {
@@ -2386,6 +2389,7 @@ export class OpenXiangdaApplicationServices {
       environment,
       developerSession,
       remoteSession,
+      ...(backendRuntimeRequired(workspace.config) ? { backendRoot: workspace.config.backend.root } : {}),
       ...(input.noOpen === undefined ? {} : { noOpen: input.noOpen }),
       ...(input.webPort === undefined ? {} : { webPort: input.webPort }),
       ...(input.onStatus ? { onStatus: input.onStatus } : {}),

@@ -448,8 +448,10 @@ if (args[0] === "install") {
 function isOpenXiangdaPackageName(name) {
   return name === "openxiangda" || name.startsWith("openxiangda-");
 }
-if (args[0] === "run" && (args[1] === "dev:web" || args[1] === "dev:server")) {
-  const port = Number(args[1] === "dev:web" ? process.env.OPENXIANGDA_WEB_PORT : process.env.OPENXIANGDA_APP_PORT);
+const localWeb = args[0] === "run" && args[1] === "dev:web";
+const localBackend = args[0] === "--dir" && args[2] === "run" && args[3] === "dev";
+if (localWeb || localBackend) {
+  const port = Number(localWeb ? process.env.OPENXIANGDA_WEB_PORT : process.env.OPENXIANGDA_APP_PORT);
   fs.appendFileSync(process.env.OPENXIANGDA_TEST_PID_PATH, process.pid + "\\n");
   const server = http.createServer((_request, response) => response.end("ready"));
   for (const signal of ["SIGTERM", "SIGINT"]) process.on(signal, () => server.close(() => process.exit(0)));
@@ -532,7 +534,10 @@ async function handlePlatformRequest(request, response) {
         environmentKey: "preproduction",
         environmentKind: "preproduction",
         status: "active",
-        activeHead: { activeAppVersionId: "version-1", activatedByDeploymentId: "test-run-1", revision: 1, revisions: { backend: null } },
+        activeHead: {
+          activeAppVersionId: "version-1", activatedByDeploymentId: "test-run-1", revision: 1, revisions: { backend: null },
+          activeAppVersion: { id: "version-1", appCode: "instrument-center", version: "0.1.0-test-source" },
+        },
       }],
       total: 1,
     });
@@ -545,6 +550,7 @@ async function handlePlatformRequest(request, response) {
       mode: "published-resources",
       manifestOverlay: false,
       manifestDigest: body?.manifestDigest || null,
+      environment: { id: "environment-test", key: "preproduction", activeAppVersionId: "version-1", headRevision: 1 },
     });
   }
   if (method === "POST" && path.endsWith("/dev-sessions/current/revoke")) {

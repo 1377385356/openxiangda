@@ -3,6 +3,8 @@ import { createServer as createHttpServer, request as httpRequest } from "node:h
 import { request as httpsRequest } from "node:https";
 import { createServer as createNetServer } from "node:net";
 import { platform } from "node:os";
+import { isAbsolute, relative, resolve, sep } from "node:path";
+import { lstatSync } from "node:fs";
 import type { AddressInfo } from "node:net";
 import type { ApplicationEnvironment, DeploymentEnvironment } from "openxiangda-contracts";
 import type { OpenXiangdaDeveloperSession } from "./session.js";
@@ -19,6 +21,12 @@ export interface ConnectedDevelopmentGrant {
   mode: "published-resources" | "manifest-overlay";
   manifestOverlay: boolean;
   manifestDigest: string | null;
+  environment: {
+    id: string;
+    key: DeploymentEnvironment;
+    activeAppVersionId: string;
+    headRevision: number;
+  };
 }
 
 export interface ConnectedDevelopmentSessionApi {
@@ -35,6 +43,8 @@ export interface ConnectedDevelopmentOptions {
   environment: ApplicationEnvironment;
   developerSession: OpenXiangdaDeveloperSession;
   remoteSession: ConnectedDevelopmentSessionApi;
+  /** Configured package directory, present only when local Nest execution is required. */
+  backendRoot?: string;
   noOpen?: boolean;
   webPort?: number;
   onStatus?: (message: string) => void;
@@ -56,13 +66,13 @@ export interface ConnectedDevelopmentSession {
   };
   urls: {
     web: string;
-    app: string;
+    app: string | null;
     proxy: string;
     platform: string;
   };
   ports: {
     web: number;
-    app: number;
+    app: number | null;
     proxy: number;
   };
   publishedResourcesOnly: boolean;
@@ -92,16 +102,26 @@ export async function runConnectedDevelopment(
   const environmentKey = input.environment.environmentKey;
   const environmentLabel = environmentKey === "preproduction" ? "test" : "production";
   const productionData = environmentKey === "production";
+  const backendRoot = input.backendRoot === undefined ? undefined : connectedBackendRoot(input.root, input.backendRoot);
+  const activeHead = input.environment.activeHead;
+  const activeVersion = activeHead?.activeAppVersion;
+  if (backendRoot && (!activeHead || !activeVersion ||
+    activeVersion.id !== activeHead.activeAppVersionId || activeVersion.appCode !== input.appCode ||
+    !activeVersion.version?.trim() || !activeHead.activatedByDeploymentId ||
+    !Number.isSafeInteger(activeHead.revision) || activeHead.revision < 1)) {
+    throw new Error("OPENXIANGDA_CONNECTED_RUNTIME_DESCRIPTOR_REQUIRED: 本地 Nest 需要平台返回完整且一致的已激活应用版本");
+  }
   const webPort = input.webPort === undefined
     ? await availablePort(DEFAULT_WEB_PORT)
     : await requiredPort(input.webPort, "WEB");
-  const appPort = await availablePort(DEFAULT_APP_PORT, new Set([webPort]));
+  const appPort = backendRoot ? await availablePort(DEFAULT_APP_PORT, new Set([webPort])) : null;
+  const occupiedPorts = new Set([webPort, ...(appPort === null ? [] : [appPort])]);
   const proxyPort = input.proxyPort === undefined
-    ? await availablePort(DEFAULT_PROXY_PORT, new Set([webPort, appPort]))
-    : await requiredPort(input.proxyPort, "PROXY", new Set([webPort, appPort]));
+    ? await availablePort(DEFAULT_PROXY_PORT, occupiedPorts)
+    : await requiredPort(input.proxyPort, "PROXY", occupiedPorts);
   const urls = {
     web: `http://${LOOPBACK_HOST}:${webPort}`,
-    app: `http://${LOOPBACK_HOST}:${appPort}`,
+    app: appPort === null ? null : `http://${LOOPBACK_HOST}:${appPort}`,
     proxy: `http://${LOOPBACK_HOST}:${proxyPort}`,
     platform: input.platformBaseUrl.replace(/\/+$/, ""),
   };
@@ -128,6 +148,7 @@ export async function runConnectedDevelopment(
   let interrupted = false;
   let refreshInFlight: Promise<void> | undefined;
   let refreshTimer: NodeJS.Timeout | undefined;
+  let refreshError: unknown;
   const stop = (signal: NodeJS.Signals = "SIGTERM", fromSignal = false) => {
     if (stopping) return;
     stopping = true;
@@ -139,11 +160,16 @@ export async function runConnectedDevelopment(
     const pending = (async () => {
       const next = await input.remoteSession.refresh(grant.token);
       assertStatus(next);
+      assertSessionTarget(next, input.environment);
       grant = { ...grant, ...next };
     })();
     refreshInFlight = pending;
     try {
       await pending;
+    } catch (error) {
+      refreshError = error;
+      stop();
+      throw error;
     } finally {
       if (refreshInFlight === pending) refreshInFlight = undefined;
     }
@@ -168,14 +194,14 @@ export async function runConnectedDevelopment(
     // Validation belongs to the cleanup lifecycle: even a malformed grant may
     // contain a live token that the platform expects us to revoke.
     assertGrant(grant);
+    assertSessionTarget(grant, input.environment);
     session.publishedResourcesOnly = !grant.manifestOverlay;
     session.manifestOverlay = grant.manifestOverlay;
     await listen(proxy, proxyPort);
-    const activeHead = input.environment.activeHead;
     const environment = {
       ...process.env,
       OPENXIANGDA_APP_CODE: input.appCode,
-      OPENXIANGDA_APP_PORT: String(appPort),
+      OPENXIANGDA_APP_PORT: appPort === null ? "" : String(appPort),
       OPENXIANGDA_WEB_PORT: String(webPort),
       OPENXIANGDA_DEV_PROXY: urls.proxy,
       OPENXIANGDA_PLATFORM_PROXY: urls.proxy,
@@ -185,18 +211,17 @@ export async function runConnectedDevelopment(
       OPENXIANGDA_CONNECTED_DEV_ENVIRONMENT_LABEL: environmentLabel,
       OPENXIANGDA_ENVIRONMENT_KEY: environmentKey,
       OPENXIANGDA_ENVIRONMENT_ID: input.environment.id,
-      OPENXIANGDA_APP_VERSION_ID:
-        activeHead?.activeAppVersionId || "connected-development",
-      OPENXIANGDA_DEPLOYMENT_RUN_ID:
-        activeHead?.activatedByDeploymentId || "connected-development",
-      OPENXIANGDA_ENVIRONMENT_HEAD_REVISION: String(activeHead?.revision || 1),
-      OPENXIANGDA_BACKEND_REVISION_ID:
-        activeHead?.revisions?.backend || "connected-development",
+      OPENXIANGDA_APP_VERSION: activeVersion?.version || "",
+      OPENXIANGDA_APP_VERSION_ID: activeHead?.activeAppVersionId || "",
+      OPENXIANGDA_DEPLOYMENT_RUN_ID: activeHead?.activatedByDeploymentId || "",
+      OPENXIANGDA_ENVIRONMENT_HEAD_REVISION: activeHead ? String(activeHead.revision) : "",
+      // Local edited source is never represented as a deployed backend artifact.
+      OPENXIANGDA_BACKEND_REVISION_ID: backendRoot ? `connected-development:${grant.id}` : "",
       OPENXIANGDA_RUNTIME_MODE: environmentKey,
       OPENXIANGDA_UI_ONLY: "false",
     };
-    const spawnManaged = (script: "dev:web" | "dev:server", extra: NodeJS.ProcessEnv) => {
-      const child = spawn("pnpm", ["run", script], {
+    const spawnManaged = (args: string[], extra: NodeJS.ProcessEnv) => {
+      const child = spawn("pnpm", args, {
         cwd: input.root,
         detached: process.platform !== "win32",
         stdio: "inherit",
@@ -206,14 +231,14 @@ export async function runConnectedDevelopment(
       exits.push(childExit(child));
       return child;
     };
-    spawnManaged("dev:web", { HOST: LOOPBACK_HOST, PORT: String(webPort) });
-    spawnManaged("dev:server", { PORT: String(appPort) });
+    spawnManaged(["run", "dev:web"], { HOST: LOOPBACK_HOST, PORT: String(webPort) });
+    if (backendRoot) spawnManaged(["--dir", backendRoot, "run", "dev"], { PORT: String(appPort) });
     for (const signal of ["SIGINT", "SIGTERM"] as const) {
       const handler = () => stop(signal, true);
       signalHandlers.set(signal, handler);
       process.once(signal, handler);
     }
-    refreshTimer = setInterval(() => void refreshGrant(), 10 * 60_000);
+    refreshTimer = setInterval(() => void refreshGrant().catch(() => undefined), 10 * 60_000);
     refreshTimer.unref();
 
     input.onStatus?.(`正在启动连接式开发：${urls.web}`);
@@ -223,7 +248,7 @@ export async function runConnectedDevelopment(
       input.onStatus?.("当前连接 test 数据（平台环境 preproduction）");
     }
     const startup = await Promise.race([
-      waitForReadiness([urls.web, `${urls.app}/__platform/ready`], input.readinessTimeoutMs),
+      waitForReadiness([urls.web, ...(urls.app ? [`${urls.app}/__platform/ready`] : [])], input.readinessTimeoutMs),
       Promise.race(exits).then(exit => {
         throw exit.error || new Error(`OPENXIANGDA_CONNECTED_PROCESS_EXITED:${exit.code}`);
       }),
@@ -236,6 +261,7 @@ export async function runConnectedDevelopment(
     const first = await Promise.race(exits);
     stop("SIGTERM");
     const completed = await terminateAndWait(children, exits);
+    if (refreshError) throw refreshError;
     const exitCode = interrupted
       ? 0
       : completed.find(item => item.code !== 0)?.code ?? first.code;
@@ -254,7 +280,7 @@ function createConnectedProxy(input: {
   appCode: string;
   environmentKey: DeploymentEnvironment;
   platformBaseUrl: string;
-  localAppBaseUrl: string;
+  localAppBaseUrl: string | null;
   developerSession: OpenXiangdaDeveloperSession;
   sessionHeaders: () => Promise<Record<string, string>>;
 }) {
@@ -270,6 +296,12 @@ function createConnectedProxy(input: {
       if (!route) {
         response.statusCode = 404;
         response.end("OpenXiangda connected dev proxy only serves /service and /api");
+        return;
+      }
+      if (route.kind === "disabled") {
+        response.statusCode = 404;
+        response.setHeader("content-type", "application/json; charset=utf-8");
+        response.end(JSON.stringify({ code: "OPENXIANGDA_CONNECTED_BACKEND_DISABLED", message: "当前应用未声明本地后端" }));
         return;
       }
       const authorization = `Bearer ${await input.developerSession.getAccessToken()}`;
@@ -301,10 +333,11 @@ function proxyRoute(
   appCode: string,
   environmentKey: DeploymentEnvironment,
   platformBaseUrl: string,
-  localAppBaseUrl: string
+  localAppBaseUrl: string | null
 ) {
   const incoming = new URL(requestUrl, "http://connected.local");
   if (incoming.pathname === "/api" || incoming.pathname.startsWith("/api/")) {
+    if (!localAppBaseUrl) return { kind: "disabled" as const };
     return { kind: "local" as const, url: new URL(`${incoming.pathname}${incoming.search}`, `${localAppBaseUrl}/`) };
   }
   if (incoming.pathname !== "/service" && !incoming.pathname.startsWith("/service/")) return null;
@@ -316,10 +349,39 @@ function proxyRoute(
       throw new Error("OPENXIANGDA_CONNECTED_APP_API_PATH_INVALID");
     }
     const decoded = runtimePath.split("/").map(part => decodeURIComponent(part)).join("/");
+    if (!localAppBaseUrl) return { kind: "disabled" as const };
     return { kind: "local" as const, url: new URL(`/${decoded}${incoming.search}`, `${localAppBaseUrl}/`) };
   }
   const base = platformBaseUrl.endsWith("/") ? platformBaseUrl : `${platformBaseUrl}/`;
   return { kind: "remote" as const, url: new URL(`${servicePath.replace(/^\/+/, "")}${incoming.search}`, base) };
+}
+
+function connectedBackendRoot(workspaceRoot: string, backendRoot: string): string {
+  const root = resolve(workspaceRoot);
+  const target = resolve(root, backendRoot);
+  const name = relative(root, target);
+  if (!name || name === ".." || name.startsWith(`..${sep}`) || isAbsolute(name)) {
+    throw new Error("OPENXIANGDA_CONNECTED_BACKEND_PATH_INVALID");
+  }
+  let current = root;
+  for (const part of name.split(sep)) {
+    current = resolve(current, part);
+    try {
+      if (lstatSync(current).isSymbolicLink()) throw new Error("OPENXIANGDA_CONNECTED_BACKEND_PATH_INVALID");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+  }
+  return target;
+}
+
+function assertSessionTarget(grant: Pick<ConnectedDevelopmentGrant, "environment">, environment: ApplicationEnvironment) {
+  const target = grant.environment;
+  const head = environment.activeHead;
+  if (!head || !target || target.id !== environment.id || target.key !== environment.environmentKey ||
+    target.activeAppVersionId !== head.activeAppVersionId || target.headRevision !== head.revision) {
+    throw new Error("OPENXIANGDA_CONNECTED_HEAD_CHANGED: 开发会话目标与已读取的环境版本不一致，请重新运行 dev");
+  }
 }
 
 async function forward(
