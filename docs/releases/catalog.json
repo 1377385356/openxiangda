@@ -3,6 +3,37 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.9.1",
+      "status": "reviewed",
+      "title": "OpenXiangda 2.9.1：保留显式查询操作数与路径",
+      "summary": "修复标准客户端将成员包含查询的单值改成数组，导致合法查询返回400的问题。",
+      "newFeatures": [],
+      "fixes": [
+        "has操作保持单个稳定标识；in、between、hasAny、hasAll保留数组全部值，不再复用快捷筛选推断操作数形状。",
+        "显式查询path保持原值路径；单项快照和级联控件选择仍转为稳定查询值。",
+        "列表、批量列表和导出使用相同修正，应用无需修改正确的DataWhere条件。"
+      ],
+      "affectedUsers": [
+        "使用openxiangda/core显式where成员筛选、数组操作或子值路径查询的V2应用。"
+      ],
+      "upgradeSteps": [
+        "将应用的公开openxiangda依赖升级到2.9.1，重新检查并发布测试候选。",
+        "复测参与人归属、数组区间筛选及导出；生产晋级复用验收通过的原测试制品。"
+      ],
+      "knownLimitations": [
+        "快捷filters的既有界面语义不变；字段类型、行权限与查询边界仍由平台Data API验证。",
+        "本补丁不改变业务数据、权限或数据库结构；新增CRUD列表开关仍需平台采用contracts2.7.0。"
+      ],
+      "compatibility": {
+        "node": ">=24",
+        "platform": "openxiangda-contracts 2.7.0"
+      },
+      "issues": [],
+      "sha256": "2cfb20fed9921fc7281f36970f9ba534192fe0eacafb55223e3031587b27f6c7",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.9.1"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.9.0",
       "status": "reviewed",
       "title": "OpenXiangda 2.9.0：声明标准列表导入导出入口",
