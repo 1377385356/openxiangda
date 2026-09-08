@@ -35,3 +35,10 @@ false/true/omitted settings and invalid types/keys. Browser controls must disapp
 without affecting create/edit or field authorization; mobile export follows the
 same flag. The meeting app must use the public declaration and actual deployed
 PC/mobile browser readback must confirm the reviewed task set.
+
+The first packed browser gate stopped with eight new test failures. Reproduction
+confirmed the fixture omitted its workflow CRUD page, while locators used native
+import text for workflow batch launch and the wrong drawer close name. Correct
+only maintainer fixtures/selectors, preserve the failed release log and reproduced
+traces, then rerun the fixed browser matrix and the clean committed release gate.
+No runtime behavior or authorization is changed to satisfy these tests.

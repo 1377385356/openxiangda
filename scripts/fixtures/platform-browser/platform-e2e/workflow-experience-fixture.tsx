@@ -183,7 +183,23 @@ const applicationContributions = defineApplicationContributions(detailRoutes, {
   ...(standardUserSurfaces ? { standardUserSurfaces } : {}),
 });
 
-const adminPages = [] as const satisfies AdminPagesInput;
+const adminPages = (fixtureParams.has('transfers') ? [{
+  code: 'resource:purchase-orders:list',
+  kind: 'resource-list',
+  path: '/admin/resources/purchase-orders',
+  label: '采购申请',
+  navigationEligible: true,
+  capability: resourceDefinitions['purchase-orders'].capabilities.read,
+  resourceCode: 'purchase-orders',
+}, {
+  code: 'resource:purchase-orders:detail',
+  kind: 'resource-detail',
+  path: '/admin/resources/purchase-orders/:id',
+  label: '采购申请详情',
+  navigationEligible: false,
+  capability: resourceDefinitions['purchase-orders'].capabilities.read,
+  resourceCode: 'purchase-orders',
+}] : []) satisfies AdminPagesInput;
 
 const routeManifest = {
   schemaVersion: 'openxiangda.application-route-manifest/v3',

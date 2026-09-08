@@ -9,8 +9,8 @@ for (const mode of ['hidden', 'enabled']) test(`workflow CRUD transfer actions $
   await mockWorkflow(page);
   await page.goto(`/workflow-experience.e2e.html?initial=/admin/resources/purchase-orders&transfers=${mode}`);
   await expect(page.getByRole('button', {name: '新增流程申请', exact: true})).toBeVisible();
-  await expect(page.getByRole('button', {name: /导入/})).toHaveCount(mode === 'hidden' ? 0 : 1);
-  await expect(page.getByRole('button', {name: '导出', exact: true})).toHaveCount(mode === 'hidden' ? 0 : 1);
+  await expect(page.getByRole('button', {name: /批量发起$/})).toHaveCount(mode === 'hidden' ? 0 : 1);
+  await expect(page.getByRole('button', {name: /导出$/})).toHaveCount(mode === 'hidden' ? 0 : 1);
 });
 function envelope(data: unknown, code = 200) {
   return { code, message: code === 200 ? 'success' : 'forbidden', data };
