@@ -3,6 +3,43 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.6.0",
+      "title": "统一应用时区与日期时间输入",
+      "status": "reviewed",
+      "summary": "应用可指定业务展示时区，标准字段、审批详情、待办、通知和审计时间统一显示，日期时间输入仍保存 UTC。",
+      "newFeatures": [
+        "OpenXiangdaApplication 和 OpenXiangdaUiProvider 接受可选 timeZone；日期时间字段可覆盖时区并声明 min、max 和 minuteStep。"
+      ],
+      "fixes": [
+        "修复设备时区不同导致日期时间编辑和公共详情、中心时间不一致的问题，拒绝夏令时不存在或重复的本地时间。"
+      ],
+      "affectedUsers": [
+        "需要固定业务时区或限制日期时间输入的 V2 应用开发者。"
+      ],
+      "compatibility": {
+        "node": ">=24",
+        "workspaceGenerations": [
+          "v1",
+          "v2"
+        ],
+        "v1Policy": "V1 引擎和已有应用不变。",
+        "platformPolicy": "展示与输入能力，无新增服务端契约或数据库迁移。未配置时区和限制的应用保留设备本地行为。"
+      },
+      "upgradeSteps": [
+        "将应用精确依赖升级至 openxiangda 2.6.0，更新锁文件并刷新技能资料。",
+        "在应用入口指定业务 timeZone，验证 PC 和移动端编辑、审批摘要与各中心显示。"
+      ],
+      "knownLimitations": [
+        "时区只影响呈现；服务端仍须独立验证业务时间窗口和授权。",
+        "手机指定时区的日期时间滚轮提供当前选择前后各 365 天并按限制收窄；夏令时重复时间需选择其他无歧义时间。",
+        "包发布、应用部署和实际业务验收分别验证。"
+      ],
+      "issues": [],
+      "sha256": "ba11ac3a69cbd9dd27e339c1d84642af99e107ca1170f0876b8be0583abda79f",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.6.0"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.5.0",
       "title": "按业务记录恢复原流程命令",
       "status": "reviewed",
