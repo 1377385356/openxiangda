@@ -1,6 +1,6 @@
 ---
 "openxiangda-contracts": minor
-"openxiangda-devkit": patch
+"openxiangda-devkit-core": patch
 "openxiangda-nest": minor
 "openxiangda": minor
 ---
