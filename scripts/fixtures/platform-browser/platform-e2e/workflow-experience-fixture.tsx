@@ -41,8 +41,9 @@ const resourceDefinitions = {
       delete: `app:${appCode}:data:purchase-orders:delete`,
     },
     surface: {
-      mutationOwner: 'native',
-      generated: { list: true, detail: true, create: true, update: true, delete: true },
+      mutationOwner: fixtureParams.has('transfers') ? 'workflow' : 'native',
+      generated: { list: true, detail: true, create: !fixtureParams.has('transfers'), update: !fixtureParams.has('transfers'), delete: !fixtureParams.has('transfers') },
+      list: { actions: { import: fixtureParams.get('transfers') !== 'hidden', export: fixtureParams.get('transfers') !== 'hidden' } },
       fields: {
         amount: {
           label: '申请金额',

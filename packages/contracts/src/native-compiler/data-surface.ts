@@ -55,6 +55,7 @@ export const OPENXIANGDA_NATIVE_DATA_SURFACE_KEYS_V2 = {
     'subtable',
   ],
   list: [
+    'actions',
     'fieldOrder',
     'defaultPageSize',
     'searchableFields',
@@ -443,6 +444,15 @@ function validateList(
   if (value === undefined) return;
   const list = record(value, pointer);
   exactKeys(list, OPENXIANGDA_NATIVE_DATA_SURFACE_KEYS_V2.list, pointer);
+  if (list.actions !== undefined) {
+    const actions = record(list.actions, `${pointer}/actions`);
+    exactKeys(actions, ['import', 'export'], `${pointer}/actions`);
+    for (const key of ['import', 'export']) {
+      if (actions[key] !== undefined && typeof actions[key] !== 'boolean') {
+        issue('NATIVE_DATA_SURFACE_LIST_ACTION_INVALID', `${pointer}/actions/${key}`);
+      }
+    }
+  }
   if (list.fieldOrder !== undefined) {
     for (const code of stringArray(
       list.fieldOrder,

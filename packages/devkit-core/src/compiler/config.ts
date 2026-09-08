@@ -231,6 +231,7 @@ export interface AppDataResourceDeclaration {
   invariants?: DataResource['invariants'];
   list?: {
     fields?: string[];
+    actions?: NonNullable<DataResourceSurface['list']>['actions'];
     defaultPageSize?: number;
     defaultSort?: { field: string; order?: 'asc' | 'desc' };
   };
@@ -6019,6 +6020,7 @@ export function materializeDataResource(
     ),
     list: {
       fieldOrder: visible.map(field => field.code),
+      ...(declaration.list?.actions !== undefined ? { actions: declaration.list.actions } : {}),
       defaultPageSize: declaration.list?.defaultPageSize || 20,
       ...(searchableFields.length ? { searchableFields } : {}),
       ...(filterFields.length ? { filterFields } : {}),

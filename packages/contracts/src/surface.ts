@@ -99,6 +99,8 @@ export interface DataResourceSurface {
   };
   fields: Record<string, DataFieldSurface>;
   list?: {
+    /** Presentation only; true never grants import/export authorization. */
+    actions?: { import?: boolean; export?: boolean };
     /** Explicit selected columns in display order. */
     fieldOrder?: string[];
     defaultPageSize?: number;

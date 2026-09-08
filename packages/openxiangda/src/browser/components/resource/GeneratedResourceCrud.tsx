@@ -646,7 +646,7 @@ function GeneratedDesktopList({ definition, paths }: { definition: GeneratedReso
               新增
             </Button>
           )}
-          {standardWorkflow?.processOperationCode && (
+          {surface.list?.actions?.import !== false && standardWorkflow?.processOperationCode && (
             <WorkflowResourceImportButton
               code={code}
               name={name}
@@ -657,7 +657,7 @@ function GeneratedDesktopList({ definition, paths }: { definition: GeneratedReso
               writableFieldCodes={workflowImportFieldCodes}
             />
           )}
-          {generated.create && hasCapability(capabilities.create) && (
+          {surface.list?.actions?.import !== false && generated.create && hasCapability(capabilities.create) && (
             <ResourceImportButton
               code={code}
               name={name}
@@ -666,9 +666,9 @@ function GeneratedDesktopList({ definition, paths }: { definition: GeneratedReso
               onCompleted={() => state.list.query.refetch()}
             />
           )}
-          <Button aria-label="导出" icon={<ExportOutlined />} loading={exporting} onClick={() => void handleExport()}>
+          {surface.list?.actions?.export !== false && <Button aria-label="导出" icon={<ExportOutlined />} loading={exporting} onClick={() => void handleExport()}>
             导出
-          </Button>
+          </Button>}
           {toolbarContributions.map((contribution) => (
             <Fragment key={contribution.code}>
               {contribution.render({
@@ -832,7 +832,7 @@ function GeneratedMobileList({ definition, paths }: { definition: GeneratedResou
       createCapability={generated.create ? capabilities.create : undefined}
       createPath={generated.create ? paths.create : undefined}
       description={`${code} 资源`}
-      onExport={() => void handleExport()}
+      onExport={surface.list?.actions?.export !== false ? () => void handleExport() : undefined}
       readCapability={capabilities.read}
       resource={code}
       surface={surface}

@@ -44,6 +44,50 @@ const semanticResourceItem = {
   displayOrder: 0,
 };
 
+for (const named of [false, true]) {
+  for (const transfers of ['omitted', 'hidden', 'enabled']) {
+    test(`CRUD transfer actions ${transfers} on ${named ? 'named' : 'default'} PC and mobile lists`, async ({ page }) => {
+      await mockPlatform(page, true, runtimeBase, true, {'resource-01': [semanticResourceItem]});
+      await page.goto(`/resource-experience.e2e.html?primary=${named ? 'named' : 'business'}&transfers=${transfers}`);
+      const path = `/admin/resources/resource-01${named ? '/views/quick' : ''}`;
+      const navigate = async (destination: string) => page.evaluate(next => {
+        history.pushState({}, '', next);
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      }, destination);
+      if (named) await navigate(path);
+      await expect(page.locator('.oxa-list-surface')).toBeVisible();
+      await expect(page.getByRole('button', {name: '新增', exact: true})).toBeVisible();
+      const hidden = transfers === 'hidden';
+      await expect(page.getByRole('button', {name: '导入', exact: true})).toHaveCount(hidden ? 0 : 1);
+      await expect(page.getByRole('button', {name: '导出', exact: true})).toHaveCount(hidden ? 0 : 1);
+      await page.getByRole('button', {name: '新增', exact: true}).click();
+      await expect(page.getByRole('dialog')).toBeVisible();
+      await page.getByRole('dialog').getByRole('button', {name: 'Close', exact: true}).click();
+      await page.setViewportSize({width: 390, height: 844});
+      await navigate(`/m${path}`);
+      await expect(page.locator('.oxa-mobile-record-card')).toHaveCount(1);
+      await expect(page.getByRole('button', {name: '导出', exact: true})).toHaveCount(hidden ? 0 : 1);
+    });
+  }
+}
+
+test('enabled CRUD transfer actions do not override readonly mutation ownership', async ({page}) => {
+  await mockPlatform(page, true, runtimeBase, true);
+  await page.goto('/resource-experience.e2e.html?transfers=enabled&owner=readonly');
+  await expect(page.locator('.oxa-list-surface')).toBeVisible();
+  await expect(page.getByRole('button', {name: '导入', exact: true})).toHaveCount(0);
+  await expect(page.getByRole('button', {name: '新增', exact: true})).toHaveCount(0);
+  await expect(page.getByRole('button', {name: '导出', exact: true})).toBeVisible();
+});
+
+test('enabled CRUD transfer actions do not grant resource authorization', async ({page}) => {
+  await mockPlatform(page, false);
+  await page.goto('/resource-experience.e2e.html?transfers=enabled');
+  await expect(page.getByText('当前平台用户无内容栏目页面权限')).toBeVisible();
+  await expect(page.getByRole('button', {name: '导入', exact: true})).toHaveCount(0);
+  await expect(page.getByRole('button', {name: '导出', exact: true})).toHaveCount(0);
+});
+
 test('renders the compiled desktop resource contract and shared workbench', async ({ page }) => {
   await mockPlatform(page);
   if (!codes.length) {

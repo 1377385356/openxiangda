@@ -27,6 +27,7 @@ export interface AppResourceFormDeclaration {
 }
 
 export interface AppResourceListDeclaration {
+  actions?: NonNullable<AppDataResourceDeclaration['list']>['actions'];
   model: string;
   fields?: readonly string[];
   filterFields?: readonly string[];
@@ -159,6 +160,7 @@ export function materializeApplicationModules(modules: readonly AppModuleDeclara
             code: item.code!, name: item.name?.trim() || item.code!,
             generated: { list: true, detail: true, create: native, update: native, delete: native, ...item.generated },
             list: { fieldOrder: [...(item.list?.fields || publicFields.slice(0, 8).map(field => field.code))],
+              ...(item.list?.actions !== undefined ? { actions: item.list.actions } : {}),
               defaultPageSize: item.list?.defaultPageSize || 20,
               searchableFields: [...(item.list?.searchableFields || [])], filterFields: [...(item.list?.filterFields || [])],
               ...(item.list?.defaultSort ? { defaultSort: item.list.defaultSort } : {}) },
@@ -193,6 +195,7 @@ export function materializeApplicationModules(modules: readonly AppModuleDeclara
         }),
         list: {
           fields: view ? [...listFields] : [],
+          ...(view?.list?.actions !== undefined ? { actions: view.list.actions } : {}),
           ...(view?.list?.defaultPageSize ? { defaultPageSize: view.list.defaultPageSize } : {}),
           ...(view?.list?.defaultSort ? { defaultSort: view.list.defaultSort } : {}),
         },

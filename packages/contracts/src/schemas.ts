@@ -2359,6 +2359,11 @@ const dataResourceBaseSurfaceSchema = {
       type: "object",
       additionalProperties: false,
       properties: {
+        actions: {
+          type: "object",
+          additionalProperties: false,
+          properties: { import: { type: "boolean" }, export: { type: "boolean" } },
+        },
         fieldOrder: {
           type: "array",
           uniqueItems: true,

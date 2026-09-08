@@ -1,6 +1,15 @@
 import type { Diagnostic } from './types.js';
 import { diagnostic, isRecord } from './validation-common.js';
 
+export function validateDataResourceListActions(value: unknown, path: string): Diagnostic[] {
+  if (value === undefined) return [];
+  const invalid = (message: string, at = path) => diagnostic('DATA_RESOURCE_LIST_ACTION_INVALID', message, at);
+  if (!isRecord(value)) return [invalid('列表操作必须是对象')];
+  return Object.entries(value).flatMap(([key, enabled]) =>
+    !['import', 'export'].includes(key) ? [invalid('未知列表操作', `${path}.${key}`)] :
+      typeof enabled !== 'boolean' ? [invalid('列表操作必须是布尔值', `${path}.${key}`)] : []);
+}
+
 const emptyArrayTypes = new Set([
   'option.multiple',
   'cascade.multiple',
@@ -121,6 +130,7 @@ export function validateDataResourceViews(
         layout,
         kind === 'list'
           ? [
+              'actions',
               'fieldOrder',
               'defaultPageSize',
               'searchableFields',
@@ -138,6 +148,7 @@ export function validateDataResourceViews(
       )
         issue('布局无效', `${path}.${kind}.layout`);
       if (kind === 'list') {
+        diagnostics.push(...validateDataResourceListActions(layout.actions, `${path}.list.actions`));
         if (
           layout.defaultPageSize !== undefined &&
           (!Number.isInteger(layout.defaultPageSize) ||

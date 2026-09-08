@@ -4,6 +4,14 @@ import { appCode } from '../../../packages/contracts/src/generated.js';
 const taskId = '11111111-1111-4111-8111-111111111111';
 const instanceId = '22222222-2222-4222-8222-222222222222';
 const commandId = '55555555-5555-4555-8555-555555555555';
+
+for (const mode of ['hidden', 'enabled']) test(`workflow CRUD transfer actions ${mode} preserve workflow creation`, async ({page}) => {
+  await mockWorkflow(page);
+  await page.goto(`/workflow-experience.e2e.html?initial=/admin/resources/purchase-orders&transfers=${mode}`);
+  await expect(page.getByRole('button', {name: '新增流程申请', exact: true})).toBeVisible();
+  await expect(page.getByRole('button', {name: /导入/})).toHaveCount(mode === 'hidden' ? 0 : 1);
+  await expect(page.getByRole('button', {name: '导出', exact: true})).toHaveCount(mode === 'hidden' ? 0 : 1);
+});
 function envelope(data: unknown, code = 200) {
   return { code, message: code === 200 ? 'success' : 'forbidden', data };
 }

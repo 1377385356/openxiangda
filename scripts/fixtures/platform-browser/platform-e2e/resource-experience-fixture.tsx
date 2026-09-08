@@ -183,6 +183,17 @@ if (fixtureMode === 'named') acceptanceSurface.views = [
     mobile: { enabled: true } },
 ];
 
+const transferMode = new URLSearchParams(location.search).get('transfers');
+if (transferMode === 'hidden' || transferMode === 'enabled') {
+  const actions = { import: transferMode === 'enabled', export: transferMode === 'enabled' };
+  acceptanceSurface.list = { ...acceptanceSurface.list, actions };
+  if (acceptanceSurface.views) acceptanceSurface.views[0].list.actions = actions;
+}
+if (new URLSearchParams(location.search).get('owner') === 'readonly') {
+  acceptanceSurface.mutationOwner = 'readonly';
+  acceptanceSurface.generated = {list: true, detail: true, create: false, update: false, delete: false};
+}
+
 const names = [
   '内容栏目',
   '内容文章',

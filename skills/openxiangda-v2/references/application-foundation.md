@@ -37,6 +37,21 @@ export const recordsModule = defineApplicationModule({
 
 不写 `crud` 时仅注册数据模型；`crud: [{ model: records.code }]` 使用标准页面默认字段。列表默认列、表单、详情的字段选择均保持给定顺序。一个模型可以声明多套命名视图，各自配置字段、分组和操作入口，共用同一份数据和权限。
 
+列表可通过公开声明关闭本期不提供的导入、导出任务：
+
+```ts
+list: defineResourceList(records, {
+  fields: ['title', 'enabled'],
+  actions: { import: false, export: false },
+})
+```
+
+省略某个开关保持默认行为，`false` 隐藏对应入口。`true` 仍遵循已有权限和写入归属，
+不会授予导入或数据读取权限。默认与命名视图各自声明；PC 原生或流程导入、PC/移动导出
+使用该视图同一设置。直接声明 `data.resources[].list` 时同样支持 `actions`。
+这是页面任务配置，Data API 仍按原权限执行；敏感字段必须使用字段权限控制。
+发布此声明需要平台采用匹配的 contracts 校验版本，无需新增数据库迁移。
+
 ```ts
 // openxiangda.config.ts
 import { defineOpenXiangdaApp, resourceRoleCapabilities } from 'openxiangda/config';

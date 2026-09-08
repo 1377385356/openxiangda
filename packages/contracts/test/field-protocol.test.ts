@@ -135,6 +135,7 @@ test('keeps the complete generated resource surface in the public schema', () =>
     'subtable',
   ]);
   assert.deepEqual(Object.keys(surface.properties.list.properties), [
+    'actions',
     'fieldOrder',
     'defaultPageSize',
     'searchableFields',

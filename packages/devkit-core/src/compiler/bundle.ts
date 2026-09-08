@@ -2273,6 +2273,7 @@ function normalizeResourceSurface(
     ...(surface.list
       ? {
           list: {
+            ...(surface.list.actions !== undefined ? { actions: surface.list.actions } : {}),
             ...(surface.list.fieldOrder ? { fieldOrder: [...surface.list.fieldOrder] } : {}),
             ...(surface.list.defaultPageSize !== undefined
               ? { defaultPageSize: surface.list.defaultPageSize }
