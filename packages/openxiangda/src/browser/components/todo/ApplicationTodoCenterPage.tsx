@@ -1,3 +1,4 @@
+import { PresentationTime } from '../../presentation-time';
 import {
   BellOutlined,
   CheckCircleOutlined,
@@ -93,13 +94,13 @@ function stateColor(state: ApplicationTodoItemV2['state']) {
 }
 
 function formatTime(value: string) {
-  return new Intl.DateTimeFormat('zh-CN', {
+  return <PresentationTime value={value} options={{
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
-  }).format(new Date(value));
+  }} />;
 }
 
 function formatFieldValue(value: unknown) {

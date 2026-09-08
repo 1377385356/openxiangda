@@ -3,6 +3,7 @@ export * from './browser/components/platform-fields/AddressField';
 export * from './browser/components/platform-fields/AttachmentFileList';
 export * from './browser/components/platform-fields/CascadeField';
 export * from './browser/components/platform-fields/DateTimeField';
+export type { DateTimeConstraints } from './browser/components/platform-fields/zoned-date-time';
 export * from './browser/components/platform-fields/JsonField';
 export * from './browser/components/platform-fields/LocationField';
 export * from './browser/components/platform-fields/PlatformDirectoryPicker';

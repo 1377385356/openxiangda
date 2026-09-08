@@ -327,6 +327,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <OpenXiangdaApplication
       appCode={appCode}
       appName="流程体验验收"
+      timeZone={fixtureParams.get('timeZone') || undefined}
       adminNavigation={adminNavigation}
       adminPages={adminPages}
       routeManifest={routeManifest}

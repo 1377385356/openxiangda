@@ -2,6 +2,9 @@ import dayjs from 'dayjs';
 import { useRef, useState } from 'react';
 import { Button, Calendar, ConfigProvider, Popup, zhCN } from '../../mobile';
 import type { FieldProps } from './MobileFieldControls';
+import { usePresentationTimeZone } from '../../presentation-time';
+import type { DateTimeConstraints } from './zoned-date-time';
+import { MobileZonedDateTimeField } from './MobileZonedDateTimeField';
 import { MobileFieldTrigger, MobileSheetHeader } from './MobileFieldLayout';
 import {
   MobileDateTimePickerView,
@@ -13,7 +16,15 @@ import {
 } from './field-form-codec';
 
 /** Calendar/time switching and staged range steps adapted from 1.x Date fields. */
-export function MobileDateTimeField({
+export function MobileDateTimeField(props: FieldProps & DateTimeConstraints) {
+  const inherited = usePresentationTimeZone(props.timeZone);
+  const zoned = props.field.type === 'datetime' || props.field.type === 'datetime-range';
+  if (zoned && (inherited || props.min !== undefined || props.max !== undefined || props.minuteStep !== undefined))
+    return <MobileZonedDateTimeField {...props} timeZone={inherited ?? Intl.DateTimeFormat().resolvedOptions().timeZone} />;
+  return <LocalMobileDateTimeField {...props} />;
+}
+
+function LocalMobileDateTimeField({
   field,
   value,
   disabled,

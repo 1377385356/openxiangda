@@ -288,6 +288,8 @@ function resourceRoutePaths(
 export interface OpenXiangdaApplicationProps {
   appCode: string;
   appName: string;
+  /** Presentation only; canonical datetime values remain UTC instants. */
+  timeZone?: string;
   adminAccess?: Readonly<AppFrontendRouteAccess>;
   resourceDefinitions: GeneratedResourceDefinitionsInput;
   adminPages: AdminPagesInput;
@@ -548,6 +550,7 @@ export function OpenXiangdaApplication({
   adminAccess,
   appCode,
   appName,
+  timeZone,
   resourceDefinitions: readonlyResourceDefinitions,
   adminPages,
   adminNavigation,
@@ -826,7 +829,7 @@ export function OpenXiangdaApplication({
       <AdminContributionsProvider contributions={contributions}>
       <OpenXiangdaResourceDefinitionsProvider definitions={resourceDefinitions}>
         <OpenXiangdaWorkflowDefinitionsProvider definitions={workflows}>
-          <OpenXiangdaUiProvider>
+          <OpenXiangdaUiProvider timeZone={timeZone}>
             <BrowserRouter basename={applicationBasename()}>
               <GlobalRequestLoading />
               <StandardRouteDeviceNegotiator index={routeManifestIndex} />

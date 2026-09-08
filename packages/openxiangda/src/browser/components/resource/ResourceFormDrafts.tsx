@@ -1,3 +1,4 @@
+import { PresentationTime } from '../../presentation-time';
 import { CloseOutlined } from '@ant-design/icons';
 import { Alert, Button, Empty, Modal, Table } from 'antd';
 import type { ReactNode } from 'react';
@@ -30,7 +31,7 @@ export function ResourceFormDrafts({ mobile, open, items, limit, retentionDays, 
   onClose(): void; onResume(draft: ResourceFormDraft): void; onDelete(draft: ResourceFormDraft): void;
 }) {
   const summary = fields.filter(field => !['subtable', 'file', 'image', 'signature', 'text.rich', 'json'].includes(field.type)).slice(0, 3);
-  const stamp = (value: string) => new Date(value).toLocaleString('zh-CN', { hour12: false });
+  const stamp = (value: string) => <PresentationTime value={value} />;
   return <FormOverlay mobile={mobile} open={open} title={`草稿箱 (${items.length}/${limit})`} onClose={onClose}>
     <div className="oxa-draft-box"><Alert type="info" showIcon title={`${retentionDays} 天未更新的草稿将自动删除`} />
       {mobile ? <div className="oxa-draft-cards">{items.length ? items.map(draft => <article className="oxa-draft-card" key={draft.id}>

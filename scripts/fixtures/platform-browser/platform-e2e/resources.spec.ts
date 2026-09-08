@@ -341,6 +341,22 @@ test('renders canonical semantic labels in the real generated resource list', as
   await expect(frame.locator('.oxa-record-detail-card').getByRole('heading', { level: 2 })).toHaveText(['栏目设置', '管理信息']);
 });
 
+test.describe('generated detail application timezone', () => {
+  test.use({ timezoneId: 'America/Los_Angeles' });
+  test('creation and update header inherit the configured zone', async ({ page }) => {
+    const item = { ...semanticResourceItem, created_at: '2026-08-28T01:00:00.000Z' };
+    await mockPlatform(page, true, runtimeBase, true, { 'resource-01': [item] });
+    await page.route('**/native/data/resource-01/records/group-1?*', route => route.fulfill({
+      json: { code: 200, data: { schemaVersion: 'openxiangda.data-record/v2', data: item } },
+    }));
+    await page.goto('/resource-experience.e2e.html?timeZone=Asia%2FShanghai');
+    await page.getByRole('row').filter({ hasText: '信息技术部' }).getByText('信息技术部', { exact: true }).click();
+    const frame = page.getByRole('dialog').locator('[data-detail-frame="standard"]');
+    await expect(frame.locator('.oxa-record-detail-metadata')).toContainText('2026/08/28 09:00 创建');
+    await expect(frame.locator('.oxa-record-detail-updated')).toHaveText('更新于 2026/08/28 09:00');
+  });
+});
+
 test('renders the canonical first field on the mobile generated list', async ({ page }) => {
   const resourceCode = 'resource-01';
   await mockPlatform(page, true, runtimeBase, true, {

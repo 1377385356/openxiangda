@@ -41,6 +41,10 @@ DataQuery 使用有界 where 条件树，支持 and/or/not。标准列表的筛�
 
 ## 标准后台扩展
 
+如业务采用固定时区，在现有 `OpenXiangdaApplication` 传可选 `timeZone`，例如
+`Asia/Shanghai`。标准表单、审批摘要和各中心时间随同一 UI Provider 展示，应用无需
+修改设备时区或保存第二份时间。具体控件参数见[字段组件](field-components.md)。
+
 默认 CRUD、统一 Shell、current-user 权限和 Data Provider 都由 `openxiangda/react`
 维护；应用拥有后台信息架构声明。页面实现、路由可达、菜单可见是三个不同合同：
 

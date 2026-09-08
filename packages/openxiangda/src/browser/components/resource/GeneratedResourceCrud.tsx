@@ -1,3 +1,4 @@
+import { PresentationTime, usePresentationTimeZone } from '../../presentation-time';
 import { projectDataResourceView } from 'openxiangda-contracts/browser';
 import {
   CloseOutlined,
@@ -442,14 +443,14 @@ function GeneratedDesktopList({ definition, paths }: { definition: GeneratedReso
         dataIndex: 'created_at',
         key: 'created_at',
         width: 190, fixed: frozenKeys.includes('created_at') ? 'left' as const : undefined,
-        render: (value: unknown) => (value ? new Date(String(value)).toLocaleString('zh-CN') : '-'),
+        render: (value: unknown) => <PresentationTime value={value} />,
       }] : []),
       ...(visibleColumnKeys.includes('updated_at') ? [{
         title: '更新时间',
         dataIndex: 'updated_at',
         key: 'updated_at',
         width: 190, fixed: frozenKeys.includes('updated_at') ? 'left' as const : undefined,
-        render: (value: unknown) => (value ? new Date(String(value)).toLocaleString('zh-CN') : '-'),
+        render: (value: unknown) => <PresentationTime value={value} />,
       }] : []),
       {
         title: '操作',
@@ -981,7 +982,8 @@ function NativeResourceDetailPage({ definition, paths, variant, recordId, onDism
     ? () => setEditing(true) : undefined;
   const creator = record?.created_by;
   const creatorLabel = creator && typeof creator === 'object' ? String((creator as Record<string, unknown>).label || (creator as Record<string, unknown>).displayName || '') : '';
-  const createdTime = detailTime(record?.created_at);
+  const timeZone = usePresentationTimeZone();
+  const createdTime = detailTime(record?.created_at, timeZone);
   return <RecordDetailFrame title={`${definition.name}详情`} heading={record && recordTitle}
     status={statusField && record && record[statusField.key] != null && record[statusField.key] !== '' ? <Tag color="processing"><SurfaceFieldValue field={statusField} value={record[statusField.key]} /></Tag> : undefined}
     metadata={[creatorLabel, createdTime ? `${createdTime} 创建` : ''].filter(Boolean).join(' · ')} updatedAt={record?.updated_at}

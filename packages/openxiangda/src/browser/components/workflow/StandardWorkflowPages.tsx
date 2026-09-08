@@ -1,3 +1,4 @@
+import { PresentationTime, usePresentationTimeZone } from '../../presentation-time';
 import {
   ArrowLeftOutlined,
   ClockCircleOutlined,
@@ -177,13 +178,7 @@ function randomId(prefix: string) {
   return `${prefix}:${suffix}`;
 }
 
-function formatTime(value: unknown) {
-  if (!value) return '-';
-  const date = new Date(String(value));
-  return Number.isNaN(date.valueOf())
-    ? String(value)
-    : date.toLocaleString('zh-CN');
-}
+function formatTime(value: unknown) { return <PresentationTime value={value} />; }
 
 function workflowStatus(status: string) {
   const states: Record<string, { label: string; color: string }> = {
@@ -1479,6 +1474,7 @@ function StandardWorkflowDetailRenderer({ surface, timeline, warning, operations
   onClose, onEdit, drawer, drawerState, newPageHref, editing, busy,
 }: WorkflowDetailRendererProps & { variant: PageVariant }) {
   const navigate = useNavigate();
+  const timeZone = usePresentationTimeZone();
   const [tab, setTab] = useState('application');
   const instance = surfaceInstance(surface);
   const business = surfaceBusinessDetail(surface);
@@ -1495,7 +1491,7 @@ function StandardWorkflowDetailRenderer({ surface, timeline, warning, operations
   const back = onClose || (() => navigate(variant === 'mobile' ? '/m/work-center' : '/work-center'));
   return <RecordDetailFrame variant={variant} title="申请详情" heading={title} status={<StatusTag status={instance.status} />}
     metadata={[summary.initiator?.displayName || summary.initiatorDisplayName, summary.initiator?.departmentDisplayName || summary.departmentDisplayName,
-      summary.submittedAt ? `${detailTime(summary.submittedAt)} 创建` : ''].filter(Boolean).join(' · ')}
+      summary.submittedAt ? `${detailTime(summary.submittedAt, timeZone)} 创建` : ''].filter(Boolean).join(' · ')}
     updatedAt={business.record.updated_at || instance.completedAt || instance.startedAt}
     onClose={back} onEdit={edit} editing={editing} busy={busy} drawer={drawer} drawerState={drawerState} newPageHref={newPageHref}
     footer={hasActions || edit ? <>{operations}{edit && <Button onClick={edit}>编辑</Button>}</> : null}>

@@ -5,6 +5,9 @@ import {
 } from 'antd';
 import type { DataFieldSurface } from 'openxiangda-contracts/browser';
 import { fieldValueForData, fieldValueForForm } from './field-form-codec';
+import { PresentationTime, usePresentationTimeZone } from '../../presentation-time';
+import { ZonedDateTimeField } from './ZonedDateTimeField';
+import type { DateTimeConstraints } from './zoned-date-time';
 
 function rangeEndPlaceholder(field: DataFieldSurface) {
   if (field.rangeBoundary === 'closed') return `结束${field.label}（含）`;
@@ -12,7 +15,18 @@ function rangeEndPlaceholder(field: DataFieldSurface) {
   throw new Error('OPENXIANGDA_RANGE_BOUNDARY_INVALID');
 }
 
-export function DateTimeField({
+export function DateTimeField(props: DateTimeConstraints & {
+  field: DataFieldSurface; disabled?: boolean; mobile?: boolean;
+  value?: unknown; onChange?: (value: unknown) => void;
+}) {
+  const inherited = usePresentationTimeZone(props.timeZone);
+  const zoned = props.field.type === 'datetime' || props.field.type === 'datetime-range';
+  if (zoned && (inherited || props.min !== undefined || props.max !== undefined || props.minuteStep !== undefined))
+    return <ZonedDateTimeField {...props} timeZone={inherited ?? Intl.DateTimeFormat().resolvedOptions().timeZone} />;
+  return <LocalDateTimeField {...props} />;
+}
+
+function LocalDateTimeField({
   field,
   disabled,
   mobile = false,
@@ -104,9 +118,11 @@ export function DateTimeField({
 export function DateTimeValueDisplay({
   field,
   value,
+  timeZone,
 }: {
   field: DataFieldSurface;
   value: unknown;
+  timeZone?: string;
 }) {
   if (field.type === 'date-range' || field.type === 'datetime-range') {
     const range = value as { start?: unknown; end?: unknown };
@@ -115,20 +131,31 @@ export function DateTimeValueDisplay({
       : field.rangeBoundary === 'half-open'
         ? '（不含结束）'
         : '';
-    return <>{range?.start && range?.end ? `${range.start} 至 ${range.end}${suffix}` : '-'}</>;
+    return <>{range?.start && range?.end ? field.type === 'datetime-range'
+      ? <><PresentationTime value={range.start} timeZone={timeZone} /> 至 <PresentationTime value={range.end} timeZone={timeZone} />{suffix}</>
+      : `${range.start} 至 ${range.end}${suffix}` : '-'}</>;
   }
   if (field.type === 'time') {
     const time = String(value);
     return <>{field.timePrecision === 'minute' ? time.slice(0, 5) : time}</>;
   }
   if (field.type === 'datetime') {
-    const parsed = new Date(String(value));
-    return <>{Number.isNaN(parsed.getTime()) ? String(value) : parsed.toLocaleString('zh-CN', { hour12: false })}</>;
+    return <PresentationTime value={value} timeZone={timeZone} />;
   }
   return <Typography.Text>{String(value)}</Typography.Text>;
 }
 
-export function DateTimeFilter({
+export function DateTimeFilter(props: DateTimeConstraints & {
+  field: DataFieldSurface; value: unknown; onChange: (value: unknown) => void;
+}) {
+  const inherited = usePresentationTimeZone(props.timeZone);
+  const zoned = props.field.type === 'datetime' || props.field.type === 'datetime-range';
+  if (zoned && (inherited || props.min !== undefined || props.max !== undefined || props.minuteStep !== undefined))
+    return <ZonedDateTimeField {...props} filter timeZone={inherited ?? Intl.DateTimeFormat().resolvedOptions().timeZone} />;
+  return <LocalDateTimeFilter {...props} />;
+}
+
+function LocalDateTimeFilter({
   field,
   value,
   onChange,

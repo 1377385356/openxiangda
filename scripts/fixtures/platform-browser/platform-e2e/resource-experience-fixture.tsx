@@ -289,6 +289,7 @@ const applicationContributions = defineApplicationContributions(
   },
 );
 
+const timeZone = new URLSearchParams(location.search).get('timeZone') || undefined;
 if (location.pathname.endsWith('/resource-experience.e2e.html')) {
   history.replaceState({}, '', '/admin/resources/resource-01');
 }
@@ -298,6 +299,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <OpenXiangdaApplication
       appCode="openxiangda-application"
       appName="资源体验验收"
+      timeZone={timeZone}
       adminNavigation={[
         {
           code: 'resources',

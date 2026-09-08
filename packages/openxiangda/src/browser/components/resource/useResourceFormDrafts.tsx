@@ -1,3 +1,4 @@
+import { formatPresentationTime, usePresentationTimeZone } from '../../presentation-time';
 import { Alert, Button, type FormInstance } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createResourceFormDraftClient, type ResourceFormDraft } from '../../platform-client';
@@ -18,6 +19,7 @@ export function useResourceFormDrafts({ code, viewCode, mode, recordId, mobile, 
   form: FormInstance; encode(values: Record<string, unknown>): Record<string, unknown>;
   restore(draft: ResourceFormDraft): void; recordRevision?: number; onSaved(): void;
 }) {
+  const timeZone = usePresentationTimeZone();
   const client = useMemo(() => createResourceFormDraftClient(code, mode === 'edit' ? 'update' : 'create', recordId, viewCode), [code, mode, recordId, viewCode]);
   const [items, setItems] = useState<ResourceFormDraft[]>([]);
   const [limit, setLimit] = useState(20);
@@ -73,7 +75,7 @@ export function useResourceFormDrafts({ code, viewCode, mode, recordId, mobile, 
       {saved && <Alert type="success" showIcon title="已暂存，可从草稿箱继续编辑" />}</>,
     overlays: <><ResourceFormDrafts mobile={mobile} open={boxOpen} fields={fields} resourceCode={code} items={items} limit={limit} retentionDays={days} busy={busy}
       onClose={() => setBoxOpen(false)} onResume={draft => { setBoxOpen(false); setPrompt(draft); }} onDelete={setDeleting} />
-      {prompt && <FormConfirmation mobile={mobile} title="载入暂存数据" content={`当前表单存在 ${new Date(prompt.updatedAt).toLocaleString('zh-CN')} 暂存但未提交的数据。载入后将替换当前填写内容。`}
+      {prompt && <FormConfirmation mobile={mobile} title="载入暂存数据" content={`当前表单存在 ${formatPresentationTime(prompt.updatedAt, timeZone)} 暂存但未提交的数据。载入后将替换当前填写内容。`}
         confirmText="载入草稿" onClose={() => setPrompt(undefined)} onConfirm={() => resume(prompt)} />}
       {deleting && <FormConfirmation mobile={mobile} title="删除草稿" content="删除后无法恢复这份草稿。" confirmText="删除草稿" onClose={() => setDeleting(undefined)} onConfirm={() => void remove(deleting)} />}
     </>,

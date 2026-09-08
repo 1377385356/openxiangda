@@ -1,3 +1,4 @@
+import { PresentationTime } from '../../presentation-time';
 import { ArrowRightOutlined } from '@ant-design/icons';
 import { Alert, Button, Empty, Spin, Typography } from 'antd';
 import { useEffect, useState } from 'react';
@@ -43,7 +44,7 @@ function AuditEntry({
   const fields = auditChangeFields(entry, surface).filter(readable);
   const actorName =
     entry.actorDisplay?.displayName || auditActorLabel(entry);
-  const occurredAt = new Date(entry.occurredAt).toLocaleString('zh-CN');
+  const occurredAt = <PresentationTime value={entry.occurredAt} />;
   if (entry.operation === 'created') {
     return (
       <div className="oxa-audit-entry oxa-audit-entry-created">

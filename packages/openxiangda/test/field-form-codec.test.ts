@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import dayjs from 'dayjs';
-import { isValidElement } from 'react';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import type { DataFieldSurface, DataResourceSurface } from 'openxiangda-contracts/browser';
 import { DateTimeField } from '../src/browser/components/platform-fields/DateTimeField';
 import {
@@ -109,7 +110,7 @@ test('keeps query-facing date values free of Dayjs transport objects', () => {
   assert.deepEqual(JSON.parse(JSON.stringify(rangeValue)), rangeValue);
 });
 
-test('binds stable date values to every controlled picker and emits stable data values', () => {
+test('renders stable date values through the real React controlled pickers', () => {
   const selectedScalar = dayjs('2026-08-31T09:30:45');
   const selectedRange = [
     dayjs('2026-08-01T09:30:45'),
@@ -158,29 +159,18 @@ test('binds stable date values to every controlled picker and emits stable data 
       },
     },
   ];
-  const render = DateTimeField as unknown as (props: {
-    field: DataFieldSurface;
-    value: unknown;
-    onChange: () => void;
-  }) => unknown;
-
   for (const item of cases) {
-    let emitted: unknown;
-    const element = render({
+    const markup = renderToStaticMarkup(createElement(DateTimeField, {
       field: item.surface,
       value: item.value,
-      onChange: value => {
-        emitted = value;
-      },
-    });
-    assert.ok(isValidElement(element), `${item.surface.type} should render a picker`);
-    const props = element.props as { value?: unknown; onChange?: (value: unknown) => void };
-    if (Array.isArray(props.value)) {
-      assert.ok(props.value.every(dayjs.isDayjs), `${item.surface.type} should decode its range`);
-    } else {
-      assert.ok(dayjs.isDayjs(props.value), `${item.surface.type} should decode its scalar value`);
+    }));
+    const bound = fieldValueForForm(item.surface, item.value);
+    const format = item.surface.type === 'time' ? 'HH:mm:ss' :
+      item.surface.type.startsWith('datetime') ? 'YYYY-MM-DD HH:mm:ss' : 'YYYY-MM-DD';
+    for (const value of Array.isArray(bound) ? bound : [bound]) {
+      assert.ok(dayjs.isDayjs(value));
+      assert.ok(markup.includes(`value="${value.format(format)}"`), `${item.surface.type} should bind its displayed value`);
     }
-    props.onChange?.(item.selected);
-    assert.deepEqual(emitted, item.expected, `${item.surface.type} should emit stable data`);
+    assert.deepEqual(fieldValueForData(item.surface, item.selected), item.expected);
   }
 });

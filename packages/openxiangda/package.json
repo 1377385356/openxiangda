@@ -62,6 +62,8 @@
     "test": "tsx --import ./test/register-styles.mjs --test test/*.test.ts"
   },
   "dependencies": {
+    "@js-temporal/polyfill": "0.5.1",
+    "@rc-component/picker": "1.10.0",
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",

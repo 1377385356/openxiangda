@@ -214,6 +214,31 @@ pnpm openxiangda check
 
 ## 移动字段呈现与分组
 
+### 应用时区与时间限制
+
+`OpenXiangdaApplication` 的可选 `timeZone="Asia/Shanghai"` 统一标准表单、详情、
+审批业务摘要、待办/通知、审计和草稿时间的展示。独立使用组件时可在
+`OpenXiangdaUiProvider` 传同一参数；不指定时保留浏览器本地时区。
+这只影响输入与展示，`datetime` / `datetime-range` 仍读写 UTC ISO instant。
+`date` / `date-range` 保留自然日期，`time` 保留无日期时间。
+
+`DateTimeField`、`DateTimeFilter`、`DateTimeValueDisplay` 和 `MobileDateTimeField`
+可显式传 `timeZone` 覆盖应用默认。日期时间输入还可传 `min` / `max`（含端点的
+ISO instant）与 `minuteStep`（1 到 60 且整除 60）。设置步长后只接受整分钟，秒和
+毫秒为零；例如 `minuteStep={15}`。服务端仍须验证最终业务窗口与授权。
+
+```tsx
+<DateTimeField field={startsAtField} value={startsAt} onChange={setStartsAt}
+  timeZone="Asia/Shanghai" minuteStep={15}
+  min="2026-09-08T01:00:00Z" max="2026-10-08T01:00:00Z" />
+```
+
+输入到夏令时不存在或重复的墙上时间时显示错误，不自动选偏移。无效时区、步长或
+上下限配置会报错。手机指定时区的日期时间使用日期/时间滚轮，最多提供当前选择前后
+各 365 天并按限制收窄；范围仍分两步确认，取消不修改原值。
+
+### 字段布局
+
 移动字段自身提供无边框输入、上下标签、行分隔和错误提示；标准表单与自定义页面使用同一
 字段组件。页面负责把相关字段组织在浅色背景上的白色分组中，不另设移动主题配置。
 

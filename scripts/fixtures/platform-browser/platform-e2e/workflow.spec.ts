@@ -830,6 +830,34 @@ test('renders a paged desktop work center from the current-user role union', asy
   }
 });
 
+test.describe('application timezone boundary', () => {
+  test.use({ timezoneId: 'America/Los_Angeles' });
+  test('standard workflow business dates, submission and centers inherit application zone', async ({ page }) => {
+    await mockWorkflow(page);
+    await page.route(`**/workflow/tasks/${taskId}/detail`, route => {
+      const response = detail();
+      const business = response.surface.presentation.businessDetail;
+      Object.assign(business.surface.fields, { startsAt: {
+        label: '会议开始时间', type: 'datetime', widget: 'datetime',
+        readCapabilities: [], createCapabilities: [], updateCapabilities: [],
+      } });
+      business.surface.detail.fieldOrder.push('startsAt');
+      Object.assign(business.record, { startsAt: '2026-03-07T18:15:00.000Z' });
+      return route.fulfill({ contentType: 'application/json', body: JSON.stringify(envelope(response)) });
+    });
+    await page.goto(`/workflow-experience.e2e.html?initial=/tasks/${taskId}&timeZone=Asia%2FShanghai`);
+    await expect(page.getByText('会议开始时间', { exact: true })).toBeVisible();
+    await expect(page.getByText('2026/3/8 02:15:00', { exact: true })).toBeVisible();
+    await expect(page.locator('.oxa-record-detail-metadata')).toContainText('2026/08/25 09:00 创建');
+    await page.getByRole('tab', { name: '审批历史' }).click();
+    await expect(page.getByText('2026/8/25 09:08:00', { exact: true })).toBeVisible();
+    await page.goto('/workflow-experience.e2e.html?initial=/work-center&timeZone=Asia%2FShanghai');
+    await expect(page.getByRole('row').filter({ hasText: '采购申请审批' })).toContainText('09:00:00');
+    await page.goto('/workflow-experience.e2e.html?initial=/todos&timeZone=Asia%2FShanghai');
+    await expect(page.locator('.oxa-todo-table')).toContainText('08/28 09:01');
+  });
+});
+
 for (const mobile of [false, true]) {
 for (const multiple of [false, true]) {
 test(`${mobile ? 'mobile' : 'desktop'} ${multiple ? 'CC' : 'transfer'} uses the standard member picker`, async ({ page }) => {

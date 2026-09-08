@@ -1,3 +1,4 @@
+import { PresentationTime } from '../../presentation-time';
 import { Button as MobileButton, Popup } from '../../mobile';
 import { MobileSheetHeader } from './MobileFieldLayout';
 import {
@@ -124,7 +125,7 @@ export function SignatureValueDisplay({
         workflowBinding={workflowBinding}
       />
       <Typography.Text type="secondary">
-        {value.signer?.label || '业务签名'} · {new Date(value.signedAt).toLocaleString()}
+        {value.signer?.label || '业务签名'} · <PresentationTime value={value.signedAt} />
       </Typography.Text>
       <Typography.Text className="oxa-signature-hash" type="secondary">
         SHA-256 {value.hash.slice(0, 16)}...

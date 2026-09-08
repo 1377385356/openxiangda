@@ -1,14 +1,15 @@
+import { usePresentationTimeZone } from '../../presentation-time';
 import { ArrowLeftOutlined, CloseOutlined, CompressOutlined, ExpandOutlined, ExportOutlined } from '@ant-design/icons';
 import { Button, Drawer, Space, Tooltip } from 'antd';
 import { useState, type ReactNode } from 'react';
 import type { ResourceFormDrawerState } from './ResourceFormFrame';
 import type { SurfaceField } from './SurfaceFields';
 
-export function detailTime(value: unknown) {
+export function detailTime(value: unknown, timeZone?: string) {
   if (!value) return '';
   const date = new Date(String(value));
   if (Number.isNaN(date.valueOf())) return '';
-  return new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).format(date);
+  return new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false, timeZone }).format(date);
 }
 
 /** One presentation owner. Data, authorization and commands remain with their controllers. */
@@ -24,7 +25,8 @@ export function RecordDetailFrame({ variant = 'desktop', title, heading, status,
   const [localFullScreen, setLocalFullScreen] = useState(false);
   const fullScreen = drawerState?.fullScreen ?? localFullScreen;
   const setFullScreen = drawerState?.setFullScreen || setLocalFullScreen;
-  const time = detailTime(updatedAt);
+  const zone = usePresentationTimeZone();
+  const time = detailTime(updatedAt, zone);
   const content = <section className={`oxa-record-detail oxa-record-detail-${variant} ${drawer ? 'is-drawer' : 'is-page'} ${editing ? 'is-editing' : ''}`} data-detail-frame="standard">
     <header className="oxa-record-detail-header"><div className="oxa-record-detail-width">
       <div className="oxa-record-detail-heading">
