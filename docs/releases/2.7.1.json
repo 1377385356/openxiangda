@@ -13,6 +13,6 @@
   "affectedUsers": ["使用 dev 连接平台测试环境的纯前端和按需 Nest 应用开发者。"],
   "upgradeSteps": ["通过项目正式升级流程采用 openxiangda 2.7.1，刷新项目资料并重启旧 MCP 与 dev 进程。", "保留根目录 dev:web，确认配置的后端包具有 dev 启动脚本。"],
   "knownLimitations": ["需要平台已有激活应用版本；联调数据写入仍发生在选定远端环境。", "本次修复不改变线上应用制品或生产部署。"],
-  "compatibility": { "node": ">=20", "platform": "支持 Application v2 开发会话及活动 AppVersion 的平台" },
+  "compatibility": { "node": ">=24", "platform": "支持 Application v2 开发会话及活动 AppVersion 的平台" },
   "issues": []
 }
