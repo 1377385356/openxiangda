@@ -329,7 +329,11 @@ test("event registry fails fast on missing, duplicate and manifest-mismatched ha
 
   const registry = (providers: Array<Record<string, unknown>>, manifest = eventHandlerManifest) =>
     new OpenXiangdaEventRegistry(
-      { getProviders: () => providers } as any,
+      { getProviders: () => providers.map(provider => ({
+        ...provider,
+        host: { getProviderByKey: () => ({ instance: {} }) },
+        isDependencyTreeStatic: () => true,
+      })) } as any,
       new Reflector(),
       { ...options(globalThis.fetch), eventHandlerManifest: manifest }
     );

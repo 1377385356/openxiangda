@@ -11,7 +11,7 @@ import {
   Req,
   SetMetadata,
 } from '@nestjs/common';
-import { DiscoveryService, Reflector } from '@nestjs/core';
+import { ContextIdFactory, DiscoveryService, ModuleRef, Reflector } from '@nestjs/core';
 import {
   APPLICATION_EVENT_HANDLER_PATH_PREFIX_V2,
   SCHEMA_VERSIONS,
@@ -56,7 +56,7 @@ export class OpenXiangdaEventRegistry implements OnModuleInit {
     string,
     {
       contract: AppEventHandlerContract;
-      consumer: OpenXiangdaEventConsumer;
+      resolveConsumer: () => Promise<OpenXiangdaEventConsumer>;
     }
   >();
 
@@ -78,22 +78,35 @@ export class OpenXiangdaEventRegistry implements OnModuleInit {
             wrapper.metatype
           )
         : undefined;
-      if (!contract || !wrapper.instance) continue;
+      if (!contract) continue;
       const expected = declared.get(contract.code);
       if (!expected || sha256Digest(expected) !== sha256Digest(contract)) {
         throw new Error(
           `事件 handler 与 generated manifest 不一致: ${contract.code}`
         );
       }
-      if (typeof wrapper.instance.handle !== 'function') {
-        throw new Error(`事件 handler ${contract.code} 缺少 handle()`);
-      }
       if (this.handlers.has(contract.code)) {
         throw new Error(`事件 handler 重复注册: ${contract.code}`);
       }
+      const moduleRef = wrapper.host?.getProviderByKey<ModuleRef>(ModuleRef)?.instance;
+      if (!moduleRef) {
+        throw new Error(`事件 handler ${contract.code} 缺少所属模块`);
+      }
+      if (wrapper.isDependencyTreeStatic() && !wrapper.isTransient) {
+        assertConsumer(wrapper.instance, contract.code);
+      }
       this.handlers.set(contract.code, {
         contract: expected,
-        consumer: wrapper.instance as OpenXiangdaEventConsumer,
+        resolveConsumer: async () => {
+          // This callback only runs inside the receiver's verified, claimed ALS.
+          const contextId = ContextIdFactory.create();
+          moduleRef.registerRequestByContextId(Object.freeze({}), contextId);
+          const consumer = await moduleRef.resolve<OpenXiangdaEventConsumer>(
+            wrapper.token, contextId, { strict: true }
+          );
+          assertConsumer(consumer, contract.code);
+          return consumer;
+        },
       });
     }
     for (const code of declared.keys()) {
@@ -160,9 +173,20 @@ export class OpenXiangdaEventController {
       registered.contract,
       headers,
       request.rawBody,
-      async (event, context) =>
-        await registered.consumer.handle(event, context)
+      async (event, context) => {
+        const consumer = await registered.resolveConsumer();
+        return await consumer.handle(event, context);
+      }
     );
+  }
+}
+
+function assertConsumer(
+  consumer: unknown,
+  code: string
+): asserts consumer is OpenXiangdaEventConsumer {
+  if (!consumer || typeof (consumer as OpenXiangdaEventConsumer).handle !== 'function') {
+    throw new Error(`事件 handler ${code} 缺少 handle()`);
   }
 }
 

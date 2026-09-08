@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.4.1",
+  "title": "事件处理器依赖作用域修复",
+  "status": "reviewed",
+  "summary": "事件处理器可正常注入请求级通知服务，签名与回执校验后再由所属 Nest 模块解析依赖。",
+  "newFeatures": [],
+  "fixes": ["修复请求级依赖使事件处理器构造函数未执行、handle 调用失败的问题。", "同名 provider 严格按所属模块解析，并发投递与失败重试使用独立作用域；静态单例继续复用。"],
+  "affectedUsers": ["使用 Nest 签名事件处理器及请求级通知服务或瞬态依赖的 V2 应用开发者。"],
+  "compatibility": {
+    "node": ">=24",
+    "workspaceGenerations": ["v1", "v2"],
+    "v1Policy": "V1 引擎与已有应用契约不变。",
+    "platformPolicy": "沿用 2.4.0 的 Data API 1.1.0 要求；事件签名、回执、身份与部署协议不变。"
+  },
+  "upgradeSteps": ["将应用精确依赖升级至 openxiangda 2.4.1，刷新工作区资料并重新检查。", "重新发布应用后验证真实事件、通知送达、重复投递与失败恢复。"],
+  "knownLimitations": ["事件作用域的 REQUEST 不含用户授权，sendFromEvent 仅在已验证的事件执行期间可用。", "SDK 测试通过不代表真实平台通知送达或应用业务验收已完成。"],
+  "issues": []
+}
