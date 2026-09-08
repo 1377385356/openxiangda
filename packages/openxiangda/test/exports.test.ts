@@ -10,6 +10,7 @@ import {
   batchQueryNativeData,
   batchListNativeResources,
   configureApplicationIdentity,
+  createNativeResourceClient,
   createRoleManagementGrant,
   createRoleMembership,
   listRoleManagementGrants,
@@ -402,6 +403,53 @@ test('sends one bounded Native batch query and skips an empty batch', async () =
         value: originalDocument,
       });
     }
+  }
+});
+
+test('list, batch list and export serialize the same scalar membership predicate', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalDocument = globalThis.document;
+  const metadata: Record<string, string> = {
+    'openxiangda-runtime-base': '/dev/root-package-test',
+    'openxiangda-app-code': 'root-package-test',
+    'openxiangda-environment': 'preproduction',
+  };
+  Object.defineProperty(globalThis, 'document', { configurable: true, value: {
+    querySelector(selector: string) {
+      const name = /meta\[name="([^"]+)"\]/.exec(selector)?.[1];
+      return name && metadata[name] ? { content: metadata[name] } : null;
+    },
+  } });
+  const bodies: any[] = [];
+  const surface = { fields: { participants: {
+    label: '参会人', type: 'user.multiple', widget: 'directory-user',
+    readCapabilities: [], createCapabilities: [], updateCapabilities: [],
+  } } } as const;
+  const query = { page: 1, pageSize: 20,
+    where: { field: 'participants', operator: 'has', value: 'opaque-key' } } as const;
+  const page = { schemaVersion: 'openxiangda.data-page/v2', items: [], total: 0 };
+  globalThis.fetch = async (url, init) => {
+    bodies.push(JSON.parse(String(init?.body)));
+    if (String(url).endsWith('/export')) return new Response('participants\n');
+    return new Response(JSON.stringify({ code: 200, data: String(url).endsWith('/batch-query')
+      ? { schemaVersion: 'openxiangda.data-batch-query-result/v2', results: [
+        { key: 'mine', resourceCode: 'meetings', ok: true, data: page },
+      ] } : page }), { status: 200, headers: { 'content-type': 'application/json' } });
+  };
+  try {
+    const client = createNativeResourceClient('meetings', surface as any);
+    await client.list(query);
+    await batchListNativeResources([{ key: 'mine', resourceCode: 'meetings', surface: surface as any, query }]);
+    await client.exportCsv(query, ['participants']);
+    const expected = { and: [{ field: 'participants', operator: 'has', value: 'opaque-key' }] };
+    assert.deepEqual(bodies[0].where, expected);
+    assert.deepEqual(bodies[1].operations[0].query.where, expected);
+    assert.deepEqual(bodies[2].where, expected);
+    assert.equal(bodies.length, 3);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalDocument === undefined) delete (globalThis as { document?: Document }).document;
+    else Object.defineProperty(globalThis, 'document', { configurable: true, value: originalDocument });
   }
 });
 

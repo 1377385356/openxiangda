@@ -22,13 +22,16 @@ export interface GenericResourceQuery {
 
 export interface ResourceSort { field: string; order: 'asc' | 'desc' }
 
+function isSelectionSnapshot(value: unknown): value is ResourceReferenceValue {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value) && 'value' in value);
+}
+
+function stableValue(value: unknown) {
+  return isSelectionSnapshot(value) ? String(value.value) : value;
+}
+
 function stableValues(value: unknown) {
-  const values = Array.isArray(value) ? value : [value];
-  return values.map(item =>
-    item && typeof item === 'object' && 'value' in item
-      ? String((item as ResourceReferenceValue).value)
-      : item
-  );
+  return (Array.isArray(value) ? value : [value]).map(stableValue);
 }
 
 export function buildResourceWhere(
@@ -148,7 +151,29 @@ export function compileAdvancedWhere(code: string, surface: DataResourceSurface,
   if ('and' in node) return { and: node.and.map(item => compileAdvancedWhere(code, surface, item)) };
   if ('or' in node) return { or: node.or.map(item => compileAdvancedWhere(code, surface, item)) };
   if ('not' in node) return { not: compileAdvancedWhere(code, surface, node.not) };
+  // A path already selects the canonical subvalue; top-level field control
+  // normalization must not replace its value or silently drop the path.
+  if (node.path !== undefined) return node;
   if (node.operator === 'isEmpty' || node.operator === 'isNotEmpty') return { field: node.field, operator: node.operator };
+  const field = surface.fields[node.field];
+  if (node.operator === 'has') {
+    const cascadePath = field?.type === 'cascade.single' && Array.isArray(node.value) &&
+      node.value.length > 0 && node.value.every(isSelectionSnapshot);
+    return { ...node, value: cascadePath
+      ? cascadeTerminalValues(node.value as CascadeStoredValue, false)[0]
+      : stableValue(node.value) };
+  }
+  if (['in', 'between', 'hasAny', 'hasAll'].includes(node.operator)) {
+    // Explicit operators own operand cardinality. Do not apply shortcut
+    // filters, which infer hasAny or reduce a range to its first comparison.
+    if (!Array.isArray(node.value)) return node;
+    const cascadePaths = field?.type === 'cascade.multiple' &&
+      ['hasAny', 'hasAll'].includes(node.operator) && node.value.length > 0 &&
+      node.value.every(path => Array.isArray(path) && path.length > 0 && path.every(isSelectionSnapshot));
+    return { ...node, value: cascadePaths
+      ? cascadeTerminalValues(node.value as CascadeStoredValue, true)
+      : node.value.map(stableValue) };
+  }
   const normalized = buildResourceWhere(code, surface, { page: 1, pageSize: 20, filters: { [node.field]: node.value } });
   const predicate = normalized && 'and' in normalized ? normalized.and[0] : undefined;
   return predicate && 'field' in predicate ? { ...predicate, operator: node.operator } : node;

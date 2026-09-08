@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import type { DataFieldSurface, DataResourceSurface } from 'openxiangda-contracts/browser';
+import type { DataFieldSurface, DataResourceSurface, DataWhere } from 'openxiangda-contracts/browser';
 import { buildResourceWhere } from '../src/browser/components/platform-fields/resource-query';
 
 function field(
@@ -186,4 +186,49 @@ test('nested OR/AND keeps false and zero and normalizes reference selections', (
     { or: [{ and: [{ field: 'enabled', operator: 'eq', value: false }, { field: 'count', operator: 'gte', value: 0 }] }, { field: 'status', operator: 'neq', value: 'enabled' }] },
     { or: [{ field: 'name', operator: 'contains', value: 'name' }, { field: 'code', operator: 'contains', value: 'name' }] },
   ] });
+});
+
+test('advanced canonical membership and array operands retain their cardinality and path', () => {
+  const fields = {
+    ...surface.fields,
+    users: field('user.multiple', 'directory-user'),
+    departments: field('department.multiple', 'directory-department'),
+    resources: field('resource-ref.multiple', 'resource'),
+    amount: field('number.decimal', 'number'),
+    start: field('datetime', 'datetime'),
+  };
+  const conditions: DataWhere[] = [
+    ...['tags', 'users', 'departments', 'resources', 'category', 'categories'].map(key =>
+      ({ field: key, operator: 'has', value: 'opaque-key' }) as DataWhere),
+    { field: 'users', operator: 'hasAny', value: ['one', 'two'] },
+    { field: 'categories', operator: 'hasAll', value: ['one', 'two'] },
+    { field: 'status', operator: 'in', value: ['enabled', 'disabled'] },
+    { field: 'amount', operator: 'between', value: [0, 99] },
+    { field: 'start', operator: 'between', value: ['2026-09-01T00:00:00Z', '2026-09-02T00:00:00Z'] },
+    { field: 'status', operator: 'eq', path: 'label', value: '启用' },
+    { field: 'metadata', operator: 'jsonContains', path: 'category', value: { value: 'keep-json-object' } },
+    { field: 'address', operator: 'jsonContains', path: 'district.value', value: '330106' },
+  ];
+  const where: DataWhere = { or: [{ and: conditions }, { not: { field: 'users', operator: 'has', value: 'excluded' } }] };
+  const before = structuredClone(where);
+  assert.deepEqual(buildResourceWhere('records', { fields }, { page: 1, pageSize: 20, where }), { and: [where] });
+  assert.deepEqual(where, before);
+});
+
+test('advanced operators reduce rich selections without inferring a different shortcut operator', () => {
+  const querySurface = { fields: { ...surface.fields, users: field('user.multiple', 'directory-user') } };
+  const where: DataWhere = { and: [
+    { field: 'users', operator: 'has', value: { value: 'one', label: '一' } },
+    { field: 'status', operator: 'in', value: [{ value: 'enabled', label: '启用' }, { value: 'disabled', label: '停用' }] },
+    { field: 'users', operator: 'hasAll', value: [{ value: 'one', label: '一' }, { value: 'two', label: '二' }] },
+    { field: 'category', operator: 'has', value: [{ value: 'root', label: '父' }, { value: 'leaf', label: '子' }] },
+    { field: 'categories', operator: 'hasAny', value: [[{ value: 'root', label: '父' }, { value: 'leaf', label: '子' }], [{ value: 'other', label: '另' }]] },
+  ] };
+  assert.deepEqual(buildResourceWhere('records', querySurface, { page: 1, pageSize: 20, where }), { and: [{ and: [
+    { field: 'users', operator: 'has', value: 'one' },
+    { field: 'status', operator: 'in', value: ['enabled', 'disabled'] },
+    { field: 'users', operator: 'hasAll', value: ['one', 'two'] },
+    { field: 'category', operator: 'has', value: 'leaf' },
+    { field: 'categories', operator: 'hasAny', value: ['leaf', 'other'] },
+  ] }] });
 });
