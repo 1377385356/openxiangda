@@ -7,6 +7,7 @@ import {
 import { REQUEST } from "@nestjs/core";
 import type {
   ApplicationNotificationSendV2,
+  DingTalkWorkNoticeSendV2,
   DingTalkAdvancedCardSendV2,
 } from "openxiangda-contracts";
 import { OpenXiangdaPlatformClient } from "./platform-client.js";
@@ -21,6 +22,10 @@ export type OpenXiangdaAdvancedDingTalkCardInput = Omit<
 >;
 export type OpenXiangdaNotificationInput = Omit<
   ApplicationNotificationSendV2,
+  "environmentKey"
+>;
+export type OpenXiangdaDingTalkWorkNoticeInput = Omit<
+  DingTalkWorkNoticeSendV2,
   "environmentKey"
 >;
 
@@ -47,6 +52,16 @@ export class OpenXiangdaNotificationService {
   async send(input: OpenXiangdaNotificationInput) {
     const context = this.context();
     return await this.platform.sendNotification(context.authorization, input);
+  }
+
+  async sendDingTalkWorkNotice(input: OpenXiangdaDingTalkWorkNoticeInput) {
+    const context = this.context();
+    return await this.platform.sendDingTalkWorkNotice(context.authorization, input);
+  }
+
+  async getDingTalkWorkNoticeResult(messageId: string) {
+    const context = this.context();
+    return await this.platform.getDingTalkWorkNoticeResult(context.authorization, messageId);
   }
 
   private context(): OpenXiangdaVerifiedContext {

@@ -24,6 +24,7 @@ import type {
   ApplicationNotificationSendV2,
   BusinessNotificationSendV2,
   EventBusinessNotificationSendV2,
+  DingTalkWorkNoticeSendV2,
   NotificationMessageV2,
   ApplicationTodoCenterPageV2,
   ApplicationTodoInteractionResultV2,
@@ -835,6 +836,27 @@ export class OpenXiangdaPlatformClient {
           environmentKey: this.options.environmentKey,
         }),
       }
+    );
+  }
+
+  async sendDingTalkWorkNotice(
+    authorization: string,
+    input: Omit<DingTalkWorkNoticeSendV2, "environmentKey">
+  ): Promise<NotificationMessageV2> {
+    return await this.request<NotificationMessageV2>(
+      `${this.notificationPath()}/send/dingtalk-work-notice`,
+      {
+        method: "POST",
+        headers: this.identityHeaders(authorization),
+        body: JSON.stringify({ ...input, environmentKey: this.options.environmentKey }),
+      }
+    );
+  }
+
+  async getDingTalkWorkNoticeResult(authorization: string, messageId: string) {
+    return await this.request<Record<string, unknown>>(
+      `${this.notificationPath()}/send/dingtalk-work-notice/${encodeURIComponent(messageId)}?environmentKey=${encodeURIComponent(this.options.environmentKey)}`,
+      { headers: this.identityHeaders(authorization) }
     );
   }
 

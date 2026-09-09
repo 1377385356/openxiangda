@@ -10,6 +10,8 @@ export const OPENXIANGDA_NOTIFICATION_BUSINESS_SEND_V2 =
   "openxiangda.notification.business-send/v2" as const;
 export const OPENXIANGDA_NOTIFICATION_EVENT_SEND_V2 =
   "openxiangda.notification.event-send/v2" as const;
+export const OPENXIANGDA_NOTIFICATION_DINGTALK_WORK_NOTICE_SEND_V2 =
+  "openxiangda.notification.dingtalk-work-notice-send/v2" as const;
 export const OPENXIANGDA_NOTIFICATION_APPLICATION_INFORMATIONAL_TEMPLATE =
   "application.informational.standard" as const;
 export const OPENXIANGDA_APPLICATION_TODO_CENTER_V2 =
@@ -62,6 +64,25 @@ export interface DingTalkAdvancedCardSendV2 {
   cardTemplateId: string;
   cardParamMap: Record<string, string>;
   navigationTarget: NotificationNavigationTargetV2;
+}
+
+export type DingTalkWorkNoticeTargetV2 =
+  | { kind: "users"; userIds: string[] }
+  | { kind: "departments"; departmentIds: string[] }
+  | { kind: "all" };
+
+export type DingTalkWorkNoticeContentV2 =
+  | { type: "text"; content: string }
+  | { type: "markdown"; title: string; text: string };
+
+export interface DingTalkWorkNoticeSendV2 {
+  schemaVersion: typeof OPENXIANGDA_NOTIFICATION_DINGTALK_WORK_NOTICE_SEND_V2;
+  environmentKey: DeploymentEnvironment;
+  bindingCode?: string;
+  idempotencyKey: string;
+  correlationId?: string;
+  target: DingTalkWorkNoticeTargetV2;
+  content: DingTalkWorkNoticeContentV2;
 }
 
 export interface NotificationActionRefV2 {
