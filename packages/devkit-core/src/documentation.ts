@@ -6,6 +6,9 @@ import { isAbsolute, relative, resolve } from 'node:path';
 export const DOCUMENTATION_TOPICS = [
   { id: 'getting-started', title: '安装与开始开发', file: 'getting-started.md' },
   { id: 'product-design', title: '对话发现与详细产品设计', file: 'product-design.md' },
+  { id: 'design-workflow', title: 'OpenDesign 设计、原型与实现', file: 'design-workflow.md' },
+  { id: 'opendesign-methods', title: 'OpenDesign 原文方法与许可', file: 'opendesign-methods.md' },
+  { id: 'design-craft', title: 'OpenDesign 排版、状态与交互 Craft', file: 'design-craft.md' },
   { id: 'interaction-patterns', title: '页面交互模式与体验评审', file: 'interaction-patterns.md' },
   { id: 'development', title: '需求与开发流程', file: 'development.md' },
   { id: 'application-foundation', title: '业务模型与标准 CRUD', file: 'application-foundation.md' },

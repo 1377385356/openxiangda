@@ -24,7 +24,7 @@ test('mobile base CSS scopes only upstream defaults and retains scroll/measureme
   const scoped = scopeMobileCss(source);
   assert.doesNotMatch(scoped, /:root|(?:^|\n)(?:html|body|a|button)[\s{,:]/);
   assert.doesNotMatch(scoped, /prefers-color-scheme|data-.*theme|--color-user-/);
-  assert.match(scoped, /--adm-color-primary: #1677ff;/);
+  assert.match(scoped, /--adm-color-primary: var\(--oxa-mobile-color-primary, #1677ff\);/);
   assert.match(scoped, /body\.adm-overflow-hidden/);
   assert.match(scoped, /div\.adm-px-tester/);
   assert.throws(() => scopeMobileCss(`${source}\ninput { color: red; }`), /Unreviewed/);

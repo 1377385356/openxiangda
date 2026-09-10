@@ -41,3 +41,15 @@ jobs:
           echo "TURBO_SCM_HEAD=$GITHUB_SHA" >> "$GITHUB_ENV"
       - run: pnpm verify:affected
       - run: node --test scripts/test/*.test.mjs
+      - name: Select design integration checks
+        id: design
+        run: |
+          if ! git diff --quiet "$TURBO_SCM_BASE" "$GITHUB_SHA" -- .github/workflows/source-checks.yml design-capabilities docs/design-workflow.md scripts/design-capabilities.mjs scripts/verify-design-workbench.mjs scripts/fixtures/design-workbench packages/openxiangda/scripts/scope-mobile-css.mjs packages/openxiangda/src/field-kit.ts packages/openxiangda/src/browser/ui-provider.tsx packages/openxiangda/src/browser/components/resource/ResourceFormFrame.tsx packages/openxiangda/src/browser/styles.css packages/openxiangda/src/browser/mobile-fields.css; then
+            echo 'affected=true' >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.design.outputs.affected == 'true'
+        run: pnpm --dir templates/application/apps/web exec playwright install --with-deps chromium
+      - if: steps.design.outputs.affected == 'true'
+        run: pnpm exec turbo run build --filter=openxiangda...
+      - if: steps.design.outputs.affected == 'true'
+        run: pnpm design:check

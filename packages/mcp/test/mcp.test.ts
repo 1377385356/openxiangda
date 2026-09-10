@@ -6,7 +6,7 @@ import test from 'node:test';
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import { InMemoryTransport } from '@modelcontextprotocol/server';
-import { operationStage, saveSession, workspaceSessionPath } from 'openxiangda-devkit-core';
+import { DOCUMENTATION_TOPICS, operationStage, saveSession, workspaceSessionPath } from 'openxiangda-devkit-core';
 import { MCP_RESOURCE_URIS, MCP_TOOL_NAMES, createOpenXiangdaMcpServer } from '../src/index.js';
 
 test('publishes a library without a second executable', () => {
@@ -326,7 +326,15 @@ test('MCP documentation reads bodies and shared operations keep target, promotio
   try {
     const index = await client.callTool({ name: 'docs_read', arguments: {} });
     const topics = (index.structuredContent as any).data.topics;
-    assert.equal(topics.length, 19);
+    assert.deepEqual(topics.map((topic: any) => topic.id), DOCUMENTATION_TOPICS.map(topic => topic.id));
+    for (const id of ['design-workflow', 'opendesign-methods', 'design-craft']) {
+      const topic = topics.find((entry: any) => entry.id === id);
+      assert.ok(topic, `design topic available: ${id}`);
+      const toolBody = await client.callTool({ name: 'docs_read', arguments: { topic: id } });
+      const resourceBody = await client.readResource({ uri: topic.uri });
+      assert.equal((toolBody.structuredContent as any).data.content, (resourceBody.contents[0] as { text: string }).text);
+      assert.match((toolBody.structuredContent as any).data.content, /OpenDesign/);
+    }
     const testing = topics.find((topic: any) => topic.id === 'testing');
     const resource = await client.readResource({ uri: testing.uri });
     assert.match((resource.contents[0] as { text: string }).text, /真实|验收/);

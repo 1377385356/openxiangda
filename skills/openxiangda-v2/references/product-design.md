@@ -64,11 +64,11 @@ AppSpec 是唯一设计记录位置。`app.md` 是总纲与目录，详细规则
 
 页面必须记录初始加载、刷新、首次空数据、筛选无结果、错误、无权限、提交中、成功、明确失败、结果未知及并发冲突的适用性。公共状态可引用共用设计，逐页写差异；不适用时写具体理由。详细逐页检查与标准方案见[交互模式](interaction-patterns.md)。
 
-管理后台默认只在 PC 操作，页面规格写明“后台仅 PC，移动不适用”即可，不为材料完整度扩出手机后台。只有用户端有明确手机任务时才设计对应移动页面。页面设计同时选择标准 CRUD、后台自定义页或独立 user 页；报表等专业交互应主动评估成熟组件与开源库，按[前端选型](frontend.md#component-selection)记录选择与理由。
+页面规格依据真实用户任务说明设备范围；不以历史后台 PC 约定限制必要移动任务，也不为材料完整度增加没有使用场景的页面。页面设计同时选择标准 CRUD、后台自定义页或独立 user 页；报表等专业交互应主动评估成熟组件与开源库，按[前端选型](frontend.md#component-selection)记录选择与理由。
 
 ## AppSpec 材料模板 {#templates}
 
-应用资料放在 `product/`（来源与 PRD）、`experience/`（旅程和逐页规格）、`design/`（视觉、权限和架构）、`reviews/`（评审）下。它们都是 `appspec/` 内单层 Markdown；不要使用嵌套页面目录。只为实际需要的材料建文件，不复制一批“已确认”示例。
+应用资料放在 `product/`（来源与 PRD）、`experience/`（旅程和逐页规格）、`design/`（视觉、权限和架构）、`reviews/`（评审）下。AppSpec 记录仍用这些目录内单层 Markdown；视觉设计包和自包含原型放在 `design/system`、`design/prototypes` 下，通过 assets 纳入评审，详见[设计工作流](design-workflow.md)。只为实际需要的材料建文件，不复制一批“已确认”示例。
 
 设计文件采用下面的受限 YAML；按实际类型和稳定 ID 修改。`documents` 引用本文件依赖的其他设计、总纲、CAP 或 ADR，不能引用 ChangeSpec 形成计划与基线循环。正文保存详细设计；来源可在正文引用脱敏文件或 HTTPS 链接。
 
@@ -141,4 +141,4 @@ context 的 `readyForImplementation` 为真时才制定具体实现任务，把 
 - [Design OS，固定提交](https://github.com/buildermethods/design-os/tree/529dedb43bfec24b2cbb128f26dd8cbc6143f754)（MIT）。
 - [Spec Kit，固定提交](https://github.com/github/spec-kit/tree/4a7341a93d944d6efe153b71da4a1adb9c2b578c)（MIT）。
 
-视觉收敛与体验检查可参考 [Impeccable](https://github.com/pbakaus/impeccable/tree/831cabee8b4bc1a2b66e5ae22003e9a19b57d464) 与 [DESIGN.md](https://github.com/google-labs-code/design.md/tree/9bf8eae67128b6cc55ad9bf86665767deb4c11cd) 的方法（Apache-2.0）。本专题不承诺这些项目的当前版本或排名，也不因案例要求增加平台功能。
+有界面影响的工作默认使用随版本分发的真实 OpenDesign 方法和 Craft，完成可运行原型、浏览器修正及实现交接，见[设计工作流](design-workflow.md)。原文和许可随包提供，不依赖另一模型或全局技能。

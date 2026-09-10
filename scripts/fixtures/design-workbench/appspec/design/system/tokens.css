@@ -1,0 +1,24 @@
+.design-workbench {
+  --bg: #f5f4ef;
+  --surface: #ffffff;
+  --fg: #1c2b27;
+  --muted: #606b66;
+  --border: #d9dfd9;
+  --accent: #245a49;
+  --accent-soft: #e9f0eb;
+  --warn: #855811;
+  --warn-soft: #faf0dc;
+  --danger: #ad352c;
+  --success: #245a49;
+  --font-body: "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-display: "Songti SC", "Noto Serif CJK SC", serif;
+  --font-size: 14;
+  --line-height: 1.7;
+  --radius: 8;
+  --control-height: 40;
+  --space: 8px;
+  --content-width: 1280px;
+  --display-size: 38px;
+  --heading-size: 22px;
+  --small-size: 12px;
+}

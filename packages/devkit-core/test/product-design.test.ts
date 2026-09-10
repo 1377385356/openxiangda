@@ -7,6 +7,7 @@ import test from 'node:test';
 import { inspectAppSpec } from '../src/app-spec.js';
 import { developmentLifecycle, lifecycleAtCommit } from '../src/development-lifecycle.js';
 import { writeDevelopmentFixture } from '../../../scripts/lib/development-records-fixture.mjs';
+import { DESIGN_ASSET_LIMITS } from '../src/design-assets.js';
 
 const contract = { appCode: 'booking-app', resourceCodes: [], actionCodes: [] };
 const change = 'appspec/changes/active/initial-delivery.md';
@@ -24,6 +25,70 @@ function refreshTestDigest(root: string) {
   const digest = developmentLifecycle(root, contract).design.baselineDigest;
   edit(root, review, value => value.replace(/baselineDigest: .+/, `baselineDigest: ${digest}`));
 }
+
+function prototype(root: string) {
+  const base = 'appspec/design/prototypes/request';
+  mkdirSync(join(root, base), { recursive: true });
+  writeFileSync(join(root, base, 'index.html'), '<main>可以操作的示例</main>');
+  writeFileSync(join(root, base, 'tokens.css'), '.prototype { color: #153e35; }');
+  writeFileSync(join(root, base, 'image.bin'), Buffer.from([0, 127, 128, 255]));
+  edit(root, page, value => value.replace('status:', `assets: [${base}]\nstatus:`));
+  refreshTestDigest(root);
+  return base;
+}
+
+test('原型目录内 HTML、样式、二进制和新增依赖绑定评审及工作区摘要', () => fixture(root => {
+  const base = prototype(root);
+  const initial = developmentLifecycle(root, contract);
+  assert.equal(initial.readyForImplementation, true, JSON.stringify(initial.diagnostics));
+  const digest = inspectAppSpec(root, contract).workspaceDigest;
+  for (const file of ['index.html', 'tokens.css', 'image.bin', 'new.css']) {
+    writeFileSync(join(root, base, file), 'changed');
+    const next = developmentLifecycle(root, contract);
+    assert.ok(next.diagnostics.some(item => item.code === 'APPSPEC_DESIGN_BASELINE_STALE'), file);
+    assert.notEqual(inspectAppSpec(root, contract).workspaceDigest, digest);
+    refreshTestDigest(root);
+  }
+  rmSync(join(root, base, 'tokens.css'));
+  assert.ok(developmentLifecycle(root, contract).diagnostics.some(item => item.code === 'APPSPEC_DESIGN_BASELINE_STALE'));
+}));
+
+test('缺失、越界、空目录、符号链接和超预算资源明确失败，不执行原型', () => fixture(root => {
+  const base = prototype(root);
+  const fail = () => assert.ok(developmentLifecycle(root, contract).diagnostics.some(item => item.code === 'APPSPEC_DESIGN_ASSET_UNAVAILABLE'));
+  edit(root, page, value => value.replace(base, '../../outside'));
+  fail();
+  edit(root, page, value => value.replace('../../outside', `${base}/absent.css`));
+  fail();
+  edit(root, page, value => value.replace(`${base}/absent.css`, base));
+  symlinkSync(join(root, 'appspec/app.md'), join(root, base, 'linked.md'));
+  fail();
+  rmSync(join(root, base, 'linked.md'));
+  writeFileSync(join(root, base, 'huge.bin'), Buffer.alloc(DESIGN_ASSET_LIMITS.fileBytes + 1));
+  fail();
+  rmSync(join(root, base), { recursive: true });
+  mkdirSync(join(root, base));
+  fail();
+}));
+
+test('冻结提交保留原型二进制；当前修改不能冒充原测试设计，Git 链接失败', () => fixture(root => {
+  const base = prototype(root);
+  const git = (...args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
+  git('init', '-q'); git('config', 'user.email', 'test@example.test'); git('config', 'user.name', 'Test');
+  const unrelated = join(root, 'appspec/design/assets/unreferenced.bin');
+  mkdirSync(join(root, 'appspec/design/assets'), { recursive: true });
+  writeFileSync(unrelated, Buffer.alloc(DESIGN_ASSET_LIMITS.fileBytes + 1));
+  git('add', '.'); git('commit', '-qm', 'Design\n\nAppSpec: initial-delivery');
+  const commit = git('rev-parse', 'HEAD');
+  const before = developmentLifecycle(root, contract).design.baselineDigest;
+  assert.equal(lifecycleAtCommit(root, commit, contract).readyForTest, true);
+  writeFileSync(join(root, base, 'image.bin'), Buffer.from([2, 250, 255]));
+  assert.equal(lifecycleAtCommit(root, commit, contract).design.baselineDigest, before);
+  assert.notEqual(developmentLifecycle(root, contract).design.baselineDigest, before);
+  symlinkSync(join(root, 'appspec/app.md'), join(root, base, 'linked.md'));
+  git('add', '.'); git('commit', '-qm', 'Invalid link\n\nAppSpec: initial-delivery');
+  assert.throws(() => lifecycleAtCommit(root, git('rev-parse', 'HEAD'), contract), /APPSPEC_SOURCE_FILE_INVALID/);
+}));
 
 test('设计索引不倾倒全部正文；稳定 ID 和变更可以恢复设计引用闭包', () => fixture(root => {
   const index = inspectAppSpec(root, contract);

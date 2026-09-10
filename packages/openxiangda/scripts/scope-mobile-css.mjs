@@ -18,11 +18,13 @@ export function scopeMobileCss(source) {
   const rules = [];
   const remainder = source.replace(/([^{}]+)\{([^{}]*)\}/g, (_rule, selector, declarations) => {
     const key = selector.trim().replace(/\s+/g, ' ');
-    // Ship only the library's default appearance.
+    // No global preference selector; applications supply inherited design inputs.
     if (key === "html[data-prefers-color-scheme='dark']") return '';
     const scoped = selectors.get(key);
     if (!scoped) throw new Error(`Unreviewed Ant Design Mobile base selector: ${key}`);
-    rules.push(`${scoped} {${declarations}}`);
+    const themed = scoped === scope ? declarations.replace(/(--adm-([\w-]+)):\s*([^;]+);/g,
+      (_match, property, name, fallback) => `${property}: var(--oxa-mobile-${name}, ${fallback.trim()});`) : declarations;
+    rules.push(`${scoped} {${themed}}`);
     return '';
   });
   if (remainder.trim() || !rules.length) throw new Error('Ant Design Mobile base CSS is no longer flat');

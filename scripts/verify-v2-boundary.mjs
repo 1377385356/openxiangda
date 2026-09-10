@@ -1,6 +1,8 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import './verify-application-template.mjs';
+import { generateDesignTopics } from './design-capabilities.mjs';
+generateDesignTopics(undefined, true);
 
 const files = execFileSync(
   'git',

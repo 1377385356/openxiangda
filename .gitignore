@@ -12,3 +12,5 @@ docs/.vitepress/.temp/
 
 packages/openxiangda/documentation/
 packages/openxiangda/releases/
+.cache/design-workbench/
+.cache/design-workbench-evidence/

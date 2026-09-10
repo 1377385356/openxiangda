@@ -138,7 +138,7 @@ import 'openxiangda/mobile/styles.css';
 </MobileSurface>
 ```
 
-平台按需加载移动组件，并在构建时限定上游基础样式的作用范围。此入口的 `Popup`、`Picker`、`DatePicker` 默认保留在当前页面中，保留组件样式作用范围。已有 `openxiangda/react/styles.css` 包含移动字段样式，不必重复导入。不要直接引入 `antd-mobile` 根入口，它会重置全页字体和链接。平台统一使用组件库默认外观，不再提供配色配置或外观偏好。
+平台按需加载移动组件，并在构建时限定上游基础样式的作用范围。此入口的 `Popup`、`Picker`、`DatePicker` 默认保留在当前页面中，保留组件样式作用范围。已有 `openxiangda/react/styles.css` 包含移动字段样式，不必重复导入。不要直接引入 `antd-mobile` 根入口，它会重置全页字体和链接。应用通过设计包、ui 视觉参数和 MobileSurface 内变量应用已确认视觉；平台不维护第二套配色偏好状态，详见[设计工作流](./design-workflow.md)。
 
 `openxiangda check` 检查应用前端 `src/` 中的原生录入元素。移动入口使用 `src/mobile/`、`Mobile*.tsx` 或 `*.mobile.tsx`，并检查其本地静态依赖；这是明确的源码约定，不是运行时授权或对动态代码的安全证明。平台组件内部的原生 DOM 不受应用规则限制。
 

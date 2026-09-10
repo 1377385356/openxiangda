@@ -1,0 +1,1896 @@
+{
+  "schema": "openxiangda.design-capabilities/v1",
+  "repository": "https://github.com/nexu-io/open-design",
+  "revision": "07170f8d2213936b7862db04139d27e0af5437ed",
+  "adapterVersion": 1,
+  "files": [
+    {
+      "path": "skills/reference-design-contract/SKILL.md",
+      "bytes": 5366,
+      "sha256": "56d5e0c077263cd30f586ffa763fec5caebdee2821fa9653e86c3376b937e222"
+    },
+    {
+      "path": "skills/reference-design-contract/references/checklist.md",
+      "bytes": 1134,
+      "sha256": "45b0fb2dc33a82c192f37e2454f049f08729e5abe04cf7c3bc978acc6048b599"
+    },
+    {
+      "path": "skills/frontend-design/SKILL.md",
+      "bytes": 5240,
+      "sha256": "6963d8b4ae3d285b021342db2d797ec7aeaabbfd82ffefe9c90607e8a416b116"
+    },
+    {
+      "path": "skills/frontend-design/LICENSE.txt",
+      "bytes": 10174,
+      "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+    },
+    {
+      "path": "skills/impeccable-design-polish/SKILL.md",
+      "bytes": 2941,
+      "sha256": "e3ff45f1d4ed285ccc440ef94082a169fda4251da002f869119a23946ba18e79"
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 11296,
+      "sha256": "9d95806a26532623360eb84bb17d298f394b55ef73fb4c0796d99b4319b2b0da"
+    },
+    {
+      "path": "craft/typography.md",
+      "bytes": 4781,
+      "sha256": "5f8e634b35c6b27a5e86f748825da17efe6a0d2e96f68dc35f57f406420049a6"
+    },
+    {
+      "path": "craft/typography-hierarchy.md",
+      "bytes": 7414,
+      "sha256": "e247ca0358dcbdc3921f2148cc44c6ddcc325429b8082f6ad033792b79e39e06"
+    },
+    {
+      "path": "craft/color.md",
+      "bytes": 3117,
+      "sha256": "fb45b59fa3055f13d6549f45ae52e88cd09d3facd0e5aaab63600e7fb024db6d"
+    },
+    {
+      "path": "craft/state-coverage.md",
+      "bytes": 7084,
+      "sha256": "79bda732b55b0f0e4a366ba934f4a01518d3576091422047690e269222f2b682"
+    },
+    {
+      "path": "craft/accessibility-baseline.md",
+      "bytes": 12894,
+      "sha256": "ef6c5f670d114ceb4c347681bcf3be8637e5d1186165a9c79ca265f316c72d11"
+    },
+    {
+      "path": "craft/animation-discipline.md",
+      "bytes": 9114,
+      "sha256": "075273e8404f7931adfe196d508461efdd303b54e0d9a9ef3f642a682c12a760"
+    },
+    {
+      "path": "craft/laws-of-ux.md",
+      "bytes": 17339,
+      "sha256": "9a4db0fe294a240920921111d43a6af5ea0c4df1bf979f6e780610a36a9c6d1c"
+    },
+    {
+      "path": "craft/form-validation.md",
+      "bytes": 17186,
+      "sha256": "a31410ce6ba8b7a762c2975386f2e93ae97b59a8bc85169aa58457927b0a88e6"
+    },
+    {
+      "path": "craft/anti-ai-slop.md",
+      "bytes": 3918,
+      "sha256": "d0f57d3064451663f9dca81af170fc754acc4b1e77280fd5cfb3a04afeef9a5c"
+    },
+    {
+      "path": "attribution/refero-LICENSE",
+      "bytes": 1063,
+      "sha256": "7b5d57a0e210289fa900a0e2ab0513442e439e9d20b96f0cf5cba0e1b31b665e"
+    }
+  ],
+  "methods": {
+    "reference-design-contract": [
+      "typography",
+      "color",
+      "anti-ai-slop"
+    ],
+    "frontend-design": [
+      "typography",
+      "color",
+      "anti-ai-slop"
+    ],
+    "impeccable-design-polish": [
+      "typography",
+      "color",
+      "anti-ai-slop",
+      "animation-discipline",
+      "accessibility-baseline"
+    ]
+  },
+  "localDependencies": {
+    "skills/reference-design-contract/SKILL.md": [
+      "skills/reference-design-contract/references/checklist.md"
+    ],
+    "skills/frontend-design/SKILL.md": [
+      "skills/frontend-design/LICENSE.txt"
+    ]
+  },
+  "excluded": [
+    "design-review",
+    "plan-design-review",
+    "design-consultation",
+    "ui-ux-pro-max"
+  ],
+  "attribution": {
+    "repository": "https://github.com/referodesign/refero_skill",
+    "licenseBlob": "2c7d699d6123a4dc9ea5ec7dfbc2939963e6ef01",
+    "path": "attribution/refero-LICENSE"
+  },
+  "catalog": [
+    {
+      "path": "craft/FUTURE_SECTIONS.md",
+      "sha": "16c16c8d19676cfdd05f954ade574c494fcb9615"
+    },
+    {
+      "path": "craft/README.md",
+      "sha": "0367a9d06c1657d2f2147465cef02a2d14cc61f3"
+    },
+    {
+      "path": "craft/accessibility-baseline.md",
+      "sha": "388e709536b3c57af5a655b59d414059101a9663"
+    },
+    {
+      "path": "craft/animation-discipline.md",
+      "sha": "158ad520304220fd2605c8dc605312c9df366346"
+    },
+    {
+      "path": "craft/anti-ai-slop.md",
+      "sha": "f65af8532f671874b9b70af9619a2e487f259ab0"
+    },
+    {
+      "path": "craft/color.md",
+      "sha": "48d431f1b35f1f041e34df19f871025084054280"
+    },
+    {
+      "path": "craft/form-validation.md",
+      "sha": "eadd8f5a9a113274ac9b7757b62f16315ab37548"
+    },
+    {
+      "path": "craft/laws-of-ux.md",
+      "sha": "397132d23338b08378a9eb649926821f1217dc41"
+    },
+    {
+      "path": "craft/rtl-and-bidi.md",
+      "sha": "b4a126101c14718acbaeff4b3abe9fed388dfb46"
+    },
+    {
+      "path": "craft/state-coverage.md",
+      "sha": "cd6df2dcb4330da6650920ac4ca32060b86a669a"
+    },
+    {
+      "path": "craft/typography-hierarchy-editorial.md",
+      "sha": "c579579e4b9457cdac1e48e434d454c8ca4326a5"
+    },
+    {
+      "path": "craft/typography-hierarchy.md",
+      "sha": "59079be6d6908f43244f90bcb381a0850d655642"
+    },
+    {
+      "path": "craft/typography.md",
+      "sha": "df98b05120ec4e6db4ca61983b36333efdba8c97"
+    },
+    {
+      "path": "design-systems/agentic/manifest.json",
+      "sha": "c14e736abf97b63837611bb8e46233c6effb7e05"
+    },
+    {
+      "path": "design-systems/airbnb/manifest.json",
+      "sha": "b4d08b54af6c482866c30293098131114d2c73da"
+    },
+    {
+      "path": "design-systems/airtable/manifest.json",
+      "sha": "1fa98576f446094b68c59f0920debf58e79ff09a"
+    },
+    {
+      "path": "design-systems/ant/manifest.json",
+      "sha": "8d1ec5d6760f42b707fd9b971429c6cce2343712"
+    },
+    {
+      "path": "design-systems/apple/manifest.json",
+      "sha": "1346c10e6261db40faf04866a77d42e8a23ca12e"
+    },
+    {
+      "path": "design-systems/application/manifest.json",
+      "sha": "a2c2891caf439b3bb5d970da4431da28229a58f5"
+    },
+    {
+      "path": "design-systems/arc/manifest.json",
+      "sha": "c931aa228744b3bdf9daf2c935ff7f6f10fdfeb9"
+    },
+    {
+      "path": "design-systems/artistic/manifest.json",
+      "sha": "df789294d201af703bdbf92b0e28b3228be6bd16"
+    },
+    {
+      "path": "design-systems/atelier-zero/manifest.json",
+      "sha": "f94543fea386a73d86ef589c00ecfea183ade81c"
+    },
+    {
+      "path": "design-systems/bento/manifest.json",
+      "sha": "a92d509c0b2d4b70dceee90f048ded20257f6156"
+    },
+    {
+      "path": "design-systems/binance/manifest.json",
+      "sha": "73f685bbaf67e6b685b2cf0c20b90bcc8ccf2b61"
+    },
+    {
+      "path": "design-systems/bmw-m/manifest.json",
+      "sha": "04487e6d5e918569e7f6d14cc71e42315e1b4042"
+    },
+    {
+      "path": "design-systems/bmw/manifest.json",
+      "sha": "1654948087660a123bdc3b362752df5793d2ac25"
+    },
+    {
+      "path": "design-systems/bold/manifest.json",
+      "sha": "bf6a567690a26c898665923b741f353670a83ed2"
+    },
+    {
+      "path": "design-systems/brutalism/manifest.json",
+      "sha": "0fe439ae257eee3f9248fb8a517098228f4bf8fe"
+    },
+    {
+      "path": "design-systems/bugatti/manifest.json",
+      "sha": "cb3bd2e689b44b34e5b065b75759ec63347f3574"
+    },
+    {
+      "path": "design-systems/cafe/manifest.json",
+      "sha": "9a6922e48d93e3734536e9103bed5a28a4f660f7"
+    },
+    {
+      "path": "design-systems/cal/manifest.json",
+      "sha": "23dd4380524e31f01a6dbe4c1acc2c8670e7fd8a"
+    },
+    {
+      "path": "design-systems/canva/manifest.json",
+      "sha": "9c40434e4a018b5d6d7101d45eaa3e4d0c65db9d"
+    },
+    {
+      "path": "design-systems/cisco/manifest.json",
+      "sha": "54630069660e0f87cc6fab3aede3f6a3dd1a6e7e"
+    },
+    {
+      "path": "design-systems/claude/manifest.json",
+      "sha": "0f8b1a95b2062a46d10779435cdf5aa0e37d5cf3"
+    },
+    {
+      "path": "design-systems/clay/manifest.json",
+      "sha": "ad237f3801139a376328f83281d8ed0c69248c41"
+    },
+    {
+      "path": "design-systems/claymorphism/manifest.json",
+      "sha": "2e85d6110c27ed71364426c02f72fa03ec747bab"
+    },
+    {
+      "path": "design-systems/clean/manifest.json",
+      "sha": "817ae7345dd59a17799671470f47331588112000"
+    },
+    {
+      "path": "design-systems/clickhouse/manifest.json",
+      "sha": "f493f9204f0ebd1d7517eeb3be38b60dacaff52f"
+    },
+    {
+      "path": "design-systems/cloudflare-kumo/manifest.json",
+      "sha": "130133b64b0ee35782a92f04dd32db57319b41c4"
+    },
+    {
+      "path": "design-systems/cohere/manifest.json",
+      "sha": "c7a15d6d7f388cdc34223da26d029a723720850b"
+    },
+    {
+      "path": "design-systems/coinbase/manifest.json",
+      "sha": "869899dbd78d0c1a389cd1db0ecce33c8000d6d6"
+    },
+    {
+      "path": "design-systems/colorful/manifest.json",
+      "sha": "ed05d92516a29f144e5236b4152d72370bbeee0f"
+    },
+    {
+      "path": "design-systems/composio/manifest.json",
+      "sha": "9f62a916aff6cc3adfbe432945c489883352656c"
+    },
+    {
+      "path": "design-systems/contemporary/manifest.json",
+      "sha": "359addebd60755679499c1b1978527d7af5819e3"
+    },
+    {
+      "path": "design-systems/corporate/manifest.json",
+      "sha": "fa4e3a6483a874459cb12105e0683548eb65a86a"
+    },
+    {
+      "path": "design-systems/cosmic/manifest.json",
+      "sha": "f954b848c9d5f0f9d3d0a53fc9a526f49fa78fac"
+    },
+    {
+      "path": "design-systems/creative/manifest.json",
+      "sha": "08b8a77e33a7708406d1215feb6b72bfb1c7a4c0"
+    },
+    {
+      "path": "design-systems/cursor/manifest.json",
+      "sha": "15fb40de29f77e249057675791a446f647a938f5"
+    },
+    {
+      "path": "design-systems/dashboard/manifest.json",
+      "sha": "4479a4f36f8cbc6ecc5ac40d31031f0e42d8225e"
+    },
+    {
+      "path": "design-systems/default/manifest.json",
+      "sha": "46c0ec3c6ebec24162dff1a835b3f07b56c49197"
+    },
+    {
+      "path": "design-systems/discord/manifest.json",
+      "sha": "b55f0cbd146cc97ad4602097ec8c359906ab9397"
+    },
+    {
+      "path": "design-systems/dithered/manifest.json",
+      "sha": "5e7df153aa0b15bfcf84bc5c2c96d0f4961edc0b"
+    },
+    {
+      "path": "design-systems/doodle/manifest.json",
+      "sha": "d29f19412daec489e3726029895facf28406041b"
+    },
+    {
+      "path": "design-systems/dramatic/manifest.json",
+      "sha": "63c92eff61c89967c7f153db9a37f8a03ba15599"
+    },
+    {
+      "path": "design-systems/duolingo/manifest.json",
+      "sha": "24a87ae4cca4f7571beecadf4910046e8d590bc3"
+    },
+    {
+      "path": "design-systems/editorial/manifest.json",
+      "sha": "85ec48295cf922eaac2a3f6f7c44ba4ce155e272"
+    },
+    {
+      "path": "design-systems/elegant/manifest.json",
+      "sha": "b866d94387693faea19aa2180205a7f5afba1622"
+    },
+    {
+      "path": "design-systems/elevenlabs/manifest.json",
+      "sha": "872f12ac9716adcc75a1748da874d307fc440ef2"
+    },
+    {
+      "path": "design-systems/energetic/manifest.json",
+      "sha": "9062170abdf7fb7c21af5fb9dfd103f797d164db"
+    },
+    {
+      "path": "design-systems/enterprise/manifest.json",
+      "sha": "9898110bda6b33aec0e1bdeb83746c7845b26286"
+    },
+    {
+      "path": "design-systems/expo/manifest.json",
+      "sha": "a8902501280296f429f382e69ebbae4f84b55ab5"
+    },
+    {
+      "path": "design-systems/expressive/manifest.json",
+      "sha": "0e19f4812782d44e6df55d983f96beb972705610"
+    },
+    {
+      "path": "design-systems/fantasy/manifest.json",
+      "sha": "9300b6dddcae4f22c940f1977a500918df8fd0bb"
+    },
+    {
+      "path": "design-systems/ferrari/manifest.json",
+      "sha": "a4acc4e33f610a9640d76cb03b37ed55974f461f"
+    },
+    {
+      "path": "design-systems/figma/manifest.json",
+      "sha": "e4b94cc3733d459590841ee26b31d3432c3d33de"
+    },
+    {
+      "path": "design-systems/flat/manifest.json",
+      "sha": "4a0d773edde84b68efea7e8b29e62b44e42e9f21"
+    },
+    {
+      "path": "design-systems/framer/manifest.json",
+      "sha": "59fd6ec3cfe4d3a30ec77cb48ebc702dfadd2f63"
+    },
+    {
+      "path": "design-systems/friendly/manifest.json",
+      "sha": "3b96143424e0f95af4d0d2e1f4017f681806259f"
+    },
+    {
+      "path": "design-systems/futuristic/manifest.json",
+      "sha": "0fe0ffdc0c7426a4057fe084c7ac957484badced"
+    },
+    {
+      "path": "design-systems/github/manifest.json",
+      "sha": "b97974001196feaa1423d633a16547895f813dfe"
+    },
+    {
+      "path": "design-systems/glassmorphism/manifest.json",
+      "sha": "2ebc870ee3eede822d93e1cf5c4155bc801b7e10"
+    },
+    {
+      "path": "design-systems/gradient/manifest.json",
+      "sha": "05eb1bcb3aaaed9a942ba1c1c12686fa2e4e8f58"
+    },
+    {
+      "path": "design-systems/hashicorp/manifest.json",
+      "sha": "7f76c9e34a87128816ee8e953b772c165a6ab8fb"
+    },
+    {
+      "path": "design-systems/hud/manifest.json",
+      "sha": "9cedf975568bd60f04d101b7752cb7630256ce7a"
+    },
+    {
+      "path": "design-systems/huggingface/manifest.json",
+      "sha": "afabfd6004a7666c038286a73451da06f31e4fee"
+    },
+    {
+      "path": "design-systems/ibm/manifest.json",
+      "sha": "da3e1354801e4105430d02b93dc73982ce933213"
+    },
+    {
+      "path": "design-systems/intercom/manifest.json",
+      "sha": "45c2ad67311787568b62eac16e8b48c281da4376"
+    },
+    {
+      "path": "design-systems/kami/manifest.json",
+      "sha": "adf219df57e8f5e3a8c5af6b1513d717b66d732b"
+    },
+    {
+      "path": "design-systems/kraken/manifest.json",
+      "sha": "1a49f51f7a851e1fea2c166ca5a577f1a60c05f8"
+    },
+    {
+      "path": "design-systems/lamborghini/manifest.json",
+      "sha": "806b343d69853137ac9f0a70ce2ebe3cbdd8bbc6"
+    },
+    {
+      "path": "design-systems/levels/manifest.json",
+      "sha": "f1951c9fac9e26c171efd74cf21eb0bbe48b47a6"
+    },
+    {
+      "path": "design-systems/linear-app/manifest.json",
+      "sha": "cc0e4334a8194962fe7c93fa9988e2e9ae374e14"
+    },
+    {
+      "path": "design-systems/lingo/manifest.json",
+      "sha": "d032c707442b80277c1a89a8d99ea8dad6f289ee"
+    },
+    {
+      "path": "design-systems/loom/manifest.json",
+      "sha": "a33e4ba0c90022e476a90d3aae2c65d701045222"
+    },
+    {
+      "path": "design-systems/lovable/manifest.json",
+      "sha": "1f4ec64ea21d3a4590fb937b3e7e74de265119d4"
+    },
+    {
+      "path": "design-systems/luxury/manifest.json",
+      "sha": "14dc486fbde1b76b1dd4225d6622f315b56e6377"
+    },
+    {
+      "path": "design-systems/mastercard/manifest.json",
+      "sha": "2e43b05d147718af6aef4fc797e49f62edba38ca"
+    },
+    {
+      "path": "design-systems/material/manifest.json",
+      "sha": "de0946d7cdb3ca7db996337b70335b3f7b5c72b4"
+    },
+    {
+      "path": "design-systems/meta/manifest.json",
+      "sha": "4f33ed37e2b56c5e0b8d1fdd72f7ca8907294f7f"
+    },
+    {
+      "path": "design-systems/minimal/manifest.json",
+      "sha": "ef18f3f06d6f55f6c3eb811c305d5ee2aefb8ad4"
+    },
+    {
+      "path": "design-systems/minimax/manifest.json",
+      "sha": "a6fcb24ee3b913e6b3de2dc6aed1befd9848d143"
+    },
+    {
+      "path": "design-systems/mintlify/manifest.json",
+      "sha": "71485fd49e6632ec8dd16263099ac03ac7144108"
+    },
+    {
+      "path": "design-systems/miro/manifest.json",
+      "sha": "e79a22b9cb824f6f4e03e1b46aec1578ab4ef42f"
+    },
+    {
+      "path": "design-systems/mission-control/manifest.json",
+      "sha": "c1a4023d5011617d36fc16451c389a4fe1388366"
+    },
+    {
+      "path": "design-systems/mistral-ai/manifest.json",
+      "sha": "eee53da3b73bd2e5f3a61276db5c94e9e74ffc10"
+    },
+    {
+      "path": "design-systems/modern/manifest.json",
+      "sha": "8ad8090933f40f37e8bdc2e8506fc9615eb15f4e"
+    },
+    {
+      "path": "design-systems/mongodb/manifest.json",
+      "sha": "2fc2e3cbc061ca501b7ea1dfe95640063afe8643"
+    },
+    {
+      "path": "design-systems/mono/manifest.json",
+      "sha": "cf956cf64468794ae963e0c4ed1b460bf8433a2e"
+    },
+    {
+      "path": "design-systems/neobrutalism/manifest.json",
+      "sha": "83c21a3016433a38d898bf50024048b43d4fdc3d"
+    },
+    {
+      "path": "design-systems/neon/manifest.json",
+      "sha": "6b0ab1daff38db17c113c3af7adb139c5e2b39bf"
+    },
+    {
+      "path": "design-systems/neumorphism/manifest.json",
+      "sha": "771451fd0caef6f975bef4bc6d1dc53ca6ebdaa2"
+    },
+    {
+      "path": "design-systems/nike/manifest.json",
+      "sha": "60e0af06782413c1aee870c2d805cc870dd09256"
+    },
+    {
+      "path": "design-systems/notion/manifest.json",
+      "sha": "e2986cffb41ae0773bce3effa0b11ad898472222"
+    },
+    {
+      "path": "design-systems/nvidia/manifest.json",
+      "sha": "2c9bf145a4203d8831f410a17eb7e11f8207798f"
+    },
+    {
+      "path": "design-systems/ollama/manifest.json",
+      "sha": "25d889ec543144fd93c1d6b60b24766f146e3f32"
+    },
+    {
+      "path": "design-systems/openai/manifest.json",
+      "sha": "7487c34245a99e0dfd97087f17daecda53dbc58b"
+    },
+    {
+      "path": "design-systems/opencode-ai/manifest.json",
+      "sha": "ffaa68d4a019a426ef5042a9c2f53e3c17312da1"
+    },
+    {
+      "path": "design-systems/pacman/manifest.json",
+      "sha": "215b04b98677a3e747abdc09299733458ffb4188"
+    },
+    {
+      "path": "design-systems/paper/manifest.json",
+      "sha": "66f9f87e302e5ce0abee5fd074019a5e473e9af1"
+    },
+    {
+      "path": "design-systems/perplexity/manifest.json",
+      "sha": "f660a12a043b172ca66daea275f332a6b4cfc90c"
+    },
+    {
+      "path": "design-systems/perspective/manifest.json",
+      "sha": "bf73172b6acab54a40f595e0fe8a45894cd6fbe4"
+    },
+    {
+      "path": "design-systems/pinterest/manifest.json",
+      "sha": "46ad2045b9bb9bb6ef2357d985eb8236f27f4db1"
+    },
+    {
+      "path": "design-systems/playstation/manifest.json",
+      "sha": "e856703f80f7235505d7cc00a222cd846030c445"
+    },
+    {
+      "path": "design-systems/posthog/manifest.json",
+      "sha": "5a9c083c420793f937a7a29c008123992d7bf5a3"
+    },
+    {
+      "path": "design-systems/premium/manifest.json",
+      "sha": "64f62213e6ea3a4c7ad05664b84b6ea6e70e5615"
+    },
+    {
+      "path": "design-systems/professional/manifest.json",
+      "sha": "4b8f017e0a2f61012b1946b6314beeb32a3746ce"
+    },
+    {
+      "path": "design-systems/publication/manifest.json",
+      "sha": "6738c2ec0dee9839f3bb1a16f0923ba4f5d1737c"
+    },
+    {
+      "path": "design-systems/raycast/manifest.json",
+      "sha": "338c83ef004a934f161fd4d3323a3605ec0b5739"
+    },
+    {
+      "path": "design-systems/refined/manifest.json",
+      "sha": "46ad95f4ae05d8e0315c5d753aafbcdf5ad8e1ba"
+    },
+    {
+      "path": "design-systems/renault/manifest.json",
+      "sha": "ae10d1abb49f6501ee0358f06f7ff026956140ed"
+    },
+    {
+      "path": "design-systems/replicate/manifest.json",
+      "sha": "132e58d2beb9663b081ad0ea9025eb88e4abf761"
+    },
+    {
+      "path": "design-systems/resend/manifest.json",
+      "sha": "3723c5240a4d91cce7e3d7684112cb2e8616b1d0"
+    },
+    {
+      "path": "design-systems/retro/manifest.json",
+      "sha": "eeafd7661fbed486eedbad6656c2fd90194fceb0"
+    },
+    {
+      "path": "design-systems/revolut/manifest.json",
+      "sha": "0ed96ffce9b0235029e68f7f736e7417578bb6cf"
+    },
+    {
+      "path": "design-systems/runwayml/manifest.json",
+      "sha": "d45371ba7ab2af4851fb086d2a926f624976c9ef"
+    },
+    {
+      "path": "design-systems/sanity/manifest.json",
+      "sha": "1ea8797c73ecd07df0a5905340d687772398c980"
+    },
+    {
+      "path": "design-systems/sentry/manifest.json",
+      "sha": "cab4c1d28ea454becb1277d9f28d22fed255744a"
+    },
+    {
+      "path": "design-systems/shadcn/manifest.json",
+      "sha": "21cc4ab5e4bde3cdcd2b5399bf387f155fb4c752"
+    },
+    {
+      "path": "design-systems/shopify/manifest.json",
+      "sha": "86f39497e009c9e35721e4a8b7b9789bb8b01427"
+    },
+    {
+      "path": "design-systems/simple/manifest.json",
+      "sha": "9fe878cdbabd958676454688d83d928ca7a2aa15"
+    },
+    {
+      "path": "design-systems/skeumorphism/manifest.json",
+      "sha": "8c62045a53df9f5574c79a83317094c6eb16e9f6"
+    },
+    {
+      "path": "design-systems/slack/manifest.json",
+      "sha": "37d485b86cfd16845ede068342561645e777055a"
+    },
+    {
+      "path": "design-systems/sleek/manifest.json",
+      "sha": "3bd9203a7eaf604986d8035f6df701cdf634ce2a"
+    },
+    {
+      "path": "design-systems/spacex/manifest.json",
+      "sha": "5e39ece7bfe7f6b40d800d97cecc892fc5d26af4"
+    },
+    {
+      "path": "design-systems/spacious/manifest.json",
+      "sha": "8c57419222c10740ce78be535a8a0edb3672a75c"
+    },
+    {
+      "path": "design-systems/spotify/manifest.json",
+      "sha": "244ffbf5865b779d89113039bae4d4cff463c3ff"
+    },
+    {
+      "path": "design-systems/starbucks/manifest.json",
+      "sha": "da01fc32d1e427a22d563ef0dbbef1279ef0b8fc"
+    },
+    {
+      "path": "design-systems/storytelling/manifest.json",
+      "sha": "411ef7731983bb2adaad02fdbdc0cffb6600282d"
+    },
+    {
+      "path": "design-systems/stripe/manifest.json",
+      "sha": "9501e01cd22a72c0abf74be69a768e7a74a65bf8"
+    },
+    {
+      "path": "design-systems/supabase/manifest.json",
+      "sha": "1d4bbe21785b27277a3727ee9725e092e242946e"
+    },
+    {
+      "path": "design-systems/superhuman/manifest.json",
+      "sha": "58ae0c4f38af14b15d3fabf061ad775176b59cb3"
+    },
+    {
+      "path": "design-systems/tesla/manifest.json",
+      "sha": "2fc53f6689afe3b268a2f1e4f38a6b84533286da"
+    },
+    {
+      "path": "design-systems/tetris/manifest.json",
+      "sha": "fde29d55573b385425b9e3efc2dd0aa27c02173f"
+    },
+    {
+      "path": "design-systems/theverge/manifest.json",
+      "sha": "9f0f492ad8d9df3066785bb2b634bbd4a0c2aeae"
+    },
+    {
+      "path": "design-systems/together-ai/manifest.json",
+      "sha": "fa11fdb2f05d69ee0aa6ddcdb07c67eb9328335a"
+    },
+    {
+      "path": "design-systems/tom-modern/manifest.json",
+      "sha": "be01fd45265b3cda8fb3b09e52aa7ba1cc200421"
+    },
+    {
+      "path": "design-systems/totality-festival/manifest.json",
+      "sha": "5698017ef69dee38383cc744fc63847aa07422d1"
+    },
+    {
+      "path": "design-systems/trading-terminal/manifest.json",
+      "sha": "2801d767fe56f680caa2e46d4dc85874937ab1e3"
+    },
+    {
+      "path": "design-systems/uber/manifest.json",
+      "sha": "824034da642003900b1cadabc19e90d450fed5b0"
+    },
+    {
+      "path": "design-systems/urdu/manifest.json",
+      "sha": "32ad9484d9aec774da0da444a020d92ad58d3c70"
+    },
+    {
+      "path": "design-systems/vercel/manifest.json",
+      "sha": "3d919c51ff6f4bbef294fa17e77e9e22f2b873cc"
+    },
+    {
+      "path": "design-systems/vibrant/manifest.json",
+      "sha": "bf5bcfdaf0efe5d62743416c757f12b01340b635"
+    },
+    {
+      "path": "design-systems/vintage/manifest.json",
+      "sha": "03c1e37371e34aa3132b41ee754cb51ca2f57023"
+    },
+    {
+      "path": "design-systems/vodafone/manifest.json",
+      "sha": "3634f00da361c1ba1170e8acf35be03bfa7290b5"
+    },
+    {
+      "path": "design-systems/voltagent/manifest.json",
+      "sha": "0dbe81434fac76207d8154080b4632b41f141aed"
+    },
+    {
+      "path": "design-systems/warm-editorial/manifest.json",
+      "sha": "5e1e9f1e494810e5914551c36e3ddd73ec539f4c"
+    },
+    {
+      "path": "design-systems/warp/manifest.json",
+      "sha": "2f996e65b9d1110be1d8f1a67d1584a22f37c746"
+    },
+    {
+      "path": "design-systems/webex/manifest.json",
+      "sha": "84fa284cae8d00b6abc56ea5c647ed675811c76c"
+    },
+    {
+      "path": "design-systems/webflow/manifest.json",
+      "sha": "58126afdef6bf410c9bd1338ba2dbc3f10928948"
+    },
+    {
+      "path": "design-systems/wechat/manifest.json",
+      "sha": "a1e174c7488fdc85cd5c410ad642bce73eead605"
+    },
+    {
+      "path": "design-systems/wired/manifest.json",
+      "sha": "d71a8bb028aa201a1f2459f9d3a92af6450f7790"
+    },
+    {
+      "path": "design-systems/wise/manifest.json",
+      "sha": "6ae3f0c2d84672620b1954c79333e1328ce8297b"
+    },
+    {
+      "path": "design-systems/x-ai/manifest.json",
+      "sha": "9725c0236fb3242765b3fe9a89b0e5a47ce9544e"
+    },
+    {
+      "path": "design-systems/xiaohongshu/manifest.json",
+      "sha": "41a686497ffa0e77ddaf08dee7995501acdcaf62"
+    },
+    {
+      "path": "design-systems/zapier/manifest.json",
+      "sha": "b47a8d5ee94e4fb14684f933576dc018333482a2"
+    },
+    {
+      "path": "design-templates/audio-jingle/SKILL.md",
+      "sha": "e7f509d596c8af61aabb88a30a4e69197e8e5323"
+    },
+    {
+      "path": "design-templates/blog-post/SKILL.md",
+      "sha": "2eed0aa73871faa09a21d4f31cfccf206e0039a2"
+    },
+    {
+      "path": "design-templates/clinical-case-report/SKILL.md",
+      "sha": "cd32be08da85b6cd0d064aa3215d01732eeff91d"
+    },
+    {
+      "path": "design-templates/contact-widget/SKILL.md",
+      "sha": "91517219f8578d50319c5da7604b221d27b67efc"
+    },
+    {
+      "path": "design-templates/critique/SKILL.md",
+      "sha": "0e8d6ccfd1769820b10916083ca152d3a250b4a4"
+    },
+    {
+      "path": "design-templates/dashboard/SKILL.md",
+      "sha": "fd66edffbafab30e16c02d05a845c8deba99269a"
+    },
+    {
+      "path": "design-templates/dating-web/SKILL.md",
+      "sha": "f115cbd86a7b658a4f22ce86b2392e2ebce0d757"
+    },
+    {
+      "path": "design-templates/dcf-valuation/SKILL.md",
+      "sha": "732cc01022be058f0a2b01396c7d5b8f4da64979"
+    },
+    {
+      "path": "design-templates/digital-eguide/SKILL.md",
+      "sha": "41c338d690d7b441767c17090177eff9907b0015"
+    },
+    {
+      "path": "design-templates/docs-page/SKILL.md",
+      "sha": "9eb800affaa7e4f506dd16f54d0c732f52293c6f"
+    },
+    {
+      "path": "design-templates/email-marketing/SKILL.md",
+      "sha": "a01317e13a32c5c8db329cb625fd90b3a4260299"
+    },
+    {
+      "path": "design-templates/eng-runbook/SKILL.md",
+      "sha": "1c1e5af686f9ff8a00e5ed182d1b1ccf0009d504"
+    },
+    {
+      "path": "design-templates/finance-report/SKILL.md",
+      "sha": "4336e95635b28c91c6278d322c675341348f945a"
+    },
+    {
+      "path": "design-templates/flowai-live-dashboard-template/SKILL.md",
+      "sha": "1efa2c3c3521e81338e4b67a70da74565359154c"
+    },
+    {
+      "path": "design-templates/gamified-app/SKILL.md",
+      "sha": "34c47cc35264ab4907d5759b73c0b36e76fabb8b"
+    },
+    {
+      "path": "design-templates/github-dashboard/SKILL.md",
+      "sha": "7804cef24b6dbc7bec0fe0a11e1c1abfe745c8ea"
+    },
+    {
+      "path": "design-templates/guizang-ppt/SKILL.md",
+      "sha": "329c5f9ccc02a03e630ec0a48f2eb729c7b20630"
+    },
+    {
+      "path": "design-templates/hr-onboarding/SKILL.md",
+      "sha": "66d5788b682f0f11fc9634e1952deb898a1e8189"
+    },
+    {
+      "path": "design-templates/html-ppt-course-module/SKILL.md",
+      "sha": "1a040c786369cb7090abad3149242dc59b692b5e"
+    },
+    {
+      "path": "design-templates/html-ppt-graphify-dark-graph/SKILL.md",
+      "sha": "63606be69260e029778c9d7d4d7f3e966bc07594"
+    },
+    {
+      "path": "design-templates/html-ppt-hermes-cyber-terminal/SKILL.md",
+      "sha": "88dcdf9fc7a9653de72c16ce2522484875d514d5"
+    },
+    {
+      "path": "design-templates/html-ppt-knowledge-arch-blueprint/SKILL.md",
+      "sha": "0cb5a85b11534e46f4e7b88f4344fa4f21dc4b13"
+    },
+    {
+      "path": "design-templates/html-ppt-obsidian-claude-gradient/SKILL.md",
+      "sha": "5f17a9b0611233ccfb98219802ee5857ed8f531c"
+    },
+    {
+      "path": "design-templates/html-ppt-pitch-deck/SKILL.md",
+      "sha": "2da9d1b8f349aef6c243fddf444ad4e60efa0740"
+    },
+    {
+      "path": "design-templates/html-ppt-presenter-mode-reveal/SKILL.md",
+      "sha": "e6b7d459035738095132001e6323a2a1b3949984"
+    },
+    {
+      "path": "design-templates/html-ppt-product-launch/SKILL.md",
+      "sha": "da8fdc46f7d07625f6bf8e7103f5580c6418d529"
+    },
+    {
+      "path": "design-templates/html-ppt-taste-brutalist/SKILL.md",
+      "sha": "f06522bfff8513202511932281f5d59d2b84c832"
+    },
+    {
+      "path": "design-templates/html-ppt-taste-editorial/SKILL.md",
+      "sha": "6c67ad69f9f83aa2836ef5925c72884e36fa7ffb"
+    },
+    {
+      "path": "design-templates/html-ppt-tech-sharing/SKILL.md",
+      "sha": "e1a3c2003333b04b55a6034b80a8ffbf1e240b6f"
+    },
+    {
+      "path": "design-templates/html-ppt-testing-safety-alert/SKILL.md",
+      "sha": "cf8255c55a5cd4748d35d84072c99da4e004b789"
+    },
+    {
+      "path": "design-templates/html-ppt-weekly-report/SKILL.md",
+      "sha": "6276a836f9de649ec9cc1241605baec451437731"
+    },
+    {
+      "path": "design-templates/html-ppt-xhs-pastel-card/SKILL.md",
+      "sha": "29b555ca7af5314b875f85883505c514a067d81f"
+    },
+    {
+      "path": "design-templates/html-ppt-xhs-white-editorial/SKILL.md",
+      "sha": "b2915694fd3e4140456e7dfdc4b2e6f387d35ecf"
+    },
+    {
+      "path": "design-templates/html-ppt-zhangzara-8-bit-orbit/SKILL.md",
+      "sha": "6d7fd66de81e247c73a2cc0bd9636a932c0d9c0c"
+    },
+    {
+      "path": "design-templates/html-ppt-zhangzara-biennale-yellow/SKILL.md",
+      "sha": "baa8b2ea50a1ce39a13f78ee8bb21121acd12afb"
+    },
+    {
+      "path": "design-templates/html-ppt-zhangzara-block-frame/SKILL.md",
+      "sha": "99bd64516db6787ded0bf120fe53767dfb30303f"
+    },
+    {
+      "path": "design-templates/html-ppt-zhangzara-blue-professional/SKILL.md",
+      "sha": "1b0223f5356e071d1114662e9074327a88b39dd4"
+    },
+    {
+      "path": "design-templates/html-ppt-zhangzara-bold-poster/SKILL.md",
+      "sha": "d2d1d00d8010e5f28c0fa2344d679ef15573487f"
+    },
+    {
+      "path": "design-templates/html-ppt-zhangzara-broadside/SKILL.md",
+      "sha": "b4bcb41ab9ef87e0d7c642ffef1c71f9834edbd8"
+    },
+    {
+      "path": "design-templates/html-ppt-zhangzara-capsule/SKILL.md",
+      "sha": "8d8496c37b648add6dedbd13be0dbc6890ec0a82"
+    },
+    {
+      "path": "design-templates/html-ppt-zhangzara-cartesian/SKILL.md",
+      "sha": "abbbf3447e05f8fd72c7d557a1fdecf58b436560"
+    },
+    {
+      "path": "design-templates/html-ppt-zhangzara-cobalt-grid/SKILL.md",
+      "sha": "9ab6d71e2539eb05b5b3ece6c81af76c01c5ca40"
+    },
+    {
+      "path": "design-templates/html-ppt-zhangzara-coral/SKILL.md",
+      "sha": "866647fa826814638f44556718cab2ff336c112b"
+    },
+    {
+      "path": "design-templates/html-ppt-zhangzara-creative-mode/SKILL.md",
+      "sha": "87d9e51801307fcc3513b960cc1b21e45c3883cb"
+    },
+    {
+      "path": "design-templates/html-ppt-zhangzara-daisy-days/SKILL.md",
+      "sha": "5fc143b3fe5a0782dc8e020efef254c2e2c1d42a"
+    },
+    {
+      "path": "design-templates/html-ppt-zhangzara-editorial-tri-tone/SKILL.md",
+      "sha": "d9701d7160e9b73b9050f31964c2afa950d9c164"
+    },
+    {
+      "path": "design-templates/html-ppt-zhangzara-grove/SKILL.md",
+      "sha": "0bbaacf34e3449a379f43e83be356d457c87a1ae"
+    },
+    {
+      "path": "design-templates/html-ppt-zhangzara-long-table/SKILL.md",
+      "sha": "e4fb76df8195fa298e3dd8e1fef76196c147f9a1"
+    },
+    {
+      "path": "design-templates/html-ppt-zhangzara-mat/SKILL.md",
+      "sha": "9e9b71a2955352efc735f9d9870da9521590e498"
+    },
+    {
+      "path": "design-templates/html-ppt-zhangzara-monochrome/SKILL.md",
+      "sha": "94bd65b568322519ab7efd0208d968e3a5f5d6b2"
+    },
+    {
+      "path": "design-templates/html-ppt-zhangzara-neo-grid-bold/SKILL.md",
+      "sha": "e4b6998dd3b2c4b6867abf9b97caa4512cfbca38"
+    },
+    {
+      "path": "design-templates/html-ppt-zhangzara-peoples-platform/SKILL.md",
+      "sha": "b28ca594e7b65672995101d007808d07f824091c"
+    },
+    {
+      "path": "design-templates/html-ppt-zhangzara-pin-and-paper/SKILL.md",
+      "sha": "919782d097bae4c62e09f6ae98907d3d44084d03"
+    },
+    {
+      "path": "design-templates/html-ppt-zhangzara-pink-script/SKILL.md",
+      "sha": "7cf160324194cd95d09717038a44708e80b846d4"
+    },
+    {
+      "path": "design-templates/html-ppt-zhangzara-playful/SKILL.md",
+      "sha": "3748954ccac8241ee60fa9a8b3ed82a594874f4b"
+    },
+    {
+      "path": "design-templates/html-ppt-zhangzara-raw-grid/SKILL.md",
+      "sha": "9a3f15436d331f202b70d8c6f5897165ebee6737"
+    },
+    {
+      "path": "design-templates/html-ppt-zhangzara-retro-windows/SKILL.md",
+      "sha": "47a4827e1f2b518c010696ecd2a3552bc1d38817"
+    },
+    {
+      "path": "design-templates/html-ppt-zhangzara-retro-zine/SKILL.md",
+      "sha": "feb8733d9638ac83c1e62adbe78eb534d0899806"
+    },
+    {
+      "path": "design-templates/html-ppt-zhangzara-sakura-chroma/SKILL.md",
+      "sha": "677a4aa11b9f6318b10328b41781df145a412d19"
+    },
+    {
+      "path": "design-templates/html-ppt-zhangzara-scatterbrain/SKILL.md",
+      "sha": "09dde7c0b0ad70f765f36a17ff6ffd0269eccbda"
+    },
+    {
+      "path": "design-templates/html-ppt-zhangzara-signal/SKILL.md",
+      "sha": "35045163645601f95142169bd86b2c52733a4beb"
+    },
+    {
+      "path": "design-templates/html-ppt-zhangzara-soft-editorial/SKILL.md",
+      "sha": "6e9133bd9c7db479102675c99a1a6ce02da3998c"
+    },
+    {
+      "path": "design-templates/html-ppt-zhangzara-stencil-tablet/SKILL.md",
+      "sha": "25474c5b011fe81477b344d0d71f104dec7db707"
+    },
+    {
+      "path": "design-templates/html-ppt-zhangzara-studio/SKILL.md",
+      "sha": "a996aae3a79023311a684801160c5b7386d66546"
+    },
+    {
+      "path": "design-templates/html-ppt-zhangzara-vellum/SKILL.md",
+      "sha": "3d9a66cc3db3c3345f82cec8435c9f36cc895a15"
+    },
+    {
+      "path": "design-templates/html-ppt/SKILL.md",
+      "sha": "9a4ead71e39ccf2b6974412cb93b57c990793908"
+    },
+    {
+      "path": "design-templates/hyperframes/SKILL.md",
+      "sha": "84bf8b8159dd34b75ece0f33def42b21f2e63e81"
+    },
+    {
+      "path": "design-templates/ib-pitch-book/SKILL.md",
+      "sha": "692283fc32293ff523038e806506390d250c8e19"
+    },
+    {
+      "path": "design-templates/image-poster/SKILL.md",
+      "sha": "d96538e021c969ba3fcf0e538f40f55ab357d24a"
+    },
+    {
+      "path": "design-templates/invoice/SKILL.md",
+      "sha": "3dfa520f804f9bbb8e028eac3ad069dca1209d23"
+    },
+    {
+      "path": "design-templates/kami-deck/SKILL.md",
+      "sha": "d1924545b1c194a17679fc96e256695220aafbe7"
+    },
+    {
+      "path": "design-templates/kami-landing/SKILL.md",
+      "sha": "276d3153eed2347d3907c318e9209522fc7fb426"
+    },
+    {
+      "path": "design-templates/kanban-board/SKILL.md",
+      "sha": "0aa9b39d1cc08582b89b201a72cea936e599f0a6"
+    },
+    {
+      "path": "design-templates/last30days/SKILL.md",
+      "sha": "5a04f8c35b1e75602c61d01d270a72e23255fa9f"
+    },
+    {
+      "path": "design-templates/live-artifact/SKILL.md",
+      "sha": "bd3a01ed3f90ff22c44737374bb6a4cf2ab32651"
+    },
+    {
+      "path": "design-templates/live-dashboard/SKILL.md",
+      "sha": "90ce82b5bb05e0e386a66b519f85ecd3f0618136"
+    },
+    {
+      "path": "design-templates/magazine-poster/SKILL.md",
+      "sha": "a40d704e03a788146334aa500492655ea288ca9e"
+    },
+    {
+      "path": "design-templates/meeting-notes/SKILL.md",
+      "sha": "fceb17f52001e19dc67882267aeee1803ed12fbe"
+    },
+    {
+      "path": "design-templates/mobile-app/SKILL.md",
+      "sha": "26489b0bfccacc654386b854833b97c8cd5d539e"
+    },
+    {
+      "path": "design-templates/mobile-onboarding/SKILL.md",
+      "sha": "f1cfa518a83f01422ad5963b7079146f2ddc97a1"
+    },
+    {
+      "path": "design-templates/motion-frames/SKILL.md",
+      "sha": "2505f54d008cf2a891a5f43853ba7362a0547392"
+    },
+    {
+      "path": "design-templates/open-design-landing-deck/SKILL.md",
+      "sha": "2da0812bf03a0441aed09e656e3cc1ce87a2da4b"
+    },
+    {
+      "path": "design-templates/open-design-landing/SKILL.md",
+      "sha": "deef850a5fe09d7723b9096916935071c375e741"
+    },
+    {
+      "path": "design-templates/orbit-general/SKILL.md",
+      "sha": "1dfdf56cf3ff20f8fd866fee46c3801abb1f1a62"
+    },
+    {
+      "path": "design-templates/orbit-github/SKILL.md",
+      "sha": "e472ec6cfb82eaefb845c738db5ecd9e45a4ffc4"
+    },
+    {
+      "path": "design-templates/orbit-gmail/SKILL.md",
+      "sha": "33e4de5c3a78c45df1102125ff17be8f5759c57e"
+    },
+    {
+      "path": "design-templates/orbit-linear/SKILL.md",
+      "sha": "9e68641fa0a37d7a5f218f6f1040e473e8bb50c4"
+    },
+    {
+      "path": "design-templates/orbit-notion/SKILL.md",
+      "sha": "a34ee13aff6595d6531f0b1887ad14008490eb8d"
+    },
+    {
+      "path": "design-templates/pm-spec/SKILL.md",
+      "sha": "5c4b50f5e4c6e04f2e013c932915de9dff9d7685"
+    },
+    {
+      "path": "design-templates/pricing-page/SKILL.md",
+      "sha": "f3676adf90f767aaf24623829bedc16925460070"
+    },
+    {
+      "path": "design-templates/replit-deck/SKILL.md",
+      "sha": "8068bc631bda77f7c5d49d26cc383d71097bef9e"
+    },
+    {
+      "path": "design-templates/saas-landing/SKILL.md",
+      "sha": "73783439a9bd01e408a118a128f2322e82316478"
+    },
+    {
+      "path": "design-templates/simple-deck/SKILL.md",
+      "sha": "29f3d5a2910ebaedc0eec25e57ca6f0694a9b2e2"
+    },
+    {
+      "path": "design-templates/social-carousel/SKILL.md",
+      "sha": "5f180daf890927aa2dda6cd0fc856b187e6f96ec"
+    },
+    {
+      "path": "design-templates/social-media-dashboard/SKILL.md",
+      "sha": "b47e1b94c4d44ae37645162ebfc64563e5ace321"
+    },
+    {
+      "path": "design-templates/social-media-matrix-tracker-template/SKILL.md",
+      "sha": "7b5f0ca1300c3c098fdabaaaa115efbf24e2bc4e"
+    },
+    {
+      "path": "design-templates/sprite-animation/SKILL.md",
+      "sha": "4e9e85a2d3fe46793eeeb274bbecc29f30b770ec"
+    },
+    {
+      "path": "design-templates/team-okrs/SKILL.md",
+      "sha": "56a5be735bc59efa5b227a98294d29f1ad4d5db7"
+    },
+    {
+      "path": "design-templates/trading-analysis-dashboard-template/SKILL.md",
+      "sha": "1d056fa9b4168b1bf54251bd76438750b4d7b6ce"
+    },
+    {
+      "path": "design-templates/tweaks/SKILL.md",
+      "sha": "5b4bdba85bdc3aaaf90e32676fdeb95878b63caa"
+    },
+    {
+      "path": "design-templates/video-shortform/SKILL.md",
+      "sha": "eab6175a8f1ea25bc4585a3efd1a8157c41e9331"
+    },
+    {
+      "path": "design-templates/waitlist-page/SKILL.md",
+      "sha": "a9c53c5ea4e601b31a5e0d956d64b4cd80cdaf36"
+    },
+    {
+      "path": "design-templates/web-prototype-taste-brutalist/SKILL.md",
+      "sha": "b1a3d41cdd6fd45343d5ce74dfa4c68a1211c490"
+    },
+    {
+      "path": "design-templates/web-prototype-taste-editorial/SKILL.md",
+      "sha": "d69ff36bb35b7812c71c76718953d00def341bcd"
+    },
+    {
+      "path": "design-templates/web-prototype-taste-soft/SKILL.md",
+      "sha": "23e06dc695455327a821b6e81312b4434d1d9140"
+    },
+    {
+      "path": "design-templates/web-prototype/SKILL.md",
+      "sha": "7cf460e3fc2409b3c112f54c7c0b2302e627079f"
+    },
+    {
+      "path": "design-templates/webgl-experience/SKILL.md",
+      "sha": "7517405cfb7896f32c6f661be38c8f27ea9f6b47"
+    },
+    {
+      "path": "design-templates/weekly-update/SKILL.md",
+      "sha": "3083b853b4643e666f3d9ec4b4b91cd725617c72"
+    },
+    {
+      "path": "design-templates/wireframe-annotated/SKILL.md",
+      "sha": "ecd068b2466f967b0ac2a2e767dde201d91f9833"
+    },
+    {
+      "path": "design-templates/wireframe-greybox/SKILL.md",
+      "sha": "e8d8f31f3f555238c832d81eb94343a955ad36c8"
+    },
+    {
+      "path": "design-templates/wireframe-mobile-flow/SKILL.md",
+      "sha": "b4242315b225259e0e56713b96ca1682567f1162"
+    },
+    {
+      "path": "design-templates/wireframe-sketch/SKILL.md",
+      "sha": "decb05e19b8d8561d503a157577f93a7da44057e"
+    },
+    {
+      "path": "design-templates/worker-visualizer/SKILL.md",
+      "sha": "2bc12aba5edc018e6ca17df22eb2a2dbeab23723"
+    },
+    {
+      "path": "design-templates/x-research/SKILL.md",
+      "sha": "d3c947b3dc936196a3a902fb586f98438d5a192f"
+    },
+    {
+      "path": "skills/8-bit-orbit-video-template/SKILL.md",
+      "sha": "e08190fa6449b2da53d10ff9d526c6e40c503097"
+    },
+    {
+      "path": "skills/ad-creative/SKILL.md",
+      "sha": "81e5543b7408aa669624e596582a08c0af128b69"
+    },
+    {
+      "path": "skills/after-hours-editorial-template/SKILL.md",
+      "sha": "73002addbc3a6590dbb912cb605c60b1c4214576"
+    },
+    {
+      "path": "skills/agent-browser/SKILL.md",
+      "sha": "faa01448e79428d3841d36c5a6716ba643ffc2ce"
+    },
+    {
+      "path": "skills/ai-music-album/SKILL.md",
+      "sha": "32029ec403dbd6a671371c9508db4f1d94426745"
+    },
+    {
+      "path": "skills/algorithmic-art/SKILL.md",
+      "sha": "7b4478274d4879ed28128de984601d4f9dac4dc1"
+    },
+    {
+      "path": "skills/apple-hig/SKILL.md",
+      "sha": "c104c85f65f0a98c348e710231da054dea338eb1"
+    },
+    {
+      "path": "skills/article-magazine/SKILL.md",
+      "sha": "81a131d31fff07e4a11ef1d75e117e707c4602f5"
+    },
+    {
+      "path": "skills/artifacts-builder/SKILL.md",
+      "sha": "8fc79e4eac8d7551953b98ee7ebbce38fb60f090"
+    },
+    {
+      "path": "skills/brainstorming/SKILL.md",
+      "sha": "f7939886503208debbb8fabf8daf5fae6a91b25f"
+    },
+    {
+      "path": "skills/brand-extract/SKILL.md",
+      "sha": "75c71a4fc0d5d4a4916a8d86334330cc8d21eec8"
+    },
+    {
+      "path": "skills/brand-guidelines/SKILL.md",
+      "sha": "1236988d32c5ee510f7db43f26993a503b1b5244"
+    },
+    {
+      "path": "skills/brandkit/SKILL.md",
+      "sha": "3ef674ac63c51684d412f108dff91bd7a22eaab4"
+    },
+    {
+      "path": "skills/brutalist-skill/SKILL.md",
+      "sha": "2de71a98dba569c83d7fac590e395ae08811fdb6"
+    },
+    {
+      "path": "skills/canvas-design/SKILL.md",
+      "sha": "1dea249fdf2ec1f5dbd1562e21b3eab7e892a707"
+    },
+    {
+      "path": "skills/card-twitter/SKILL.md",
+      "sha": "5d2f59bc0adae0117a001173c3110de368afa5ca"
+    },
+    {
+      "path": "skills/card-xiaohongshu/SKILL.md",
+      "sha": "65f6e9307b03187fd50ac0bd46b513db40b1b81e"
+    },
+    {
+      "path": "skills/chat-motion-overlay/SKILL.md",
+      "sha": "f2ba4cbf28114854b0541a07663669819ad3a101"
+    },
+    {
+      "path": "skills/color-expert/SKILL.md",
+      "sha": "f635bdaeed0aa702741076034ea3cf7de0ae9e12"
+    },
+    {
+      "path": "skills/competitive-ads-extractor/SKILL.md",
+      "sha": "09ad9b461651d1914385a9a7e6b8d84e2a61e736"
+    },
+    {
+      "path": "skills/copywriting/SKILL.md",
+      "sha": "532243a88a441a83e0ebc05daad5764253423c1a"
+    },
+    {
+      "path": "skills/creative-director/SKILL.md",
+      "sha": "9152d39408590bd65d82d34218640378bff4f2cd"
+    },
+    {
+      "path": "skills/d3-visualization/SKILL.md",
+      "sha": "31c621f25b40ca171ed0bca1a57277df8b949e89"
+    },
+    {
+      "path": "skills/data-report/SKILL.md",
+      "sha": "0152b7c7ff8224409fa61a9c213ad4b3aa03440f"
+    },
+    {
+      "path": "skills/deck-guizang-editorial/SKILL.md",
+      "sha": "9ffb57fb63669dcb5814b32e50eb394efc07e7a1"
+    },
+    {
+      "path": "skills/deck-open-slide-canvas/SKILL.md",
+      "sha": "c3d46dab902f1b971119528fc914439464ac053d"
+    },
+    {
+      "path": "skills/deck-swiss-international/SKILL.md",
+      "sha": "8922cee970626aa4657695c610e18dd1189c7fab"
+    },
+    {
+      "path": "skills/design-brief/SKILL.md",
+      "sha": "3f24e0d9f08799a7bc50ce06437b6582a6f746ce"
+    },
+    {
+      "path": "skills/design-consultation/SKILL.md",
+      "sha": "47b0b6729bc097e43253c617039b8fc47ce24696"
+    },
+    {
+      "path": "skills/design-md/SKILL.md",
+      "sha": "0343bfc158d7b06a899b79e87b3f0e336faa7a3f"
+    },
+    {
+      "path": "skills/design-review/SKILL.md",
+      "sha": "a9cc796649f5d478458a6769be3e57a99c6e890a"
+    },
+    {
+      "path": "skills/digits-fintech-swiss-template/SKILL.md",
+      "sha": "28d2cee04f527e3a255f5fed46ef8f8cc49e74eb"
+    },
+    {
+      "path": "skills/doc-kami-parchment/SKILL.md",
+      "sha": "e7f80633893c6b2293b59d8da378aef0129e8e27"
+    },
+    {
+      "path": "skills/doc/SKILL.md",
+      "sha": "80a393a37893463c93008ca59870871a3ac1aa9d"
+    },
+    {
+      "path": "skills/docx/SKILL.md",
+      "sha": "641ecfa57ce72738863f10279e81bcb92df8e793"
+    },
+    {
+      "path": "skills/domain-name-brainstormer/SKILL.md",
+      "sha": "d48603c0372d48f911fee0b5bf3839a8b7c65476"
+    },
+    {
+      "path": "skills/ecommerce-image-workflow/SKILL.md",
+      "sha": "eba4ef2ece8fefd38b963090fe44d53ffa32a376"
+    },
+    {
+      "path": "skills/editorial-burgundy-principles-template/SKILL.md",
+      "sha": "cde485acda701f474eb96b2f51813ec55fc4a3f2"
+    },
+    {
+      "path": "skills/emil-design-eng/SKILL.md",
+      "sha": "70bcfdb5eb1731336d68b59fe2c3a59f19dfc1e6"
+    },
+    {
+      "path": "skills/emilkowalski-motion/SKILL.md",
+      "sha": "622fd5e5dde2a05e43bde1e9ecc636955e652f13"
+    },
+    {
+      "path": "skills/enhance-prompt/SKILL.md",
+      "sha": "5fb3ff5971aba97c27892e91fd7a5371ad81093a"
+    },
+    {
+      "path": "skills/export-download-debugging/SKILL.md",
+      "sha": "fca914452df39012f7382418289606c8fe803a2c"
+    },
+    {
+      "path": "skills/fal-3d/SKILL.md",
+      "sha": "5d3d802c518658323634244386a9b30f2752adb9"
+    },
+    {
+      "path": "skills/fal-generate/SKILL.md",
+      "sha": "abafe11f4bbf0902793a035f87c27659df7446d4"
+    },
+    {
+      "path": "skills/fal-image-edit/SKILL.md",
+      "sha": "7be3a21785c2b774869c5d3800ac426d588ce511"
+    },
+    {
+      "path": "skills/fal-kling-o3/SKILL.md",
+      "sha": "0aebe96cbc60175f8cc94cd7ce8080b6883919f3"
+    },
+    {
+      "path": "skills/fal-lip-sync/SKILL.md",
+      "sha": "8ba166967e9791ad705a7f026a1b3db325739b0e"
+    },
+    {
+      "path": "skills/fal-realtime/SKILL.md",
+      "sha": "35fc5110d3db44fc5fafc4b76df7842428be2272"
+    },
+    {
+      "path": "skills/fal-restore/SKILL.md",
+      "sha": "5bf62f8a8de1cbec572b94174be182cf453e14a2"
+    },
+    {
+      "path": "skills/fal-train/SKILL.md",
+      "sha": "1ff6400d028754c25d1515d5bb22471c5535d336"
+    },
+    {
+      "path": "skills/fal-tryon/SKILL.md",
+      "sha": "5a1b8fe9fd3959013ba6f2a4ad29e973a77387af"
+    },
+    {
+      "path": "skills/fal-upscale/SKILL.md",
+      "sha": "d1589438d72ac8bff84d31889728c474b9ec342d"
+    },
+    {
+      "path": "skills/fal-video-edit/SKILL.md",
+      "sha": "9f0239c3d26680ecf2aaaea646f65d9f8f7225cc"
+    },
+    {
+      "path": "skills/fal-vision/SKILL.md",
+      "sha": "c311957b80e1945f73f26c93765aff8edcb9d69f"
+    },
+    {
+      "path": "skills/faq-page/SKILL.md",
+      "sha": "567f270c89793d983a9e6c0f1b93af76cab9b96d"
+    },
+    {
+      "path": "skills/field-notes-editorial-template/SKILL.md",
+      "sha": "6d1f4ed1feeada74e082f8ce43599773190987f5"
+    },
+    {
+      "path": "skills/figma-code-connect-components/SKILL.md",
+      "sha": "b47a175b81e82871daa78ca8f6001daef1015b09"
+    },
+    {
+      "path": "skills/figma-create-design-system-rules/SKILL.md",
+      "sha": "9cafa08b5dfd0bfc1784b39e5d49e299b0c508b9"
+    },
+    {
+      "path": "skills/figma-create-new-file/SKILL.md",
+      "sha": "10560470a72e526909c79b38d039290e4b5eb5f3"
+    },
+    {
+      "path": "skills/figma-generate-design/SKILL.md",
+      "sha": "e03c4fe8c8c7fe8b8587d60a0e73a91b9a6edd50"
+    },
+    {
+      "path": "skills/figma-generate-library/SKILL.md",
+      "sha": "da4dd699393cc9ddf525166007d02a22f0a65dc9"
+    },
+    {
+      "path": "skills/figma-implement-design/SKILL.md",
+      "sha": "e821e6d4b835e2dab7f4cea06aa015949f210e68"
+    },
+    {
+      "path": "skills/figma-use/SKILL.md",
+      "sha": "e222b90abb1338f01e702b8284d2b0fc7b75ffd5"
+    },
+    {
+      "path": "skills/flutter-animating-apps/SKILL.md",
+      "sha": "7dba6968f62155b81b14fdb1002d68681be6c5f0"
+    },
+    {
+      "path": "skills/frame-data-chart-nyt/SKILL.md",
+      "sha": "e22bcc68e4e10d1006f41d070086f04971f8392c"
+    },
+    {
+      "path": "skills/frame-flowchart-sticky/SKILL.md",
+      "sha": "15a02e4037f64522d7b24cbc5bb4c5ca08c37513"
+    },
+    {
+      "path": "skills/frame-glitch-title/SKILL.md",
+      "sha": "cba2de2c58d4448e6406ca810d8694278106f573"
+    },
+    {
+      "path": "skills/frame-light-leak-cinema/SKILL.md",
+      "sha": "36fd18df6b972c2fb78d22447374d0d8e21c0186"
+    },
+    {
+      "path": "skills/frame-liquid-bg-hero/SKILL.md",
+      "sha": "c8611715f22ed692a1ef5f23aa1a5ce01ff87321"
+    },
+    {
+      "path": "skills/frame-logo-outro/SKILL.md",
+      "sha": "09e9fcd4f32d5222bc1bb03fdd07b74974abe3c6"
+    },
+    {
+      "path": "skills/frame-macos-notification/SKILL.md",
+      "sha": "e9d04a56482b0afd55f76ddbdef374ccd05030a7"
+    },
+    {
+      "path": "skills/frontend-design/SKILL.md",
+      "sha": "43fa4a5860b97b192fe05d67c6bd2d97bc643d3f"
+    },
+    {
+      "path": "skills/frontend-dev/SKILL.md",
+      "sha": "963ee1de99373eee751fa37563e287ab986b00f2"
+    },
+    {
+      "path": "skills/frontend-skill/SKILL.md",
+      "sha": "84fcd60ffad7b9fbdd939d635b1113b0ab88b932"
+    },
+    {
+      "path": "skills/frontend-slides/SKILL.md",
+      "sha": "2e5805db1134606665d86cc79b5463add7a9a2d2"
+    },
+    {
+      "path": "skills/full-page-screenshot/SKILL.md",
+      "sha": "b1b5e375e2934b287dc5dbdf4b0e3ef54af19813"
+    },
+    {
+      "path": "skills/gif-sticker-maker/SKILL.md",
+      "sha": "b4d0014d5c6ab78d86b4c2dc1722a278c50c59ba"
+    },
+    {
+      "path": "skills/gpt-tasteskill/SKILL.md",
+      "sha": "852839cdfc013b7251b3aae8cdc6f231bf3ead5b"
+    },
+    {
+      "path": "skills/gsap-core/SKILL.md",
+      "sha": "c1bb5049f827d539a815f993284a603f3fa880b8"
+    },
+    {
+      "path": "skills/gsap-frameworks/SKILL.md",
+      "sha": "5c4bf2110cd51665550335526c3f9386fe4bc03c"
+    },
+    {
+      "path": "skills/gsap-performance/SKILL.md",
+      "sha": "ae454305c7161fff2080af3dbb919a1072b2cf8f"
+    },
+    {
+      "path": "skills/gsap-plugins/SKILL.md",
+      "sha": "db567cea9461b8fb763b40af14fe29c8fa078f30"
+    },
+    {
+      "path": "skills/gsap-react/SKILL.md",
+      "sha": "1c69cddc897dc31efaf24697ea92ec24115ac385"
+    },
+    {
+      "path": "skills/gsap-scrolltrigger/SKILL.md",
+      "sha": "195733d1f6e3846ed55a926022e9a40c3a53c573"
+    },
+    {
+      "path": "skills/gsap-timeline/SKILL.md",
+      "sha": "0351bc3b1fd8a7356ccfe3654c7c3208e5bcc370"
+    },
+    {
+      "path": "skills/gsap-utils/SKILL.md",
+      "sha": "174ead0758b8bfb1da96ff5e65d36255f2cf358d"
+    },
+    {
+      "path": "skills/hand-drawn-diagrams/SKILL.md",
+      "sha": "35baededf78388a7d83a74c6c237e1af2064c38d"
+    },
+    {
+      "path": "skills/hatch-pet/SKILL.md",
+      "sha": "b01ae26847806c81bd80809f352cbe4c1e5614cf"
+    },
+    {
+      "path": "skills/html-ppt-retro-quarterly-review/SKILL.md",
+      "sha": "b9fdc9fb786587fa60f2ece0058ffe5c93ebcca9"
+    },
+    {
+      "path": "skills/image-enhancer/SKILL.md",
+      "sha": "85fc7d5db4d52ef0de54eec8d301060bb8e6a672"
+    },
+    {
+      "path": "skills/image-to-code-skill/SKILL.md",
+      "sha": "0076d03beaab6133e0008121d75a7332c5ec62a8"
+    },
+    {
+      "path": "skills/imagegen-frontend-mobile/SKILL.md",
+      "sha": "f0b525c047cf84325ffdd3f850df71f3889b5bc0"
+    },
+    {
+      "path": "skills/imagegen-frontend-web/SKILL.md",
+      "sha": "b7e2a7e268f8ffd27d7f35de9092136ab4505413"
+    },
+    {
+      "path": "skills/imagegen/SKILL.md",
+      "sha": "0aca8ebefe35785a224ba62241b8ce6a27c7950d"
+    },
+    {
+      "path": "skills/imagen/SKILL.md",
+      "sha": "f3de360c0405cc50bbcf21bbc96279ce46d4249f"
+    },
+    {
+      "path": "skills/impeccable-design-polish/SKILL.md",
+      "sha": "691acf20a73aa82aea9c882fae61930e3374f6df"
+    },
+    {
+      "path": "skills/library-curator/SKILL.md",
+      "sha": "c06e35ae06ca0fe260ed223c6ce4a8760c8802b2"
+    },
+    {
+      "path": "skills/login-flow/SKILL.md",
+      "sha": "1d9e682e9a805111d67ea1ef25e24eb08f790119"
+    },
+    {
+      "path": "skills/marketing-psychology/SKILL.md",
+      "sha": "30116ab3a598e4937d5f2c5e7bb7aa75233d66e8"
+    },
+    {
+      "path": "skills/minimalist-skill/SKILL.md",
+      "sha": "1652998a1b085267d2b3c6900f23bcc13b9be89d"
+    },
+    {
+      "path": "skills/minimax-docx/SKILL.md",
+      "sha": "0670cbbcb027dd4579602afe4543422ad0149eed"
+    },
+    {
+      "path": "skills/minimax-pdf/SKILL.md",
+      "sha": "bcc333fd82b475d33eaa419451dd4c317ed178c1"
+    },
+    {
+      "path": "skills/mockup-device-3d/SKILL.md",
+      "sha": "59ecd1968f5e8b03373806c0c78a122be25b5c1b"
+    },
+    {
+      "path": "skills/nanobanana-ppt/SKILL.md",
+      "sha": "ae9c89d3908535b9ed3923bf4c80aecf1bbbb77a"
+    },
+    {
+      "path": "skills/od-next-media-inputs/SKILL.md",
+      "sha": "6640a7437e0bd6ed102ff796777f3ab3ff357328"
+    },
+    {
+      "path": "skills/output-skill/SKILL.md",
+      "sha": "f9d9b387e09de42c5c098acb3ec3ed8034be3dc4"
+    },
+    {
+      "path": "skills/paywall-upgrade-cro/SKILL.md",
+      "sha": "69413d9c49f73a2918fddc3381e499ec06037571"
+    },
+    {
+      "path": "skills/pdf/SKILL.md",
+      "sha": "454039a033946736c5cc4b2029129f4f7b520b60"
+    },
+    {
+      "path": "skills/pixelbin-media/SKILL.md",
+      "sha": "98a04a9fa7cf44d4f2a0397b1aece399e6d05d0f"
+    },
+    {
+      "path": "skills/plan-design-review/SKILL.md",
+      "sha": "8da98946eab29ef9abb8ee4d8af904ee76a84e6e"
+    },
+    {
+      "path": "skills/platform-design/SKILL.md",
+      "sha": "d12c855ad7d8127bf49ccac04e170f2352928a0c"
+    },
+    {
+      "path": "skills/poster-hero/SKILL.md",
+      "sha": "f9815eb68793b07d91ca6f3cd96da8ef2cb2ffc5"
+    },
+    {
+      "path": "skills/ppt-keynote/SKILL.md",
+      "sha": "81844c8cf0659a713f4f7b18ca7bc77cfabdca6b"
+    },
+    {
+      "path": "skills/pptx-generator/SKILL.md",
+      "sha": "798975a63bdd41890789472e0a173043f102d564"
+    },
+    {
+      "path": "skills/pptx-html-fidelity-audit/SKILL.md",
+      "sha": "6a31b90add3cc0d8c3ab6a9f5710263a38029159"
+    },
+    {
+      "path": "skills/pptx/SKILL.md",
+      "sha": "4a903e0ef9caf5efb38ddb419faa5ebfc75cd0b3"
+    },
+    {
+      "path": "skills/pr-feedback-quality-gate/SKILL.md",
+      "sha": "777587259d95cb1465b08f6486648fd2a37d7095"
+    },
+    {
+      "path": "skills/redesign-skill/SKILL.md",
+      "sha": "df318d92b96a25d8c464ceebe043e6345d51ddd4"
+    },
+    {
+      "path": "skills/reference-design-contract/SKILL.md",
+      "sha": "6d8acfc506e367be582c22b9320241a1ab48ff0e"
+    },
+    {
+      "path": "skills/release-notes-one-pager/SKILL.md",
+      "sha": "b2152b1594be1cb08071beb98c1b7862044db69d"
+    },
+    {
+      "path": "skills/remotion/SKILL.md",
+      "sha": "27a7c395b893360fc62b2870fec9f2ef0c6edf3e"
+    },
+    {
+      "path": "skills/replicate/SKILL.md",
+      "sha": "dc017501dbfa653f74cfc3891dfaa7964ac8579a"
+    },
+    {
+      "path": "skills/research-decision-room/SKILL.md",
+      "sha": "24e8af4a68ba881e1c157ce32371e13c85c131d1"
+    },
+    {
+      "path": "skills/resume-modern/SKILL.md",
+      "sha": "2c8535a35735a8f954adfa8bc0acf2cb0153876d"
+    },
+    {
+      "path": "skills/review-animations/SKILL.md",
+      "sha": "be5598482b75cd56c60c16edb91dc16e06668d28"
+    },
+    {
+      "path": "skills/screenshot/SKILL.md",
+      "sha": "21e8f0162f7082adec7df2eba6c6d1c35c90bfef"
+    },
+    {
+      "path": "skills/screenshots-marketing/SKILL.md",
+      "sha": "85af14aff980087aace46e21e070b47f931459ba"
+    },
+    {
+      "path": "skills/shadcn-ui/SKILL.md",
+      "sha": "47cc70ceecfec92e00bf063df33a0e3d72a96185"
+    },
+    {
+      "path": "skills/shader-dev/SKILL.md",
+      "sha": "f29f1f01966bc29137491a22e368b86d586c0aa1"
+    },
+    {
+      "path": "skills/slack-gif-creator/SKILL.md",
+      "sha": "bb5042a5ddd019afc81771aa3a76782eb1269919"
+    },
+    {
+      "path": "skills/slides/SKILL.md",
+      "sha": "9535ba818db9442797386a3ed1cffa7bbbe47993"
+    },
+    {
+      "path": "skills/social-reddit-card/SKILL.md",
+      "sha": "93380191b708befca798ce65f504085bc3e9a071"
+    },
+    {
+      "path": "skills/social-spotify-card/SKILL.md",
+      "sha": "f967a1a0d38e7a8a5473c7d8eb9236468d26c537"
+    },
+    {
+      "path": "skills/social-x-post-card/SKILL.md",
+      "sha": "185a6053722df78fca48cb1cd347904a79982aa9"
+    },
+    {
+      "path": "skills/soft-skill/SKILL.md",
+      "sha": "616a97bdc2ece0c7ca562bd159f3ae9e173689eb"
+    },
+    {
+      "path": "skills/sora/SKILL.md",
+      "sha": "baa80e543b76bf8ff14f4099a9abdc646c69b22f"
+    },
+    {
+      "path": "skills/speech/SKILL.md",
+      "sha": "064b7df19cb19f648c3feeb1e99ec9f1af125d82"
+    },
+    {
+      "path": "skills/stitch-loop/SKILL.md",
+      "sha": "34e5aeb6cd7cb637dccf32869aec0ec9137fdb9f"
+    },
+    {
+      "path": "skills/stitch-skill/SKILL.md",
+      "sha": "1b17b7b267d76ab1646070245897080ecb558220"
+    },
+    {
+      "path": "skills/swiftui-design/SKILL.md",
+      "sha": "34720f0c56bef7bba4ed607067bf63a35bfaa83d"
+    },
+    {
+      "path": "skills/swiss-creative-mode-template/SKILL.md",
+      "sha": "b0d768b686ff65cde39dea9ca04a2968ed9b734c"
+    },
+    {
+      "path": "skills/swiss-user-research-video-template/SKILL.md",
+      "sha": "7810df71ddb140629f6f2fa7ebcf2d7ad6721132"
+    },
+    {
+      "path": "skills/taste-skill-v1/SKILL.md",
+      "sha": "fba62cd56c907fd1a3dadc9871a8eabe6e6e9574"
+    },
+    {
+      "path": "skills/taste-skill/SKILL.md",
+      "sha": "a91d1091b8c8d27c5ac3b05c898dbc1df5d53e08"
+    },
+    {
+      "path": "skills/theme-factory/SKILL.md",
+      "sha": "eb80113ff2402078139567b9bf1a04ff55c5d243"
+    },
+    {
+      "path": "skills/threejs/SKILL.md",
+      "sha": "267b277bbb85ffc1a64ca26d27997a3c0e6c45ad"
+    },
+    {
+      "path": "skills/ui-skills/SKILL.md",
+      "sha": "e8c6e1e0cafb6dbdeb7393e34455288aa8193a26"
+    },
+    {
+      "path": "skills/ui-ux-pro-max/SKILL.md",
+      "sha": "78b5c8465b8ce9d4d2030aa9cc6783a9367a0654"
+    },
+    {
+      "path": "skills/venice-audio-music/SKILL.md",
+      "sha": "5dde826426860319d7b5b77a04c893006b519007"
+    },
+    {
+      "path": "skills/venice-audio-speech/SKILL.md",
+      "sha": "3b72417a068f2ee9315dab9349538f86ef55fdfe"
+    },
+    {
+      "path": "skills/venice-image-edit/SKILL.md",
+      "sha": "12681e71161584ed003025c855287f862bd021e2"
+    },
+    {
+      "path": "skills/venice-image-generate/SKILL.md",
+      "sha": "4926364507d03fe96aef650bed868bf8bb0cf34c"
+    },
+    {
+      "path": "skills/venice-video/SKILL.md",
+      "sha": "a2448c841066a56a38a960d54d99239fd9878950"
+    },
+    {
+      "path": "skills/vfx-text-cursor/SKILL.md",
+      "sha": "525c738cdf95fa61f445a1d183f15c098b1976d1"
+    },
+    {
+      "path": "skills/video-downloader/SKILL.md",
+      "sha": "b36b8344f3ecfe49bd2a1f99ef1d05baa8aafd87"
+    },
+    {
+      "path": "skills/video-hyperframes/SKILL.md",
+      "sha": "2afa1ae0c509297c565c1ce28fccc4571d61c634"
+    },
+    {
+      "path": "skills/web-artifacts-builder/SKILL.md",
+      "sha": "a61c21fd26be5c0ca80773a63ee0dc4c062883f1"
+    },
+    {
+      "path": "skills/web-clone/SKILL.md",
+      "sha": "9f71c3260e98e8b2a0fceceac8f02061cc15f40a"
+    },
+    {
+      "path": "skills/web-design-guidelines/SKILL.md",
+      "sha": "266527cc89e2d9b1043c284917e024576a91f54a"
+    },
+    {
+      "path": "skills/weread-year-in-review-video-template/SKILL.md",
+      "sha": "663f05d3b73a538f9a684ef730e93c92348c755d"
+    },
+    {
+      "path": "skills/wpds/SKILL.md",
+      "sha": "1a1094075ae6f3ffca7dfac211882e33d9dad5bc"
+    },
+    {
+      "path": "skills/writing-guidelines/SKILL.md",
+      "sha": "02d567d7bc7de3340e77439f20da82aa85c1c911"
+    },
+    {
+      "path": "skills/youtube-clipper/SKILL.md",
+      "sha": "d4b98e83a7ca9c469fc7dc2726fe6fc9aa7967f0"
+    }
+  ]
+}

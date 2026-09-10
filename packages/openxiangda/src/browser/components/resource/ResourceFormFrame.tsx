@@ -63,7 +63,8 @@ export function ResourceFormContent({
 
 export interface ResourceFormDrawerState { fullScreen: boolean; setFullScreen(value: boolean): void }
 
-export function ResourceFormDrawer({ mode, open, busy, children, onClose, onClosed, newPage, drawerState }: {
+export function ResourceFormDrawer({ mode, title, open, busy, children, onClose, onClosed, newPage, drawerState }: {
+  title?: ReactNode;
   mode: 'create' | 'edit'; open: boolean; busy: boolean; children: ReactNode;
   onClose: () => void; onClosed: () => void;
   newPage?: { onClick?: () => void; href?: string; title?: string };
@@ -75,7 +76,7 @@ export function ResourceFormDrawer({ mode, open, busy, children, onClose, onClos
   const closed = useRef(false);
   useEffect(() => { if (open) closed.current = false; }, [open]);
   return <Drawer
-    rootClassName="oxa-resource-drawer" title={mode === 'create' ? '新增数据' : '编辑数据'}
+    rootClassName="oxa-resource-drawer" title={title ?? (mode === 'create' ? '新增数据' : '编辑数据')}
     open={open} afterOpenChange={visible => {
       if (!visible && !closed.current) { closed.current = true; onClosed(); }
     }}

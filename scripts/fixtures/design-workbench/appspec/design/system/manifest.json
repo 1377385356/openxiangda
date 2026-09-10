@@ -1,0 +1,18 @@
+{
+  "schema": "openxiangda.design-system/v1",
+  "capability": {
+    "revision": "07170f8d2213936b7862db04139d27e0af5437ed",
+    "digest": "bd35b8a8f525210316d9711b6e5773d3b23d5d9b5aea96a66502137ad0d5dc16",
+    "adapterVersion": 1
+  },
+  "methods": [
+    "reference-design-contract",
+    "frontend-design",
+    "impeccable-design-polish"
+  ],
+  "runtimeVersion": "2.12.0",
+  "runtimeSource": "repository working candidate; see verification record for commit",
+  "tokens": "tokens.css",
+  "design": "DESIGN.md",
+  "status": "prototype-not-user-approved"
+}

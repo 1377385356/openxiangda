@@ -1,0 +1,29 @@
+name: OpenDesign capability updates
+on:
+  schedule:
+    - cron: '23 1 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: opendesign-upstream
+  cancel-in-progress: true
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+      - run: node scripts/design-capabilities.mjs --check
+      - run: node scripts/check-opendesign-upstream.mjs --output design-update.json
+      - name: Preserve reviewable comparison
+        run: |
+          echo 'OpenDesign candidate comparison (installed resources unchanged)' >> "$GITHUB_STEP_SUMMARY"
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          cat design-update.json >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

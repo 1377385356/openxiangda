@@ -1,5 +1,7 @@
 # Default component UI
 
+状态补充：2026-09-11 的 [OpenDesign 接入决定](./2026-09-11-opendesign-capabilities.md)已取代本文对默认外观和后台设备范围的限制；平台导航、字段与权限行为约定仍有效。本文保留为历史证据。
+
 Status: user explicitly requested removal on 2026-09-05.
 
 ## Evidence, owner and decision

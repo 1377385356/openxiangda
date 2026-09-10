@@ -1,10 +1,11 @@
 import { inspectDesignReadiness } from './design-readiness.js';
+import { DESIGN_ASSET_LIMITS, validDesignAssetPath } from './design-assets.js';
 import { execFileSync } from 'node:child_process';
 import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { SCHEMA_VERSIONS, type DeploymentRun, type Diagnostic } from 'openxiangda-contracts';
-import { inspectAppSpec, type AppSpecContractIndex, type AppSpecDocument } from './app-spec.js';
+import { appSpecDesignAssetReferences, inspectAppSpec, type AppSpecContractIndex, type AppSpecDocument } from './app-spec.js';
 
 const APP_SECTIONS = ['业务目标', '角色', '架构与数据关系', '业务任务与页面', '权限矩阵与确认', '性能与容量预算'];
 const CHANGE_SECTIONS = ['为什么', '需求依据', '方案与影响', '任务与实现', '验收', '性能与容量预算'];
@@ -86,15 +87,33 @@ export function lifecycleAtCommit(root: string, commit: string, contract: AppSpe
   try {
     const message = boundedGit(root, ['log', '-1', '--format=%B', commit]);
     const selected = message.match(/^AppSpec:\s*([a-z0-9]+(?:-[a-z0-9]+)*)\s*$/m)?.[1];
-    const paths = boundedGit(root, ['ls-tree', '-r', '--name-only', commit, '--', 'appspec']).split('\n').filter(path =>
+    const entries = boundedGit(root, ['ls-tree', '-r', '-z', commit, '--', 'appspec']).split('\0').filter(Boolean).map(entry => {
+      const [header, ...parts] = entry.split('\t');
+      const path = parts.join('\t');
+      const [mode, type] = header!.split(' ');
+      return { mode, type, path, asset: /^appspec\/design\/(?:system|prototypes|assets)\//.test(path) };
+    }).filter(({ path, asset }) => asset ||
       /^appspec\/(?:app\.md|capabilities\/[^/]+\.md|(?:decisions|product|experience|design|reviews)\/[^/]+\.md|changes\/active\/[^/]+\.md)$/.test(path)
       || (selected && new RegExp(`^appspec/changes/history/[^/]+/${selected}\\.md$`).test(path)));
-    if (paths.length > 128) throw new Error('APPSPEC_SOURCE_FILE_LIMIT');
+    if (entries.filter(item => !item.asset).length > 128) throw new Error('APPSPEC_SOURCE_FILE_LIMIT');
     let bytes = 0;
-    for (const path of paths) {
-      const content = execFileSync('git', ['-C', root, 'show', `${commit}:${path}`], { encoding: 'utf8', timeout: 10_000, maxBuffer: 256 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
-      bytes += Buffer.byteLength(content);
-      if (bytes > 2 * 1024 * 1024) throw new Error('APPSPEC_SOURCE_SIZE_LIMIT');
+    let assetBytes = 0;
+    let assetCount = 0;
+    const references = new Set<string>();
+    // Extract documents first; unrelated experimental assets are not part of the reviewed baseline.
+    const ordered = [...entries.filter(item => !item.asset), ...entries.filter(item => item.asset)];
+    for (const { path, mode, type, asset } of ordered) {
+      if (asset && ![...references].some(reference => path === reference || path.startsWith(`${reference}/`))) continue;
+      if (asset && ++assetCount > DESIGN_ASSET_LIMITS.files) throw new Error('APPSPEC_SOURCE_FILE_LIMIT');
+      if (!['100644', '100755'].includes(mode!) || type !== 'blob' || (asset && !validDesignAssetPath(path))) throw new Error('APPSPEC_SOURCE_FILE_INVALID');
+      const limit = asset ? DESIGN_ASSET_LIMITS.fileBytes : 256 * 1024;
+      const content = execFileSync('git', ['-C', root, 'show', `${commit}:${path}`], { timeout: 10_000, maxBuffer: limit, stdio: ['ignore', 'pipe', 'pipe'] });
+      if (!asset) for (const reference of appSpecDesignAssetReferences(content.toString('utf8'), path)) {
+        if (validDesignAssetPath(reference)) references.add(reference);
+      }
+      if (asset) assetBytes += content.length;
+      else bytes += content.length;
+      if (bytes > 2 * 1024 * 1024 || assetBytes > DESIGN_ASSET_LIMITS.totalBytes) throw new Error('APPSPEC_SOURCE_SIZE_LIMIT');
       const target = join(scratch, path);
       mkdirSync(dirname(target), { recursive: true });
       writeFileSync(target, content);

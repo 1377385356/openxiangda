@@ -31,7 +31,7 @@ function substantive(content: string) {
 export function designBaselineDigest(documents: AppSpecDocument[]) {
   return createHash('sha256').update(JSON.stringify([...documents]
     .sort((a, b) => a.id.localeCompare(b.id))
-    .map(({ id, path, content }) => ({ id, path, content })))).digest('hex');
+    .map(({ id, path, content, assets }) => ({ id, path, content, ...(assets ? { assets } : {}) })))).digest('hex');
 }
 
 export function inspectDesignReadiness(context: AppSpecContext, change?: AppSpecDocument) {

@@ -19,7 +19,7 @@ import {
   useNavigate,
   useParams,
 } from 'react-router-dom';
-import { OpenXiangdaUiProvider } from './ui-provider';
+import { OpenXiangdaUiProvider, type OpenXiangdaUiOptions } from './ui-provider';
 import { ApplicationRouter } from './navigation-guard';
 import { createApplicationProvider } from './data-provider';
 import { RuntimeBoundary, useRuntime } from './runtime';
@@ -290,6 +290,8 @@ export interface OpenXiangdaApplicationProps {
   appName: string;
   /** Presentation only; canonical datetime values remain UTC instants. */
   timeZone?: string;
+  /** Visual parameters derived from the application's reviewed design system. */
+  ui?: OpenXiangdaUiOptions;
   adminAccess?: Readonly<AppFrontendRouteAccess>;
   resourceDefinitions: GeneratedResourceDefinitionsInput;
   adminPages: AdminPagesInput;
@@ -553,6 +555,7 @@ export function OpenXiangdaApplication({
   appCode,
   appName,
   timeZone,
+  ui,
   resourceDefinitions: readonlyResourceDefinitions,
   adminPages,
   adminNavigation,
@@ -831,7 +834,7 @@ export function OpenXiangdaApplication({
       <AdminContributionsProvider contributions={contributions}>
       <OpenXiangdaResourceDefinitionsProvider definitions={resourceDefinitions}>
         <OpenXiangdaWorkflowDefinitionsProvider definitions={workflows}>
-          <OpenXiangdaUiProvider timeZone={timeZone}>
+          <OpenXiangdaUiProvider {...ui} timeZone={timeZone}>
             <ApplicationRouter basename={applicationBasename()}>
               <GlobalRequestLoading />
               <StandardRouteDeviceNegotiator index={routeManifestIndex} />

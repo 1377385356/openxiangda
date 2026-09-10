@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { designAssetReader, type DesignAsset } from './design-assets.js';
 import {
   existsSync,
   openSync,
@@ -51,6 +52,7 @@ export interface AppSpecContractIndex {
 }
 
 export interface AppSpecDocument {
+  assets?: DesignAsset[];
   kind: AppSpecDocumentKind;
   id: string;
   title: string;
@@ -586,6 +588,7 @@ function historyCandidates(root: string, selector: string | undefined, offset: n
 }
 
 function collectDocuments(root: string, diagnostics: Diagnostic[], selector?: string, historyOffset = 0) {
+  const readAssets = designAssetReader(root);
   const paths = appSpecPaths(root);
   const result = {
     app: [] as AppSpecDocument[],
@@ -700,6 +703,15 @@ function collectDocuments(root: string, diagnostics: Diagnostic[], selector?: st
       diagnostics
     );
     if (!document) continue;
+    if (document.kind === 'design' && 'assets' in document.metadata) {
+      try {
+        const assets = document.metadata.assets;
+        if (!Array.isArray(assets) || !assets.length) throw new Error('APPSPEC_DESIGN_ASSET_DECLARATION_INVALID');
+        document.assets = readAssets(assets);
+      } catch (error) {
+        diagnostics.push(issue('error', 'APPSPEC_DESIGN_ASSET_UNAVAILABLE', `设计资源无法核验：${error instanceof Error ? error.message : String(error)}`, document.path));
+      }
+    }
     if (candidate.kind === "app") result.app.push(document);
     else if (candidate.kind === "capability") result.capabilities.push(document);
     else if (candidate.kind === "design") result.designs.push(document);
@@ -1355,7 +1367,7 @@ function digestDocuments(
       [
         ...[...documents]
           .sort((left, right) => left.path.localeCompare(right.path))
-          .map(document => `${document.path}\n${document.content}`),
+          .map(document => `${document.path}\n${document.content}${document.assets ? `\nassets:${JSON.stringify(document.assets)}` : ''}`),
         ...extra,
         `contract:${JSON.stringify(contractIdentity)}`,
       ].join("\n---\n")
@@ -1458,6 +1470,13 @@ function parseAppSpecDocument(
     },
     content,
   };
+}
+
+/** Frozen source extraction uses the same metadata parser as workspace inspection. */
+export function appSpecDesignAssetReferences(content: string, pointer: string): string[] {
+  const metadata = parseFrontMatter(content, pointer, [])?.metadata;
+  return metadata?.schema === APP_SPEC_SCHEMAS.design && Array.isArray(metadata.assets)
+    ? metadata.assets : [];
 }
 
 function parseFrontMatter(
@@ -1697,6 +1716,8 @@ function markdownFiles(
       }
     }
     else if (entry.isFile() && entry.name.endsWith(".md")) files.push(path);
+    else if (entry.isDirectory() && relativePath(root, directory) === 'appspec/design'
+      && ['system', 'prototypes', 'assets'].includes(entry.name)) continue;
     else if (!entry.name.startsWith(".")) {
       diagnostics.push(
         issue(
@@ -2037,7 +2058,7 @@ function validateMetadata(
 ) {
   const allowed: Record<AppSpecDocumentKind, ReadonlySet<string>> = {
     app: new Set(["schema", "app", "title", "status", "documents"]),
-    design: new Set(["schema", "id", "title", "status", "type", "documents", "scope", "baselineDigest", "confirmedBy", "confirmedAt", "confirmationSource", "capabilities", "requirements", "resources", "actions", "decisions"]),
+    design: new Set(["schema", "id", "title", "status", "type", "documents", "assets", "scope", "baselineDigest", "confirmedBy", "confirmedAt", "confirmationSource", "capabilities", "requirements", "resources", "actions", "decisions"]),
     capability: new Set([
       "schema",
       "documents",

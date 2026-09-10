@@ -238,7 +238,7 @@ function assertPackagedGuidance(root) {
   const guide = JSON.parse(runCaptured('pnpm', ['exec', 'openxiangda', 'docs', 'getting-started', '--json'], root, { stdoutOnly: true }));
   if (guide.data.content.includes('__OPENXIANGDA_VERSION__') || !guide.data.content.includes(`openxiangda@${version}`)) fail('PACKED_GUIDANCE_BOOTSTRAP_VERSION_INVALID');
   if (createHash('sha256').update(guide.data.content).digest('hex') !== guide.data.sha256) fail('PACKED_GUIDANCE_DIGEST_INVALID');
-  for (const id of ['product-design', 'interaction-patterns']) {
+  for (const id of ['product-design', 'interaction-patterns', 'design-workflow', 'opendesign-methods', 'design-craft']) {
     const designGuide = JSON.parse(runCaptured('pnpm', ['exec', 'openxiangda', 'docs', id, '--json'], root, { stdoutOnly: true }));
     if (!designGuide.ok || designGuide.data.version !== version || Buffer.byteLength(designGuide.data.content) < 1000 || createHash('sha256').update(designGuide.data.content).digest('hex') !== designGuide.data.sha256) fail(`PACKED_DESIGN_GUIDANCE_INVALID:${id}`);
   }

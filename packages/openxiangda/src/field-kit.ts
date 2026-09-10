@@ -19,6 +19,7 @@ export * from './browser/components/platform-fields/location-value';
 export * from './browser/components/platform-fields/rich-text-value';
 export * from './browser/components/platform-fields/subtable-value';
 export * from './browser/components/resource/SurfaceFields';
+export * from './browser/components/resource/ResourceFormFrame';
 export * from './browser/components/resource/resource-import';
 export { uploadOperationManagedFile } from './browser/platform-client';
 export * from './browser/components/platform-fields/MobileFieldControls';

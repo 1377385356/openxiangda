@@ -4,6 +4,9 @@
 
 - [安装与开始开发](./getting-started.md)：主题 ID `getting-started`
 - [对话发现与详细产品设计](./product-design.md)：主题 ID `product-design`
+- [OpenDesign 设计、原型与实现](./design-workflow.md)：主题 ID `design-workflow`
+- [OpenDesign 原文方法与许可](./opendesign-methods.md)：主题 ID `opendesign-methods`
+- [OpenDesign 排版、状态与交互 Craft](./design-craft.md)：主题 ID `design-craft`
 - [页面交互模式与体验评审](./interaction-patterns.md)：主题 ID `interaction-patterns`
 - [需求与开发流程](./development.md)：主题 ID `development`
 - [业务模型与标准 CRUD](./application-foundation.md)：主题 ID `application-foundation`

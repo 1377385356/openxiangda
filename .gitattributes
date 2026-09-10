@@ -1,0 +1,4 @@
+# Preserve trailing blank lines in pinned upstream source and its complete derived topics.
+design-capabilities/vendor/** whitespace=-blank-at-eof
+docs/design-craft.md whitespace=-blank-at-eof
+skills/openxiangda-v2/references/design-craft.md whitespace=-blank-at-eof

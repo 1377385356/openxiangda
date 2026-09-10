@@ -1,6 +1,6 @@
 ---
 name: openxiangda-v2
-description: 使用 OpenXiangda 2.0 从模糊业务想法、已有资料或具体变更出发，通过对话发现模块、完成详细产品设计，再开发、检查和交付应用。维护 1.x 应用时使用对应的 1.x 技能。
+description: 使用 OpenXiangda 2.0 从模糊业务想法、已有资料或具体变更出发，通过对话发现模块、完成详细产品设计，使用内置 OpenDesign 方法形成整体视觉与可运行原型，再开发、检查和交付应用。维护 1.x 应用时使用对应的 1.x 技能。
 ---
 
 # OpenXiangda 2.0
@@ -12,6 +12,8 @@ description: 使用 OpenXiangda 2.0 从模糊业务想法、已有资料或具�
 已有资料沿用；已确认决定持续有效，冲突和新增业务含义再沟通。AI 建议、资料事实、用户确认、否决/延期和阻断问题分别记录。仅分析或原型不自动创建远端应用；既有应用按受影响范围设计，无行为修改不重做全套文档。
 
 遇到已有 V1 项目时，先核实 V2 能力覆盖、项目是否仍在测试阶段和迁移成本；能力满足、仍在测试阶段且代价可控时，优先建议转用 V2。先做只读评估，再按项目确认详细设计、数据/流程映射、测试和回滚；迁移实施前的原项目维护仍使用匹配的 V1 引擎。
+
+有界面影响的开发和改版默认读[OpenDesign 工作流](references/design-workflow.md)，按阶段实际读取所列原文方法和 craft，形成设计包、可运行原型、浏览器修正和实现交接。保留字段与权限行为，旧默认皮肤或设备偏好可按任务重新设计。设计与原型资源使用 AppSpec assets 固定；不把结构检查或示例数据当成实际验收。
 
 ## 定位当前版本
 
@@ -39,6 +41,7 @@ pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ skill install --force
 | 安装、登录、创建、连接开发 | [开始开发](references/getting-started.md) |
 | 源码仓库、换电脑、旧项目导入、提交推送与重试 | [应用源码](references/getting-started.md#应用源码)；先用 `source status` 读取实际绑定 |
 | 模糊想法、模块发现、PRD、权限与架构设计 | [产品设计](references/product-design.md)、[交互模式](references/interaction-patterns.md) |
+| 界面设计、改版、原型和视觉修正 | 先读[设计工作流](references/design-workflow.md)，按阶段读取[OpenDesign 原文方法](references/opendesign-methods.md)与[设计 Craft](references/design-craft.md)的相关章节 |
 | 理解需求与选择能力 | [开发流程](references/development.md)、[架构](references/concepts.md) |
 | 模型、CRUD、字段与移动表单 | [业务模块](references/application-foundation.md)、[字段](references/field-components.md) |
 | 图片压缩、缩略图、附件和缓存 | [图片与附件读取](references/field-components.md#图片缩略图和附件读取)：卡片优先缩略图，原图按需，使用平台权限与缓存规则 |
@@ -56,7 +59,7 @@ pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ skill install --force
 
 ## 引导开发并持续记录
 
-先选择页面归属：管理后台默认只面向 PC，普通管理/录入复用标准 CRUD 与 Shell，自定义报表和工具使用 admin React 页面及显式菜单；不因“自定义”就复制导航或改成 user 页面，也不为后台自动补移动适配。独立用户页与手机用户任务按实际需求设计，模板 `/home` 仅是占位。报表等专业交互主动检查已有依赖、评估成熟组件和开源库，图表优先评估 ECharts，记录选型理由及加载/销毁边界；细节见[前端](references/frontend.md)。交付需验证平台实际点击入口、根路径、后台菜单和登录返回，不能只验收直达业务链接。
+先选择页面归属：按真实任务选择设备；普通管理/录入复用标准 CRUD 的字段行为与 Shell 的导航事实，自定义报表和工具使用 admin React 页面及显式菜单。通过本应用设计和受支持视觉输入完善布局外观，不复制权限或导航状态。独立用户页与手机用户任务按实际需求设计，模板 `/home` 仅是占位。报表等专业交互主动检查已有依赖、评估成熟组件和开源库，图表优先评估 ECharts，记录选型理由及加载/销毁边界；细节见[前端](references/frontend.md)。交付需验证平台实际点击入口、根路径、后台菜单和登录返回，不能只验收直达业务链接。
 
 每轮先读取当前 AppSpec 总纲、设计索引、相关能力、活动变更与契约，按稳定 ID 恢复已知事实、候选建议和未决项。设计文件相互引用而不重复定义规则；角色、权限、页面或入口范围改变时，同步受影响 PRD、旅程、交互、架构和 AC。具体工作法按需读取[产品设计](references/product-design.md)。
 
