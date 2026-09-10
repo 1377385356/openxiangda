@@ -10,7 +10,36 @@
 
 抄送由动态 Surface 提供 `cc` 操作，使用 `user_select` 多选组件收集 1 至 20 位人员。任务 Surface 可以正式包含实例抄送命令；前端按 `operation.execute.href` 和该 Surface 的 token 提交，不另造任务命令或 token。公共事件为 `openxiangda.workflow.instance.cc_added.v2`。
 
-## 能力 owner
+## 钉钉卡片已读查询
+
+Notification Hub 提供单投递的查询基础能力。钉钉一次请求一个 `processQueryKey`，最多返回同一条单聊消息 20 名接收者的状态；平台不提供跨 20 个独立查询标识的批量接口。应用自行选择消息、分组、展示和决定再次查询的时机。
+
+浏览器应用直接使用 `openxiangda/core`，不需要新增应用后端：
+
+```ts
+import {
+  getNotificationMessage,
+  getDingTalkCardReadReceipt,
+  refreshDingTalkCardReadReceipt,
+} from 'openxiangda/core';
+
+const message = await getNotificationMessage(messageId);
+const delivery = message.deliveries.find(item => item.channelType === 'DINGTALK_CARD');
+if (delivery) {
+  const cached = await getDingTalkCardReadReceipt(message.id, delivery.id);
+  if (cached.canRefresh) {
+    await refreshDingTalkCardReadReceipt(message.id, delivery.id);
+  }
+}
+```
+
+Nest 的 `OpenXiangdaNotificationService` 提供同样的 `getDingTalkCardReadReceipt(messageId, deliveryId)`、`refreshDingTalkCardReadReceipt(messageId, deliveryId)` 以及 `getMessage(messageId)`。SDK 继承当前用户、应用和环境，不接收钉钉 token 或查询标识。需要平台通知读取及内容读取权限，跨应用或环境的投递不可查询。
+
+GET 只读缓存；refresh 提交一次持久化任务，重复的待处理请求合并，有限重试后结束。`readState` 为 `unknown/unread/read`；`queryState` 为 `idle/pending/querying/succeeded/failed/expired/unavailable`。只有提供方明确返回未读才是 `unread`，已读不会倒退。任务完成后可再次读取缓存；SDK 不自动扫描或持续轮询业务消息。
+
+`readAt` 统一为 ISO 时间，`lastCheckedAt` 记录查询尝试完成时间，结合执行状态判断结果新鲜度。查询窗口为发送后 24 小时；缺失原回执标识的旧消息保持不可查询。发送状态与已读状态独立。需要包含本能力的平台服务端版本，单独更新 SDK 不会创建服务端能力。
+
+## 能力所有者
 
 - Workflow Kernel v2 唯一拥有定义、实例、任务、参与人、命令、流转、委托、加签和流程审计。
 - Application Events v2 唯一拥有已提交事实的 journal/outbox、顺序、投递和回执。

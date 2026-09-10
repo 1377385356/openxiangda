@@ -43,6 +43,8 @@ import {
   type ApplicationTodoCenterPageV2,
   type ApplicationTodoInteractionResultV2,
   type ApplicationTodoViewV2,
+  type NotificationMessageDetailV2,
+  type NotificationReadReceiptV2,
   type ApplicationLoginPublicSurfaceV2,
   type ApplicationLoginTransactionReceiptV2,
   type ApplicationLoginRedirectReceiptV2,
@@ -2171,6 +2173,25 @@ export async function loadWorkflowDataAudit(instanceId: string) {
   return await requestRead<import('openxiangda-contracts/browser').DataAuditPage>(
     `${workflowBase()}/instances/${encodeURIComponent(instanceId)}/data-audit?${query}`,
     { headers: { 'x-openxiangda-csrf-token': csrfToken } },
+  );
+}
+
+export async function getNotificationMessage(messageId: string): Promise<NotificationMessageDetailV2> {
+  return request<NotificationMessageDetailV2>(
+    `${applicationServiceBase()}/notification-hub/management/messages/${encodeURIComponent(messageId)}?environmentKey=${encodeURIComponent(currentEnvironmentKey())}`,
+  );
+}
+
+export async function getDingTalkCardReadReceipt(messageId: string, deliveryId: string): Promise<NotificationReadReceiptV2> {
+  return request<NotificationReadReceiptV2>(
+    `${applicationServiceBase()}/notification-hub/management/messages/${encodeURIComponent(messageId)}/deliveries/${encodeURIComponent(deliveryId)}/read-receipt?environmentKey=${encodeURIComponent(currentEnvironmentKey())}`,
+  );
+}
+
+export async function refreshDingTalkCardReadReceipt(messageId: string, deliveryId: string): Promise<NotificationReadReceiptV2> {
+  return request<NotificationReadReceiptV2>(
+    `${applicationServiceBase()}/notification-hub/management/messages/${encodeURIComponent(messageId)}/deliveries/${encodeURIComponent(deliveryId)}/read-receipt/refresh`,
+    { method: 'POST', body: JSON.stringify({ environmentKey: currentEnvironmentKey() }) },
   );
 }
 

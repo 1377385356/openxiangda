@@ -2680,6 +2680,46 @@ test("request-scoped Notification SDK sends advanced cards through the platform-
   );
 });
 
+test("notification read queries carry only platform identifiers and the current environment", async () => {
+  const requests: Array<{ url: string; init?: RequestInit }> = [];
+  const client = new OpenXiangdaPlatformClient(options(async (input, init) => {
+    requests.push({ url: String(input), init });
+    return response({ messageId: 'message/one', deliveryId: 'delivery/two', readState: 'unknown', queryState: 'pending' });
+  }));
+  await client.getNotificationMessage('Bearer current-user', 'message/one');
+  await client.getDingTalkCardReadReceipt('Bearer current-user', 'message/one', 'delivery/two');
+  await client.refreshDingTalkCardReadReceipt('Bearer current-user', 'message/one', 'delivery/two');
+  const base = '/openxiangda-api/v2/applications/reference-app/notification-hub/management/messages/message%2Fone';
+  assert.deepEqual(requests.map(item => new URL(item.url).pathname), [base, `${base}/deliveries/delivery%2Ftwo/read-receipt`, `${base}/deliveries/delivery%2Ftwo/read-receipt/refresh`]);
+  assert.equal(new URL(requests[0]!.url).searchParams.get('environmentKey'), 'preproduction');
+  assert.equal(new URL(requests[1]!.url).searchParams.get('environmentKey'), 'preproduction');
+  assert.equal(requests[2]!.init?.method, 'POST');
+  assert.deepEqual(JSON.parse(String(requests[2]!.init?.body)), { environmentKey: 'preproduction' });
+  for (const item of requests) assert.equal(new Headers(item.init?.headers).get('authorization'), 'Bearer current-user');
+});
+
+test("read receipt facade requires a verified user and never starts business polling", async () => {
+  const platform = {
+    getNotificationMessage: test.mock.fn(async () => ({ id: 'message' })),
+    getDingTalkCardReadReceipt: test.mock.fn(async () => ({ readState: 'unread' })),
+    refreshDingTalkCardReadReceipt: test.mock.fn(async () => ({ queryState: 'pending' })),
+  };
+  const notifications = new OpenXiangdaNotificationService({ headers: {}, openxiangda: { principal: roleUnionPrincipal, authorization: 'Bearer current-user', perspectiveCode: null } }, platform as any);
+  await notifications.getMessage('message');
+  await notifications.getDingTalkCardReadReceipt('message', 'delivery');
+  await notifications.refreshDingTalkCardReadReceipt('message', 'delivery');
+  assert.deepEqual(platform.getNotificationMessage.mock.calls[0]!.arguments, ['Bearer current-user', 'message']);
+  for (const method of [platform.getDingTalkCardReadReceipt, platform.refreshDingTalkCardReadReceipt]) {
+    assert.equal(method.mock.calls.length, 1);
+    assert.deepEqual(method.mock.calls[0]!.arguments, ['Bearer current-user', 'message', 'delivery']);
+  }
+  for (const context of [undefined, { principal: applicationPrincipal, authorization: 'Bearer app', perspectiveCode: null }]) {
+    const denied = new OpenXiangdaNotificationService({ headers: {}, openxiangda: context }, platform as any);
+    await assert.rejects(() => denied.getDingTalkCardReadReceipt('message', 'delivery'), /CONTEXT/);
+    await assert.rejects(() => denied.refreshDingTalkCardReadReceipt('message', 'delivery'), /CONTEXT/);
+  }
+});
+
 test("request-scoped Notification SDK sends and closes channel-neutral messages", async () => {
   const platform = {
     sendNotification: test.mock.fn(async () => ({

@@ -64,6 +64,18 @@ export class OpenXiangdaNotificationService {
     return await this.platform.getDingTalkWorkNoticeResult(context.authorization, messageId);
   }
 
+  async getMessage(messageId: string) {
+    return this.platform.getNotificationMessage(this.context().authorization, messageId);
+  }
+
+  async getDingTalkCardReadReceipt(messageId: string, deliveryId: string) {
+    return this.platform.getDingTalkCardReadReceipt(this.context().authorization, messageId, deliveryId);
+  }
+
+  async refreshDingTalkCardReadReceipt(messageId: string, deliveryId: string) {
+    return this.platform.refreshDingTalkCardReadReceipt(this.context().authorization, messageId, deliveryId);
+  }
+
   private context(): OpenXiangdaVerifiedContext {
     if (!this.request.openxiangda) {
       throw new UnauthorizedException("OPENXIANGDA_CONTEXT_NOT_VERIFIED");

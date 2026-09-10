@@ -26,6 +26,8 @@ import type {
   EventBusinessNotificationSendV2,
   DingTalkWorkNoticeSendV2,
   NotificationMessageV2,
+  NotificationMessageDetailV2,
+  NotificationReadReceiptV2,
   ApplicationTodoCenterPageV2,
   ApplicationTodoInteractionResultV2,
   ApplicationTodoViewV2,
@@ -857,6 +859,30 @@ export class OpenXiangdaPlatformClient {
     return await this.request<Record<string, unknown>>(
       `${this.notificationPath()}/send/dingtalk-work-notice/${encodeURIComponent(messageId)}?environmentKey=${encodeURIComponent(this.options.environmentKey)}`,
       { headers: this.identityHeaders(authorization) }
+    );
+  }
+
+  async getNotificationMessage(authorization: string, messageId: string): Promise<NotificationMessageDetailV2> {
+    return this.request<NotificationMessageDetailV2>(
+      `${this.notificationPath()}/management/messages/${encodeURIComponent(messageId)}?environmentKey=${encodeURIComponent(this.options.environmentKey)}`,
+      { headers: this.identityHeaders(authorization) }
+    );
+  }
+
+  async getDingTalkCardReadReceipt(authorization: string, messageId: string, deliveryId: string): Promise<NotificationReadReceiptV2> {
+    return this.request<NotificationReadReceiptV2>(
+      `${this.notificationPath()}/management/messages/${encodeURIComponent(messageId)}/deliveries/${encodeURIComponent(deliveryId)}/read-receipt?environmentKey=${encodeURIComponent(this.options.environmentKey)}`,
+      { headers: this.identityHeaders(authorization) }
+    );
+  }
+
+  async refreshDingTalkCardReadReceipt(authorization: string, messageId: string, deliveryId: string): Promise<NotificationReadReceiptV2> {
+    return this.request<NotificationReadReceiptV2>(
+      `${this.notificationPath()}/management/messages/${encodeURIComponent(messageId)}/deliveries/${encodeURIComponent(deliveryId)}/read-receipt/refresh`,
+      {
+        method: 'POST', headers: this.identityHeaders(authorization),
+        body: JSON.stringify({ environmentKey: this.options.environmentKey }),
+      }
     );
   }
 

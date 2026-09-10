@@ -170,6 +170,64 @@ export interface NotificationMessageV2 {
   idempotentReplay?: boolean;
 }
 
+export interface NotificationDeliveryV2 {
+  id: string;
+  recipientId: string;
+  channelBindingId: string;
+  bindingCode: string;
+  channelType: string;
+  desiredRevision: number;
+  deliveredRevision: number;
+  operation: string;
+  status: 'queued' | 'sending' | 'succeeded' | 'failed_retryable' | 'failed_terminal' | 'unknown';
+  externalState: string;
+  externalMessageId: string | null;
+  externalRevision: string | null;
+  hasReadReceiptKey: boolean;
+  externalReadReceiptKind: string | null;
+  attemptCount: number;
+  lastErrorCode: string | null;
+  lastLatencyMs: number | null;
+  updatedAt: IsoDateTime;
+}
+
+export interface NotificationMessageDetailV2 extends Omit<NotificationMessageV2, 'navigationTarget'> {
+  navigationTarget: NotificationNavigationTargetV2 | null;
+  contentRedacted: boolean;
+  callbackRedacted: boolean;
+  deliveries: NotificationDeliveryV2[];
+  recipients: Array<{
+    id: string;
+    userId: string;
+    roleSubjectKey: string | null;
+    state: string;
+    interactionState: string;
+    stateRevision: number;
+    updatedAt: IsoDateTime;
+  }>;
+  attempts: Array<Record<string, unknown>>;
+  audits: Array<Record<string, unknown>>;
+  actionReceipts: Array<Record<string, unknown>>;
+  callbackInboxes: Array<Record<string, unknown>>;
+}
+
+/** Provider read evidence is independent from the delivery/send status. */
+export interface NotificationReadReceiptV2 {
+  messageId: string;
+  deliveryId: string;
+  readState: 'unknown' | 'unread' | 'read';
+  queryState: 'idle' | 'pending' | 'querying' | 'succeeded' | 'failed' | 'expired' | 'unavailable';
+  readAt: IsoDateTime | null;
+  lastCheckedAt: IsoDateTime | null;
+  providerSendState: string | null;
+  attemptCount: number;
+  revision: number;
+  nextAttemptAt: IsoDateTime | null;
+  errorCode: string | null;
+  hasQueryKey: boolean;
+  canRefresh: boolean;
+}
+
 export type ApplicationTodoViewV2 =
   | "all"
   | "pending"
