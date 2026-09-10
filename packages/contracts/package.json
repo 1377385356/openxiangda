@@ -1,6 +1,6 @@
 {
   "name": "openxiangda-contracts",
-  "version": "2.10.0",
+  "version": "2.11.0",
   "description": "OpenXiangda 2.0 的共享类型、协议与 JSON Schema。",
   "type": "module",
   "main": "./dist/index.js",

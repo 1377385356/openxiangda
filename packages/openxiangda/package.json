@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.11.0",
+  "version": "2.12.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -67,13 +67,13 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.3.0",
-    "openxiangda-contracts": "2.10.0",
-    "openxiangda-devkit-core": "2.7.0",
+    "openxiangda-cli": "2.3.1",
+    "openxiangda-contracts": "2.11.0",
+    "openxiangda-devkit-core": "2.8.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.15",
-    "openxiangda-nest": "2.3.1",
-    "openxiangda-skill-kit": "2.0.19",
+    "openxiangda-mcp": "2.0.16",
+    "openxiangda-nest": "2.3.2",
+    "openxiangda-skill-kit": "2.0.20",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -139,43 +139,40 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.11.0",
+    "version": "2.12.0",
     "status": "reviewed",
-    "title": "工作区登录隔离与工具链升级指引",
-    "summary": "平台开发者会话按工作区隔离，CLI、MCP 与自动刷新共用本地会话；补齐 V1 采用 V2 的建议及 CLI、Skill、MCP 升级步骤。本版也包含主线已审查的数据事件捕获策略。",
+    "title": "OpenXiangda 2.12.0：平台原生数据自动化",
+    "summary": "数据事件可直接触发平台 Native 数据动作，省去应用 HTTP 接收链路；发布计划固定捕获字段与目标资源，业务效果与执行结果原子提交。",
     "newFeatures": [
-      "login --cwd 与 auth --cwd 明确选择工作区；创建应用前可在目标目录登录，初始化保留受管会话文件。",
-      "V1 入口展示 V2 采用建议及迁移评估指引，文档说明 CLI、Skill 与 MCP 的版本刷新。",
-      "应用可用 events.capturePolicies 按资源声明 all 或 subscribed，编译为不可变的操作事件捕获计划。"
+      "events.subscriptions.execution 支持 native-data v1 声明式 create/update/delete，无需 Nest 应用后端。",
+      "共享编译器自动派生事件捕获字段及目标模型摘要，新增 events.native-data-actions 能力检查。"
     ],
     "fixes": [
-      "默认登录态改为工作区 .openxiangda/session.json，停止读取旧全局会话；本地文件优先于 CI 环境凭据。",
-      "刷新、退出与 MCP 授权检查固定工作区来源，嵌套应用不会继承父应用账号，损坏或平台不符的文件不会换用其他身份。",
-      "登录文件使用原子写入、0600 权限及自动 Git 忽略，初始化不替换凭据内容。"
+      "保留旧 Webhook 消费者与处理器契约，运维查询区分 Native 执行计划。",
+      "包含已合并的后台入口状态修复与 PC 优先开发引导，菜单缺失、无权限及未知地址分别展示。"
     ],
     "affectedUsers": [
-      "使用 CLI、MCP 或多个应用工作区的开发者。",
-      "从 V1 评估 V2 的用户，以及需要减少无消费者事件写入的 Native 应用开发者。"
+      "使用平台数据自动化和 OpenXiangda V2 事件订阅的应用。",
+      "平台维护者必须同步升级匹配的共享 Native 校验器；V1 业务引擎保持独立。"
     ],
-    "compatibility": {
-      "node": ">=24",
-      "workspacePolicy": "升级后在每个工作区重新登录；不自动复制旧全局或其他工作区的令牌。",
-      "platformPolicy": "平台登录与授权协议不变；远端检查和部署需要平台的 Native configurationCompatibility 校验器摘要与本版工具链匹配。采用 events.capturePolicies 还需要 events.capture-policy 1.0.0。"
-    },
     "upgradeSteps": [
-      "使用项目包管理器更新并锁定 OpenXiangda 依赖，刷新 Skill 并重启 MCP 客户端。",
-      "远端检查和部署前确认工具链与平台为配套版本；出现 OPENXIANGDA_CONFIGURATION_VALIDATOR_MISMATCH 时先升级不匹配的一端，保留当前源码和候选。",
-      "已有项目在根目录运行 `openxiangda login --base-url <platform>`，再运行 `openxiangda auth status` 检查授权。",
-      "新项目先运行 `openxiangda login --cwd my-app --base-url <platform>`，然后 `openxiangda create my-app --base-url <platform>`。",
-      "CI 仅在没有本地会话文件时使用成对 OPENXIANGDA_BASE_URL 与 OPENXIANGDA_TOKEN。",
-      "采用事件捕获策略前先升级支持该能力的平台，确认事件历史要求，并完成测试环境验收后晋级同一应用版本。"
+      "先部署支持 events.native-data-actions 1.0.0、同版共享 Native 校验器和 SQL 扩展迁移的平台后端。",
+      "将应用依赖升级到 openxiangda 2.12.0 并按普通测试发布、验收和生产晋级流程交付。",
+      "简单数据动作按 execution 显式启用，外部 Webhook 与自定义代码继续使用现有处理器。"
     ],
     "knownLimitations": [
-      "钉钉支持的 DWS 授权仍由 DWS 自己管理，不与平台会话混用。",
-      "V1 业务不会自动迁移到 V2。subscribed 不保留未声明操作的历史，恢复 all 不能补造历史事件。"
+      "首版 Native 动作仅支持明确源资源的数据事件，最多 16 个操作、每个 32 字段及 64 KiB 输入，不执行脚本、SQL 或 HTTP。",
+      "不兼容的目标模型变化会停止旧动作并报告错误；回退平台前需停用并排空 Native 动作。",
+      "按需事件不能重放从未捕获的历史；权限过滤的轻量操作历史由配套平台提供。",
+      "发行包验证不能代替客户环境的实际部署及容量测试。"
     ],
+    "compatibility": {
+      "node": ">=22",
+      "platform": "events.native-data-actions 1.0.0，匹配共享 Native 校验器与 Native action SQL 迁移",
+      "v1": "独立 legacy-v1 引擎，不引入兼容桥"
+    },
     "issues": [],
-    "sha256": "a6383deacc92dc3e058909c7db537e1a1bf29fc00fbb04345225c1f4f70f23c3",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.11.0"
+    "sha256": "bf354079ee493b6988e172dd2c6049ee5f8f8c09e9e86e1bcec435b9e3bd24dc",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.12.0"
   }
 }
