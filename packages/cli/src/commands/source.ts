@@ -20,6 +20,7 @@ export default class Source extends OpenXiangdaCommand {
       if (!flags['base-url'] || !args.repository || (args.action === 'clone' && !args.directory))
         throw new Error('APPLICATION_SOURCE_ARGUMENTS_REQUIRED: source resolve <仓库URL> 或 source clone <仓库URL> <目录>，并提供 --base-url <平台>');
       return this.present(await this.services.sourceFromUrl({ baseUrl: flags['base-url'], repository: args.repository,
+        ...(flags.cwd ? { root: flags.cwd } : {}),
         ...(args.action === 'clone' && args.directory ? { directory: args.directory } : {}),
         ...(flags.branch ? { branch: flags.branch } : {}) }));
     }

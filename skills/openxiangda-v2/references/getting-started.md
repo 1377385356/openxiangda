@@ -68,7 +68,7 @@ MCP 服务随项目根包一起安装，AI 客户端的 stdio 连接仍需配置
 ```bash
 pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ skill install --force
 pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ auth status --base-url <平台地址> --json
-pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ login --base-url https://platform.example.com
+pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ login --cwd my-app --base-url https://platform.example.com
 pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ create my-app --base-url https://platform.example.com
 cd my-app
 pnpm openxiangda context --json
@@ -215,3 +215,11 @@ pnpm exec openxiangda --mcp-stdio --cwd <应用绝对路径>
 先调用 `workspace_context`，再按任务读取 `docs_read` 和当前契约。配置示例与工具参数见[MCP 参考](mcp.md)。登录、创建和长期 dev 进程继续由 CLI/终端管理。
 
 指定站点授权可用 `auth status --base-url <平台地址> --json` 或 MCP `authorization_status` 只读核验，无需工作区。状态为 `authorized` 才证明当前 access 被平台接受；`missing`/`platform_mismatch`/`refresh_required` 需处理会话，`unauthorized` 表示平台拒绝，`unavailable` 表示暂时无法核验，不能当成过期。查询不刷新、不打开浏览器、不修改绑定；应用管理权限需另行核验。
+
+## 工作区登录态
+
+平台授权保存到所选工作区的 `.openxiangda/session.json`，CLI、MCP、刷新与退出共用该文件。不再读取或迁移旧全局会话；升级后需在每个项目重新登录。已有项目可在根目录或子目录运行 `openxiangda login --base-url <platform>`；`login --cwd <directory>` 和 `auth --cwd <directory>` 明确选定工作区。嵌套应用不会继承父应用会话。
+
+创建应用前先执行 `openxiangda login --cwd my-app --base-url <platform>`，再执行 `openxiangda create my-app --base-url <platform>`。仅含受管登录文件的目录允许初始化，凭据会保留并自动加入 Git 忽略规则。
+
+本地文件优先；仅在文件缺失时使用成对的 `OPENXIANGDA_BASE_URL` 与 `OPENXIANGDA_TOKEN` CI 环境凭据。损坏、过期或平台不符的文件不会触发其他身份回退。请勿提交或打包登录文件。钉钉支持由 DWS 管理自己的授权，不与平台会话混用。

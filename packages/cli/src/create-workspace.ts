@@ -4,6 +4,7 @@ import {
   cpSync,
   existsSync,
   mkdirSync,
+  lstatSync,
   readFileSync,
   readdirSync,
   renameSync,
@@ -78,7 +79,7 @@ export async function createWorkspace(input: CreateWorkspaceInput) {
     throw new Error("APP_CODE_INVALID: appCode 必须是 kebab-case");
   }
   if (!input.name.trim()) throw new Error("APP_NAME_REQUIRED");
-  if (existsSync(target) && readdirSync(target).length > 0) {
+  if (existsSync(target) && readdirSync(target).length > 0 && !isSessionOnlyWorkspace(target)) {
     throw new Error(`TARGET_DIRECTORY_NOT_EMPTY: ${target}`);
   }
   mkdirSync(dirname(target), { recursive: true });
@@ -125,6 +126,16 @@ export async function createWorkspace(input: CreateWorkspaceInput) {
     template: template.binding,
     ...(localSdkRoot ? { localSdkRoot } : {}),
   };
+}
+
+export function isSessionOnlyWorkspace(root: string) {
+  if (!existsSync(root) || !lstatSync(root).isDirectory()) return false;
+  const entries = readdirSync(root);
+  if (entries.length !== 1 || entries[0] !== '.openxiangda') return false;
+  const directory = join(root, '.openxiangda');
+  if (!lstatSync(directory).isDirectory()) return false;
+  const files = readdirSync(directory);
+  return files.includes('session.json') && files.every(file => ['session.json', '.gitignore'].includes(file) && lstatSync(join(directory, file)).isFile());
 }
 
 export function resolveWorkspaceTemplate(input: {
@@ -801,7 +812,7 @@ function normalizePublishedDependencies(
 ) {
   const visit = (directory: string) => {
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
-      if (["node_modules", "dist", ".git"].includes(entry.name)) continue;
+      if (["node_modules", "dist", ".git", ".openxiangda"].includes(entry.name)) continue;
       const path = join(directory, entry.name);
       if (entry.isDirectory()) {
         visit(path);
@@ -852,7 +863,7 @@ function replaceText(
 ) {
   const visit = (directory: string) => {
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
-      if (["node_modules", "dist", ".git"].includes(entry.name)) continue;
+      if (["node_modules", "dist", ".git", ".openxiangda"].includes(entry.name)) continue;
       const path = join(directory, entry.name);
       if (entry.isDirectory()) visit(path);
       else if (entry.isFile() && isText(path)) {

@@ -11,7 +11,12 @@ export async function launch(packageRoot, args = process.argv.slice(2)) {
     await distributionCommand({ manifest, packageRoot }, args);
     return;
   }
-  const workspace = discoverWorkspace(flagValue(args, '--cwd') || (args[0] === 'skill' ? flagValue(args, '--workspace') : null) || process.cwd());
+  const explicitCwd = flagValue(args, '--cwd');
+  const authorization = args[0] === 'login' || args[0] === 'auth';
+  const workspace = discoverWorkspace(explicitCwd || (args[0] === 'skill' ? flagValue(args, '--workspace') : null) || process.cwd(), {
+    allowMissing: authorization,
+    exact: authorization && Boolean(explicitCwd),
+  });
   // Launcher-only updates must also work when a project's dependencies are not yet installed.
   const launcherUpdate = args[0] === 'update' && flagValue(args, '--target') === 'launcher';
   const engine = resolveEngine(launcherUpdate ? null : workspace, packageRoot);

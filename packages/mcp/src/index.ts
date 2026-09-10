@@ -1,7 +1,8 @@
-import { developerError, developerAuthorizationStatus } from 'openxiangda-devkit-core';
+import { developerError, developerAuthorizationStatus, sessionWorkspaceRoot, workspaceSessionPath } from 'openxiangda-devkit-core';
 import { McpServer, ResourceTemplate, fromJsonSchema } from '@modelcontextprotocol/server';
 import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
 import { z } from 'zod/v4';
+import { resolve } from 'node:path';
 import {
   OPENXIANGDA_TOOLCHAIN_VERSION,
   OpenXiangdaApplicationServices,
@@ -534,12 +535,13 @@ export function mcpToolReference() {
 
 export function createOpenXiangdaMcpServer(options: { services?: OpenXiangdaApplicationServices; root?: string; documentationRoot?: string } = {}) {
   const services = options.services || new OpenXiangdaApplicationServices();
-  const root = options.root;
+  const root = resolve(options.root || sessionWorkspaceRoot());
+  const sessionPath = workspaceSessionPath(root);
   const server = new McpServer({ name: 'openxiangda-v2', version: OPENXIANGDA_TOOLCHAIN_VERSION }, {
     instructions: '先读取 workspace_context，按任务读取 docs_read 和相关契约。默认读取 AppSpec 当前规格、设计索引、阶段缺口和相关变更。新应用先按 product-design 专题引导发现模块，完成产品、旅程、页面、权限与架构设计及实际确认基线，再制定实施计划与业务实现；既有变化按受影响范围处理。测试发布先有设计与计划，生产晋级核对原测试版本的实际验收报告。只验证时调用 check_app；授权部署后直接 deploy_app，它已包含检查。生产必须复用成功测试运行。提交后读取平台状态和日志。登录、创建与长期 dev 使用项目锁定的 CLI。用户已经明确授权的操作无需再次询问。',
   });
   const local = root ? { root } : {};
-  register('authorization_status', input => developerAuthorizationStatus(input));
+  register('authorization_status', input => developerAuthorizationStatus({ ...input, sessionPath }));
   const docData = (topic?: string, section?: string) => {
     if (section && !topic) throw new Error('DOCUMENTATION_TOPIC_REQUIRED: 读取章节时必须指定主题');
     return topic ? readDocumentation(topic, section, options.documentationRoot) : documentationIndex(options.documentationRoot);

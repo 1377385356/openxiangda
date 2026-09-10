@@ -1,7 +1,7 @@
 import { Args, Flags } from "@oclif/core";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
-import { normalizePlatformBaseUrl, OpenXiangdaDeveloperSession } from "openxiangda-devkit-core";
+import { normalizePlatformBaseUrl, OpenXiangdaDeveloperSession, workspaceSessionPath } from "openxiangda-devkit-core";
 import {
   OPENXIANGDA_COMPILER_CONTRACT_VERSION,
   STUDIO_APPLICATION_AUTHORITY,
@@ -13,6 +13,7 @@ import {
 import { OpenXiangdaCommand, studioEventFlags } from "../base.js";
 import {
   createWorkspace,
+  isSessionOnlyWorkspace,
   ensureStudioWorkspaceBinding,
   isPlatformUuid,
   prepareWorkspace,
@@ -110,17 +111,17 @@ export default class Create extends OpenXiangdaCommand {
       : "inherit";
 
     this.emitStudioStatus("正在验证目标平台开发者会话", { stage: "identity", baseUrl });
-    const session = await OpenXiangdaDeveloperSession.load();
+    const session = await OpenXiangdaDeveloperSession.load({ sessionPath: workspaceSessionPath(root) });
     if (!session) {
       throw new Error(
-        "OPENXIANGDA_AUTH_REQUIRED: 先运行 openxiangda login --base-url <platform>"
+        `OPENXIANGDA_AUTH_REQUIRED: 先在目标目录登录：openxiangda login --cwd '${root.replaceAll("'", `'"'"'`)}' --base-url '${baseUrl.replaceAll("'", `'"'"'`)}'`
       );
     }
     session.assertPlatform(baseUrl);
     if (studioMode) assertStudioSiteBaseUrl(baseUrl);
     await session.whoami();
 
-    const reusable = existsSync(root) && readdirSync(root).length > 0;
+    const reusable = existsSync(root) && readdirSync(root).length > 0 && !isSessionOnlyWorkspace(root);
     this.emitStudioStatus(
       reusable ? "正在恢复已有工作区" : "正在生成应用工作区",
       { stage: "workspace", reusable }

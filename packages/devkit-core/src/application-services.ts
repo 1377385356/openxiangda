@@ -59,6 +59,7 @@ import {
 import {
   normalizePlatformBaseUrl,
   OpenXiangdaDeveloperSession,
+  workspaceSessionPath,
 } from "./session.js";
 import {
   runConnectedDevelopment,
@@ -509,9 +510,9 @@ export class OpenXiangdaApplicationServices {
       await (await this.client(workspace.root)).sourceStatus(workspace.config.app.code));
   }
 
-  async sourceFromUrl(input: { baseUrl: string; repository: string; directory?: string; branch?: string }) {
+  async sourceFromUrl(input: { baseUrl: string; repository: string; directory?: string; branch?: string; root?: string }) {
     const baseUrl = normalizePlatformBaseUrl(input.baseUrl);
-    const session = await OpenXiangdaDeveloperSession.load();
+    const session = await OpenXiangdaDeveloperSession.load(input.root ? { sessionPath: workspaceSessionPath(input.root) } : {});
     if (!session) throw new Error('OPENXIANGDA_AUTH_REQUIRED');
     session.assertPlatform(baseUrl);
     const client = new OpenXiangdaControlPlaneClient({ baseUrl, tokenProvider: session });
@@ -2307,7 +2308,7 @@ export class OpenXiangdaApplicationServices {
     if (link.schemaVersion !== 2 || link.appCode !== workspace.config.app.code || !link.baseUrl) {
       throw new Error("OPENXIANGDA_CONNECTED_LINK_INVALID");
     }
-    const developerSession = await OpenXiangdaDeveloperSession.load();
+    const developerSession = await OpenXiangdaDeveloperSession.load({ sessionPath: workspaceSessionPath(workspace.root) });
     if (!developerSession) {
       throw new Error("OPENXIANGDA_CONNECTED_LOGIN_REQUIRED: 先运行 openxiangda login");
     }
@@ -2595,7 +2596,7 @@ export class OpenXiangdaApplicationServices {
     if (this.options.clientOptions) {
       return new OpenXiangdaControlPlaneClient(this.options.clientOptions);
     }
-    const session = await OpenXiangdaDeveloperSession.load();
+    const session = await OpenXiangdaDeveloperSession.load(root ? { sessionPath: workspaceSessionPath(root) } : {});
     if (!session) throw new Error("OPENXIANGDA_AUTH_REQUIRED");
     if (root) {
       const linkPath = join(root, ".openxiangda", "link.json");

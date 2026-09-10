@@ -79,7 +79,7 @@ export async function verifyCreateJsonOutputBoundary(options) {
     };
     for (const [suffix, flags, code] of [
       ["missing-platform", [], "OPENXIANGDA_CREATE_PLATFORM_REQUIRED"],
-      ["wrong-platform", ["--base-url", "https://other.example"], "OPENXIANGDA_PLATFORM_SESSION_MISMATCH"],
+      ["wrong-platform", ["--base-url", "https://other.example"], "OPENXIANGDA_AUTH_REQUIRED"],
     ]) {
       const guardedRoot = join(scratchRoot, `${options.label}-${suffix}`);
       const guarded = await runCommand(command, ["create", guardedRoot, ...flags, "--json"], options.cwd, fileSessionEnvironment, 1);

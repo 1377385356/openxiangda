@@ -18,8 +18,8 @@ description: 使用 OpenXiangda 2.0 从模糊业务想法、已有资料或具�
 未创建工作区时使用本 Skill 随根包发布的精确版本：
 
 ```bash
-pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ auth status --base-url <平台地址> --json
-pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ login --base-url <平台地址>
+pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ auth status --cwd <应用目录> --base-url <平台地址> --json
+pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ login --cwd <应用目录> --base-url <平台地址>
 pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ create <应用目录> --base-url <同一平台地址>
 pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ skill install --force
 ```
@@ -90,4 +90,4 @@ pnpm exec openxiangda --mcp-stdio --cwd <workspace>
 
 失败保留错误码、指针与原候选。结果不确定先查平台，不生成新的随机幂等键掩盖原运行；仅执行平台允许的恢复。升级项目后刷新资料并重启旧 MCP 连接。
 
-指定站点授权可用 `auth status --base-url <平台地址> --json` 或 MCP `authorization_status` 只读核验，无需工作区。状态为 `authorized` 才证明当前 access 被平台接受；`missing`/`platform_mismatch`/`refresh_required` 需处理会话，`unauthorized` 表示平台拒绝，`unavailable` 表示暂时无法核验，不能当成过期。查询不刷新、不打开浏览器、不修改绑定；应用管理权限需另行核验。
+指定站点授权可用 `auth status --cwd <应用目录> --base-url <平台地址> --json` 或 MCP `authorization_status` 只读核验，无需工作区。状态为 `authorized` 才证明当前 access 被平台接受；`missing`/`platform_mismatch`/`refresh_required` 需处理会话，`unauthorized` 表示平台拒绝，`unavailable` 表示暂时无法核验，不能当成过期。查询不刷新、不打开浏览器、不修改绑定；应用管理权限需另行核验。

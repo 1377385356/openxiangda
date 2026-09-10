@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { resolve } from 'node:path';
+import { relative, resolve } from 'node:path';
 import test from 'node:test';
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import { InMemoryTransport } from '@modelcontextprotocol/server';
-import { operationStage } from 'openxiangda-devkit-core';
+import { operationStage, saveSession, workspaceSessionPath } from 'openxiangda-devkit-core';
 import { MCP_RESOURCE_URIS, MCP_TOOL_NAMES, createOpenXiangdaMcpServer } from '../src/index.js';
 
 test('publishes a library without a second executable', () => {
@@ -14,6 +14,27 @@ test('publishes a library without a second executable', () => {
     readFileSync(resolve(import.meta.dirname, '../package.json'), 'utf8')
   );
   assert.equal(manifest.bin, undefined);
+});
+
+test('authorization_status uses the MCP workspace session rather than the caller cwd', async () => {
+  const root = mkdtempSync(resolve(tmpdir(), 'ox-mcp-auth-'));
+  await saveSession({ baseUrl: 'https://workspace.example', accessToken: 'local-secret', accessTokenExpiresAt: 1 }, workspaceSessionPath(root));
+  let observedRoot: string | undefined;
+  const server = createOpenXiangdaMcpServer({ root: relative(process.cwd(), root), services: {
+    workspaceContext: async (selectedRoot: string) => { observedRoot = selectedRoot; return { ok: true, operation: 'workspace.context', data: {} }; },
+  } as any });
+  const client = new Client({ name: 'workspace-auth', version: '1' });
+  const [a, b] = InMemoryTransport.createLinkedPair();
+  await server.connect(b); await client.connect(a);
+  try {
+    const result = await client.callTool({ name: 'authorization_status', arguments: { baseUrl: 'https://workspace.example' } });
+    const data = (result.structuredContent as any).data;
+    assert.equal(data.state, 'refresh_required');
+    assert.equal(data.sessionPath, workspaceSessionPath(root));
+    assert.equal(JSON.stringify(result).includes('local-secret'), false);
+    await client.callTool({ name: 'workspace_context', arguments: {} });
+    assert.equal(observedRoot, root);
+  } finally { await client.close(); await server.close(); rmSync(root, { recursive: true, force: true }); }
 });
 
 test('管理工具在真实 MCP 参数解析后规范化环境，非法环境不调用服务', async () => {

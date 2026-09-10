@@ -1,13 +1,14 @@
 import {
   chmod,
+  lstat,
   mkdir,
   readFile,
   rename,
   rm,
   writeFile,
 } from "node:fs/promises";
-import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { existsSync } from "node:fs";
+import { basename, dirname, join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 
 type FetchLike = (
@@ -71,8 +72,55 @@ export class DeveloperSessionError extends Error {
   }
 }
 
+export function sessionWorkspaceRoot(cwd = process.cwd()) {
+  const start = resolve(cwd);
+  if (!existsSync(start)) return start;
+  let directory = start;
+  while (true) {
+    if (['openxiangda.config.ts', 'openxiangda-app.config.ts', '.openxiangda/session.json']
+      .some(file => existsSync(join(directory, file)))) return directory;
+    // A separate checkout must never inherit a parent application's account.
+    if (existsSync(join(directory, '.git'))) return start;
+    const parent = dirname(directory);
+    if (parent === directory) return start;
+    directory = parent;
+  }
+}
+
+export function workspaceSessionPath(root: string) {
+  return join(resolve(root), '.openxiangda', 'session.json');
+}
+
 export function defaultSessionPath() {
-  return join(homedir(), ".config", "openxiangda-v2", "session.json");
+  return workspaceSessionPath(sessionWorkspaceRoot());
+}
+
+async function assertSessionFile(path: string) {
+  for (const file of [dirname(path), path]) {
+    try {
+      const info = await lstat(file);
+      if (info.isSymbolicLink() || (file === path && (!info.isFile() || info.size > 64 * 1024))) {
+        throw new DeveloperSessionError('OPENXIANGDA_SESSION_FILE_INVALID', `登录态路径必须是工作区内的普通文件：${path}`);
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    }
+  }
+}
+
+async function ignoreWorkspaceSession(path: string) {
+  if (basename(path) !== 'session.json' || basename(dirname(path)) !== '.openxiangda') return;
+  const ignorePath = join(dirname(path), '.gitignore');
+  let current = '';
+  try {
+    if ((await lstat(ignorePath)).isSymbolicLink()) throw new DeveloperSessionError('OPENXIANGDA_SESSION_FILE_INVALID', '登录态忽略文件不能是符号链接');
+    current = await readFile(ignorePath, 'utf8');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+  }
+  const entries = ['/session.json', '/session.json.*'];
+  const missing = entries.filter(entry => !current.split(/\r?\n/).includes(entry));
+  if (missing.length) await writeFile(ignorePath, `${current}${current && !current.endsWith('\n') ? '\n' : ''}${missing.join('\n')}\n`, { mode: 0o600 });
 }
 
 export function normalizePlatformBaseUrl(value: string) {
@@ -106,29 +154,17 @@ export function normalizePlatformBaseUrl(value: string) {
 }
 
 export async function loadSession(path = defaultSessionPath()) {
-  const baseUrl = String(process.env.OPENXIANGDA_BASE_URL || "").trim();
-  const token = String(process.env.OPENXIANGDA_TOKEN || "").trim();
-  if (baseUrl || token) {
-    if (!baseUrl || !token) {
-      throw new DeveloperSessionError(
-        "OPENXIANGDA_ENV_AUTH_INCOMPLETE",
-        "CI 身份必须同时提供 OPENXIANGDA_BASE_URL 和 OPENXIANGDA_TOKEN"
-      );
-    }
-    return {
-      schemaVersion: 2,
-      baseUrl: normalizePlatformBaseUrl(baseUrl),
-      accessToken: token,
-      savedAt: "environment",
-      source: "environment",
-    } satisfies OpenXiangdaSession;
-  }
+  path = resolve(path);
+  await assertSessionFile(path);
   try {
     const raw = JSON.parse(await readFile(path, "utf8")) as Partial<
       OpenXiangdaSession & { token: string }
     >;
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new DeveloperSessionError('OPENXIANGDA_SESSION_INVALID', `工作区登录态无效，请重新登录：${path}`);
     const accessToken = String(raw.accessToken || raw.token || "").trim();
-    if (raw.schemaVersion !== 2 || !raw.baseUrl || !accessToken) return null;
+    if (raw.schemaVersion !== 2 || typeof raw.baseUrl !== 'string' || !accessToken) {
+      throw new DeveloperSessionError('OPENXIANGDA_SESSION_INVALID', `工作区登录态无效，请在该目录重新登录：${path}`);
+    }
     return {
       schemaVersion: 2,
       baseUrl: normalizePlatformBaseUrl(raw.baseUrl),
@@ -144,9 +180,17 @@ export async function loadSession(path = defaultSessionPath()) {
       source: "file",
     } satisfies OpenXiangdaSession;
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
-    throw error;
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      if (error instanceof SyntaxError) throw new DeveloperSessionError('OPENXIANGDA_SESSION_INVALID', `工作区登录态无法解析，请重新登录：${path}`);
+      throw error;
+    }
   }
+  // Explicit CI credentials remain available only when this workspace has no file.
+  const baseUrl = String(process.env.OPENXIANGDA_BASE_URL || "").trim();
+  const token = String(process.env.OPENXIANGDA_TOKEN || "").trim();
+  if (!baseUrl && !token) return null;
+  if (!baseUrl || !token) throw new DeveloperSessionError('OPENXIANGDA_ENV_AUTH_INCOMPLETE', 'CI 身份必须同时提供 OPENXIANGDA_BASE_URL 和 OPENXIANGDA_TOKEN');
+  return { schemaVersion: 2, baseUrl: normalizePlatformBaseUrl(baseUrl), accessToken: token, savedAt: 'environment', source: 'environment' } satisfies OpenXiangdaSession;
 }
 
 export async function saveSession(
@@ -160,6 +204,8 @@ export async function saveSession(
   },
   path = defaultSessionPath()
 ) {
+  path = resolve(path);
+  await assertSessionFile(path);
   const accessToken = String(input.accessToken || input.token || "").trim();
   if (!accessToken) {
     throw new DeveloperSessionError(
@@ -181,9 +227,10 @@ export async function saveSession(
     savedAt: new Date().toISOString(),
   } as const;
   const directory = dirname(path);
-  const temporaryPath = join(directory, `.session-${randomUUID()}.tmp`);
+  const temporaryPath = `${path}.${randomUUID()}.tmp`;
   await mkdir(directory, { recursive: true, mode: 0o700 });
   await chmod(directory, 0o700);
+  await ignoreWorkspaceSession(path);
   try {
     await writeFile(temporaryPath, `${JSON.stringify(persisted, null, 2)}\n`, {
       encoding: "utf8",
@@ -198,6 +245,8 @@ export async function saveSession(
 }
 
 export async function clearSession(path = defaultSessionPath()) {
+  path = resolve(path);
+  await assertSessionFile(path);
   await rm(path, { force: true });
 }
 
@@ -208,17 +257,18 @@ export async function developerAuthorizationStatus(input: {
   fetch?: FetchLike;
   now?: () => number;
 }) {
+  const sessionPath = resolve(input.sessionPath || defaultSessionPath());
   const baseUrl = normalizePlatformBaseUrl(input.baseUrl);
   const observedAt = new Date((input.now || Date.now)()).toISOString();
   type State = 'missing' | 'platform_mismatch' | 'refresh_required' | 'authorized' | 'unauthorized' | 'unavailable';
   const result = (state: State) => ({
     ok: true, operation: 'auth.status',
-    workspace: { appCode: 'global', root: process.cwd() },
-    data: { baseUrl, observedAt, state, authorized: state === 'authorized' },
+    workspace: { appCode: 'unbound', root: dirname(dirname(sessionPath)) },
+    data: { baseUrl, observedAt, state, authorized: state === 'authorized', sessionPath, sessionScope: 'workspace' },
     diagnostics: [], nextActions: [],
   });
   try {
-    const session: OpenXiangdaSession | null = await loadSession(input.sessionPath);
+    const session: OpenXiangdaSession | null = await loadSession(sessionPath);
     if (!session) return result('missing');
     if (session.baseUrl !== baseUrl) return result('platform_mismatch');
     if (session.accessTokenExpiresAt && session.accessTokenExpiresAt <= (input.now || Date.now)()) {
@@ -269,15 +319,18 @@ export class OpenXiangdaDeveloperSession {
       sessionPath?: string;
       now?: () => number;
     } = {}
-  ) {}
+  ) {
+    this.options = { ...options, sessionPath: resolve(options.sessionPath || defaultSessionPath()) };
+  }
 
   static async load(options: {
     fetch?: FetchLike;
     sessionPath?: string;
     now?: () => number;
   } = {}) {
-    const session = await loadSession(options.sessionPath);
-    return session ? new OpenXiangdaDeveloperSession(session, options) : null;
+    const sessionPath = resolve(options.sessionPath || defaultSessionPath());
+    const session = await loadSession(sessionPath);
+    return session ? new OpenXiangdaDeveloperSession(session, { ...options, sessionPath }) : null;
   }
 
   get baseUrl() {
@@ -286,6 +339,13 @@ export class OpenXiangdaDeveloperSession {
 
   summary() {
     return sessionSummary(this.session);
+  }
+
+  async persist() {
+    if (this.session.source !== 'file') {
+      throw new DeveloperSessionError('OPENXIANGDA_ENV_AUTH_NOT_PERSISTED', 'CI 环境凭据不能保存为工作区会话');
+    }
+    return saveSession(this.session, this.options.sessionPath);
   }
 
   assertPlatform(linkedBaseUrl: string) {
@@ -453,6 +513,7 @@ export async function authorizeDeveloperSession(input: {
   pollIntervalMs?: number;
   onAuthorization?: (authorization: CliAuthorizationStart) => void | Promise<void>;
 }) {
+  const sessionPath = resolve(input.sessionPath || defaultSessionPath());
   const baseUrl = normalizePlatformBaseUrl(input.baseUrl);
   const fetcher = input.fetch || globalThis.fetch.bind(globalThis);
   const startResponse = await fetcher(
@@ -501,10 +562,10 @@ export async function authorizeDeveloperSession(input: {
       savedAt: "validation",
       source: "file",
     };
-    const manager = new OpenXiangdaDeveloperSession(transient, { fetch: fetcher });
+    const manager = new OpenXiangdaDeveloperSession(transient, { fetch: fetcher, sessionPath });
     const identity = await manager.whoami();
-    const summary = await saveSession(transient, input.sessionPath);
-    return { session: summary, identity };
+    const summary = await manager.persist();
+    return { session: { ...summary, path: sessionPath, scope: 'workspace' as const }, identity };
   }
   throw new DeveloperSessionError(
     "OPENXIANGDA_CLI_AUTH_EXPIRED",

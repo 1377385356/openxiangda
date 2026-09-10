@@ -75,6 +75,21 @@ test('local declared engines are authoritative; missing, wrong generation and wr
   assert.equal(resolveEngine(null, f.launcher).generation, 'v2');
 });
 
+test('workspace login selects missing or auth-only targets without inheriting a parent engine', t => {
+  const f = fixture(t);
+  f.put('old/app-workspace.config.ts');
+  const target = join(f.root, 'old/new-app');
+  assert.equal(discoverWorkspace(target, { allowMissing: true, exact: true }), null);
+  const launcher = pathToFileURL(join(import.meta.dirname, '../bin/distribution/launcher.js')).href;
+  const result = spawnSync(process.execPath, ['--input-type=module', '-e', `import {launch} from ${JSON.stringify(launcher)}; await launch(${JSON.stringify(f.launcher)}, ['login', '--cwd', ${JSON.stringify(target)}, '--base-url', 'https://example.test', '--json']);`], { cwd: f.root, encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(JSON.parse(result.stdout).version, '2.0.0');
+  assert.deepEqual(JSON.parse(result.stdout).argv, ['login', '--cwd', target, '--base-url', 'https://example.test', '--json']);
+  f.put('old/new-app/.openxiangda/session.json', 'INVALID_SECRET_DO_NOT_PARSE');
+  assert.equal(discoverWorkspace(target).generation, 'v2');
+  assert.equal(discoverWorkspace(target).root, realpathSync(target));
+});
+
 test('subdirectory V1 execution preserves arguments, exit code and login environment isolation', t => {
   const f = fixture(t);
   f.put('old/app-workspace.config.ts'); f.put('old/src/placeholder');

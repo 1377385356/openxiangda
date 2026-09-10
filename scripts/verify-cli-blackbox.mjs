@@ -93,7 +93,7 @@ try {
   };
 
   const login = await runCli(
-    ["login", "--base-url", baseUrl, "--json"],
+    ["login", "--cwd", appRoot, "--base-url", baseUrl, "--json"],
     repositoryRoot,
     environment
   );
@@ -103,12 +103,12 @@ try {
   await waitFor(() => existsSync(browserMarker), "browser authorization open");
 
   const authRequests = requests.length;
-  const authStatus = await runCli(['auth', 'status', '--base-url', baseUrl, '--json'], repositoryRoot, environment);
+  const authStatus = await runCli(['auth', 'status', '--cwd', appRoot, '--base-url', baseUrl, '--json'], repositoryRoot, environment);
   assertEnvelope(authStatus, 'auth.status');
   assert.equal(authStatus.value.data.state, 'authorized');
   assert.equal(requests.length, authRequests + 1);
   assert.equal(authStatus.stdout.includes('developer-access-token'), false);
-  const mismatched = await runCli(['auth', 'status', '--base-url', 'https://other.example', '--json'], repositoryRoot, environment);
+  const mismatched = await runCli(['auth', 'status', '--cwd', appRoot, '--base-url', 'https://other.example', '--json'], repositoryRoot, environment);
   assertEnvelope(mismatched, 'auth.status');
   assert.equal(mismatched.value.data.state, 'platform_mismatch');
   assert.equal(requests.length, authRequests + 1);

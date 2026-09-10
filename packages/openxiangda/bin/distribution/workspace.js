@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { createRequire } from 'node:module';
+import { homedir } from 'node:os';
 
 export function fail(code, message) {
   throw Object.assign(new Error(`${code}: ${message}`), { code });
@@ -25,8 +26,10 @@ export function flagValue(args, name) {
 }
 
 // Discovery reads markers only. Loading either generation's executable config belongs to its engine.
-export function discoverWorkspace(cwd) {
+export function discoverWorkspace(cwd, { allowMissing = false, exact = false } = {}) {
+  if (allowMissing && !existsSync(resolve(cwd))) return null;
   let root = realpathSync(resolve(cwd));
+  const userHome = existsSync(homedir()) ? realpathSync(homedir()) : resolve(homedir());
   if (!statSync(root).isDirectory()) fail('WORKSPACE_DIRECTORY_REQUIRED', root);
   while (true) {
     const v2 = ['openxiangda.config.ts', 'openxiangda-app.config.ts'].filter(file => existsSync(join(root, file)));
@@ -36,8 +39,14 @@ export function discoverWorkspace(cwd) {
       const state = readJson(binding);
       if (state.version === 1 && state.profiles && typeof state.profiles === 'object') v1.push('.openxiangda/state.json');
     }
+    // Auth-only directories are workspace boundaries. Discover filenames, never credentials.
+    if (root !== userHome && !v1.length && !v2.length) {
+      if (existsSync(join(root, '.openxiangda/session.json'))) v2.push('.openxiangda/session.json');
+      if (existsSync(join(root, '.openxiangda/profiles.json'))) v1.push('.openxiangda/profiles.json');
+    }
     if (v1.length && v2.length || v2.length > 1) fail('WORKSPACE_GENERATION_CONFLICT', `${root} 同时存在冲突的工作区标记：${[...v1, ...v2].join(', ')}`);
     if (v1.length || v2.length) return { root, generation: v1.length ? 'v1' : 'v2', markers: [...v1, ...v2] };
+    if (exact) return null;
     const parent = dirname(root);
     if (parent === root) return null;
     root = parent;

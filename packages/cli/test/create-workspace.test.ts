@@ -444,3 +444,21 @@ function assertTemplateUsesCurrentWorkspaceVersions(workspaceRoot: string) {
     }
   }
 }
+
+
+test('creates in an auth-only target and preserves session bytes including template placeholders', async () => {
+  const temporary = mkdtempSync(join(tmpdir(), 'openxiangda-auth-create-'));
+  try {
+    const root = join(temporary, 'app');
+    mkdirSync(join(root, '.openxiangda'), { recursive: true });
+    const sessionPath = join(root, '.openxiangda/session.json');
+    const secret = JSON.stringify({ schemaVersion: 2, baseUrl: 'https://example.test', accessToken: '__APP_CODE__-__APP_NAME__' });
+    writeFileSync(sessionPath, secret);
+    writeFileSync(join(root, '.openxiangda/.gitignore'), '/session.json\n/session.json.*\n');
+    await createWorkspace({ directory: root, appCode: 'auth-app', name: 'Auth App', templateRoot: repositoryTemplate, install: false });
+    assert.equal(readFileSync(sessionPath, 'utf8'), secret);
+    assert.ok(existsSync(join(root, 'openxiangda.config.ts')));
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
