@@ -28,7 +28,7 @@
     "发行包验证不能代替客户环境的实际部署及容量测试。"
   ],
   "compatibility": {
-    "node": ">=22",
+    "node": ">=24",
     "platform": "events.native-data-actions 1.0.0，匹配共享 Native 校验器与 Native action SQL 迁移",
     "v1": "独立 legacy-v1 引擎，不引入兼容桥"
   },
