@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.12.0",
+  "version": "2.13.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -67,13 +67,13 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.3.1",
+    "openxiangda-cli": "2.4.0",
     "openxiangda-contracts": "2.11.0",
-    "openxiangda-devkit-core": "2.8.0",
+    "openxiangda-devkit-core": "2.9.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.16",
+    "openxiangda-mcp": "2.0.17",
     "openxiangda-nest": "2.3.2",
-    "openxiangda-skill-kit": "2.0.20",
+    "openxiangda-skill-kit": "2.1.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -139,40 +139,43 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.12.0",
+    "version": "2.13.0",
     "status": "reviewed",
-    "title": "OpenXiangda 2.12.0：平台原生数据自动化",
-    "summary": "数据事件可直接触发平台 Native 数据动作，省去应用 HTTP 接收链路；发布计划固定捕获字段与目标资源，业务效果与执行结果原子提交。",
+    "title": "OpenXiangda 2.13.0：原版 OpenDesign 设计体验",
+    "summary": "通过轻量入口直接使用 OpenDesign 原版桌面与完整 CLI，默认先设计和验证原型再实现应用；设计资源进入 AppSpec 评审摘要，PC 与移动字段支持应用作用域内的视觉设计。",
     "newFeatures": [
-      "events.subscriptions.execution 支持 native-data v1 声明式 create/update/delete，无需 Nest 应用后端。",
-      "共享编译器自动派生事件捕获字段及目标模型摘要，新增 events.native-data-actions 能力检查。"
+      "design open/status/cli 发现原版安装、连接原版动态服务并透传完整 CLI 和原版 MCP；保留参数、标准输入输出、退出码与取消。",
+      "AppSpec assets 固定设计系统和原型依赖，评审与原测试提交的资源摘要可复核。",
+      "PC Provider 接收应用主题，弹层、消息及移动字段继承应用设计作用域。",
+      "同版 Skill、CLI docs 和平台 MCP 提供原版开发流程及精选 OpenDesign 离线参考。"
     ],
     "fixes": [
-      "保留旧 Webhook 消费者与处理器契约，运维查询区分 Native 执行计划。",
-      "包含已合并的后台入口状态修复与 PC 优先开发引导，菜单缺失、无权限及未知地址分别展示。"
+      "替换与用户目标冲突的默认外观和固定设备限制，复用字段行为并允许完善整体设计。",
+      "防止原生 --cwd、--json 和 MCP 参数被享搭分发层截获，避免误运行系统同名 od。"
     ],
     "affectedUsers": [
-      "使用平台数据自动化和 OpenXiangda V2 事件订阅的应用。",
-      "平台维护者必须同步升级匹配的共享 Native 校验器；V1 业务引擎保持独立。"
+      "使用 OpenXiangda V2 开发新界面、改版和原型的应用开发者。",
+      "采用 AppSpec 原型资源评审或应用主题的 V2 工作区。"
     ],
     "upgradeSteps": [
-      "先部署支持 events.native-data-actions 1.0.0、同版共享 Native 校验器和 SQL 扩展迁移的平台后端。",
-      "将应用依赖升级到 openxiangda 2.12.0 并按普通测试发布、验收和生产晋级流程交付。",
-      "简单数据动作按 execution 显式启用，外部 Webhook 与自定义代码继续使用现有处理器。"
+      "将应用锁定的 openxiangda 升级到 2.13.0，并刷新当前版本 Skill 和工作区指引。",
+      "从 OpenDesign 官方发行页安装原版，运行 openxiangda design open；在原版中选择已有本地 Agent 或配置所需提供商。",
+      "使用 design cli --help 查看完整原生命令；将实际采用的原型及依赖交接到 AppSpec assets 后验证业务实现。"
     ],
     "knownLimitations": [
-      "首版 Native 动作仅支持明确源资源的数据事件，最多 16 个操作、每个 32 字段及 64 KiB 输入，不执行脚本、SQL 或 HTTP。",
-      "不兼容的目标模型变化会停止旧动作并报告错误；回退平台前需停用并排空 Native 动作。",
-      "按需事件不能重放从未捕获的历史；权限过滤的轻量操作历史由配套平台提供。",
-      "发行包验证不能代替客户环境的实际部署及容量测试。"
+      "macOS 桌面发现针对官方 arm64 0.22.2 验证；其他平台和源码安装使用绝对路径 OPENXIANGDA_OPENDESIGN_CLI 或 OD_BIN，未声称完成各平台桌面验收。",
+      "npm 包不包含 OpenDesign 桌面二进制；原版更新、模型登录、云媒体和连接器按原版配置与权限使用。",
+      "原版桌面导入等受授权上下文保护的操作可能需要桌面选择目录；桥接不伪造 token。",
+      "设计资源检查最多 128 文件、单文件 2 MiB、总计 8 MiB；大媒体留在原版项目并导出有界审阅产物。",
+      "原型与包验证不代表生产应用已经部署或完成实际业务验收。"
     ],
     "compatibility": {
       "node": ">=24",
-      "platform": "events.native-data-actions 1.0.0，匹配共享 Native 校验器与 Native action SQL 迁移",
-      "v1": "独立 legacy-v1 引擎，不引入兼容桥"
+      "platform": "本轮不增加平台后端接口或数据库迁移要求",
+      "v1": "保持独立 legacy-v1 引擎"
     },
     "issues": [],
-    "sha256": "ae2cf493d03c916d22f093d366ac8c7f9d8cf0d0cbc71d6ab5db99fc34617738",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.12.0"
+    "sha256": "bd50c7e044926d5d7d4f44bbe17827c2f1758f6b6e9ae258d8eb27594379ee98",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.13.0"
   }
 }
