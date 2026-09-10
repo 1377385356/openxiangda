@@ -20,7 +20,9 @@
 ## 选择平台能力 {#capabilities}
 
 - 普通数据管理：通过 `defineDataModel`、`defineApplicationModule` 和显式 CRUD 视图声明；模型不自动生成菜单或写权限。
-- PC/移动页面：先复用平台组件和标准页面，再使用受支持的页面、插槽与导航扩展。详见[前端](frontend.md)。
+- 管理后台默认仅 PC：先复用平台 Shell、标准 CRUD 和字段；自定义报表/工具使用 admin 页面与显式导航，不为后台自动创建移动副本。详见[页面归属](frontend.md#surface-selection)。
+- 用户页面按实际旅程选择独立 PC/移动布局，手机端只覆盖已确认的用户任务。
+- 图表等专业交互先检查已有依赖，再评估成熟组件或开源库；报表优先评估 ECharts，记录选型理由和加载/销毁边界。详见[组件选型](frontend.md#component-selection)。
 - 无平台账号的外部表单：使用[匿名公开访问](public-access.md)，不用普通 RBAC 角色冒充匿名主体。
 - 标准审批、待办与通知：按需声明平台能力，见[工作流](workflow-events.md)。
 - 真实事务或外部集成：使用[按需后端](backend.md)，不为每张表重写 CRUD 控制器。

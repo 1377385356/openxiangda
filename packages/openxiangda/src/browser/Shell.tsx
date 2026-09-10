@@ -458,10 +458,19 @@ export function Shell({ children }: { children: ReactNode }) {
   );
 }
 
-export function EmptyApplicationPage() {
+export function EmptyApplicationPage({
+  reason = 'not-found',
+}: {
+  reason?: 'not-configured' | 'forbidden' | 'not-found';
+}) {
+  const description = {
+    'not-configured': '此应用尚未配置后台导航，请联系应用管理员。',
+    forbidden: '当前账号没有可访问的后台页面，请联系应用管理员。',
+    'not-found': '页面不存在或已移除，请从应用导航重新进入。',
+  }[reason];
   return (
     <Shell>
-      <Empty description="还没有声明数据资源；请在 openxiangda.config.ts 中添加资源和字段" />
+      <Empty data-admin-empty-reason={reason} description={description} />
     </Shell>
   );
 }

@@ -37,7 +37,7 @@ import {
 } from './admin-contributions';
 import {
   AdminInformationArchitectureProvider,
-  firstAllowedAdminPath,
+  resolveAdminEntry,
   useAdminInformationArchitecture,
   type AdminNavigationInput,
   type AdminPagesInput,
@@ -348,7 +348,7 @@ function ApplicationAdminEntry({
       </AdminAccessBoundary>
     );
   }
-  const target = firstAllowedAdminPath(
+  const entry = resolveAdminEntry(
     architecture,
     hasCapability,
     hasReadCapability,
@@ -367,7 +367,9 @@ function ApplicationAdminEntry({
       );
     },
   );
-  return target ? <Navigate replace to={target} /> : <EmptyApplicationPage />;
+  return entry.kind === 'page'
+    ? <Navigate replace to={entry.path} />
+    : <EmptyApplicationPage reason={entry.kind} />;
 }
 
 function ApplicationRootEntry({

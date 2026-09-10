@@ -132,3 +132,13 @@ export function firstAllowedAdminPath(
   }
   return undefined;
 }
+
+/** Entry availability follows explicit navigation, never the number of models. */
+export function resolveAdminEntry(
+  ...args: Parameters<typeof firstAllowedAdminPath>
+): { kind: 'page'; path: string } | { kind: 'not-configured' | 'forbidden' } {
+  const path = firstAllowedAdminPath(...args);
+  return path
+    ? { kind: 'page', path }
+    : { kind: args[0].navigation.length ? 'forbidden' : 'not-configured' };
+}
