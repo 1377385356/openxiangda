@@ -7,6 +7,7 @@
 | `pnpm openxiangda auth` | 只读 | 只读核验指定平台授权，不登录或刷新会话 |
 | `pnpm openxiangda context` | 只读 | 只读查看工作区、版本与平台绑定 |
 | `pnpm openxiangda docs` | 只读 | 按主题和章节读取当前版本中文资料 |
+| `pnpm openxiangda design` | 远端变更 | 打开 OpenDesign 原版并透传完整原生 CLI；写入范围由原生命令决定 |
 | `pnpm openxiangda admin` | 只读 | 只读查看应用管理能力和流程节点运行配置 |
 | `pnpm openxiangda create` | 远端变更 | 创建、绑定并初始化应用 |
 | `pnpm openxiangda source` | 远端变更 | 配置应用源码仓库、查看状态或提交推送 |

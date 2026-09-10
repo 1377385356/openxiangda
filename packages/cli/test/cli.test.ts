@@ -26,6 +26,7 @@ const expected = [
   "auth",
   "context",
   "docs",
+  "design",
   "admin",
   "create",
   "source",

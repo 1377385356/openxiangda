@@ -1,6 +1,6 @@
 ---
 name: openxiangda-v2
-description: 使用 OpenXiangda 2.0 从模糊业务想法、已有资料或具体变更出发，通过对话发现模块、完成详细产品设计，使用内置 OpenDesign 方法形成整体视觉与可运行原型，再开发、检查和交付应用。维护 1.x 应用时使用对应的 1.x 技能。
+description: 使用 OpenXiangda 2.0 从模糊业务想法、已有资料或具体变更出发，通过对话发现模块、完成详细产品设计，使用原版 OpenDesign 桌面和 CLI形成整体视觉与可运行原型，再开发、检查和交付应用。维护 1.x 应用时使用对应的 1.x 技能。
 ---
 
 # OpenXiangda 2.0
@@ -13,7 +13,7 @@ description: 使用 OpenXiangda 2.0 从模糊业务想法、已有资料或具�
 
 遇到已有 V1 项目时，先核实 V2 能力覆盖、项目是否仍在测试阶段和迁移成本；能力满足、仍在测试阶段且代价可控时，优先建议转用 V2。先做只读评估，再按项目确认详细设计、数据/流程映射、测试和回滚；迁移实施前的原项目维护仍使用匹配的 V1 引擎。
 
-有界面影响的开发和改版默认读[OpenDesign 工作流](references/design-workflow.md)，按阶段实际读取所列原文方法和 craft，形成设计包、可运行原型、浏览器修正和实现交接。保留字段与权限行为，旧默认皮肤或设备偏好可按任务重新设计。设计与原型资源使用 AppSpec assets 固定；不把结构检查或示例数据当成实际验收。
+有界面影响的开发和改版默认读[OpenDesign 工作流](references/design-workflow.md)，使用 `openxiangda design open` 和 `design cli` 直接调用原版，随包方法仅作离线参考，形成设计包、可运行原型、浏览器修正和实现交接。保留字段与权限行为，旧默认皮肤或设备偏好可按任务重新设计。设计与原型资源使用 AppSpec assets 固定；不把结构检查或示例数据当成实际验收。
 
 ## 定位当前版本
 
@@ -41,7 +41,7 @@ pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ skill install --force
 | 安装、登录、创建、连接开发 | [开始开发](references/getting-started.md) |
 | 源码仓库、换电脑、旧项目导入、提交推送与重试 | [应用源码](references/getting-started.md#应用源码)；先用 `source status` 读取实际绑定 |
 | 模糊想法、模块发现、PRD、权限与架构设计 | [产品设计](references/product-design.md)、[交互模式](references/interaction-patterns.md) |
-| 界面设计、改版、原型和视觉修正 | 先读[设计工作流](references/design-workflow.md)，按阶段读取[OpenDesign 原文方法](references/opendesign-methods.md)与[设计 Craft](references/design-craft.md)的相关章节 |
+| 界面设计、改版、原型和视觉修正 | 先读[设计工作流](references/design-workflow.md)，使用 `openxiangda design open` 和 `design cli` 调用原版；[离线方法](references/opendesign-methods.md)与[设计 Craft](references/design-craft.md)仅作补充 |
 | 理解需求与选择能力 | [开发流程](references/development.md)、[架构](references/concepts.md) |
 | 模型、CRUD、字段与移动表单 | [业务模块](references/application-foundation.md)、[字段](references/field-components.md) |
 | 图片压缩、缩略图、附件和缓存 | [图片与附件读取](references/field-components.md#图片缩略图和附件读取)：卡片优先缩略图，原图按需，使用平台权限与缓存规则 |

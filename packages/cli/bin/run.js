@@ -7,7 +7,16 @@ import { DEVKIT_COMMANDS } from 'openxiangda-devkit-core';
 const publicCommands = new Set(DEVKIT_COMMANDS.map(command => command.id));
 const args = process.argv.slice(2);
 
-if (args.includes('--mcp-stdio')) {
+if (args[0] === 'design') {
+  // Native arguments and JSON/stdio belong to OpenDesign, including its MCP.
+  try {
+    const { runDesign } = await import('../dist/design-native.js');
+    process.exitCode = await runDesign(args.slice(1));
+  } catch (error) {
+    process.stderr.write(`${error instanceof Error ? error.message : error}\n`);
+    process.exitCode = 1;
+  }
+} else if (args.includes('--mcp-stdio')) {
   const allowed = new Set(['--mcp-stdio', '--cwd']);
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];

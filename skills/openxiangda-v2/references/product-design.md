@@ -141,4 +141,4 @@ context 的 `readyForImplementation` 为真时才制定具体实现任务，把 
 - [Design OS，固定提交](https://github.com/buildermethods/design-os/tree/529dedb43bfec24b2cbb128f26dd8cbc6143f754)（MIT）。
 - [Spec Kit，固定提交](https://github.com/github/spec-kit/tree/4a7341a93d944d6efe153b71da4a1adb9c2b578c)（MIT）。
 
-有界面影响的工作默认使用随版本分发的真实 OpenDesign 方法和 Craft，完成可运行原型、浏览器修正及实现交接，见[设计工作流](design-workflow.md)。原文和许可随包提供，不依赖另一模型或全局技能。
+有界面影响的工作默认通过 design open / design cli 使用原版 OpenDesign，完成可运行原型、浏览器修正及实现交接，见[设计工作流](design-workflow.md)。原版运行时拥有完整设计资源和工作流；随包方法与 Craft 仅作离线参考。

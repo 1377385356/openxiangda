@@ -8,7 +8,7 @@
 - 模型、页面、导航和权限由应用声明一次；编译器生成契约。业务代码不改生成结果、不创建 platform/data、不复制平台 Router、字段组件、客户端或权限状态。
 - 当前用户、角色并集、数据授权和部署状态归平台；应用不保存凭据或授权快照。普通 CRUD 走 Data API，真实业务动作才按需启用 Nest。
 - 标准业务字段使用 `openxiangda/field-kit`；PC 补充控件使用 antd，移动使用有作用域的 `openxiangda/mobile` 和 MobileSurface，不引入上游全局重置。
-- 界面开发默认按 docs design-workflow 使用内置 OpenDesign 方法先设计整体视觉、可运行原型并实际走查，再实现。设备由真实任务决定；复用 Shell 导航事实、标准字段行为，通过 ui 和局部样式应用设计，不复制权限或导航状态。原型和 tokens 以 AppSpec assets 固定。模板 /home 不替代页面选型。
+- 界面开发默认按 docs design-workflow 使用原版 OpenDesign 桌面和 design cli先设计整体视觉、可运行原型并实际走查，再实现。设备由真实任务决定；复用 Shell 导航事实、标准字段行为，通过 ui 和局部样式应用设计，不复制权限或导航状态。原型和 tokens 以 AppSpec assets 固定。模板 /home 不替代页面选型。
 - 图表等专业交互先检查现有依赖并评估成熟组件/开源库，报表优先评估 ECharts，按需加载并释放实例；平台数据、权限与聚合仍通过官方能力。详见 docs frontend。
 - 入口与导航验收从平台应用列表开始，检查应用根路径、后台首个有权菜单、登录返回及刷新深链接；不能只验证开发者给出的业务链接。
 - 无账号表单读取 `docs public-access`，使用 frontend.publicAccess 和专用客户端；标准审批、通知和后端均按需启用。

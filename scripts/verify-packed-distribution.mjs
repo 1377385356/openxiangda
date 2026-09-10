@@ -467,6 +467,24 @@ export default class Ninth extends Command { async run() { this.log("injected");
       fail(`openxiangda ${command} --help returned no command help`);
     }
   }
+  // Exercise the installed bridge without requiring OpenDesign on CI machines.
+  const nativeEntry = join(scratchRoot, 'native OpenDesign fixture.mjs');
+  writeFileSync(nativeEntry, `
+const args = process.argv.slice(2);
+if (args.includes('--open-design-cli-probe')) console.log('open-design-cli:mcp-install:v1');
+else {
+  let input = ''; for await (const chunk of process.stdin) input += chunk;
+  console.log(JSON.stringify({ args, input })); process.exitCode = 17;
+}
+`);
+  const nativeArgs = ['future-command', '--json', '--cwd', '/native-workspace', '--mcp-stdio', 'a b;$(false)'];
+  const nativeResult = spawnSync('pnpm', ['exec', 'openxiangda', 'design', 'cli', ...nativeArgs], {
+    cwd: root, env: { ...env, OPENXIANGDA_OPENDESIGN_CLI: nativeEntry, OD_BIN: '', OD_NODE_BIN: '' },
+    input: 'native input', encoding: 'utf8', timeout: 15000,
+  });
+  if (nativeResult.status !== 17 || nativeResult.stderr || JSON.stringify(JSON.parse(nativeResult.stdout)) !== JSON.stringify({ args: nativeArgs, input: 'native input' })) {
+    fail(`packed OpenDesign bridge changed native arguments, stdio or exit code: ${nativeResult.stderr}`);
+  }
   const injected = spawnSync(
     "pnpm",
     ["exec", "openxiangda", "ninth", "--json"],

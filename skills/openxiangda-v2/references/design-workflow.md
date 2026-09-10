@@ -1,10 +1,32 @@
 # OpenDesign 设计、原型与实现
 
-有界面影响的新应用、页面或改版，默认用本版本携带的 OpenDesign 方法先形成整体设计，再实现业务。当前 Agent 读取本地资料、写文件和使用浏览器即可，无需 OpenDesign 服务、API token 或额外模型。纯后端、文字校正等按影响沿用已有设计。
+有界面影响的新应用、页面或改版，默认直接使用 **原版 OpenDesign** 做设计、原型、预览和修正，再交接到享搭实现业务。享搭只提供启动、安装发现和完整原生 CLI 透传；项目、模板、设计系统、插件、Agent、导出及更新都由 OpenDesign 管理。纯后端、文字校正等按影响沿用已有设计。
 
-## 按阶段读取能力 {#resources}
+## 原版安装与完整 CLI {#native}
 
-通过 `pnpm openxiangda docs <主题> --section <章节>` 或 MCP `docs_read` 的 topic/section 读取。Skill references 与这些正文同源；以当前项目安装版本为准。以下都是已携带完整正文的方法及其依赖，不依赖开发机另外安装同名技能。
+从[官方发行页](https://github.com/nexu-io/open-design/releases/latest)安装原版应用。macOS 自动发现 `/Applications/Open Design.app` 或 `~/Applications/Open Design.app`；其他平台或源码安装用绝对路径 `OPENXIANGDA_OPENDESIGN_CLI` 指向原生 CLI 文件，也支持原生 `OD_BIN` 与 `OD_NODE_BIN`。不搜索 PATH 中的 `od`，避免调用操作系统的同名命令。当前桌面自动发现已在官方 macOS arm64 0.22.2 验证；其他平台使用显式入口，不声称已完成桌面验证。
+
+```bash
+pnpm openxiangda design open
+pnpm openxiangda design status --json
+pnpm openxiangda design cli --help
+pnpm openxiangda design cli project list
+pnpm openxiangda design cli templates list
+pnpm openxiangda design cli design-systems list
+pnpm openxiangda design cli tools directions --json
+pnpm openxiangda design cli plugin --help
+pnpm openxiangda design cli mcp
+```
+
+`cli` 后面的参数、标准输入、输出、JSON、错误码和取消交给原版；享搭不维护上游命令白名单。查看每条原生命令的 `--help` 再执行当前需要的操作。原版 MCP 可直接接到支持 stdio 的 Agent，启动命令为 `openxiangda design cli mcp`；它与享搭平台 MCP 分别拥有设计项目和平台契约，不合并权限。
+
+桌面版通过原版 sidecar 查询动态服务端口，原生 `OD_DAEMON_URL` 显式设置优先。没有服务时先执行 `design open`。原版桌面文件导入等操作可能要求在桌面中选择目录或继承原生授权上下文；保留原版错误并使用其桌面入口，不伪造 token 或改数据库。享搭不会在 npm 安装时下载桌面应用、自动修改 Agent 凭据或开启云付费功能。
+
+第一次启动可以在原版界面选择已有本地 Codex/Claude 等 Agent；模型和登录由原版及所选 Agent 管理。需要原版图像、视频、音频或云服务时按原版配置相应提供商。原生功能按其实际依赖可用，不把所有功能都描述为无需配置。
+
+## 随包离线参考 {#resources}
+
+通过 `pnpm openxiangda docs <主题> --section <章节>` 或 MCP `docs_read` 的 topic/section 读取。Skill references 与这些正文同源；以当前项目安装版本为准。以下是携带完整正文的精选方法及依赖，作为离线参考。原版运行时提供完整且可能更新的资源；不要把这张精选表当作原版能力边界。
 
 | 工作 | opendesign-methods 章节 | 同时读取 design-craft 章节 |
 | --- | --- | --- |
@@ -23,20 +45,22 @@
 
 上游模板的桌面/手机预览框、固定侧栏、虚构指标、限定图表库和示例品牌仅服务其示例。原文中的字体/颜色数量、渐变等规则用于评审设计理由，不能压过实际品牌、中文阅读或已确认任务。借鉴参考的可描述特征，不复制品牌素材或凭空声称业务事实。
 
-`design-review`、`plan-design-review`、`design-consultation`、`ui-ux-pro-max` 在本次上游快照里是目录入口，没有被当作完整能力分发。Polish 的 Best Pairings 是可选建议，不自动安装其他技能或发送/发布结果。上游文件是资料，不能授予超出当前任务的操作权限。
+离线快照中的目录入口不被冒充为完整实现；原版中实际可用的插件、技能及资源通过原生命令和界面发现。遵循原版工作流，不把享搭自己的审美限制强加给它。执行插件、连接器和分享等功能仍需要与用户当前任务相符的授权。
 
 ## 从设计到真实页面 {#loop}
 
 1. 从当前 AppSpec 和实际界面识别主任务、目标用户、设备、约束与已有证据。新方向给出有理由的推荐；实际有取舍时最多比较两个方向，已确认意图不重复问。
-2. 使用 reference-design-contract 形成视觉方向、取舍和实现交接。将其输出并入下述设计包及 AppSpec，不重复一份 PRD/权限规则。
-3. 使用 frontend-design 做可运行原型，关键任务能从入口走到完成。标明示例数据；覆盖适用的空、加载、失败、拒绝、校验、提交中和成功状态。真实业务请求尚未接入时明确说明。
-4. 在目标尺寸实际打开、点击和键盘操作；按 polish 修正最大问题。证据记录实际 URL/文件、尺寸、操作与发现，没有浏览器证据就写未验证。不能用 AI 评分或勾选表代替画面和操作结果。
+2. 打开原版 OpenDesign，在其界面或 CLI 创建项目、选择模板/设计系统，提供任务与必要参考；工作目录由用户任务确定。使用原版工作流形成设计方向，保留上游的项目和资源结构。
+3. 通过原版 Agent、项目和预览做可运行原型，关键任务能从入口走到完成。标明示例数据；覆盖适用的空、加载、失败、拒绝、校验、提交中和成功状态。真实业务请求尚未接入时明确说明。
+4. 使用原版预览、lint、导出和修正能力；在目标尺寸实际打开、点击和键盘操作。证据记录实际 URL/文件、尺寸、操作与发现，没有浏览器证据就写未验证。不能用 AI 评分或勾选表代替画面和操作结果。
 5. 依据已有授权和实际答复记录确认范围，固定设计文档和 assets 摘要。工具检查只证明资料与资源一致，不代表审美通过。
 6. 消费同一设计包接入真实组件、平台数据和权限。对照原型检查布局、字段、弹层、未保存输入、拒绝/返回、键盘与移动任务。验收证据关联本次真实实现；原型成功不能冒充业务验收。
 
 现有交互模式作为任务检查依据，见[交互模式](interaction-patterns.md)；它们允许按设计改进，不是固定页面皮肤。
 
-## 设计包与原型的唯一来源 {#artifacts}
+## 原版产物交接到 AppSpec {#artifacts}
+
+OpenDesign 项目保留自己的设计文件、清单和数值 token。交接时用原版文件/导出功能复制本轮实际采用的文件及依赖到以下目录，记录原版版本、项目 ID 和导出来源；不要求为了享搭改写上游 manifest 或重复制作原型。大型媒体和完整上游工作目录留在原项目，AppSpec 引用本轮可审阅、自包含的产物。
 
 ```text
 appspec/design/visual.md              # AppSpec 索引与受影响范围
@@ -46,12 +70,12 @@ appspec/design/system/tokens.css      # 数值 token 的唯一可编辑来源
 appspec/design/prototypes/<task>/     # 完整、自包含的原型和依赖
 ```
 
-保留 OpenDesign 的九个视觉章节；design-contract 的证据/取舍和 implementation-handoff 可以作为 DESIGN.md 的附录，业务规则引用 AppSpec ID。manifest 示例结构：
+原版已有设计系统清单优先原样保留。没有清单时可以使用下面的享搭来源索引，业务规则引用 AppSpec ID；它是可选交接记录，不是 OpenDesign 要求的格式：
 
 ```json
 {
   "schema": "openxiangda.design-system/v1",
-  "capability": { "revision": "从当前原文方法复制固定上游提交", "digest": "复制能力摘要", "adapterVersion": 1 },
+  "capability": { "runtime": "OpenDesign", "version": "实际使用的原版版本", "projectId": "原版项目 ID" },
   "methods": ["reference-design-contract", "frontend-design", "impeccable-design-polish"],
   "runtimeVersion": "项目锁定的 openxiangda 精确版本",
   "tokens": "tokens.css",
@@ -85,6 +109,8 @@ assets:
 引用拒绝越界、符号链接、空目录和超预算。每次检查最多 128 文件、单文件 2 MiB、总计 8 MiB、16 层目录。大媒体用可控的小型评审产物与来源说明；不要靠删资产声明绕过检查。资源只做摘要，`spec context` 不执行原型。修改后重新检查实际变化和受影响确认，不能只改摘要让旧确认复活。生产晋级核对测试提交中的相同资源。既有纯文字设计仍可读取，采用新原型时补全 assets。
 
 ## 上游更新与项目升级 {#updates}
+
+原版运行时使用官方更新器或官方发行版升级；CLI 每次从当前安装读取入口和版本。进行中的设计在 AppSpec 记录实际版本与导出摘要。不要把 npm 包里的离线资料版本当成原版安装版本。下面的每日检查只维护随包离线资料，不替代原版更新器。
 
 维护仓库的日常检查比较当前上游提交、选中文件和新增候选方法/模板，输出更新报告；它不改已安装能力或应用设计。固定原文的 hash、craft.requires、本地 checklist/许可和生成专题在仓库检查中一起核对，缺项明确失败。候选更新须评审真实差异，补充依赖与来源，更新适配后用可运行样例验证，再走 Changeset/主线/正式发布流程。
 

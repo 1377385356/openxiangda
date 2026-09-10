@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.13.0",
+  "status": "reviewed",
+  "title": "OpenXiangda 2.13.0：原版 OpenDesign 设计体验",
+  "summary": "通过轻量入口直接使用 OpenDesign 原版桌面与完整 CLI，默认先设计和验证原型再实现应用；设计资源进入 AppSpec 评审摘要，PC 与移动字段支持应用作用域内的视觉设计。",
+  "newFeatures": [
+    "design open/status/cli 发现原版安装、连接原版动态服务并透传完整 CLI 和原版 MCP；保留参数、标准输入输出、退出码与取消。",
+    "AppSpec assets 固定设计系统和原型依赖，评审与原测试提交的资源摘要可复核。",
+    "PC Provider 接收应用主题，弹层、消息及移动字段继承应用设计作用域。",
+    "同版 Skill、CLI docs 和平台 MCP 提供原版开发流程及精选 OpenDesign 离线参考。"
+  ],
+  "fixes": [
+    "替换与用户目标冲突的默认外观和固定设备限制，复用字段行为并允许完善整体设计。",
+    "防止原生 --cwd、--json 和 MCP 参数被享搭分发层截获，避免误运行系统同名 od。"
+  ],
+  "affectedUsers": [
+    "使用 OpenXiangda V2 开发新界面、改版和原型的应用开发者。",
+    "采用 AppSpec 原型资源评审或应用主题的 V2 工作区。"
+  ],
+  "upgradeSteps": [
+    "将应用锁定的 openxiangda 升级到 2.13.0，并刷新当前版本 Skill 和工作区指引。",
+    "从 OpenDesign 官方发行页安装原版，运行 openxiangda design open；在原版中选择已有本地 Agent 或配置所需提供商。",
+    "使用 design cli --help 查看完整原生命令；将实际采用的原型及依赖交接到 AppSpec assets 后验证业务实现。"
+  ],
+  "knownLimitations": [
+    "macOS 桌面发现针对官方 arm64 0.22.2 验证；其他平台和源码安装使用绝对路径 OPENXIANGDA_OPENDESIGN_CLI 或 OD_BIN，未声称完成各平台桌面验收。",
+    "npm 包不包含 OpenDesign 桌面二进制；原版更新、模型登录、云媒体和连接器按原版配置与权限使用。",
+    "原版桌面导入等受授权上下文保护的操作可能需要桌面选择目录；桥接不伪造 token。",
+    "设计资源检查最多 128 文件、单文件 2 MiB、总计 8 MiB；大媒体留在原版项目并导出有界审阅产物。",
+    "原型与包验证不代表生产应用已经部署或完成实际业务验收。"
+  ],
+  "compatibility": {
+    "node": ">=24",
+    "platform": "本轮不增加平台后端接口或数据库迁移要求",
+    "v1": "保持独立 legacy-v1 引擎"
+  },
+  "issues": []
+}

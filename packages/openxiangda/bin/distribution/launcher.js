@@ -11,7 +11,8 @@ export async function launch(packageRoot, args = process.argv.slice(2)) {
     await distributionCommand({ manifest, packageRoot }, args);
     return;
   }
-  const explicitCwd = flagValue(args, '--cwd');
+  // OpenDesign owns every native flag, including --cwd after design cli.
+  const explicitCwd = args[0] === 'design' ? null : flagValue(args, '--cwd');
   const authorization = args[0] === 'login' || args[0] === 'auth';
   const workspace = discoverWorkspace(explicitCwd || (args[0] === 'skill' ? flagValue(args, '--workspace') : null) || process.cwd(), {
     allowMissing: authorization,
