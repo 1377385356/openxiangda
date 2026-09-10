@@ -324,6 +324,7 @@ export function compileNativeApplicationConfiguration(
         resources: config.data.resources,
         dataPolicies: config.authz.dataPolicies,
         subscriptions: expectedContract.eventConsumers,
+        capturePolicies: config.events.capturePolicies,
       }),
     },
     workflows: {
@@ -557,6 +558,9 @@ export function compileRequiredPlatformCapabilitiesV3(
           },
         ]
       : []),
+    ...(config.events.capturePolicies?.length
+      ? [{ code: 'events.capture-policy' as const, declaration: config.events.capturePolicies }]
+      : []),
     ...(usesEvents
       ? [
           { code: 'events-v2' as const, declaration: config.events },
@@ -667,6 +671,7 @@ export interface NativeEventCapturePlanV2 {
   authorizationFields: string[];
   captureFields: string[];
   digest: string;
+  capturedEventTypes?: string[];
 }
 
 /**
@@ -678,7 +683,20 @@ export function compileNativeEventCapturePlansV2(input: {
   resources: JsonObject[];
   dataPolicies: JsonObject[];
   subscriptions: JsonObject[];
+  capturePolicies?: JsonObject[];
 }): NativeEventCapturePlanV2[] {
+  const capturePolicies = new Map<string, 'all' | 'subscribed'>();
+  const resources = new Set(input.resources.map(resource => String(resource.code)));
+  for (const [index, raw] of boundedArray(input.capturePolicies === undefined ? [] : input.capturePolicies, '/capturePlan/capturePolicies', 100).entries()) {
+    const pointer = `/capturePlan/capturePolicies/${index}`;
+    const policy = object(raw, pointer);
+    exactKeys(policy, ['resourceCode', 'mode'], pointer);
+    const code = resourceCode(policy.resourceCode, `${pointer}/resourceCode`);
+    if (!resources.has(code)) fail('NATIVE_EVENT_CAPTURE_RESOURCE_NOT_FOUND', pointer, { resourceCode: code });
+    if (capturePolicies.has(code)) fail('NATIVE_EVENT_CAPTURE_POLICY_DUPLICATE', pointer, { resourceCode: code });
+    if (policy.mode !== 'all' && policy.mode !== 'subscribed') fail('NATIVE_EVENT_CAPTURE_MODE_INVALID', `${pointer}/mode`);
+    capturePolicies.set(code, policy.mode);
+  }
   const policies = new Map(
     input.dataPolicies.map((raw, index) => {
       const policy = object(raw, `/capturePlan/dataPolicies/${index}`);
@@ -729,6 +747,7 @@ export function compileNativeEventCapturePlansV2(input: {
       }
       const filterFields = new Set<string>();
       const projectionFields = new Set<string>();
+      const capturedEventTypes = new Set<string>();
       for (const [subscriptionIndex, subscription] of subscriptions.entries()) {
         const eventTypes = boundedArray(
           subscription.eventTypes,
@@ -747,6 +766,9 @@ export function compileNativeEventCapturePlansV2(input: {
           : [];
         if (selectedResources.length && !selectedResources.includes(code)) {
           continue;
+        }
+        for (const type of eventTypes) {
+          if ((DATA_EVENT_TYPES_V2 as readonly string[]).includes(type)) capturedEventTypes.add(type);
         }
         for (const field of eventCaptureFilterFieldsV2(
           filter,
@@ -807,6 +829,9 @@ export function compileNativeEventCapturePlansV2(input: {
       }
       const plan = {
         resourceCode: code,
+        ...(capturePolicies.get(code) === 'subscribed'
+          ? { capturedEventTypes: [...capturedEventTypes].sort() }
+          : {}),
         filterFields: [...filterFields].sort(),
         projectionFields: [...projectionFields].sort(),
         authorizationFields: [...authorizationFields].sort(),
@@ -958,7 +983,8 @@ function validateConfigurationEnvelope(config: JsonObject, appCode: string) {
   exactKeys(
     events,
     ['schemas', 'subscriptions', 'timers', 'dateTriggers'],
-    '/config/events'
+    '/config/events',
+    ['capturePolicies']
   );
   boundedArray(events.schemas, '/config/events/schemas', 100);
   boundedArray(events.subscriptions, '/config/events/subscriptions', 100);

@@ -8029,6 +8029,14 @@ export const configurationBundleSchema = {
       additionalProperties: false,
       required: ["schemas", "subscriptions", "timers", "dateTriggers"],
       properties: {
+        capturePolicies: {
+          type: "array", maxItems: 100,
+          items: {
+            type: "object", additionalProperties: false,
+            required: ["resourceCode", "mode"],
+            properties: { resourceCode: { type: "string" }, mode: { enum: ["all", "subscribed"] } },
+          },
+        },
         schemas: {
           type: "array",
           maxItems: 100,

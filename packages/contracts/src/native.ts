@@ -713,6 +713,12 @@ export interface NativeEventSubscriptionDeclaration {
   delivery: EventDeliveryPolicy;
 }
 
+/** Subscribed mode retains only declared data events, not complete change history. */
+export interface NativeEventCapturePolicy {
+  resourceCode: string;
+  mode: 'all' | 'subscribed';
+}
+
 export interface AppEventSubscriptionPlatformAccessDeclaration {
   notification?: { mode: 'business-standard' };
   managedFileCopies?: ReadonlyArray<{
@@ -820,6 +826,7 @@ export interface ConfigurationBundleV3 {
     resourceDetailRoutes?: AppResourceDetailRouteDeclaration[];
   };
   events: {
+    capturePolicies?: NativeEventCapturePolicy[];
     schemas: EventSchemaDefinition[];
     subscriptions: NativeEventSubscriptionDeclaration[];
     timers: NativeTimerSubscriptionDeclaration[];

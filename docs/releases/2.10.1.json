@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.10.1",
+  "status": "reviewed",
+  "title": "按发布版本声明数据事件捕获策略",
+  "summary": "应用可显式选择只捕获已声明订阅需要的增删改事件，减少无消费者记录的事件写入。默认保持原有完整捕获语义。",
+  "newFeatures": ["新增 events.capturePolicies，按资源声明 all 或 subscribed 模式，并生成不可变的操作事件捕获计划。", "新增 events.capture-policy 平台能力要求，旧平台在接受新契约前拒绝不支持的配置。"],
+  "fixes": [],
+  "affectedUsers": ["需要降低事件写入成本且无完整事件审计或历史回放要求的 Native 应用开发者。"],
+  "upgradeSteps": ["先升级到实现 events.capture-policy 能力的平台版本，再更新项目锁定的 OpenXiangda 依赖。", "明确事件历史要求后，通过应用配置声明策略，完成测试环境验证，再晋级同一应用版本。"],
+  "knownLimitations": ["subscribed 不保存未声明操作的事件历史；恢复 all 不能补造过去事件。", "日期触发投影、内部动作执行器和后台调度架构不在本次变更范围。性能收益需按实际工作负载测量。"],
+  "compatibility": {"node": ">=24", "platform": "events.capture-policy 1.0.0"},
+  "issues": []
+}

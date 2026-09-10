@@ -241,6 +241,9 @@ export function requiredPlatformCapabilitiesFromConfiguration(
           declaration: unknown;
         }>)
       : []),
+    ...(config.events.capturePolicies?.length
+      ? [{ code: 'events.capture-policy' as const, declaration: config.events.capturePolicies }]
+      : []),
     ...(usesEvents
       ? ([
           { code: 'events-v2', declaration: config.events },

@@ -310,6 +310,7 @@ export interface OpenXiangdaAppConfig {
     authorizationTransitions?: AppAuthorizationTransitionDeclaration[];
   };
   events?: {
+    capturePolicies?: Array<{ resourceCode: string; mode: 'all' | 'subscribed' }>;
     schemas?: ApplicationEventSchemaDeclaration[];
     subscriptions: EventSubscriptionDeclaration[];
     timers?: TimerSubscriptionDeclaration[];
@@ -941,6 +942,14 @@ export const openXiangdaAppConfigSchema = {
       additionalProperties: false,
       required: ['subscriptions'],
       properties: {
+        capturePolicies: {
+          type: 'array', maxItems: 100,
+          items: {
+            type: 'object', additionalProperties: false,
+            required: ['resourceCode', 'mode'],
+            properties: { resourceCode: { type: 'string' }, mode: { enum: ['all', 'subscribed'] } },
+          },
+        },
         schemas: {
           type: 'array',
           maxItems: 100,

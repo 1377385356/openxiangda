@@ -476,6 +476,9 @@ export function normalizeConfiguration(
         : {}),
     },
     events: {
+      ...(config.events?.capturePolicies?.length
+        ? { capturePolicies: sorted(config.events.capturePolicies.map(policy => ({ resourceCode: policy.resourceCode, mode: policy.mode })), item => item.resourceCode) }
+        : {}),
       schemas: sorted(
         (config.events?.schemas || []).map(schema => ({
           schemaVersion: SCHEMA_VERSIONS.eventSchema,
@@ -1731,6 +1734,7 @@ function runtimeProtocolCapabilities(config: OpenXiangdaAppConfig) {
     'authz.batch-explain',
     'deployment.durable-runs',
     'deployment.platform-executor',
+    ...(config.events?.capturePolicies?.length ? ['events.capture-policy'] : []),
     ...(config.data?.resources.length ? ['data-api-v2'] : []),
     ...(usesDirectory ? ['directory-v2'] : []),
     ...(operations.some(
