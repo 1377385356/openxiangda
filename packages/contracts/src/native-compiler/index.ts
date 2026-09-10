@@ -13,3 +13,5 @@ export type { RequiredPlatformCapabilityContract, PlatformCapabilityCode } from 
 
 /** 构建器按实际共享规则生成；不随应用、环境或凭据改变。 */
 export const NATIVE_CONFIGURATION_VALIDATOR_DIGEST: string = "__OPENXIANGDA_NATIVE_VALIDATOR_DIGEST__";
+
+export * from './event-action.js';

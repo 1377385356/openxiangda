@@ -1919,6 +1919,7 @@ export interface EventDeliveryPolicy {
 }
 
 export interface EventSubscription {
+  execution?: import("./native.js").NativeEventActionPlan;
   schemaVersion: typeof SCHEMA_VERSIONS.eventSubscription;
   id: string;
   appCode: string;
@@ -1937,6 +1938,7 @@ export interface EventSubscription {
 }
 
 export interface EventDelivery {
+  executionKind?: "native-data";
   schemaVersion: typeof SCHEMA_VERSIONS.eventDelivery;
   id: string;
   eventId: string;

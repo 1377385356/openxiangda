@@ -1,3 +1,4 @@
+import { compileNativeEventAction } from './event-action.js';
 import { projectNativeDataResourceViewV2 } from './data-surface.js';
 import { hasDataAuditReadPolicy, isDataAuditMetadataField } from './data-audit-access.js';
 import { validateWorkflowInstanceCommandPolicies } from './workflow-instance-policy.js';
@@ -557,6 +558,9 @@ export function compileRequiredPlatformCapabilitiesV3(
             },
           },
         ]
+      : []),
+    ...(config.events.subscriptions.some((item: JsonObject) => item.execution)
+      ? [{ code: 'events.native-data-actions' as const, declaration: config.events.subscriptions.filter((item: JsonObject) => item.execution) }]
       : []),
     ...(config.events.capturePolicies?.length
       ? [{ code: 'events.capture-policy' as const, declaration: config.events.capturePolicies }]
@@ -1272,6 +1276,7 @@ function compileExpectedContract(
           );
         }
       });
+      const nativeAction = compileNativeEventAction(subscription, config.data.resources, pointer);
       const delivery = validateEventDeliveryPolicy(
         subscription.delivery,
         eventTypes,
@@ -1290,7 +1295,8 @@ function compileExpectedContract(
         ),
         eventTypes,
         filter: object(subscription.filter, `${pointer}/filter`),
-        payload: object(subscription.payload, `${pointer}/payload`),
+        payload: nativeAction?.payload || object(subscription.payload, `${pointer}/payload`),
+        ...(nativeAction ? { execution: nativeAction.execution } : {}),
         ...(platformAccess ? { platformAccess } : {}),
         delivery,
       };
@@ -1369,7 +1375,7 @@ function compileExpectedContract(
     eventHandlerManifest: {
       schemaVersion: EVENT_HANDLER_MANIFEST_SCHEMA,
       appCode: config.appCode,
-      handlers: eventConsumers.map(consumer => ({
+      handlers: eventConsumers.filter(consumer => !consumer.execution).map(consumer => ({
         code: consumer.code,
         endpointPath: consumer.endpointPath,
         eventTypes: consumer.eventTypes,

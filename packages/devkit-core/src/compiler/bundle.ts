@@ -1,3 +1,4 @@
+import { compileNativeEventAction } from 'openxiangda-contracts/native-compiler';
 import { DATA_AUDIT_METADATA_FIELDS, isDataAuditMetadataField, projectDataResourceView } from 'openxiangda-contracts';
 import { nativeFieldRequiresCreateInputV2 } from 'openxiangda-contracts/native-compiler';
 import { createHash } from 'node:crypto';
@@ -500,7 +501,7 @@ export function normalizeConfiguration(
           eventTypes: uniqueSorted(subscription.eventTypes),
           filter: normalizeEventFilter(subscription.filter),
           payload: {
-            includeChanges: subscription.payload?.includeChanges !== false,
+            includeChanges: subscription.execution ? subscription.payload?.includeChanges === true : subscription.payload?.includeChanges !== false,
             fields: uniqueSorted(subscription.payload?.fields || []),
           },
           ...(subscription.platformAccess?.notification
@@ -535,6 +536,7 @@ export function normalizeConfiguration(
                 },
               }
             : {}),
+          ...(subscription.execution ? { execution: subscription.execution } : {}),
           endpointPath: applicationEventHandlerPathV2(subscription.code),
           delivery: { ...DEFAULT_EVENT_DELIVERY, ...subscription.delivery },
         })),
@@ -802,6 +804,7 @@ function compileContractBundleFromNormalized(
           }
         : {}),
       delivery: subscription.delivery,
+      ...compileNativeEventAction(subscription, normalizedConfiguration.data.resources),
     })),
     item => item.code
   );
@@ -879,7 +882,7 @@ function compileContractBundleFromNormalized(
     eventHandlerManifest: {
       schemaVersion: SCHEMA_VERSIONS.eventHandlerManifest,
       appCode: config.app.code,
-      handlers: eventConsumers.map(consumer => ({
+      handlers: eventConsumers.filter(consumer => !consumer.execution).map(consumer => ({
         code: consumer.code,
         endpointPath: consumer.endpointPath,
         eventTypes: consumer.eventTypes,
@@ -1735,6 +1738,7 @@ function runtimeProtocolCapabilities(config: OpenXiangdaAppConfig) {
     'deployment.durable-runs',
     'deployment.platform-executor',
     ...(config.events?.capturePolicies?.length ? ['events.capture-policy'] : []),
+    ...(config.events?.subscriptions?.some(item => item.execution) ? ['events.native-data-actions'] : []),
     ...(config.data?.resources.length ? ['data-api-v2'] : []),
     ...(usesDirectory ? ['directory-v2'] : []),
     ...(operations.some(

@@ -702,7 +702,27 @@ export interface AppResourceDetailRouteDeclaration
   resourceCode: string;
 }
 
+export type NativeEventActionBinding =
+  | { source: 'literal'; value: unknown }
+  | { source: 'event'; path: string };
+
+export interface NativeEventActionDeclaration {
+  kind: 'native-data';
+  version: 1;
+  operations: Array<
+    | { operation: 'create'; resourceCode: string; data: Record<string, NativeEventActionBinding> }
+    | { operation: 'update'; resourceCode: string; id: NativeEventActionBinding; expectedRevision: NativeEventActionBinding; data: Record<string, NativeEventActionBinding> }
+    | { operation: 'delete'; resourceCode: string; id: NativeEventActionBinding; expectedRevision: NativeEventActionBinding }
+  >;
+}
+
+export interface NativeEventActionPlan extends NativeEventActionDeclaration {
+  resourceDigests: Record<string, string>;
+  digest: string;
+}
+
 export interface NativeEventSubscriptionDeclaration {
+  execution?: NativeEventActionDeclaration;
   code: string;
   eventTypes: string[];
   filter: EventSubscriptionFilter;
@@ -862,6 +882,7 @@ export interface AppResourceContract {
 }
 
 export interface AppEventConsumerContract {
+  execution?: NativeEventActionPlan;
   code: string;
   endpointPath: string;
   eventTypes: string[];

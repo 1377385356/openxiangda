@@ -18,6 +18,46 @@
 权限、记录修订约束、文件引用、日期触发和流程命令继续生效，自定义 `emitEvent`
 也不受该策略影响。策略通过正常应用版本发布、测试和生产晋级生效。
 
+## 平台原生数据自动化
+
+只涉及平台表单数据增删改的自动化，可以直接声明 `execution`，无需应用 Nest
+服务和事件 HTTP 接收器。需要平台 `events.native-data-actions` 1.0.0 能力。
+例如已声明 `items`、`copies` 模型及相应字段后：
+
+```ts
+events: {
+  capturePolicies: [
+    { resourceCode: 'items', mode: 'subscribed' },
+    { resourceCode: 'copies', mode: 'subscribed' },
+  ],
+  subscriptions: [{
+    code: 'copy-item',
+    eventTypes: ['openxiangda.data.record.created.v2'],
+    filter: { resourceCodes: ['items'] },
+    execution: {
+      kind: 'native-data', version: 1,
+      operations: [{
+        operation: 'create', resourceCode: 'copies',
+        data: {
+          name: { source: 'event', path: 'data.projection.name' },
+          sourceId: { source: 'event', path: 'data.recordId' },
+        },
+      }],
+    },
+  }],
+},
+```
+
+编译器自动收集必需的事件字段并固定目标资源摘要。动作效果与执行结果同事务
+提交，重复消息和人工重放使用同一个效果标记。更新、删除还必须映射 `id` 和
+`expectedRevision`，冲突不会覆盖新数据。常量使用 `{ source: 'literal', value }`。
+首版支持数据事件、明确的源资源、最多 16 个操作、每次最多 32 个映射字段和
+64 KiB 输入，不执行脚本、SQL、HTTP 或应用代码。目标模型发生不兼容变化时停止
+旧动作并报告错误；关闭并排空此类动作后才能回退到不支持该能力的平台镜像。
+
+外部 Webhook 和自定义代码仍使用已有签名、回执、重试及接收端幂等协议，按至少
+一次投递处理。轻量操作历史仍通过已有审计 API 查询，不依赖是否订阅了事件。
+
 ## 标准详情与当前用户入口
 
 普通记录、流程记录、任务和实例复用同一详情框架。流程详情提供申请内容、审批历史和变更记录三个标签页；管理员在当前抽屉或页面中切换到普通表单编辑，直接保存并自动留下变更记录，审批结果保持不变。PC 子表在表格内编辑，父表提交时统一校验。

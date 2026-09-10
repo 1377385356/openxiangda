@@ -4802,6 +4802,19 @@ export const eventSubscriptionSchema = {
   ],
   properties: {
     schemaVersion: { const: SCHEMA_VERSIONS.eventSubscription },
+    execution: {
+      type: "object", additionalProperties: false,
+      required: ["kind", "version", "operations", "resourceDigests", "digest"],
+      properties: {
+        kind: { const: "native-data" }, version: { const: 1 }, digest,
+        resourceDigests: { type: "object", maxProperties: 16, additionalProperties: digest },
+        operations: { type: "array", minItems: 1, maxItems: 16, items: {
+          type: "object", additionalProperties: false, required: ["operation", "resourceCode"],
+          properties: { operation: { enum: ["create", "update", "delete"] }, resourceCode: nonEmptyString,
+            data: { type: "object", maxProperties: 32 }, id: { type: "object" }, expectedRevision: { type: "object" } },
+        } },
+      },
+    },
     id: nonEmptyString,
     appCode: nonEmptyString,
     code: { type: "string", pattern: "^[a-z][a-z0-9-]*$" },
@@ -4891,6 +4904,7 @@ export const eventDeliverySchema = {
   ],
   properties: {
     schemaVersion: { const: SCHEMA_VERSIONS.eventDelivery },
+    executionKind: { const: "native-data" },
     id: nonEmptyString,
     eventId: nonEmptyString,
     eventType: nonEmptyString,
