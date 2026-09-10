@@ -24,10 +24,11 @@
       "compatibility": {
         "node": ">=24",
         "workspacePolicy": "升级后在每个工作区重新登录；不自动复制旧全局或其他工作区的令牌。",
-        "platformPolicy": "工作区会话不改变身份与授权协议；使用 events.capturePolicies 需要平台提供 events.capture-policy 1.0.0。"
+        "platformPolicy": "平台登录与授权协议不变；远端检查和部署需要平台的 Native configurationCompatibility 校验器摘要与本版工具链匹配。采用 events.capturePolicies 还需要 events.capture-policy 1.0.0。"
       },
       "upgradeSteps": [
         "使用项目包管理器更新并锁定 OpenXiangda 依赖，刷新 Skill 并重启 MCP 客户端。",
+        "远端检查和部署前确认工具链与平台为配套版本；出现 OPENXIANGDA_CONFIGURATION_VALIDATOR_MISMATCH 时先升级不匹配的一端，保留当前源码和候选。",
         "已有项目在根目录运行 openxiangda login --base-url <platform>，再运行 auth status 检查授权。",
         "新项目先运行 openxiangda login --cwd my-app --base-url <platform>，然后 create my-app --base-url <platform>。",
         "CI 仅在没有本地会话文件时使用成对 OPENXIANGDA_BASE_URL 与 OPENXIANGDA_TOKEN。",
@@ -38,7 +39,7 @@
         "V1 业务不会自动迁移到 V2。subscribed 不保留未声明操作的历史，恢复 all 不能补造历史事件。"
       ],
       "issues": [],
-      "sha256": "3479087af5f4302a5e225864a60dfc11f337dbaae84a3846f91593971a9c0af0",
+      "sha256": "bed9b66dcf84d375a7b75e72b70f27a3c86c96ef6c7f5f6d4b516d95876c2ee1",
       "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.11.0"
     },
     {
