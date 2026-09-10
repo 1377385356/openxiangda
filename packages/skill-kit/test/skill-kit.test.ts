@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import {
   mkdir,
   mkdtemp,
@@ -58,6 +59,25 @@ test('recognizes executable distribution actions without admitting invented comm
   assert.deepEqual(await validateSkills(root, await distributionOptions()), []);
   await writeFile(file, '# Unsupported\n\nopenxiangda support redeem\n');
   assert.ok((await validateSkills(root, await distributionOptions())).some(issue => issue.message.includes('Unknown 2.0 CLI command')));
+});
+
+test('CLI accepts current distribution metadata and rejects malformed command identifiers', async () => {
+  const root = await fixture();
+  const metadataFile = resolve(import.meta.dirname, '../../openxiangda/bin/distribution/support-commands.json');
+  const run = (file: string) => spawnSync(process.execPath, ['--import', 'tsx', 'src/bin.ts', root, '--distribution-commands', file], {
+    cwd: resolve(import.meta.dirname, '..'),
+    encoding: 'utf8',
+  });
+  await writeFile(resolve(root, 'openxiangda-v2/references/getting-started.md'), '# Distribution\n\nopenxiangda version\nopenxiangda changelog\nopenxiangda update check\n');
+  const valid = run(metadataFile);
+  assert.equal(valid.status, 0, valid.stderr);
+  const malformedFile = resolve(root, 'commands.json');
+  for (const command of ['support:', 'update::check', 'version\ninstall', 42]) {
+    await writeFile(malformedFile, JSON.stringify({ schemaVersion: 'openxiangda.distribution-commands/v1', commands: [command] }));
+    const invalid = run(malformedFile);
+    assert.notEqual(invalid.status, 0);
+    assert.match(invalid.stderr, /DISTRIBUTION_COMMAND_METADATA_INVALID/);
+  }
 });
 
 test('installs the canonical skill and retires only managed legacy layouts', async () => {
