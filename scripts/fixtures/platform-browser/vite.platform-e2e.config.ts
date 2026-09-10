@@ -15,6 +15,7 @@ export default mergeConfig(applicationConfig, {
       'login-return.e2e.html',
       'zoned-time.e2e.html',
       'guard-navigation.e2e.html',
+      'platform-e2e/client-fixture.ts',
     ],
   },
 });

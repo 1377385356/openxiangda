@@ -104,7 +104,7 @@ test('renders the compiled desktop resource contract and shared workbench', asyn
     await expect(page).toHaveURL(`${runtimeBase}/home`);
     await expect(page.getByText('OpenXiangda 应用', { exact: true })).toBeVisible();
     await page.goto(`${runtimeBase}/admin`);
-    await expect(page.getByText('还没有声明数据资源')).toBeVisible();
+    await expect(page.locator('[data-admin-empty-reason="not-configured"]')).toBeVisible();
   } else {
     const code = codes[0];
     const definition = definitions[code];
@@ -248,7 +248,7 @@ test('uses the complete current-user role union when no Perspective is selected'
   if (codes.length) {
     await expect(page.locator('.oxa-list-surface')).toBeVisible();
   } else {
-    await expect(page.getByText('还没有声明数据资源')).toBeVisible();
+    await expect(page.locator('[data-admin-empty-reason="not-configured"]')).toBeVisible();
   }
 
   await page.evaluate(async () => {
@@ -560,7 +560,7 @@ for (const scenario of ['recover', 'revoked', 'unknown', 'exhausted', 'write']) 
   test(`权限投影读取恢复 ${scenario} 保持有界并不重放写入`, async ({ page }) => {
     await mockPlatform(page, true, runtimeBase, true);
     await page.goto('/resource-experience.e2e.html');
-    await expect(page.locator('.oxa-sider')).toBeVisible();
+    await expect(page.locator('.oxa-list-surface')).toBeVisible();
     const calls: Array<{ method: string; body: unknown }> = [];
     await page.route('**/native/data/projection-probe/**', async route => {
       calls.push({ method: route.request().method(), body: route.request().postDataJSON() });
