@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.10.0",
+  "version": "2.11.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -67,13 +67,13 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.2.17",
-    "openxiangda-contracts": "2.9.0",
-    "openxiangda-devkit-core": "2.6.3",
-    "openxiangda-legacy": "npm:openxiangda@1.0.268",
-    "openxiangda-mcp": "2.0.14",
-    "openxiangda-nest": "2.3.0",
-    "openxiangda-skill-kit": "2.0.18",
+    "openxiangda-cli": "2.3.0",
+    "openxiangda-contracts": "2.10.0",
+    "openxiangda-devkit-core": "2.7.0",
+    "openxiangda-legacy": "npm:openxiangda@1.0.269",
+    "openxiangda-mcp": "2.0.15",
+    "openxiangda-nest": "2.3.1",
+    "openxiangda-skill-kit": "2.0.19",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -139,44 +139,42 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.10.0",
+    "version": "2.11.0",
     "status": "reviewed",
-    "title": "OpenXiangda 2.10.0：通知已读回执基础能力",
-    "summary": "浏览器与 Nest SDK 增加通知投递详情、已读回执缓存和单次刷新接口，应用通过平台消息与投递标识使用钉钉已读查询。",
+    "title": "工作区登录隔离与工具链升级指引",
+    "summary": "平台开发者会话按工作区隔离，CLI、MCP 与自动刷新共用本地会话；补齐 V1 采用 V2 的建议及 CLI、Skill、MCP 升级步骤。本版也包含主线已审查的数据事件捕获策略。",
     "newFeatures": [
-      "浏览器与 Nest SDK 同步提供 getNotificationMessage、getDingTalkCardReadReceipt 和 refreshDingTalkCardReadReceipt，并公开对应类型。",
-      "配套平台保存卡片查询标识，持久化单投递查询任务，区分已读、未读、未知、不可查询和查询失败。",
-      "配套平台通用化钉钉卡片发送、查询及总预算，并按资源配置准备和投递并发。"
+      "login --cwd 与 auth --cwd 明确选择工作区；创建应用前可在目标目录登录，初始化保留受管会话文件。",
+      "V1 入口展示 V2 采用建议及迁移评估指引，文档说明 CLI、Skill 与 MCP 的版本刷新。",
+      "应用可用 events.capturePolicies 按资源声明 all 或 subscribed，编译为不可变的操作事件捕获计划。"
     ],
     "fixes": [
-      "配套平台将钉钉 HTTP 403 QpsLimitForApi 识别为可退避重试的限流响应，保留创建请求结果未知时的既有处理边界。"
+      "默认登录态改为工作区 .openxiangda/session.json，停止读取旧全局会话；本地文件优先于 CI 环境凭据。",
+      "刷新、退出与 MCP 授权检查固定工作区来源，嵌套应用不会继承父应用账号，损坏或平台不符的文件不会换用其他身份。",
+      "登录文件使用原子写入、0600 权限及自动 Git 忽略，初始化不替换凭据内容。"
     ],
     "affectedUsers": [
-      "需要查询钉钉卡片已读状态或使用平台通知 SDK 的 OpenXiangda 2.0 应用开发者。"
+      "使用 CLI、MCP 或多个应用工作区的开发者。",
+      "从 V1 评估 V2 的用户，以及需要减少无消费者事件写入的 Native 应用开发者。"
     ],
     "compatibility": {
       "node": ">=24",
-      "workspaceGenerations": [
-        "v1",
-        "v2"
-      ],
-      "v1Policy": "V1 引擎和已有应用不变。",
-      "platformPolicy": "已读接口需要匹配的平台后端、通知回执追加迁移，以及通知读取和内容读取权限。",
-      "releaseChannels": "latest / stable-v2：V2 正式版；legacy-v1：V1 维护版；alpha：预发布。"
+      "workspacePolicy": "升级后在每个工作区重新登录；不自动复制旧全局或其他工作区的令牌。",
+      "platformPolicy": "工作区会话不改变身份与授权协议；使用 events.capturePolicies 需要平台提供 events.capture-policy 1.0.0。"
     },
     "upgradeSteps": [
-      "先部署匹配的平台后端及追加迁移，按实际钉钉额度配置统一的发送、查询和总预算。",
-      "将应用精确依赖升级到 openxiangda 2.10.0，更新锁文件，并通过标准检查。",
-      "使用平台消息 ID 和投递 ID 查询缓存或请求一次刷新；应用负责选择消息、分组和后续业务轮询。",
-      "在测试环境验证实际投递和已读回执，再使用同一应用候选晋级生产。"
+      "使用项目包管理器更新并锁定 OpenXiangda 依赖，刷新 Skill 并重启 MCP 客户端。",
+      "已有项目在根目录运行 openxiangda login --base-url <platform>，再运行 auth status 检查授权。",
+      "新项目先运行 openxiangda login --cwd my-app --base-url <platform>，然后 create my-app --base-url <platform>。",
+      "CI 仅在没有本地会话文件时使用成对 OPENXIANGDA_BASE_URL 与 OPENXIANGDA_TOKEN。",
+      "采用事件捕获策略前先升级支持该能力的平台，确认事件历史要求，并完成测试环境验收后晋级同一应用版本。"
     ],
     "knownLimitations": [
-      "一次上游查询针对一个 processQueryKey 下最多 20 名收件人；本版本不提供跨消息批量查询或自动全量轮询。",
-      "历史投递没有保存查询标识时返回不可查询，不能推断为未读；查询遵循钉钉提供方的 24 小时窗口。",
-      "包发布、平台部署与真实消息验收分别记录；本版本不会自动补发历史失败或未知通知。"
+      "钉钉支持的 DWS 授权仍由 DWS 自己管理，不与平台会话混用。",
+      "V1 业务不会自动迁移到 V2。subscribed 不保留未声明操作的历史，恢复 all 不能补造历史事件。"
     ],
     "issues": [],
-    "sha256": "a1be367ab9c5de6b66ec8dd02724af71611183d99ddb9dae861e6253c58875df",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.10.0"
+    "sha256": "3479087af5f4302a5e225864a60dfc11f337dbaae84a3846f91593971a9c0af0",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.11.0"
   }
 }
