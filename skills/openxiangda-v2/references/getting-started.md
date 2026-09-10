@@ -4,7 +4,62 @@ OpenXiangda 2.0 默认生成 React 应用和共享契约。普通 CRUD、标准�
 
 ## 准备 {#prerequisites}
 
-准备平台地址、具有应用开发权限的账号、Node.js 24 和 pnpm 10.15.1。向平台维护者取得已验证的 OpenXiangda 2.0 精确版本，并核对平台能力是否支持。`openxiangda@latest` 可能属于 1.x；不能用它选择 2.0。
+准备平台地址、具有应用开发权限的账号、Node.js 24 和 pnpm 10.15.1。`openxiangda@latest` 与 `openxiangda@stable-v2` 指向 V2 稳定版，`openxiangda@legacy-v1` 指向 V1 维护版。安装后核对实际精确版本和目标平台能力；项目依赖与锁文件决定应用使用的工具链。
+
+<a id="upgrade"></a>
+
+## CLI、Skill、MCP 安装与升级 {#upgrade}
+
+全局统一入口适合新用户和原 V1 用户安装；Node.js 需要 24 或更高版本：
+
+```bash
+npm install -g openxiangda@latest --registry=https://registry.npmjs.org
+openxiangda version --json
+```
+
+`openxiangda` 根包已经依赖配套 CLI、MCP 和 Skill 资料，无需逐个全局安装 `openxiangda-cli`、`openxiangda-mcp` 或 `openxiangda-skill-kit`。全局入口根据当前目录识别代际，进入已有项目时优先使用该项目锁定的引擎；更新全局入口不升级项目依赖。
+
+### 原 V1 用户
+
+建议评估升级到 OpenXiangda 2.0。新应用优先使用 V2；已有应用先核实能力覆盖、迁移成本及数据、在途流程、权限的验收与回滚方案。在已安装新版全局入口后，进入原项目运行：
+
+```bash
+openxiangda version --json
+openxiangda migrate assess --to v2 --json
+```
+
+这里使用全局 `openxiangda`，不要用会优先调用旧项目 V1 CLI 的 `pnpm exec openxiangda` 或 `npx openxiangda` 来执行迁移评估。评估只读取本地源码指针，不读取远端数据、不自动转换应用。原项目仍按 V1 维护；同代更新通过 `legacy-v1` 获取维护版，不把 V2 包直接替换进 V1 项目。
+
+### 更新入口与项目
+
+```bash
+# 更新全局统一入口
+openxiangda update check --target launcher --json
+openxiangda update install --target launcher
+
+# 在项目目录，更新本项目同代依赖与锁文件
+openxiangda update check --target workspace --json
+openxiangda update install --target workspace
+openxiangda version --json
+```
+
+更新完成后审查依赖、锁文件差异并运行项目检查与业务验收。统一入口不会后台自动升级工具或转换项目。V1 独立 CLI 的 `update install` 会尝试刷新 V1 Skill（可用 `--no-skills` 跳过）；统一入口的更新完成后按下面命令显式刷新 Skill。
+
+### 安装或刷新 Skill
+
+在项目目录刷新匹配该项目版本的技能，并更新 V2 项目的 AGENTS 平台区块：
+
+```bash
+openxiangda skill install --workspace . --force
+```
+
+安装到用户级 Codex 或其他 AI 工具可用 `skill install --agent codex|claude|qoder|dual --force`（实际执行时选一个值），或 `--destination <Skill根目录>`。在 V1 项目内会安装 V1 技能与统一入口技能；要先安装 V2 用户级技能，使用 `openxiangda skill install --cwd <不属于任何应用的空目录> --force`。支持协作的自动准备与 `--skip-support` 见下文。
+
+创建 V2 应用会准备匹配版本的项目指引。后续更新依赖后再次刷新技能；不要把不同代际或旧版本的技能正文复制进新项目。
+
+### 接入及更新 MCP
+
+MCP 服务随项目根包一起安装，AI 客户端的 stdio 连接仍需配置一次。使用[项目路径配置示例](mcp.md#连接项目)，由客户端启动项目锁定版本的 `openxiangda --mcp-stdio`。CLI 更新不会自动修改客户端配置，也不会重启已有 MCP 进程；项目依赖升级后在客户端重启 MCP，然后读取 `workspace_context` 核对版本。长期开发进程使用 CLI 终端管理。
 
 ## 安装与创建 {#create}
 

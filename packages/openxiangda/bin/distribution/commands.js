@@ -4,6 +4,7 @@ import { update } from './update.js';
 import { assessMigration } from './migrate.js';
 import { installDistributionSkills } from './skills.js';
 import { supportOperation } from './support.js';
+import { migrationAdvice, printMigrationAdvice } from './migration-advice.js';
 
 export async function distributionCommand(context, args) {
   const command = args[0];
@@ -34,8 +35,11 @@ export async function distributionCommand(context, args) {
       data = manifest.openxiangdaRelease || data;
     }
   }
+  const advice = ['version', 'update'].includes(command) || skillInstall ? migrationAdvice(context) : undefined;
+  if (advice) data = { ...data, migrationAdvice: advice };
   const result = { schemaVersion: skillInstall ? 'openxiangda.cli-result/v2' : 'openxiangda.distribution/v1', ok: true, operation: skillInstall ? 'skill install' : command, data };
   process.stdout.write(`${args.includes('--json') ? JSON.stringify(result) : JSON.stringify(data, null, 2)}\n`);
+  if (advice && !args.includes('--json')) printMigrationAdvice(advice);
   return true;
 }
 

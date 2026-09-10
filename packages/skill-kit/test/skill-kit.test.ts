@@ -50,10 +50,10 @@ test('validates and seals exactly one deterministic skill distribution', async (
   await assert.rejects(() => createSkillManifest(root), /SKILL_SET_INVALID/);
 });
 
-test('recognizes executable distribution support actions without admitting invented commands', async () => {
+test('recognizes executable distribution actions without admitting invented commands', async () => {
   const root = await fixture();
   const file = resolve(root, 'openxiangda-v2/references/getting-started.md');
-  await writeFile(file, '# Support\n\nopenxiangda support status\nopenxiangda support bootstrap\nopenxiangda support login\nopenxiangda support join\n');
+  await writeFile(file, '# Distribution\n\nopenxiangda update check\nopenxiangda update install\nopenxiangda migrate assess\nopenxiangda support status\nopenxiangda support bootstrap\nopenxiangda support login\nopenxiangda support join\n');
   assert.ok((await validateSkills(root)).length > 0);
   assert.deepEqual(await validateSkills(root, await distributionOptions()), []);
   await writeFile(file, '# Unsupported\n\nopenxiangda support redeem\n');

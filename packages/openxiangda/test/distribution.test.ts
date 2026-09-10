@@ -10,6 +10,24 @@ import { updatePlan } from '../bin/distribution/update.js';
 import { assessMigration } from '../bin/distribution/migrate.js';
 import { compareVersions, bundledRelease } from '../bin/distribution/releases.js';
 
+test('V1 version results expose migration guidance without polluting JSON or advising V2 projects', t => {
+  const f = fixture(t);
+  const commands = pathToFileURL(join(import.meta.dirname, '../bin/distribution/commands.js')).href;
+  for (const generation of ['v1', 'v2']) {
+    const context = { manifest: { version: '2.10.0' }, workspace: { generation }, engine: { generation, version: generation === 'v1' ? '1.0.268' : '2.10.0' } };
+    for (const json of [true, false]) {
+      const args = ['version', ...(json ? ['--json'] : [])];
+      const result = spawnSync(process.execPath, ['--input-type=module', '-e', `import {distributionCommand} from ${JSON.stringify(commands)}; await distributionCommand(${JSON.stringify(context)}, ${JSON.stringify(args)});`], { cwd: f.root, encoding: 'utf8' });
+      assert.equal(result.status, 0, result.stderr);
+      const payload = JSON.parse(result.stdout);
+      const data = json ? payload.data : payload;
+      assert.equal(Boolean(data.migrationAdvice), generation === 'v1');
+      if (generation === 'v1' && !json) assert.match(result.stderr, /建议评估升级到 OpenXiangda 2\.0/);
+      else assert.equal(result.stderr, '');
+    }
+  }
+});
+
 function fixture(t: any) {
   const root = mkdtempSync(join(tmpdir(), 'oxa-distribution-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));

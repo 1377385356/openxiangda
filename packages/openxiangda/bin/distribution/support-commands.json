@@ -1,4 +1,4 @@
 {
   "schemaVersion": "openxiangda.distribution-commands/v1",
-  "commands": ["support:status", "support:bootstrap", "support:login", "support:join"]
+  "commands": ["version", "update:check", "update:install", "changelog", "migrate:assess", "skill:install", "support:status", "support:bootstrap", "support:login", "support:join"]
 }
