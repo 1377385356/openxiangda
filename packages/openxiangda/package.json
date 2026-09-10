@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.9.4",
+  "version": "2.10.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -67,13 +67,13 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.2.16",
-    "openxiangda-contracts": "2.8.0",
-    "openxiangda-devkit-core": "2.6.2",
+    "openxiangda-cli": "2.2.17",
+    "openxiangda-contracts": "2.9.0",
+    "openxiangda-devkit-core": "2.6.3",
     "openxiangda-legacy": "npm:openxiangda@1.0.268",
-    "openxiangda-mcp": "2.0.13",
-    "openxiangda-nest": "2.2.0",
-    "openxiangda-skill-kit": "2.0.17",
+    "openxiangda-mcp": "2.0.14",
+    "openxiangda-nest": "2.3.0",
+    "openxiangda-skill-kit": "2.0.18",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -139,17 +139,20 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.9.4",
+    "version": "2.10.0",
     "status": "reviewed",
-    "title": "OpenXiangda 2.9.4：DingTalk OA 工作通知 SDK",
-    "summary": "应用通过平台托管的 Notification Hub 发送文本或 Markdown 钉钉 OA 工作通知，并查询投递结果。",
+    "title": "OpenXiangda 2.10.0：通知已读回执基础能力",
+    "summary": "浏览器与 Nest SDK 增加通知投递详情、已读回执缓存和单次刷新接口，应用通过平台消息与投递标识使用钉钉已读查询。",
     "newFeatures": [
-      "Nest SDK 增加 sendDingTalkWorkNotice 和 getDingTalkWorkNoticeResult。",
-      "工作通知支持按 Native 用户、部门或全员发送，平台负责渠道凭据、Native 标识映射、幂等、投递和审计。"
+      "浏览器与 Nest SDK 同步提供 getNotificationMessage、getDingTalkCardReadReceipt 和 refreshDingTalkCardReadReceipt，并公开对应类型。",
+      "配套平台保存卡片查询标识，持久化单投递查询任务，区分已读、未读、未知、不可查询和查询失败。",
+      "配套平台通用化钉钉卡片发送、查询及总预算，并按资源配置准备和投递并发。"
     ],
-    "fixes": [],
+    "fixes": [
+      "配套平台将钉钉 HTTP 403 QpsLimitForApi 识别为可退避重试的限流响应，保留创建请求结果未知时的既有处理边界。"
+    ],
     "affectedUsers": [
-      "需要从 OpenXiangda 2.0 应用发送钉钉文本或 Markdown 工作通知的开发者。"
+      "需要查询钉钉卡片已读状态或使用平台通知 SDK 的 OpenXiangda 2.0 应用开发者。"
     ],
     "compatibility": {
       "node": ">=24",
@@ -158,20 +161,22 @@
         "v2"
       ],
       "v1Policy": "V1 引擎和已有应用不变。",
-      "platformPolicy": "需要部署包含 Notification Hub DingTalk OA 工作通知接口的匹配平台组合，并配置已启用的 OA 渠道。",
+      "platformPolicy": "已读接口需要匹配的平台后端、通知回执追加迁移，以及通知读取和内容读取权限。",
       "releaseChannels": "latest / stable-v2：V2 正式版；legacy-v1：V1 维护版；alpha：预发布。"
     },
     "upgradeSteps": [
-      "平台先部署匹配的 Notification Hub 服务并确认 DingTalk OA 渠道和 Secret 引用可用。",
-      "将应用的 openxiangda 依赖升级到 2.9.4，更新锁文件并通过标准检查。",
-      "在测试环境验证用户、部门和全员目标的发送回执，再使用同一候选晋级生产。"
+      "先部署匹配的平台后端及追加迁移，按实际钉钉额度配置统一的发送、查询和总预算。",
+      "将应用精确依赖升级到 openxiangda 2.10.0，更新锁文件，并通过标准检查。",
+      "使用平台消息 ID 和投递 ID 查询缓存或请求一次刷新；应用负责选择消息、分组和后续业务轮询。",
+      "在测试环境验证实际投递和已读回执，再使用同一应用候选晋级生产。"
     ],
     "knownLimitations": [
-      "首版内容类型为 text 和 markdown；钉钉最终接收结果仍以平台投递记录和钉钉响应为准。",
-      "发布包、平台部署和真实业务角色验收分别验证；本版本不自动配置渠道 Secret。"
+      "一次上游查询针对一个 processQueryKey 下最多 20 名收件人；本版本不提供跨消息批量查询或自动全量轮询。",
+      "历史投递没有保存查询标识时返回不可查询，不能推断为未读；查询遵循钉钉提供方的 24 小时窗口。",
+      "包发布、平台部署与真实消息验收分别记录；本版本不会自动补发历史失败或未知通知。"
     ],
     "issues": [],
-    "sha256": "6383173f0e6bd4596286e95453fd651d07eb8d91948e829dcd1fe3dfbab1f485",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.9.4"
+    "sha256": "a1be367ab9c5de6b66ec8dd02724af71611183d99ddb9dae861e6253c58875df",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.10.0"
   }
 }

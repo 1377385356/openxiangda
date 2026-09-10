@@ -1,6 +1,6 @@
 {
   "name": "openxiangda-mcp",
-  "version": "2.0.13",
+  "version": "2.0.14",
   "description": "OpenXiangda 2.0 工作区的结构化 AI 工具与资源。",
   "type": "module",
   "main": "./dist/index.js",
@@ -24,8 +24,8 @@
   },
   "dependencies": {
     "@modelcontextprotocol/server": "2.0.0",
-    "openxiangda-contracts": "2.8.0",
-    "openxiangda-devkit-core": "2.6.2",
+    "openxiangda-contracts": "2.9.0",
+    "openxiangda-devkit-core": "2.6.3",
     "zod": "4.4.3"
   },
   "devDependencies": {
