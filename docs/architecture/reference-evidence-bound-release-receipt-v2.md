@@ -1,3 +1,5 @@
+> 2026-09-11 更新：验证范围与复用策略见 [增量发布验证](./2026-09-11-incremental-release-verification.md)。只有计划要求 reference 时才绑定参考应用；原制品、主线和发布阶段约束保持。
+
 # OpenXiangda 2.0 Reference 证据绑定发布凭据
 
 状态：Accepted，2026-08-21

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createReleaseValidationPlan } from "../lib/release-validation-plan.mjs";
+import { createReleaseValidationPlan, assertReceiptReferenceRequirement } from "../lib/release-validation-plan.mjs";
 
 function state(...packages) {
   return {
@@ -32,6 +32,32 @@ test("skill guidance release skips browser and reference suites", () => {
   assert.equal(plan.gates.documentation, true);
   assert.equal(plan.gates.referenceApplication, false);
   assert.equal(plan.gates.templateGeneratedCheck, false);
+  assert.deepEqual(plan.workspacePackages, []);
+});
+
+test('release notes and propagated versions do not trigger runtime or reference suites', () => {
+  const plan = createReleaseValidationPlan(state(
+    candidate('openxiangda', ['package.json', 'package.json#openxiangdaRelease.sha256', 'releases/2.11.1.md', 'documentation/index.json']),
+    candidate('openxiangda-cli', ['package.json'])
+  ));
+  assert.equal(plan.gates.referenceApplication, false);
+  assert.equal(plan.gates.freshApplication, 'build');
+  assert.equal(plan.gates.documentation, true);
+  assert.deepEqual(plan.workspacePackages, []);
+  assert.equal(assertReceiptReferenceRequirement({ referenceRequired: false }, plan), false);
+  assert.throws(() => assertReceiptReferenceRequirement({ referenceRequired: true }, plan), /MISMATCH/);
+});
+
+test('a forged reference skip cannot weaken a core runtime release', () => {
+  const plan = createReleaseValidationPlan(state(candidate('openxiangda-contracts', ['dist/index.js'])));
+  assert.throws(() => assertReceiptReferenceRequirement({ referenceRequired: false }, plan), /MISMATCH/);
+  assert.throws(() => assertReceiptReferenceRequirement({ referenceRequired: 'false' }, plan), /INVALID/);
+  assert.equal(assertReceiptReferenceRequirement({}, plan), true);
+});
+
+test('skill implementation tests do not rerun the unchanged CLI dependency closure', () => {
+  const plan = createReleaseValidationPlan(state(candidate('openxiangda-skill-kit', ['dist/bin.js']), candidate('openxiangda-cli', ['package.json'])));
+  assert.deepEqual(plan.workspacePackages, ['openxiangda-skill-kit']);
 });
 
 test("CLI-owned web template release requires a new browser application", () => {

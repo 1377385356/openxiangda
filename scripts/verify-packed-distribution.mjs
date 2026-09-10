@@ -1,3 +1,4 @@
+import { browserStageFingerprint, canReuseBrowserStage, runCachedStage } from "./lib/release-stage-cache.mjs";
 import { createHash } from 'node:crypto';
 import { spawnSync } from "node:child_process";
 import {
@@ -38,6 +39,8 @@ const keepScratch = process.env.OPENXIANGDA_KEEP_PACK_SMOKE === "1";
 const smokeLevel = normalizeSmokeLevel(
   process.env.OPENXIANGDA_PACK_SMOKE_LEVEL || "e2e"
 );
+const candidateRuntimeRoots = new Map();
+const candidateTarballs = new Map();
 const selectedPackageNames = new Set(
   String(process.env.OPENXIANGDA_RELEASE_PACKAGES || "")
     .split(",")
@@ -82,7 +85,7 @@ try {
     buildLocalPackageOutputs(packages.map(item => item.manifest.name));
   }
 
-  const tarballs = new Map();
+  const tarballs = candidateTarballs;
   for (const item of packages) {
     if (item.tarball) {
       verifyTarball(item.manifest.name, item.tarball);
@@ -271,8 +274,16 @@ function verifyMaintainerBrowserFixtures(root) {
       };
       adapt(target);
     }
-    run('pnpm', ['--filter', '@app/web', 'exec', 'playwright', 'test', '--config', 'playwright.platform.config.ts'], root, {
-      env: { OPENXIANGDA_E2E_BASE_URL: '' },
+    const packages = [...candidateRuntimeRoots].map(([name, packageRoot]) => ({ name, root: packageRoot, tarball: candidateTarballs.get(name) }));
+    const currentFingerprint = () => browserStageFingerprint({ applicationRoot: root, packages, runnerRoot: join(repositoryRoot, 'scripts') });
+    const fingerprint = currentFingerprint();
+    const commonGitDirectory = runCaptured('git', ['rev-parse', '--git-common-dir'], repositoryRoot).trim();
+    runCachedStage({
+      directory: resolve(repositoryRoot, commonGitDirectory, 'openxiangda-release-stage-cache'),
+      stage: 'packed-browser', fingerprint, currentFingerprint, enabled: canReuseBrowserStage(),
+      execute: () => run('pnpm', ['--filter', '@app/web', 'exec', 'playwright', 'test', '--config', 'playwright.platform.config.ts'], root, {
+        env: { OPENXIANGDA_E2E_BASE_URL: '' },
+      }),
     });
   } finally {
     for (const target of installed) rmSync(target, { recursive: true, force: true });
@@ -561,6 +572,7 @@ function verifyTarball(packageName, tarball) {
   mkdirSync(packageRoot, { recursive: true });
   run("tar", ["-xzf", tarball, "-C", packageRoot], repositoryRoot);
   const extractedPackageRoot = join(packageRoot, "package");
+  candidateRuntimeRoots.set(packageName, extractedPackageRoot);
   const manifestPath = join(extractedPackageRoot, "package.json");
   if (!existsSync(manifestPath)) fail(`${packageName} tarball has no package.json`);
   const manifest = readJson(manifestPath);

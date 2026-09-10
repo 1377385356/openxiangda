@@ -12,7 +12,7 @@
 - 在权威 master 上开发，先同步并检查工作区；保留其他任务未提交内容。每仓库单个写者，提交子模块后更新平台根仓库 gitlink。
 - 涉及实现契约时先记录问题证据、能力所有者、不变量、影响、失败/并发、资源与安全边界、回滚和可证伪验收。未明确的权限、数据和外部副作用决定先解决。
 - 一个提交只处理一个架构主题；相邻发现另行处理。优先可独立回退的更改，明确稳定 1.x、其他租户和生产的影响范围。
-- 日常运行 pnpm verify:affected，发布候选运行 pnpm verify:release。公开包变更附 Changeset，不在发包时临时选版本。
+- 应用模块开发运行 pnpm verify:affected；仅发布编排/维护文档变更运行相关 scripts/test 与文档检查。发布候选运行 pnpm verify:release，不预先叠加 verify、verify:local 或完整浏览器矩阵。公开包变更附 Changeset，不在发包时临时选版本。
 
 ## 应用边界
 
@@ -37,9 +37,11 @@
 2026-09-06 已确认 npm 发布与 GitLab 无关，详见 `docs/architecture/2026-09-06-npm-release-ownership.md`。可信本机维护者串行执行正式发包，GitLab/镜像 CI 只验证源码，不保存 npm 凭据。
 
 1. 评审 Changeset，在干净且同步的 master 执行 release:version。
-2. 评审生成版本差异，提交并推送；运行 pnpm build、pnpm reference:install:from-build 安装验证候选参考应用，评审其差异并提交推送参考仓库 master，再执行 release:plan。
-3. verify:release 冻结同一候选 tarball 并产生验证回执。
+2. 评审生成版本差异，提交并推送；先执行 release:plan。只有计划要求 reference 时，运行 pnpm build、pnpm reference:install:from-build 准备候选锁文件，评审并提交推送参考仓库 master；正式参考应用验收由 verify:release 执行一次。
+3. verify:release 冻结同一候选 tarball，先检查 Skill/文档，再按影响运行包、安装和浏览器验证。24 小时内相同运行输入可复用浏览器成功记录；最终回执仍绑定当前 HEAD 与精确 tarball。verify:release:full 强制完整矩阵。
 4. release:publish 只发布回执中的字节，按原制品恢复中断，读回 registry 内容和标签。
 5. reference 锁文件同步单独执行；平台组合固定精确主线提交与镜像摘要，按已有运维入口部署。
 
 源码检查、包发布、站点部署和业务验收分别报告。生产晋级复用成功测试版本，不重复构建。生成 dist、模板副本、构建文档与工具缓存不提交。
+
+发布时间遵循 `docs/architecture/2026-09-11-incremental-release-verification.md`。默认资料/局部验证预算 300 秒，含浏览器矩阵 900 秒，full 1800 秒；`OPENXIANGDA_RELEASE_VERIFY_TIMEOUT_SECONDS` 可显式配置。超时终止并报告阶段，不自动减测；普通发布不复演历史全量清单。

@@ -63,6 +63,9 @@ const selectedPackageNames = new Set(
 );
 let containerStarted = false;
 let volumeCreated = false;
+process.once('exit', cleanupReferenceResources);
+process.once('SIGINT', () => process.exit(130));
+process.once('SIGTERM', () => process.exit(143));
 
 try {
   assertReferenceRepository(referenceRoot);
@@ -227,46 +230,59 @@ try {
       artifactCandidates
     );
   }
-  copyReferenceWorktree(referenceRoot, applicationRoot);
-  const installOutput = await runCapturedWithRegistryRetry(
-    "pnpm",
-    [
-      "install",
-      "--frozen-lockfile",
-      "--prefer-offline",
-    ],
-    applicationRoot,
-    registryEnvironment
-  );
-  if (/ignored build scripts:/i.test(installOutput)) {
-    fail("Reference application contains an unreviewed dependency build script");
-  }
-  assertInstalledVersions(applicationRoot, expectedVersions);
-  run("pnpm", ["exec", "openxiangda", "check", "--local"], applicationRoot, registryEnvironment);
-  run("pnpm", ["check"], applicationRoot, registryEnvironment);
-  run("pnpm", ["test"], applicationRoot, registryEnvironment);
-  run("pnpm", ["build"], applicationRoot, registryEnvironment);
-  run("pnpm", ["test:e2e"], applicationRoot, registryEnvironment);
-
-  if (updateGenerated) {
-    cpSync(
-      join(applicationRoot, "packages", "contracts", "src", "generated.ts"),
-      join(referenceRoot, "packages", "contracts", "src", "generated.ts")
+  // Preparation already installed and checked the candidate to materialize its
+  // exact lock. Formal acceptance runs once in verify:release, after that lock
+  // is reviewed and committed. updateGenerated explicitly retains acceptance.
+  if (!installReferenceWorktree || updateGenerated) {
+    copyReferenceWorktree(referenceRoot, applicationRoot);
+    const installOutput = await runCapturedWithRegistryRetry(
+      "pnpm",
+      [
+        "install",
+        "--frozen-lockfile",
+        "--prefer-offline",
+      ],
+      applicationRoot,
+      registryEnvironment
     );
-    process.stdout.write("Updated the reference application generated contracts.\n");
-  }
+    if (/ignored build scripts:/i.test(installOutput)) {
+      fail("Reference application contains an unreviewed dependency build script");
+    }
+    assertInstalledVersions(applicationRoot, expectedVersions);
+    run("pnpm", ["exec", "openxiangda", "check", "--local"], applicationRoot, registryEnvironment);
+    run("pnpm", ["check"], applicationRoot, registryEnvironment);
+    run("pnpm", ["test"], applicationRoot, registryEnvironment);
+    run("pnpm", ["build"], applicationRoot, registryEnvironment);
+    run("pnpm", ["test:e2e"], applicationRoot, registryEnvironment);
 
-  process.stdout.write(
-    `Verified ${publishedCandidates.length} candidate package(s) through the registry with the independent reference application.\n`
-  );
+    if (updateGenerated) {
+      cpSync(
+        join(applicationRoot, "packages", "contracts", "src", "generated.ts"),
+        join(referenceRoot, "packages", "contracts", "src", "generated.ts")
+      );
+      process.stdout.write("Updated the reference application generated contracts.\n");
+    }
+
+    process.stdout.write(
+      `Verified ${publishedCandidates.length} candidate package(s) through the registry with the independent reference application.\n`
+    );
+  } else {
+    process.stdout.write("Reference candidate prepared; commit the reviewed lock, then run verify:release for formal acceptance.\n");
+  }
   if (keepScratch) {
     process.stdout.write(`Reference acceptance workspace: ${scratchRoot}\n`);
   }
 } finally {
+  cleanupReferenceResources();
+}
+
+function cleanupReferenceResources() {
   if (containerStarted) {
+    containerStarted = false;
     runCleanup("docker", ["rm", "--force", containerName], repositoryRoot);
   }
   if (volumeCreated) {
+    volumeCreated = false;
     runCleanup("docker", ["volume", "rm", "--force", volumeName], repositoryRoot);
   }
   if (!keepScratch) rmSync(scratchRoot, { recursive: true, force: true });
@@ -451,7 +467,7 @@ async function runCapturedWithRegistryRetry(command, args, cwd, env) {
 }
 
 function runCleanup(command, args, cwd) {
-  const result = spawnSync(command, args, { cwd, stdio: "ignore" });
+  const result = spawnSync(command, args, { cwd, stdio: "ignore", timeout: 2000, killSignal: 'SIGKILL' });
   if (result.error) {
     process.stderr.write(`Cleanup warning: ${result.error.message}\n`);
   }

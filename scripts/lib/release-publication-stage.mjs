@@ -2,6 +2,7 @@ import {
   assertReferenceReleaseEvidenceMatches,
   inspectReferenceReleaseEvidence,
 } from "./reference-application-state.mjs";
+import { receiptRequiresReference } from './release-validation-plan.mjs';
 
 export function runPackagePublicationStage(
   receipt,
@@ -14,12 +15,10 @@ export function runPackagePublicationStage(
 ) {
   let current = receipt;
   if (current.phase === "validated") {
-    const actualReferenceEvidence =
-      inspectReferenceReleaseEvidence(referenceRoot);
-    assertReferenceReleaseEvidenceMatches(
-      current.referenceApplication,
-      actualReferenceEvidence
-    );
+    if (receiptRequiresReference(current)) {
+      const actualReferenceEvidence = inspectReferenceReleaseEvidence(referenceRoot);
+      assertReferenceReleaseEvidenceMatches(current.referenceApplication, actualReferenceEvidence);
+    }
     preflightInitialPublication();
     current = { ...current, phase: "publishing-packages" };
     persistReceipt(current);

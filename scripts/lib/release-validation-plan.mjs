@@ -20,6 +20,32 @@ const BROWSER_CRITICAL_PACKAGES = new Set([
 
 export const RELEASE_PLAN_SCHEMA = "openxiangda.release-validation-plan/v1";
 
+export function isGuidanceFile(file) {
+  return /^(documentation\/|skills\/|launcher-skill\/|releases\/|docs\/)/.test(file)
+    || /(?:^|\/)(?:README|CHANGELOG|AGENTS|SKILL)\.md$/.test(file)
+    || /^package\.json#openxiangdaRelease(?:\.|$)/.test(file);
+}
+
+function hasRuntimeChange(candidate) {
+  return !candidate.previousVersion || normalizedChangedFiles(candidate)
+    .some(file => !METADATA_FILES.has(file) && !isGuidanceFile(file));
+}
+
+export function receiptRequiresReference(receipt) {
+  if (receipt.referenceRequired !== undefined && typeof receipt.referenceRequired !== 'boolean') {
+    throw new Error('RELEASE_REFERENCE_REQUIREMENT_INVALID');
+  }
+  return receipt.referenceRequired !== false; // Old receipts retain their original reference boundary.
+}
+
+export function assertReceiptReferenceRequirement(receipt, plan) {
+  const required = receiptRequiresReference(receipt);
+  if (receipt.referenceRequired !== undefined && required !== plan.gates.referenceApplication) {
+    throw new Error('RELEASE_REFERENCE_REQUIREMENT_MISMATCH');
+  }
+  return required;
+}
+
 export function createReleaseValidationPlan(packageState, options = {}) {
   const full = options.full === true;
   const candidates = packageState.packages.filter(
@@ -58,6 +84,13 @@ export function createReleaseValidationPlan(packageState, options = {}) {
       reasons.add(
         `${candidate.name} changes only package metadata or propagated dependency versions.`
       );
+      continue;
+    }
+
+    if (substantiveFiles.every(isGuidanceFile)) {
+      skills = true;
+      documentation = true;
+      reasons.add(`${candidate.name} changes guidance; validate content and fresh installation.`);
       continue;
     }
 
@@ -139,9 +172,13 @@ export function createReleaseValidationPlan(packageState, options = {}) {
     reasons.add("Full release audit was explicitly requested.");
   }
 
+  // Core changes validate candidate consumers too. Metadata propagation alone
+  // does not re-run every dependency's tests; Turbo still builds dependencies.
+  const consumerValidation = candidates.some(candidate =>
+    CORE_APPLICATION_PACKAGES.has(candidate.name) && hasRuntimeChange(candidate));
   const workspacePackages = full
     ? packageState.packages.map(item => item.name).sort()
-    : candidates.map(item => item.name).sort();
+    : candidates.filter(candidate => consumerValidation || hasRuntimeChange(candidate)).map(item => item.name).sort();
 
   return {
     schema: RELEASE_PLAN_SCHEMA,

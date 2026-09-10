@@ -11,6 +11,7 @@ import {
   assertPublicArtifactManifest,
   loadReleaseArtifactManifest,
 } from "./lib/release-artifacts.mjs";
+import { runReleaseCommand } from "./lib/release-command.mjs";
 import { createReleaseValidationPlan } from "./lib/release-validation-plan.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -28,46 +29,41 @@ const validationPackageNames = full
   : candidateNames;
 
 process.stdout.write(`${JSON.stringify(plan, null, 2)}\n`);
-run("node", ["scripts/verify-v2-boundary.mjs"]);
-const releaseScriptTests = readdirSync(
-  resolve(repositoryRoot, "scripts", "test")
-)
-  .filter(name => name.endsWith(".test.mjs"))
-  .sort()
-  .map(name => `scripts/test/${name}`);
-if (!releaseScriptTests.length) {
-  throw new Error("RELEASE_SCRIPT_TESTS_MISSING: no release planner tests were found");
-}
-run("node", ["--test", ...releaseScriptTests]);
+const verificationStarted = Date.now();
+const budgetSeconds = Number(process.env.OPENXIANGDA_RELEASE_VERIFY_TIMEOUT_SECONDS ||
+  (full ? 1800 : plan.gates.freshApplication === "e2e" ? 900 : 300));
+if (!Number.isSafeInteger(budgetSeconds) || budgetSeconds < 1) throw new Error("RELEASE_VERIFICATION_BUDGET_INVALID");
+await run("node", ["scripts/verify-v2-boundary.mjs"]);
+await run("node", ["scripts/verify-workspace-orchestration.mjs"]);
+const releaseScriptTests = readdirSync(resolve(repositoryRoot, "scripts", "test"))
+  .filter(name => name.endsWith(".test.mjs")).sort().map(name => `scripts/test/${name}`);
+if (!releaseScriptTests.length) throw new Error("RELEASE_SCRIPT_TESTS_MISSING");
+await run("node", ["--test", ...releaseScriptTests]);
 
+// Build required dependencies, then reject cheap guidance/doc errors before any
+// package test, fresh-application/browser suite or reference registry setup.
+await run("pnpm", ["exec", "turbo", "run", "build", ...candidateNames.flatMap(name => ["--filter", `${name}...`])]);
+if (plan.gates.skills) await run("pnpm", ["skills:check:from-build"]);
+if (plan.gates.documentation) await run("pnpm", ["docs:build:from-build"]);
 if (full) {
-  run("pnpm", ["verify"]);
-} else {
-  run("pnpm", ["exec", "turbo", "run", "check", "test", "build", ...candidateNames.flatMap(name => ["--filter", `${name}...`])]);
+  await run("pnpm", ["verify"]);
+} else if (plan.workspacePackages.length) {
+  await run("pnpm", ["exec", "turbo", "run", "check", "test", ...plan.workspacePackages.flatMap(name => ["--filter", name])]);
 }
-
-if (plan.gates.templateGeneratedCheck) {
-  run("pnpm", ["template:generated:check"]);
-}
-
-run("node", ["scripts/verify-packed-distribution.mjs"], {
+if (plan.gates.templateGeneratedCheck) await run("pnpm", ["template:generated:check"]);
+await run("node", ["scripts/verify-packed-distribution.mjs"], {
   env: {
     ...process.env,
     OPENXIANGDA_RELEASE_PACKAGES: validationPackageNames.join(","),
     OPENXIANGDA_PACK_SMOKE_LEVEL: plan.gates.freshApplication,
   },
 });
-
 if (plan.gates.referenceApplication) {
-  run("pnpm", ["reference:smoke:from-build"], {
-    env: {
-      ...process.env,
-      OPENXIANGDA_RELEASE_PACKAGES: validationPackageNames.join(","),
-    },
+  await run("pnpm", ["reference:smoke:from-build"], {
+    env: { ...process.env, OPENXIANGDA_RELEASE_PACKAGES: validationPackageNames.join(",") },
   });
 }
-if (plan.gates.skills) run("pnpm", ["skills:check:from-build"]);
-if (plan.gates.documentation) run("pnpm", ["docs:build:from-build"]);
+process.stdout.write(`[release-validation] total=${Math.round((Date.now() - verificationStarted) / 1000)}s budget=${budgetSeconds}s\n`);
 
 assertCandidateVersionsAvailable(
   repositoryRoot,
@@ -95,16 +91,11 @@ function packageStateFromArtifacts(path) {
 }
 
 function run(command, args, options = {}) {
-  process.stdout.write(`\n> ${command} ${args.join(" ")}\n`);
-  const result = spawnSync(command, args, {
+  return runReleaseCommand(command, args, {
     cwd: repositoryRoot,
-    env: options.env || process.env,
-    stdio: "inherit",
+    env: { ...(options.env || process.env), OPENXIANGDA_RELEASE_FULL_VALIDATION: full ? "1" : "0" },
+    timeoutMs: budgetSeconds * 1000 - (Date.now() - verificationStarted),
   });
-  if (result.error) throw result.error;
-  if (result.status !== 0) {
-    throw new Error(`${command} ${args.join(" ")} exited with ${result.status}`);
-  }
 }
 
 function runCaptured(command, args) {

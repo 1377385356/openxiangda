@@ -11,6 +11,18 @@ import test from "node:test";
 import { runPackagePublicationStage } from "../lib/release-publication-stage.mjs";
 import { inspectReferenceReleaseEvidence } from "../lib/reference-application-state.mjs";
 
+test('a validated guidance release publishes without resolving a reference repository', () => {
+  const events = [];
+  const result = runPackagePublicationStage({ phase: 'validated', referenceRequired: false }, {
+    referenceRoot: '/reference/does/not/exist',
+    preflightInitialPublication: () => events.push('preflight'),
+    persistReceipt: value => events.push(value.phase),
+    publishPackages: value => { events.push('publish'); return { ...value, phase: 'packages-published' }; },
+  });
+  assert.equal(result.phase, 'packages-published');
+  assert.deepEqual(events, ['preflight', 'publishing-packages', 'publish']);
+});
+
 test("reference release evidence is stable, path-free, and bound to synchronized master", () => {
   const fixture = createReferenceRepository();
   try {

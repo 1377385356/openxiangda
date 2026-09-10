@@ -41,6 +41,7 @@ import {
   inspectReferenceReleaseEvidence,
   resolveReferenceApplicationRoot,
 } from "./lib/reference-application-state.mjs";
+import { createReleaseValidationPlan, receiptRequiresReference, assertReceiptReferenceRequirement } from "./lib/release-validation-plan.mjs";
 import { runPackagePublicationStage } from "./lib/release-publication-stage.mjs";
 import { planGithubRelease, synchronizeGithubRelease } from './lib/release-github.mjs';
 import { releaseNpmEnvironment } from "./lib/release-network-policy.mjs";
@@ -74,7 +75,7 @@ const initialAction = releaseInvocationAction(receipt, { validateOnly });
 let referenceApplicationRoot;
 let referenceEvidenceAtStart;
 if (
-  validateOnly &&
+  receipt && receiptRequiresReference(receipt) && validateOnly &&
   (initialAction === "validate" || initialAction === "verified")
 ) {
   referenceApplicationRoot = resolveReferenceApplicationRoot(
@@ -114,6 +115,12 @@ if (!receipt) {
   const artifactsByName = new Map(
     artifactManifest.packages.map(item => [item.name, item])
   );
+  const referenceRequired = createReleaseValidationPlan(packageState, { full }).gates.referenceApplication;
+  if (referenceRequired && !referenceEvidenceAtStart) {
+    referenceApplicationRoot = resolveReferenceApplicationRoot(repositoryRoot, process.env.OPENXIANGDA_REFERENCE_APP_ROOT);
+    referenceEvidenceAtStart = inspectReferenceReleaseEvidence(referenceApplicationRoot);
+    assertReferencePackageVersions(referenceApplicationRoot, expectedPublicPackageVersions(repositoryRoot));
+  }
   receipt = {
     schema: "openxiangda.release-receipt/v2",
     head,
@@ -122,6 +129,7 @@ if (!receipt) {
     phase: "planned",
     artifactManifestPath,
     artifactManifestSha256: artifactDigests(artifactManifestPath).sha256,
+    referenceRequired,
     referenceApplication: referenceEvidenceAtStart,
     prereleaseTag: configuredPrereleaseTag(),
     candidates: candidates.map(candidate => {
@@ -156,10 +164,9 @@ assertReceiptMatchesInvocation(receipt);
 let action = releaseInvocationAction(receipt, { validateOnly });
 
 if (action === "validate") {
-  assertReferenceReleaseEvidenceMatches(
-    receipt.referenceApplication,
-    referenceEvidenceAtStart
-  );
+  if (receiptRequiresReference(receipt)) {
+    assertReferenceReleaseEvidenceMatches(receipt.referenceApplication, referenceEvidenceAtStart);
+  }
   assertReceiptArtifacts(receipt);
   assertReceiptCandidatesUnpublished(receipt);
   assertRecoverableDistTags(receipt);
@@ -177,17 +184,11 @@ if (action === "validate") {
   assertAuthoritativeMainline();
   assertReceiptCandidatesUnpublished(receipt);
   assertRecoverableDistTags(receipt);
-  const referenceEvidenceAtEnd = inspectReferenceReleaseEvidence(
-    referenceApplicationRoot
-  );
-  assertReferenceReleaseEvidenceMatches(
-    referenceEvidenceAtStart,
-    referenceEvidenceAtEnd
-  );
-  assertReferenceReleaseEvidenceMatches(
-    receipt.referenceApplication,
-    referenceEvidenceAtEnd
-  );
+  if (receiptRequiresReference(receipt)) {
+    const referenceEvidenceAtEnd = inspectReferenceReleaseEvidence(referenceApplicationRoot);
+    assertReferenceReleaseEvidenceMatches(referenceEvidenceAtStart, referenceEvidenceAtEnd);
+    assertReferenceReleaseEvidenceMatches(receipt.referenceApplication, referenceEvidenceAtEnd);
+  }
   receipt.phase = "validated";
   saveReceipt(receipt);
   action = "verified";
@@ -200,15 +201,10 @@ if (validateOnly) {
   assertAuthoritativeMainline();
   assertReceiptCandidatesUnpublished(receipt);
   assertRecoverableDistTags(receipt);
-  assertReferenceReleaseEvidenceMatches(
-    receipt.referenceApplication,
-    inspectReferenceReleaseEvidence(
-      resolveReferenceApplicationRoot(
-        repositoryRoot,
-        process.env.OPENXIANGDA_REFERENCE_APP_ROOT
-      )
-    )
-  );
+  if (receiptRequiresReference(receipt)) {
+    assertReferenceReleaseEvidenceMatches(receipt.referenceApplication,
+      inspectReferenceReleaseEvidence(resolveReferenceApplicationRoot(repositoryRoot, process.env.OPENXIANGDA_REFERENCE_APP_ROOT)));
+  }
   process.stdout.write(
     `Validated ${receipt.candidates.map(item => `${item.name}@${item.version}`).join(", ")} ` +
       `from ${receipt.head}; receipt ${receiptPath} is ready for release:publish${full ? ":full" : ""}.\n`
@@ -216,7 +212,7 @@ if (validateOnly) {
 } else {
   receipt = runPackagePublicationStage(receipt, {
     referenceRoot:
-      receipt.phase === "validated"
+      receipt.phase === "validated" && receiptRequiresReference(receipt)
         ? resolveReferenceApplicationRoot(
             repositoryRoot,
             process.env.OPENXIANGDA_REFERENCE_APP_ROOT
@@ -370,7 +366,10 @@ function assertReceiptMatchesInvocation(value) {
   if (value.head !== head) fail(`Pending release belongs to ${value.head}, not ${head}`);
   if (Boolean(value.full) !== full) fail("Pending release validation mode differs from this invocation");
   if (!Array.isArray(value.candidates) || !value.candidates.length) fail("Release receipt has no candidates");
-  if (!releasePublicationHasStarted(value)) {
+  const artifactState = loadReleaseArtifactManifest(value.artifactManifestPath, { head });
+  const expectedPlan = createReleaseValidationPlan(artifactState, { full });
+  const referenceRequired = assertReceiptReferenceRequirement(value, expectedPlan);
+  if (!releasePublicationHasStarted(value) && referenceRequired) {
     assertReferenceReleaseEvidence(value.referenceApplication);
   }
   if (resolve(value.artifactManifestPath || "") !== artifactManifestPath) {

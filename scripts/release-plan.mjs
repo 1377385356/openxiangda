@@ -3,23 +3,11 @@ import { fileURLToPath } from "node:url";
 import { assertReleaseVersionsMaterialized } from "./lib/release-changeset-state.mjs";
 import { inspectReleasePackages } from "./lib/release-package-state.mjs";
 import { createReleaseValidationPlan } from "./lib/release-validation-plan.mjs";
-import {
-  assertReferencePackageVersions,
-  expectedPublicPackageVersions,
-  resolveReferenceApplicationRoot,
-} from "./lib/reference-application-state.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const full = process.argv.includes("--full");
 const json = process.argv.includes("--json");
 assertReleaseVersionsMaterialized(repositoryRoot);
-assertReferencePackageVersions(
-  resolveReferenceApplicationRoot(
-    repositoryRoot,
-    process.env.OPENXIANGDA_REFERENCE_APP_ROOT
-  ),
-  expectedPublicPackageVersions(repositoryRoot)
-);
 const packageState = inspectReleasePackages(repositoryRoot, { quiet: json });
 const plan = createReleaseValidationPlan(packageState, { full });
 
