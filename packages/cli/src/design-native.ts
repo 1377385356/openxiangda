@@ -109,8 +109,8 @@ export async function desktopRuntime(installation: DesignInstallation) {
   if (!installation.sidecarPath) return null;
   const upstream = await import(pathToFileURL(installation.sidecarPath).href);
   const release = installation.releasePath ? await import(pathToFileURL(installation.releasePath).href) : null;
-  if (typeof upstream.getSidecarStatus !== 'function' || typeof release?.releaseChannelFromVersion !== 'function') failure('OPENDESIGN_RUNTIME_API_CHANGED', '原版运行发现接口已变化，请更新享搭桥接或指定原生 CLI 环境');
-  const channel = release.releaseChannelFromVersion(installation.version);
+  if (typeof upstream.getSidecarStatus !== 'function' || typeof release?.releaseChannelFromNamespace !== 'function') failure('OPENDESIGN_RUNTIME_API_CHANGED', '原版运行发现接口已变化，请更新享搭桥接或指定原生 CLI 环境');
+  const channel = release.releaseChannelFromNamespace(installation.namespace);
   if (!channel) failure('OPENDESIGN_CONFIG_INVALID', '原版无法识别安装版本所属通道');
   const stamp = { app: 'daemon', channel, namespace: installation.namespace, source: 'packaged' };
   for (const mode of ['runtime', 'headless']) {

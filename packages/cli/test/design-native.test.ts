@@ -73,7 +73,7 @@ test('desktop discovery uses the installed config and upstream status instead of
   mkdirSync(sidecar, { recursive: true });
   const release = join(resources, 'app/node_modules/@open-design/release/dist');
   mkdirSync(release, { recursive: true });
-  writeFileSync(join(release, 'index.mjs'), `export function releaseChannelFromVersion(version) { return version === '0.22.2' ? 'stable' : null }`);
+  writeFileSync(join(release, 'index.mjs'), `export function releaseChannelFromNamespace(namespace) { return namespace === 'release-stable' ? 'stable' : null }`);
   writeFileSync(join(resources, 'app/cli.mjs'), '');
   writeFileSync(join(resources, 'app/package.json'), JSON.stringify({ name: 'open-design-packaged-app', version: '0.22.2' }));
   writeFileSync(join(resources, 'open-design-config.json'), JSON.stringify({ namespace: 'release-stable', appVersion: '0.22.2', daemonCliEntryRelative: 'app/cli.mjs' }));
