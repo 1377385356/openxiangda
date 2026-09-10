@@ -1,6 +1,8 @@
 ---
 "openxiangda-contracts": minor
 "openxiangda-devkit-core": minor
+"openxiangda": patch
+"openxiangda-cli": patch
 ---
 
 Add opt-in, versioned data-event capture policies. Subscribed mode captures only
