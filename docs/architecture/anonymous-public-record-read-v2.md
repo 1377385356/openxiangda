@@ -27,8 +27,9 @@ Status: confirmed for implementation on 2026-09-11
   5. Public detail accepts only a UUID and returns the same 404 for a missing row
      or an invalid/unauthorized request. System ownership and audit fields are
      never included in the public field projection.
-  6. Public reads use the existing anonymous browser credential and same-origin
-     checks. The credential is not accepted by normal Native Data API routes.
+  6. Public reads use the existing anonymous browser credential; mutation
+     endpoints retain same-origin checks. The credential is not accepted by
+     normal Native Data API routes.
 - Failure and resource bounds: page size is 1..50, list/read rate limits use the
   existing subject and network buckets, and all declared field/route/policy
   limits remain in force. No unbounded search, aggregate, export, or caller SQL

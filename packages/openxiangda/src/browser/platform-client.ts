@@ -819,7 +819,12 @@ export function createAnonymousPublicClient(input: {
       if (!load) {
         load = request<{
         schemaVersion: 'openxiangda.anonymous-public-session/v2';
-        policy: { code: string; operations: string[]; fields: string[] };
+        policy: {
+          code: string;
+          operations: string[];
+          fields: string[];
+          publicRecordFields?: string[];
+        };
         draft?: AnonymousPublicDraft;
       }>(`${base}/bootstrap`, {
         method: 'POST',
