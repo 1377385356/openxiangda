@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.13.1",
+  "version": "2.13.2",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -67,13 +67,13 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.4.1",
+    "openxiangda-cli": "2.4.2",
     "openxiangda-contracts": "2.11.0",
     "openxiangda-devkit-core": "2.9.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
     "openxiangda-mcp": "2.0.17",
     "openxiangda-nest": "2.3.2",
-    "openxiangda-skill-kit": "2.1.0",
+    "openxiangda-skill-kit": "2.1.1",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -139,27 +139,25 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.13.1",
+    "version": "2.13.2",
     "status": "reviewed",
-    "title": "OpenXiangda 2.13.1：管理后台优先的应用结构规范",
-    "summary": "明确标准管理后台是 OpenXiangda 2.0 应用骨架，并规定 OpenDesign 在后台与用户端 PC/移动端的页面归属和交接边界。",
+    "title": "OpenXiangda 2.13.2：管理后台优先规范同步",
+    "summary": "将标准管理后台优先和 OpenDesign 页面归属规则同步到统一包、CLI 与 Skill 包，确保新应用开发遵循同一应用结构。",
     "newFeatures": [
-      "Skill、中文前端资料和 OpenDesign 工作流新增后台骨架优先规则。",
-      "新应用模板 AGENTS 明确后台、用户端 PC 和移动端的分层开发与验收入口。"
+      "统一包、CLI 和 Skill 包同步应用骨架与 OpenDesign 页面边界规范。"
     ],
     "fixes": [
-      "禁止使用单页 HTML、iframe 或独立假后台替代标准管理后台。"
+      "防止用户端原型、单页 HTML 或 iframe 被误当作管理后台。"
     ],
     "affectedUsers": [
-      "使用 OpenXiangda 2.0 创建应用、设计页面或维护应用模板的 AI 和开发者。"
+      "使用 OpenXiangda 2.0 创建应用和执行 AI 辅助开发的开发者。"
     ],
     "upgradeSteps": [
-      "升级 openxiangda 与 openxiangda-cli 到 2.13.1。",
-      "刷新项目 Skill，并按后台骨架优先规则重新检查页面归属和发布验收。"
+      "升级 openxiangda、openxiangda-cli 和 openxiangda-skill-kit 到本版本。",
+      "刷新项目 Skill 后重新执行应用结构和入口验收。"
     ],
     "knownLimitations": [
-      "本版本只更新规范、模板和发布资料，不自动改造已有应用页面。",
-      "标准审批、通知和具体业务流程仍需按应用需求声明和验收。"
+      "本版本更新规范和模板，不自动改造已有应用。"
     ],
     "compatibility": {
       "node": ">=24",
@@ -167,7 +165,7 @@
       "v1": "保持独立 legacy-v1 引擎"
     },
     "issues": [],
-    "sha256": "3be803becc123e1cfafd76b7e217c660a78d2e62f9d3cc7092c33872a1bf07b6",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.13.1"
+    "sha256": "8925c3252c55e2bec1d1cdf755151777650b3ac6f8b7c82576760761dca6a786",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.13.2"
   }
 }
