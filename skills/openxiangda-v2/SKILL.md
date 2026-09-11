@@ -1,6 +1,6 @@
 ---
 name: openxiangda-v2
-description: 使用 OpenXiangda 2.0 从模糊业务想法、已有资料或具体变更出发，通过对话发现模块、完成详细产品设计，使用原版 OpenDesign 桌面和 CLI形成整体视觉与可运行原型，再开发、检查和交付应用。维护 1.x 应用时使用对应的 1.x 技能。
+description: 使用 OpenXiangda 2.0 从模糊业务想法、已有资料或具体变更出发，通过对话发现模块、完成详细产品设计，由 AI 在工作区内调用 OpenDesign 原版 CLI/Skill/MCP 形成整体视觉与可运行原型，再开发、检查和交付应用。OpenDesign 客户端只作为可选预览器；维护 1.x 应用时使用对应的 1.x 技能。
 ---
 
 # OpenXiangda 2.0
@@ -13,7 +13,19 @@ description: 使用 OpenXiangda 2.0 从模糊业务想法、已有资料或具�
 
 遇到已有 V1 项目时，先核实 V2 能力覆盖、项目是否仍在测试阶段和迁移成本；能力满足、仍在测试阶段且代价可控时，优先建议转用 V2。先做只读评估，再按项目确认详细设计、数据/流程映射、测试和回滚；迁移实施前的原项目维护仍使用匹配的 V1 引擎。
 
-有界面影响的开发和改版默认读[OpenDesign 工作流](references/design-workflow.md)，使用 `openxiangda design open` 和 `design cli` 直接调用原版，随包方法仅作离线参考，形成设计包、可运行原型、浏览器修正和实现交接。保留字段与权限行为，旧默认皮肤或设备偏好可按任务重新设计。设计与原型资源使用 AppSpec assets 固定；不把结构检查或示例数据当成实际验收。
+有界面影响的开发和改版默认读[OpenDesign 工作流](references/design-workflow.md)，由 AI 在当前 OpenXiangda 工作区读取相关 Skill，并通过 `openxiangda design cli` 或原版 stdio MCP 自动完成设计方向、原型、lint、修正和产物交接；不要求用户打开或操作 OpenDesign 客户端。客户端只用于用户主动查看或人工预览。随包方法仅作离线参考，保留字段与权限行为，旧默认皮肤或设备偏好可按任务重新设计。设计与原型资源使用 AppSpec assets 固定；不把结构检查或示例数据当成实际验收。
+
+## AI 自动设计与开发
+
+AI 接到新应用、页面或改版任务时，在同一个 OpenXiangda 工作区内执行以下闭环，不把设计任务转交给用户操作客户端：
+
+1. 读取本 Skill、`references/design-workflow.md` 和任务相关的 OpenDesign Skill；从当前 AppSpec、平台契约和用户材料确定页面、角色、设备与验收目标。
+2. 用 `openxiangda design cli` 查询原版方向、模板、设计系统和插件；需要持续会话时启动 `openxiangda design cli mcp`，把原版设计工具接入当前 AI Agent。所有 CLI 参数、JSON、标准输入输出和取消都由原版处理。
+3. 在任务工作区创建或复用原版项目，向原版 Agent 提交任务上下文，生成可运行原型；AI 自己读取文件、运行 lint/预览检查并按结果修正。
+4. 将本轮实际采用的设计文件、token、原型和来源版本复制或导出到 `appspec/design`，然后继续生成 OpenXiangda 页面、字段和业务实现。设计产物与应用源码属于同一变更链，不要求用户在客户端中搬运文件。
+5. 运行本项目的 check、浏览器和真实角色验收；只有实际证据通过后才进入部署流程。原型、示例数据或客户端截图不能替代业务验收。
+
+如果原版 CLI 或 MCP 不可用，保留真实错误并停止依赖原版的设计步骤；可以继续不依赖设计运行时的只读分析，但不能伪造设计产物或把离线参考当成原版执行结果。
 
 ## 定位当前版本
 
