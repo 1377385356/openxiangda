@@ -12,7 +12,10 @@ const ALLOWED_ATTRIBUTES: Record<string, Set<string>> = {
 };
 
 const MANAGED_IMAGE =
-  /^\/service\/openxiangda-api\/v2\/applications\/[^/?#]+\/native\/data\/[^/?#]+\/files\/([0-9a-f-]+)\/content\?disposition=inline$/i;
+  /^\/service\/openxiangda-api\/v2\/applications\/[^/?#]+\/native\/data\/[^/?#]+\/files\/([0-9a-f-]+)\/content\?disposition=inline(?:&perspective=[a-z][a-z0-9._-]{0,127})?$/i;
+
+const PUBLIC_MANAGED_IMAGE =
+  /^\/service\/openxiangda-api\/v2\/applications\/[^/?#]+\/anonymous-public\/files\/[0-9a-f-]+\/content\?(?:policyCode=[^&]+&environmentKey=(?:preproduction|production)&disposition=inline&resourceCode=[^&]+(?:&parentFieldCode=[^&]+)?)$/i;
 
 export const MANAGED_RICH_TEXT_SOURCE_ATTRIBUTE =
   'data-openxiangda-managed-image-source';
@@ -26,6 +29,10 @@ function safeLink(value: string) {
 
 export function managedRichTextImageFileId(source: string) {
   return source.match(MANAGED_IMAGE)?.[1]?.toLowerCase();
+}
+
+function isPublicManagedRichTextImageSource(source: string) {
+  return PUBLIC_MANAGED_IMAGE.test(source);
 }
 
 /**
@@ -78,7 +85,9 @@ export function sanitizeRichText(value: string): string {
     }
     if (tag === 'img') {
       const source = element.getAttribute('src') || '';
-      if (!MANAGED_IMAGE.test(source)) element.remove();
+      if (!MANAGED_IMAGE.test(source) && !isPublicManagedRichTextImageSource(source)) {
+        element.remove();
+      }
     }
   }
   const normalized = document.body.innerHTML;
