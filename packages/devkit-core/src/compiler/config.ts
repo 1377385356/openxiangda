@@ -4091,6 +4091,7 @@ function validatePerspectives(
 
 const CAPABILITY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9:._*-]{0,254}$/;
 const OPERATION_CODE_PATTERN = /^[a-z][a-z0-9]*(?:[-_.][a-z0-9]+)*$/;
+const FIELD_CODE_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,62}$/;
 const HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
 const RESERVED_NATIVE_KEYS = new Map([
   ['environmentKey', 'environmentKey'],
@@ -4964,7 +4965,9 @@ function validateAnonymousPublicAccess(
     })
   );
   const policyCodes = new Set<string>();
-  const routeCodes = new Set<string>();
+  const declaredPolicyCodes = new Set(
+    policies.map(rawPolicy => string(object(rawPolicy).code))
+  );
   policies.forEach((raw, index) => {
     const policy = object(raw);
     const path = `frontend.publicAccess.policies[${index}]`;
@@ -4985,6 +4988,68 @@ function validateAnonymousPublicAccess(
       ? policy.ownRecordFields.map(string)
       : fields;
     const publicSubtableFields = object(policy.publicSubtableFields);
+    const publicFilters = Array.isArray(policy.publicFilters)
+      ? policy.publicFilters
+      : [];
+    const serverGeneratedFields = Array.isArray(policy.serverGeneratedFields)
+      ? policy.serverGeneratedFields
+      : [];
+    const generatedFieldInvalid =
+      serverGeneratedFields.length > 16 ||
+      new Set(serverGeneratedFields.map(item => string(object(item).field))).size !==
+        serverGeneratedFields.length ||
+      serverGeneratedFields.some(rawGenerated => {
+        const generated = object(rawGenerated);
+        const field = string(generated.field);
+        return (
+          Object.keys(generated).some(key => !['field', 'kind'].includes(key)) ||
+          !resourceFields?.has(field) ||
+          fields.includes(field) ||
+          !['text.short', 'text.long'].includes(resourceFields?.get(field) || '') ||
+          generated.kind !== 'random-token'
+        );
+      });
+    const schedule = object(policy.schedule);
+    const schedulePolicyKeys = ['campusPolicyCode', 'rulePolicyCode'];
+    const scheduleFieldKeys = [
+      'campusField', 'ruleCampusField', 'ruleWeekdaysField', 'ruleOpenAtField',
+      'ruleCloseAtField', 'ruleSlotMinutesField', 'ruleAdvanceHoursField',
+      'ruleAdvanceDaysField', 'campusEnabledField', 'ruleEnabledField',
+      'dateField', 'timeField',
+    ];
+    const scheduleKeys = [...schedulePolicyKeys, ...scheduleFieldKeys];
+    const scheduleInvalid = policy.schedule !== undefined && (
+      Object.keys(schedule).some(key => !scheduleKeys.includes(key)) ||
+      schedulePolicyKeys.some(key => !OPERATION_CODE_PATTERN.test(string(schedule[key]))) ||
+      scheduleFieldKeys.some(key => !FIELD_CODE_PATTERN.test(string(schedule[key]))) ||
+      !fields.includes(string(schedule.campusField)) ||
+      !fields.includes(string(schedule.dateField)) ||
+      !fields.includes(string(schedule.timeField)) ||
+      !declaredPolicyCodes.has(string(schedule.campusPolicyCode)) ||
+      !declaredPolicyCodes.has(string(schedule.rulePolicyCode))
+    );
+    const publicFilterInvalid =
+      publicFilters.length > 16 ||
+      new Set(publicFilters.map(item => string(object(item).field))).size !==
+        publicFilters.length ||
+      publicFilters.some(rawFilter => {
+        const filter = object(rawFilter);
+        const field = string(filter.field);
+        const type = resourceFields?.get(field);
+        const value = filter.value;
+        return (
+          Object.keys(filter).some(key => !['field', 'operator', 'value'].includes(key)) ||
+          !resourceFields?.has(field) ||
+          filter.operator !== 'eq' ||
+          !['boolean', 'text.short', 'text.long', 'number.integer', 'number.decimal', 'date', 'time'].includes(type || '') ||
+          !(
+            value === null ||
+            typeof value === 'string' ||
+            typeof value === 'number' ||
+            typeof value === 'boolean'
+          )
+        );
+      });
     const publicSubtableInvalid = Object.entries(publicSubtableFields).some(
       ([parentFieldCode, rawChildFields]) => {
         const childResourceCode = resource?.subtables.get(parentFieldCode);
@@ -5022,6 +5087,9 @@ function validateAnonymousPublicAccess(
       'requiredFields',
       'ownRecordFields',
       'publicRecordFields',
+      'publicFilters',
+      'serverGeneratedFields',
+      'schedule',
       'publicSubtableFields',
       'draft',
       'validations',
@@ -5030,7 +5098,6 @@ function validateAnonymousPublicAccess(
       Object.keys(policy).some(key => !exactRootKeys.includes(key)) ||
       !OPERATION_CODE_PATTERN.test(code) ||
       policyCodes.has(code) ||
-      routeCodes.has(routeCode) ||
       policy.mode !== 'anonymous' ||
       !route ||
       route.surface !== 'user' ||
@@ -5054,6 +5121,9 @@ function validateAnonymousPublicAccess(
       ownRecordFields.some(field => !fields.includes(field)) ||
       Object.keys(publicSubtableFields).length > 64 ||
       publicSubtableInvalid ||
+      publicFilterInvalid ||
+      generatedFieldInvalid ||
+      scheduleInvalid ||
       (operations.some(operation => operation.startsWith('public.')) &&
         (!Array.isArray(policy.publicRecordFields) ||
           policy.publicRecordFields.length < 1 ||
@@ -5137,7 +5207,6 @@ function validateAnonymousPublicAccess(
       validationCodes.add(validationCode);
     });
     policyCodes.add(code);
-    routeCodes.add(routeCode);
   });
 }
 

@@ -82,3 +82,125 @@ test('必填标量不能漏出公开字段集合，默认表单不把可选数�
   assert.equal(compiled.config.value.data.resources[0]!.surface?.fields.file?.requiredHint, undefined);
   assert.equal(nativeCompile(compiled).appCode, 'public-fields');
 });
+
+test('固定公开过滤条件可编译，并允许同一路由声明多条策略', () => {
+  const input = declaration();
+  input.frontend!.publicAccess!.policies = [
+    {
+      code: 'public-catalog',
+      routeCode: 'apply',
+      resourceCode: 'requests',
+      mode: 'anonymous',
+      operations: ['public.list', 'public.read'],
+      fields: ['title'],
+      publicRecordFields: ['title'],
+      publicFilters: [{ field: 'title', operator: 'eq', value: 'published' }],
+    },
+    {
+      code: 'public-catalog-secondary',
+      routeCode: 'apply',
+      resourceCode: 'requests',
+      mode: 'anonymous',
+      operations: ['public.read'],
+      fields: ['title'],
+      publicRecordFields: ['title'],
+    },
+  ];
+  const compiled = compileApplicationSources(defineOpenXiangdaApp(input));
+  assert.deepEqual(compiled.config.value.frontend.publicAccess?.policies, [
+    {
+      code: 'public-catalog',
+      routeCode: 'apply',
+      mode: 'anonymous',
+      resourceCode: 'requests',
+      operations: ['public.list', 'public.read'],
+      fields: ['title'],
+      publicRecordFields: ['title'],
+      publicFilters: [{ field: 'title', operator: 'eq', value: 'published' }],
+    },
+    {
+      code: 'public-catalog-secondary',
+      routeCode: 'apply',
+      mode: 'anonymous',
+      resourceCode: 'requests',
+      operations: ['public.read'],
+      fields: ['title'],
+      publicRecordFields: ['title'],
+    },
+  ]);
+  assert.equal(nativeCompile(compiled).appCode, 'public-fields');
+});
+
+test('accepts camelCase field references in anonymous filters and schedule validation', () => {
+  const base = declaration();
+  const resource = base.data!.resources![0]!;
+  const compiled = compileApplicationSources(defineOpenXiangdaApp({
+    ...base,
+    data: {
+      resources: [{
+        ...resource,
+        fields: [
+          ...resource.fields!,
+          { code: 'campusId', label: 'Campus', type: 'text.short' },
+          { code: 'visitDate', label: 'Date', type: 'date' },
+          { code: 'visitTime', label: 'Time', type: 'time' },
+          { code: 'qrToken', label: 'Token', type: 'text.short' },
+        ],
+      }],
+    },
+    frontend: {
+      ...base.frontend,
+      publicAccess: {
+        policies: [
+          {
+            code: 'campus-public', routeCode: 'apply', mode: 'anonymous', resourceCode: 'requests',
+            operations: ['public.list', 'public.read'],
+            fields: ['campusId', 'visitDate', 'visitTime'],
+            publicRecordFields: ['campusId', 'visitDate', 'visitTime'],
+            publicFilters: [{ field: 'campusId', operator: 'eq', value: 'main' }],
+          },
+          {
+            code: 'rule-public', routeCode: 'apply', mode: 'anonymous', resourceCode: 'requests',
+            operations: ['public.read'],
+            fields: ['campusId', 'visitDate', 'visitTime'],
+            publicRecordFields: ['campusId', 'visitDate', 'visitTime'],
+          },
+          {
+            code: 'reservation-public', routeCode: 'apply', mode: 'anonymous', resourceCode: 'requests',
+            operations: ['draft.read', 'draft.update', 'create'],
+            fields: ['campusId', 'visitDate', 'visitTime', 'title'],
+            requiredFields: ['campusId', 'visitDate', 'visitTime', 'title'],
+            serverGeneratedFields: [{ field: 'qrToken', kind: 'random-token' }],
+            schedule: {
+              campusPolicyCode: 'campus-public', rulePolicyCode: 'rule-public',
+              campusField: 'campusId', ruleCampusField: 'campusId',
+              ruleWeekdaysField: 'weekdays', ruleOpenAtField: 'openAt', ruleCloseAtField: 'closeAt',
+              ruleSlotMinutesField: 'slotMinutes', ruleAdvanceHoursField: 'advanceHours',
+              ruleAdvanceDaysField: 'advanceDays', campusEnabledField: 'enabled',
+              ruleEnabledField: 'enabled', dateField: 'visitDate', timeField: 'visitTime',
+            },
+            draft: { enabled: true },
+          },
+        ],
+      },
+    },
+  }));
+  assert.equal(nativeCompile(compiled).appCode, 'public-fields');
+});
+
+test('公开过滤条件拒绝复杂值和不可过滤字段', () => {
+  const input = declaration();
+  input.frontend!.publicAccess!.policies[0] = {
+    ...input.frontend!.publicAccess!.policies[0]!,
+    operations: ['public.list', 'public.read'],
+    fields: ['file'],
+    publicRecordFields: ['file'],
+    publicFilters: [{ field: 'file', operator: 'eq', value: true }],
+  };
+  assert.throws(() => defineOpenXiangdaApp(input), (error: any) =>
+    error.diagnostics.some((item: any) =>
+      item.code === 'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_INVALID' &&
+      item.path === 'frontend.publicAccess.policies[0]'
+    )
+  );
+});

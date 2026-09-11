@@ -22,7 +22,7 @@ User-Agent 或浏览器指纹猜测同一个人。
 ## 应用声明
 
 资源仍然按普通 Native Resource 声明。公开能力只在一个静态 `surface: 'user'` 路由上增加一个
-严格有界的 `frontend.publicAccess` 策略：
+严格有界的 `frontend.publicAccess` 策略；同一路由可以按设备或资源声明多条策略，调用方必须带策略码：
 
 ```ts
 export default defineOpenXiangdaApp({
@@ -147,6 +147,26 @@ export default defineOpenXiangdaApp({
 拒绝。公开子表字段必须配置 `publicSubtableFields`，其键是父资源的子表字段，值是子资源字段列表；
 编译器会拒绝未声明字段、嵌套子表和缺少子字段投影。公共读取沿用明确公开的 `frontend.publicAccess`
 路由和匿名浏览器凭证，不创建 guest 角色或虚拟内部用户。
+
+需要隐藏停用、归档或租户标记记录时，使用固定 `publicFilters`，由服务端对每次 `public.list`/
+`public.read` 强制追加。当前只支持最多 16 个不同字段的 `eq` 等值条件，字段必须属于策略的
+`fields` 且仅允许布尔、文本、数值、日期和时间标量；调用方不能覆盖、追加或删除这些条件：
+
+```ts
+publicFilters: [{ field: 'enabled', operator: 'eq', value: true }]
+```
+
+匿名创建需要平台生成的不可预测字段时，使用 `serverGeneratedFields`。这些字段不属于
+`fields`，调用方不能在草稿中写入；提交事务会由平台生成随机值并在提交回执的 `generated`
+对象中返回。`random-token` 只适用于不承载身份信息的核验令牌等用途：
+
+```ts
+serverGeneratedFields: [{ field: 'qrToken', kind: 'random-token' }]
+```
+
+需要跨资源复核预约窗口等业务不变量时，可声明 `schedule`，绑定两个只读公开策略和资源字段。
+平台会在最终创建事务中重新读取启用校区与规则，校验星期、日期范围、提前小时数和离散时段；页面端
+校验只能改善体验，不能替代这次服务端复核。
 
 子表中的文件引用会自动带上受控的 `resourceCode` 与父字段绑定；应用如需为附件生成下载地址，使用
 `fileContentUrl(fileId, disposition, variant, resourceCode, parentFieldCode)`，不要自行拼接文件路径。

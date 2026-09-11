@@ -814,7 +814,7 @@ export function createAnonymousPublicClient(input: {
   };
   return {
     async bootstrap() {
-      const bootstrapKey = `${applicationCode()}:${environmentKey()}:${input.routeCode}`;
+      const bootstrapKey = `${applicationCode()}:${environmentKey()}:${input.routeCode}:${input.policyCode || ''}`;
       let load = anonymousPublicBootstrapLoads.get(bootstrapKey);
       if (!load) {
         load = request<{
@@ -831,6 +831,7 @@ export function createAnonymousPublicClient(input: {
         method: 'POST',
         body: JSON.stringify({
           routeCode: input.routeCode,
+          ...(input.policyCode ? { policyCode: input.policyCode } : {}),
           environmentKey: environmentKey(),
         }),
       });
@@ -885,6 +886,7 @@ export function createAnonymousPublicClient(input: {
         recordId: string;
         submittedAt: string;
         idempotentReplay: boolean;
+        generated?: Record<string, string>;
       }>(`${base}/submit`, {
         method: 'POST',
         body: JSON.stringify({

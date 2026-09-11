@@ -403,7 +403,12 @@ export class OpenXiangdaControlPlaneClient {
 
   async capabilities(): Promise<PlatformCapabilities> {
     const capabilities = await this.json<PlatformCapabilities>(
-      "/openxiangda-api/v2/capabilities"
+      "/openxiangda-api/v2/capabilities",
+      {
+        headers: {
+          "X-OpenXiangda-Client-Contract-Version": OPENXIANGDA_CONTRACT_VERSION,
+        },
+      }
     );
     if (capabilities.contractVersion !== OPENXIANGDA_CONTRACT_VERSION) {
       const compatibility = capabilities.configurationCompatibility;

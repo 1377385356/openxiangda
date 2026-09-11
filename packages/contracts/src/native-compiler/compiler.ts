@@ -2463,7 +2463,9 @@ function validateAnonymousPublicAccess(
     ])
   );
   const policyCodes = new Set<string>();
-  const routeCodes = new Set<string>();
+  const declaredPolicyCodes = new Set(
+    policies.map((rawPolicy: JsonObject) => String(rawPolicy?.code || ''))
+  );
   policies.forEach((rawPolicy, index) => {
     const policyPointer = `${pointer}/policies/${index}`;
     const policy = object(rawPolicy, policyPointer);
@@ -2475,6 +2477,9 @@ function validateAnonymousPublicAccess(
         'requiredFields',
         'ownRecordFields',
         'publicRecordFields',
+        'publicFilters',
+        'serverGeneratedFields',
+        'schedule',
         'publicSubtableFields',
         'draft',
         'validations',
@@ -2488,9 +2493,6 @@ function validateAnonymousPublicAccess(
       policy.routeCode,
       `${policyPointer}/routeCode`
     );
-    if (routeCodes.has(routeCode)) {
-      fail('NATIVE_PUBLIC_ROUTE_DUPLICATE', `${policyPointer}/routeCode`);
-    }
     const route = routes.get(routeCode);
     if (
       !route ||
@@ -2558,6 +2560,124 @@ function validateAnonymousPublicAccess(
         );
       }
     }
+    const serverGeneratedFields = Object.prototype.hasOwnProperty.call(
+      policy,
+      'serverGeneratedFields'
+    )
+      ? boundedArray(
+          policy.serverGeneratedFields,
+          `${policyPointer}/serverGeneratedFields`,
+          16
+        )
+      : [];
+    const generatedFieldCodes = new Set<string>();
+    serverGeneratedFields.forEach((rawGenerated, generatedIndex) => {
+      const generatedPointer = `${policyPointer}/serverGeneratedFields/${generatedIndex}`;
+      const generated = object(rawGenerated, generatedPointer);
+      exactKeys(generated, ['field', 'kind'], generatedPointer);
+      const field = fieldCodeValue(generated.field, `${generatedPointer}/field`);
+      if (
+        generatedFieldCodes.has(field) ||
+        !declaredFields.has(field) ||
+        fields.includes(field) ||
+        (declaredFields.get(field) !== 'text.short' &&
+          declaredFields.get(field) !== 'text.long')
+      ) {
+        fail(
+          'NATIVE_PUBLIC_SERVER_GENERATED_FIELD_INVALID',
+          `${generatedPointer}/field`
+        );
+      }
+      equal(generated.kind, 'random-token', `${generatedPointer}/kind`);
+      generatedFieldCodes.add(field);
+    });
+    const schedule = Object.prototype.hasOwnProperty.call(policy, 'schedule')
+      ? object(policy.schedule, `${policyPointer}/schedule`)
+      : null;
+    if (schedule) {
+      const scheduleKeys = [
+        'campusPolicyCode',
+        'rulePolicyCode',
+        'campusField',
+        'ruleCampusField',
+        'ruleWeekdaysField',
+        'ruleOpenAtField',
+        'ruleCloseAtField',
+        'ruleSlotMinutesField',
+        'ruleAdvanceHoursField',
+        'ruleAdvanceDaysField',
+        'campusEnabledField',
+        'ruleEnabledField',
+        'dateField',
+        'timeField',
+      ];
+      exactKeys(schedule, scheduleKeys, `${policyPointer}/schedule`);
+      for (const key of ['campusPolicyCode', 'rulePolicyCode']) {
+        stableCode(schedule[key], `${policyPointer}/schedule/${key}`);
+      }
+      for (const key of scheduleKeys.filter(
+        key => !['campusPolicyCode', 'rulePolicyCode'].includes(key)
+      )) {
+        fieldCodeValue(schedule[key], `${policyPointer}/schedule/${key}`);
+      }
+      for (const field of [schedule.campusField, schedule.dateField, schedule.timeField]) {
+        if (!fields.includes(String(field))) {
+          fail('NATIVE_PUBLIC_SCHEDULE_FIELD_INVALID', `${policyPointer}/schedule`);
+        }
+      }
+      if (
+        !declaredPolicyCodes.has(String(schedule.campusPolicyCode)) ||
+        !declaredPolicyCodes.has(String(schedule.rulePolicyCode))
+      ) {
+        fail('NATIVE_PUBLIC_SCHEDULE_POLICY_INVALID', `${policyPointer}/schedule`);
+      }
+    }
+    const publicFilters = Object.prototype.hasOwnProperty.call(
+      policy,
+      'publicFilters'
+    )
+      ? boundedArray(
+          policy.publicFilters,
+          `${policyPointer}/publicFilters`,
+          16
+        )
+      : [];
+    const filterFields = new Set<string>();
+    publicFilters.forEach((rawFilter, filterIndex) => {
+      const filterPointer = `${policyPointer}/publicFilters/${filterIndex}`;
+      const filter = object(rawFilter, filterPointer);
+      exactKeys(filter, ['field', 'operator', 'value'], filterPointer);
+      const field = fieldCodeValue(filter.field, `${filterPointer}/field`);
+      if (filterFields.has(field)) {
+        fail('NATIVE_PUBLIC_FILTER_DUPLICATE', `${filterPointer}/field`);
+      }
+      if (!fields.includes(field)) {
+        fail('NATIVE_PUBLIC_FILTER_FIELD_INVALID', `${filterPointer}/field`);
+      }
+      equal(filter.operator, 'eq', `${filterPointer}/operator`);
+      if (
+        ![
+          'boolean',
+          'text.short',
+          'text.long',
+          'number.integer',
+          'number.decimal',
+          'date',
+          'time',
+        ].includes(declaredFields.get(field) || '')
+      ) {
+        fail('NATIVE_PUBLIC_FILTER_FIELD_INVALID', `${filterPointer}/field`);
+      }
+      if (
+        filter.value !== null &&
+        typeof filter.value !== 'string' &&
+        typeof filter.value !== 'number' &&
+        typeof filter.value !== 'boolean'
+      ) {
+        fail('NATIVE_PUBLIC_FILTER_VALUE_INVALID', `${filterPointer}/value`);
+      }
+      filterFields.add(field);
+    });
     const publicSubtableFields = Object.prototype.hasOwnProperty.call(
       policy,
       'publicSubtableFields'
@@ -2746,7 +2866,6 @@ function validateAnonymousPublicAccess(
       validationCodes.add(validationCode);
     });
     policyCodes.add(code);
-    routeCodes.add(routeCode);
   });
 }
 
@@ -2779,6 +2898,19 @@ function compileAnonymousPublicAccess(config: JsonObject) {
         ...(policy.publicRecordFields
           ? { publicRecordFields: uniqueSorted(policy.publicRecordFields) }
           : {}),
+        ...(policy.publicFilters
+          ? {
+              publicFilters: policy.publicFilters
+                .map((filter: JsonObject) => ({
+                  field: filter.field,
+                  operator: filter.operator,
+                  value: filter.value,
+                }))
+                .sort((left: JsonObject, right: JsonObject) =>
+                  compareText(left.field, right.field)
+                ),
+            }
+          : {}),
         ...(policy.publicSubtableFields
           ? {
               publicSubtableFields: Object.fromEntries(
@@ -2793,6 +2925,38 @@ function compileAnonymousPublicAccess(config: JsonObject) {
                     ),
                   ])
               ),
+            }
+          : {}),
+        ...(policy.serverGeneratedFields
+          ? {
+              serverGeneratedFields: policy.serverGeneratedFields
+                .map((generated: JsonObject) => ({
+                  field: generated.field,
+                  kind: generated.kind,
+                }))
+                .sort((left: JsonObject, right: JsonObject) =>
+                  compareText(left.field, right.field)
+                ),
+            }
+          : {}),
+        ...(policy.schedule
+          ? {
+              schedule: {
+                campusPolicyCode: policy.schedule.campusPolicyCode,
+                rulePolicyCode: policy.schedule.rulePolicyCode,
+                campusField: policy.schedule.campusField,
+                ruleCampusField: policy.schedule.ruleCampusField,
+                ruleWeekdaysField: policy.schedule.ruleWeekdaysField,
+                ruleOpenAtField: policy.schedule.ruleOpenAtField,
+                ruleCloseAtField: policy.schedule.ruleCloseAtField,
+                ruleSlotMinutesField: policy.schedule.ruleSlotMinutesField,
+                ruleAdvanceHoursField: policy.schedule.ruleAdvanceHoursField,
+                ruleAdvanceDaysField: policy.schedule.ruleAdvanceDaysField,
+                campusEnabledField: policy.schedule.campusEnabledField,
+                ruleEnabledField: policy.schedule.ruleEnabledField,
+                dateField: policy.schedule.dateField,
+                timeField: policy.schedule.timeField,
+              },
             }
           : {}),
         ...(policy.draft ? { draft: { ...policy.draft } } : {}),

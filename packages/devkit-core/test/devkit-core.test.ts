@@ -3722,6 +3722,12 @@ test("negotiates capabilities and creates a package-level deployment", async () 
     fetch,
   });
   assert.equal((await client.capabilities()).apiVersion, "v2");
+  assert.equal(
+    new Headers(requests[0]?.init?.headers).get(
+      "x-openxiangda-client-contract-version"
+    ),
+    OPENXIANGDA_CONTRACT_VERSION
+  );
 
   const appPackage = compileAppPackage({
     config: config(),

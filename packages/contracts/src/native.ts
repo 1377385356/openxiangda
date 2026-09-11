@@ -328,6 +328,34 @@ export interface AnonymousPublicDuplicateValidationV2 {
   result: 'availability';
 }
 
+export interface AnonymousPublicFilterV2 {
+  field: string;
+  operator: 'eq';
+  value: string | number | boolean | null;
+}
+
+export interface AnonymousPublicServerGeneratedFieldV2 {
+  field: string;
+  kind: 'random-token';
+}
+
+export interface AnonymousPublicScheduleValidationV2 {
+  campusPolicyCode: string;
+  rulePolicyCode: string;
+  campusField: string;
+  ruleCampusField: string;
+  ruleWeekdaysField: string;
+  ruleOpenAtField: string;
+  ruleCloseAtField: string;
+  ruleSlotMinutesField: string;
+  ruleAdvanceHoursField: string;
+  ruleAdvanceDaysField: string;
+  campusEnabledField: string;
+  ruleEnabledField: string;
+  dateField: string;
+  timeField: string;
+}
+
 export interface AnonymousPublicAccessPolicyV2 {
   code: string;
   routeCode: string;
@@ -338,6 +366,12 @@ export interface AnonymousPublicAccessPolicyV2 {
   requiredFields?: readonly string[];
   ownRecordFields?: readonly string[];
   publicRecordFields?: readonly string[];
+  /** Fixed server-side filters applied to every public list/detail read. */
+  publicFilters?: readonly AnonymousPublicFilterV2[];
+  /** Fields populated by the platform during anonymous create. */
+  serverGeneratedFields?: readonly AnonymousPublicServerGeneratedFieldV2[];
+  /** Cross-resource schedule checks enforced again inside the submit transaction. */
+  schedule?: AnonymousPublicScheduleValidationV2;
   /** Explicit child-field projection for public subtable values. */
   publicSubtableFields?: Readonly<Record<string, readonly string[]>>;
   draft?: {

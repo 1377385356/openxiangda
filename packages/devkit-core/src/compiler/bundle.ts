@@ -1003,6 +1003,32 @@ function compileAnonymousPublicAccess(config: OpenXiangdaAppConfig) {
         ...(policy.publicRecordFields
           ? { publicRecordFields: uniqueSorted([...policy.publicRecordFields]) }
           : {}),
+        ...(policy.publicFilters
+          ? {
+              publicFilters: [...policy.publicFilters]
+                .map(filter => ({
+                  field: filter.field,
+                  operator: filter.operator,
+                  value: filter.value,
+                }))
+                .sort((left, right) => left.field.localeCompare(right.field)),
+            }
+          : {}),
+        ...(policy.serverGeneratedFields
+          ? {
+              serverGeneratedFields: policy.serverGeneratedFields
+                .map(generated => ({
+                  field: generated.field,
+                  kind: generated.kind,
+                }))
+                .sort((left, right) => left.field.localeCompare(right.field)),
+            }
+          : {}),
+        ...(policy.schedule
+          ? {
+              schedule: { ...policy.schedule },
+            }
+          : {}),
         ...(policy.publicSubtableFields
           ? {
               publicSubtableFields: Object.fromEntries(

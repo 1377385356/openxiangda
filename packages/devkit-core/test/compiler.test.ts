@@ -3235,6 +3235,53 @@ test('compiles explicit anonymous public record reads with a separate field proj
   assert.match(compiled.contracts.typescript, /publicRecordFields/);
 });
 
+test('compiles server-generated anonymous fields without granting caller writes', () => {
+  const compiled = compileApplicationSources(
+    defineOpenXiangdaApp({
+      ...sourceDeclaration,
+      data: {
+        ...sourceDeclaration.data!,
+        resources: [
+          ...sourceDeclaration.data!.resources,
+          {
+            code: 'token-records',
+            name: 'Token records',
+            fields: [
+              { code: 'name', type: 'text.short', label: 'Name', required: true },
+              { code: 'qrToken', type: 'text.short', label: 'Token' },
+            ],
+          },
+        ],
+      },
+      frontend: {
+        ...sourceDeclaration.frontend,
+        routes: [{ code: 'token-submit', path: '/token-submit', label: 'Token submit', surface: 'user' }],
+        publicAccess: {
+          policies: [{
+            code: 'token-submit-public',
+            routeCode: 'token-submit',
+            mode: 'anonymous',
+            resourceCode: 'token-records',
+            operations: ['create', 'draft.read', 'draft.update'],
+            fields: ['name'],
+            requiredFields: ['name'],
+            serverGeneratedFields: [{ field: 'qrToken', kind: 'random-token' }],
+            draft: { enabled: true },
+          }],
+        },
+      },
+    })
+  );
+  assert.deepEqual(
+    compiled.config.value.frontend.publicAccess?.policies[0]?.serverGeneratedFields,
+    [{ field: 'qrToken', kind: 'random-token' }]
+  );
+  assert.deepEqual(
+    compiled.config.value.frontend.publicAccess?.policies[0]?.fields,
+    ['name']
+  );
+});
+
 test('allows managed files, images, rich text, and bounded subtable projections', () => {
   const compiled = compileApplicationSources(
     defineOpenXiangdaApp({
