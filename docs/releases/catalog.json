@@ -3,6 +3,39 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.13.1",
+      "status": "reviewed",
+      "title": "OpenXiangda 2.13.1：管理后台优先的应用结构规范",
+      "summary": "明确标准管理后台是 OpenXiangda 2.0 应用骨架，并规定 OpenDesign 在后台与用户端 PC/移动端的页面归属和交接边界。",
+      "newFeatures": [
+        "Skill、中文前端资料和 OpenDesign 工作流新增后台骨架优先规则。",
+        "新应用模板 AGENTS 明确后台、用户端 PC 和移动端的分层开发与验收入口。"
+      ],
+      "fixes": [
+        "禁止使用单页 HTML、iframe 或独立假后台替代标准管理后台。"
+      ],
+      "affectedUsers": [
+        "使用 OpenXiangda 2.0 创建应用、设计页面或维护应用模板的 AI 和开发者。"
+      ],
+      "upgradeSteps": [
+        "升级 openxiangda 与 openxiangda-cli 到 2.13.1。",
+        "刷新项目 Skill，并按后台骨架优先规则重新检查页面归属和发布验收。"
+      ],
+      "knownLimitations": [
+        "本版本只更新规范、模板和发布资料，不自动改造已有应用页面。",
+        "标准审批、通知和具体业务流程仍需按应用需求声明和验收。"
+      ],
+      "compatibility": {
+        "node": ">=24",
+        "platform": "本轮不增加平台后端接口或数据库迁移要求",
+        "v1": "保持独立 legacy-v1 引擎"
+      },
+      "issues": [],
+      "sha256": "3be803becc123e1cfafd76b7e217c660a78d2e62f9d3cc7092c33872a1bf07b6",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.13.1"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.13.0",
       "status": "reviewed",
       "title": "OpenXiangda 2.13.0：原版 OpenDesign 设计体验",
