@@ -2475,6 +2475,7 @@ function validateAnonymousPublicAccess(
         'requiredFields',
         'ownRecordFields',
         'publicRecordFields',
+        'publicSubtableFields',
         'draft',
         'validations',
       ]
@@ -2557,6 +2558,59 @@ function validateAnonymousPublicAccess(
         );
       }
     }
+    const publicSubtableFields = Object.prototype.hasOwnProperty.call(
+      policy,
+      'publicSubtableFields'
+    )
+      ? object(
+          policy.publicSubtableFields,
+          `${policyPointer}/publicSubtableFields`
+        )
+      : null;
+    if (publicSubtableFields) {
+      if (Object.keys(publicSubtableFields).length > 64) {
+        fail(
+          'NATIVE_PUBLIC_SUBTABLE_FIELDS_INVALID',
+          `${policyPointer}/publicSubtableFields`
+        );
+      }
+      for (const [parentFieldCode, rawChildFields] of Object.entries(
+        publicSubtableFields
+      )) {
+        const parentField = resource.schema.fields.find(
+          (field: JsonObject) => String(field.code) === parentFieldCode
+        );
+        const childResourceCode = String(
+          parentField?.subtable?.resourceCode || ''
+        );
+        const childResource = resources.get(childResourceCode);
+        const childFieldTypes = new Map(
+          (childResource?.schema?.fields || []).map((field: JsonObject) => [
+            String(field.code),
+            String(field.type),
+          ])
+        );
+        const selected = uniqueStrings(
+          rawChildFields,
+          `${policyPointer}/publicSubtableFields/${parentFieldCode}`,
+          64
+        );
+        if (
+          !fields.includes(parentFieldCode) ||
+          declaredFields.get(parentFieldCode) !== 'subtable' ||
+          !childResource ||
+          selected.length < 1 ||
+          selected.some(field => !childFieldTypes.has(field)) ||
+          selected.some(field => childFieldTypes.get(field) === 'subtable') ||
+          selected.some(field => childFieldTypes.get(field) === 'signature')
+        ) {
+          fail(
+            'NATIVE_PUBLIC_SUBTABLE_FIELDS_INVALID',
+            `${policyPointer}/publicSubtableFields/${parentFieldCode}`
+          );
+        }
+      }
+    }
     if (operations.some(operation => operation.startsWith('public.'))) {
       if (!Object.prototype.hasOwnProperty.call(policy, 'publicRecordFields')) {
         fail(
@@ -2572,10 +2626,11 @@ function validateAnonymousPublicAccess(
       if (
         publicRecordFields.length < 1 ||
         publicRecordFields.some(field => !fields.includes(field)) ||
-        publicRecordFields.some(field =>
-          ['file', 'image', 'signature', 'text.rich', 'subtable'].includes(
-            declaredFields.get(field) || ''
-          )
+        publicRecordFields.some(
+          field =>
+            declaredFields.get(field) === 'signature' ||
+            (declaredFields.get(field) === 'subtable' &&
+              !publicSubtableFields?.[field])
         )
       ) {
         fail(
@@ -2723,6 +2778,22 @@ function compileAnonymousPublicAccess(config: JsonObject) {
           : {}),
         ...(policy.publicRecordFields
           ? { publicRecordFields: uniqueSorted(policy.publicRecordFields) }
+          : {}),
+        ...(policy.publicSubtableFields
+          ? {
+              publicSubtableFields: Object.fromEntries(
+                Object.entries(policy.publicSubtableFields)
+                  .sort(([left], [right]) => left.localeCompare(right))
+                  .map(([field, childFields]) => [
+                    field,
+                    uniqueSorted(
+                      Array.isArray(childFields)
+                        ? childFields.map(String)
+                        : []
+                    ),
+                  ])
+              ),
+            }
           : {}),
         ...(policy.draft ? { draft: { ...policy.draft } } : {}),
         ...(policy.validations

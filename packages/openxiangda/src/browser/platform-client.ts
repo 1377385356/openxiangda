@@ -824,6 +824,7 @@ export function createAnonymousPublicClient(input: {
           operations: string[];
           fields: string[];
           publicRecordFields?: string[];
+          publicSubtableFields?: Record<string, string[]>;
         };
         draft?: AnonymousPublicDraft;
       }>(`${base}/bootstrap`, {
@@ -976,6 +977,8 @@ export function createAnonymousPublicClient(input: {
       fileId: string,
       disposition: 'attachment' | 'inline' = 'attachment',
       variant?: 'thumbnail',
+      resourceCode?: string,
+      parentFieldCode?: string,
     ) {
       const query = new URLSearchParams({
         policyCode: policy(),
@@ -983,6 +986,8 @@ export function createAnonymousPublicClient(input: {
         disposition,
       });
       if (variant) query.set('variant', variant);
+      if (resourceCode) query.set('resourceCode', resourceCode);
+      if (parentFieldCode) query.set('parentFieldCode', parentFieldCode);
       return `${base}/files/${encodeURIComponent(fileId)}/content?${query}`;
     },
   };

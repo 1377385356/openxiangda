@@ -207,7 +207,7 @@ test('Chinese guidance routes anonymous access and current backend contracts', a
   const skill = await readFile(resolve(skillRoot, 'SKILL.md'), 'utf8');
   assert.match(skill, /references\/public-access\.md/);
   const publicAccess = await readFile(resolve(skillRoot, 'references/public-access.md'), 'utf8');
-  for (const token of ['frontend.publicAccess', 'createAnonymousPublicClient', 'own.list', 'own.read', 'public.list', 'public.read', 'publicRecordFields']) assert.ok(publicAccess.includes(token));
+  for (const token of ['frontend.publicAccess', 'createAnonymousPublicClient', 'own.list', 'own.read', 'public.list', 'public.read', 'publicRecordFields', 'publicSubtableFields']) assert.ok(publicAccess.includes(token));
   assert.match(publicAccess, /draft.*公共读取/);
   const backend = await readFile(resolve(skillRoot, 'references/backend.md'), 'utf8');
   for (const token of ['duplicateMatch', 'authz.capabilities', "kind: 'backend'", 'OpenXiangdaBusinessDataApiService']) assert.ok(backend.includes(token));

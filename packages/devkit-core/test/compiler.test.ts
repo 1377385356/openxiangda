@@ -3235,6 +3235,117 @@ test('compiles explicit anonymous public record reads with a separate field proj
   assert.match(compiled.contracts.typescript, /publicRecordFields/);
 });
 
+test('allows managed files, images, rich text, and bounded subtable projections', () => {
+  const compiled = compileApplicationSources(
+    defineOpenXiangdaApp({
+      ...sourceDeclaration,
+      frontend: {
+        ...sourceDeclaration.frontend,
+        routes: [
+          {
+            code: 'catalog',
+            path: '/catalog',
+            label: 'Catalog',
+            surface: 'user',
+          },
+        ],
+        publicAccess: {
+          policies: [
+            {
+              code: 'catalog-public',
+              routeCode: 'catalog',
+              mode: 'anonymous',
+              resourceCode: 'catalog-items',
+              operations: ['public.list', 'public.read'],
+              fields: ['name', 'attachment', 'cover', 'description', 'items'],
+              publicRecordFields: ['name', 'attachment', 'cover', 'description', 'items'],
+              publicSubtableFields: { items: ['sku', 'quantity'] },
+            },
+          ],
+        },
+      },
+      data: {
+        resources: [
+          ...sourceDeclaration.data!.resources,
+          {
+            code: 'catalog-items',
+            name: 'Catalog items',
+            fields: [
+              { code: 'name', type: 'text.short', label: 'Name' },
+              { code: 'attachment', type: 'file', label: 'Attachment' },
+              { code: 'cover', type: 'image', label: 'Cover' },
+              { code: 'description', type: 'text.rich', label: 'Description' },
+              {
+                code: 'items',
+                type: 'subtable',
+                label: 'Items',
+                subtable: {
+                  resourceCode: 'catalog-lines',
+                  foreignKey: 'parent_id',
+                  orderField: 'line_order',
+                },
+              },
+            ],
+          },
+          {
+            code: 'catalog-lines',
+            name: 'Catalog lines',
+            fields: [
+              { code: 'parent_id', type: 'uuid', label: 'Parent', required: true },
+              { code: 'line_order', type: 'number.integer', label: 'Order', required: true },
+              { code: 'sku', type: 'text.short', label: 'SKU' },
+              { code: 'quantity', type: 'number.integer', label: 'Quantity' },
+            ],
+          },
+        ],
+      },
+    })
+  );
+  const policy = compiled.config.value.frontend.publicAccess?.policies[0];
+  assert.deepEqual(policy?.publicSubtableFields, { items: ['quantity', 'sku'] });
+  assert.deepEqual(policy?.publicRecordFields, [
+    'attachment',
+    'cover',
+    'description',
+    'items',
+    'name',
+  ]);
+});
+
+test('rejects public signatures and nested public subtables', () => {
+  assert.throws(
+    () =>
+      defineOpenXiangdaApp({
+        ...sourceDeclaration,
+        frontend: {
+          ...sourceDeclaration.frontend,
+          routes: [{ code: 'catalog', path: '/catalog', label: 'Catalog', surface: 'user' }],
+          publicAccess: {
+            policies: [{
+              code: 'catalog-public',
+              routeCode: 'catalog',
+              mode: 'anonymous',
+              resourceCode: 'instruments',
+              operations: ['public.read'],
+              fields: ['name', 'signed'],
+              publicRecordFields: ['signed'],
+            }],
+          },
+        },
+        data: {
+          resources: [{
+            ...sourceDeclaration.data!.resources[0]!,
+            fields: [
+              ...sourceDeclaration.data!.resources[0]!.fields,
+              { code: 'signed', type: 'signature', label: 'Signature' },
+            ],
+          }, ...sourceDeclaration.data!.resources.slice(1)],
+        },
+      }),
+    error => diagnosticOf(error, 'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_INVALID', 'frontend.publicAccess.policies[0]')
+  );
+});
+
 test('rejects public reads without explicit scalar public fields', () => {
   assert.throws(
     () =>

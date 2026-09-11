@@ -43,8 +43,19 @@ impersonation token。mutation 必须携带 UUID `operationId`、`reason`，更�
 浏览器的本人记录访问只通过[`frontend.publicAccess` 专用合同](./public-access.md)开放；平台继续在
 专用端点和 PostgreSQL/RLS 中强制匿名主体、字段、策略及提交回执边界。需要向外部发布目录、公告或
 可用性列表时，使用同一合同的 `public.list`/`public.read` 与 `publicRecordFields`，明确绑定资源和
-字段；公共读取不需要 `draft`，不继承角色权限，也不开放普通 Native Data API、where、排序、聚合或
-导出参数。
+字段；`file`、`image` 和清洗后的 `text.rich` 可以公开，返回的托管文件引用只能通过匿名文件内容路由
+读取，不暴露对象存储地址。子表字段必须在 `publicSubtableFields` 中再次选择子资源字段，例如：
+
+```ts
+publicRecordFields: ['name', 'cover', 'description', 'items'],
+publicSubtableFields: { items: ['sku', 'quantity'] },
+```
+
+子表只支持一层、固定子字段和有界行数；嵌套子表、签名字段、未声明字段都会在编译或运行时拒绝。
+公共读取不需要 `draft`，不继承角色权限，也不开放普通 Native Data API、where、排序、聚合或导出参数。
+普通 Native Data API 的 `select`、`where`、批量、聚合和导出输入只适用于已认证用户或应用后端；把它暴露给匿名
+浏览器会产生资源/字段枚举、条件推断、查询放大和文件 ID 猜测面。公共端点可以复用 Native RLS 和文件
+绑定校验，但必须保留固定资源、固定字段、固定排序和固定分页的较小输入面。
 
 数值边界直接声明在字段上，`min`/`max` 为闭区间，并且只允许用于
 `number.integer` 和 `number.decimal`。跨字段约束声明在资源的

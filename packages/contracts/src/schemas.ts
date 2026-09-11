@@ -7492,6 +7492,16 @@ const anonymousPublicAccessSchema = {
             uniqueItems: true,
             items: stableCode,
           },
+          publicSubtableFields: {
+            type: "object",
+            maxProperties: 64,
+            additionalProperties: {
+              type: "array",
+              maxItems: 64,
+              uniqueItems: true,
+              items: stableCode,
+            },
+          },
           draft: {
             type: "object",
             additionalProperties: false,

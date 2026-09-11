@@ -12,7 +12,7 @@
 - 应用默认先建立并保留标准管理后台：后台 Shell、显式菜单、资源表单、数据列表、详情/编辑、权限和流程入口是应用骨架。OpenDesign 可优化后台外观但不能替换后台；用户端 PC 与移动端可分别使用 OpenDesign 的完整视觉和交互，通过 runtime/Data API 读取后台数据。禁止用单页 HTML、iframe 或独立假后台替代后台，发布前分别验收后台与用户端入口。
 - 图表等专业交互先检查现有依赖并评估成熟组件/开源库，报表优先评估 ECharts，按需加载并释放实例；平台数据、权限与聚合仍通过官方能力。详见 docs frontend。
 - 入口与导航验收从平台应用列表开始，检查应用根路径、后台首个有权菜单、登录返回及刷新深链接；不能只验证开发者给出的业务链接。
-- 无账号表单或外部公开数据读取都读取 `docs public-access`：使用 `frontend.publicAccess` 和专用客户端；提交策略声明 `create` 时必须启用 `draft`，只读公开目录使用 `public.list`/`public.read` 与 `publicRecordFields`，不创建 guest 角色、不传 draft id、不调用普通 Data API。标准审批、通知和后端均按需启用。
+- 无账号表单或外部公开数据读取都读取 `docs public-access`：使用 `frontend.publicAccess` 和专用客户端；提交策略声明 `create` 时必须启用 `draft`，只读公开目录使用 `public.list`/`public.read` 与 `publicRecordFields`，附件/图片/富文本按平台托管 URL 读取，子表必须声明 `publicSubtableFields`，不创建 guest 角色、不传 draft id、不调用普通 Data API。标准审批、通知和后端均按需启用。
 - 日常使用 dev 和聚焦测试。只验证时使用 check；授权部署时直接 deploy，它已包含检查、测试和构建。生产必须指定成功测试运行并复用同一版本。
 - deploy 默认持续反馈并跟踪平台结果；观察中断用 status <运行ID> --watch 继续，保留原运行，不重新构建。平台部署成功后仍需真实角色业务验收。
 - 开发开始先同步远端默认主分支；同一工作区只有一个写者。发布前将本轮源码、生成契约与记录合入并推送主分支，从干净且同步的主分支冻结候选；任务分支已推送不等于已合入主线。不要覆盖其他会话改动或自动合并所有分支。

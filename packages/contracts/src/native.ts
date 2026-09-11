@@ -338,6 +338,8 @@ export interface AnonymousPublicAccessPolicyV2 {
   requiredFields?: readonly string[];
   ownRecordFields?: readonly string[];
   publicRecordFields?: readonly string[];
+  /** Explicit child-field projection for public subtable values. */
+  publicSubtableFields?: Readonly<Record<string, readonly string[]>>;
   draft?: {
     enabled: true;
     inactivityTtlSeconds?: number;

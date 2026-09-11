@@ -4907,6 +4907,7 @@ function validateAnonymousPublicAccess(
     string,
     {
       fields: Map<string, string>;
+      subtables: Map<string, string>;
       requiredCreateFields: Set<string>;
       nativeCreate: boolean;
     }
@@ -4924,6 +4925,15 @@ function validateAnonymousPublicAccess(
           const declaration = object(field);
           return [string(declaration.code), string(declaration.type)] as const;
         })
+      );
+      const subtables = new Map(
+        fields
+          .map(field => object(field))
+          .filter(field => string(field.type) === 'subtable')
+          .map(field => [
+            string(field.code),
+            string(object(field.subtable).resourceCode),
+          ] as const)
       );
       const surface = object(resource.surface);
       const surfaceFields = object(surface.fields);
@@ -4949,7 +4959,7 @@ function validateAnonymousPublicAccess(
         generated.create !== false;
       return [
         string(resource.code),
-        { fields: fieldMap, requiredCreateFields, nativeCreate },
+        { fields: fieldMap, subtables, requiredCreateFields, nativeCreate },
       ] as const;
     })
   );
@@ -4974,6 +4984,30 @@ function validateAnonymousPublicAccess(
     const ownRecordFields = Array.isArray(policy.ownRecordFields)
       ? policy.ownRecordFields.map(string)
       : fields;
+    const publicSubtableFields = object(policy.publicSubtableFields);
+    const publicSubtableInvalid = Object.entries(publicSubtableFields).some(
+      ([parentFieldCode, rawChildFields]) => {
+        const childResourceCode = resource?.subtables.get(parentFieldCode);
+        const childResource = childResourceCode
+          ? resourceMap.get(childResourceCode)
+          : undefined;
+        const childFields = Array.isArray(rawChildFields)
+          ? rawChildFields.map(string)
+          : [];
+        return (
+          !fields.includes(parentFieldCode) ||
+          !childResourceCode ||
+          !childResource ||
+          childFields.length < 1 ||
+          childFields.length > 64 ||
+          new Set(childFields).size !== childFields.length ||
+          childFields.some(field => !childResource.fields.has(field)) ||
+          childFields.some(field =>
+            ['signature', 'subtable'].includes(childResource.fields.get(field) || '')
+          )
+        );
+      }
+    );
     const draft = object(policy.draft);
     const validations = Array.isArray(policy.validations)
       ? policy.validations
@@ -4988,6 +5022,7 @@ function validateAnonymousPublicAccess(
       'requiredFields',
       'ownRecordFields',
       'publicRecordFields',
+      'publicSubtableFields',
       'draft',
       'validations',
     ];
@@ -5017,6 +5052,8 @@ function validateAnonymousPublicAccess(
       (operations.includes('create') && policy.draft === undefined) ||
       new Set(ownRecordFields).size !== ownRecordFields.length ||
       ownRecordFields.some(field => !fields.includes(field)) ||
+      Object.keys(publicSubtableFields).length > 64 ||
+      publicSubtableInvalid ||
       (operations.some(operation => operation.startsWith('public.')) &&
         (!Array.isArray(policy.publicRecordFields) ||
           policy.publicRecordFields.length < 1 ||
@@ -5025,9 +5062,9 @@ function validateAnonymousPublicAccess(
           policy.publicRecordFields.some(
             (field: unknown) =>
               !fields.includes(string(field)) ||
-              ['file', 'image', 'signature', 'text.rich', 'subtable'].includes(
-                resourceFields?.get(string(field)) || ''
-              )
+              resourceFields?.get(string(field)) === 'signature' ||
+              (resourceFields?.get(string(field)) === 'subtable' &&
+                !Array.isArray(publicSubtableFields[string(field)]))
           ))) ||
       (operations.includes('draft.read') !== operations.includes('draft.update')) ||
       (operations.some(operation => operation.startsWith('draft.')) &&

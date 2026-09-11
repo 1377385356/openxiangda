@@ -111,8 +111,10 @@ export default defineOpenXiangdaApp({
 `own.list` 和 `own.read` 不是一般查询权限。服务端固定注入匿名主体、当前公开策略和已提交草稿
 回执条件，不接受调用方的 where、排序、投影或统计表达式。`public.list` 和 `public.read` 同样不是
 一般查询权限：它们只读取策略绑定资源在当前租户、应用和环境下的记录，服务端固定按创建时间和 id
-倒序分页，只返回 `publicRecordFields` 中显式列出的标量字段和记录 `id`。当前不支持调用方筛选、
-排序、聚合、导出，也不公开文件、图片、签名、富文本或子表字段。
+倒序分页，只返回 `publicRecordFields` 中显式列出的字段和记录 `id`。附件、图片和清洗后的富文本
+通过平台托管文件路由公开，不返回对象存储地址。子表字段必须在 `publicSubtableFields` 中再次显式
+列出子资源字段，服务端按声明顺序和行数上限返回一层子表数据。签名字段仍不公开。当前不支持调用方
+筛选、排序、聚合或导出。
 
 ## `draft` 与公共读取
 
@@ -126,7 +128,7 @@ export default defineOpenXiangdaApp({
 调用公共查询；它不会获得 `create`、`draft`、`own.*` 或普通 Native Data API 权限。不要为了查询已发布
 数据创建一个“空草稿”，也不要把 `draft id` 传给浏览器。
 
-例如，目录页面可以只发布三个字段：
+例如，目录页面可以只发布明确选定的字段：
 
 ```ts
 {
@@ -136,13 +138,30 @@ export default defineOpenXiangdaApp({
   resourceCode: 'catalog-items',
   operations: ['public.list', 'public.read'],
   fields: ['name', 'category', 'available', 'internalNote'],
-  publicRecordFields: ['name', 'category', 'available'],
+  publicRecordFields: ['name', 'category', 'available', 'items'],
+  publicSubtableFields: { items: ['sku', 'quantity'] },
 }
 ```
 
-`publicRecordFields` 必须是 `fields` 和资源字段的子集；编译器会拒绝未声明字段和当前版本不支持的
-敏感/多值字段。公共读取沿用明确公开的 `frontend.publicAccess` 路由和匿名浏览器凭证，不创建 guest
-角色或虚拟内部用户。
+`publicRecordFields` 必须是 `fields` 和资源字段的子集；附件、图片和 `text.rich` 可公开，签名仍被
+拒绝。公开子表字段必须配置 `publicSubtableFields`，其键是父资源的子表字段，值是子资源字段列表；
+编译器会拒绝未声明字段、嵌套子表和缺少子字段投影。公共读取沿用明确公开的 `frontend.publicAccess`
+路由和匿名浏览器凭证，不创建 guest 角色或虚拟内部用户。
+
+子表中的文件引用会自动带上受控的 `resourceCode` 与父字段绑定；应用如需为附件生成下载地址，使用
+`fileContentUrl(fileId, disposition, variant, resourceCode, parentFieldCode)`，不要自行拼接文件路径。
+
+## 为什么不开放普通 Native Data API
+
+普通 Native Data API 是内部或应用后端的可信数据边界，允许调用方提交
+`select`、`where`、`order`、批量查询、聚合和导出，并按当前登录用户角色执行行列权限。匿名
+公开发布的语义不同：它必须只绑定一个资源和不可变字段白名单，不接受调用方筛选、排序、聚合、
+导出或自带角色，也必须把文件绑定到公开记录和公开字段后再读取。
+
+直接把普通 Native Data API 暴露给浏览器会允许枚举内部资源和字段、通过筛选和计数推断未公开数据，
+放大查询资源消耗，并增加文件 ID 猜测、审计字段泄露和权限合同混用的风险。因此公共端点继续是
+专用的 `public.list`/`public.read`；底层可以复用 Native 的 RLS 和文件所有权校验，但不把 Native
+Data API 的输入面开放给匿名调用方。
 
 ## 页面客户端
 
