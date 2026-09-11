@@ -317,7 +317,9 @@ export type AnonymousPublicOperationV2 =
   | 'validate'
   | 'create'
   | 'own.list'
-  | 'own.read';
+  | 'own.read'
+  | 'public.list'
+  | 'public.read';
 
 export interface AnonymousPublicDuplicateValidationV2 {
   code: string;
@@ -335,6 +337,7 @@ export interface AnonymousPublicAccessPolicyV2 {
   fields: readonly string[];
   requiredFields?: readonly string[];
   ownRecordFields?: readonly string[];
+  publicRecordFields?: readonly string[];
   draft?: {
     enabled: true;
     inactivityTtlSeconds?: number;

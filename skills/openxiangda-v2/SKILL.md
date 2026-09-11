@@ -99,7 +99,7 @@ pnpm exec openxiangda --mcp-stdio --cwd <workspace>
 
 平台拥有身份、授权、业务数据、环境和部署状态。应用只声明自己的模型、页面和规则；普通 CRUD 走 Data API，标准审批和通知按需声明，真实业务动作才启用 Nest。编译器生成契约，应用不改生成输出、不维护第二份权限或能力目录。菜单建议只供初次复制到应用声明，不是运行时自动发现。
 
-匿名访问使用 frontend.publicAccess、createAnonymousPublicClient 与平台浏览器凭证，不建立 guest 角色或公开普通 Data API。角色并集来自当前用户，Perspective 只收窄读取。
+匿名访问使用 frontend.publicAccess、createAnonymousPublicClient 与平台浏览器凭证，不建立 guest 角色或公开普通 Data API。提交策略的 `create` 必须配套 `draft`；只读外部数据使用 `public.list`/`public.read` 和显式 `publicRecordFields`，不需要 draft，且不接受任意筛选、排序或投影。角色并集来自当前用户，Perspective 只收窄读取。
 
 ## 完成与失败
 

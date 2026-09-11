@@ -2440,6 +2440,8 @@ const ANONYMOUS_PUBLIC_OPERATIONS = new Set([
   'create',
   'own.list',
   'own.read',
+  'public.list',
+  'public.read',
 ]);
 
 function validateAnonymousPublicAccess(
@@ -2469,7 +2471,13 @@ function validateAnonymousPublicAccess(
       policy,
       ['code', 'routeCode', 'mode', 'resourceCode', 'operations', 'fields'],
       policyPointer,
-      ['requiredFields', 'ownRecordFields', 'draft', 'validations']
+      [
+        'requiredFields',
+        'ownRecordFields',
+        'publicRecordFields',
+        'draft',
+        'validations',
+      ]
     );
     const code = stableCode(policy.code, `${policyPointer}/code`);
     if (policyCodes.has(code)) {
@@ -2510,7 +2518,7 @@ function validateAnonymousPublicAccess(
     const operations = uniqueStrings(
       policy.operations,
       `${policyPointer}/operations`,
-      6
+      8
     );
     if (
       operations.length < 1 ||
@@ -2530,7 +2538,11 @@ function validateAnonymousPublicAccess(
     if (fields.length < 1 || fields.some(field => !declaredFields.has(field))) {
       fail('NATIVE_PUBLIC_FIELD_INVALID', `${policyPointer}/fields`);
     }
-    for (const optionalFieldSet of ['requiredFields', 'ownRecordFields']) {
+    for (const optionalFieldSet of [
+      'requiredFields',
+      'ownRecordFields',
+      'publicRecordFields',
+    ]) {
       if (!Object.prototype.hasOwnProperty.call(policy, optionalFieldSet))
         continue;
       const selected = uniqueStrings(
@@ -2542,6 +2554,33 @@ function validateAnonymousPublicAccess(
         fail(
           'NATIVE_PUBLIC_FIELD_SCOPE_INVALID',
           `${policyPointer}/${optionalFieldSet}`
+        );
+      }
+    }
+    if (operations.some(operation => operation.startsWith('public.'))) {
+      if (!Object.prototype.hasOwnProperty.call(policy, 'publicRecordFields')) {
+        fail(
+          'NATIVE_PUBLIC_RECORD_FIELDS_REQUIRED',
+          `${policyPointer}/publicRecordFields`
+        );
+      }
+      const publicRecordFields = uniqueStrings(
+        policy.publicRecordFields,
+        `${policyPointer}/publicRecordFields`,
+        64
+      );
+      if (
+        publicRecordFields.length < 1 ||
+        publicRecordFields.some(field => !fields.includes(field)) ||
+        publicRecordFields.some(field =>
+          ['file', 'image', 'signature', 'text.rich', 'subtable'].includes(
+            declaredFields.get(field) || ''
+          )
+        )
+      ) {
+        fail(
+          'NATIVE_PUBLIC_RECORD_FIELDS_INVALID',
+          `${policyPointer}/publicRecordFields`
         );
       }
     }
@@ -2568,6 +2607,12 @@ function validateAnonymousPublicAccess(
       .map((field: JsonObject) => String(field.code));
     if (operations.includes('create') && !nativeCreate) {
       fail('NATIVE_PUBLIC_CREATE_FIELDS_INCOMPLETE', `${policyPointer}/fields`);
+    }
+    if (
+      operations.includes('create') &&
+      !Object.prototype.hasOwnProperty.call(policy, 'draft')
+    ) {
+      fail('NATIVE_PUBLIC_DRAFT_REQUIRED', `${policyPointer}/draft`);
     }
     if (operations.includes('create')) {
       for (const fieldCode of requiredCreateFields) {
@@ -2675,6 +2720,9 @@ function compileAnonymousPublicAccess(config: JsonObject) {
           : {}),
         ...(policy.ownRecordFields
           ? { ownRecordFields: uniqueSorted(policy.ownRecordFields) }
+          : {}),
+        ...(policy.publicRecordFields
+          ? { publicRecordFields: uniqueSorted(policy.publicRecordFields) }
           : {}),
         ...(policy.draft ? { draft: { ...policy.draft } } : {}),
         ...(policy.validations

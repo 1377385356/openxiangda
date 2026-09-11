@@ -1000,6 +1000,9 @@ function compileAnonymousPublicAccess(config: OpenXiangdaAppConfig) {
         ...(policy.ownRecordFields
           ? { ownRecordFields: uniqueSorted([...policy.ownRecordFields]) }
           : {}),
+        ...(policy.publicRecordFields
+          ? { publicRecordFields: uniqueSorted([...policy.publicRecordFields]) }
+          : {}),
         ...(policy.draft
           ? {
               draft: {

@@ -3190,6 +3190,84 @@ test('compiles bounded anonymous public access with own-record history', () => {
   assert.match(compiled.contracts.typescript, /anonymousPublicAccess/);
 });
 
+test('compiles explicit anonymous public record reads with a separate field projection', () => {
+  const compiled = compileApplicationSources(
+    defineOpenXiangdaApp({
+      ...sourceDeclaration,
+      frontend: {
+        ...sourceDeclaration.frontend,
+        routes: [
+          {
+            code: 'instrument-catalog',
+            path: '/instrument/catalog',
+            label: 'Instrument catalog',
+            surface: 'user',
+          },
+        ],
+        publicAccess: {
+          policies: [
+            {
+              code: 'instrument-catalog-public',
+              routeCode: 'instrument-catalog',
+              mode: 'anonymous',
+              resourceCode: 'instruments',
+              operations: ['public.list', 'public.read'],
+              fields: ['name', 'college_id'],
+              publicRecordFields: ['name'],
+            },
+          ],
+        },
+      },
+    })
+  );
+  assert.deepEqual(
+    compiled.config.value.frontend.publicAccess?.policies[0],
+    {
+      code: 'instrument-catalog-public',
+      routeCode: 'instrument-catalog',
+      mode: 'anonymous',
+      resourceCode: 'instruments',
+      operations: ['public.list', 'public.read'],
+      fields: ['college_id', 'name'],
+      publicRecordFields: ['name'],
+    }
+  );
+  assert.match(compiled.contracts.typescript, /publicRecordFields/);
+});
+
+test('rejects public reads without explicit scalar public fields', () => {
+  assert.throws(
+    () =>
+      defineOpenXiangdaApp({
+        ...sourceDeclaration,
+        frontend: {
+          ...sourceDeclaration.frontend,
+          routes: [
+            {
+              code: 'instrument-catalog',
+              path: '/instrument/catalog',
+              label: 'Instrument catalog',
+              surface: 'user',
+            },
+          ],
+          publicAccess: {
+            policies: [
+              {
+                code: 'instrument-catalog-public',
+                routeCode: 'instrument-catalog',
+                mode: 'anonymous',
+                resourceCode: 'instruments',
+                operations: ['public.list'],
+                fields: ['name'],
+              },
+            ],
+          },
+        },
+      }),
+    error => diagnosticOf(error, 'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_INVALID', 'frontend.publicAccess.policies[0]')
+  );
+});
+
 test('rejects anonymous public access that widens route, field, or validation scope', () => {
   assert.throws(
     () =>

@@ -2,6 +2,7 @@
 
 OpenXiangda 2.0 支持没有平台账号的外部访客打开一个明确公开的用户页面，保存并续填草稿、
 上传平台托管附件、执行具名重复校验、正式提交，并在同一浏览器中查看自己已提交的列表和详情。
+应用也可以显式发布某个资源的部分记录字段，让外部浏览器分页查询公开记录或读取一条公开记录。
 
 该能力识别的是“持有同一个平台 HttpOnly 浏览器凭证的访问者”，不是经过实名验证的自然人。
 清除 Cookie、无痕模式、另一浏览器或另一设备都会成为新的匿名访问者，不能找回原草稿和记录。
@@ -104,9 +105,44 @@ export default defineOpenXiangdaApp({
 | `create` | 以幂等键正式提交当前草稿 |
 | `own.list` | 分页查看同一浏览器正式提交的记录 |
 | `own.read` | 查看同一浏览器的一条正式提交详情 |
+| `public.list` | 分页查看当前策略明确发布的资源记录 |
+| `public.read` | 读取当前策略明确发布的一条资源记录 |
 
 `own.list` 和 `own.read` 不是一般查询权限。服务端固定注入匿名主体、当前公开策略和已提交草稿
-回执条件，不接受调用方的 where、排序、投影或统计表达式。
+回执条件，不接受调用方的 where、排序、投影或统计表达式。`public.list` 和 `public.read` 同样不是
+一般查询权限：它们只读取策略绑定资源在当前租户、应用和环境下的记录，服务端固定按创建时间和 id
+倒序分页，只返回 `publicRecordFields` 中显式列出的标量字段和记录 `id`。当前不支持调用方筛选、
+排序、聚合、导出，也不公开文件、图片、签名、富文本或子表字段。
+
+## `draft` 与公共读取
+
+`draft` 是匿名提交的服务端事务载体，不是“外部访问”本身，也不是公共读取的前置条件。提交表单时，
+平台需要先把不完整的输入保存到当前匿名浏览器的草稿，并用 `revision` 做并发控制；附件元数据绑定
+到草稿；最终 `create` 会在同一数据库事务中锁定草稿、重新执行必填和重复校验、创建业务记录、标记
+草稿已提交，并用幂等键保证不重复创建。因此声明 `create` 必须同时声明 `draft: { enabled: true }`，
+而且同一策略的 `draft.read` 与 `draft.update` 必须成对出现。
+
+公共只读场景不需要草稿。只声明 `public.list`/`public.read` 和 `publicRecordFields` 的策略可以直接
+调用公共查询；它不会获得 `create`、`draft`、`own.*` 或普通 Native Data API 权限。不要为了查询已发布
+数据创建一个“空草稿”，也不要把 `draft id` 传给浏览器。
+
+例如，目录页面可以只发布三个字段：
+
+```ts
+{
+  code: 'catalog-public',
+  routeCode: 'catalog',
+  mode: 'anonymous',
+  resourceCode: 'catalog-items',
+  operations: ['public.list', 'public.read'],
+  fields: ['name', 'category', 'available', 'internalNote'],
+  publicRecordFields: ['name', 'category', 'available'],
+}
+```
+
+`publicRecordFields` 必须是 `fields` 和资源字段的子集；编译器会拒绝未声明字段和当前版本不支持的
+敏感/多值字段。公共读取沿用明确公开的 `frontend.publicAccess` 路由和匿名浏览器凭证，不创建 guest
+角色或虚拟内部用户。
 
 ## 页面客户端
 
@@ -133,6 +169,10 @@ const receipt = await client.submit(withPhoto.revision, crypto.randomUUID());
 
 const page = await client.listOwn({ pageSize: 20 });
 const detail = await client.getOwn(receipt.recordId);
+
+// 只读公开目录不需要先读取或保存 draft。
+const publicPage = await client.listPublic({ pageSize: 20 });
+const publicDetail = await client.getPublic(publicPage.items[0].data.id as string);
 ```
 
 必须先 `bootstrap()`。草稿更新始终使用最近返回的 revision，冲突时重新读取，不能覆盖写。

@@ -688,6 +688,10 @@ test('keeps the physical contracts capsule private and the Skill on public entri
   assert.match(publicAccess, /createAnonymousPublicClient/);
   assert.match(publicAccess, /own\.list/);
   assert.match(publicAccess, /own\.read/);
+  assert.match(publicAccess, /public\.list/);
+  assert.match(publicAccess, /public\.read/);
+  assert.match(publicAccess, /publicRecordFields/);
+  assert.match(publicAccess, /draft.*公共读取/);
 });
 
 test('exports resource and App Operation schema helpers from openxiangda/config', () => {

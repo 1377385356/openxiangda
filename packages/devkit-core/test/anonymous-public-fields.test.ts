@@ -12,6 +12,7 @@ function declaration(): OpenXiangdaAppDeclaration {
       publicAccess: { policies: [{
         code: 'public-apply', routeCode: 'apply', resourceCode: 'requests', mode: 'anonymous',
         operations: ['create'], fields: ['title', 'file', 'photo', 'choices'], requiredFields: ['title'],
+        draft: { enabled: true },
       }] },
     },
     data: { resources: [{

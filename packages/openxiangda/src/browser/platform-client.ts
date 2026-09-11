@@ -911,6 +911,28 @@ export function createAnonymousPublicClient(input: {
         `${base}/records/${encodeURIComponent(recordId)}?${query}`,
       );
     },
+    async listPublic(options: { cursor?: string; pageSize?: number } = {}) {
+      const query = new URLSearchParams({
+        policyCode: policy(),
+        environmentKey: environmentKey(),
+        pageSize: String(options.pageSize || 20),
+      });
+      if (options.cursor) query.set('cursor', options.cursor);
+      return await request<{
+        schemaVersion: 'openxiangda.anonymous-public-record-page/v2';
+        items: AnonymousPublicRecord[];
+        nextCursor: string | null;
+      }>(`${base}/public/records?${query}`);
+    },
+    async getPublic(recordId: string) {
+      const query = new URLSearchParams({
+        policyCode: policy(),
+        environmentKey: environmentKey(),
+      });
+      return await request<AnonymousPublicRecord>(
+        `${base}/public/records/${encodeURIComponent(recordId)}?${query}`,
+      );
+    },
     async upload(fieldCode: string, file: File) {
       const plan = await request<DataFileUploadPlan>(
         `${base}/files/uploads/initiate`,

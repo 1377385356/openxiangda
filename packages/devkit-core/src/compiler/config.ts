@@ -4868,6 +4868,8 @@ const ANONYMOUS_PUBLIC_OPERATIONS = new Set([
   'create',
   'own.list',
   'own.read',
+  'public.list',
+  'public.read',
 ]);
 
 function validateAnonymousPublicAccess(
@@ -4985,6 +4987,7 @@ function validateAnonymousPublicAccess(
       'fields',
       'requiredFields',
       'ownRecordFields',
+      'publicRecordFields',
       'draft',
       'validations',
     ];
@@ -5011,8 +5014,21 @@ function validateAnonymousPublicAccess(
       new Set(requiredFields).size !== requiredFields.length ||
       requiredFields.some(field => !fields.includes(field)) ||
       (operations.includes('create') && !resource?.nativeCreate) ||
+      (operations.includes('create') && policy.draft === undefined) ||
       new Set(ownRecordFields).size !== ownRecordFields.length ||
       ownRecordFields.some(field => !fields.includes(field)) ||
+      (operations.some(operation => operation.startsWith('public.')) &&
+        (!Array.isArray(policy.publicRecordFields) ||
+          policy.publicRecordFields.length < 1 ||
+          new Set(policy.publicRecordFields.map(string)).size !==
+            policy.publicRecordFields.length ||
+          policy.publicRecordFields.some(
+            (field: unknown) =>
+              !fields.includes(string(field)) ||
+              ['file', 'image', 'signature', 'text.rich', 'subtable'].includes(
+                resourceFields?.get(string(field)) || ''
+              )
+          ))) ||
       (operations.includes('draft.read') !== operations.includes('draft.update')) ||
       (operations.some(operation => operation.startsWith('draft.')) &&
         (policy.draft === undefined || draft.enabled !== true)) ||

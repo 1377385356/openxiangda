@@ -41,7 +41,10 @@ impersonation token。mutation 必须携带 UUID `operationId`、`reason`，更�
 
 匿名外部访问不属于 RBAC 角色或 current-user 行策略。公开表单、续填、附件、重复校验和同一
 浏览器的本人记录访问只通过[`frontend.publicAccess` 专用合同](public-access.md)开放；平台继续在
-专用端点和 PostgreSQL/RLS 中强制匿名主体、字段、策略及提交回执边界。
+专用端点和 PostgreSQL/RLS 中强制匿名主体、字段、策略及提交回执边界。需要向外部发布目录、公告或
+可用性列表时，使用同一合同的 `public.list`/`public.read` 与 `publicRecordFields`，明确绑定资源和
+字段；公共读取不需要 `draft`，不继承角色权限，也不开放普通 Native Data API、where、排序、聚合或
+导出参数。
 
 数值边界直接声明在字段上，`min`/`max` 为闭区间，并且只允许用于
 `number.integer` 和 `number.decimal`。跨字段约束声明在资源的

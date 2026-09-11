@@ -7452,7 +7452,7 @@ const anonymousPublicAccessSchema = {
           operations: {
             type: "array",
             minItems: 1,
-            maxItems: 6,
+            maxItems: 8,
             uniqueItems: true,
             items: {
               enum: [
@@ -7462,6 +7462,8 @@ const anonymousPublicAccessSchema = {
                 "create",
                 "own.list",
                 "own.read",
+                "public.list",
+                "public.read",
               ],
             },
           },
@@ -7479,6 +7481,12 @@ const anonymousPublicAccessSchema = {
             items: stableCode,
           },
           ownRecordFields: {
+            type: "array",
+            maxItems: 64,
+            uniqueItems: true,
+            items: stableCode,
+          },
+          publicRecordFields: {
             type: "array",
             maxItems: 64,
             uniqueItems: true,
