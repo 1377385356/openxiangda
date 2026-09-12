@@ -18,7 +18,7 @@ CI、离线开发或尚未发布的候选包使用 `pnpm openxiangda check --loc
 
 检查会写本地生成结果并按需初始化后端，不是只读操作。前置阶段失败后，下游阶段标为 skipped，不继续构建或上传。保留错误码、pointer、details 和下一步，修正原因后重试。
 
-源码、锁文件、依赖安装状态、工具链、构建环境和输出摘要均未变化时，检查自动复用已通过的 check/test/build，并在阶段结果标记 `reused: true`。目标平台的权限、密钥和模型条件每次重新预检。检查期间输入发生变化会停止并要求重新检查。缓存只保存摘要；缺少锁文件、外部本地依赖、符号链接、文件过多或无法核对时执行完整检查。手工修改 node_modules 不属于受支持的依赖管理方式，应修改依赖声明并重新安装。
+每次检查都直接执行当前工作区声明的 check/test/build 脚本；构建工具和包管理器可以自行使用缓存。目标平台的权限、密钥和模型条件仍在正式检查和部署前预检。Devkit 不维护额外的工作区摘要凭据，也不会因为分支、提交或文档变化引入候选复用分支。
 
 成功检查返回 `sealedArtifact.state: check-did-not-seal`、`sealed: false`、`usableForDeploy: false`。旧 AppPackage 不是当前检查结果。要发布测试环境可直接运行 deploy，它已包含完整检查；不要连续重复执行 check、test 和 build。
 
