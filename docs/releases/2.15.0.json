@@ -7,7 +7,7 @@
   "newFeatures": [
     "开发资料新增「自定义页面消费平台数据」：createNativeResourceClient 的列表/详情/写入/删除/上传用法、expectedRevision 乐观锁、transactNativeData 幂等事务与 batchAggregateNativeResources 服务端聚合。",
     "需求与开发流程新增「判定是否真的需要 Nest 后端」决策表，工作区 AGENTS 模板与按需后端资料同步指向；只有真实外部副作用或无法声明的跨资源不变量才启用 Nest。",
-    "devkit check/dev 新增应用 controller operation 门禁：未以 @OpenXiangdaOperation(appOperations.<code>) 绑定已声明 operation 的路由返回 OPENXIANGDA_NEST_CONTROLLER_OPERATION_REQUIRED，手写契约字面量返回 OPENXIANGDA_NEST_OPERATION_CONTRACT_MUST_BE_DECLARED。"
+    "devkit check/dev 新增应用 controller operation 门禁：未以 `@OpenXiangdaOperation(appOperations.具名操作)` 绑定已声明 operation 的路由返回 `OPENXIANGDA_NEST_CONTROLLER_OPERATION_REQUIRED`，手写契约字面量返回 `OPENXIANGDA_NEST_OPERATION_CONTRACT_MUST_BE_DECLARED`。"
   ],
   "fixes": [
     "修复交付流程简化后 CLI 黑盒仍期望已删除的 DELIVERY_GIT_COMMIT_REQUIRED 的问题；黑盒改为断言 AppSpec 章节门禁，verify:affected 恢复可用。"
@@ -18,7 +18,7 @@
   ],
   "upgradeSteps": [
     "将应用精确依赖升级到 openxiangda 2.15.0，刷新项目 Skill 与工作区指引后运行 check。",
-    "对报 OPENXIANGDA_NEST_CONTROLLER_OPERATION_REQUIRED 的路由：普通 CRUD 改用 createNativeResourceClient 或标准 CRUD 页面；真实业务动作先在 openxiangda.config.ts 声明 operation（capability kind: 'backend'），再绑定 @OpenXiangdaOperation(appOperations.<code>)。",
+    "对报 `OPENXIANGDA_NEST_CONTROLLER_OPERATION_REQUIRED` 的路由：普通 CRUD 改用 createNativeResourceClient 或标准 CRUD 页面；真实业务动作先在 openxiangda.config.ts 声明 operation（capability kind: 'backend'），再绑定 `@OpenXiangdaOperation(appOperations.具名操作)`。",
     "按 development#backend-decision 决策表复查既有后端使用面，完成 check、test、build 后按常规测试发布流程验证。"
   ],
   "knownLimitations": [
