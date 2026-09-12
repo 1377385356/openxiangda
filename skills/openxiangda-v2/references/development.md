@@ -27,6 +27,27 @@
 - 标准审批、待办与通知：按需声明平台能力，见[工作流](workflow-events.md)。
 - 真实事务或外部集成：使用[按需后端](backend.md)，不为每张表重写 CRUD 控制器。
 
+### 判定是否真的需要 Nest 后端 {#backend-decision}
+
+想写后端接口时，先按顺序核对平台已有的声明式答案；命中前几行的需求不得启用 Nest。
+普通数据增删改查永远由浏览器直接调用平台 Data API 或标准 CRUD 页面完成，
+应用 controller 不做记录列表、详情、新增、编辑、删除的转发。
+
+| 你以为需要写后端 | 平台已有的声明式答案 | 参考 |
+| --- | --- | --- |
+| 列表、筛选、排序、分页接口 | `createNativeResourceClient` 的 `list`，服务端条件树与分页 | [前端数据访问](frontend.md#data-access) |
+| 新增 / 编辑 / 删除接口 | 标准 CRUD 页面，或同一客户端的 `create` / `update` / `remove`（`expectedRevision` 乐观锁） | [前端数据访问](frontend.md#data-access) |
+| 提交防重、幂等重试 | `transactNativeData` / 事务请求自带 `idempotencyKey` 幂等回执 | [前端数据访问](frontend.md#data-access)、[按需后端](backend.md#business-action) |
+| 时间窗、状态前置、指定人角色校验 | 平台事务守卫：`operation-time`、`record-assert`、`record-exists`、`role-member` | [按需后端](backend.md#business-action) |
+| 统计报表数据 | Data API 服务端聚合 `batchAggregateNativeResources`（单个指标也用它），前端不拉全量求和 | [前端](frontend.md#component-selection) |
+| 导入 / 导出 | 标准 CRUD 的 `import` / `export` 动作声明 | [业务模块](application-foundation.md) |
+| 跨模型原子写、外部 API、硬件或第三方推送 | Nest 具名 operation + 平台事务，必要时事务内 `emitEvent` | [按需后端](backend.md) |
+
+启用 Nest 的唯一充分条件是：真实外部副作用，或现有守卫无法声明的跨资源业务不变量，
+且该动作已作为 operation 声明能力（`kind: 'backend'`）并由角色显式引用。
+"需要一点校验""需要默认值""需要联动查询"不是启用理由；校验优先字段规则与事务守卫，
+默认值优先服务端字段责任，联动查询优先 Data API 条件树。
+
 ## 实施与交接 {#iteration}
 
 开发使用 `pnpm openxiangda dev`，过程中运行必要的聚焦测试。交接前按[检查与验收](testing.md)验证；授权发布后按[交付](delivery.md)部署。失败保留错误码、位置和原始候选，依据平台恢复指令继续。

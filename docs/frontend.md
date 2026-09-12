@@ -63,6 +63,43 @@ capability、应用角色和数据策略。前端只根据当前登录用户完�
 可替换 Data API adapter。不要调用自定义 Nest CRUD、Function 或 Workflow 来绕过
 Data API。只有真正需要事务或外部系统的动作才使用同源 `/api`。
 
+### 自定义页面消费平台数据 {#data-access}
+
+自定义报表、工具页和用户端页面从 `openxiangda/core` 导入 `createNativeResourceClient`，
+用生成契约里的 surface 直接获得该资源的权威读写客户端；行、字段与操作授权由平台在
+每次请求时执行，页面不需要也不得复制权限逻辑：
+
+```tsx
+import { createNativeResourceClient } from 'openxiangda/core';
+import { resourceSurfaces } from '@app/contracts';
+
+const records = createNativeResourceClient('records', resourceSurfaces.records);
+
+// 服务端过滤、排序、分页；字段必须已声明，未声明字段直接报错
+const page = await records.list({
+  page: 1,
+  pageSize: 20,
+  where: { field: 'enabled', operator: 'eq', value: true },
+  sort: { field: 'createdAt', order: 'desc' },
+});
+
+const record = await records.get(id);
+await records.create(data);
+await records.update(id, expectedRevision, data);   // revision 冲突时明确报错
+await records.remove(id, expectedRevision);
+await records.upload('attachment', file, recordId);
+```
+
+跨模型原子写使用 `transactNativeData(operations, idempotencyKey)`：一次平台事务提交
+多个资源操作，携带幂等键，不确定的响应复用同一载荷重试，不产生第二份业务效果。
+多指标统计使用 `batchAggregateNativeResources` 在服务端聚合。导出使用
+`records.exportCsv(query, select)`，与列表共用同一查询条件。
+
+要求服务端校验、状态前置或角色核对时，优先事务守卫（见
+[判定是否真的需要 Nest 后端](./development.md#backend-decision)）；只有在真实外部
+副作用下才声明 Nest operation。自写 controller 转发单一资源的增删改查无法通过 `check`：
+每个应用路由必须以 `@OpenXiangdaOperation(appOperations.<code>)` 绑定已声明的 operation。
+
 默认仪器模块有 30 个字段，其中 `id/revision` 是 Data API 系统字段，28 个业务
 字段由资源声明。新增、编辑和详情共用同一份字段元数据。五个边界字段使用五个独立
 capability，不使用角色名或影子字段判断。

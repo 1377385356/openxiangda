@@ -6,7 +6,7 @@
 本项目使用 OpenXiangda 2.0。进入项目后以本地精确依赖和锁文件为准，使用 `pnpm openxiangda`；先运行 `context --json` 确认版本和绑定，使用 `docs` 按任务读取当前中文资料。
 
 - 模型、页面、导航和权限由应用声明一次；编译器生成契约。业务代码不改生成结果、不创建 platform/data、不复制平台 Router、字段组件、客户端或权限状态。
-- 当前用户、角色并集、数据授权和部署状态归平台；应用不保存凭据或授权快照。普通 CRUD 走 Data API，真实业务动作才按需启用 Nest。
+- 当前用户、角色并集、数据授权和部署状态归平台；应用不保存凭据或授权快照。普通 CRUD 走 Data API，真实业务动作才按需启用 Nest。想写后端接口时先按 docs development 的"判定是否真的需要 Nest 后端"逐行核对：列表/表单/详情/删除用 `createNativeResourceClient`，幂等、时间窗、状态前置用平台事务与守卫，聚合用服务端聚合；check 会拒绝未绑定已声明 operation 的应用 controller 路由。
 - 标准业务字段使用 `openxiangda/field-kit`；PC 补充控件使用 antd，移动使用有作用域的 `openxiangda/mobile` 和 MobileSurface，不引入上游全局重置。
 - 界面开发默认按 docs design-workflow 使用原版 OpenDesign 桌面和 design cli先设计整体视觉、可运行原型并实际走查，再实现。设备由真实任务决定；复用 Shell 导航事实、标准字段行为，通过 ui 和局部样式应用设计，不复制权限或导航状态。原型和 tokens 以 AppSpec assets 固定。模板 /home 不替代页面选型。
 - 应用默认先建立并保留标准管理后台：后台 Shell、显式菜单、资源表单、数据列表、详情/编辑、权限和流程入口是应用骨架。OpenDesign 可优化后台外观但不能替换后台；用户端 PC 与移动端可分别使用 OpenDesign 的完整视觉和交互，通过 runtime/Data API 读取后台数据。禁止用单页 HTML、iframe 或独立假后台替代后台，发布前分别验收后台与用户端入口。

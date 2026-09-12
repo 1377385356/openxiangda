@@ -1,6 +1,6 @@
 # NestJS 后端
 
-默认模板只包含 Web 和共享契约。只有需要执行服务端业务动作时才增加 NestJS。记录列表、详情、新增、编辑和删除直接由浏览器调用平台 Data API，不在 controller 中重写一遍。
+默认模板只包含 Web 和共享契约。只有需要执行服务端业务动作时才增加 NestJS。记录列表、详情、新增、编辑和删除直接由浏览器调用平台 Data API，不在 controller 中重写一遍。启用前先按[判定是否真的需要 Nest 后端](./development.md#backend-decision)逐行核对：幂等、时间窗、状态前置、角色核对、聚合、导入导出都有声明式答案；只有真实外部副作用或无法声明的跨资源不变量才是启用理由。`check` 会拒绝未以 `@OpenXiangdaOperation(appOperations.<code>)` 绑定已声明 operation 的应用路由。
 
 平台网关验证当前用户完整的应用角色并集，并把经平台重验的角色、capability 与可选 Perspective 交给 Nest SDK。业务 controller 使用生成的 operation 合同和 capability 装饰器；平台仍是身份与授权的唯一所有者。请求作用域 `OpenXiangdaDataApiService` 自动继承 Perspective 读取投影；绕过 Data API 的自定义读取才使用 `@CurrentPerspective()` 显式投影。应用代码不替换身份、不保存平台凭据，也不建立第二套用户或权限状态。
 

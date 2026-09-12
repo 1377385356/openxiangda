@@ -77,7 +77,10 @@ import {
 import { validateApplicationUiContract } from './application-ui-contract.js';
 import { initializeOptionalBackend } from './optional-backend.js';
 import { buildPermissionReview } from './compiler/permission-review.js';
-import { validateNestInjectionContract } from "./nest-injection-contract.js";
+import {
+  validateNestControllerOperationContract,
+  validateNestInjectionContract,
+} from "./nest-injection-contract.js";
 import {
   collectWorkspaceToolchainDependencies,
   defaultDevkitCoreToolchainCapsule,
@@ -1261,6 +1264,7 @@ export class OpenXiangdaApplicationServices {
       ...validateAppConfig(workspace.config),
       ...this.versionTrainDiagnostics(workspace),
       ...validateNestInjectionContract(workspace.root),
+      ...validateNestControllerOperationContract(workspace.root),
       ...validateApplicationUiContract(workspace.root, workspace.config.frontend.root),
       ...advisoryAppSpecDiagnostics(appSpec.diagnostics),
       ...advisoryAppSpecDiagnostics(lifecycle.diagnostics),
@@ -2219,7 +2223,10 @@ export class OpenXiangdaApplicationServices {
         capsuleDiagnostics
       );
     }
-    const injectionDiagnostics = validateNestInjectionContract(workspace.root);
+    const injectionDiagnostics = [
+      ...validateNestInjectionContract(workspace.root),
+      ...validateNestControllerOperationContract(workspace.root),
+    ];
     if (injectionDiagnostics.length) {
       return this.result(
         "dev",
