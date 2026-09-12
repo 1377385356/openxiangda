@@ -1594,8 +1594,8 @@ test("orchestrates runtime credential rotation as one same-version rolling deplo
   }
 });
 
-test('再次检查复用已验证脚本，但输出或源码变化会重新执行', async () => {
-  const root = mkdtempSync(join(tmpdir(), 'oxa-check-reuse-'));
+test('每次检查都执行显式脚本，不维护 Devkit 私有验证缓存', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'oxa-check-simple-'));
   try {
     mkdirSync(join(root, 'apps/web/dist'), { recursive: true });
     writeFileSync(join(root, 'apps/web/dist/index.html'), '<main>ready</main>');
@@ -1612,15 +1612,11 @@ test('再次检查复用已验证脚本，但输出或源码变化会重新执�
     const workspaceContext = await services.workspaceContext(root);
     const validateContext = new Ajv2020({ strict: false }).compile(contractSchemas.workspaceContext);
     assert.equal(validateContext(workspaceContext.data), true, JSON.stringify(validateContext.errors));
-    assert.ok(existsSync(join(root, '.openxiangda/build/validation-evidence.json')), JSON.stringify(first));
-    const reused = await services.check(root);
-    assert.equal(reused.ok, true);
-    assert.equal(reused.data?.stages.length, 3);
-    assert.ok(reused.data?.stages.every(stage => stage.reused === true));
-    writeFileSync(join(root, 'apps/web/dist/index.html'), '<main>changed</main>');
-    const rebuilt = await services.check(root);
-    assert.equal(rebuilt.ok, true);
-    assert.ok(rebuilt.data?.stages.every(stage => !stage.reused));
+    const second = await services.check(root);
+    assert.equal(second.ok, true, JSON.stringify(second.diagnostics));
+    assert.equal(second.data?.stages.length, 3);
+    assert.ok(second.data?.stages.every(stage => stage.reused !== true));
+    assert.equal(existsSync(join(root, '.openxiangda/build/validation-evidence.json')), false);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 

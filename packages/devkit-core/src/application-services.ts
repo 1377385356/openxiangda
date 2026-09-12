@@ -1,9 +1,8 @@
 import type { DeploymentStrategy } from 'openxiangda-contracts';
 import { cloneSourceGit, initializeSourceGit, installSourceCredential, pushSourceGit } from './source-git.js';
 import { randomUUID } from "node:crypto";
-import { publishedDeliverySource, assertDeliverySourceUnchanged, DeliverySourceError } from './delivery-source.js';
+import { publishedDeliverySource, DeliverySourceError } from './delivery-source.js';
 import { operationStage, skippedOperationStage, updateOperationStage } from './operation-progress.js';
-import { deliveryInputDigest, reusableValidation, recordValidation, recordSealedCandidate, reusableSealedCandidate, type DeliveryCacheContext } from './delivery-cache.js';
 import { developmentLifecycle, summarizeLifecycle, lifecycleAtCommit, verifyBusinessAcceptance } from './development-lifecycle.js';
 import { runCommandProcess } from './command-process.js';
 import { compileLocalConfiguration } from './configuration-preflight.js';
@@ -1339,17 +1338,7 @@ export class OpenXiangdaApplicationServices {
       ok: boolean; exitCode: number | null; output: string;
       reused?: boolean;
     }> = [];
-    const cache = this.deliveryCacheContext(workspace);
-    const inputDigest = deliveryInputDigest(cache);
-    const reusable = reusableValidation(cache, inputDigest);
     for (const name of ["check", "test", "build"]) {
-      if (reusable) {
-        await operationStage(name, `${this.packageScriptLabel(name)}（复用已验证结果）`, async () => {
-          updateOperationStage(name, `${this.packageScriptLabel(name)}（复用已验证结果）`, { reused: true, inputDigest, outputDigest: reusable.outputDigest });
-        });
-        stages.push({ name, state: 'passed', ok: true, exitCode: 0, output: '输入与构建输出摘要未变，复用已通过的本地检查', reused: true });
-        continue;
-      }
       if (stages.some(stage => stage.state === 'failed')) {
         stages.push({ name, state: 'skipped', ok: false, exitCode: null, output: '前置阶段失败，未执行' });
         skippedOperationStage(name, this.packageScriptLabel(name));
@@ -1369,12 +1358,6 @@ export class OpenXiangdaApplicationServices {
           { output: stage.output }
         )
       );
-    }
-    if (!reusable && stages.every(stage => stage.state === 'passed')) {
-      try { recordValidation(cache, inputDigest); }
-      catch (error) {
-        diagnostics.push(this.diagnostic('OPENXIANGDA_VALIDATION_INPUT_CHANGED', (error as Error).message, 'workspace', '等待源码修改结束后重新运行 openxiangda check'));
-      }
     }
     const passed = !diagnostics.some(item => item.severity === "error");
     const sealedArtifact = this.writeCheckSealedArtifactStatus(
@@ -1691,8 +1674,7 @@ export class OpenXiangdaApplicationServices {
       this.toolchainVersion
     );
     const client = await this.client(workspace.root);
-    const candidate = await reusableSealedCandidate(this.deliveryCacheContext(workspace), source);
-    const runtimeCapacity = await this.runtimeCapacityPlan(workspace, client, await client.capabilities(), input, candidate?.package.digest);
+    const runtimeCapacity = await this.runtimeCapacityPlan(workspace, client, await client.capabilities(), input);
     return this.ok("deployment.plan", workspace.context.workspace, {
       runtimeCapacity,
       environment: input.environment,
@@ -1753,9 +1735,7 @@ export class OpenXiangdaApplicationServices {
       requiredPlatformCapabilities(workspace.config)
     );
     const hasBackend = backendRuntimeRequired(workspace.config);
-    const cache = this.deliveryCacheContext(workspace);
-    const capacityCandidate = await reusableSealedCandidate(cache, source, input.backendImage);
-    const runtimeCapacity = await this.runtimeCapacityPlan(workspace, client, capabilities, input, capacityCandidate?.package.digest);
+    const runtimeCapacity = await this.runtimeCapacityPlan(workspace, client, capabilities, input);
     if (runtimeCapacity.sufficient === false) {
       throw new ControlPlaneError(409, 'APPLICATION_V2_RUNTIME_QUOTA_INSUFFICIENT', '应用运行资源不足，已在检查脚本与镜像构建前停止；请释放闲置后端或调整平台配额后重试', runtimeCapacity.capacity);
     }
@@ -1768,17 +1748,7 @@ export class OpenXiangdaApplicationServices {
     if (!lifecycle.readyForTest) return this.result('deploy', workspace.context.workspace, { lifecycle: summarizeLifecycle(lifecycle) }, lifecycle.diagnostics);
     const checked = await this.check(workspace.root, input.environment);
     if (!checked.ok) return { ...checked, operation: "deploy" };
-    await assertDeliverySourceUnchanged(workspace.root, source);
-    const preparedInputDigest = deliveryInputDigest(cache);
-    const reused = await operationStage('candidate', '核对可复用的不可变制品', async () => {
-      const candidate = await reusableSealedCandidate(cache, source, input.backendImage);
-      updateOperationStage('candidate', candidate ? '复用已验证的不可变制品' : '准备构建新制品', { reused: !!candidate, ...(candidate ? { packageDigest: candidate.package.digest } : {}) });
-      return candidate;
-    });
-    if (capacityCandidate && capacityCandidate.package.digest !== reused?.package.digest) {
-      throw new ControlPlaneError(409, 'OPENXIANGDA_RUNTIME_CAPACITY_CANDIDATE_CHANGED', '检查过程中可复用制品发生变化，请重新预检后部署');
-    }
-    const backendImage = !reused && hasBackend
+    const backendImage = hasBackend
       ? input.backendImage
         ? input.backendImage
         : (
@@ -1793,25 +1763,13 @@ export class OpenXiangdaApplicationServices {
             }))
           ).reference
       : undefined;
-    await assertDeliverySourceUnchanged(workspace.root, source);
-    const built = reused ? this.ok('build', workspace.context.workspace, {
-      ...reused, sealedArtifact: this.sealedArtifactStatus(workspace, reused.package.digest, true),
-    }) : await operationStage('seal', '校验并冻结不可变制品', () => this.buildSealed({
+    const built = await operationStage('build', '构建并准备应用制品', () => this.buildSealed({
       ...input,
       root: workspace.root,
       ...(backendImage ? { backendImage } : {}),
       skipWorkspaceBuild: true,
     }));
     if (!built.ok || !built.data) return built;
-    if (preparedInputDigest && preparedInputDigest !== deliveryInputDigest(cache)) {
-      throw new DeliverySourceError('OPENXIANGDA_VALIDATION_INPUT_CHANGED', '密封期间源码、依赖或构建环境发生变化，已停止上传', '等待修改结束后重新运行 openxiangda deploy');
-    }
-    if (!reused) recordSealedCandidate(cache, built.data.package);
-    const retained = await publishedDeliverySource(workspace.root, source.commit);
-    if (retained.repository !== source.repository) {
-      throw new DeliverySourceError('DELIVERY_REPOSITORY_CHANGED', '发布准备期间绑定远端发生变化', '恢复并核对原来源仓库，再发布同一候选');
-    }
-    await assertDeliverySourceUnchanged(workspace.root, source);
     const deployment = await (
       await import("./deployment.js")
     ).submitAppPackage({
@@ -1838,18 +1796,16 @@ export class OpenXiangdaApplicationServices {
 
   private async runtimeCapacityPlan(workspace: LoadedWorkspace, client: OpenXiangdaControlPlaneClient,
     capabilities: Awaited<ReturnType<OpenXiangdaControlPlaneClient['capabilities']>>,
-    input: { environment: 'preproduction'; environmentId?: string; idempotencyKey?: string; deploymentStrategy?: DeploymentStrategy }, packageDigest?: string) {
+    input: { environment: 'preproduction'; environmentId?: string; idempotencyKey?: string; deploymentStrategy?: DeploymentStrategy }) {
     const result = await operationStage('runtime-capacity', '只读预检运行资源配额', () => client.runtimeCapacityPreflight(workspace.config.app.code, capabilities, {
       schemaVersion: RUNTIME_CAPACITY_PREFLIGHT_SCHEMA,
       ...(input.deploymentStrategy ? { deploymentStrategy: input.deploymentStrategy } : {}),
       environmentKey: input.environment,
       ...(input.environmentId ? { environmentId: input.environmentId } : {}),
       backend: backendRuntimeRequired(workspace.config) ? { isolation: workspace.config.backend.isolation || 'shared', resourceProfile: workspace.config.backend.resourceProfile || 'light' } : null,
-      ...(packageDigest ? { packageDigest, idempotencyKey: input.idempotencyKey || `deploy:${packageDigest}:${input.environment}${input.deploymentStrategy === 'maintenance-replace' ? ':maintenance-replace' : ''}` } : {}),
     }));
     const { assertRuntimeCapacityPreflight } = await import('./deployment.js');
     assertRuntimeCapacityPreflight(result, input.environmentId, input.deploymentStrategy);
-    if (result.basis === 'existing-run' && !packageDigest) throw new ControlPlaneError(409, 'OPENXIANGDA_RUNTIME_CAPACITY_PREFLIGHT_RESULT_INVALID', '平台返回了未绑定本地候选的原运行');
     return result;
   }
 
@@ -2615,14 +2571,6 @@ export class OpenXiangdaApplicationServices {
 
   private get toolchainVersion() {
     return this.options.toolchainVersion || OPENXIANGDA_TOOLCHAIN_VERSION;
-  }
-
-  private deliveryCacheContext(workspace: LoadedWorkspace): DeliveryCacheContext {
-    return {
-      root: workspace.root, frontendRoot: workspace.config.frontend.root,
-      ...(backendRuntimeRequired(workspace.config) ? { backendRoot: workspace.config.backend.root } : {}),
-      toolchain: { version: this.toolchainVersion, capsule: this.toolchainCapsule, validatorDigest: NATIVE_CONFIGURATION_VALIDATOR_DIGEST },
-    };
   }
 
   private get toolchainCapsule() {
