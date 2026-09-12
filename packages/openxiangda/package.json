@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.14.0",
+  "version": "2.15.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -67,13 +67,13 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.4.3",
+    "openxiangda-cli": "2.4.4",
     "openxiangda-contracts": "2.12.0",
-    "openxiangda-devkit-core": "2.10.0",
+    "openxiangda-devkit-core": "2.11.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.18",
+    "openxiangda-mcp": "2.0.19",
     "openxiangda-nest": "2.3.3",
-    "openxiangda-skill-kit": "2.1.2",
+    "openxiangda-skill-kit": "2.1.3",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -139,43 +139,42 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.14.0",
+    "version": "2.15.0",
     "status": "reviewed",
-    "title": "OpenXiangda 2.14.0：匿名公开预约契约闭环",
-    "summary": "为匿名公开数据读取和提交补齐固定过滤、服务端生成字段、跨资源预约规则校验与同路由多策略支持，并统一客户端、编译器和平台契约。",
+    "title": "OpenXiangda 2.15.0：CRUD 复用 Data API 引导与 Nest 路由门禁",
+    "summary": "为普通 CRUD 补齐浏览器端 Data API 正面路径文档与 Nest 启用决策表，并在 check/dev 拒绝未绑定已声明 operation 的应用 controller 路由，使数据增删改查默认回到平台统一接口。",
     "newFeatures": [
-      "匿名公开策略支持固定服务端过滤、服务端随机令牌生成和跨资源 schedule 校验；提交事务返回 generated 字段。",
-      "同一用户路由可以按设备或资源声明多条匿名策略，浏览器客户端以策略码隔离 bootstrap 缓存并显式协商客户端契约版本。",
-      "匿名公开客户端支持公开列表/详情读取、草稿提交回执和受控的文件、富文本及子表字段投影。"
+      "开发资料新增「自定义页面消费平台数据」：createNativeResourceClient 的列表/详情/写入/删除/上传用法、expectedRevision 乐观锁、transactNativeData 幂等事务与 batchAggregateNativeResources 服务端聚合。",
+      "需求与开发流程新增「判定是否真的需要 Nest 后端」决策表，工作区 AGENTS 模板与按需后端资料同步指向；只有真实外部副作用或无法声明的跨资源不变量才启用 Nest。",
+      "devkit check/dev 新增应用 controller operation 门禁：未以 @OpenXiangdaOperation(appOperations.<code>) 绑定已声明 operation 的路由返回 OPENXIANGDA_NEST_CONTROLLER_OPERATION_REQUIRED，手写契约字面量返回 OPENXIANGDA_NEST_OPERATION_CONTRACT_MUST_BE_DECLARED。"
     ],
     "fixes": [
-      "修复匿名公开策略把合法驼峰字段名（例如 visitDate、openAt、qrToken）按全小写稳定 code 错误拒绝的问题；JSON Schema、Devkit 和原生编译器现在使用统一字段 code 规则。",
-      "平台服务端强制应用公开过滤，匿名草稿过期时清理关联文件，并在缺少客户端版本声明时收窄 source hosting 与 OAuth 能力。"
+      "修复交付流程简化后 CLI 黑盒仍期望已删除的 DELIVERY_GIT_COMMIT_REQUIRED 的问题；黑盒改为断言 AppSpec 章节门禁，verify:affected 恢复可用。"
     ],
     "affectedUsers": [
-      "需要在没有平台账号的情况下读取公开数据或提交草稿的 OpenXiangda 2.0 应用开发者。",
-      "使用匿名预约、服务端生成核验令牌或跨资源提交校验的应用，以及部署匹配平台服务端的运维人员。"
+      "所有 OpenXiangda 2.0 应用开发者和 AI 辅助开发会话；新指引让列表、表单、详情、删除优先复用平台 Data API 与事务守卫。",
+      "维护含自写 Nest controller 的既有应用：升级后 check 会要求绑定已声明 operation 或移除该路由。"
     ],
     "upgradeSteps": [
-      "先部署包含匿名公开固定过滤、生成字段和 schedule 校验的匹配平台组合，再将应用精确依赖升级到 openxiangda 2.14.0。",
-      "刷新项目 Skill 和工作区指引，重新生成契约并运行项目 check、test、build；匿名策略中的字段引用可继续使用合法驼峰命名。",
-      "在测试环境验证跨浏览器草稿隔离、幂等提交、停用前置资源拒绝和管理员核验，再使用同一测试版本晋级生产。"
+      "将应用精确依赖升级到 openxiangda 2.15.0，刷新项目 Skill 与工作区指引后运行 check。",
+      "对报 OPENXIANGDA_NEST_CONTROLLER_OPERATION_REQUIRED 的路由：普通 CRUD 改用 createNativeResourceClient 或标准 CRUD 页面；真实业务动作先在 openxiangda.config.ts 声明 operation（capability kind: 'backend'），再绑定 @OpenXiangdaOperation(appOperations.<code>)。",
+      "按 development#backend-decision 决策表复查既有后端使用面，完成 check、test、build 后按常规测试发布流程验证。"
     ],
     "knownLimitations": [
-      "schedule 首版只表达有界的预约窗口复核，不提供容量配额、取消改期、通知或审批流程；这些能力需要单独的应用变更评审。",
-      "匿名公开接口仍只接受策略声明的固定过滤和字段投影，不能由调用方动态追加筛选、排序或投影。",
-      "发行包和平台部署检查不能替代目标环境的真实角色、浏览器和性能验收。"
+      "门禁是静态判定：已声明 operation 但方法体仍只转发普通 CRUD 的 controller 不会被拒绝；该层由设计评审与后续 AppSpec 能力复用清单兜底。",
+      "类级别 @OpenXiangdaOperation 绑定不被接受，需要逐路由方法绑定同一生成契约。",
+      "文档与门禁不替代目标环境的真实角色、浏览器和性能验收。"
     ],
     "compatibility": {
       "node": ">=24",
       "workspaceGenerations": [
         "v2"
       ],
-      "platform": "需要匹配 OpenXiangda 2.0 匿名公开策略、固定过滤、服务端生成字段和 schedule 校验的服务端契约；V1 引擎保持独立。",
+      "platform": "不要求平台服务端变更；已有应用升级后 check 行为变化见升级步骤。",
       "v1": "不改变 V1 运行时或应用。"
     },
     "issues": [],
-    "sha256": "5b2dfbcf66a0e14d8619914b1d19123f84d35640978ffac4a6c2bef3e8deef8a",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.14.0"
+    "sha256": "e729f32e3fce401a706d19028e510a471e120a9d68affc253dd3fed8f2642b28",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.15.0"
   }
 }
