@@ -1,8 +1,8 @@
 {
   "schemaVersion": "openxiangda.release-notes/v1",
-  "version": "2.17.2",
+  "version": "2.18.0",
   "status": "reviewed",
-  "title": "OpenXiangda 2.17.2：用户标准面闭合修复、列表可排序声明与发布提效",
+  "title": "OpenXiangda 2.18.0：用户标准面闭合修复、列表可排序声明与发布提效",
   "summary": "共享编译器完成用户标准面契约闭合校验；模块列表视图新增 sortableFields 排序声明（GAP-MODULE-001）；发布验证按浏览器字节分级并收窄浏览器证据指纹，纯工具链补丁不再触发浏览器矩阵。",
   "newFeatures": [
     "列表视图新增 sortableFields：与 filterFields/searchableFields 同构声明可排序列；defaultSort.field 保持隐式可排序，重复容忍；引用未声明字段报编译错误；低层 data.resources 语义不变。",
@@ -17,7 +17,7 @@
     "从 data.resources 迁移到模块化声明、需要列表列头排序能力的应用（如数智工会 szgh-v2）。"
   ],
   "upgradeSteps": [
-    "应用精确依赖升级到 openxiangda 2.17.2 后重新运行 check 与部署。",
+    "应用精确依赖升级到 openxiangda 2.18.0 后重新运行 check 与部署。",
     "模块化迁移的列表排序用 sortableFields 声明，与既有低层声明逐字段对齐。"
   ],
   "knownLimitations": [
