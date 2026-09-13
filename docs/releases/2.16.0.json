@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.16.0",
+  "status": "reviewed",
+  "title": "OpenXiangda 2.16.0：相机图片直传与声明一次写对",
+  "summary": "浏览器托管上传按 maxPixels 契约预检并自动降采样超限图片，声明校验放宽可推导默认值、报错附带可复制片段，新增声明速查主题与事务快照/幂等冲突助手。",
+  "newFeatures": [
+    "资源与匿名托管上传通道读取上传计划发布的 maxPixels，超限图片本地降采样后重新发起上传；旧平台无契约时回退 40MP 保护阈值。",
+    "openxiangda/nest 新增 optionSnapshot、userSnapshot、departmentSnapshot、resourceSnapshot 快照值助手与 isIdempotencyConflict 冲突判定，事务写快照字段不再手工拼形状。",
+    "新增 declarations-cheatsheet 中文主题（入口 Skill 已路由）：按错误码到规则到正确片段组织全部隐式声明规则，并附两模型起步骨架。"
+  ],
+  "fixes": [
+    "number.integer 允许可选 precision 位数并拒绝 scale 小数位；number.decimal 精度报错附带合法示例，resource-ref 缺 source、平台保留能力与 AI 写操作副作用报错的补救文本直接携带正确片段。",
+    "audit.read 支持 true 声明糖自动绑定资源读能力；CRUD 视图 list/form/detail 省略 model 时继承视图模型。",
+    "业务验收报告性能条目的报错逐字段定位，指出缺失字段名与最少实义字符要求。"
+  ],
+  "affectedUsers": [
+    "所有在表单中上传手机照片或长截图的 OpenXiangda 2.0 应用用户与开发者。",
+    "首次编写 openxiangda.config.ts 声明、在 Nest 事务中写 option/user/resource-ref 字段的开发者与 AI 工作流。"
+  ],
+  "upgradeSteps": [
+    "应用精确依赖升级到 openxiangda 2.16.0 并刷新项目 Skill；普通 CRUD 与既有声明无需修改。",
+    "新的图片字段上传自动获得像素预检；配合已修复 maxPixels 契约的平台（100MP 上限）效果最佳，旧平台自动回退压缩保护。",
+    "后端事务代码可选用新的快照值助手与 isIdempotencyConflict 复核模式，参见 backend 文档快照写入与幂等冲突两节。"
+  ],
+  "knownLimitations": [
+    "前端压缩依赖浏览器 createImageBitmap；极旧的浏览器跳过预检，由服务端明确错误兜底。",
+    "操作通道（operation-managed）上传不自动改写业务文件内容，超限时返回带尺寸的 PIXEL_LIMIT_EXCEEDED，由调用方自行压缩。"
+  ],
+  "compatibility": {
+    "node": ">=24",
+    "workspaceGenerations": ["v2"],
+    "platform": "maxPixels 契约与 100MP 处理上限需要配套平台版本；旧平台通过 40MP 回退阈值继续工作。V1 引擎保持独立。",
+    "v1": "不改变 V1 运行时或应用。"
+  },
+  "issues": []
+}
