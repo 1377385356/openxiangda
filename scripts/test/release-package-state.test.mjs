@@ -7,6 +7,7 @@ import {
   isNpmPackageNotFound,
   manifestSemanticDifferences,
   parseReleaseVersion,
+  sameReleaseLine,
   selectReleasePackages,
 } from "../lib/release-package-state.mjs";
 
@@ -45,6 +46,27 @@ test("release version ordering selects earlier alpha versions", () => {
     core: [2, 0, 0],
     pre: ["alpha", "13"],
   });
+});
+
+test("a stable patch keeps the previous stable release comparable", () => {
+  // 正式补丁（2.18.1 对 2.18.0）与同补丁预发布链都必须可比；
+  // 跨 minor（2.19.0 对 2.18.x）不可比，保持 fail-closed 全量。
+  assert.equal(
+    sameReleaseLine(parseReleaseVersion("2.18.0"), parseReleaseVersion("2.18.1")),
+    true
+  );
+  assert.equal(
+    sameReleaseLine(parseReleaseVersion("2.18.1-rc.0"), parseReleaseVersion("2.18.1")),
+    true
+  );
+  assert.equal(
+    sameReleaseLine(parseReleaseVersion("2.18.9"), parseReleaseVersion("2.19.0")),
+    false
+  );
+  assert.equal(
+    sameReleaseLine(parseReleaseVersion("2.18.9"), parseReleaseVersion("3.0.0")),
+    false
+  );
 });
 
 test("semantic manifest diff ignores version and propagated internal pins", () => {

@@ -129,6 +129,37 @@ test("root runtime release maps browser surfaces to the browser suite", () => {
   assert.equal(nodePlan.gates.referenceApplication, true);
 });
 
+test("tarball dist paths map onto the source-layout browser prefixes", () => {
+  // 计划差异来自 npm tarball（只带 dist/）；浏览器修复必须命中浏览器套件，
+  // Node 侧 dist 字节不得误触发。
+  const browserPlan = createReleaseValidationPlan(
+    state(candidate("openxiangda", [
+      "package.json",
+      "dist/browser/route-manifest.js",
+      "dist/browser/components/resource/StandardUserResourcePages.js",
+    ]))
+  );
+  assert.equal(browserPlan.gates.freshApplication, "e2e");
+
+  const stylePlan = createReleaseValidationPlan(
+    state(candidate("openxiangda", ["package.json", "dist/browser/styles.css"]))
+  );
+  assert.equal(stylePlan.gates.freshApplication, "e2e");
+
+  const nodeOnlyPlan = createReleaseValidationPlan(
+    state(candidate("openxiangda", ["package.json", "dist/index.js", "dist/browser-launcher.js"]))
+  );
+  assert.equal(nodeOnlyPlan.gates.freshApplication, "build");
+
+  const contractsTarballPlan = createReleaseValidationPlan(
+    state(candidate("openxiangda-contracts", [
+      "package.json",
+      "dist/native-compiler/compiler.js",
+    ]))
+  );
+  assert.equal(contractsTarballPlan.gates.freshApplication, "build");
+});
+
 test("server-only release still builds a fresh app and reference app", () => {
   const plan = createReleaseValidationPlan(
     state(candidate("openxiangda-nest", ["package.json", "dist/index.js"]))

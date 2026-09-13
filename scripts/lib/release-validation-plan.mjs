@@ -39,12 +39,17 @@ function isBrowserRuntimeChange(name, files) {
     // contracts 浏览器入口仅从 native-compiler 引 data-audit-access；
     // 其余 native-compiler 改动是 Node 侧共享校验器，不影响浏览器字节。
     return files.some(file =>
-      !file.startsWith("src/native-compiler/")
-      || file.startsWith("src/native-compiler/data-audit-access"));
+      !sourceLayoutPath(file).startsWith("src/native-compiler/")
+      || sourceLayoutPath(file).startsWith("src/native-compiler/data-audit-access"));
   }
   const prefixes = BROWSER_RUNTIME_PREFIXES[name];
   if (!prefixes) return false;
-  return files.some(file => prefixes.some(prefix => file.startsWith(prefix)) || file.endsWith(".css"));
+  return files.some(file => prefixes.some(prefix => sourceLayoutPath(file).startsWith(prefix)) || file.endsWith(".css"));
+}
+
+// npm 发行物只携带 dist/；计划前缀描述仓库源码布局，比较前先投影回源码路径。
+function sourceLayoutPath(file) {
+  return file.startsWith("dist/") ? `src/${file.slice("dist/".length)}` : file;
 }
 
 export const RELEASE_PLAN_SCHEMA = "openxiangda.release-validation-plan/v1";

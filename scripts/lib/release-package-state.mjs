@@ -291,8 +291,11 @@ export function isNpmPackageNotFound(output) {
   );
 }
 
-function sameReleaseLine(left, right) {
-  return left.core.every((value, index) => value === right.core[index]);
+// 发布线 = major.minor。正式补丁必须与上一正式发布（如 2.18.1 对 2.18.0）
+// 可比，否则每个正式补丁都会退化为“无可比前驱”的全量矩阵；同补丁的预发布
+// 链（2.18.1-rc.1 对 2.18.1-rc.0）仍然同线可比。
+export function sameReleaseLine(left, right) {
+  return left.core[0] === right.core[0] && left.core[1] === right.core[1];
 }
 
 export function compareReleaseVersions(left, right) {
