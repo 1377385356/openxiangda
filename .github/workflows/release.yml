@@ -26,10 +26,11 @@ jobs:
     env:
       TURBO_TELEMETRY_DISABLED: '1'
       GH_TOKEN: ${{ github.token }}
-      OPENXIANGDA_REFERENCE_APP_ROOT: ${{ runner.temp }}/openxiangda-v2-reference-app
       # Phase 3 生效：本地默认通道关闭后，同一断言保护 CI 内的单一发布者。
       OPENXIANGDA_RELEASE_REQUIRE_CI: '1'
     steps:
+      - name: Configure reference application root
+        run: echo "OPENXIANGDA_REFERENCE_APP_ROOT=$RUNNER_TEMP/openxiangda-v2-reference-app" >> "$GITHUB_ENV"
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
