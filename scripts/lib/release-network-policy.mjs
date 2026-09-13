@@ -39,6 +39,30 @@ export function registryCommandOutput(result) {
   }`;
 }
 
+const DEFAULT_CONVERGENCE_SECONDS = 300;
+const MIN_CONVERGENCE_SECONDS = 30;
+const MAX_CONVERGENCE_SECONDS = 1800;
+
+// npm publish 写入成功后，元数据经 CDN 异步传播，读回可见常需分钟级；
+// 收敛观察必须按分钟预算，而不是固定 ~24 秒的固定轮次。
+export function resolveConvergenceBudgetMs(environment = process.env) {
+  const raw = environment.OPENXIANGDA_PUBLISH_CONVERGENCE_SECONDS;
+  const seconds =
+    raw === undefined || String(raw).trim() === ""
+      ? DEFAULT_CONVERGENCE_SECONDS
+      : Number(raw);
+  if (!Number.isFinite(seconds) || seconds <= 0) {
+    throw new Error(
+      "OPENXIANGDA_PUBLISH_CONVERGENCE_SECONDS must be a positive number of seconds"
+    );
+  }
+  const clamped = Math.min(
+    Math.max(seconds, MIN_CONVERGENCE_SECONDS),
+    MAX_CONVERGENCE_SECONDS
+  );
+  return Math.round(clamped * 1000);
+}
+
 export function isTransientRegistryFailure(output) {
   return /(?:\b(?:500|502|503|504)\b|ERR_PNPM_FETCH_5\d\d|ECONNRESET|ETIMEDOUT|EAI_AGAIN|fetch failed|socket disconnected before secure TLS|socket hang up|network is unreachable|unexpected eof)/i.test(
     String(output || "")

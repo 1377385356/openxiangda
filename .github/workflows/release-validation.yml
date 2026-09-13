@@ -1,0 +1,80 @@
+name: OpenXiangda release validation
+
+# Phase 1（方案 2026-09-13-release-pipeline-optimization-and-ci-proposal.md）：
+# 在 GitHub runner 上完整复刻发布验证（verify:release --validate-only），
+# 不写 npm、不打 tag、不发 GitHub Release。与本地通道双轨对照。
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-validation
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      TURBO_TELEMETRY_DISABLED: '1'
+      GH_TOKEN: ${{ github.token }}
+      OPENXIANGDA_REFERENCE_APP_ROOT: ${{ runner.temp }}/openxiangda-v2-reference-app
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+        with:
+          version: 10.15.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+          cache: pnpm
+      # Chromium 二进制按 playwright 版本（由 lockfile 派生）缓存；
+      # 命中后 verify-packed-distribution 内的 playwright install 变为校验空跑。
+      - uses: actions/cache@3edfce9056124e459a23f683a21433670d47daca
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
+      - name: Require reference repository credentials
+        env:
+          HAS_REFERENCE_TOKEN: ${{ secrets.REFERENCE_REPO_TOKEN != '' }}
+        if: env.HAS_REFERENCE_TOKEN != 'true'
+        run: |
+          echo "::error::发布验证需要参考应用仓库（1377385356/openxiangda-v2-reference-app，私有）的写凭据："
+          echo "::error::在仓库 Settings → Secrets and variables → Actions 配置 secret REFERENCE_REPO_TOKEN（仅授予该参考仓 contents 读写权限的 fine-grained PAT）。"
+          exit 1
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build workspace
+        run: pnpm build
+      - name: Clone reference application
+        env:
+          REFERENCE_REPO_TOKEN: ${{ secrets.REFERENCE_REPO_TOKEN }}
+        run: |
+          CREDENTIALS="$(printf 'x-access-token:%s' "$REFERENCE_REPO_TOKEN" | base64 -w0)"
+          git clone \
+            -c http.https://github.com/.extraheader="Authorization: Basic $CREDENTIALS" \
+            --branch master \
+            https://github.com/1377385356/openxiangda-v2-reference-app.git \
+            "$OPENXIANGDA_REFERENCE_APP_ROOT"
+          git -C "$OPENXIANGDA_REFERENCE_APP_ROOT" config user.name 'openxiangda-release-bot'
+          git -C "$OPENXIANGDA_REFERENCE_APP_ROOT" config user.email 'release-bot@users.noreply.github.com'
+      - name: Materialize reference lock from build
+        run: pnpm reference:install:from-build
+      - name: Commit and push reference alignment
+        run: |
+          git -C "$OPENXIANGDA_REFERENCE_APP_ROOT" add -A
+          if git -C "$OPENXIANGDA_REFERENCE_APP_ROOT" diff --cached --quiet; then
+            echo '参考应用已与候选字节对齐，无需推送'
+            exit 0
+          fi
+          git -C "$OPENXIANGDA_REFERENCE_APP_ROOT" commit -m 'chore: align to release candidate build'
+          git -C "$OPENXIANGDA_REFERENCE_APP_ROOT" push origin master
+      - name: Run release verification
+        run: pnpm verify:release

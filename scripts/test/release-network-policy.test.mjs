@@ -3,8 +3,37 @@ import test from "node:test";
 import {
   isTransientRegistryFailure,
   releaseNpmEnvironment,
+  resolveConvergenceBudgetMs,
   runTransientRegistryOperation,
 } from "../lib/release-network-policy.mjs";
+
+test("registry convergence budget defaults to minutes and clamps explicit overrides", () => {
+  assert.equal(resolveConvergenceBudgetMs({}), 300_000);
+  assert.equal(
+    resolveConvergenceBudgetMs({ OPENXIANGDA_PUBLISH_CONVERGENCE_SECONDS: "" }),
+    300_000
+  );
+  assert.equal(
+    resolveConvergenceBudgetMs({ OPENXIANGDA_PUBLISH_CONVERGENCE_SECONDS: "600" }),
+    600_000
+  );
+  // 夹取到 30-1800 秒：发布读回必须有下界，观察不能无限等。
+  assert.equal(
+    resolveConvergenceBudgetMs({ OPENXIANGDA_PUBLISH_CONVERGENCE_SECONDS: "5" }),
+    30_000
+  );
+  assert.equal(
+    resolveConvergenceBudgetMs({ OPENXIANGDA_PUBLISH_CONVERGENCE_SECONDS: "9999" }),
+    1_800_000
+  );
+  assert.throws(
+    () =>
+      resolveConvergenceBudgetMs({
+        OPENXIANGDA_PUBLISH_CONVERGENCE_SECONDS: "soon",
+      }),
+    /positive number of seconds/
+  );
+});
 
 test("release npm requests have bounded defaults and respect explicit overrides", () => {
   const defaults = releaseNpmEnvironment({ PATH: "/bin" });

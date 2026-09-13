@@ -1,0 +1,39 @@
+name: OpenXiangda version pull request
+
+# Phase 1 可选自动化（方案 2026-09-13-release-pipeline-optimization-and-ci-proposal.md）：
+# 有待消费 changeset 时自动开/更新版本物化 PR（运行 pnpm release:version）。
+# 试运行期仅手动触发；验证可靠后再改为 push(master) 自动触发。
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: version-pr
+  cancel-in-progress: true
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+        with:
+          version: 10.15.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: changesets/action@0138f456ec3d73906fcd11169ce59502d8d241c1
+        with:
+          version: pnpm release:version
+          title: 'chore: release version materialization'
+          commit: 'chore: materialize release versions'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}

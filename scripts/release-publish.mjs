@@ -44,12 +44,27 @@ import {
 import { createReleaseValidationPlan, receiptRequiresReference, assertReceiptReferenceRequirement } from "./lib/release-validation-plan.mjs";
 import { runPackagePublicationStage } from "./lib/release-publication-stage.mjs";
 import { planGithubRelease, synchronizeGithubRelease } from './lib/release-github.mjs';
-import { releaseNpmEnvironment } from "./lib/release-network-policy.mjs";
+import { releaseNpmEnvironment, resolveConvergenceBudgetMs } from "./lib/release-network-policy.mjs";
 import { archiveCompletedRelease } from "./lib/release-history.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const full = process.argv.includes("--full");
 const validateOnly = process.argv.includes("--validate-only");
+// Phase 3 治理：npm 发布默认只属于受 environment 保护的 release workflow。
+// 显式开启 OPENXIANGDA_RELEASE_REQUIRE_CI 后，本地发布必须携带
+// OPENXIANGDA_RELEASE_BREAK_GLASS=1（紧急通道，回执中记录原因）。
+if (
+  !validateOnly &&
+  process.env.OPENXIANGDA_RELEASE_REQUIRE_CI === "1" &&
+  process.env.CI !== "true" &&
+  process.env.OPENXIANGDA_RELEASE_BREAK_GLASS !== "1"
+) {
+  process.stderr.write(
+    "RELEASE_PUBLISH_LOCAL_FORBIDDEN: npm 发布已迁移到 GitHub Actions（environment: npm）。" +
+      "紧急本地发布请设置 OPENXIANGDA_RELEASE_BREAK_GLASS=1 并在发布回执中记录原因。\n"
+  );
+  process.exit(1);
+}
 const head = git(["rev-parse", "HEAD"]);
 const receiptPath = resolve(
   repositoryRoot,
@@ -543,12 +558,22 @@ function waitForDistTags(value) {
 }
 
 function waitForObservation({ description, observe }) {
-  const attempts = 10;
-  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+  // registry 元数据传播是分钟级异步；预算默认 300s，可用
+  // OPENXIANGDA_PUBLISH_CONVERGENCE_SECONDS 调整（30-1800s 夹取）。
+  const budgetMs = resolveConvergenceBudgetMs();
+  const deadline = Date.now() + budgetMs;
+  let delayMs = 1_000;
+  while (Date.now() < deadline) {
     if (observe()) return;
-    if (attempt < attempts) wait(Math.min(4_000, 250 * 2 ** (attempt - 1)));
+    wait(Math.min(delayMs, 15_000));
+    delayMs *= 2;
   }
-  fail(`${description} did not converge before the bounded release timeout`);
+  if (observe()) return;
+  fail(
+    `${description} did not converge before the bounded release timeout (${Math.round(
+      budgetMs / 1000
+    )}s)`
+  );
 }
 
 function wait(milliseconds) {
@@ -596,7 +621,8 @@ function npm(args) {
 }
 
 function npmJson(args, fallback, registry = receipt?.registry || "https://registry.npmjs.org") {
-  const result = spawnSync("npm", [...args, "--registry", registry], {
+  // 全部调用点都是 registry 读回（view）；--prefer-online 禁止陈旧缓存应答。
+  const result = spawnSync("npm", [...args, "--prefer-online", "--registry", registry], {
     cwd: repositoryRoot,
     encoding: "utf8",
     env: releaseNpmEnvironment(),

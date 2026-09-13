@@ -18,6 +18,8 @@ export interface AppDataModelDeclaration {
   mutationOwner?: AppDataResourceDeclaration['mutationOwner'];
   invariants?: AppDataResourceDeclaration['invariants'];
   dataPolicyCode?: string | null;
+  /** Bind the model to custom PC/mobile detail routes (Workflow detail takeover). */
+  detailRouteCode?: AppDataResourceDeclaration['detailRouteCode'];
 }
 
 export interface AppResourceFormDeclaration {
@@ -91,6 +93,10 @@ export function defineApplicationModule<const Module extends AppModuleDeclaratio
 }
 
 /** One authoring projection into the platform's existing execution contract. */
+export const APP_MODEL_DECLARATION_KEYS = [
+  'code', 'name', 'fields', 'audit', 'mutationOwner', 'invariants', 'dataPolicyCode', 'detailRouteCode',
+] as const;
+
 export function materializeApplicationModules(modules: readonly AppModuleDeclaration[]) {
   const diagnostics: Diagnostic[] = [];
   const resources: AppDataResourceDeclaration[] = [];
@@ -154,7 +160,16 @@ export function materializeApplicationModules(modules: readonly AppModuleDeclara
         if (missing.length) issue('APP_VIEW_CREATE_REQUIRED_FIELD_MISSING', `新建视图缺少必填字段：${missing.map(field => field.code).join('、')}；请补齐字段或关闭 create`, `${viewPath}.form.fields`);
       }
     });
-    module.models.forEach(model => {
+    // 声明层的拼写错误不允许再静默丢能力：未知属性必须让编译失败。
+    const knownModelKeys = new Set<string>(APP_MODEL_DECLARATION_KEYS);
+    module.models.forEach((model, modelIndex) => {
+      Object.keys(model).filter(key => !knownModelKeys.has(key)).forEach(key => {
+        issue(
+          'APP_MODEL_KEY_UNKNOWN',
+          `模型声明存在未知属性「${key}」；支持的属性：${APP_MODEL_DECLARATION_KEYS.join('/')}，请检查拼写或升级 devkit`,
+          `modules[${moduleIndex}].models[${modelIndex}].${key}`,
+        );
+      });
       const selected = views.get(model.code) || [];
       const view = selected.find(item => item.code === undefined);
       const publicFields = model.fields.filter(field => (field.hidden ?? field.system) !== true);
@@ -199,6 +214,7 @@ export function materializeApplicationModules(modules: readonly AppModuleDeclara
           : {}),
         ...(model.invariants ? { invariants: model.invariants } : {}),
         ...(model.dataPolicyCode ? { dataPolicyCode: model.dataPolicyCode } : {}),
+        ...(model.detailRouteCode ? { detailRouteCode: { ...model.detailRouteCode } } : {}),
         ...(model.audit !== undefined ? { audit: model.audit } : {}),
         generated: {
           list: Boolean(view), detail: Boolean(view),

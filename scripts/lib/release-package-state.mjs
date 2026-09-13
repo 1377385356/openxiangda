@@ -229,7 +229,7 @@ export function resolveReleaseRegistry(repositoryRoot, configured) {
 export function isReleaseVersionPublished(repositoryRoot, registry, spec) {
   const result = spawnSync(
     "npm",
-    ["view", spec, "version", "--json", "--registry", registry],
+    ["view", spec, "version", "--json", "--prefer-online", "--registry", registry],
     {
       cwd: repositoryRoot,
       encoding: "utf8",
@@ -245,7 +245,7 @@ export function isReleaseVersionPublished(repositoryRoot, registry, spec) {
 function latestPublishedVersion(repositoryRoot, registry, name, currentVersion) {
   const result = spawnSync(
     "npm",
-    ["view", name, "versions", "--json", "--registry", registry],
+    ["view", name, "versions", "--json", "--prefer-online", "--registry", registry],
     {
       cwd: repositoryRoot,
       encoding: "utf8",

@@ -408,3 +408,67 @@ test('GAP-MODULE-001：列表视图 sortableFields 表达非默认排序能力',
     })],
   }));
 });
+
+test('GAP-MODULE-002：模型声明 detailRouteCode 透传资源，未知属性 fail-closed', () => {
+  const reservation = defineDataModel({
+    code: 'venue-reservations', name: '场地预约',
+    // 复现 gap 场景：资源级详情路由在模块化声明上表达（Workflow 详情接管的资源侧声明）。
+    detailRouteCode: { desktop: 'reservation-detail', mobile: 'reservation-detail-mobile' },
+    fields: [{ code: 'title', type: 'text.short', label: '主题', required: true }],
+  });
+
+  // 验收 1：投影层完整透传且 diagnostics 为空（修复前该属性被静默丢弃）。
+  const projected = materializeApplicationModules([defineApplicationModule({
+    code: 'venue-detail-probe', models: [reservation],
+  })]);
+  assert.deepEqual(projected.diagnostics, []);
+  assert.deepEqual(projected.resources[0].detailRouteCode, {
+    desktop: 'reservation-detail', mobile: 'reservation-detail-mobile',
+  });
+
+  // 验收 3：端到端编译后资源与 Workflow 消费的 detailRouteCode 路由绑定不变。
+  const config = defineOpenXiangdaApp({
+    app: { code: 'venue-app', name: '场馆' },
+    frontend: {
+      admin: { navigation: [] },
+      routes: [
+        {
+          code: 'reservation-detail',
+          path: '/reservations/:instanceId',
+          label: '预约详情', surface: 'user',
+          capability: 'app:venue-app:data:venue-reservations:read',
+        },
+        {
+          code: 'reservation-detail-mobile',
+          path: '/m/reservations/:instanceId',
+          label: '预约详情（移动）', surface: 'user',
+          capability: 'app:venue-app:data:venue-reservations:read',
+        },
+      ],
+    },
+    modules: [defineApplicationModule({ code: 'venue', models: [reservation] })],
+  });
+  assert.deepEqual(config.data?.resources[0]?.detailRouteCode, {
+    desktop: 'reservation-detail', mobile: 'reservation-detail-mobile',
+  });
+
+  // 验收 2：模型声明上的未知属性不再静默丢弃，投影报指向性错误并使编译失败。
+  const typoModules = [defineApplicationModule({
+    code: 'venue-detail-probe',
+    models: [{ ...reservation, detailRouteCodes: { desktop: 'a', mobile: 'b' } } as any],
+  })];
+  const typoProjection = materializeApplicationModules(typoModules);
+  assert.equal(typoProjection.diagnostics.length, 1);
+  assert.equal(typoProjection.diagnostics[0].code, 'APP_MODEL_KEY_UNKNOWN');
+  assert.equal(typoProjection.diagnostics[0].severity, 'error');
+  assert.equal(typoProjection.diagnostics[0].path, 'modules[0].models[0].detailRouteCodes');
+  assert.throws(
+    () => defineOpenXiangdaApp({
+      app: { code: 'venue-app-typo', name: '场馆' },
+      frontend: { admin: { navigation: [] } },
+      modules: typoModules,
+    }),
+    (error: any) => error?.code === 'OPENXIANGDA_APP_CONFIG_INVALID'
+      && error.diagnostics?.some((item: any) => item.code === 'APP_MODEL_KEY_UNKNOWN'),
+  );
+});
