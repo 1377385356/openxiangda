@@ -4,7 +4,9 @@
   "status": "reviewed",
   "title": "OpenXiangda 2.17.1：用户标准面共享契约闭合修复",
   "summary": "共享编译器接受并校验生成式用户标准面的路由契约，2.17.0 声明 user 面的应用可完整通过本地校验与部署；生成码分隔符统一为点号。",
-  "newFeatures": [],
+  "newFeatures": [
+    "生成码分隔符统一为点号（user.资源码.records / user.资源码.submit），与设备路由码一致。"
+  ],
   "fixes": [
     "修复 2.17.0 中 user 声明触发 NATIVE_CODE_INVALID / NATIVE_CONTRACT_CLOSURE_MISMATCH：共享校验器按配置事实（资源存在、能力等于 read/create、码与路径形状）校验并并入用户标准路由，配置 bundle 不变，旧平台无需升级。",
     "生成码统一为 user.资源码.records / user.资源码.submit，符合稳定码模式。"
@@ -15,7 +17,9 @@
   "upgradeSteps": [
     "应用精确依赖升级到 openxiangda 2.17.1 后重新运行 check 与部署。"
   ],
-  "knownLimitations": [],
+  "knownLimitations": [
+    "“我的记录”的本人过滤仍是查询层展示过滤，非服务端授权边界。"
+  ],
   "compatibility": {
     "node": ">=24",
     "workspaceGenerations": [
