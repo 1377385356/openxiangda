@@ -52,26 +52,44 @@ await run("node", ["--test", ...releaseScriptTests]);
 // Build required dependencies, then reject cheap guidance/doc errors before any
 // package test, fresh-application/browser suite or reference registry setup.
 await run("pnpm", ["exec", "turbo", "run", "build", ...candidateNames.flatMap(name => ["--filter", `${name}...`])]);
-if (plan.gates.skills) await run("pnpm", ["skills:check:from-build"]);
-if (plan.gates.documentation) await run("pnpm", ["docs:build:from-build"]);
-if (full) {
-  await run("pnpm", ["verify"]);
-} else if (plan.workspacePackages.length) {
-  await run("pnpm", ["exec", "turbo", "run", "check", "test", ...plan.workspacePackages.flatMap(name => ["--filter", name])]);
+// 构建完成后各门禁互不依赖，并发执行：候选 tarball 由打包分发腿自行生成；
+// 参考应用已在验证开始前完成物化与钉版；浏览器阶段缓存只有一个写者
+// （打包分发腿）。并发腿共享同一总预算；任一腿失败立即整体失败，
+// 其余子进程由运行环境（CI job / 本地终端）回收。
+const parallelGates = [];
+if (plan.gates.skills) {
+  parallelGates.push(run("pnpm", ["skills:check:from-build"]));
 }
-if (plan.gates.templateGeneratedCheck) await run("pnpm", ["template:generated:check"]);
-await run("node", ["scripts/verify-packed-distribution.mjs"], {
-  env: {
-    ...process.env,
-    OPENXIANGDA_RELEASE_PACKAGES: validationPackageNames.join(","),
-    OPENXIANGDA_PACK_SMOKE_LEVEL: plan.gates.freshApplication,
-  },
-});
+if (plan.gates.documentation) {
+  parallelGates.push(run("pnpm", ["docs:build:from-build"]));
+}
+parallelGates.push(
+  full
+    ? run("pnpm", ["verify"])
+    : plan.workspacePackages.length
+      ? run("pnpm", ["exec", "turbo", "run", "check", "test", ...plan.workspacePackages.flatMap(name => ["--filter", name])])
+      : Promise.resolve()
+);
+if (plan.gates.templateGeneratedCheck) {
+  parallelGates.push(run("pnpm", ["template:generated:check"]));
+}
+parallelGates.push(
+  run("node", ["scripts/verify-packed-distribution.mjs"], {
+    env: {
+      ...process.env,
+      OPENXIANGDA_RELEASE_PACKAGES: validationPackageNames.join(","),
+      OPENXIANGDA_PACK_SMOKE_LEVEL: plan.gates.freshApplication,
+    },
+  })
+);
 if (plan.gates.referenceApplication) {
-  await run("pnpm", ["reference:smoke:from-build"], {
-    env: { ...process.env, OPENXIANGDA_RELEASE_PACKAGES: validationPackageNames.join(",") },
-  });
+  parallelGates.push(
+    run("pnpm", ["reference:smoke:from-build"], {
+      env: { ...process.env, OPENXIANGDA_RELEASE_PACKAGES: validationPackageNames.join(",") },
+    })
+  );
 }
+await Promise.all(parallelGates);
 process.stdout.write(`[release-validation] total=${Math.round((Date.now() - verificationStarted) / 1000)}s budget=${budgetSeconds}s\n`);
 
 assertCandidateVersionsAvailable(
