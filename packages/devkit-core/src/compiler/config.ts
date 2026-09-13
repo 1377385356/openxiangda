@@ -5349,7 +5349,7 @@ function validateApplicationAuthentication(
     const routeCode = string(surface.routeCode);
     const routePath = string(surface.path);
     const defaultRouteCode = string(surface.defaultRouteCode);
-    const generatedUserRoute = /^user:([a-z][a-z0-9-]{0,62}):(records|submit)$/.exec(
+    const generatedUserRoute = /^user\.([a-z][a-z0-9-]{0,62})\.(records|submit)$/.exec(
       defaultRouteCode
     );
     const defaultRoute = generatedUserRoute
@@ -6786,10 +6786,10 @@ export function defineOpenXiangdaApp(
   if (homeResourceCode && normalizedDeclaration.frontend.authentication) {
     const surfaces = normalizedDeclaration.frontend.authentication.surfaces;
     if (surfaces.desktop.defaultRouteCode === 'application-home') {
-      surfaces.desktop.defaultRouteCode = `user:${homeResourceCode}:records`;
+      surfaces.desktop.defaultRouteCode = `user.${homeResourceCode}.records`;
     }
     if (surfaces.mobile.defaultRouteCode === 'application-home-mobile') {
-      surfaces.mobile.defaultRouteCode = `user:${homeResourceCode}:records`;
+      surfaces.mobile.defaultRouteCode = `user.${homeResourceCode}.records`;
     }
   }
   const declarationDiagnostics = validateAppDeclaration(normalizedDeclaration);

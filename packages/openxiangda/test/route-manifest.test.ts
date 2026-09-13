@@ -411,7 +411,7 @@ test('resource user-surface entries validate with stable codes and device paths'
     ...manifestEntryPoints,
     routes: [
       {
-        code: 'user:requests:records',
+        code: 'user.requests.records',
         kind: 'resource-records',
         resourceCode: 'requests',
         desktop: {
@@ -436,7 +436,7 @@ test('resource user-surface entries validate with stable codes and device paths'
     } as never,
     'route-test-app',
   );
-  assert.equal(index.entries.get('user:requests:records')?.resourceCode, 'requests');
+  assert.equal(index.entries.get('user.requests.records')?.resourceCode, 'requests');
 });
 
 test('resource user-surface entries reject mismatched entry codes', () => {
@@ -449,7 +449,7 @@ test('resource user-surface entries reject mismatched entry codes', () => {
         ...manifestEntryPoints,
         routes: [
           {
-            code: 'user:requests:wrong',
+            code: 'user.requests.wrong',
             kind: 'resource-records',
             resourceCode: 'requests',
             desktop: {

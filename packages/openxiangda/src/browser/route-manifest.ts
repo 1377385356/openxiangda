@@ -183,7 +183,7 @@ export function createStandardRouteManifestIndex(
         ? !(
             typeof entry.resourceCode === 'string' &&
             /^[a-z][a-z0-9-]{0,62}$/.test(entry.resourceCode) &&
-            entry.code === `user:${entry.resourceCode}:${entry.kind === 'resource-records' ? 'records' : 'submit'}`
+            entry.code === `user.${entry.resourceCode}.${entry.kind === 'resource-records' ? 'records' : 'submit'}`
           )
         : entry.resourceCode !== undefined ||
       entries.has(entry.code) ||

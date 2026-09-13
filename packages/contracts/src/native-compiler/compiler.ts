@@ -295,6 +295,7 @@ export function compileNativeApplicationConfiguration(
     expectedConfigDigest,
     contract.generatorVersion
   );
+  mergeUserSurfaceRoutes(expectedContract, contract, config);
   if (canonicalJson(expectedContract) !== canonicalJson(contract)) {
     fail(
       'NATIVE_CONTRACT_CLOSURE_MISMATCH',
@@ -2311,6 +2312,13 @@ function validateApplicationAuthentication(
     const route = object(rawRoute, `/config/frontend/routes/${index}`);
     routesByCode.set(String(route.code || ''), route);
   }
+  // 生成式用户标准面路由码：user.<resource>.(records|submit)。路由事实
+  // 由 routeManifest 携带；这里按同应用已声明资源判定有效性。
+  const userSurfaceResourceCodes = new Set(
+    (Array.isArray(config.data?.resources) ? (config.data.resources as JsonObject[]) : [])
+      .map(resource => String(resource.code || ''))
+      .filter(code => /^[a-z][a-z0-9-]{0,62}$/.test(code))
+  );
   for (const [device, surface] of [
     ['desktop', desktop],
     ['mobile', mobile],
@@ -2321,8 +2329,19 @@ function validateApplicationAuthentication(
         `${pointer}/surfaces/${device}/routeCode`
       );
     }
-    const defaultRoute = routesByCode.get(surface.defaultRouteCode);
-    const defaultPath = String(defaultRoute?.path || '');
+    const generatedUserRoute = /^user\.([a-z][a-z0-9-]{0,62})\.(records|submit)$/.exec(
+      String(surface.defaultRouteCode || '')
+    );
+    let defaultRoute = routesByCode.get(surface.defaultRouteCode);
+    let defaultPath = String(defaultRoute?.path || '');
+    if (generatedUserRoute && userSurfaceResourceCodes.has(generatedUserRoute[1]!)) {
+      const base =
+        generatedUserRoute[2] === 'records'
+          ? `/my/${generatedUserRoute[1]}`
+          : `/my/${generatedUserRoute[1]}/submit`;
+      defaultRoute = { surface: 'user', path: device === 'mobile' ? `/m${base}` : base } as JsonObject;
+      defaultPath = String(defaultRoute.path);
+    }
     const deviceMismatch =
       device === 'desktop'
         ? defaultPath === '/m' || defaultPath.startsWith('/m/')
@@ -3541,6 +3560,8 @@ const ROUTE_MANIFEST_KINDS = new Set([
   'workflow-launch',
   'workflow-task',
   'workflow-instance',
+  'resource-records',
+  'resource-submit',
 ]);
 
 function validateRouteManifest(
@@ -3584,8 +3605,11 @@ function validateRouteManifest(
   routes.forEach((rawEntry, index) => {
     const entryPointer = `${pointer}/routes/${index}`;
     const entry = object(rawEntry, entryPointer);
+    const resourceKinds =
+      entry.kind === 'resource-records' || entry.kind === 'resource-submit';
     exactKeys(entry, ['code', 'kind', 'desktop', 'mobile'], entryPointer, [
       'workflowCode',
+      ...(resourceKinds ? (['resourceCode'] as const) : []),
     ]);
     const code = requiredString(entry.code, `${entryPointer}/code`, 255);
     if (codes.has(code))
@@ -3597,6 +3621,19 @@ function validateRouteManifest(
     }
     if (entry.workflowCode !== undefined) {
       stableCode(entry.workflowCode, `${entryPointer}/workflowCode`);
+    }
+    if (resourceKinds) {
+      const resourceCodeValue = resourceCode(
+        entry.resourceCode,
+        `${entryPointer}/resourceCode`
+      );
+      equal(
+        code,
+        `user.${resourceCodeValue}.${entry.kind === 'resource-records' ? 'records' : 'submit'}`,
+        `${entryPointer}/code`
+      );
+    } else if (entry.resourceCode !== undefined) {
+      fail('NATIVE_PROPERTY_UNKNOWN', `${entryPointer}/resourceCode`);
     }
     const desktop = validateRouteManifestRoute(
       entry.desktop,
@@ -3791,7 +3828,8 @@ function compileRouteManifestRoute(
 function standardRouteCode(
   kind: string,
   device: 'desktop' | 'mobile',
-  workflowCode?: string
+  workflowCode?: string,
+  resourceCode?: string
 ) {
   if (kind === 'workflow-launch') {
     return `workflow.${workflowCode}.launch.${device}`;
@@ -3799,7 +3837,23 @@ function standardRouteCode(
   if (kind === 'application-todo-center') {
     return `application.todo-center.${device}`;
   }
+  if (kind === 'resource-records') {
+    return `user.${resourceCode}.records.${device}`;
+  }
+  if (kind === 'resource-submit') {
+    return `user.${resourceCode}.submit.${device}`;
+  }
   return `${kind.replace(/-/g, '.')}.${device}`;
+}
+
+function resourceCapabilitiesOf(appCode: string, resourceCodeValue: string) {
+  const prefix = `app:${appCode}:data:${resourceCodeValue}`;
+  return {
+    read: `${prefix}:read`,
+    create: `${prefix}:create`,
+    update: `${prefix}:update`,
+    delete: `${prefix}:delete`,
+  };
 }
 
 function compileRouteManifest(config: JsonObject) {
@@ -3811,20 +3865,22 @@ function compileRouteManifest(config: JsonObject) {
     desktopPath: string,
     mobilePath: string,
     workflowCode?: string,
-    access?: JsonObject
+    access?: JsonObject,
+    resourceCodeValue?: string
   ) => {
     routes.push({
       code,
       kind,
       ...(workflowCode ? { workflowCode } : {}),
+      ...(resourceCodeValue ? { resourceCode: resourceCodeValue } : {}),
       desktop: compileRouteManifestRoute(
-        standardRouteCode(kind, 'desktop', workflowCode),
+        standardRouteCode(kind, 'desktop', workflowCode, resourceCodeValue),
         desktopPath,
         'user',
         access
       ),
       mobile: compileRouteManifestRoute(
-        standardRouteCode(kind, 'mobile', workflowCode),
+        standardRouteCode(kind, 'mobile', workflowCode, resourceCodeValue),
         mobilePath,
         'user',
         access
@@ -6244,6 +6300,124 @@ function validateWorkflowDefinitionBinding(
       );
     }
   }
+}
+
+
+/**
+ * 生成式用户标准面的路由事实由工具链编译器产出；配置 bundle 不携带
+ * userSurface。闭合时按配置事实校验这些路由（资源存在、能力等于该资源
+ * read/create、路径与码形状稳定），通过后并入期望契约并重算清单摘要。
+ * 路由本身仍受能力门禁约束，注入不产生任何额外授权。
+ */
+function mergeUserSurfaceRoutes(
+  expectedContract: JsonObject,
+  contract: JsonObject,
+  config: JsonObject
+) {
+  const manifest = object(contract.routeManifest, '/contracts/routeManifest');
+  const expectedManifest = object(
+    expectedContract.routeManifest,
+    '/contracts/routeManifest'
+  );
+  const resources = new Map<string, JsonObject>();
+  for (const raw of boundedArray(
+    config.data?.resources,
+    '/config/data/resources',
+    100
+  )) {
+    const resource = object(raw, '/config/data/resources');
+    resources.set(String(resource.code || ''), resource);
+  }
+  const existingCodes = new Set(
+    boundedArray(
+      expectedManifest.routes,
+      '/contracts/routeManifest/routes',
+      1000
+    ).map(entry => String(object(entry, '/contracts/routeManifest/routes').code || ''))
+  );
+  const accepted: JsonObject[] = [];
+  for (const rawEntry of boundedArray(
+    manifest.routes,
+    '/contracts/routeManifest/routes',
+    1000
+  )) {
+    const entry = object(rawEntry, '/contracts/routeManifest/routes');
+    const kind = String(entry.kind || '');
+    if (kind !== 'resource-records' && kind !== 'resource-submit') continue;
+    const resourceCodeValue = String(entry.resourceCode || '');
+    const resource = resources.get(resourceCodeValue);
+    if (!resource) {
+      fail(
+        'NATIVE_ROUTE_MANIFEST_RESOURCE_UNKNOWN',
+        `/contracts/routeManifest/routes`
+      );
+    }
+    const suffix = kind === 'resource-records' ? 'records' : 'submit';
+    const code = `user.${resourceCodeValue}.${suffix}`;
+    equal(String(entry.code || ''), code, '/contracts/routeManifest/routes/code');
+    const operation = kind === 'resource-records' ? 'read' : 'create';
+    const capability = String(
+      object(resource.capabilities, '/config/data/resources/capabilities')[operation] || ''
+    );
+    for (const device of ['desktop', 'mobile'] as const) {
+      const route = object(
+        entry[device],
+        `/contracts/routeManifest/routes/${device}`
+      );
+      const prefix = device === 'mobile' ? '/m/my/' : '/my/';
+      const suffixPath =
+        kind === 'resource-records'
+          ? `${prefix}${resourceCodeValue}`
+          : `${prefix}${resourceCodeValue}/submit`;
+      equal(String(route.path || ''), suffixPath, `/contracts/routeManifest/routes/${device}/path`);
+      equal(
+        String(route.capability || ''),
+        capability,
+        `/contracts/routeManifest/routes/${device}/capability`
+      );
+      equal(
+        String(route.routeCode || ''),
+        `${code}.${device}`,
+        `/contracts/routeManifest/routes/${device}/routeCode`
+      );
+    }
+    if (existingCodes.has(code) || accepted.some(item => String(item.code) === code)) {
+      fail('NATIVE_ROUTE_MANIFEST_DUPLICATE', '/contracts/routeManifest/routes/code');
+    }
+    accepted.push(entry);
+  }
+  if (!accepted.length) return;
+  expectedManifest.routes = boundedArray(
+    [...(expectedManifest.routes as unknown[]), ...accepted],
+    '/contracts/routeManifest/routes',
+    1000
+  ).sort((left, right) =>
+    compareText(
+      String(object(left, 'x').code || ''),
+      String(object(right, 'x').code || '')
+    )
+  );
+  // rootEntry 指向已接受的 records 路由时同样并入。
+  const rootCode = String(object(manifest.rootEntry, 'x').code || '');
+  const homeEntry = accepted.find(
+    entry => String(entry.code) === rootCode && entry.kind === 'resource-records'
+  );
+  if (homeEntry) {
+    const root = object(manifest.rootEntry, 'x');
+    expectedManifest.rootEntry = {
+      code: rootCode,
+      desktop: String(root.desktop || ''),
+      mobile: String(root.mobile || ''),
+    };
+  }
+  expectedManifest.digest = sha256Canonical({
+    schemaVersion: expectedManifest.schemaVersion,
+    appCode: expectedManifest.appCode,
+    devicePolicy: expectedManifest.devicePolicy,
+    rootEntry: expectedManifest.rootEntry,
+    authentication: expectedManifest.authentication,
+    routes: expectedManifest.routes,
+  });
 }
 
 function validateResource(raw: any, pointer: string, appCode: string) {

@@ -1420,7 +1420,7 @@ function compileStandardRouteManifest(
   for (const resource of userSurfaceResources) {
     const capabilities = resourceCapabilityCodes(config.app.code, resource.code);
     addRoute(
-      `user:${resource.code}:records`,
+      `user.${resource.code}.records`,
       'resource-records',
       `/my/${resource.code}`,
       `/m/my/${resource.code}`,
@@ -1429,7 +1429,7 @@ function compileStandardRouteManifest(
       resource.code
     );
     addRoute(
-      `user:${resource.code}:submit`,
+      `user.${resource.code}.submit`,
       'resource-submit',
       `/my/${resource.code}/submit`,
       `/m/my/${resource.code}/submit`,
@@ -1492,10 +1492,10 @@ function compileStandardRouteManifest(
     resource => resource.userSurface?.home === true
   ) || userSurfaceResources[0];
   const rootDesktop = homeResource
-    ? { code: `user:${homeResource.code}:records`, path: `/my/${homeResource.code}` }
+    ? { code: `user.${homeResource.code}.records`, path: `/my/${homeResource.code}` }
     : staticRoute('desktop');
   const rootMobile = homeResource
-    ? { code: `user:${homeResource.code}:records`, path: `/m/my/${homeResource.code}` }
+    ? { code: `user.${homeResource.code}.records`, path: `/m/my/${homeResource.code}` }
     : staticRoute('mobile');
   const payload = {
     schemaVersion: SCHEMA_VERSIONS.applicationRouteManifest,
