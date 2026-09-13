@@ -146,6 +146,18 @@ Actions      release workflow（environment: npm, concurrency 单飞）:
    - 收敛窗口参数化：`OPENXIANGDA_PUBLISH_CONVERGENCE_SECONDS`（默认放宽到 300s；本地同享）+ 读回加 `--prefer-online`（B1 的永久修复，本地 CI 双受益）。
 3. 连续 2-3 个真实版本双轨对照：CI 验证结果 vs 本地验证结果一致（含浏览器矩阵时长采样，评估 runner 规格与缓存策略）。
 
+#### runner 依赖缓存策略（回应"每次是否重新下载依赖"）
+
+runner 每次是全新虚拟机，不配缓存则每次全量下载；按下列三层配置后，只有首次与依赖变更时发生真实下载：
+
+| 层 | 内容 | 缓存 key | 冷/热开销 |
+| --- | --- | --- | --- |
+| 1 | pnpm store（工作区全部依赖） | `pnpm-lock.yaml` 哈希（`actions/setup-node` 的 `cache: pnpm`） | 冷 ~3-5 分钟 / 热 ~30-60 秒 |
+| 2 | Chromium 二进制（`playwright install chromium`） | playwright 版本串 | 冷 ~1 分钟 / 热 秒级 |
+| 3 | 验收应用安装（fresh-app 门禁） | 不缓存（设计使然），但共享同 job 的 pnpm store：依赖从 store 硬链接，registry 只剩元数据 + 7 个候选 tarball | 每次 ~1-2 分钟，且 runner 到 npm registry 同机房级网速 |
+
+刻意**不缓存**的部分：浏览器矩阵、参考应用构建、新应用安装检查——它们是"发布字节=验证字节"的门禁本体，缓存掉就失去意义。预期端到端：冷启动首轮 ~20 分钟，之后每次 10-15 分钟且耗时可预测（不受本机负载影响）。仓库为公开仓，Actions 分钟数在免费配额内。
+
 ### Phase 2：发布试点（~1 天，alpha 演练）
 
 1. `release.yml` 增加 environment `npm` + `id-token: write`，publish 步 OIDC。
