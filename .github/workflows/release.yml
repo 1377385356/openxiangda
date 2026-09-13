@@ -81,6 +81,10 @@ jobs:
             git -C "$OPENXIANGDA_REFERENCE_APP_ROOT" commit -m 'chore: align to release candidate build'
             git -C "$OPENXIANGDA_REFERENCE_APP_ROOT" push origin master
           fi
+      - name: Runner resource snapshot
+        run: |
+          df -h / /tmp | sed 's/^/disk: /'
+          free -h | sed 's/^/mem: /'
       - name: Verify and publish
         # verify:release 冻结候选并产出已验证回执；release:publish 只发布
         # 回执字节。两段必须同 job 串联，保证发布字节=验证字节。
