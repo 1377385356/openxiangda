@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.18.1",
+  "status": "reviewed",
+  "title": "OpenXiangda 2.18.1：用户标准面落地页渲染修复",
+  "summary": "修复 2.18.0 中声明 user 用户面的应用整页渲染为空白的问题：运行时清单校验器把“根入口别名资源 records 路由”的编译器形状误判为路径冲突。本版让运行时接受该形状并新增浏览器验收覆盖。",
+  "newFeatures": [],
+  "fixes": [
+    "修复 OPENXIANGDA_ROUTE_MANIFEST_INVALID 导致用户标准面应用空白：rootEntry 直接别名资源 records 路由（登录落地即“我的记录”）时，校验器现在允许根入口别名恰好一条标准路由对；认证路径与其它任何落地路径冲突仍然拒绝。",
+    "修复别名落地页的双端切换失效：根入口别名路由对时，设备协商由该路由对承担投影，不再与静态根对产生等特异性双匹配。",
+    "浏览器验收新增 user-surface.e2e：覆盖别名清单挂载、本人过滤列表、提交表单与双端切换；为验收 mock 平台补齐单条记录读取端点（native/data/{code}/records/{id}）。"
+  ],
+  "affectedUsers": [
+    "使用 openxiangda 2.18.0 并在 CRUD 视图声明 user 用户面的应用开发者（应用此前表现为登录后整页空白）。"
+  ],
+  "upgradeSteps": [
+    "应用精确依赖升级到 openxiangda 2.18.1 后重新运行 check 与部署；无需平台配合升级。"
+  ],
+  "knownLimitations": [
+    "“我的记录”的本人过滤仍是查询层展示过滤，非服务端授权边界（与 2.18.0 相同）。"
+  ],
+  "issues": [],
+  "compatibility": {
+    "node": ">=24",
+    "workspaceGenerations": "v2",
+    "platform": "无平台配合要求；契约与配置 bundle 字节不变。",
+    "v1": "不改变 V1 运行时或应用。"
+  }
+}

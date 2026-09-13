@@ -170,6 +170,34 @@ export async function mockPlatform(
         }),
       });
     }
+    const recordRead = url.pathname.match(
+      /\/native\/data\/([^/]+)\/records\/([^/]+)$/
+    );
+    if (recordRead) {
+      const resourceCode = decodeURIComponent(recordRead[1]!);
+      const recordId = decodeURIComponent(recordRead[2]!);
+      const record = (queryItemsByResource[resourceCode] || []).find(
+        item => String(item.id) === recordId
+      );
+      observed.push({ path: url.pathname, perspectiveCode });
+      if (!record) {
+        return route.fulfill({
+          status: 404,
+          contentType: 'application/json',
+          body: JSON.stringify({ code: 404, message: 'record not found' }),
+        });
+      }
+      return route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          code: 200,
+          data: {
+            schemaVersion: 'openxiangda.data-record/v2',
+            data: record,
+          },
+        }),
+      });
+    }
     if (url.pathname.includes('/directory/')) {
       observed.push({ path: url.pathname, perspectiveCode });
       return route.fulfill({

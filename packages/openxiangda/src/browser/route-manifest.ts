@@ -224,17 +224,38 @@ export function createStandardRouteManifestIndex(
     }
     entries.set(entry.code, entry);
   }
-  const reservedStaticPaths = [
-    manifest.rootEntry.desktop,
-    manifest.rootEntry.mobile,
+  // The root entry may alias exactly one manifest route pair: a user-surface
+  // landing whose records route IS the post-login destination. The compiler
+  // emits that shape (rootEntry.code === an entry code); authentication paths
+  // and every other landing-path collision stay ambiguous and invalid.
+  const rootEntryRoute = entries.get(manifest.rootEntry.code);
+  const authenticationPaths = [
     manifest.authentication.desktop.path,
     manifest.authentication.mobile.path,
   ];
   if (
-    new Set(reservedStaticPaths).size !== reservedStaticPaths.length ||
+    new Set([
+      manifest.rootEntry.desktop,
+      manifest.rootEntry.mobile,
+      ...authenticationPaths,
+    ]).size !== 4 ||
     manifest.authentication.desktop.routeCode ===
       manifest.authentication.mobile.routeCode ||
-    routes.some(route => validStaticPath(route.path) && reservedStaticPaths.includes(route.path))
+    routes.some(route => {
+      if (!validStaticPath(route.path)) return false;
+      if (authenticationPaths.includes(route.path)) return true;
+      if (
+        route.path !== manifest.rootEntry.desktop &&
+        route.path !== manifest.rootEntry.mobile
+      ) {
+        return false;
+      }
+      return !(
+        rootEntryRoute &&
+        (route.routeCode === rootEntryRoute.desktop.routeCode ||
+          route.routeCode === rootEntryRoute.mobile.routeCode)
+      );
+    })
   ) {
     throw new Error('OPENXIANGDA_ROUTE_MANIFEST_INVALID');
   }
@@ -450,12 +471,19 @@ export function negotiateStandardRoute(
         pathname: string;
       } => Boolean(candidate),
     );
+  // When the root entry aliases a manifest route pair, that pair already
+  // projects the landing path; keeping the static pair too would create two
+  // equally specific matches and stall the negotiation.
   const staticPairs = [
-    {
-      entryCode: index.manifest.rootEntry.code,
-      desktop: index.manifest.rootEntry.desktop,
-      mobile: index.manifest.rootEntry.mobile,
-    },
+    ...(index.entries.has(index.manifest.rootEntry.code)
+      ? []
+      : [
+          {
+            entryCode: index.manifest.rootEntry.code,
+            desktop: index.manifest.rootEntry.desktop,
+            mobile: index.manifest.rootEntry.mobile,
+          },
+        ]),
     {
       entryCode: index.manifest.authentication.desktop.routeCode,
       desktop: index.manifest.authentication.desktop.path,

@@ -475,3 +475,124 @@ test('resource user-surface entries reject mismatched entry codes', () => {
     /OPENXIANGDA_ROUTE_MANIFEST_INVALID/,
   );
 });
+
+// The user-surface landing: rootEntry aliases the records entry itself, so the
+// post-login destination is a real manifest route with identical paths.
+const aliasedRecordsEntry = {
+  code: 'user.requests.records',
+  kind: 'resource-records',
+  resourceCode: 'requests',
+  desktop: {
+    routeCode: 'user.requests.records.desktop',
+    path: '/my/requests',
+    surface: 'user',
+    requiresAuthentication: true,
+    pathParams: [],
+    capability: 'app:x:data:requests:read',
+  },
+  mobile: {
+    routeCode: 'user.requests.records.mobile',
+    path: '/m/my/requests',
+    surface: 'user',
+    requiresAuthentication: true,
+    pathParams: [],
+    capability: 'app:x:data:requests:read',
+  },
+} as const;
+
+const aliasedRootManifest = {
+  schemaVersion: 'openxiangda.application-route-manifest/v3',
+  appCode: 'route-test-app',
+  devicePolicy: manifestEntryPoints.devicePolicy,
+  rootEntry: {
+    code: 'user.requests.records',
+    desktop: '/my/requests',
+    mobile: '/m/my/requests',
+  },
+  authentication: manifestEntryPoints.authentication,
+  routes: [aliasedRecordsEntry],
+  digest: 'c'.repeat(64),
+} as never;
+
+test('root entry may alias the resource records landing route', () => {
+  const index = createStandardRouteManifestIndex(
+    aliasedRootManifest,
+    'route-test-app',
+  );
+  assert.equal(
+    index.entries.get('user.requests.records')?.desktop.path,
+    '/my/requests',
+  );
+});
+
+test('aliased landing still negotiates devices through the route pair', () => {
+  const index = createStandardRouteManifestIndex(
+    aliasedRootManifest,
+    'route-test-app',
+  );
+  assert.deepEqual(
+    negotiateStandardRoute(
+      index,
+      { pathname: '/my/requests', search: '?tab=mine', hash: '' },
+      'mobile',
+    ),
+    {
+      entryCode: 'user.requests.records',
+      from: 'desktop',
+      to: 'mobile',
+      pathname: '/m/my/requests',
+      search: '?tab=mine',
+      hash: '',
+    },
+  );
+  assert.equal(
+    negotiateStandardRoute(
+      index,
+      { pathname: '/m/my/requests', search: '', hash: '' },
+      'desktop',
+    )?.pathname,
+    '/my/requests',
+  );
+});
+
+test('a non-root route colliding with the aliased landing path stays invalid', () => {
+  assert.throws(
+    () =>
+      createStandardRouteManifestIndex(
+        {
+          ...aliasedRootManifest,
+          rootEntry: {
+            code: 'user.requests.records',
+            desktop: '/other-landing',
+            mobile: '/m/other-landing',
+          },
+          routes: [
+            aliasedRecordsEntry,
+            {
+              ...todoCenter,
+              desktop: { ...todoCenter.desktop, path: '/other-landing' },
+            },
+          ],
+        } as never,
+        'route-test-app',
+      ),
+    /OPENXIANGDA_ROUTE_MANIFEST_INVALID/,
+  );
+  assert.throws(
+    () =>
+      createStandardRouteManifestIndex(
+        {
+          ...aliasedRootManifest,
+          routes: [
+            aliasedRecordsEntry,
+            {
+              ...todoCenter,
+              desktop: { ...todoCenter.desktop, path: '/login' },
+            },
+          ],
+        } as never,
+        'route-test-app',
+      ),
+    /OPENXIANGDA_ROUTE_MANIFEST_INVALID/,
+  );
+});
