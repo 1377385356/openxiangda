@@ -37,6 +37,35 @@ test('browser evidence survives scratch-path and documentation-only tarball chan
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+test('browser evidence ignores node-only candidate packages and contracts native-compiler bytes', () => {
+  const root = mkdtempSync(join(tmpdir(), 'oxa-stage-scope-'));
+  try {
+    const base = fixture(root, 'base');
+    const devkit = fixture(root, 'devkit');
+    devkit.packages.push({ name: 'openxiangda-devkit-core', root: join(root, 'devkit-core'), tarball: join(root, 'devkit-core.tgz') });
+    mkdirSync(join(root, 'devkit-core/dist'), { recursive: true });
+    writeFileSync(join(root, 'devkit-core/dist/index.js'), 'export const compiler = 1;');
+    writeFileSync(join(root, 'devkit-core.tgz'), 'devkit candidate bytes');
+    assert.equal(browserStageFingerprint(base), browserStageFingerprint(devkit));
+
+    const nativeCompiler = fixture(root, 'native-compiler');
+    nativeCompiler.packages[0] = { ...nativeCompiler.packages[0], name: 'openxiangda-contracts' };
+    mkdirSync(join(nativeCompiler.packages[0].root, 'src/native-compiler'), { recursive: true });
+    writeFileSync(join(nativeCompiler.packages[0].root, 'src/native-compiler/compiler.ts'), 'export const compiled = 1;');
+    const withoutCompiler = fixture(root, 'native-compiler-clean');
+    withoutCompiler.packages[0] = { ...withoutCompiler.packages[0], name: 'openxiangda-contracts' };
+    assert.equal(browserStageFingerprint(nativeCompiler), browserStageFingerprint(withoutCompiler));
+
+    const auditAccess = fixture(root, 'audit-access');
+    auditAccess.packages[0] = { ...auditAccess.packages[0], name: 'openxiangda-contracts' };
+    mkdirSync(join(auditAccess.packages[0].root, 'src/native-compiler'), { recursive: true });
+    writeFileSync(join(auditAccess.packages[0].root, 'src/native-compiler/data-audit-access.ts'), 'export const audit = 1;');
+    const auditClean = fixture(root, 'audit-clean');
+    auditClean.packages[0] = { ...auditClean.packages[0], name: 'openxiangda-contracts' };
+    assert.notEqual(browserStageFingerprint(auditAccess), browserStageFingerprint(auditClean));
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test('browser evidence changes with external dependency, app, runner, package semantics or environment', () => {
   const root = mkdtempSync(join(tmpdir(), 'oxa-stage-inputs-'));
   try {

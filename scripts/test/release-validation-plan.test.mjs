@@ -69,16 +69,17 @@ test("CLI-owned web template release requires a new browser application", () => 
   assert.equal(plan.gates.templateGeneratedCheck, true);
 });
 
-test("Devkit runtime release requires browser and reference validation", () => {
+test("Devkit compiler release builds fresh apps and reference apps without browser suite", () => {
+  // devkit-core 不进入浏览器运行时：编译器改动以 build + 参考应用覆盖。
   const plan = createReleaseValidationPlan(
     state(candidate("openxiangda-devkit-core", ["package.json", "dist/index.js"]))
   );
-  assert.equal(plan.gates.freshApplication, "e2e");
+  assert.equal(plan.gates.freshApplication, "build");
   assert.equal(plan.gates.referenceApplication, true);
   assert.equal(plan.gates.templateGeneratedCheck, true);
   assert.match(
     plan.reasons.join("\n"),
-    /generated application runtime behavior/
+    /generated application toolchain behavior/
   );
 });
 
@@ -99,6 +100,33 @@ test("core contract release requires browser and reference validation", () => {
   );
   assert.equal(plan.gates.freshApplication, "e2e");
   assert.equal(plan.gates.referenceApplication, true);
+});
+
+test("shared native-compiler-only contract release skips the browser suite", () => {
+  // 共享校验器是 Node 侧；浏览器入口不加载这些字节（data-audit-access 除外）。
+  const plan = createReleaseValidationPlan(
+    state(candidate("openxiangda-contracts", [
+      "package.json",
+      "src/native-compiler/compiler.ts",
+      "src/native-compiler/data-field.ts",
+    ]))
+  );
+  assert.equal(plan.gates.freshApplication, "build");
+  assert.equal(plan.gates.referenceApplication, true);
+});
+
+test("root runtime release maps browser surfaces to the browser suite", () => {
+  const browserPlan = createReleaseValidationPlan(
+    state(candidate("openxiangda", ["package.json", "src/browser/platform-client.ts"]))
+  );
+  assert.equal(browserPlan.gates.freshApplication, "e2e");
+  assert.equal(browserPlan.gates.referenceApplication, true);
+
+  const nodePlan = createReleaseValidationPlan(
+    state(candidate("openxiangda", ["package.json", "src/nest.ts", "bin/distribution/launcher.js"]))
+  );
+  assert.equal(nodePlan.gates.freshApplication, "build");
+  assert.equal(nodePlan.gates.referenceApplication, true);
 });
 
 test("server-only release still builds a fresh app and reference app", () => {

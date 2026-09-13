@@ -13,6 +13,7 @@ import {
   renderAdminNavigationSuggestion,
 } from '../src/index.js';
 import { projectDataResourceView } from 'openxiangda-contracts';
+import { materializeApplicationModules } from '../src/compiler/application-model.js';
 
 const record = defineDataModel({
   code: 'records', name: '记录',
@@ -334,4 +335,76 @@ test('user 声明通过共享编译器的本地完整配置校验', async () => 
   });
   const local = compileLocalConfiguration(config, '2.17.0');
   assert.ok(local.compiled, '共享编译器闭合通过，不再抛 NativeConfigurationCompilerError');
+});
+
+test('GAP-MODULE-001：列表视图 sortableFields 表达非默认排序能力', () => {
+  const venue = defineDataModel({
+    code: 'venues', name: '场地档案',
+    fields: [
+      { code: 'name', type: 'text.short', label: '场地名称', required: true },
+      { code: 'capacity', type: 'number.integer', label: '可容纳人数', required: true },
+    ],
+  });
+  const config = defineOpenXiangdaApp({
+    app: { code: 'sortable-test', name: '排序' },
+    frontend: { admin: { navigation: [] } },
+    modules: [defineApplicationModule({
+      code: 'venue',
+      models: [venue],
+      crud: [{
+        model: 'venues',
+        list: {
+          model: 'venues',
+          fields: ['name', 'capacity'],
+          filterFields: ['capacity'],
+          searchableFields: ['name'],
+          sortableFields: ['capacity'],
+          defaultPageSize: 20,
+          defaultSort: { field: 'name', order: 'asc' },
+        },
+      }],
+    })],
+  });
+  // 按 gap 文档验收：断言在 materializeApplicationModules 投影层（声明级字段）。
+  const projected = materializeApplicationModules([defineApplicationModule({
+    code: 'venue',
+    models: [venue],
+    crud: [{
+      model: 'venues',
+      list: {
+        model: 'venues',
+        fields: ['name', 'capacity'],
+        filterFields: ['capacity'],
+        searchableFields: ['name'],
+        sortableFields: ['capacity'],
+        defaultPageSize: 20,
+        defaultSort: { field: 'name', order: 'asc' },
+      },
+    }],
+  })]);
+  assert.equal(projected.diagnostics.length, 0);
+  const capacity = projected.resources[0].fields.find(field => field.code === 'capacity');
+  assert.equal(capacity?.sortable, true, 'sortableFields 中的字段可排序');
+  const name = projected.resources[0].fields.find(field => field.code === 'name');
+  assert.equal(name?.sortable, true, 'defaultSort.field 保持隐式可排序');
+  // defaultSort 字段重复出现在 sortableFields 中容忍不报错
+  assert.doesNotThrow(() => defineOpenXiangdaApp({
+    app: { code: 'sortable-test-2', name: '排序' },
+    frontend: { admin: { navigation: [] } },
+    modules: [defineApplicationModule({
+      code: 'venue',
+      models: [venue],
+      crud: [{ model: 'venues', list: { model: 'venues', sortableFields: ['name', 'capacity'] } }],
+    })],
+  }));
+  // 未声明字段报错（与 filterFields 对齐）
+  assert.throws(() => defineOpenXiangdaApp({
+    app: { code: 'sortable-test-3', name: '排序' },
+    frontend: { admin: { navigation: [] } },
+    modules: [defineApplicationModule({
+      code: 'venue',
+      models: [venue],
+      crud: [{ model: 'venues', list: { model: 'venues', sortableFields: ['ghost'] } }],
+    })],
+  }));
 });

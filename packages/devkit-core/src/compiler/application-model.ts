@@ -32,6 +32,8 @@ export interface AppResourceListDeclaration {
   fields?: readonly string[];
   filterFields?: readonly string[];
   searchableFields?: readonly string[];
+  /** Columns the user may actively sort by in the generated list. */
+  sortableFields?: readonly string[];
   defaultPageSize?: number;
   defaultSort?: { field: string; order?: 'asc' | 'desc' };
 }
@@ -139,6 +141,7 @@ export function materializeApplicationModules(modules: readonly AppModuleDeclara
         validateSelection(definition?.fields, `${viewPath}.${kind}.fields`);
       }
       validateSelection(view.list?.filterFields, `${viewPath}.list.filterFields`);
+      validateSelection(view.list?.sortableFields, `${viewPath}.list.sortableFields`);
       validateSelection(view.list?.searchableFields, `${viewPath}.list.searchableFields`);
       if (view.list?.defaultSort) validateSelection([view.list.defaultSort.field], `${viewPath}.list.defaultSort.field`);
       validateSelection(view.sections?.flatMap(section => [...section.fields]), `${viewPath}.sections.fields`);
@@ -212,7 +215,10 @@ export function materializeApplicationModules(modules: readonly AppModuleDeclara
             list: Boolean(view) && listFields.includes(field.code),
             filter: selected.some(item => item.list?.filterFields?.includes(field.code)),
             searchable: selected.some(item => item.list?.searchableFields?.includes(field.code)),
-            sortable: selected.some(item => item.list?.defaultSort?.field === field.code),
+            sortable: selected.some(item =>
+              item.list?.defaultSort?.field === field.code
+              || item.list?.sortableFields?.includes(field.code)
+            ),
           };
         }),
         list: {

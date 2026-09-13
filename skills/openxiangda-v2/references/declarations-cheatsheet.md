@@ -22,6 +22,7 @@
 | `audit.read` 可写 `true`（绑定本资源读能力）或能力数组 | `audit: { read: true }` |
 | `resource-ref.*` 必须带 `source` 来源协议 | `{ type: 'resource-ref.single', source: { kind: 'resource', resourceCode: 'repair-requests', labelField: 'title', searchFields: ['title'], pageSize: 20, loadMode: 'search' } }` |
 | `labelField` 必须指向目标资源的 `text.short` / `text.long` 字段 | 不要用流水号/选项字段当 label |
+| 列表可排序列用视图级 `sortableFields` 表达（`defaultSort.field` 隐式可排序） | `list: { sortableFields: ['capacity'], defaultSort: { field: 'name', order: 'asc' } }` |
 | 每个字段都必须带中文/业务 `label`（含子表外键与排序字段） | `{ code: 'requestId', type: 'uuid', label: '所属申请', required: true }` |
 | 子表 `subtable` 的外键是子资源的 **uuid** 字段，排序字段是**可写 number.integer** | 子资源：`{ code: 'requestId', type: 'uuid', required: true }` + `{ code: 'sortOrder', type: 'number.integer', required: true }`；父表：`subtable: { resourceCode: 'repair-items', foreignKey: 'requestId', orderField: 'sortOrder', maxRows: 20 }` |
 | 图片/附件的 `file` 限定数量与大小 | `file: { maxCount: 3, maxSizeMb: 10, accept: ['image/png', 'image/jpeg'] }` |

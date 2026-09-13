@@ -25,10 +25,11 @@ export function hashTree(root, { ignore = () => false, transform = (_, content) 
   return hash.digest('hex');
 }
 
-export function runtimePackageFingerprint(root) {
+export function runtimePackageFingerprint(root, { extraIgnore = () => false } = {}) {
   return hashTree(root, {
     ignore: path => /^(documentation|skills|launcher-skill|releases)\//.test(path)
-      || /^(README|CHANGELOG|LICENSE)(?:\.[^/]+)?$/.test(path),
+      || /^(README|CHANGELOG|LICENSE)(?:\.[^/]+)?$/.test(path)
+      || extraIgnore(path),
     transform: (path, content) => {
       if (path !== 'package.json') return content;
       const manifest = JSON.parse(content);
@@ -53,6 +54,21 @@ export function normalizeCandidateReferences(content, packages, applicationRoot)
   return result;
 }
 
+/**
+ * 浏览器应用运行时只会 import openxiangda 根包的前端入口与 contracts 的
+ * 浏览器入口；其余候选包是 Node 侧依赖，其字节变化不影响浏览器阶段结果，
+ * 不进入指纹（候选版本本身仍由 installedDependencies 的规范化锁覆盖）。
+ */
+const BROWSER_BUNDLED_PACKAGES = new Set(['openxiangda', 'openxiangda-contracts']);
+
+function browserRuntimeIgnore(name) {
+  if (name !== 'openxiangda-contracts') return () => false;
+  // contracts 的浏览器入口仅从 native-compiler 引 data-audit-access。
+  return path =>
+    (path.startsWith('src/native-compiler/') || path.startsWith('dist/native-compiler/'))
+    && !path.includes('data-audit-access');
+}
+
 export function browserStageFingerprint({ applicationRoot, packages, runnerRoot, env = process.env }) {
   const normalize = content => normalizeCandidateReferences(content, packages, applicationRoot);
   return digest(canonical({
@@ -64,7 +80,13 @@ export function browserStageFingerprint({ applicationRoot, packages, runnerRoot,
       transform: (path, content) => path.endsWith('package.json') ? normalize(content.toString('utf8')) : content,
     }),
     installedDependencies: normalize(readFileSync(join(applicationRoot, 'pnpm-lock.yaml'), 'utf8')),
-    packages: packages.map(item => ({ name: item.name, runtime: runtimePackageFingerprint(item.root) })).sort((a, b) => a.name.localeCompare(b.name)),
+    packages: packages
+      .filter(item => BROWSER_BUNDLED_PACKAGES.has(item.name))
+      .map(item => ({
+        name: item.name,
+        runtime: runtimePackageFingerprint(item.root, { extraIgnore: browserRuntimeIgnore(item.name) }),
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name)),
     runners: hashTree(runnerRoot, { ignore: (_, name) => generatedDirectories.has(name) }),
   }));
 }

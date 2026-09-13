@@ -15,8 +15,37 @@ const CORE_APPLICATION_PACKAGES = new Set([
 const BROWSER_CRITICAL_PACKAGES = new Set([
   "openxiangda-cli",
   "openxiangda-contracts",
-  "openxiangda-devkit-core",
 ]);
+
+/**
+ * 浏览器应用实际加载的字节：openxiangda 根包（src/browser 等前端入口）与
+ * contracts 的浏览器入口。devkit-core/cli/nest/mcp/skill-kit 是 Node 侧依赖，
+ * 其字节不可能进入浏览器运行时。
+ */
+const BROWSER_RUNTIME_PREFIXES = {
+  openxiangda: [
+    "src/browser/",
+    "src/react",
+    "src/mobile",
+    "src/field-kit",
+    "src/core",
+    "src/styles",
+  ],
+  "openxiangda-contracts": null,
+};
+
+function isBrowserRuntimeChange(name, files) {
+  if (name === "openxiangda-contracts") {
+    // contracts 浏览器入口仅从 native-compiler 引 data-audit-access；
+    // 其余 native-compiler 改动是 Node 侧共享校验器，不影响浏览器字节。
+    return files.some(file =>
+      !file.startsWith("src/native-compiler/")
+      || file.startsWith("src/native-compiler/data-audit-access"));
+  }
+  const prefixes = BROWSER_RUNTIME_PREFIXES[name];
+  if (!prefixes) return false;
+  return files.some(file => prefixes.some(prefix => file.startsWith(prefix)) || file.endsWith(".css"));
+}
 
 export const RELEASE_PLAN_SCHEMA = "openxiangda.release-validation-plan/v1";
 
@@ -148,10 +177,23 @@ export function createReleaseValidationPlan(packageState, options = {}) {
       packedSmokeLevel = maxSmokeLevel(packedSmokeLevel, "build");
       referenceApplication = true;
       templateGeneratedCheck = true;
-      if (BROWSER_CRITICAL_PACKAGES.has(candidate.name)) {
+      if (BROWSER_CRITICAL_PACKAGES.has(candidate.name) && isBrowserRuntimeChange(candidate.name, substantiveFiles)) {
         packedSmokeLevel = "e2e";
+        reasons.add(`${candidate.name} changes bytes loaded by the generated browser application.`);
       }
-      reasons.add(`${candidate.name} affects generated application runtime behavior.`);
+      reasons.add(`${candidate.name} affects generated application toolchain behavior.`);
+      continue;
+    }
+
+    if (candidate.name === "openxiangda") {
+      packedSmokeLevel = maxSmokeLevel(packedSmokeLevel, "build");
+      referenceApplication = true;
+      if (isBrowserRuntimeChange(candidate.name, substantiveFiles)) {
+        packedSmokeLevel = "e2e";
+        reasons.add("Root package changes bytes loaded by the generated browser application.");
+      } else {
+        reasons.add("Root package changes only Node-side or launcher surfaces.");
+      }
       continue;
     }
 
