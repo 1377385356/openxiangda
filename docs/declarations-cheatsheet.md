@@ -11,6 +11,7 @@
 | 视图 `list`/`form`/`detail` 的 `model` 可省略（继承视图模型）；显式声明时必须与 `crud[].model` 一致 | `list: { fields: [...] }` 即可，不必写 `model` |
 | 每个模型最多 20 个命名视图；命名视图需要稳定 `code` + `name` | `crud: [{ model: 'x', code: 'x-active', name: '进行中', ... }]` |
 | 新建视图的 `form.fields` 必须覆盖全部无默认必填字段，或显式 `generated.create: false` | 检查器会列出缺失字段 |
+| Workflow 详情接管的资源路由用模型级 `detailRouteCode` 表达（desktop/mobile 各引用一条 user surface 路由） | `defineDataModel({ code: 'x', detailRouteCode: { desktop: 'x-detail', mobile: 'x-detail-mobile' }, ... })` |
 
 ## 字段声明
 

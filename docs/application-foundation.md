@@ -195,3 +195,20 @@ crud: [{
 ```
 
 引用未声明字段按编译错误处理；低层 `data.resources[].fields[].sortable` 语义不变。
+
+## 资源详情路由声明 {#detail-route-code}
+
+Workflow 详情接管的资源侧绑定用模型级 `detailRouteCode` 表达，desktop/mobile 各引用一条
+前端路由；投影完整透传到 `data.resources[].detailRouteCode`，低层声明语义不变：
+
+```ts
+defineDataModel({
+  code: 'venue-reservations', name: '场地预约',
+  detailRouteCode: { desktop: 'reservation-detail', mobile: 'reservation-detail-mobile' },
+  fields: [/* ... */],
+})
+```
+
+两条路由必须已声明为 user surface、只带一个有界动态记录参数，且路由 capability 覆盖资源
+read 能力；桌面路由不位于 `/m/`，移动路由必须位于 `/m/`。模型声明出现未知属性时报
+`APP_MODEL_KEY_UNKNOWN` 编译错误——声明层的拼写错误不允许被静默丢弃。
