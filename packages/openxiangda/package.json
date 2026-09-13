@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.18.0",
+  "version": "2.18.1",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -67,7 +67,7 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.4.8",
+    "openxiangda-cli": "2.4.9",
     "openxiangda-contracts": "2.14.1",
     "openxiangda-devkit-core": "2.14.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
@@ -139,39 +139,33 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.18.0",
+    "version": "2.18.1",
     "status": "reviewed",
-    "title": "OpenXiangda 2.18.0：用户标准面闭合修复、列表可排序声明与发布提效",
-    "summary": "共享编译器完成用户标准面契约闭合校验；模块列表视图新增 sortableFields 排序声明（GAP-MODULE-001）；发布验证按浏览器字节分级并收窄浏览器证据指纹，纯工具链补丁不再触发浏览器矩阵。",
-    "newFeatures": [
-      "列表视图新增 sortableFields：与 filterFields/searchableFields 同构声明可排序列；defaultSort.field 保持隐式可排序，重复容忍；引用未声明字段报编译错误；低层 data.resources 语义不变。",
-      "发布提效：验证计划按“浏览器应用实际加载的字节”分级（根包前端入口/contracts 浏览器入口），共享校验器等 Node 侧改动不再触发浏览器矩阵；浏览器阶段缓存指纹只包含浏览器捆绑包，devkit-core 等候选的字节变化不再使浏览器证据失效（候选版本仍由规范化锁覆盖）。"
-    ],
+    "title": "OpenXiangda 2.18.1：用户标准面落地页渲染修复",
+    "summary": "修复 2.18.0 中声明 user 用户面的应用整页渲染为空白的问题：运行时清单校验器把“根入口别名资源 records 路由”的编译器形状误判为路径冲突。本版让运行时接受该形状并新增浏览器验收覆盖。",
+    "newFeatures": [],
     "fixes": [
-      "修复 2.17.0 中 user 声明触发 NATIVE_CODE_INVALID / NATIVE_CONTRACT_CLOSURE_MISMATCH：共享校验器按配置事实校验并并入用户标准路由，配置 bundle 不变，旧平台无需升级。",
-      "生成码统一为 user.资源码.records / user.资源码.submit，符合稳定码模式。"
+      "修复 OPENXIANGDA_ROUTE_MANIFEST_INVALID 导致用户标准面应用空白：rootEntry 直接别名资源 records 路由（登录落地即“我的记录”）时，校验器现在允许根入口别名恰好一条标准路由对；认证路径与其它任何落地路径冲突仍然拒绝。",
+      "修复别名落地页的双端切换失效：根入口别名路由对时，设备协商由该路由对承担投影，不再与静态根对产生等特异性双匹配。",
+      "浏览器验收新增 user-surface.e2e：覆盖别名清单挂载、本人过滤列表、提交表单与双端切换；为验收 mock 平台补齐单条记录读取端点（native/data/{code}/records/{id}）。"
     ],
     "affectedUsers": [
-      "使用 openxiangda 2.17.0 并声明 user 用户面的应用开发者。",
-      "从 data.resources 迁移到模块化声明、需要列表列头排序能力的应用（如数智工会 szgh-v2）。"
+      "使用 openxiangda 2.18.0 并在 CRUD 视图声明 user 用户面的应用开发者（应用此前表现为登录后整页空白）。"
     ],
     "upgradeSteps": [
-      "应用精确依赖升级到 openxiangda 2.18.0 后重新运行 check 与部署。",
-      "模块化迁移的列表排序用 sortableFields 声明，与既有低层声明逐字段对齐。"
+      "应用精确依赖升级到 openxiangda 2.18.1 后重新运行 check 与部署；无需平台配合升级。"
     ],
     "knownLimitations": [
-      "“我的记录”的本人过滤仍是查询层展示过滤，非服务端授权边界。"
+      "“我的记录”的本人过滤仍是查询层展示过滤，非服务端授权边界（与 2.18.0 相同）。"
     ],
+    "issues": [],
     "compatibility": {
       "node": ">=24",
-      "workspaceGenerations": [
-        "v2"
-      ],
-      "platform": "无平台配合要求；配置与契约 bundle 对既有平台保持可部署。",
+      "workspaceGenerations": "v2",
+      "platform": "无平台配合要求；契约与配置 bundle 字节不变。",
       "v1": "不改变 V1 运行时或应用。"
     },
-    "issues": [],
-    "sha256": "c5744c1cdd46e8922615d1b3bff521e072108906882a25c4d0f75f93f869c4af",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.18.0"
+    "sha256": "80e7d6fe82cf1b0475e15509aa9fda386cc03764fc69a352cef6bc9ea461bb9f",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.18.1"
   }
 }
