@@ -6,7 +6,7 @@
   "summary": "模块化声明支持资源级详情路由绑定（detailRouteCode），模型声明未知属性 fail-closed；devkit-core 2.15.0 携带投影实现，根包为依赖传播版本。",
   "newFeatures": [
     "AppDataModelDeclaration 新增 detailRouteCode（desktop/mobile route code）：模块化声明可表达 Workflow 详情接管消费的资源级详情路由绑定，materializeApplicationModules 完整透传到输出资源；低层 data.resources[].detailRouteCode 语义与既有校验（user surface、单动态参数、read capability 对齐）不变。",
-    "模型声明上的未知属性不再被静默丢弃：投影输出 APP_MODEL_KEY_UNKNOWN 错误 diagnostic（指向 modules[i].models[j].<key>）并使编译失败。"
+    "模型声明上的未知属性不再被静默丢弃：投影输出 APP_MODEL_KEY_UNKNOWN 错误 diagnostic（指向 `modules[i].models[j].<key>`）并使编译失败。"
   ],
   "fixes": [],
   "affectedUsers": [
