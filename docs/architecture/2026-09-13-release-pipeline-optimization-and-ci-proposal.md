@@ -1,7 +1,7 @@
 # 发布链路优化与 CI 化方案（提案）
 
 日期：2026-09-13
-状态：提案（待评审立项；未评审前不改运行时代码）
+状态：Phase 1-3 代码与 workflow 已实施（见文末"实施状态"）；剩余为两个仓库管理员动作后即可试点
 范围：`tools/openxiangda-v2` 发布火车（changesets → verify:release → npm → tag/GitHub Release → 回执 → 根仓 gitlink），不含平台镜像/OSS 发布线（那是根仓 `smart-build-and-push` 的职责，边界不变）。
 
 ---
@@ -212,3 +212,35 @@ runner 每次是全新虚拟机，不配缓存则每次全量下载；按下列�
 - npm Trusted Publishing 官方文档：https://docs.npmjs.com/trusted-publishers/
 - GitHub Changelog：npm trusted publishing with OIDC GA（2025-07-31）：https://github.blog/changelog/2025-07-31-npm-trusted-publishing-with-oidc-is-generally-available/
 - Changesets + Trusted Publishing 实践：https://www.adebayosegun.com/blog/changesets-and-trusted-publishing-on-git-hub-actions
+
+---
+
+## 七、实施状态（2026-09-14 更新）
+
+### 已完成
+
+| 项 | 内容 |
+| --- | --- |
+| P1 收敛修复 | registry 读回统一 `--prefer-online`；收敛观察预算参数化 `OPENXIANGDA_PUBLISH_CONVERGENCE_SECONDS`（默认 300s，30-1800s 夹取），替换原 ~24s 固定轮次 |
+| break-glass | `OPENXIANGDA_RELEASE_REQUIRE_CI=1` 时本地 `release:publish` 默认拒绝，紧急通道需显式 `OPENXIANGDA_RELEASE_BREAK_GLASS=1`（默认未开启，Phase 3 切换后生效） |
+| release-validation.yml | Phase 1：GitHub runner 完整复刻 `verify:release`（不写 npm/tag/Release）；参考仓先物化推送再验证；已实跑确认接线与快速失败正确 |
+| release.yml | Phase 2/3：`environment: npm` + OIDC Trusted Publishing 发布；同 job 验证→发布→tag→GitHub Release→回执 artifact；`id-token: write` |
+| version-pr.yml | changesets 版本物化 PR 自动化（dispatch-only，试点后再开自动触发） |
+| npm environment | `npm` environment 已创建（required reviewers 待仓库管理员在 UI 添加） |
+| 参考仓迁移 | 参考应用权威远端从 `http://code.syedu.tech`（明文 + 证书不匹配，无法安全承载 CI 凭据）迁至 GitHub 私有仓 `1377385356/openxiangda-v2-reference-app`；本地 checkout origin 已切换，历史镜像完整 |
+
+### 等待仓库管理员的两个动作
+
+1. **npm 侧为 7 个包配置 Trusted Publisher**（npmjs.com → 包页 → Settings → Trusted Publisher，逐个添加，值完全一致）：
+   - Repository：`1377385356/openxiangda`
+   - Workflow filename：`.github/workflows/release.yml`
+   - Environment：`npm`
+   - 包清单：`openxiangda`、`openxiangda-cli`、`openxiangda-contracts`、`openxiangda-devkit-core`、`openxiangda-mcp`、`openxiangda-nest`、`openxiangda-skill-kit`
+2. **参考仓写凭据**：创建 fine-grained PAT（仅授权 `1377385356/openxiangda-v2-reference-app`，权限 Contents: Read and write），添加为 `1377385356/openxiangda` 的 Actions secret `REFERENCE_REPO_TOKEN`（Settings → Secrets and variables → Actions）。
+3. （推荐）environment `npm` 添加 required reviewers，使 CI 发布需要人工批准。
+
+完成 2 后触发 `release-validation` 全量跑通；完成 1+2+3 后按 Phase 2 用 prerelease changeset 做发布试点。
+
+### 治理修订（随 Phase 3 生效）
+
+"npm 发布只从可信维护者本机"修订为："npm 发布只从受 environment 保护的 `release.yml`（OIDC Trusted Publishing）；本地通道默认关闭（`OPENXIANGDA_RELEASE_REQUIRE_CI`），紧急发布走显式 break-glass 并在回执记录原因；AI 会话在任何环境都不持有 npm 发布凭据。"
