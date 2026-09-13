@@ -228,6 +228,12 @@ export interface AppDataResourceDeclaration {
     delete?: boolean;
   };
   fields: AppDataFieldDeclaration[];
+  /** 生成 user surface 的“我的记录 + 提交”标准页；home 缺省由首个启用资源承担。 */
+  userSurface?: {
+    home?: boolean;
+    listLabel?: string;
+    submitLabel?: string;
+  };
   /** Read access to provenance metadata and record history; omission preserves defaults. */
   audit?: { read: string[] | boolean };
   invariants?: DataResource['invariants'];
@@ -247,6 +253,11 @@ export interface AppDataResourceDeclaration {
 
 export interface AppConfiguredDataResource extends DataResource {
   detailRouteCode?: AppResourceDetailRouteCodeDeclaration;
+  userSurface?: {
+    home?: boolean;
+    listLabel?: string;
+    submitLabel?: string;
+  };
 }
 
 export interface OpenXiangdaAppDeclaration {
@@ -5315,6 +5326,15 @@ function validateApplicationAuthentication(
     })
   );
   const routeCodes = new Set(routeByCode.keys());
+  // 生成式用户标准面的路由码（仅参与登录默认路由解析，不占用声明码空间）。
+  const declaredResources = (Array.isArray(object(config.data).resources)
+    ? object(config.data).resources
+    : []) as unknown[];
+  const userSurfaceResourceCodes = new Set(
+    declaredResources
+      .filter(raw => object(object(raw).userSurface))
+      .map(raw => string(object(raw).code)!)
+  );
   const claimedShapes = new Map(
     generatedPlatformRouteClaims(config).map(claim => [
       canonicalFrontendRouteShape(claim.path),
@@ -5329,7 +5349,24 @@ function validateApplicationAuthentication(
     const routeCode = string(surface.routeCode);
     const routePath = string(surface.path);
     const defaultRouteCode = string(surface.defaultRouteCode);
-    const defaultRoute = routeByCode.get(defaultRouteCode);
+    const generatedUserRoute = /^user:([a-z][a-z0-9-]{0,62}):(records|submit)$/.exec(
+      defaultRouteCode
+    );
+    const defaultRoute = generatedUserRoute
+      ? userSurfaceResourceCodes.has(generatedUserRoute[1]!)
+        ? {
+            surface: 'user',
+            path:
+              generatedUserRoute[2] === 'records'
+                ? device === 'mobile'
+                  ? `/m/my/${generatedUserRoute[1]}`
+                  : `/my/${generatedUserRoute[1]}`
+                : device === 'mobile'
+                  ? `/m/my/${generatedUserRoute[1]}/submit`
+                  : `/my/${generatedUserRoute[1]}/submit`,
+          }
+        : undefined
+      : routeByCode.get(defaultRouteCode);
     const shape = canonicalFrontendRouteShape(routePath);
     const expectedPath = device === 'mobile' ? '/m/login' : '/login';
     const invalid =
@@ -6194,6 +6231,7 @@ export function materializeDataResource(
     ...(declaration.dataPolicyCode
       ? { dataPolicyCode: declaration.dataPolicyCode }
       : {}),
+    ...(declaration.userSurface ? { userSurface: { ...declaration.userSurface } } : {}),
     ...(declaration.detailRouteCode
       ? { detailRouteCode: { ...declaration.detailRouteCode } }
       : {}),
@@ -6238,6 +6276,7 @@ export function validateAppDeclaration(value: unknown): Diagnostic[] {
     'mobile',
     'dataPolicyCode',
     'detailRouteCode',
+    'userSurface',
     'audit',
   ]);
   const fieldKeys = new Set([
@@ -6296,6 +6335,21 @@ export function validateAppDeclaration(value: unknown): Diagnostic[] {
         diagnostics.push(diagnostic('APP_CONFIG_DATA_AUDIT_READ_INVALID',
           'audit.read 必须为 true（绑定资源读能力）、false 或不重复的非空 capability 数组（最多 20 项）', `${resourcePath}.audit`,
           `audit: { read: true } 会把审计读取绑定到本资源的 read 能力；需要更细粒度时写能力数组，例如 audit: { read: ['app:${appCode}:data:<resource>:read'] }`));
+      }
+    }
+    const userSurface = resource.userSurface;
+    if (userSurface !== undefined) {
+      const surface = object(userSurface);
+      const keys = Object.keys(surface).filter(key => !['home', 'listLabel', 'submitLabel'].includes(key));
+      const labels = [surface.listLabel, surface.submitLabel];
+      if (
+        keys.length ||
+        (surface.home !== undefined && typeof surface.home !== 'boolean') ||
+        labels.some(label => label !== undefined && (typeof label !== 'string' || !label.trim() || label.length > 64))
+      ) {
+        diagnostics.push(diagnostic('APP_CONFIG_DATA_USER_SURFACE_INVALID',
+          'userSurface 只接受 home 布尔与 listLabel/submitLabel（1-64 字符）', `${resourcePath}.userSurface`,
+          `例如 userSurface: { home: true, listLabel: '我的领用', submitLabel: '新建领用' }；直接在 CRUD 视图上写 user: true 即可自动生成`));
       }
     }
     const mutationOwner = string(resource.mutationOwner) || 'native';
@@ -6721,6 +6775,23 @@ export function defineOpenXiangdaApp(
       data: { resources: [...(declaration.data?.resources || []), ...projected.resources] },
     } : {}),
   });
+  // 生成式用户标准面：登录默认路由仍是模板占位时，指向首页资源的标准页。
+  const homeResourceCode = (normalizedDeclaration.data?.resources || [])
+    .filter(resource => resource.userSurface)
+    .sort((left, right) => left.code.localeCompare(right.code))
+    .find(resource => resource.userSurface?.home === true)?.code
+    || (normalizedDeclaration.data?.resources || [])
+      .filter(resource => resource.userSurface)
+      .sort((left, right) => left.code.localeCompare(right.code))[0]?.code;
+  if (homeResourceCode && normalizedDeclaration.frontend.authentication) {
+    const surfaces = normalizedDeclaration.frontend.authentication.surfaces;
+    if (surfaces.desktop.defaultRouteCode === 'application-home') {
+      surfaces.desktop.defaultRouteCode = `user:${homeResourceCode}:records`;
+    }
+    if (surfaces.mobile.defaultRouteCode === 'application-home-mobile') {
+      surfaces.mobile.defaultRouteCode = `user:${homeResourceCode}:records`;
+    }
+  }
   const declarationDiagnostics = validateAppDeclaration(normalizedDeclaration);
   if (declarationDiagnostics.length > 0) {
     throw new AppConfigValidationError(declarationDiagnostics);

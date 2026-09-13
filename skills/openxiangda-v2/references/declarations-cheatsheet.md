@@ -7,6 +7,7 @@
 | 规则 | 正确写法 |
 | --- | --- |
 | `crud[].model` 必须引用本模块已声明的模型 | `crud: [{ model: 'repair-requests', ... }]` |
+| `user: true` 一行声明即可生成用户端标准面（“我的记录”列表 + 提交表单，双端），并自动成为登录落地页 | `crud: [{ model: 'supply-requests', user: true, ... }]`；多资源时 `user: { home: true }` 指定落地资源，“仅本人”是展示过滤，行级隔离仍用 dataPolicies |
 | 视图 `list`/`form`/`detail` 的 `model` 可省略（继承视图模型）；显式声明时必须与 `crud[].model` 一致 | `list: { fields: [...] }` 即可，不必写 `model` |
 | 每个模型最多 20 个命名视图；命名视图需要稳定 `code` + `name` | `crud: [{ model: 'x', code: 'x-active', name: '进行中', ... }]` |
 | 新建视图的 `form.fields` 必须覆盖全部无默认必填字段，或显式 `generated.create: false` | 检查器会列出缺失字段 |

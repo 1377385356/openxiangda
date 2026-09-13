@@ -42,6 +42,7 @@ import {
 import {
   AppConfigValidationError,
   type OpenXiangdaAppConfig,
+  resourceCapabilityCodes,
 } from './config.js';
 import {
   AUTHORIZATION_TRANSITION_CAPABILITY_CODE_PATTERN,
@@ -1317,12 +1318,17 @@ function compileStandardRouteManifestRoute(
 function standardRouteCode(
   kind: AppRouteManifestEntryV3['kind'],
   device: 'desktop' | 'mobile',
-  workflowCode?: string
+  workflowCode?: string,
+  resourceCode?: string
 ) {
   if (kind === 'workflow-launch')
     return `workflow.${workflowCode}.launch.${device}`;
   if (kind === 'application-todo-center')
     return `application.todo-center.${device}`;
+  if (kind === 'resource-records')
+    return `user.${resourceCode}.records.${device}`;
+  if (kind === 'resource-submit')
+    return `user.${resourceCode}.submit.${device}`;
   return `${kind.replaceAll('-', '.')}.${device}`;
 }
 
@@ -1336,20 +1342,22 @@ function compileStandardRouteManifest(
     desktopPath: string,
     mobilePath: string,
     workflowCode?: string,
-    access?: Pick<AppRouteManifestRouteV3, 'capability' | 'access'>
+    access?: Pick<AppRouteManifestRouteV3, 'capability' | 'access'>,
+    resourceCode?: string
   ) => {
     routes.push({
       code,
       kind,
       ...(workflowCode ? { workflowCode } : {}),
+      ...(resourceCode ? { resourceCode } : {}),
       desktop: compileStandardRouteManifestRoute(
-        standardRouteCode(kind, 'desktop', workflowCode),
+        standardRouteCode(kind, 'desktop', workflowCode, resourceCode),
         desktopPath,
         'user',
         access
       ),
       mobile: compileStandardRouteManifestRoute(
-        standardRouteCode(kind, 'mobile', workflowCode),
+        standardRouteCode(kind, 'mobile', workflowCode, resourceCode),
         mobilePath,
         'user',
         access
@@ -1406,6 +1414,30 @@ function compileStandardRouteManifest(
           : undefined
     );
   }
+  const userSurfaceResources = (config.data?.resources || [])
+    .filter(resource => resource.userSurface)
+    .sort((left, right) => compare(left.code, right.code));
+  for (const resource of userSurfaceResources) {
+    const capabilities = resourceCapabilityCodes(config.app.code, resource.code);
+    addRoute(
+      `user:${resource.code}:records`,
+      'resource-records',
+      `/my/${resource.code}`,
+      `/m/my/${resource.code}`,
+      undefined,
+      { capability: capabilities.read },
+      resource.code
+    );
+    addRoute(
+      `user:${resource.code}:submit`,
+      'resource-submit',
+      `/my/${resource.code}/submit`,
+      `/m/my/${resource.code}/submit`,
+      undefined,
+      { capability: capabilities.create },
+      resource.code
+    );
+  }
   const normalizedRoutes = routes.sort((left, right) => compare(left.code, right.code));
   const staticRoute = (device: 'desktop' | 'mobile') => {
     const expectedPath = device === 'mobile' ? '/m/' : '/';
@@ -1456,8 +1488,15 @@ function compileStandardRouteManifest(
         desktop: { routeCode: 'application-login', path: '/login' },
         mobile: { routeCode: 'application-login-mobile', path: '/m/login' },
       };
-  const rootDesktop = staticRoute('desktop');
-  const rootMobile = staticRoute('mobile');
+  const homeResource = userSurfaceResources.find(
+    resource => resource.userSurface?.home === true
+  ) || userSurfaceResources[0];
+  const rootDesktop = homeResource
+    ? { code: `user:${homeResource.code}:records`, path: `/my/${homeResource.code}` }
+    : staticRoute('desktop');
+  const rootMobile = homeResource
+    ? { code: `user:${homeResource.code}:records`, path: `/m/my/${homeResource.code}` }
+    : staticRoute('mobile');
   const payload = {
     schemaVersion: SCHEMA_VERSIONS.applicationRouteManifest,
     appCode: config.app.code,

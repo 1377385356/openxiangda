@@ -43,12 +43,19 @@ function expectedRouteCode(
   kind: AppRouteManifestEntryV3['kind'],
   device: StandardRouteManifestDevice,
   workflowCode?: string,
+  resourceCode?: string,
 ) {
   if (kind === 'workflow-launch') {
     return `workflow.${workflowCode}.launch.${device}`;
   }
   if (kind === 'application-todo-center') {
     return `application.todo-center.${device}`;
+  }
+  if (kind === 'resource-records') {
+    return `user.${resourceCode}.records.${device}`;
+  }
+  if (kind === 'resource-submit') {
+    return `user.${resourceCode}.submit.${device}`;
   }
   return `${kind.replaceAll('-', '.')}.${device}`;
 }
@@ -161,6 +168,8 @@ export function createStandardRouteManifestIndex(
     'workflow-launch',
     'workflow-task',
     'workflow-instance',
+    'resource-records',
+    'resource-submit',
   ]);
   for (const entry of manifest.routes) {
     if (
@@ -170,6 +179,13 @@ export function createStandardRouteManifestIndex(
       (entry.kind === 'workflow-launch') !==
         (typeof entry.workflowCode === 'string' && entry.workflowCode.length > 0) ||
       (entry.kind !== 'workflow-launch' && entry.workflowCode !== undefined) ||
+      (entry.kind === 'resource-records' || entry.kind === 'resource-submit')
+        ? !(
+            typeof entry.resourceCode === 'string' &&
+            /^[a-z][a-z0-9-]{0,62}$/.test(entry.resourceCode) &&
+            entry.code === `user:${entry.resourceCode}:${entry.kind === 'resource-records' ? 'records' : 'submit'}`
+          )
+        : entry.resourceCode !== undefined ||
       entries.has(entry.code) ||
       !entry.desktop ||
       !entry.mobile ||
@@ -186,7 +202,13 @@ export function createStandardRouteManifestIndex(
       if (
         !route ||
         typeof route.routeCode !== 'string' ||
-        route.routeCode !== expectedRouteCode(entry.kind, device, entry.workflowCode) ||
+        route.routeCode !==
+          expectedRouteCode(
+            entry.kind,
+            device,
+            entry.workflowCode,
+            entry.resourceCode,
+          ) ||
         routeCodes.has(route.routeCode) ||
         !validManifestRoutePath(route.path) ||
         route.surface !== 'user' ||

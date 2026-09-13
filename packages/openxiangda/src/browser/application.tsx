@@ -87,6 +87,11 @@ const GeneratedResourcePage = lazy(() =>
     default: module.GeneratedResourcePage,
   }))
 );
+const StandardUserResourcePages = lazy(() =>
+  import('./components/resource/StandardUserResourcePages').then(module => ({
+    default: module.StandardUserResourceBundle,
+  }))
+);
 const WorkflowInstancePage = lazy(() =>
   workflowPages().then((module) => ({ default: module.WorkflowInstancePage })),
 );
@@ -658,6 +663,52 @@ export function OpenXiangdaApplication({
     'workflow:instance',
   );
   const workflowRoutes = routeManifestIndex.manifest.routes.flatMap(entry => {
+    if (entry.kind === 'resource-records' || entry.kind === 'resource-submit') {
+      const resourceCode = entry.resourceCode!;
+      const records = entry.kind === 'resource-records';
+      const listPath = records ? entry.desktop.path : `/my/${resourceCode}`;
+      const mobileListPath = records ? entry.mobile.path : `/m/my/${resourceCode}`;
+      return [
+        <Route
+          key={entry.code}
+          path={entry.desktop.path}
+          element={
+            <StandardUserRoute
+              device="desktop"
+              entry={entry}
+              portalRoot={routeManifest.rootEntry}
+            >
+              <StandardUserResourcePages
+                kind={entry.kind}
+                resourceCode={resourceCode}
+                variant="desktop"
+                listPath={records ? entry.desktop.path : listPath}
+                submitPath={records ? `/my/${resourceCode}/submit` : entry.desktop.path}
+              />
+            </StandardUserRoute>
+          }
+        />,
+        <Route
+          key={`${entry.code}:mobile`}
+          path={entry.mobile.path}
+          element={
+            <StandardUserRoute
+              device="mobile"
+              entry={entry}
+              portalRoot={routeManifest.rootEntry}
+            >
+              <StandardUserResourcePages
+                kind={entry.kind}
+                resourceCode={resourceCode}
+                variant="mobile"
+                listPath={records ? entry.mobile.path : mobileListPath}
+                submitPath={records ? `/m/my/${resourceCode}/submit` : entry.mobile.path}
+              />
+            </StandardUserRoute>
+          }
+        />,
+      ];
+    }
     if (entry.kind === 'application-todo-center') {
       return [
         <Route

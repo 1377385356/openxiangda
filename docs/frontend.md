@@ -63,7 +63,22 @@ capability、应用角色和数据策略。前端只根据当前登录用户完�
 可替换 Data API adapter。不要调用自定义 Nest CRUD、Function 或 Workflow 来绕过
 Data API。只有真正需要事务或外部系统的动作才使用同源 `/api`。
 
-### 自定义页面消费平台数据 {#data-access}
+### 生成式用户标准面 {#user-surface}
+
+对普通用户（登录基线角色）开放提交的 CRUD 资源，在 CRUD 视图上声明 `user: true` 即可获得
+开箱即用的用户端标准页，无需编写任何 React 代码：
+
+- “我的记录”列表（`/my/<resource>`，移动端 `/m/my/<resource>`）：默认仅显示当前登录用户
+  创建的记录（`created_by` 展示过滤），支持分页、行详情抽屉与“提交”入口。
+- “提交”表单（`/my/<resource>/submit`）：复用标准字段渲染与文件上传，成功后回到列表。
+- 首页接线：首个启用资源自动成为登录落地页与根路径；多资源时用 `user: { home: true }` 显式指定；
+  声明的 `/home` 占位路由保留可用，也可以继续用自定义页面覆盖用户端体验。
+- 能力接线自动完成：列表要求资源 read，提交要求 create；无能力的用户看到标准 403 面。
+
+注意：“仅本人”是页面展示过滤，不是授权边界。需要服务端强制行级隔离时按[数据与权限](./data-authz.md)
+声明 dataPolicies。
+
+## 自定义页面消费平台数据 {#data-access}
 
 自定义报表、工具页和用户端页面从 `openxiangda/core` 导入 `createNativeResourceClient`，
 用生成契约里的 surface 直接获得该资源的权威读写客户端；行、字段与操作授权由平台在

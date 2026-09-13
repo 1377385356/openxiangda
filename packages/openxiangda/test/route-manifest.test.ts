@@ -402,3 +402,76 @@ test('does not redirect an already negotiated route or an unknown path', () => {
     undefined,
   );
 });
+
+test('resource user-surface entries validate with stable codes and device paths', () => {
+  const index = createStandardRouteManifestIndex(
+    {
+    schemaVersion: 'openxiangda.application-route-manifest/v3',
+    appCode: 'route-test-app',
+    ...manifestEntryPoints,
+    routes: [
+      {
+        code: 'user:requests:records',
+        kind: 'resource-records',
+        resourceCode: 'requests',
+        desktop: {
+          routeCode: 'user.requests.records.desktop',
+          path: '/my/requests',
+          surface: 'user',
+          requiresAuthentication: true,
+          pathParams: [],
+          capability: 'app:x:data:requests:read',
+        },
+        mobile: {
+          routeCode: 'user.requests.records.mobile',
+          path: '/m/my/requests',
+          surface: 'user',
+          requiresAuthentication: true,
+          pathParams: [],
+          capability: 'app:x:data:requests:read',
+        },
+      },
+    ],
+    digest: 'a'.repeat(64),
+    } as never,
+    'route-test-app',
+  );
+  assert.equal(index.entries.get('user:requests:records')?.resourceCode, 'requests');
+});
+
+test('resource user-surface entries reject mismatched entry codes', () => {
+  assert.throws(
+    () =>
+      createStandardRouteManifestIndex(
+        {
+        schemaVersion: 'openxiangda.application-route-manifest/v3',
+        appCode: 'route-test-app',
+        ...manifestEntryPoints,
+        routes: [
+          {
+            code: 'user:requests:wrong',
+            kind: 'resource-records',
+            resourceCode: 'requests',
+            desktop: {
+              routeCode: 'user.requests.records.desktop',
+              path: '/my/requests',
+              surface: 'user',
+              requiresAuthentication: true,
+              pathParams: [],
+            },
+            mobile: {
+              routeCode: 'user.requests.records.mobile',
+              path: '/m/my/requests',
+              surface: 'user',
+              requiresAuthentication: true,
+              pathParams: [],
+            },
+          },
+        ],
+        digest: 'a'.repeat(64),
+        } as never,
+        'route-test-app',
+      ),
+    /OPENXIANGDA_ROUTE_MANIFEST_INVALID/,
+  );
+});

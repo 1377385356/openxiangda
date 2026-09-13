@@ -18,6 +18,8 @@ export interface GenericResourceQuery {
   sort?: ResourceSort;
   sorts?: ResourceSort[];
   where?: DataWhere;
+  /** “我的记录”标准页使用：按系统字段 created_by 精确过滤，不放宽其他系统字段。 */
+  createdBy?: string;
 }
 
 export interface ResourceSort { field: string; order: 'asc' | 'desc' }
@@ -49,6 +51,9 @@ export function buildResourceWhere(
     return field;
   };
   const predicates: DataWhere[] = query.where ? [compileAdvancedWhere(resourceCode, surface, query.where)] : [];
+  if (query.createdBy !== undefined && query.createdBy !== '') {
+    predicates.push({ field: 'created_by', operator: 'eq', value: query.createdBy });
+  }
   if (query.keyword?.trim()) {
     const searchable = (surface.list?.searchableFields || []).filter(field =>
       declaredFields.has(field)

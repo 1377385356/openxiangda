@@ -230,3 +230,78 @@ test('crud 视图显式声明不一致 model 仍然拒绝', () => {
     /列表\/表单绑定的 model 必须与 CRUD 视图一致/
   );
 });
+
+test('user surface 生成我的记录与提交标准页并接线首页', () => {
+  const config = defineOpenXiangdaApp({
+    app: { code: 'user-surface-app', name: '用户面' },
+    frontend: {
+      admin: { navigation: [] },
+      routes: [
+        { code: 'application-home', path: '/home', label: '应用首页', surface: 'user' },
+        { code: 'application-home-mobile', path: '/m/home', label: '移动首页', surface: 'user' },
+      ],
+      authentication: {
+        accountMode: 'existing-platform-users-only',
+        registration: { mode: 'reject' },
+        methods: [{ code: 'password', type: 'password', label: '登录', presentation: 'primary' as const, required: true }],
+        surfaces: {
+          desktop: { routeCode: 'application-login', path: '/login', defaultRouteCode: 'application-home' },
+          mobile: { routeCode: 'application-login-mobile', path: '/m/login', defaultRouteCode: 'application-home-mobile' },
+        },
+      },
+    },
+    modules: [defineApplicationModule({
+      code: 'main',
+      models: [{ code: 'requests', name: '申请', fields: [{ code: 'title', type: 'text.short', label: '标题', required: true }] }],
+      crud: [{ model: 'requests', user: true }],
+    })],
+  });
+  const resources = (config as any).data.resources as Array<{ code: string; userSurface?: unknown }>;
+  assert.ok(resources.find(item => item.code === 'requests')?.userSurface, 'userSurface 物化到资源');
+  const surfaces = (config as any).frontend.authentication.surfaces;
+  assert.equal(surfaces.desktop.defaultRouteCode, 'user:requests:records');
+  assert.equal(surfaces.mobile.defaultRouteCode, 'user:requests:records');
+  const sources = compileApplicationSources(config);
+  const manifest = sources.contracts.value.routeManifest;
+  const records = manifest.routes.find(route => route.code === 'user:requests:records');
+  const submit = manifest.routes.find(route => route.code === 'user:requests:submit');
+  assert.equal(records?.kind, 'resource-records');
+  assert.equal(records?.resourceCode, 'requests');
+  assert.equal(records?.desktop.path, '/my/requests');
+  assert.equal(records?.mobile.path, '/m/my/requests');
+  assert.equal(records?.desktop.capability, 'app:user-surface-app:data:requests:read');
+  assert.equal(submit?.kind, 'resource-submit');
+  assert.equal(submit?.desktop.capability, 'app:user-surface-app:data:requests:create');
+  assert.equal(manifest.rootEntry.code, 'user:requests:records');
+  assert.equal(manifest.rootEntry.desktop, '/my/requests');
+});
+
+test('未启用 user 面时不生成资源用户路由', () => {
+  const config = defineOpenXiangdaApp({
+    app: { code: 'no-user-surface-app', name: '无用户面' },
+    frontend: {
+      admin: { navigation: [] },
+      routes: [
+        { code: 'application-home', path: '/home', label: '应用首页', surface: 'user' },
+        { code: 'application-home-mobile', path: '/m/home', label: '移动首页', surface: 'user' },
+      ],
+      authentication: {
+        accountMode: 'existing-platform-users-only',
+        registration: { mode: 'reject' },
+        methods: [{ code: 'password', type: 'password', label: '登录', presentation: 'primary' as const, required: true }],
+        surfaces: {
+          desktop: { routeCode: 'application-login', path: '/login', defaultRouteCode: 'application-home' },
+          mobile: { routeCode: 'application-login-mobile', path: '/m/login', defaultRouteCode: 'application-home-mobile' },
+        },
+      },
+    },
+    modules: [defineApplicationModule({
+      code: 'main',
+      models: [{ code: 'requests', name: '申请', fields: [{ code: 'title', type: 'text.short', label: '标题', required: true }] }],
+    })],
+  });
+  const surfaces = (config as any).frontend.authentication.surfaces;
+  assert.equal(surfaces.desktop.defaultRouteCode, 'application-home');
+  const sources = compileApplicationSources(config);
+  assert.equal(sources.contracts.value.routeManifest.routes.filter(route => String(route.kind).startsWith('resource-')).length, 0);
+});

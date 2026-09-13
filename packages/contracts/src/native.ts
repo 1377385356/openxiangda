@@ -609,7 +609,9 @@ export type AppRouteManifestKind =
   | 'workflow-work-center'
   | 'workflow-launch'
   | 'workflow-task'
-  | 'workflow-instance';
+  | 'workflow-instance'
+  | 'resource-records'
+  | 'resource-submit';
 
 export interface AppRouteManifestDevicePolicyV3 {
   kind: 'viewport-family';
@@ -642,6 +644,8 @@ export interface AppRouteManifestEntryV3 {
   code: string;
   kind: AppRouteManifestKind;
   workflowCode?: string;
+  /** Present only on resource-records / resource-submit standard user pages. */
+  resourceCode?: string;
   desktop: AppRouteManifestRouteV3;
   mobile: AppRouteManifestRouteV3;
 }

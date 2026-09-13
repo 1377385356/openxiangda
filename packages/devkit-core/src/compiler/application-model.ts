@@ -36,6 +36,13 @@ export interface AppResourceListDeclaration {
   defaultSort?: { field: string; order?: 'asc' | 'desc' };
 }
 
+export interface AppUserSurfaceViewDeclaration {
+  /** 首个启用的资源默认作为登录落地；多资源时显式指定。 */
+  home?: boolean;
+  listLabel?: string;
+  submitLabel?: string;
+}
+
 export interface AppCrudViewDeclaration {
   model: string;
   /** Omit for the existing default page; named views need a stable code and name. */
@@ -48,6 +55,8 @@ export interface AppCrudViewDeclaration {
   detail?: AppResourceFormDeclaration;
   generated?: AppDataResourceDeclaration['generated'];
   mobile?: AppDataResourceDeclaration['mobile'];
+  /** 生成 user surface 的“我的记录 + 提交”标准页。 */
+  user?: boolean | AppUserSurfaceViewDeclaration;
 }
 
 export interface AppModuleDeclaration {
@@ -173,6 +182,18 @@ export function materializeApplicationModules(modules: readonly AppModuleDeclara
           };
         }) } : {}),
         ...(model.mutationOwner ? { mutationOwner: model.mutationOwner } : {}),
+        ...(view?.user !== undefined && view?.user !== false
+          ? {
+              userSurface:
+                view.user === true
+                  ? {}
+                  : {
+                      ...(view.user.home !== undefined ? { home: view.user.home } : {}),
+                      ...(view.user.listLabel ? { listLabel: view.user.listLabel } : {}),
+                      ...(view.user.submitLabel ? { submitLabel: view.user.submitLabel } : {}),
+                    },
+            }
+          : {}),
         ...(model.invariants ? { invariants: model.invariants } : {}),
         ...(model.dataPolicyCode ? { dataPolicyCode: model.dataPolicyCode } : {}),
         ...(model.audit !== undefined ? { audit: model.audit } : {}),
