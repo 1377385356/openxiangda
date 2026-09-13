@@ -21,6 +21,7 @@
 | `audit.read` 可写 `true`（绑定本资源读能力）或能力数组 | `audit: { read: true }` |
 | `resource-ref.*` 必须带 `source` 来源协议 | `{ type: 'resource-ref.single', source: { kind: 'resource', resourceCode: 'repair-requests', labelField: 'title', searchFields: ['title'], pageSize: 20, loadMode: 'search' } }` |
 | `labelField` 必须指向目标资源的 `text.short` / `text.long` 字段 | 不要用流水号/选项字段当 label |
+| 每个字段都必须带中文/业务 `label`（含子表外键与排序字段） | `{ code: 'requestId', type: 'uuid', label: '所属申请', required: true }` |
 | 子表 `subtable` 的外键是子资源的 **uuid** 字段，排序字段是**可写 number.integer** | 子资源：`{ code: 'requestId', type: 'uuid', required: true }` + `{ code: 'sortOrder', type: 'number.integer', required: true }`；父表：`subtable: { resourceCode: 'repair-items', foreignKey: 'requestId', orderField: 'sortOrder', maxRows: 20 }` |
 | 图片/附件的 `file` 限定数量与大小 | `file: { maxCount: 3, maxSizeMb: 10, accept: ['image/png', 'image/jpeg'] }` |
 
@@ -120,11 +121,12 @@ const requests = {
 const items = {
   code: 'request-items', name: '明细',
   fields: [
-    { code: 'requestId', type: 'uuid', required: true },
-    { code: 'sortOrder', type: 'number.integer', required: true },
-    { code: 'name', type: 'text.short', required: true },
-    { code: 'qty', type: 'number.integer' },
-    { code: 'price', type: 'number.decimal', precision: 12, scale: 2 },
+    // 所有字段（含子表外键/排序）都必须声明中文 label。
+    { code: 'requestId', type: 'uuid', label: '所属申请', required: true },
+    { code: 'sortOrder', type: 'number.integer', label: '排序', required: true },
+    { code: 'name', type: 'text.short', label: '名称', required: true },
+    { code: 'qty', type: 'number.integer', label: '数量' },
+    { code: 'price', type: 'number.decimal', label: '单价', precision: 12, scale: 2 },
   ],
 };
 
