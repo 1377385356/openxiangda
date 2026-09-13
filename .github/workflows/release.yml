@@ -29,6 +29,8 @@ jobs:
       OPENXIANGDA_RELEASE_VERIFY_TIMEOUT_SECONDS: '1800'
       # Phase 3 生效：本地默认通道关闭后，同一断言保护 CI 内的单一发布者。
       OPENXIANGDA_RELEASE_REQUIRE_CI: '1'
+      # 串行逃生通道：CI 无声死亡根因未定位前先保证发布通道可用
+      OPENXIANGDA_RELEASE_SERIAL_GATES: '1'
     steps:
       - name: Configure reference application root
         run: echo "OPENXIANGDA_REFERENCE_APP_ROOT=$RUNNER_TEMP/openxiangda-v2-reference-app" >> "$GITHUB_ENV"

@@ -56,24 +56,21 @@ await run("pnpm", ["exec", "turbo", "run", "build", ...candidateNames.flatMap(na
 // 参考应用已在验证开始前完成物化与钉版；浏览器阶段缓存只有一个写者
 // （打包分发腿）。并发腿共享同一总预算；任一腿失败立即整体失败，
 // 其余子进程由运行环境（CI job / 本地终端）回收。
-const parallelGates = [];
-if (plan.gates.skills) {
-  parallelGates.push(run("pnpm", ["skills:check:from-build"]));
-}
-if (plan.gates.documentation) {
-  parallelGates.push(run("pnpm", ["docs:build:from-build"]));
-}
-parallelGates.push(
+// OPENXIANGDA_RELEASE_SERIAL_GATES=1 保留串行路径作为逃生通道（调试或
+// 低内存执行环境）。
+const serialGates = process.env.OPENXIANGDA_RELEASE_SERIAL_GATES === "1";
+const gates = [];
+if (plan.gates.skills) gates.push(() => run("pnpm", ["skills:check:from-build"]));
+if (plan.gates.documentation) gates.push(() => run("pnpm", ["docs:build:from-build"]));
+gates.push(() =>
   full
     ? run("pnpm", ["verify"])
     : plan.workspacePackages.length
       ? run("pnpm", ["exec", "turbo", "run", "check", "test", ...plan.workspacePackages.flatMap(name => ["--filter", name])])
       : Promise.resolve()
 );
-if (plan.gates.templateGeneratedCheck) {
-  parallelGates.push(run("pnpm", ["template:generated:check"]));
-}
-parallelGates.push(
+if (plan.gates.templateGeneratedCheck) gates.push(() => run("pnpm", ["template:generated:check"]));
+gates.push(() =>
   run("node", ["scripts/verify-packed-distribution.mjs"], {
     env: {
       ...process.env,
@@ -83,13 +80,17 @@ parallelGates.push(
   })
 );
 if (plan.gates.referenceApplication) {
-  parallelGates.push(
+  gates.push(() =>
     run("pnpm", ["reference:smoke:from-build"], {
       env: { ...process.env, OPENXIANGDA_RELEASE_PACKAGES: validationPackageNames.join(",") },
     })
   );
 }
-await Promise.all(parallelGates);
+if (serialGates) {
+  for (const gate of gates) await gate();
+} else {
+  await Promise.all(gates.map(gate => gate()));
+}
 process.stdout.write(`[release-validation] total=${Math.round((Date.now() - verificationStarted) / 1000)}s budget=${budgetSeconds}s\n`);
 
 assertCandidateVersionsAvailable(
