@@ -8,7 +8,7 @@
       "title": "OpenXiangda 2.17.0：一行声明生成用户端标准面",
       "summary": "CRUD 视图声明 user: true 即可为普通用户生成“我的记录 + 提交”标准页面（桌面与移动双端），自动接线能力与登录落地，简单 CRUD 应用开箱即有完整用户端闭环。",
       "newFeatures": [
-        "resource-records / resource-submit 两种用户标准路由：/my/<resource> 与 /my/<resource>/submit（移动端 /m/ 前缀），能力分别绑定资源 read / create。",
+        "resource-records / resource-submit 两种用户标准路由：`/my/<资源代码>` 列表与 `/my/<资源代码>/submit` 提交（移动端 `/m/` 前缀），能力分别绑定资源 read / create。",
         "“我的记录”标准组件：默认仅展示当前登录用户创建的记录（created_by 过滤）、分页、行详情抽屉与提交入口；提交页复用标准生成表单。",
         "首个启用资源自动成为登录落地页与根路径；多资源用 user: { home: true } 显式指定；声明式 /home 占位仍可覆盖。"
       ],
@@ -37,7 +37,7 @@
         "v1": "不改变 V1 运行时或应用。"
       },
       "issues": [],
-      "sha256": "d07379dffc309a64143d3f84b116ed114b17068a52e181856a996bdca17a3e06",
+      "sha256": "5656c1f523a25d37770bed992d352dc372f3e08f5ce8ca25394443d448d25870",
       "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.17.0"
     },
     {
