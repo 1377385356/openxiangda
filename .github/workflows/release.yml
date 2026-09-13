@@ -93,12 +93,17 @@ jobs:
         run: |
           pnpm verify:release
           pnpm release:publish
-      - name: Archive release receipt
+      - name: Archive release state for resumable recovery
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: release-receipt-${{ github.run_id }}
-          path: .git/openxiangda-release-history
+          name: release-state-${{ github.run_id }}
+          # 回执、冻结候选制品与历史目录都要留存：验证或发布中断时，
+          # 下载 artifact 放回 .git 即可按回执恢复，不会出现第二发布者。
+          path: |
+            .git/openxiangda-release-receipt.json
+            .git/openxiangda-release-artifacts-*
+            .git/openxiangda-release-history
           if-no-files-found: ignore
           retention-days: 90
       - name: Check reference lock matches published registry
