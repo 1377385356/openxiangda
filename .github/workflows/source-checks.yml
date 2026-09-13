@@ -28,6 +28,11 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # 发布材料的早失败层：发布脚本测试与文档（VitePress）构建
+      # 在 push 后几分钟内暴露发布说明/脚本类错误，而不是发布运行 20 分钟后。
+      - run: node --test scripts/test/*.test.mjs
+      - if: github.event_name != 'pull_request'
+        run: pnpm docs:build
       - name: Select source comparison
         env:
           BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
@@ -40,7 +45,6 @@ jobs:
           fi
           echo "TURBO_SCM_HEAD=$GITHUB_SHA" >> "$GITHUB_ENV"
       - run: pnpm verify:affected
-      - run: node --test scripts/test/*.test.mjs
       - name: Select design integration checks
         id: design
         run: |

@@ -31,8 +31,17 @@ const validationPackageNames = full
 process.stdout.write(`${JSON.stringify(plan, null, 2)}\n`);
 const verificationStarted = Date.now();
 const budgetSeconds = Number(process.env.OPENXIANGDA_RELEASE_VERIFY_TIMEOUT_SECONDS ||
-  (full ? 1800 : plan.gates.freshApplication === "e2e" ? 900 : 300));
+  (full ? 1800 : plan.gates.freshApplication === "e2e" ? 1500 : 1200));
 if (!Number.isSafeInteger(budgetSeconds) || budgetSeconds < 1) throw new Error("RELEASE_VERIFICATION_BUDGET_INVALID");
+// 预算不足要在烧掉二十分钟之前就失败：fresh application 与参考应用
+// 验证在冷缓存机器上需要数分钟起步，预算过小时给出可行动的失败信息。
+const heavyweightGates = plan.gates.freshApplication !== "install" || plan.gates.referenceApplication;
+if (heavyweightGates && budgetSeconds < 600) {
+  throw new Error(
+    `RELEASE_VERIFICATION_BUDGET_TOO_SMALL: this plan needs fresh-application/reference gates but the budget is ${budgetSeconds}s. ` +
+      "Set OPENXIANGDA_RELEASE_VERIFY_TIMEOUT_SECONDS (>= 600) before starting."
+  );
+}
 await run("node", ["scripts/verify-v2-boundary.mjs"]);
 await run("node", ["scripts/verify-workspace-orchestration.mjs"]);
 const releaseScriptTests = readdirSync(resolve(repositoryRoot, "scripts", "test"))

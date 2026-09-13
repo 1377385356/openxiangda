@@ -26,6 +26,7 @@ jobs:
     env:
       TURBO_TELEMETRY_DISABLED: '1'
       GH_TOKEN: ${{ github.token }}
+      OPENXIANGDA_RELEASE_VERIFY_TIMEOUT_SECONDS: '1800'
     steps:
       - name: Configure reference application root
         run: echo "OPENXIANGDA_REFERENCE_APP_ROOT=$RUNNER_TEMP/openxiangda-v2-reference-app" >> "$GITHUB_ENV"

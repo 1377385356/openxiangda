@@ -26,6 +26,7 @@ jobs:
     env:
       TURBO_TELEMETRY_DISABLED: '1'
       GH_TOKEN: ${{ github.token }}
+      OPENXIANGDA_RELEASE_VERIFY_TIMEOUT_SECONDS: '1800'
       # Phase 3 生效：本地默认通道关闭后，同一断言保护 CI 内的单一发布者。
       OPENXIANGDA_RELEASE_REQUIRE_CI: '1'
     steps:
