@@ -81,7 +81,11 @@ jobs:
             git -C "$OPENXIANGDA_REFERENCE_APP_ROOT" push origin master
           fi
       - name: Verify and publish
-        run: pnpm release:publish
+        # verify:release 冻结候选并产出已验证回执；release:publish 只发布
+        # 回执字节。两段必须同 job 串联，保证发布字节=验证字节。
+        run: |
+          pnpm verify:release
+          pnpm release:publish
       - name: Archive release receipt
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
