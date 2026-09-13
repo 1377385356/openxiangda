@@ -200,3 +200,33 @@ test('named create selection distinguishes writable required fields from optiona
   assert.doesNotThrow(() => compileApplicationSources(build(['identifier'])));
   assert.throws(() => build(['labels']));
 });
+
+test('crud 视图的 list/form 缺省 model 时继承视图模型', () => {
+  const config = defineOpenXiangdaApp({
+    app: { code: 'model-inherit-test', name: '模型继承' },
+    frontend: { admin: { navigation: [] } },
+    modules: [defineApplicationModule({
+      code: 'main', models: [record],
+      crud: [{
+        model: record.code,
+        list: { fields: ['title'] },
+        form: { layout: 'flat' },
+      }],
+    })],
+  });
+  assert.doesNotThrow(() => compileApplicationSources(config));
+});
+
+test('crud 视图显式声明不一致 model 仍然拒绝', () => {
+  assert.throws(
+    () => defineOpenXiangdaApp({
+      app: { code: 'model-mismatch-test', name: '模型不一致' },
+      frontend: { admin: { navigation: [] } },
+      modules: [defineApplicationModule({
+        code: 'main', models: [record],
+        crud: [{ model: record.code, list: { model: 'other', fields: ['title'] } }],
+      })],
+    }),
+    /列表\/表单绑定的 model 必须与 CRUD 视图一致/
+  );
+});

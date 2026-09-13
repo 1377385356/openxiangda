@@ -942,38 +942,34 @@ export function createAnonymousPublicClient(input: {
       );
     },
     async upload(fieldCode: string, file: File) {
-      const plan = await request<DataFileUploadPlan>(
-        `${base}/files/uploads/initiate`,
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            policyCode: policy(),
-            environmentKey: environmentKey(),
-            fieldCode,
-            fileName: file.name,
-            fileSize: file.size,
-            contentType: file.type || 'application/octet-stream',
+      // 匿名策略的上传字段以图片为主；非图片文件在预检内部自然跳过。
+      return await uploadManagedWithPreflight({
+        file,
+        imageField: true,
+        initiate: current =>
+          request<DataFileUploadPlan>(`${base}/files/uploads/initiate`, {
+            method: 'POST',
+            body: JSON.stringify({
+              policyCode: policy(),
+              environmentKey: environmentKey(),
+              fieldCode,
+              fileName: current.name,
+              fileSize: current.size,
+              contentType: current.type || 'application/octet-stream',
+            }),
           }),
-        },
-      );
-      const uploaded = await fetch(plan.uploadUrl, {
-        method: plan.uploadMethod,
-        headers: plan.headers,
-        body: file,
+        complete: fileId =>
+          request<DataFileRef>(
+            `${base}/files/${encodeURIComponent(fileId)}/complete`,
+            {
+              method: 'POST',
+              body: JSON.stringify({
+                policyCode: policy(),
+                environmentKey: environmentKey(),
+              }),
+            },
+          ),
       });
-      if (!uploaded.ok) {
-        throw new Error(`FILE_UPLOAD_FAILED: HTTP_${uploaded.status}`);
-      }
-      return await request<DataFileRef>(
-        `${base}/files/${encodeURIComponent(plan.file.id)}/complete`,
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            policyCode: policy(),
-            environmentKey: environmentKey(),
-          }),
-        },
-      );
     },
     fileContentUrl(
       fileId: string,
@@ -1444,34 +1440,32 @@ export function createNativeResourceClient(
     },
     async upload(fieldCode: string, file: File, recordId?: string) {
       assertField(fieldCode);
-      const plan = await request<DataFileUploadPlan>(
-        `${base}/files/uploads/initiate`,
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            environmentKey: currentEnvironmentKey(),
-            fieldCode,
-            fileName: file.name,
-            fileSize: file.size,
-            contentType: file.type || 'application/octet-stream',
-            ...(recordId ? { recordId } : {}),
+      return await uploadManagedWithPreflight({
+        file,
+        imageField: surface.fields[fieldCode]?.type === 'image',
+        initiate: current =>
+          request<DataFileUploadPlan>(`${base}/files/uploads/initiate`, {
+            method: 'POST',
+            body: JSON.stringify({
+              environmentKey: currentEnvironmentKey(),
+              fieldCode,
+              fileName: current.name,
+              fileSize: current.size,
+              contentType: current.type || 'application/octet-stream',
+              ...(recordId ? { recordId } : {}),
+            }),
           }),
-        },
-      );
-      const uploaded = await fetch(plan.uploadUrl, {
-        method: plan.uploadMethod,
-        headers: plan.headers,
-        body: file,
+        complete: fileId =>
+          request<DataFileRef>(
+            `${base}/files/${encodeURIComponent(fileId)}/complete`,
+            {
+              method: 'POST',
+              body: JSON.stringify({
+                environmentKey: currentEnvironmentKey(),
+              }),
+            },
+          ),
       });
-      if (!uploaded.ok)
-        throw new Error(`FILE_UPLOAD_FAILED: HTTP_${uploaded.status}`);
-      return request<DataFileRef>(
-        `${base}/files/${encodeURIComponent(plan.file.id)}/complete`,
-        {
-          method: 'POST',
-          body: JSON.stringify({ environmentKey: currentEnvironmentKey() }),
-        },
-      );
     },
   };
 }
@@ -1800,6 +1794,76 @@ export async function loadAuthorizationMutationReceipt(operationId: string) {
 
 function dataBase(code: string) {
   return `${nativeBase()}/data/${encodeURIComponent(code)}`;
+}
+
+/** Platforms without the maxPixels contract still enforce this floor. */
+const FALLBACK_MAX_IMAGE_PIXELS = 40_000_000;
+
+async function decodeImageSize(file: File) {
+  if (!/^image\/(?:png|jpeg|webp|gif)$/i.test(file.type)) return null;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const size = { width: bitmap.width, height: bitmap.height };
+    bitmap.close();
+    return size;
+  } catch {
+    return null;
+  }
+}
+
+async function downscaleImageFile(file: File, maxPixels: number) {
+  const bitmap = await createImageBitmap(file);
+  try {
+    const scale = Math.sqrt(
+      (maxPixels * 0.95) / (bitmap.width * bitmap.height),
+    );
+    const width = Math.max(1, Math.floor(bitmap.width * scale));
+    const height = Math.max(1, Math.floor(bitmap.height * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    canvas.getContext('2d')?.drawImage(bitmap, 0, 0, width, height);
+    const blob = await new Promise<Blob | null>(resolve =>
+      canvas.toBlob(resolve, 'image/jpeg', 0.9),
+    );
+    if (!blob) throw new Error('OPENXIANGDA_IMAGE_DOWNSCALE_FAILED');
+    const name = `${file.name.replace(/\.[^.]+$/, '') || 'image'}.jpg`;
+    return new File([blob], name, { type: 'image/jpeg' });
+  } finally {
+    bitmap.close();
+  }
+}
+
+/**
+ * Shared managed-upload flow with image preflight: the first plan publishes
+ * maxPixels; an oversized image is downscaled locally and re-initiated so the
+ * completed object matches its declared plan exactly.
+ */
+async function uploadManagedWithPreflight(input: {
+  file: File;
+  imageField: boolean;
+  initiate: (file: File) => Promise<DataFileUploadPlan>;
+  complete: (fileId: string) => Promise<DataFileRef>;
+}): Promise<DataFileRef> {
+  let file = input.file;
+  let plan = await input.initiate(file);
+  if (input.imageField && file.type.startsWith('image/')) {
+    const maxPixels = plan.maxPixels ?? FALLBACK_MAX_IMAGE_PIXELS;
+    const size = await decodeImageSize(file);
+    if (size && size.width * size.height > maxPixels) {
+      file = await downscaleImageFile(file, maxPixels);
+      plan = await input.initiate(file);
+    }
+  }
+  const uploaded = await fetch(plan.uploadUrl, {
+    method: plan.uploadMethod,
+    headers: plan.headers,
+    body: file,
+  });
+  if (!uploaded.ok) {
+    throw new Error(`FILE_UPLOAD_FAILED: HTTP_${uploaded.status}`);
+  }
+  return await input.complete(plan.file.id);
 }
 
 export function dataFileContentUrl(

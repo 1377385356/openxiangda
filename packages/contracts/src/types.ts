@@ -1494,6 +1494,8 @@ export interface DataFileUploadPlan {
   uploadUrl: string;
   headers: Record<string, string>;
   expiresAt: IsoDateTime;
+  /** Published only for image-processing fields; clients preflight against it. */
+  maxPixels?: number;
 }
 
 export interface DataFileCopyRequest {

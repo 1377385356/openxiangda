@@ -229,7 +229,7 @@ export interface AppDataResourceDeclaration {
   };
   fields: AppDataFieldDeclaration[];
   /** Read access to provenance metadata and record history; omission preserves defaults. */
-  audit?: { read: string[] | false };
+  audit?: { read: string[] | boolean };
   invariants?: DataResource['invariants'];
   list?: {
     fields?: string[];
@@ -4173,7 +4173,8 @@ function validateCapabilityDeclarations(
         diagnostic(
           'APP_CONFIG_AUTHZ_PLATFORM_CAPABILITY_RESERVED',
           '平台 capability 由平台保留 catalog 提供，应用不能重复声明',
-          `${path}.code`
+          `${path}.code`,
+          `删除 capabilities 里的该声明，直接在角色中引用即可，例如 roles: [{ code: 'admin', capabilities: [directoryRead] }]，其中 directoryRead = app:${appCode}:directory:read`
         )
       );
     }
@@ -4434,7 +4435,8 @@ function validateBackendOperations(
           diagnostic(
             'APP_CONFIG_BACKEND_OPERATION_AI_INVALID',
             'AI 操作必须显式声明名称、说明、风险、现有资源、副作用和有界执行策略；GET 只能只读，写操作必须确认',
-            `${path}.ai`
+            `${path}.ai`,
+            '写操作的 ai.sideEffects 至少列一条具体副作用，例如 sideEffects: [\'更新报修单状态为处理中\', \'写入一条派工记录\']；resources 必须引用已声明资源（1-16 个）'
           )
         );
       }
@@ -6033,6 +6035,13 @@ export function materializeDataResource(
   declaration: AppDataResourceDeclaration
 ): AppConfiguredDataResource {
   const capabilities = resourceCapabilityCodes(appCode, declaration.code);
+  // audit.read: true 是声明糖：绑定本资源的 read 能力。
+  const auditRead =
+    declaration.audit === undefined || declaration.audit.read === false
+      ? (false as const)
+      : declaration.audit.read === true
+        ? [capabilities.read]
+        : [...declaration.audit.read];
   const mutationOwner = declaration.mutationOwner || 'native';
   const nativeMutations = mutationOwner === 'native';
   const generated = {
@@ -6202,7 +6211,7 @@ export function materializeDataResource(
       ),
       ...(declaration.audit === undefined ? {} : Object.fromEntries(
         DATA_AUDIT_METADATA_FIELDS.map(code => [code, {
-          read: declaration.audit!.read === false ? [] : [...declaration.audit!.read],
+          read: auditRead === false ? [] : [...auditRead],
         }])
       )),
     },
@@ -6281,11 +6290,12 @@ export function validateAppDeclaration(value: unknown): Diagnostic[] {
       const read = audit.read;
       if (!resource.audit || typeof resource.audit !== 'object' || Array.isArray(resource.audit) ||
         Object.keys(audit).some(key => key !== 'read') ||
-        (read !== false && (!Array.isArray(read) || read.length < 1 || read.length > 20 ||
+        (read !== false && read !== true && (!Array.isArray(read) || read.length < 1 || read.length > 20 ||
           read.some(value => typeof value !== 'string' || !value.trim()) || new Set(read).size !== read.length))) {
         auditValid = false;
         diagnostics.push(diagnostic('APP_CONFIG_DATA_AUDIT_READ_INVALID',
-          'audit.read 必须为 false 或不重复的非空 capability 数组（最多 20 项）', `${resourcePath}.audit`));
+          'audit.read 必须为 true（绑定资源读能力）、false 或不重复的非空 capability 数组（最多 20 项）', `${resourcePath}.audit`,
+          `audit: { read: true } 会把审计读取绑定到本资源的 read 能力；需要更细粒度时写能力数组，例如 audit: { read: ['app:${appCode}:data:<resource>:read'] }`));
       }
     }
     const mutationOwner = string(resource.mutationOwner) || 'native';

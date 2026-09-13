@@ -75,3 +75,11 @@ export {
   OPENXIANGDA_NOTIFICATION_BUSINESS_SEND_V2,
   OPENXIANGDA_NOTIFICATION_EVENT_SEND_V2,
 } from 'openxiangda-contracts';
+
+export {
+  optionSnapshot,
+  userSnapshot,
+  departmentSnapshot,
+  resourceSnapshot,
+  isIdempotencyConflict,
+} from 'openxiangda-nest';

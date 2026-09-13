@@ -16,3 +16,4 @@ export * from './workflow-detail.js';
 export * from './validation.js';
 export * from './workflow-correction.js';
 export * from './native-compiler/workflow-instance-policy.js';
+export { validateDataFieldDefinition } from './data-field-validation.js';

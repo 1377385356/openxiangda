@@ -109,7 +109,14 @@ test('direct resource authoring preserves audit policy and rejects malformed rul
   const model = base.modules![0]!.models[0]!;
   const direct = {...base, modules:undefined, data:{resources:[{...model, fields:[...model.fields],audit:{read:false as const}}]}};
   assert.deepEqual(defineOpenXiangdaApp(direct).data!.resources[0]!.fieldPolicies.created_by, {read:[]});
-  for (const audit of [null, {}, [], {read:true}, {read:[]}, {read:['']}, {read:['a','a']}, {read:false, write:true}]) {
+  // audit.read: true 是声明糖，绑定本资源的 read 能力。
+  const sugar = structuredClone(direct) as any;
+  sugar.data.resources[0].audit = { read: true };
+  assert.deepEqual(
+    defineOpenXiangdaApp(sugar).data!.resources[0]!.fieldPolicies.created_by,
+    { read: ['app:audit-app:data:slots:read'] }
+  );
+  for (const audit of [null, {}, [], {read:[]}, {read:['']}, {read:['a','a']}, {read:false, write:true}]) {
     const invalid = structuredClone(direct) as any;
     invalid.data.resources[0].audit = audit;
     assert.throws(() => defineOpenXiangdaApp(invalid), error =>

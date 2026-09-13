@@ -63,6 +63,7 @@ pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ skill install --force
 | 模糊想法、模块发现、PRD、权限与架构设计 | [产品设计](references/product-design.md)、[交互模式](references/interaction-patterns.md) |
 | 界面设计、改版、原型和视觉修正 | 先读[设计工作流](references/design-workflow.md)，使用 `openxiangda design open` 和 `design cli` 调用原版；[离线方法](references/opendesign-methods.md)与[设计 Craft](references/design-craft.md)仅作补充 |
 | 理解需求与选择能力 | [开发流程](references/development.md)、[架构](references/concepts.md) |
+| 写 openxiangda.config.ts 声明、避免首轮校验返工 | [声明速查](references/declarations-cheatsheet.md)；先扫规则表再动手 |
 | 模型、CRUD、字段与移动表单 | [业务模块](references/application-foundation.md)、[字段](references/field-components.md) |
 | 图片压缩、缩略图、附件和缓存 | [图片与附件读取](references/field-components.md#图片缩略图和附件读取)：卡片优先缩略图，原图按需，使用平台权限与缓存规则 |
 | 页面、标准组件与扩展 | [前端](references/frontend.md) |

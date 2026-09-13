@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  type Diagnostic,
   ContractValidationError,
   FIELD_VALUE_SCHEMAS,
   SCHEMA_VERSIONS,
@@ -10,6 +11,7 @@ import {
   dataResourceSchema,
   validateDataQuery,
   validateDataExportRequest,
+  validateDataFieldDefinition,
   type DataExportRequest,
   type DataQuery,
   type DataResource,
@@ -469,4 +471,33 @@ test('enforces query depth, predicate and array bounds before SQL', () => {
     }).some(item => item.code === 'DATA_QUERY_ARRAY_VALUE_INVALID'),
     true
   );
+});
+
+function validateField(field: Record<string, unknown>): import('../src/index.js').Diagnostic[] {
+  const diagnostics: Diagnostic[] = [];
+  validateDataFieldDefinition(field, 'fields[0]', diagnostics);
+  return diagnostics;
+}
+
+test('number.integer accepts optional digit precision but rejects scale', () => {
+  const base = { code: 'qty' } as const;
+  assert.equal(
+    validateField({ ...base, type: 'number.integer', precision: 9 }).length,
+    0
+  );
+  assert.equal(
+    validateField({ ...base, type: 'number.integer' }).length,
+    0
+  );
+  const withScale = validateField({ ...base, type: 'number.integer', precision: 9, scale: 2 });
+  assert.equal(withScale[0]?.code, 'DATA_RESOURCE_FIELD_DECIMAL_CONFIG_INVALID');
+  const badPrecision = validateField({ ...base, type: 'number.integer', precision: 0 });
+  assert.equal(badPrecision[0]?.code, 'DATA_RESOURCE_FIELD_DECIMAL_CONFIG_INVALID');
+});
+
+test('number.decimal keeps precision required and scale bounded', () => {
+  const base = { code: 'amount', type: 'number.decimal' } as const;
+  assert.equal(validateField({ ...base, precision: 12, scale: 2 }).length, 0);
+  assert.equal(validateField({ ...base, scale: 2 })[0]?.code, 'DATA_RESOURCE_FIELD_DECIMAL_CONFIG_INVALID');
+  assert.equal(validateField({ ...base, precision: 12, scale: 13 })[0]?.code, 'DATA_RESOURCE_FIELD_DECIMAL_CONFIG_INVALID');
 });

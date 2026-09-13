@@ -307,7 +307,8 @@ function validateSource(
         diagnostic(
           'DATA_RESOURCE_FIELD_SOURCE_REQUIRED',
           `${path}.source 是动态资源引用的必填协议`,
-          `${path}.source`
+          `${path}.source`,
+          `resource-ref 字段必须声明来源协议，例如 source: { kind: 'resource', resourceCode: '目标资源', labelField: '标题字段', searchFields: ['标题字段'], pageSize: 20, loadMode: 'search' }；labelField 必须指向目标的 text.short/text.long 字段`
         )
       );
     }
@@ -475,21 +476,44 @@ function validateScalarConfig(
     );
   }
   if (field.precision !== undefined || field.scale !== undefined) {
-    const precision = Number(field.precision);
-    const scale = Number(field.scale ?? 0);
-    if (
-      type !== 'number.decimal' ||
-      !Number.isInteger(precision) ||
-      precision < 1 ||
-      precision > 1000 ||
-      !Number.isInteger(scale) ||
-      scale < 0 ||
-      scale > precision
-    ) {
+    const precision = field.precision === undefined ? undefined : Number(field.precision);
+    const scale = field.scale === undefined ? undefined : Number(field.scale);
+    const precisionValid =
+      precision === undefined ||
+      (Number.isInteger(precision) && precision >= 1 && precision <= 1000);
+    if (type === 'number.integer') {
+      // 整数可声明可选 precision（数字位数）；不允许小数位。
+      if (!precisionValid || (scale !== undefined && scale !== 0)) {
+        diagnostics.push(
+          diagnostic(
+            'DATA_RESOURCE_FIELD_DECIMAL_CONFIG_INVALID',
+            `${path}.precision 必须是 1-1000 的整数位数；number.integer 不支持 scale 小数位`,
+            `${path}.precision`
+          )
+        );
+      }
+    } else if (type === 'number.decimal') {
+      const scaleValue = Number(field.scale ?? 0);
+      if (
+        field.precision === undefined ||
+        !precisionValid ||
+        !Number.isInteger(scaleValue) ||
+        scaleValue < 0 ||
+        scaleValue > Number(precision)
+      ) {
+        diagnostics.push(
+          diagnostic(
+            'DATA_RESOURCE_FIELD_DECIMAL_CONFIG_INVALID',
+            `${path}.precision/scale 必须是合法的 decimal 精度（precision 1-1000 必填，scale 0 到 precision），例如 { precision: 12, scale: 2 }`,
+            `${path}.precision`
+          )
+        );
+      }
+    } else {
       diagnostics.push(
         diagnostic(
           'DATA_RESOURCE_FIELD_DECIMAL_CONFIG_INVALID',
-          `${path}.precision/scale 必须是合法的 decimal 精度`,
+          `${path}.precision/scale 只能用于 number.integer / number.decimal 字段`,
           path
         )
       );

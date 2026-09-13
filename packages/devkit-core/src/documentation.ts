@@ -11,6 +11,7 @@ export const DOCUMENTATION_TOPICS = [
   { id: 'design-craft', title: 'OpenDesign 排版、状态与交互 Craft', file: 'design-craft.md' },
   { id: 'interaction-patterns', title: '页面交互模式与体验评审', file: 'interaction-patterns.md' },
   { id: 'development', title: '需求与开发流程', file: 'development.md' },
+  { id: 'declarations-cheatsheet', title: '声明速查：一次写对 config', file: 'declarations-cheatsheet.md' },
   { id: 'application-foundation', title: '业务模型与标准 CRUD', file: 'application-foundation.md' },
   { id: 'appspec', title: '需求、设计与交付记录', file: 'appspec.md' },
   { id: 'concepts', title: '架构与能力所有者', file: 'concepts.md' },

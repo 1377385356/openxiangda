@@ -74,6 +74,41 @@ ISO 时间字符串；不接受空值、嵌套路径、引用或表达式。offs
 最多正负 366 天的整数，所有时间条件共享一个接受时刻。需要平台 Data API 1.1.0。
 
 
+
+### 事务内写入快照字段 {#snapshot-values}
+
+option / user / department / resource-ref 字段在 Data API 与事务写入里保存 `{ label, value }` 显示快照，`value` 是比较键。写裸字符串会被字段校验拒绝（`OPENXIANGDA_NATIVE_DATA_OBJECT_REQUIRED`）。使用助手函数避免手写形状：
+
+```ts
+import { optionSnapshot, userSnapshot, resourceSnapshot } from 'openxiangda/nest';
+
+data: {
+  status: optionSnapshot('处理中', 'processing'),
+  assignedTechnician: userSnapshot(input.technicianId),
+  requestId: resourceSnapshot('repair-requests', input.requestId, title),
+}
+```
+
+读取判断状态用 `record.data.status?.value === 'pending'`。
+
+### 幂等冲突复核 {#idempotency-recovery}
+
+同一 `idempotencyKey` 要求内容指纹一致。update 事务携带 `expectedRevision`，重试时 revision 已前进会触发 409 `OPENXIANGDA_NATIVE_DATA_IDEMPOTENCY_CONFLICT`。捕获后回读当前状态确认效果已生效，按幂等结果返回；不要换新键重试：
+
+```ts
+import { isIdempotencyConflict } from 'openxiangda/nest';
+
+try {
+  result = await this.data.transaction(idempotentTransaction(key, operations, guards));
+} catch (error) {
+  if (isIdempotencyConflict(error) && alreadyApplied(await this.data.get(...))) {
+    return { idempotencyKey: key, replayed: true, ...currentState };
+  }
+  throw error;
+}
+```
+
+事务守卫的 `errorCode` 必须匹配 `^OPENXIANGDA_[A-Z0-9_]{1,96}$`，例如 `OPENXIANGDA_REPAIR_REQUEST_NOT_PENDING`。
 ## 业务动作与普通查询 {#business-action}
 
 `OpenXiangdaDataApiService` 按当前用户的普通资源、行和字段权限执行。具名业务动作使用 `OpenXiangdaBusinessDataApiService`：入口先检查该动作 capability，平台在精确应用和环境内以受信任后端执行，并保留发起人与动作审计。业务动作不能接受任意模型/字段/用户 ID 后不做业务校验；应用负责该动作的输入约束和业务不变量。

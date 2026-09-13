@@ -123,8 +123,9 @@ export function materializeApplicationModules(modules: readonly AppModuleDeclara
       };
       for (const kind of ['list', 'form', 'detail'] as const) {
         const definition = view[kind];
-        if (definition && definition.model !== model.code) {
-          issue('APP_VIEW_MODEL_MISMATCH', '列表/表单必须绑定当前 CRUD 的数据模型', `${viewPath}.${kind}.model`);
+        // model 缺省时继承视图绑定的模型；显式声明不一致才拒绝。
+        if (definition && definition.model !== undefined && definition.model !== model.code) {
+          issue('APP_VIEW_MODEL_MISMATCH', `列表/表单绑定的 model 必须与 CRUD 视图一致（${model.code}）；省略 model 即继承当前模型`, `${viewPath}.${kind}.model`);
         }
         validateSelection(definition?.fields, `${viewPath}.${kind}.fields`);
       }

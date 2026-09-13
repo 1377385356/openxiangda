@@ -172,8 +172,17 @@ export function verifyBusinessAcceptance(root: string, run: DeploymentRun, expec
     }
     if (!report.performance.length && !deferral) throw new Error('报告需要实际性能测量；用户明确延期时记录 performanceDeferral，不能用空数组冒充通过');
     let overBudget = 0;
-    for (const measurement of report.performance) {
-      if (!measurement || !meaningful(String(measurement.scenario || '')) || !meaningful(String(measurement.sample || '')) || typeof measurement.targetMs !== 'number' || !Number.isFinite(measurement.targetMs) || measurement.targetMs <= 0 || typeof measurement.observedMs !== 'number' || !Number.isFinite(measurement.observedMs) || measurement.observedMs < 0 || !Array.isArray(measurement.evidence) || !measurement.evidence.length) throw new Error('性能记录需要真实样本、目标毫秒数、实测毫秒数及证据；延期也不能省略或伪造已有测量');
+    for (const [measurementIndex, measurement] of report.performance.entries()) {
+      if (!measurement || !meaningful(String(measurement.scenario || '')) || !meaningful(String(measurement.sample || '')) || typeof measurement.targetMs !== 'number' || !Number.isFinite(measurement.targetMs) || measurement.targetMs <= 0 || typeof measurement.observedMs !== 'number' || !Number.isFinite(measurement.observedMs) || measurement.observedMs < 0 || !Array.isArray(measurement.evidence) || !measurement.evidence.length) {
+        const missing = !measurement ? ['measurement'] : [
+          ...(!meaningful(String(measurement.scenario || '')) ? ['scenario（场景名至少 8 个实义字符）'] : []),
+          ...(!meaningful(String(measurement.sample || '')) ? ['sample'] : []),
+          ...(typeof measurement?.targetMs !== 'number' || !Number.isFinite(measurement.targetMs) || measurement.targetMs <= 0 ? ['targetMs'] : []),
+          ...(typeof measurement?.observedMs !== 'number' || !Number.isFinite(measurement.observedMs) || measurement.observedMs < 0 ? ['observedMs'] : []),
+          ...(!Array.isArray(measurement?.evidence) || !measurement.evidence.length ? ['evidence'] : []),
+        ];
+        throw new Error(`performance[${measurementIndex}] 缺少字段：${missing.join('、')}`);
+      }
       if (!measurement.evidence.every(evidenceExists)) throw new Error('性能证据需要工作区内实际存在的文件或 HTTPS 引用');
       if (measurement.observedMs > measurement.targetMs) overBudget++;
     }

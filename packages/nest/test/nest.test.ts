@@ -3496,3 +3496,16 @@ test("workflow provider candidates are validated, normalized and deduplicated", 
     /候选人不合法/
   );
 });
+
+test('snapshot value helpers produce platform-stable shapes', async () => {
+  const { optionSnapshot, userSnapshot, departmentSnapshot, resourceSnapshot, isIdempotencyConflict } = await import('../src/index.js');
+  assert.deepEqual(optionSnapshot('处理中', 'processing'), { label: '处理中', value: 'processing' });
+  assert.deepEqual(userSnapshot('u1', '张三'), { label: '张三', value: 'u1' });
+  assert.deepEqual(userSnapshot('u1'), { label: 'u1', value: 'u1' });
+  assert.deepEqual(departmentSnapshot('d1', '教务处'), { label: '教务处', value: 'd1' });
+  assert.deepEqual(resourceSnapshot('repair-requests', 'r1', '投影仪故障'), {
+    label: '投影仪故障', value: 'r1', resourceCode: 'repair-requests',
+  });
+  assert.equal(isIdempotencyConflict(new Error('x')), false);
+  assert.equal(isIdempotencyConflict({ code: 'OPENXIANGDA_NATIVE_DATA_IDEMPOTENCY_CONFLICT' }), false);
+});
