@@ -237,8 +237,10 @@ jobs:
             "$OPENXIANGDA_REFERENCE_APP_ROOT"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Install reference e2e browser
-        run: pnpm --dir "$OPENXIANGDA_REFERENCE_APP_ROOT" --filter @app/web exec playwright install chromium
+      - name: Install e2e browser
+        # 参考应用与工具链模板钉同一 playwright 版本；浏览器二进制按版本
+        # 共享于 ~/.cache/ms-playwright，参考 e2e 直接复用。
+        run: pnpm --filter @app/web exec playwright install chromium
       - name: Run reference verification
         run: node scripts/release-validate.mjs
 
