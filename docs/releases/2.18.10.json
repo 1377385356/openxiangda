@@ -5,7 +5,9 @@
   "title": "OpenXiangda 2.18.10：随包技能/文档同步自建中心指南",
   "summary": "openxiangda-skill-kit 随包技能与文档与源文档再同步：携带「自建待办与消息中心 UI」指南与 2.18.9 标准中心视觉重构说明；无代码行为变化。",
   "newFeatures": [],
-  "fixes": [],
+  "fixes": [
+    "openxiangda-skill-kit 打包内容与源文档再同步：修复随包技能/文档滞后于「自建待办与消息中心 UI」指南与 2.18.9 标准中心视觉重构说明的问题。"
+  ],
   "affectedUsers": [
     "通过 skill-kit 安装随包技能与文档的应用开发者与 AI 会话。"
   ],
