@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.18.8",
+  "version": "2.18.9",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -67,12 +67,12 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.4.16",
+    "openxiangda-cli": "2.4.17",
     "openxiangda-contracts": "2.14.1",
     "openxiangda-devkit-core": "2.16.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
     "openxiangda-mcp": "2.0.25",
-    "openxiangda-nest": "2.4.2",
+    "openxiangda-nest": "2.4.3",
     "openxiangda-skill-kit": "2.1.11",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
@@ -139,33 +139,39 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.18.8",
+    "version": "2.18.9",
     "status": "reviewed",
-    "title": "OpenXiangda 2.18.8：引擎钉漂移的恢复通道与确切指引",
-    "summary": "update/version/changelog 在钉位漂移或依赖未安装时仍可执行（修复命令不再被自己要修复的问题拦住）；PIN_MISMATCH 错误信息给出两步恢复路径；业务命令保持严格 fail-closed。",
-    "newFeatures": [],
+    "title": "OpenXiangda 2.18.9：标准待办/消息中心视觉重构与自建中心合同收尾",
+    "summary": "修复运行时缺失基础字体导致的裸元素衬线渲染；待办中心与消息中心按统一页型重构（PC + 移动端）；nest 客户端补齐 work-center view 参数并新增应用自建待办/消息 UI 指南。",
+    "newFeatures": [
+      "OpenXiangdaPlatformClient.workflowWorkCenter 新增可选 view 参数（created/pending/handled/cc），与浏览器端合同对齐；未传时保持 status 兼容行为。",
+      "docs/frontend.md 新增「自建待办与消息中心 UI」：openxiangda/core 客户端用法、回执语义与标准路由不可接管等边界。"
+    ],
     "fixes": [
-      "统一入口对 update、version、changelog 启用宽松引擎解析：钉位漂移时可用漂移前的安装引擎执行诊断与修复；依赖未安装时回退启动器引擎，update install --target workspace 仍能完成安装并统一全部钉位。",
-      "WORKSPACE_ENGINE_PIN_MISMATCH 与 WORKSPACE_ENGINE_NOT_INSTALLED 的错误信息升级为可行动恢复指引（先 pnpm install，钉位不一致时 openxiangda update install --target workspace）。",
-      "随包文档（安装与开始开发）补充升级后漂移的恢复路径与命令豁免范围说明。"
+      "运行时在 .oxa-ui-root 补基础字体/字号/行高兜底（读取 --ant-font-family/font-size/line-height），裸元素不再继承浏览器衬线默认值，应用品牌字体自动流入标准页。",
+      "待办中心改为 layout 底 + 内容卡层次：Typography 页头、Tabs 计数徽标、middle 密度表格、移动端吸顶页头与卡片精修。",
+      "消息中心控制区单行对齐（搜索/查询/仅看未读右对齐），摘要卡图标与数字层级、未读圆点显式主色、移动卡片未读左缘条。",
+      "verify-design-workbench 改用探测的空闲临时端口，修复本机存在其他 Vite dev server（占用 5173）时设计门必失败的问题。"
     ],
     "affectedUsers": [
-      "升级工具链或手改依赖后遇到引擎版本一致性校验失败的应用开发者与 AI 会话。"
+      "使用标准待办中心/消息中心的应用及其最终用户（视觉与可读性）。",
+      "需要服务端取 created/cc 待办视图或自建中心 UI 的应用开发者。"
     ],
     "upgradeSteps": [
-      "应用精确依赖升级到 openxiangda 2.18.8 后重新运行 check 与部署。"
+      "应用精确依赖升级到 openxiangda 2.18.9（及配套 openxiangda-cli/openxiangda-nest）后重新 build、check 与部署。",
+      "希望标准页跟随品牌字体/字号的应用在 ui.theme 中配置 token 即可，无需其他迁移。"
     ],
     "knownLimitations": [
-      "check/deploy/dev 等业务命令仍严格要求钉位一致（fail-closed 不变）；自动安装未实现，恢复仍需运行一条命令。"
+      "Workflow 待办中心暂无渲染器替换钩子；需要完全不同呈现时按文档使用自有路由 + openxiangda/core 客户端自建。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
       "workspaceGenerations": "v2",
       "platform": "无平台配合要求。",
-      "v1": "V1 工作区同样受益于恢复命令豁免。"
+      "v1": "V1 工作区不读取该运行时，不受影响。"
     },
-    "sha256": "6d756cf2e7f197c8c7654541a8b047309ee2e02e3060850ceefcf5f65186a9cb",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.18.8"
+    "sha256": "7cc67dfe0aa1b7ccdd28a85fea5e149715edc03321ffc3771cd62a4356cb431a",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.18.9"
   }
 }
