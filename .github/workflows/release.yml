@@ -83,6 +83,11 @@ jobs:
             git -C "$OPENXIANGDA_REFERENCE_APP_ROOT" commit -m 'chore: align to release candidate build'
             git -C "$OPENXIANGDA_REFERENCE_APP_ROOT" push origin master
           fi
+      - name: Start failure heartbeat monitor
+        # 孤儿安全：输出全部写文件，不持有步骤管道；死亡现场随 artifact 留存。
+        run: |
+          mkdir -p /tmp/heartbeat
+          nohup bash -c 'while true; do { echo "=== $(date -u +%FT%TZ)"; free -m | sed -n 2p; df -h / | sed -n 2p; ps aux --sort=-rss | sed -n "2,7p"; } >> /tmp/heartbeat/heartbeat.log 2>&1; sleep 30; done' >/dev/null 2>&1 &
       - name: Runner resource snapshot
         run: |
           df -h / /tmp | sed 's/^/disk: /'
@@ -101,6 +106,7 @@ jobs:
           # 回执、冻结候选制品与历史目录都要留存：验证或发布中断时，
           # 下载 artifact 放回 .git 即可按回执恢复，不会出现第二发布者。
           path: |
+            /tmp/heartbeat
             .git/openxiangda-release-receipt.json
             .git/openxiangda-release-artifacts-*
             .git/openxiangda-release-history

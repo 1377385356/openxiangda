@@ -11,7 +11,7 @@ import {
   assertPublicArtifactManifest,
   loadReleaseArtifactManifest,
 } from "./lib/release-artifacts.mjs";
-import { runReleaseCommand } from "./lib/release-command.mjs";
+import { runReleaseCommand, stopAllReleaseCommands } from "./lib/release-command.mjs";
 import { createReleaseValidationPlan } from "./lib/release-validation-plan.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -89,7 +89,14 @@ if (plan.gates.referenceApplication) {
 if (serialGates) {
   for (const gate of gates) await gate();
 } else {
-  await Promise.all(gates.map(gate => gate()));
+  // 任一门禁失败立即杀死其余门禁的进程组：孤儿持有 stdout 管道会把
+  // CI 步骤拖入数分钟静默挂起，掩盖真实失败（见 release-command.mjs）。
+  try {
+    await Promise.all(gates.map(gate => gate()));
+  } catch (error) {
+    stopAllReleaseCommands();
+    throw error;
+  }
 }
 process.stdout.write(`[release-validation] total=${Math.round((Date.now() - verificationStarted) / 1000)}s budget=${budgetSeconds}s\n`);
 
