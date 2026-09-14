@@ -3,6 +3,35 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.18.5",
+      "status": "reviewed",
+      "title": "OpenXiangda 2.18.5：声明速查补充模块投影出口用法",
+      "summary": "随包声明速查文档新增 materializeApplicationModules 条目：迁移工具与验收脚本从 openxiangda/config 公共出口做模块投影，不再引用 devkit dist 文件路径。",
+      "newFeatures": [],
+      "fixes": [
+        "声明速查（declarations-cheatsheet）模块与 CRUD 视图表新增一行：迁移/验收需要模块投影结果时使用 materializeApplicationModules 公共出口，附正确导入与调用片段。"
+      ],
+      "affectedUsers": [
+        "从 data.resources 迁移到模块化声明的应用开发者（如数智工会 szgh-v2）与编写迁移验收脚本的维护者。"
+      ],
+      "upgradeSteps": [
+        "应用精确依赖升级到 openxiangda 2.18.5 后重新运行 check 与部署。"
+      ],
+      "knownLimitations": [
+        "无（本版仅随包文档变更）。"
+      ],
+      "issues": [],
+      "compatibility": {
+        "node": ">=24",
+        "workspaceGenerations": "v2",
+        "platform": "无平台配合要求。",
+        "v1": "不改变 V1 运行时或应用。"
+      },
+      "sha256": "abf7842d7f6ab1725b1ff2cb76d764a033f058c2f242e8f557f4f0dd7702b3c7",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.18.5"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.18.4",
       "status": "reviewed",
       "title": "OpenXiangda 2.18.4：模块投影公共出口与发布火车加固",

@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.18.4",
+  "version": "2.18.5",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -67,7 +67,7 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.4.12",
+    "openxiangda-cli": "2.4.13",
     "openxiangda-contracts": "2.14.1",
     "openxiangda-devkit-core": "2.15.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
@@ -139,27 +139,22 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.18.4",
+    "version": "2.18.5",
     "status": "reviewed",
-    "title": "OpenXiangda 2.18.4：模块投影公共出口与发布火车加固",
-    "summary": "materializeApplicationModules 从 openxiangda/config 公共再导出，模块化迁移不再引用 dist 文件路径；发布验证静默捕获文档 JSON、发布锁自动回收残留、新增 release:prepare 一键准备命令。",
-    "newFeatures": [
-      "openxiangda/config 新增 materializeApplicationModules 再导出：与 defineApplicationModule 等声明 API 同源，模块化迁移（GAP-MODULE 系列验收与迁移工具）直接从公共入口使用。",
-      "新增 pnpm release:prepare：在 changeset 与发布说明已推送后，一条命令完成版本物化、提交与推送，并打印发布触发命令。"
-    ],
+    "title": "OpenXiangda 2.18.5：声明速查补充模块投影出口用法",
+    "summary": "随包声明速查文档新增 materializeApplicationModules 条目：迁移工具与验收脚本从 openxiangda/config 公共出口做模块投影，不再引用 devkit dist 文件路径。",
+    "newFeatures": [],
     "fixes": [
-      "打包验证对 openxiangda docs --json 类命令改为静默捕获：成功时仅输出字节数摘要，整篇文档的超长单行 JSON 不再进入发布日志。",
-      "发布进程锁自动探活：持有者进程已死时自动回收残留锁，不再需要人工核对 pid 后手动删除。"
+      "声明速查（declarations-cheatsheet）模块与 CRUD 视图表新增一行：迁移/验收需要模块投影结果时使用 materializeApplicationModules 公共出口，附正确导入与调用片段。"
     ],
     "affectedUsers": [
-      "从 data.resources 迁移到模块化声明的应用开发者（如数智工会 szgh-v2）。",
-      "所有使用 openxiangda 发布火车的维护者。"
+      "从 data.resources 迁移到模块化声明的应用开发者（如数智工会 szgh-v2）与编写迁移验收脚本的维护者。"
     ],
     "upgradeSteps": [
-      "应用精确依赖升级到 openxiangda 2.18.4 后重新运行 check 与部署。"
+      "应用精确依赖升级到 openxiangda 2.18.5 后重新运行 check 与部署。"
     ],
     "knownLimitations": [
-      "npm trusted publishing 仍不覆盖 dist-tag 操作：仓库配置 NPM_DISTTAG_TOKEN 后 stable-v2 全自动，否则该一步由维护者补齐（与本版内容无关，沿 2.18.3 记录）。"
+      "无（本版仅随包文档变更）。"
     ],
     "issues": [],
     "compatibility": {
@@ -168,7 +163,7 @@
       "platform": "无平台配合要求。",
       "v1": "不改变 V1 运行时或应用。"
     },
-    "sha256": "8ee0abfece53013bf931133053604d882d2c1434d1ab9ae169838fa42f118793",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.18.4"
+    "sha256": "abf7842d7f6ab1725b1ff2cb76d764a033f058c2f242e8f557f4f0dd7702b3c7",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.18.5"
   }
 }
