@@ -1,12 +1,13 @@
 {
   "schemaVersion": "openxiangda.release-notes/v1",
-  "version": "2.18.5",
+  "version": "2.18.6",
   "status": "reviewed",
-  "title": "OpenXiangda 2.18.5：声明速查补充模块投影出口用法",
-  "summary": "随包声明速查文档新增 materializeApplicationModules 条目：迁移工具与验收脚本从 openxiangda/config 公共出口做模块投影，不再引用 devkit dist 文件路径。",
+  "title": "OpenXiangda 2.18.6：声明速查补充模块投影出口用法",
+  "summary": "随包声明速查文档新增 materializeApplicationModules 条目：迁移工具与验收脚本从 openxiangda/config 公共出口做模块投影，不再引用 devkit dist 文件路径；文档内容随 skill-kit 分发，一并推进版本。",
   "newFeatures": [],
   "fixes": [
-    "声明速查（declarations-cheatsheet）模块与 CRUD 视图表新增一行：迁移/验收需要模块投影结果时使用 materializeApplicationModules 公共出口，附正确导入与调用片段。"
+    "声明速查（declarations-cheatsheet）模块与 CRUD 视图表新增一行：迁移/验收需要模块投影结果时使用 materializeApplicationModules 公共出口，附正确导入与调用片段。",
+    "openxiangda-skill-kit 2.1.9：声明速查内容随包同步。"
   ],
   "affectedUsers": [
     "从 data.resources 迁移到模块化声明的应用开发者（如数智工会 szgh-v2）与编写迁移验收脚本的维护者。"
