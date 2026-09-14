@@ -1,5 +1,6 @@
 ---
 'openxiangda': patch
+'openxiangda-cli': patch
 ---
 
 标准待办中心与消息中心视觉重构：
