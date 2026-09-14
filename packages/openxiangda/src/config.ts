@@ -1,6 +1,9 @@
 export {
   defineOpenXiangdaApp,
   defineApplicationModule,
+  // 模块化迁移（如 GAP-MODULE-001/002 的验收脚本）需要直接投影模块声明；
+  // 与声明 API 同源再导出，应用不再引用 dist 文件路径。
+  materializeApplicationModules,
   defineDataModel,
   defineResourceForm,
   defineResourceList,

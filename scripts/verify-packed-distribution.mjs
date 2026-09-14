@@ -230,16 +230,16 @@ try {
 function assertPackagedGuidance(root) {
   const sdk = findInstalledPackage(root, 'openxiangda');
   const version = readJson(join(sdk, 'package.json')).version;
-  const index = JSON.parse(runCaptured('pnpm', ['exec', 'openxiangda', 'docs', '--json'], root, { stdoutOnly: true }));
+  const index = JSON.parse(runCaptured('pnpm', ['exec', 'openxiangda', 'docs', '--json'], root, { stdoutOnly: true, quiet: true }));
   if (!index.ok || JSON.stringify(index.data.topics.map(topic => topic.id)) !== JSON.stringify(DOCUMENTATION_TOPICS.map(topic => topic.id))) fail('PACKED_DOCUMENTATION_INDEX_INVALID');
   for (const topic of index.data.topics) {
     if (topic.version !== version) fail(`PACKED_DOCUMENTATION_VERSION_MISMATCH:${topic.id}`);
   }
-  const guide = JSON.parse(runCaptured('pnpm', ['exec', 'openxiangda', 'docs', 'getting-started', '--json'], root, { stdoutOnly: true }));
+  const guide = JSON.parse(runCaptured('pnpm', ['exec', 'openxiangda', 'docs', 'getting-started', '--json'], root, { stdoutOnly: true, quiet: true }));
   if (guide.data.content.includes('__OPENXIANGDA_VERSION__') || !guide.data.content.includes(`openxiangda@${version}`)) fail('PACKED_GUIDANCE_BOOTSTRAP_VERSION_INVALID');
   if (createHash('sha256').update(guide.data.content).digest('hex') !== guide.data.sha256) fail('PACKED_GUIDANCE_DIGEST_INVALID');
   for (const id of ['product-design', 'interaction-patterns', 'design-workflow', 'opendesign-methods', 'design-craft']) {
-    const designGuide = JSON.parse(runCaptured('pnpm', ['exec', 'openxiangda', 'docs', id, '--json'], root, { stdoutOnly: true }));
+    const designGuide = JSON.parse(runCaptured('pnpm', ['exec', 'openxiangda', 'docs', id, '--json'], root, { stdoutOnly: true, quiet: true }));
     if (!designGuide.ok || designGuide.data.version !== version || Buffer.byteLength(designGuide.data.content) < 1000 || createHash('sha256').update(designGuide.data.content).digest('hex') !== designGuide.data.sha256) fail(`PACKED_DESIGN_GUIDANCE_INVALID:${id}`);
   }
   const agents = join(root, 'AGENTS.md');
@@ -1083,7 +1083,16 @@ function runCaptured(command, args, cwd, options = {}) {
     env: { ...process.env, ...(options.env || {}) },
     encoding: "utf8",
   });
-  if (result.stdout) process.stdout.write(result.stdout);
+  // quiet：成功时不回显完整 stdout（docs --json 会输出整篇文档内容，
+  // 超长单行有压垮日志管道与掩盖真实输出的风险），只留字节数摘要。
+  if (result.stdout) {
+    if (options.quiet && result.status === (options.expectedStatus ?? 0)) {
+      const lines = String(result.stdout).split("\n").filter(Boolean).length;
+      process.stdout.write(`[quiet capture: ${result.stdout.length} bytes, ${lines} lines]\n`);
+    } else {
+      process.stdout.write(result.stdout);
+    }
+  }
   if (result.stderr) process.stderr.write(result.stderr);
   if (result.error) throw result.error;
   if (result.status !== (options.expectedStatus ?? 0)) {

@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.18.4",
+  "status": "reviewed",
+  "title": "OpenXiangda 2.18.4：模块投影公共出口与发布火车加固",
+  "summary": "materializeApplicationModules 从 openxiangda/config 公共再导出，模块化迁移不再引用 dist 文件路径；发布验证静默捕获文档 JSON、发布锁自动回收残留、新增 release:prepare 一键准备命令。",
+  "newFeatures": [
+    "openxiangda/config 新增 materializeApplicationModules 再导出：与 defineApplicationModule 等声明 API 同源，模块化迁移（GAP-MODULE 系列验收与迁移工具）直接从公共入口使用。",
+    "新增 pnpm release:prepare：在 changeset 与发布说明已推送后，一条命令完成版本物化、提交与推送，并打印发布触发命令。"
+  ],
+  "fixes": [
+    "打包验证对 openxiangda docs --json 类命令改为静默捕获：成功时仅输出字节数摘要，整篇文档的超长单行 JSON 不再进入发布日志。",
+    "发布进程锁自动探活：持有者进程已死时自动回收残留锁，不再需要人工核对 pid 后手动删除。"
+  ],
+  "affectedUsers": [
+    "从 data.resources 迁移到模块化声明的应用开发者（如数智工会 szgh-v2）。",
+    "所有使用 openxiangda 发布火车的维护者。"
+  ],
+  "upgradeSteps": [
+    "应用精确依赖升级到 openxiangda 2.18.4 后重新运行 check 与部署。"
+  ],
+  "knownLimitations": [],
+  "issues": [],
+  "compatibility": {
+    "node": ">=24",
+    "workspaceGenerations": "v2",
+    "platform": "无平台配合要求。",
+    "v1": "不改变 V1 运行时或应用。"
+  }
+}
