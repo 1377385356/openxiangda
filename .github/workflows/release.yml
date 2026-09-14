@@ -299,18 +299,28 @@ jobs:
       # 门禁的执行证据就是三个 verify job 的绿色结论。
       - name: Mark receipt validated
         run: pnpm release:publish --mark-validated
+      # npm OIDC trusted publishing 只认证 npm publish；dist-tag 通道操作需要
+      # 真实令牌。配置 secret NPM_DISTTAG_TOKEN（granular，仅 7 个 openxiangda*
+      # 包读写）后本步骤全自动；未配置时发布成功、stable-v2 由维护者补齐。
       - name: Publish frozen candidates
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_DISTTAG_TOKEN }}
         run: pnpm release:publish
+      - name: Stage release state for archive
+        if: always()
+        run: |
+          mkdir -p /tmp/release-archive
+          cp -R /tmp/heartbeat /tmp/release-archive/ 2>/dev/null || true
+          GITDIR="$(git rev-parse --git-common-dir)"
+          cp "$GITDIR"/openxiangda-release-receipt.json /tmp/release-archive/ 2>/dev/null || true
+          cp -R "$GITDIR"/openxiangda-release-history /tmp/release-archive/ 2>/dev/null || true
+          cp -R "$GITDIR"/openxiangda-release-artifacts-* /tmp/release-archive/ 2>/dev/null || true
       - name: Archive release state and heartbeat
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: release-history-${{ github.run_id }}
-          path: |
-            /tmp/heartbeat
-            .git/openxiangda-release-history
-            .git/openxiangda-release-receipt.json
-            .git/openxiangda-release-artifacts-*
+          path: /tmp/release-archive
           if-no-files-found: ignore
           retention-days: 90
       - name: Check reference lock matches published registry

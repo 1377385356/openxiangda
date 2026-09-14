@@ -303,3 +303,12 @@ runner 每次是全新虚拟机，不配缓存则每次全量下载；按下列�
 - 负例验证：无候选/同版本异字节/无回执 各路径均正确 fail-closed；脚本测试 104/104。
 
 端到端试点待下一个真实 changeset（发布将在 publish 作业的 environment 审批处暂停，可安全演练后放行或取消）。
+
+### 8.4 五作业流水线试点结果：openxiangda 2.18.3（2026-09-14）
+
+以 xlsx 依赖镜像化（P4）为真实候选完成端到端试点：
+
+- freeze → core ∥ packed ∥ reference 四作业全绿；失败拓扑正确（首跑 reference 腿缺浏览器→publish 正确跳过；二跑安装步骤作用域错；三跑 publish 的 needs 缺 freeze）——每处缺陷均在数分钟内暴露并可独立修复，**无声死亡零复发**，心跳监控显示发布进程内存全程健康。
+- OIDC `npm publish` 成功（openxiangda@2.18.3、openxiangda-cli@2.4.11），验证字节=发布字节由冻结制品交接构造保证。
+- 遗留外部限制：**npm trusted publishing 不覆盖 `npm dist-tag`**（stable-v2 补齐时 401）。已实现可选 secret `NPM_DISTTAG_TOKEN`（granular，仅 7 个 openxiangda* 包）；未配置时该一步由维护者补齐（本次即如此：dist-tag、包级 tag、v2.18.3 GitHub Release、参考锁同步均按回执补完）。
+- 修复：upload-artifact 不接收 `.git/` 路径，回执归档先暂存 /tmp 再上传。
