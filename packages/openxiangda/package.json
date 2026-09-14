@@ -1,7 +1,7 @@
 {
   "name": "openxiangda",
   "version": "2.18.2",
-  "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
+  "description": "OpenXiangda 2.0 \u7684\u7edf\u4e00\u547d\u4ee4\u3001\u5e94\u7528 SDK\u3001MCP \u4e0e\u4e2d\u6587 AI \u6280\u80fd\u8d44\u6599\u3002",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -74,7 +74,7 @@
     "openxiangda-mcp": "2.0.24",
     "openxiangda-nest": "2.4.2",
     "openxiangda-skill-kit": "2.1.8",
-    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+    "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
     "@ant-design/icons": ">=6 <7",
@@ -141,28 +141,28 @@
     "schemaVersion": "openxiangda.release-notes/v1",
     "version": "2.18.2",
     "status": "reviewed",
-    "title": "OpenXiangda 2.18.2：模块模型级详情路由声明（GAP-MODULE-002）",
-    "summary": "模块化声明支持资源级详情路由绑定（detailRouteCode），模型声明未知属性 fail-closed；devkit-core 2.15.0 携带投影实现，根包为依赖传播版本。",
+    "title": "OpenXiangda 2.18.2\uff1a\u6a21\u5757\u6a21\u578b\u7ea7\u8be6\u60c5\u8def\u7531\u58f0\u660e\uff08GAP-MODULE-002\uff09",
+    "summary": "\u6a21\u5757\u5316\u58f0\u660e\u652f\u6301\u8d44\u6e90\u7ea7\u8be6\u60c5\u8def\u7531\u7ed1\u5b9a\uff08detailRouteCode\uff09\uff0c\u6a21\u578b\u58f0\u660e\u672a\u77e5\u5c5e\u6027 fail-closed\uff1bdevkit-core 2.15.0 \u643a\u5e26\u6295\u5f71\u5b9e\u73b0\uff0c\u6839\u5305\u4e3a\u4f9d\u8d56\u4f20\u64ad\u7248\u672c\u3002",
     "newFeatures": [
-      "AppDataModelDeclaration 新增 detailRouteCode（desktop/mobile route code）：模块化声明可表达 Workflow 详情接管消费的资源级详情路由绑定，materializeApplicationModules 完整透传到输出资源；低层 data.resources[].detailRouteCode 语义与既有校验（user surface、单动态参数、read capability 对齐）不变。",
-      "模型声明上的未知属性不再被静默丢弃：投影输出 APP_MODEL_KEY_UNKNOWN 错误 diagnostic（指向 `modules[i].models[j].<key>`）并使编译失败。"
+      "AppDataModelDeclaration \u65b0\u589e detailRouteCode\uff08desktop/mobile route code\uff09\uff1a\u6a21\u5757\u5316\u58f0\u660e\u53ef\u8868\u8fbe Workflow \u8be6\u60c5\u63a5\u7ba1\u6d88\u8d39\u7684\u8d44\u6e90\u7ea7\u8be6\u60c5\u8def\u7531\u7ed1\u5b9a\uff0cmaterializeApplicationModules \u5b8c\u6574\u900f\u4f20\u5230\u8f93\u51fa\u8d44\u6e90\uff1b\u4f4e\u5c42 data.resources[].detailRouteCode \u8bed\u4e49\u4e0e\u65e2\u6709\u6821\u9a8c\uff08user surface\u3001\u5355\u52a8\u6001\u53c2\u6570\u3001read capability \u5bf9\u9f50\uff09\u4e0d\u53d8\u3002",
+      "\u6a21\u578b\u58f0\u660e\u4e0a\u7684\u672a\u77e5\u5c5e\u6027\u4e0d\u518d\u88ab\u9759\u9ed8\u4e22\u5f03\uff1a\u6295\u5f71\u8f93\u51fa APP_MODEL_KEY_UNKNOWN \u9519\u8bef diagnostic\uff08\u6307\u5411 `modules[i].models[j].<key>`\uff09\u5e76\u4f7f\u7f16\u8bd1\u5931\u8d25\u3002"
     ],
     "fixes": [],
     "affectedUsers": [
-      "从 data.resources 迁移到模块化声明、需要资源详情路由由 Workflow 详情接管的应用（如数智工会 szgh-v2）。"
+      "\u4ece data.resources \u8fc1\u79fb\u5230\u6a21\u5757\u5316\u58f0\u660e\u3001\u9700\u8981\u8d44\u6e90\u8be6\u60c5\u8def\u7531\u7531 Workflow \u8be6\u60c5\u63a5\u7ba1\u7684\u5e94\u7528\uff08\u5982\u6570\u667a\u5de5\u4f1a szgh-v2\uff09\u3002"
     ],
     "upgradeSteps": [
-      "应用精确依赖升级到 openxiangda 2.18.2（openxiangda-devkit-core 2.15.0）后重新运行 check 与部署。"
+      "\u5e94\u7528\u7cbe\u786e\u4f9d\u8d56\u5347\u7ea7\u5230 openxiangda 2.18.2\uff08openxiangda-devkit-core 2.15.0\uff09\u540e\u91cd\u65b0\u8fd0\u884c check \u4e0e\u90e8\u7f72\u3002"
     ],
     "knownLimitations": [
-      "detailRouteCode 校验沿用既有资源级规则；本次不改变共享纯校验器字节，configuration-compatibility/v2 的 validatorDigest 不变。"
+      "detailRouteCode \u6821\u9a8c\u6cbf\u7528\u65e2\u6709\u8d44\u6e90\u7ea7\u89c4\u5219\uff1b\u672c\u6b21\u4e0d\u6539\u53d8\u5171\u4eab\u7eaf\u6821\u9a8c\u5668\u5b57\u8282\uff0cconfiguration-compatibility/v2 \u7684 validatorDigest \u4e0d\u53d8\u3002"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
       "workspaceGenerations": "v2",
-      "platform": "无平台配合要求；contracts 共享校验器字节不变。",
-      "v1": "不改变 V1 运行时或应用。"
+      "platform": "\u65e0\u5e73\u53f0\u914d\u5408\u8981\u6c42\uff1bcontracts \u5171\u4eab\u6821\u9a8c\u5668\u5b57\u8282\u4e0d\u53d8\u3002",
+      "v1": "\u4e0d\u6539\u53d8 V1 \u8fd0\u884c\u65f6\u6216\u5e94\u7528\u3002"
     },
     "sha256": "029cced498e869e301d49a73a900beffb80a3b5c3183c34c8fb341f81853539a",
     "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.18.2"
