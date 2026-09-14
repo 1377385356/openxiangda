@@ -19,7 +19,9 @@
   "upgradeSteps": [
     "应用精确依赖升级到 openxiangda 2.18.4 后重新运行 check 与部署。"
   ],
-  "knownLimitations": [],
+  "knownLimitations": [
+    "npm trusted publishing 仍不覆盖 dist-tag 操作：仓库配置 NPM_DISTTAG_TOKEN 后 stable-v2 全自动，否则该一步由维护者补齐（与本版内容无关，沿 2.18.3 记录）。"
+  ],
   "issues": [],
   "compatibility": {
     "node": ">=24",
