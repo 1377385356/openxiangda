@@ -219,6 +219,12 @@ jobs:
           cp "$RUNNER_TEMP/release-state/openxiangda-release-receipt.json" "$GITDIR/"
           cp -R "$RUNNER_TEMP/release-state/openxiangda-release-artifacts-${{ needs.freeze.outputs.release-head }}" "$GITDIR/"
           echo "OPENXIANGDA_RELEASE_ARTIFACT_MANIFEST=$GITDIR/openxiangda-release-artifacts-${{ needs.freeze.outputs.release-head }}/manifest.json" >> "$GITHUB_ENV"
+      - uses: actions/cache@3edfce9056124e459a23f683a21433670d47daca
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
       - name: Clone reference application
         env:
           REFERENCE_REPO_TOKEN: ${{ secrets.REFERENCE_REPO_TOKEN }}
@@ -231,6 +237,8 @@ jobs:
             "$OPENXIANGDA_REFERENCE_APP_ROOT"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Install reference e2e browser
+        run: pnpm --dir "$OPENXIANGDA_REFERENCE_APP_ROOT" --filter @app/web exec playwright install chromium
       - name: Run reference verification
         run: node scripts/release-validate.mjs
 
