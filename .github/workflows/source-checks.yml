@@ -33,6 +33,13 @@ jobs:
       - run: node --test scripts/test/*.test.mjs
       - if: github.event_name != 'pull_request'
         run: pnpm docs:build
+      # 文档主题改动必须同时提交重新生成的打包引用副本，否则发布技能门禁
+      # 会在发布中段以 GUIDANCE_DRIFT 失败（2026-09-14 实测）；提前到 push 拦截。
+      - if: github.event_name != 'pull_request'
+        name: Check packaged guidance references are synced
+        run: |
+          node scripts/sync-developer-guidance.mjs
+          git diff --exit-code -- skills/ documentation/
       - name: Select source comparison
         env:
           BASE: ${{ github.event.pull_request.base.sha || github.event.before }}

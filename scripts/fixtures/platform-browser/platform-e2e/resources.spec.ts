@@ -295,9 +295,12 @@ test('updates the current user avatar through the platform-owned profile contrac
   });
   await expect(page.getByText('头像已更新', { exact: true })).toBeVisible();
   await expect.poll(() => platform.avatarCompletes).toBe(1);
+  // 上传完成后运行时会刷新个人资料并重渲染用户组件；冷 runner 上该链路
+  // 可能超过默认 5 秒（2026-09-14 CI 偶发 element not found），显式放宽。
   await expect(page.locator('.oxa-current-user img')).toHaveAttribute(
     'src',
-    'https://cdn.example.test/avatar/new.png'
+    'https://cdn.example.test/avatar/new.png',
+    { timeout: 20_000 }
   );
 });
 
