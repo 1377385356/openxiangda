@@ -4,6 +4,8 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   FilterOutlined,
+  MailOutlined,
+  ReloadOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
 import type {
@@ -123,7 +125,7 @@ function TodoSummary({
   const values = [
     { key: 'pending', label: '待处理', value: counts.pending, icon: <ClockCircleOutlined /> },
     { key: 'informational', label: '消息', value: counts.informational, icon: <BellOutlined /> },
-    { key: 'unread', label: '未读', value: counts.unread, icon: <Badge status="processing" /> },
+    { key: 'unread', label: '未读', value: counts.unread, icon: <MailOutlined /> },
     { key: 'completed', label: '已完成', value: counts.completed, icon: <CheckCircleOutlined /> },
   ];
   return (
@@ -447,7 +449,7 @@ export function DefaultApplicationTodoCenter({
   const list = (
     <div className="oxa-todo-list" role="list">
       {items.map(item => (
-        <article className="oxa-todo-row" key={item.messageId} role="listitem">
+        <article className={`oxa-todo-row${item.interactionState === 'unread' ? ' is-unread' : ''}`} key={item.messageId} role="listitem">
           <Badge dot={item.interactionState === 'unread'}>
             <span className="oxa-todo-unread-anchor" />
           </Badge>
@@ -494,22 +496,23 @@ export function DefaultApplicationTodoCenter({
             </Typography.Text>
           ) : null}
         </div>
-        <Button onClick={() => void refresh()}>刷新</Button>
+        <Button icon={<ReloadOutlined />} loading={loading} onClick={() => void refresh()}>刷新</Button>
       </header>
       {!messageCenter && <TodoSummary counts={counts} />}
-      <nav aria-label="待办视图">
-        <Segmented
-          block
-          onChange={value =>
-            setQuery({ view: value as ApplicationTodoViewV2 })
-          }
-          options={(Object.keys(VIEW_LABELS) as ApplicationTodoViewV2[]).filter(key => messageCenter || key !== 'all').map(key => ({
-            label: messageCenter ? ({ all: '全部消息', pending: '待处理', informational: '通知', completed: '已结束' })[key] : VIEW_LABELS[key],
-            value: key,
-          }))}
-          value={view}
-        />
-      </nav>
+      <div className="oxa-todo-controls">
+        <nav aria-label="待办视图">
+          <Segmented
+            block={variant === 'mobile'}
+            onChange={value =>
+              setQuery({ view: value as ApplicationTodoViewV2 })
+            }
+            options={(Object.keys(VIEW_LABELS) as ApplicationTodoViewV2[]).filter(key => messageCenter || key !== 'all').map(key => ({
+              label: messageCenter ? ({ all: '全部消息', pending: '待处理', informational: '通知', completed: '已结束' })[key] : VIEW_LABELS[key],
+              value: key,
+            }))}
+            value={view}
+          />
+        </nav>
       <form
         className="oxa-todo-toolbar"
         onSubmit={event => {
@@ -543,6 +546,7 @@ export function DefaultApplicationTodoCenter({
           <Typography.Text>仅看未读</Typography.Text>
         </label>
       </form>
+      </div>
       {variant === 'desktop' ? (
         <Card className="oxa-todo-list-card">
           <section aria-busy={loading} aria-label="待办列表">

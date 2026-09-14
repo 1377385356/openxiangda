@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { mkdirSync, writeFileSync } from 'node:fs';
+import { createServer as createFreePortProbe } from 'node:net';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -10,7 +11,17 @@ const { createServer } = await import(pathToFileURL(web.resolve('vite')));
 const { chromium, expect } = web('@playwright/test');
 const output = resolve(process.env.OPENXIANGDA_DESIGN_EVIDENCE_DIR || resolve(root, '.cache/design-workbench-evidence'));
 mkdirSync(output, { recursive: true });
-const server = await createServer({ configFile: resolve(root, 'scripts/fixtures/design-workbench/vite.config.mjs'), server: { port: 0, host: '127.0.0.1' }, logLevel: 'error' });
+// Vite falls back to its default port when passed 0, colliding with any local
+// dev server; probe a free ephemeral port instead of hardcoding one.
+const freePort = await new Promise((resolvePort, rejectPort) => {
+  const probe = createFreePortProbe();
+  probe.once('error', rejectPort);
+  probe.listen(0, '127.0.0.1', () => {
+    const { port } = probe.address();
+    probe.close(() => resolvePort(port));
+  });
+});
+const server = await createServer({ configFile: resolve(root, 'scripts/fixtures/design-workbench/vite.config.mjs'), server: { port: freePort, host: '127.0.0.1' }, logLevel: 'error' });
 let browser;
 const checks = [];
 const errors = [];

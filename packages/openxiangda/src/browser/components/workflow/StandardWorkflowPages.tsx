@@ -1676,18 +1676,24 @@ export function WorkflowWorkCenterPage({ variant = 'desktop' }: { variant?: Page
   const open = (item: WorkflowWorkCenterItem) => navigate(variant === 'mobile' ? item.detailNavigation.mobilePath : item.detailNavigation.desktopPath);
   const columns: TableColumnsType<WorkflowWorkCenterItem> = [
     { title: '申请事项', key: 'title', render: (_, item) => <Button type="link" className="oxa-work-item-link" onClick={() => open(item)}>{item.title}</Button> },
-    { title: '流程', dataIndex: 'workflowTitle', render: value => value || '—' },
-    { title: '当前节点', dataIndex: 'taskTitle', render: value => value || '—' },
-    { title: '状态', dataIndex: 'instanceStatus', render: (value, item) => <StatusTag status={String(value || item.status)} /> },
-    { title: view === 'created' ? '创建时间' : view === 'cc' ? '抄送时间' : '更新时间', dataIndex: 'occurredAt', render: formatTime },
+    { title: '流程', dataIndex: 'workflowTitle', render: value => value || <span className="oxa-work-empty">—</span> },
+    { title: '当前节点', dataIndex: 'taskTitle', render: value => value || <span className="oxa-work-empty">—</span> },
+    { title: '状态', dataIndex: 'instanceStatus', width: 110, render: (value, item) => <StatusTag status={String(value || item.status)} /> },
+    { title: view === 'created' ? '创建时间' : view === 'cc' ? '抄送时间' : '更新时间', dataIndex: 'occurredAt', width: 180, render: value => <span className="oxa-work-time">{formatTime(value)}</span> },
   ];
   const content = <main className={`oxa-application-work-center oxa-application-work-center-${variant}`}>
-    <header><h1>待办中心</h1><Button icon={<ReloadOutlined />} loading={loading} onClick={() => setAttempt(value => value + 1)}>刷新</Button></header>
+    <header className="oxa-work-center-header">
+      <div className="oxa-work-center-heading">
+        <Typography.Title level={variant === 'mobile' ? 3 : 2}>待办中心</Typography.Title>
+        {variant === 'desktop' && <Typography.Text type="secondary">审批任务集中查看与处理</Typography.Text>}
+      </div>
+      <Button icon={<ReloadOutlined />} loading={loading} onClick={() => setAttempt(value => value + 1)}>刷新</Button>
+    </header>
     <Tabs activeKey={view} onChange={value => { setView(value as typeof view); setPageNumber(1); }} items={WORK_VIEWS.map(item => ({
-      key: item.value, label: <span>{item.label}{page?.counts && <small className="oxa-work-count">{page.counts[item.value]}</small>}</span>,
+      key: item.value, label: <span>{item.label}{page?.counts && <span className="oxa-work-count">{page.counts[item.value]}</span>}</span>,
     }))} />
     {error && <Alert title="待办加载失败" description={error} type="error" showIcon action={<Button onClick={() => setAttempt(value => value + 1)}>重试</Button>} />}
-    {variant === 'desktop' ? <Table rowKey="id" columns={columns} dataSource={page?.items || []} loading={loading} pagination={{
+    {variant === 'desktop' ? <Table className="oxa-work-center-table" rowKey="id" columns={columns} dataSource={page?.items || []} loading={loading} size="middle" pagination={{
       current: pageNumber, pageSize, total: page?.total || 0, showSizeChanger: true,
       onChange: (number, size) => { setPageNumber(number); setPageSize(size); },
     }} /> : <>
