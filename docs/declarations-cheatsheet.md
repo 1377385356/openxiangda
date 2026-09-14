@@ -13,6 +13,7 @@
 | 新建视图的 `form.fields` 必须覆盖全部无默认必填字段，或显式 `generated.create: false` | 检查器会列出缺失字段 |
 | Workflow 详情接管的资源路由用模型级 `detailRouteCode` 表达（desktop/mobile 各引用一条 user surface 路由） | `defineDataModel({ code: 'x', detailRouteCode: { desktop: 'x-detail', mobile: 'x-detail-mobile' }, ... })` |
 | 迁移工具/验收脚本需要看模块投影结果时，用公共出口的 `materializeApplicationModules`，不要引用 devkit 的 dist 文件路径 | `import { defineApplicationModule, materializeApplicationModules } from 'openxiangda/config';` → `const { resources } = materializeApplicationModules([module])` |
+| system 字段（服务端赋值）可以进入查询与分组类选择（filterFields/searchableFields/sortableFields/defaultSort/sections.fields），不可进入展示与可写选择（list/form/detail.fields） | `filterFields: ['campaignId']`（system 外键筛选合法）；hidden 字段任何选择都拒绝 |
 
 ## 字段声明
 

@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.18.7",
+  "status": "reviewed",
+  "title": "OpenXiangda 2.18.7：模块视图查询选择放行 system 字段（GAP-MODULE-003）",
+  "summary": "模块视图的筛选/搜索/排序/分组选择可以引用 system 字段，与低层 data.resources 的 system+filter 语义对齐；展示与可写选择维持拒绝。devkit-core 2.16.0 携带实现。",
+  "newFeatures": [
+    "crud[].list 的 filterFields/searchableFields/sortableFields/defaultSort 与 sections.fields 允许引用 system: true 字段：外键标识（activityId/routeId/campaignId 等）与归属快照（memberUser 等）不再阻塞模块化迁移。",
+    "声明速查新增对应规则条目。"
+  ],
+  "fixes": [],
+  "affectedUsers": [
+    "从 data.resources 迁移到模块化声明、存在大量 system+filter 字段的应用（如数智工会 szgh-v2 的 40/74 资源）。"
+  ],
+  "upgradeSteps": [
+    "应用精确依赖升级到 openxiangda 2.18.7（openxiangda-devkit-core 2.16.0）后重新运行 check 与部署。"
+  ],
+  "knownLimitations": [
+    "展示与可写选择（list/form/detail.fields）仍不接受 system 字段——按 GAP 文档期望保留现行限制。"
+  ],
+  "issues": [],
+  "compatibility": {
+    "node": ">=24",
+    "workspaceGenerations": "v2",
+    "platform": "无平台配合要求；共享校验器字节不变。",
+    "v1": "不改变 V1 运行时或应用。"
+  }
+}

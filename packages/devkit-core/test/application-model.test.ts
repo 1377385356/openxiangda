@@ -472,3 +472,72 @@ test('GAP-MODULE-002：模型声明 detailRouteCode 透传资源，未知属性 
       && error.diagnostics?.some((item: any) => item.code === 'APP_MODEL_KEY_UNKNOWN'),
   );
 });
+
+// GAP-MODULE-003：system 字段（服务端赋值）可进入查询/分组类选择；展示与可写选择仍拒绝。
+const snapshotModel = defineDataModel({
+  code: 'welfare-selections', name: '福利领取',
+  fields: [
+    { code: 'title', label: '福利名称', type: 'text.short', required: true },
+    { code: 'campaignId', label: '所属活动', type: 'uuid', required: true, system: true },
+    { code: 'memberUserId', label: '领取会员', type: 'uuid', required: true, system: true },
+    { code: 'campaignName', label: '活动名称快照', type: 'text.short', system: true },
+    { code: 'internal_key', label: '内部键', type: 'text.short', hidden: true },
+  ],
+});
+
+const welfareModule = defineApplicationModule({
+  code: 'welfare', models: [snapshotModel],
+  crud: [{
+    model: snapshotModel.code,
+    sections: [{ title: '归属快照', fields: ['campaignId', 'memberUserId'] }],
+    list: defineResourceList(snapshotModel, {
+      fields: ['title'],
+      filterFields: ['campaignId', 'memberUserId'],
+      searchableFields: ['campaignName'],
+      sortableFields: ['memberUserId'],
+      defaultSort: { field: 'memberUserId', order: 'desc' },
+    }),
+  }],
+});
+
+test('system fields compile in query and grouping selections and project their capabilities', () => {
+  const { resources } = materializeApplicationModules([welfareModule]);
+  const fields = Object.fromEntries((resources[0].fields as any[]).map(field => [field.code, field]));
+  assert.equal(fields.campaignId.filter, true);
+  assert.equal(fields.campaignName.searchable, true);
+  assert.equal(fields.memberUserId.sortable, true);
+  assert.equal(fields.memberUserId.section, '归属快照');
+  assert.equal(fields.campaignId.list, false);
+});
+
+test('system fields stay rejected in display and writable selections, hidden everywhere', () => {
+  const compile = (listFields: string[], formFields: string[]) => defineOpenXiangdaApp({
+    app: { code: 'foundation-test', name: '平台能力验证' },
+    frontend: { admin: { navigation: [] } },
+    modules: [defineApplicationModule({
+      code: 'welfare', models: [snapshotModel],
+      crud: [{
+        model: snapshotModel.code,
+        list: defineResourceList(snapshotModel, { fields: listFields, filterFields: ['campaignId'] }),
+        form: defineResourceForm(snapshotModel, { fields: formFields }),
+      }],
+    })],
+    authz: { capabilities: [], roles: [] },
+  });
+  for (const [listFields, formFields] of [
+    [['title', 'campaignId'], ['title']],
+    [['title'], ['title', 'campaignId']],
+  ] as const) {
+    assert.throws(() => compile([...listFields], [...formFields]), error =>
+      Boolean((error as any).diagnostics?.some((item: any) => item.code === 'APP_VIEW_FIELD_INVALID')));
+  }
+  assert.throws(() => defineOpenXiangdaApp({
+    app: { code: 'foundation-test', name: '平台能力验证' },
+    frontend: { admin: { navigation: [] } },
+    modules: [defineApplicationModule({
+      code: 'welfare', models: [snapshotModel],
+      crud: [{ model: snapshotModel.code, list: defineResourceList(snapshotModel, { fields: ['title'], filterFields: ['internal_key'] }) }],
+    })],
+    authz: { capabilities: [], roles: [] },
+  }), error => Boolean((error as any).diagnostics?.some((item: any) => item.code === 'APP_VIEW_FIELD_INVALID')));
+});
