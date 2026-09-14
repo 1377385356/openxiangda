@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.18.5",
+  "version": "2.18.6",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -67,13 +67,13 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.4.13",
+    "openxiangda-cli": "2.4.14",
     "openxiangda-contracts": "2.14.1",
     "openxiangda-devkit-core": "2.15.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
     "openxiangda-mcp": "2.0.24",
     "openxiangda-nest": "2.4.2",
-    "openxiangda-skill-kit": "2.1.8",
+    "openxiangda-skill-kit": "2.1.9",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -139,13 +139,14 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.18.5",
+    "version": "2.18.6",
     "status": "reviewed",
-    "title": "OpenXiangda 2.18.5：声明速查补充模块投影出口用法",
-    "summary": "随包声明速查文档新增 materializeApplicationModules 条目：迁移工具与验收脚本从 openxiangda/config 公共出口做模块投影，不再引用 devkit dist 文件路径。",
+    "title": "OpenXiangda 2.18.6：声明速查补充模块投影出口用法",
+    "summary": "随包声明速查文档新增 materializeApplicationModules 条目：迁移工具与验收脚本从 openxiangda/config 公共出口做模块投影，不再引用 devkit dist 文件路径；文档内容随 skill-kit 分发，一并推进版本。",
     "newFeatures": [],
     "fixes": [
-      "声明速查（declarations-cheatsheet）模块与 CRUD 视图表新增一行：迁移/验收需要模块投影结果时使用 materializeApplicationModules 公共出口，附正确导入与调用片段。"
+      "声明速查（declarations-cheatsheet）模块与 CRUD 视图表新增一行：迁移/验收需要模块投影结果时使用 materializeApplicationModules 公共出口，附正确导入与调用片段。",
+      "openxiangda-skill-kit 2.1.9：声明速查内容随包同步。"
     ],
     "affectedUsers": [
       "从 data.resources 迁移到模块化声明的应用开发者（如数智工会 szgh-v2）与编写迁移验收脚本的维护者。"
@@ -163,7 +164,7 @@
       "platform": "无平台配合要求。",
       "v1": "不改变 V1 运行时或应用。"
     },
-    "sha256": "abf7842d7f6ab1725b1ff2cb76d764a033f058c2f242e8f557f4f0dd7702b3c7",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.18.5"
+    "sha256": "2ce270e25c679fd9cbcfc90c04ca56db386119792ffee651ac39b001ea68a39a",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.18.6"
   }
 }
