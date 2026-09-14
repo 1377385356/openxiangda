@@ -12,7 +12,9 @@
   "upgradeSteps": [
     "随 2.18.10 列车一起发布；应用无需单独升级，引用 openxiangda 2.18.9 及配套版本即可。"
   ],
-  "knownLimitations": [],
+  "knownLimitations": [
+    "本列车无独立代码变更；功能变更记录见 2.18.9 发布说明，两列车一并发布。"
+  ],
   "issues": [],
   "compatibility": {
     "node": ">=24",
