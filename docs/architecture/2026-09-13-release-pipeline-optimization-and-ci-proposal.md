@@ -290,3 +290,16 @@ runner 每次是全新虚拟机，不配缓存则每次全量下载；按下列�
 | D5 | **黑盒验证 inherit 回显完整文档 JSON**（超长单行） | 静默成功、失败才详出 | 日志噪声+潜在 runner 日志管道风险 | docs 类命令捕获后摘要输出（待做） |
 
 **结论**：治理原则（字节纪律、OIDC、增量门禁）是对的且领先；**执行架构**（单进程巨兽+单机回执）与业界"job 化+制品交接"范式偏离，是本轮全部三类事故（无声死亡、跨机死锁、恢复断裂）的结构性来源。D1/D2 是下一批次的改造主体。
+
+### 8.3 D1+D2 实施记录（2026-09-14）
+
+已落地（工具链 74ef1532）：
+
+- `release.yml` 重构为五作业流水线：`freeze →（core ∥ packed ∥ reference）→ publish`。
+  - freeze：参考仓对齐推送后 `release:publish --freeze-only` 冻结候选字节与回执，`release-state` artifact 上传；
+  - 三条验证腿并行运行，各自下载同一份冻结制品执行（`OPENXIANGDA_RELEASE_STAGES` 选择腿，`OPENXIANGDA_RELEASE_ARTIFACT_MANIFEST` 复用冻结清单，不重新打包）；
+  - publish（environment: npm 人工批准）：`--mark-validated` 只做安全断言并推进回执阶段（门禁证据=三腿绿色结论），随后 `release:publish` 发布冻结字节。
+- 每作业独立超时与进程树；packed/publish 带心跳监控 artifact。
+- 负例验证：无候选/同版本异字节/无回执 各路径均正确 fail-closed；脚本测试 104/104。
+
+端到端试点待下一个真实 changeset（发布将在 publish 作业的 environment 审批处暂停，可安全演练后放行或取消）。
