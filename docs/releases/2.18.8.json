@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.18.8",
+  "status": "reviewed",
+  "title": "OpenXiangda 2.18.8：引擎钉漂移的恢复通道与确切指引",
+  "summary": "update/version/changelog 在钉位漂移或依赖未安装时仍可执行（修复命令不再被自己要修复的问题拦住）；PIN_MISMATCH 错误信息给出两步恢复路径；业务命令保持严格 fail-closed。",
+  "newFeatures": [],
+  "fixes": [
+    "统一入口对 update、version、changelog 启用宽松引擎解析：钉位漂移时可用漂移前的安装引擎执行诊断与修复；依赖未安装时回退启动器引擎，update install --target workspace 仍能完成安装并统一全部钉位。",
+    "WORKSPACE_ENGINE_PIN_MISMATCH 与 WORKSPACE_ENGINE_NOT_INSTALLED 的错误信息升级为可行动恢复指引（先 pnpm install，钉位不一致时 openxiangda update install --target workspace）。",
+    "随包文档（安装与开始开发）补充升级后漂移的恢复路径与命令豁免范围说明。"
+  ],
+  "affectedUsers": [
+    "升级工具链或手改依赖后遇到引擎版本一致性校验失败的应用开发者与 AI 会话。"
+  ],
+  "upgradeSteps": [
+    "应用精确依赖升级到 openxiangda 2.18.8 后重新运行 check 与部署。"
+  ],
+  "knownLimitations": [
+    "check/deploy/dev 等业务命令仍严格要求钉位一致（fail-closed 不变）；自动安装未实现，恢复仍需运行一条命令。"
+  ],
+  "issues": [],
+  "compatibility": {
+    "node": ">=24",
+    "workspaceGenerations": "v2",
+    "platform": "无平台配合要求。",
+    "v1": "V1 工作区同样受益于恢复命令豁免。"
+  }
+}

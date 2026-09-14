@@ -43,7 +43,9 @@ openxiangda update install --target workspace
 openxiangda version --json
 ```
 
-更新完成后审查依赖、锁文件差异并运行项目检查与业务验收。统一入口不会后台自动升级工具或转换项目。V1 独立 CLI 的 `update install` 会尝试刷新 V1 Skill（可用 `--no-skills` 跳过）；统一入口的更新完成后按下面命令显式刷新 Skill。
+更新完成后审查依赖、锁文件差异并运行项目检查与业务验收。
+
+升级或手改依赖后若出现 `WORKSPACE_ENGINE_PIN_MISMATCH`（项目声明与已安装版本不一致），按顺序恢复：先运行 `pnpm install`（锁文件已指向目标版本时一步修复）；钉位互相不一致（多个 package.json 或锁文件各说各话）时运行 `openxiangda update install --target workspace`，它会递归统一全部声明、锁文件与安装。`update`、`version`、`changelog` 命令不受该校验限制，漂移状态下也能执行用于诊断与修复；业务命令（check/deploy/dev）保持严格 fail-closed。统一入口不会后台自动升级工具或转换项目。V1 独立 CLI 的 `update install` 会尝试刷新 V1 Skill（可用 `--no-skills` 跳过）；统一入口的更新完成后按下面命令显式刷新 Skill。
 
 ### 安装或刷新 Skill
 

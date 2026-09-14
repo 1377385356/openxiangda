@@ -53,15 +53,17 @@ export function discoverWorkspace(cwd, { allowMissing = false, exact = false } =
   }
 }
 
-export function packageEngine(packageRoot, generation, source, declaredVersion = null) {
+export function packageEngine(packageRoot, generation, source, declaredVersion = null, { relaxed = false } = {}) {
   packageRoot = realpathSync(packageRoot);
   const manifest = readJson(join(packageRoot, 'package.json'));
   const major = generation === 'v1' ? '1' : '2';
   if (manifest.name !== 'openxiangda' || !manifest.version?.startsWith(`${major}.`)) {
     fail('WORKSPACE_ENGINE_GENERATION_MISMATCH', `${packageRoot} 需要 ${generation} openxiangda`);
   }
-  if (/^\d+\.\d+\.\d+(?:-[\w.-]+)?$/.test(declaredVersion || '') && manifest.version !== declaredVersion) {
-    fail('WORKSPACE_ENGINE_PIN_MISMATCH', `项目声明 ${declaredVersion}，已安装 ${manifest.version}；请先按锁文件安装依赖`);
+  // relaxed：恢复与诊断命令（update/version/changelog）容忍钉位漂移——
+  // 修复命令不能被自己要修复的问题拦住。其余命令保持严格 fail-closed。
+  if (!relaxed && /^\d+\.\d+\.\d+(?:-[\w.-]+)?$/.test(declaredVersion || '') && manifest.version !== declaredVersion) {
+    fail('WORKSPACE_ENGINE_PIN_MISMATCH', `项目声明 ${declaredVersion}，已安装 ${manifest.version}；恢复不受本校验限制：先试 pnpm install（锁文件已指向目标版本时一步修复），钉位不一致时用 openxiangda update install --target workspace 统一升级全部声明`);
   }
   let entry;
   if (generation === 'v1') {
@@ -77,15 +79,16 @@ export function packageEngine(packageRoot, generation, source, declaredVersion =
   return { generation, version: manifest.version, source, packageRoot: realpathSync(packageRoot), entry, declaredVersion };
 }
 
-export function resolveEngine(workspace, launcherRoot) {
+export function resolveEngine(workspace, launcherRoot, { relaxed = false } = {}) {
   const generation = workspace?.generation || 'v2';
   if (workspace) {
     const manifestFile = join(workspace.root, 'package.json');
     const manifest = existsSync(manifestFile) ? readJson(manifestFile) : {};
     const declaredVersion = manifest.dependencies?.openxiangda || manifest.devDependencies?.openxiangda;
     const installed = join(workspace.root, 'node_modules/openxiangda');
-    if (existsSync(join(installed, 'package.json'))) return packageEngine(installed, generation, 'workspace', declaredVersion);
-    if (declaredVersion) fail('WORKSPACE_ENGINE_NOT_INSTALLED', `${workspace.root} 已声明 openxiangda；请先按项目锁文件安装依赖`);
+    if (existsSync(join(installed, 'package.json'))) return packageEngine(installed, generation, 'workspace', declaredVersion, { relaxed });
+    // relaxed 且未安装时回退启动器引擎：update install 仍可执行并完成安装。
+    if (declaredVersion && !relaxed) fail('WORKSPACE_ENGINE_NOT_INSTALLED', `${workspace.root} 已声明 openxiangda；请先按项目锁文件安装依赖，或运行 openxiangda update install --target workspace`);
   }
   if (generation === 'v2') return packageEngine(launcherRoot, 'v2', 'launcher');
   let legacyManifest;

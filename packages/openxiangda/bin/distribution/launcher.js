@@ -20,7 +20,10 @@ export async function launch(packageRoot, args = process.argv.slice(2)) {
   });
   // Launcher-only updates must also work when a project's dependencies are not yet installed.
   const launcherUpdate = args[0] === 'update' && flagValue(args, '--target') === 'launcher';
-  const engine = resolveEngine(launcherUpdate ? null : workspace, packageRoot);
+  // 恢复与诊断命令（update/version/changelog）容忍钉位漂移与未安装：
+  // 否则修复命令被自己要修复的问题拦住，用户只能手写包管理器命令。
+  const recovery = launcherUpdate || ['update', 'version', 'changelog'].includes(args[0]);
+  const engine = resolveEngine(launcherUpdate ? null : workspace, packageRoot, { relaxed: recovery });
   const context = { manifest, packageRoot, workspace, engine };
   if (await distributionCommand(context, args)) return;
   if (!args.length || args[0] === '--help' || args[0] === '-h') {

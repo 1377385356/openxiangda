@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict';
+import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync, symlinkSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { discoverWorkspace, resolveEngine, flagValue } from '../bin/distribution/workspace.js';
+const launcherPath = () => join(dirname(fileURLToPath(import.meta.url)), '../bin/distribution/launcher.js');
 import { updatePlan } from '../bin/distribution/update.js';
 import { assessMigration } from '../bin/distribution/migrate.js';
 import { compareVersions, bundledRelease } from '../bin/distribution/releases.js';
@@ -46,6 +48,28 @@ function fixture(t: any) {
   engine('launcher', '2.0.0'); engine('launcher/node_modules/openxiangda-legacy', '1.0.267');
   return { root, put, engine, launcher: join(root, 'launcher') };
 }
+
+test('recovery commands tolerate engine pin drift while normal commands stay strict', t => {
+  const f = fixture(t);
+  f.put('drift/openxiangda.config.ts');
+  f.put('drift/package.json', { devDependencies: { openxiangda: '2.0.1' } });
+  f.engine('drift/node_modules/openxiangda', '2.0.0');
+  const workspace = discoverWorkspace(join(f.root, 'drift'));
+  assert.throws(() => resolveEngine(workspace, f.launcher), /WORKSPACE_ENGINE_PIN_MISMATCH/);
+  assert.equal(resolveEngine(workspace, f.launcher, { relaxed: true }).version, '2.0.0');
+  // 未安装时 relaxed 回退启动器引擎，update install 依然可执行。
+  f.put('drift2/openxiangda.config.ts');
+  f.put('drift2/package.json', { devDependencies: { openxiangda: '2.0.1' } });
+  const workspace2 = discoverWorkspace(join(f.root, 'drift2'));
+  assert.throws(() => resolveEngine(workspace2, f.launcher), /WORKSPACE_ENGINE_NOT_INSTALLED/);
+  assert.equal(resolveEngine(workspace2, f.launcher, { relaxed: true }).source, 'launcher');
+  // 启动器层面：漂移下 version 诊断可用，业务命令（check）仍被严格拦截。
+  const run = (args: string[]) => JSON.parse(spawnSync(process.execPath, ['--input-type=module', '-e', `import {launch} from ${JSON.stringify(launcherPath())}; await launch(${JSON.stringify(f.launcher)}, ${JSON.stringify(args)});`], { cwd: join(f.root, 'drift'), encoding: 'utf8' }).stdout || '{}');
+  const versionResult = run(['version', '--json']);
+  assert.equal(versionResult.ok, true);
+  const checkRun = spawnSync(process.execPath, ['--input-type=module', '-e', `import {launch} from ${JSON.stringify(launcherPath())}; await launch(${JSON.stringify(f.launcher)}, ['check', '--local', '--json']);`], { cwd: join(f.root, 'drift'), encoding: 'utf8' });
+  assert.match(checkRun.stderr, /WORKSPACE_ENGINE_PIN_MISMATCH/);
+});
 
 test('nearest workspace wins without executing configuration, mixed markers stop', t => {
   const f = fixture(t);
