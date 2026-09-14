@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.18.7",
+  "version": "2.18.8",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -67,13 +67,13 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.4.15",
+    "openxiangda-cli": "2.4.16",
     "openxiangda-contracts": "2.14.1",
     "openxiangda-devkit-core": "2.16.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
     "openxiangda-mcp": "2.0.25",
     "openxiangda-nest": "2.4.2",
-    "openxiangda-skill-kit": "2.1.10",
+    "openxiangda-skill-kit": "2.1.11",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -139,32 +139,33 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.18.7",
+    "version": "2.18.8",
     "status": "reviewed",
-    "title": "OpenXiangda 2.18.7：模块视图查询选择放行 system 字段（GAP-MODULE-003）",
-    "summary": "模块视图的筛选/搜索/排序/分组选择可以引用 system 字段，与低层 data.resources 的 system+filter 语义对齐；展示与可写选择维持拒绝。devkit-core 2.16.0 携带实现。",
-    "newFeatures": [
-      "crud[].list 的 filterFields/searchableFields/sortableFields/defaultSort 与 sections.fields 允许引用 system: true 字段：外键标识（activityId/routeId/campaignId 等）与归属快照（memberUser 等）不再阻塞模块化迁移。",
-      "声明速查新增对应规则条目。"
+    "title": "OpenXiangda 2.18.8：引擎钉漂移的恢复通道与确切指引",
+    "summary": "update/version/changelog 在钉位漂移或依赖未安装时仍可执行（修复命令不再被自己要修复的问题拦住）；PIN_MISMATCH 错误信息给出两步恢复路径；业务命令保持严格 fail-closed。",
+    "newFeatures": [],
+    "fixes": [
+      "统一入口对 update、version、changelog 启用宽松引擎解析：钉位漂移时可用漂移前的安装引擎执行诊断与修复；依赖未安装时回退启动器引擎，update install --target workspace 仍能完成安装并统一全部钉位。",
+      "WORKSPACE_ENGINE_PIN_MISMATCH 与 WORKSPACE_ENGINE_NOT_INSTALLED 的错误信息升级为可行动恢复指引（先 pnpm install，钉位不一致时 openxiangda update install --target workspace）。",
+      "随包文档（安装与开始开发）补充升级后漂移的恢复路径与命令豁免范围说明。"
     ],
-    "fixes": [],
     "affectedUsers": [
-      "从 data.resources 迁移到模块化声明、存在大量 system+filter 字段的应用（如数智工会 szgh-v2 的 40/74 资源）。"
+      "升级工具链或手改依赖后遇到引擎版本一致性校验失败的应用开发者与 AI 会话。"
     ],
     "upgradeSteps": [
-      "应用精确依赖升级到 openxiangda 2.18.7（openxiangda-devkit-core 2.16.0）后重新运行 check 与部署。"
+      "应用精确依赖升级到 openxiangda 2.18.8 后重新运行 check 与部署。"
     ],
     "knownLimitations": [
-      "展示与可写选择（list/form/detail.fields）仍不接受 system 字段——按 GAP 文档期望保留现行限制。"
+      "check/deploy/dev 等业务命令仍严格要求钉位一致（fail-closed 不变）；自动安装未实现，恢复仍需运行一条命令。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
       "workspaceGenerations": "v2",
-      "platform": "无平台配合要求；共享校验器字节不变。",
-      "v1": "不改变 V1 运行时或应用。"
+      "platform": "无平台配合要求。",
+      "v1": "V1 工作区同样受益于恢复命令豁免。"
     },
-    "sha256": "2d0be4180cfbb743f5340d93dbcb133c493b666d58dc00e380968514dd32d682",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.18.7"
+    "sha256": "6d756cf2e7f197c8c7654541a8b047309ee2e02e3060850ceefcf5f65186a9cb",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.18.8"
   }
 }
