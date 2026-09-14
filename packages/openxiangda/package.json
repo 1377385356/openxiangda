@@ -1,7 +1,7 @@
 {
   "name": "openxiangda",
-  "version": "2.18.2",
-  "description": "OpenXiangda 2.0 \u7684\u7edf\u4e00\u547d\u4ee4\u3001\u5e94\u7528 SDK\u3001MCP \u4e0e\u4e2d\u6587 AI \u6280\u80fd\u8d44\u6599\u3002",
+  "version": "2.18.3",
+  "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -67,7 +67,7 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.4.10",
+    "openxiangda-cli": "2.4.11",
     "openxiangda-contracts": "2.14.1",
     "openxiangda-devkit-core": "2.15.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
@@ -139,32 +139,32 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.18.2",
+    "version": "2.18.3",
     "status": "reviewed",
-    "title": "OpenXiangda 2.18.2\uff1a\u6a21\u5757\u6a21\u578b\u7ea7\u8be6\u60c5\u8def\u7531\u58f0\u660e\uff08GAP-MODULE-002\uff09",
-    "summary": "\u6a21\u5757\u5316\u58f0\u660e\u652f\u6301\u8d44\u6e90\u7ea7\u8be6\u60c5\u8def\u7531\u7ed1\u5b9a\uff08detailRouteCode\uff09\uff0c\u6a21\u578b\u58f0\u660e\u672a\u77e5\u5c5e\u6027 fail-closed\uff1bdevkit-core 2.15.0 \u643a\u5e26\u6295\u5f71\u5b9e\u73b0\uff0c\u6839\u5305\u4e3a\u4f9d\u8d56\u4f20\u64ad\u7248\u672c\u3002",
-    "newFeatures": [
-      "AppDataModelDeclaration \u65b0\u589e detailRouteCode\uff08desktop/mobile route code\uff09\uff1a\u6a21\u5757\u5316\u58f0\u660e\u53ef\u8868\u8fbe Workflow \u8be6\u60c5\u63a5\u7ba1\u6d88\u8d39\u7684\u8d44\u6e90\u7ea7\u8be6\u60c5\u8def\u7531\u7ed1\u5b9a\uff0cmaterializeApplicationModules \u5b8c\u6574\u900f\u4f20\u5230\u8f93\u51fa\u8d44\u6e90\uff1b\u4f4e\u5c42 data.resources[].detailRouteCode \u8bed\u4e49\u4e0e\u65e2\u6709\u6821\u9a8c\uff08user surface\u3001\u5355\u52a8\u6001\u53c2\u6570\u3001read capability \u5bf9\u9f50\uff09\u4e0d\u53d8\u3002",
-      "\u6a21\u578b\u58f0\u660e\u4e0a\u7684\u672a\u77e5\u5c5e\u6027\u4e0d\u518d\u88ab\u9759\u9ed8\u4e22\u5f03\uff1a\u6295\u5f71\u8f93\u51fa APP_MODEL_KEY_UNKNOWN \u9519\u8bef diagnostic\uff08\u6307\u5411 `modules[i].models[j].<key>`\uff09\u5e76\u4f7f\u7f16\u8bd1\u5931\u8d25\u3002"
+    "title": "OpenXiangda 2.18.3：xlsx 依赖镜像化，去除 SheetJS CDN 单点",
+    "summary": "openxiangda 包的 xlsx 依赖从 cdn.sheetjs.com 直链 tarball 迁移到本仓库 GitHub Release 的 vendor-mirror 镜像资产；字节与上游一致（sha256 相同）并继续由锁文件 integrity 钉住。",
+    "newFeatures": [],
+    "fixes": [
+      "消除 SheetJS 官方 CDN 单点：该直链曾在发布验证中造成 ECONNRESET 整轮报废；GitHub Release 资产端点对 CI runner 与一般网络更稳定。",
+      "依赖字节不变：镜像 tarball 与 cdn.sheetjs.com 原件 sha256 一致（8dc73fc3b00203e72d176e85b50938627c7b086e607c682e8d3c22c02bb99fe8），锁文件 integrity 保持内容可验证。"
     ],
-    "fixes": [],
     "affectedUsers": [
-      "\u4ece data.resources \u8fc1\u79fb\u5230\u6a21\u5757\u5316\u58f0\u660e\u3001\u9700\u8981\u8d44\u6e90\u8be6\u60c5\u8def\u7531\u7531 Workflow \u8be6\u60c5\u63a5\u7ba1\u7684\u5e94\u7528\uff08\u5982\u6570\u667a\u5de5\u4f1a szgh-v2\uff09\u3002"
+      "所有安装 openxiangda 2.18.x 的应用（安装链路不再依赖 cdn.sheetjs.com 的可用性）。"
     ],
     "upgradeSteps": [
-      "\u5e94\u7528\u7cbe\u786e\u4f9d\u8d56\u5347\u7ea7\u5230 openxiangda 2.18.2\uff08openxiangda-devkit-core 2.15.0\uff09\u540e\u91cd\u65b0\u8fd0\u884c check \u4e0e\u90e8\u7f72\u3002"
+      "应用精确依赖升级到 openxiangda 2.18.3 后重新安装并运行 check。"
     ],
     "knownLimitations": [
-      "detailRouteCode \u6821\u9a8c\u6cbf\u7528\u65e2\u6709\u8d44\u6e90\u7ea7\u89c4\u5219\uff1b\u672c\u6b21\u4e0d\u6539\u53d8\u5171\u4eab\u7eaf\u6821\u9a8c\u5668\u5b57\u8282\uff0cconfiguration-compatibility/v2 \u7684 validatorDigest \u4e0d\u53d8\u3002"
+      "镜像资产托管在本仓库 GitHub Release（vendor-mirror tag），仓库可用性成为新的安装依赖面。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
       "workspaceGenerations": "v2",
-      "platform": "\u65e0\u5e73\u53f0\u914d\u5408\u8981\u6c42\uff1bcontracts \u5171\u4eab\u6821\u9a8c\u5668\u5b57\u8282\u4e0d\u53d8\u3002",
-      "v1": "\u4e0d\u6539\u53d8 V1 \u8fd0\u884c\u65f6\u6216\u5e94\u7528\u3002"
+      "platform": "无平台配合要求。",
+      "v1": "不改变 V1 运行时或应用。"
     },
-    "sha256": "029cced498e869e301d49a73a900beffb80a3b5c3183c34c8fb341f81853539a",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.18.2"
+    "sha256": "331ccad039c2fcfcca561364592d869f0cdeb749874b8ab77396b548b1984baf",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.18.3"
   }
 }
