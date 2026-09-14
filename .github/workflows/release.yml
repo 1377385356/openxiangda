@@ -245,7 +245,8 @@ jobs:
         run: node scripts/release-validate.mjs
 
   publish:
-    needs: [verify-core, verify-packed, verify-reference]
+    # freeze 必须在 needs 里：outputs 只对直接依赖作业可见。
+    needs: [freeze, verify-core, verify-packed, verify-reference]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: npm
