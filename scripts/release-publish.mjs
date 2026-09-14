@@ -50,11 +50,21 @@ import { archiveCompletedRelease } from "./lib/release-history.mjs";
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const full = process.argv.includes("--full");
 const validateOnly = process.argv.includes("--validate-only");
+// 作业化发布（D1+D2）：
+//   --freeze-only      冻结候选字节与回执（phase=planned），不执行任何门禁；
+//                      冻结产物随 artifact 交接给各验证 job 与发布 job。
+//   --mark-validated   在全部验证 job 绿灯后（workflow needs 拓扑保证）把回执
+//                      标记为 validated；只做安全断言，不重跑门禁、不碰 npm。
+const freezeOnly = process.argv.includes("--freeze-only");
+const markValidated = process.argv.includes("--mark-validated");
 // Phase 3 治理：npm 发布默认只属于受 environment 保护的 release workflow。
 // 显式开启 OPENXIANGDA_RELEASE_REQUIRE_CI 后，本地发布必须携带
 // OPENXIANGDA_RELEASE_BREAK_GLASS=1（紧急通道，回执中记录原因）。
+// freeze/mark 不写 npm，不受该治理限制。
 if (
   !validateOnly &&
+  !freezeOnly &&
+  !markValidated &&
   process.env.OPENXIANGDA_RELEASE_REQUIRE_CI === "1" &&
   process.env.CI !== "true" &&
   process.env.OPENXIANGDA_RELEASE_BREAK_GLASS !== "1"
@@ -176,6 +186,42 @@ if (!receipt) {
   saveReceipt(receipt);
 }
 assertReceiptMatchesInvocation(receipt);
+
+if (freezeOnly) {
+  process.stdout.write(
+    `Frozen ${receipt.candidates.map(item => `${item.name}@${item.version}`).join(", ")} ` +
+      `from ${receipt.head}; receipt ${receiptPath}, artifacts ${artifactRoot}.\n`
+  );
+} else if (markValidated) {
+  // 只做安全断言；门禁执行由 workflow 的 needs 拓扑保证（core/packed/reference
+  // 三腿全绿才会到达本作业）。任何断言失败都拒绝推进阶段。
+  if (receipt.phase !== "validated") {
+    if (receipt.phase !== "planned") {
+      fail(`--mark-validated requires a planned receipt; received ${receipt.phase}`);
+    }
+    assertAuthoritativeMainline();
+    assertReceiptArtifacts(receipt);
+    assertReceiptCandidatesUnpublished(receipt);
+    assertRecoverableDistTags(receipt);
+    if (receiptRequiresReference(receipt)) {
+      assertReferenceReleaseEvidenceMatches(
+        receipt.referenceApplication,
+        inspectReferenceReleaseEvidence(
+          resolveReferenceApplicationRoot(
+            repositoryRoot,
+            process.env.OPENXIANGDA_REFERENCE_APP_ROOT
+          )
+        )
+      );
+    }
+    receipt.phase = "validated";
+    saveReceipt(receipt);
+  }
+  process.stdout.write(
+    `Receipt for ${receipt.head} marked validated; ready for release:publish.\n`
+  );
+} else {
+
 let action = releaseInvocationAction(receipt, { validateOnly });
 
 if (action === "validate") {
@@ -278,7 +324,8 @@ if (validateOnly) {
   );
   rmSync(receiptPath, { force: true });
   rmSync(artifactRoot, { recursive: true, force: true });
-}
+  }
+} // end standard validate/publish flow (freezeOnly/markValidated exit earlier)
 
 function assertAuthoritativeMainline({ allowContained = false } = {}) {
   const status = git(["status", "--porcelain"]);

@@ -1,9 +1,11 @@
 name: OpenXiangda release
 
-# Phase 2/3（方案 2026-09-13-release-pipeline-optimization-and-ci-proposal.md）：
-# 受 environment:npm 人工批准保护的发布 workflow。发布字节 = 验证字节：
-# 同一 job 内先完整 verify:release，再以 npm OIDC Trusted Publishing 发布，
-# 随后同步 git tag 与 GitHub Release 并归档回执。
+# 作业化发布（方案 2026-09-13-release-pipeline-optimization-and-ci-proposal.md
+# 第八节 D1+D2）：
+#   freeze → core ∥ packed ∥ reference → publish（environment: npm 人工批准）
+# 冻结 job 打包候选一次，回执与制品经 artifact 交接给各验证 job 与发布
+# job——发布字节=验证字节由"同一份制品"构造保证；每个 job 独立超时与
+# 进程树，任一 job 死亡不再产生跨机器孤儿或静默挂起。
 # 在 npm 侧为 7 个包配置 trusted publisher（仓库 1377385356/openxiangda +
 # workflow .github/workflows/release.yml + environment npm）之前，
 # npm 会拒绝本 workflow 的发布请求（fail-closed，不会误发）。
@@ -19,18 +21,228 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  publish:
+  freeze:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 20
+    env:
+      TURBO_TELEMETRY_DISABLED: '1'
+      GH_TOKEN: ${{ github.token }}
+    outputs:
+      release-head: ${{ steps.head.outputs.sha }}
+    steps:
+      - name: Configure reference application root
+        run: echo "OPENXIANGDA_REFERENCE_APP_ROOT=$RUNNER_TEMP/openxiangda-v2-reference-app" >> "$GITHUB_ENV"
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+        with:
+          version: 10.15.1
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Require reference repository credentials
+        env:
+          HAS_REFERENCE_TOKEN: ${{ secrets.REFERENCE_REPO_TOKEN != '' }}
+        if: env.HAS_REFERENCE_TOKEN != 'true'
+        run: |
+          echo "::error::发布需要参考应用仓库（1377385356/openxiangda-v2-reference-app，私有）的写凭据：secret REFERENCE_REPO_TOKEN（仅授予该参考仓 contents 读写的 fine-grained PAT）。"
+          exit 1
+      - name: Record release head
+        id: head
+        run: echo "sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Clone reference application
+        env:
+          REFERENCE_REPO_TOKEN: ${{ secrets.REFERENCE_REPO_TOKEN }}
+        run: |
+          CREDENTIALS="$(printf 'x-access-token:%s' "$REFERENCE_REPO_TOKEN" | base64 -w0)"
+          git clone \
+            -c http.https://github.com/.extraheader="Authorization: Basic $CREDENTIALS" \
+            --branch master \
+            https://github.com/1377385356/openxiangda-v2-reference-app.git \
+            "$OPENXIANGDA_REFERENCE_APP_ROOT"
+          git -C "$OPENXIANGDA_REFERENCE_APP_ROOT" config user.name 'openxiangda-release-bot'
+          git -C "$OPENXIANGDA_REFERENCE_APP_ROOT" config user.email 'release-bot@users.noreply.github.com'
+      - name: Build workspace
+        run: pnpm build
+      - name: Materialize and push reference alignment
+        run: |
+          pnpm reference:install:from-build
+          git -C "$OPENXIANGDA_REFERENCE_APP_ROOT" add -A
+          if ! git -C "$OPENXIANGDA_REFERENCE_APP_ROOT" diff --cached --quiet; then
+            git -C "$OPENXIANGDA_REFERENCE_APP_ROOT" commit -m 'chore: align to release candidate build'
+            git -C "$OPENXIANGDA_REFERENCE_APP_ROOT" push origin master
+          fi
+      - name: Freeze candidates and receipt
+        run: pnpm release:publish --freeze-only
+      - name: Stage release state for artifact handoff
+        run: |
+          GITDIR="$(git rev-parse --git-common-dir)"
+          mkdir -p "$RUNNER_TEMP/release-state"
+          cp "$GITDIR/openxiangda-release-receipt.json" "$RUNNER_TEMP/release-state/"
+          cp -R "$GITDIR/openxiangda-release-artifacts-$GITHUB_SHA" "$RUNNER_TEMP/release-state/"
+      - name: Upload frozen release state
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: release-state-${{ github.run_id }}
+          path: ${{ runner.temp }}/release-state
+          retention-days: 7
+          if-no-files-found: error
+
+  verify-core:
+    needs: freeze
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      TURBO_TELEMETRY_DISABLED: '1'
+      GH_TOKEN: ${{ github.token }}
+      OPENXIANGDA_RELEASE_STAGES: core
+      OPENXIANGDA_RELEASE_VERIFY_TIMEOUT_SECONDS: '1500'
+    steps:
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+        with:
+          version: 10.15.1
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Restore frozen release state
+        uses: actions/download-artifact@484a0b528fb4d7bd804637ccb632e47a0e638317
+        with:
+          name: release-state-${{ github.run_id }}
+          path: ${{ runner.temp }}/release-state
+      - name: Place frozen receipt and artifacts
+        run: |
+          GITDIR="$(git rev-parse --git-common-dir)"
+          cp "$RUNNER_TEMP/release-state/openxiangda-release-receipt.json" "$GITDIR/"
+          cp -R "$RUNNER_TEMP/release-state/openxiangda-release-artifacts-${{ needs.freeze.outputs.release-head }}" "$GITDIR/"
+          echo "OPENXIANGDA_RELEASE_ARTIFACT_MANIFEST=$GITDIR/openxiangda-release-artifacts-${{ needs.freeze.outputs.release-head }}/manifest.json" >> "$GITHUB_ENV"
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run core verification
+        run: node scripts/release-validate.mjs
+
+  verify-packed:
+    needs: freeze
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      TURBO_TELEMETRY_DISABLED: '1'
+      GH_TOKEN: ${{ github.token }}
+      OPENXIANGDA_RELEASE_STAGES: packed
+      OPENXIANGDA_RELEASE_VERIFY_TIMEOUT_SECONDS: '1800'
+    steps:
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+        with:
+          version: 10.15.1
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: actions/cache@3edfce9056124e459a23f683a21433670d47daca
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
+      - name: Restore frozen release state
+        uses: actions/download-artifact@484a0b528fb4d7bd804637ccb632e47a0e638317
+        with:
+          name: release-state-${{ github.run_id }}
+          path: ${{ runner.temp }}/release-state
+      - name: Place frozen receipt and artifacts
+        run: |
+          GITDIR="$(git rev-parse --git-common-dir)"
+          cp "$RUNNER_TEMP/release-state/openxiangda-release-receipt.json" "$GITDIR/"
+          cp -R "$RUNNER_TEMP/release-state/openxiangda-release-artifacts-${{ needs.freeze.outputs.release-head }}" "$GITDIR/"
+          echo "OPENXIANGDA_RELEASE_ARTIFACT_MANIFEST=$GITDIR/openxiangda-release-artifacts-${{ needs.freeze.outputs.release-head }}/manifest.json" >> "$GITHUB_ENV"
+      - name: Start failure heartbeat monitor
+        run: |
+          mkdir -p /tmp/heartbeat
+          nohup bash -c 'while true; do { echo "=== $(date -u +%FT%TZ)"; free -m | sed -n 2p; df -h / | sed -n 2p; ps aux --sort=-rss | sed -n "2,7p"; } >> /tmp/heartbeat/heartbeat.log 2>&1; sleep 30; done' >/dev/null 2>&1 &
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run packed-distribution verification
+        run: node scripts/release-validate.mjs
+      - name: Archive heartbeat
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: heartbeat-packed-${{ github.run_id }}
+          path: /tmp/heartbeat
+          if-no-files-found: ignore
+          retention-days: 14
+
+  verify-reference:
+    needs: freeze
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      TURBO_TELEMETRY_DISABLED: '1'
+      GH_TOKEN: ${{ github.token }}
+      OPENXIANGDA_RELEASE_STAGES: reference
+      OPENXIANGDA_RELEASE_VERIFY_TIMEOUT_SECONDS: '1200'
+    steps:
+      - name: Configure reference application root
+        run: echo "OPENXIANGDA_REFERENCE_APP_ROOT=$RUNNER_TEMP/openxiangda-v2-reference-app" >> "$GITHUB_ENV"
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+        with:
+          version: 10.15.1
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Restore frozen release state
+        uses: actions/download-artifact@484a0b528fb4d7bd804637ccb632e47a0e638317
+        with:
+          name: release-state-${{ github.run_id }}
+          path: ${{ runner.temp }}/release-state
+      - name: Place frozen receipt and artifacts
+        run: |
+          GITDIR="$(git rev-parse --git-common-dir)"
+          cp "$RUNNER_TEMP/release-state/openxiangda-release-receipt.json" "$GITDIR/"
+          cp -R "$RUNNER_TEMP/release-state/openxiangda-release-artifacts-${{ needs.freeze.outputs.release-head }}" "$GITDIR/"
+          echo "OPENXIANGDA_RELEASE_ARTIFACT_MANIFEST=$GITDIR/openxiangda-release-artifacts-${{ needs.freeze.outputs.release-head }}/manifest.json" >> "$GITHUB_ENV"
+      - name: Clone reference application
+        env:
+          REFERENCE_REPO_TOKEN: ${{ secrets.REFERENCE_REPO_TOKEN }}
+        run: |
+          CREDENTIALS="$(printf 'x-access-token:%s' "$REFERENCE_REPO_TOKEN" | base64 -w0)"
+          git clone \
+            -c http.https://github.com/.extraheader="Authorization: Basic $CREDENTIALS" \
+            --branch master \
+            https://github.com/1377385356/openxiangda-v2-reference-app.git \
+            "$OPENXIANGDA_REFERENCE_APP_ROOT"
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run reference verification
+        run: node scripts/release-validate.mjs
+
+  publish:
+    needs: [verify-core, verify-packed, verify-reference]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     environment: npm
     env:
       TURBO_TELEMETRY_DISABLED: '1'
       GH_TOKEN: ${{ github.token }}
-      OPENXIANGDA_RELEASE_VERIFY_TIMEOUT_SECONDS: '1800'
-      # Phase 3 生效：本地默认通道关闭后，同一断言保护 CI 内的单一发布者。
       OPENXIANGDA_RELEASE_REQUIRE_CI: '1'
-      # 串行逃生通道：CI 无声死亡根因未定位前先保证发布通道可用
-      OPENXIANGDA_RELEASE_SERIAL_GATES: '1'
     steps:
       - name: Configure reference application root
         run: echo "OPENXIANGDA_REFERENCE_APP_ROOT=$RUNNER_TEMP/openxiangda-v2-reference-app" >> "$GITHUB_ENV"
@@ -46,23 +258,20 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-      - uses: actions/cache@3edfce9056124e459a23f683a21433670d47daca
+      - name: Restore frozen release state
+        uses: actions/download-artifact@484a0b528fb4d7bd804637ccb632e47a0e638317
         with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            playwright-${{ runner.os }}-
-      - name: Require reference repository credentials
-        env:
-          HAS_REFERENCE_TOKEN: ${{ secrets.REFERENCE_REPO_TOKEN != '' }}
-        if: env.HAS_REFERENCE_TOKEN != 'true'
+          name: release-state-${{ github.run_id }}
+          path: ${{ runner.temp }}/release-state
+      - name: Place frozen receipt and artifacts
         run: |
-          echo "::error::发布需要参考应用仓库（1377385356/openxiangda-v2-reference-app，私有）的写凭据：secret REFERENCE_REPO_TOKEN（仅授予该参考仓 contents 读写的 fine-grained PAT）。"
-          exit 1
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Build workspace
-        run: pnpm build
+          GITDIR="$(git rev-parse --git-common-dir)"
+          cp "$RUNNER_TEMP/release-state/openxiangda-release-receipt.json" "$GITDIR/"
+          cp -R "$RUNNER_TEMP/release-state/openxiangda-release-artifacts-${{ needs.freeze.outputs.release-head }}" "$GITDIR/"
+      - name: Start failure heartbeat monitor
+        run: |
+          mkdir -p /tmp/heartbeat
+          nohup bash -c 'while true; do { echo "=== $(date -u +%FT%TZ)"; free -m | sed -n 2p; df -h / | sed -n 2p; ps aux --sort=-rss | sed -n "2,7p"; } >> /tmp/heartbeat/heartbeat.log 2>&1; sleep 30; done' >/dev/null 2>&1 &
       - name: Clone reference application
         env:
           REFERENCE_REPO_TOKEN: ${{ secrets.REFERENCE_REPO_TOKEN }}
@@ -73,43 +282,24 @@ jobs:
             --branch master \
             https://github.com/1377385356/openxiangda-v2-reference-app.git \
             "$OPENXIANGDA_REFERENCE_APP_ROOT"
-          git -C "$OPENXIANGDA_REFERENCE_APP_ROOT" config user.name 'openxiangda-release-bot'
-          git -C "$OPENXIANGDA_REFERENCE_APP_ROOT" config user.email 'release-bot@users.noreply.github.com'
-      - name: Materialize and push reference alignment
-        run: |
-          pnpm reference:install:from-build
-          git -C "$OPENXIANGDA_REFERENCE_APP_ROOT" add -A
-          if ! git -C "$OPENXIANGDA_REFERENCE_APP_ROOT" diff --cached --quiet; then
-            git -C "$OPENXIANGDA_REFERENCE_APP_ROOT" commit -m 'chore: align to release candidate build'
-            git -C "$OPENXIANGDA_REFERENCE_APP_ROOT" push origin master
-          fi
-      - name: Start failure heartbeat monitor
-        # 孤儿安全：输出全部写文件，不持有步骤管道；死亡现场随 artifact 留存。
-        run: |
-          mkdir -p /tmp/heartbeat
-          nohup bash -c 'while true; do { echo "=== $(date -u +%FT%TZ)"; free -m | sed -n 2p; df -h / | sed -n 2p; ps aux --sort=-rss | sed -n "2,7p"; } >> /tmp/heartbeat/heartbeat.log 2>&1; sleep 30; done' >/dev/null 2>&1 &
-      - name: Runner resource snapshot
-        run: |
-          df -h / /tmp | sed 's/^/disk: /'
-          free -h | sed 's/^/mem: /'
-      - name: Verify and publish
-        # verify:release 冻结候选并产出已验证回执；release:publish 只发布
-        # 回执字节。两段必须同 job 串联，保证发布字节=验证字节。
-        run: |
-          pnpm verify:release
-          pnpm release:publish
-      - name: Archive release state for resumable recovery
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      # needs 拓扑保证三腿全绿才到达这里；--mark-validated 只做安全断言，
+      # 门禁的执行证据就是三个 verify job 的绿色结论。
+      - name: Mark receipt validated
+        run: pnpm release:publish --mark-validated
+      - name: Publish frozen candidates
+        run: pnpm release:publish
+      - name: Archive release state and heartbeat
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: release-state-${{ github.run_id }}
-          # 回执、冻结候选制品与历史目录都要留存：验证或发布中断时，
-          # 下载 artifact 放回 .git 即可按回执恢复，不会出现第二发布者。
+          name: release-history-${{ github.run_id }}
           path: |
             /tmp/heartbeat
+            .git/openxiangda-release-history
             .git/openxiangda-release-receipt.json
             .git/openxiangda-release-artifacts-*
-            .git/openxiangda-release-history
           if-no-files-found: ignore
           retention-days: 90
       - name: Check reference lock matches published registry

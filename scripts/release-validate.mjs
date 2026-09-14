@@ -49,6 +49,14 @@ const releaseScriptTests = readdirSync(resolve(repositoryRoot, "scripts", "test"
 if (!releaseScriptTests.length) throw new Error("RELEASE_SCRIPT_TESTS_MISSING");
 await run("node", ["--test", ...releaseScriptTests]);
 
+// 作业化验证（D1+D2）：OPENXIANGDA_RELEASE_STAGES 选择本次执行的腿
+// （core / packed / reference，逗号分隔；缺省 all）。拆分后的 workflow
+// 让每条腿在独立 job 里运行（独立超时、日志与进程树），冻结字节通过
+// OPENXIANGDA_RELEASE_ARTIFACT_MANIFEST 复用同一份候选制品。
+const stageFilter = (process.env.OPENXIANGDA_RELEASE_STAGES || "all")
+  .split(",").map(stage => stage.trim()).filter(Boolean);
+const stageEnabled = stage => stageFilter.includes("all") || stageFilter.includes(stage);
+
 // Build required dependencies, then reject cheap guidance/doc errors before any
 // package test, fresh-application/browser suite or reference registry setup.
 await run("pnpm", ["exec", "turbo", "run", "build", ...candidateNames.flatMap(name => ["--filter", `${name}...`])]);
@@ -60,26 +68,30 @@ await run("pnpm", ["exec", "turbo", "run", "build", ...candidateNames.flatMap(na
 // 低内存执行环境）。
 const serialGates = process.env.OPENXIANGDA_RELEASE_SERIAL_GATES === "1";
 const gates = [];
-if (plan.gates.skills) gates.push(() => run("pnpm", ["skills:check:from-build"]));
-if (plan.gates.documentation) gates.push(() => run("pnpm", ["docs:build:from-build"]));
-gates.push(() =>
-  full
-    ? run("pnpm", ["verify"])
-    : plan.workspacePackages.length
-      ? run("pnpm", ["exec", "turbo", "run", "check", "test", ...plan.workspacePackages.flatMap(name => ["--filter", name])])
-      : Promise.resolve()
-);
-if (plan.gates.templateGeneratedCheck) gates.push(() => run("pnpm", ["template:generated:check"]));
-gates.push(() =>
-  run("node", ["scripts/verify-packed-distribution.mjs"], {
-    env: {
-      ...process.env,
-      OPENXIANGDA_RELEASE_PACKAGES: validationPackageNames.join(","),
-      OPENXIANGDA_PACK_SMOKE_LEVEL: plan.gates.freshApplication,
-    },
-  })
-);
-if (plan.gates.referenceApplication) {
+if (stageEnabled("core")) {
+  if (plan.gates.skills) gates.push(() => run("pnpm", ["skills:check:from-build"]));
+  if (plan.gates.documentation) gates.push(() => run("pnpm", ["docs:build:from-build"]));
+  gates.push(() =>
+    full
+      ? run("pnpm", ["verify"])
+      : plan.workspacePackages.length
+        ? run("pnpm", ["exec", "turbo", "run", "check", "test", ...plan.workspacePackages.flatMap(name => ["--filter", name])])
+        : Promise.resolve()
+  );
+  if (plan.gates.templateGeneratedCheck) gates.push(() => run("pnpm", ["template:generated:check"]));
+}
+if (stageEnabled("packed")) {
+  gates.push(() =>
+    run("node", ["scripts/verify-packed-distribution.mjs"], {
+      env: {
+        ...process.env,
+        OPENXIANGDA_RELEASE_PACKAGES: validationPackageNames.join(","),
+        OPENXIANGDA_PACK_SMOKE_LEVEL: plan.gates.freshApplication,
+      },
+    })
+  );
+}
+if (stageEnabled("reference") && plan.gates.referenceApplication) {
   gates.push(() =>
     run("pnpm", ["reference:smoke:from-build"], {
       env: { ...process.env, OPENXIANGDA_RELEASE_PACKAGES: validationPackageNames.join(",") },
