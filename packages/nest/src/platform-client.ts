@@ -39,6 +39,7 @@ import type {
   WorkflowLaunchSurface,
   WorkflowSurface,
   WorkflowWorkCenterItem,
+  WorkflowWorkCenterView,
   WorkflowTimeline,
   BusinessProcessAnswer,
   BusinessProcessCommand,
@@ -697,10 +698,16 @@ export class OpenXiangdaPlatformClient {
 
   async workflowWorkCenter(
     authorization: string,
-    input: { status?: "pending" | "completed"; limit?: number } = {}
+    input: {
+      status?: "pending" | "completed";
+      view?: WorkflowWorkCenterView;
+      limit?: number;
+    } = {}
   ): Promise<{ items: WorkflowWorkCenterItem[] }> {
     const query = new URLSearchParams({
-      status: input.status || "pending",
+      ...(input.view
+        ? { view: input.view }
+        : { status: input.status || "pending" }),
       limit: String(Math.min(Math.max(Number(input.limit) || 50, 1), 200)),
       environmentKey: this.options.environmentKey,
     });

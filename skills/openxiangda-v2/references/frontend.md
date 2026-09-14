@@ -126,6 +126,44 @@ capability，不使用角色名或影子字段判断。
 
 DataQuery 使用有界 where 条件树，支持 and/or/not。标准列表的筛选、关键词、分页和导出共用已声明字段与同一查询条件，不在页面重写查询协议。
 
+## 自建待办与消息中心 UI {#self-hosted-centers}
+
+应用不满意默认待办中心/消息中心的呈现时，在自有 user 路由上用 `openxiangda/core`
+公开客户端自建 UI；数据和事实仍由平台唯一拥有：
+
+```tsx
+import {
+  loadWorkflowWorkCenter,
+  loadApplicationTodos,
+  recordApplicationTodoInteraction,
+} from 'openxiangda/core';
+
+// 待办四视图：created / pending / handled / cc，counts 随每次查询内嵌返回
+const work = await loadWorkflowWorkCenter({ view: 'pending', limit: 20, offset: 0 });
+// 消息视图：all / pending / informational / completed，未读与回执由 Notification Hub 投影
+const todos = await loadApplicationTodos({ view: 'all', unread: false, keyword: '', limit: 12, offset: 0 });
+// read/click 回执幂等；失败不阻断目标页自身的读取与鉴权
+await recordApplicationTodoInteraction(item.messageId, 'click');
+```
+
+边界（与默认标准页一致，`check` 与运行时都会强制）：
+
+- 不得注册、替换或重定向 `/todos`、`/m/todos`、`/work-center`、`/m/work-center`
+  及任何 Workflow 路由；自建页面必须挂在应用自己声明的路由上。
+- 收件箱只读当前用户：没有跨用户查询、没有批量审批；待办页不执行
+  Workflow approve/reject/return 命令，操作一律进入平台解析的
+  `detailNavigation.desktopPath/mobilePath`，`navigationUnavailable` 时禁用入口。
+- 视图语义由服务端裁定（待办的 created/cc 是 Workflow 事实，不是消息搜索的
+  客户端并集）；合同没有的优先级、截止时间、排序与批量选择不得在浏览器伪造。
+- 服务端集成使用 `openxiangda-nest` 的 `OpenXiangdaPlatformClient`：
+  `workflowWorkCenter` 支持 `view`（`created/handled/cc` 需要 view，
+  `status` 仅保留 pending/completed 兼容映射），`applicationTodos` 与回执
+  访问同名可用。
+
+默认呈现的替换式定制仅限既有 contribution 面（用户面 frame、
+`applicationTodoCenter` 渲染器）；Workflow 待办中心目前没有渲染器替换钩子，
+需要完全不同的呈现时走本节的自建路由方案。
+
 ## 标准后台扩展
 
 ### 未保存内容的离开保护
