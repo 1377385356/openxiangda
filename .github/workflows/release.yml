@@ -300,11 +300,16 @@ jobs:
       - name: Mark receipt validated
         run: pnpm release:publish --mark-validated
       # npm OIDC trusted publishing 只认证 npm publish；dist-tag 通道操作需要
-      # 真实令牌。配置 secret NPM_DISTTAG_TOKEN（granular，仅 7 个 openxiangda*
-      # 包读写）后本步骤全自动；未配置时发布成功、stable-v2 由维护者补齐。
-      - name: Publish frozen candidates
+      # 真实令牌。npm CLI 不读取 NODE_AUTH_TOKEN 环境变量，必须写入 .npmrc
+      # 让其展开。配置 secret NPM_DISTTAG_TOKEN（Classic Automation token，
+      # 免 OTP）后本步骤全自动；未配置时发布成功、stable-v2 由维护者补齐。
+      - name: Configure npm dist-tag authentication
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_DISTTAG_TOKEN }}
+          HAS_DISTTAG_TOKEN: ${{ secrets.NPM_DISTTAG_TOKEN != '' }}
+          NPM_DISTTAG_TOKEN: ${{ secrets.NPM_DISTTAG_TOKEN }}
+        if: env.HAS_DISTTAG_TOKEN == 'true'
+        run: printf '//registry.npmjs.org/:_authToken=%s\n' "$NPM_DISTTAG_TOKEN" >> ~/.npmrc
+      - name: Publish frozen candidates
         run: pnpm release:publish
       - name: Stage release state for archive
         if: always()
