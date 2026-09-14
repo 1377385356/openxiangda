@@ -96,7 +96,9 @@ assertAuthoritativeMainline({
 });
 receipt = discardSupersededPrepublicationReceipt(receipt);
 assertReleaseVersionsMaterialized(repositoryRoot);
-const initialAction = releaseInvocationAction(receipt, { validateOnly });
+const initialAction = freezeOnly || markValidated
+  ? "none"
+  : releaseInvocationAction(receipt, { validateOnly });
 let referenceApplicationRoot;
 let referenceEvidenceAtStart;
 if (
