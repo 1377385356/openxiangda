@@ -7067,7 +7067,12 @@ export function defineOpenXiangdaApp(
       }
     : materialized;
   const diagnostics = validateAppConfig(config);
-  if (diagnostics.length > 0) throw new AppConfigValidationError(diagnostics);
+  // warning 级诊断（如策略 requiredFields 比模型必填更严格）随结果返回供 check 展示，
+  // 不阻断 define；只有 error 级才视为声明无效。
+  const blockingDiagnostics = diagnostics.filter(item => item.severity === 'error');
+  if (blockingDiagnostics.length > 0) {
+    throw new AppConfigValidationError(blockingDiagnostics);
+  }
   const sealed: OpenXiangdaAppConfig = config.authz
     ? {
         ...config,
