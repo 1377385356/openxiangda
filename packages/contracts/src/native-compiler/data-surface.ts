@@ -1,4 +1,5 @@
 import { canonicalJson } from '../canonical.js';
+import { isDataSystemSortField } from './data-audit-access.js';
 import {
   NativeDataFieldContractV2Error,
   NativeDataFieldTypeV2,
@@ -505,7 +506,13 @@ function validateList(
       63
     );
     const field = fields.get(fieldCode);
-    if (!field || !nativeFieldSupportsSortV2(field.type)) {
+    // 平台审计列（created_at/updated_at 等）物理存在且 Data API order 已接受：
+    // 资源级默认排序与命名视图同规则放行，不再按未知字段 fail-closed。
+    const isSystemSortField = isDataSystemSortField(fieldCode);
+    if (
+      !isSystemSortField &&
+      (!field || !nativeFieldSupportsSortV2(field.type))
+    ) {
       issue(
         'NATIVE_DATA_SURFACE_SORT_UNSUPPORTED',
         `${pointer}/defaultSort/field`
