@@ -225,6 +225,38 @@ export interface NativeScopeValuePage {
   offset: number;
 }
 
+export interface WorkflowManagementDefinitionEntry {
+  workflowCode: string;
+  title?: string;
+  definition: {
+    latestVersion: number;
+    versionCount: number;
+    digest?: string;
+    status?: string;
+  };
+  binding: { latestVersion: number; versionCount: number } | null;
+  head: {
+    revision: number;
+    definitionVersion: number;
+    bindingVersion: number;
+    status: string;
+    activationSetVersionId?: string | null;
+    acceptedCommandDeactivationPolicy?: string;
+    activatedAt?: string;
+    deactivatedAt?: string | null;
+  } | null;
+}
+
+export interface WorkflowManagementDefinitionsPage {
+  engineVersion?: string;
+  appCode: string;
+  environmentKey: DeploymentEnvironment;
+  total: number;
+  limit: number;
+  offset: number;
+  items: WorkflowManagementDefinitionEntry[];
+}
+
 export type ApplicationApiQuery = Record<
   string,
   string | number | boolean | null | undefined
@@ -1553,6 +1585,21 @@ export class OpenXiangdaControlPlaneClient {
   async workflowNodeConfigurations(appCode: string, workflowCode: string, environmentKey: DeploymentEnvironment): Promise<WorkflowNodeConfigurations> {
     return await this.json<WorkflowNodeConfigurations>(
       `${this.administrationPath(appCode)}/workflows/${encodeURIComponent(workflowCode)}/node-configurations?${this.query({ environmentKey })}`
+    );
+  }
+
+  async workflowManagementDefinitions(
+    appCode: string,
+    environmentKey: DeploymentEnvironment = "preproduction",
+    limit = 100,
+    offset = 0
+  ): Promise<WorkflowManagementDefinitionsPage> {
+    return await this.json<WorkflowManagementDefinitionsPage>(
+      `${this.workflowPath(appCode)}/management/definitions?${this.query({
+        environmentKey,
+        limit: String(limit),
+        offset: String(offset),
+      })}`
     );
   }
 

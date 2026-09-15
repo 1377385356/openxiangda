@@ -90,12 +90,13 @@ import { resourceSurfaces } from '@app/contracts';
 
 const records = createNativeResourceClient('records', resourceSurfaces.records);
 
-// 服务端过滤、排序、分页；字段必须已声明，未声明字段直接报错
+// 服务端过滤、排序、分页；where 字段必须已声明；排序字段用已声明字段或
+// 平台审计列（created_at/updated_at/created_by/updated_by/id/revision）
 const page = await records.list({
   page: 1,
   pageSize: 20,
   where: { field: 'enabled', operator: 'eq', value: true },
-  sort: { field: 'createdAt', order: 'desc' },
+  sort: { field: 'created_at', order: 'desc' },
 });
 
 const record = await records.get(id);

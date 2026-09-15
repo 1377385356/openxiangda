@@ -1,5 +1,5 @@
 import { PresentationTime, usePresentationTimeZone } from '../../presentation-time';
-import { DATA_AUDIT_METADATA_FIELDS, projectDataResourceView } from 'openxiangda-contracts/browser';
+import { DATA_AUDIT_METADATA_FIELDS, DATA_SYSTEM_SORT_FIELD_CODES, isDataSystemSortField, projectDataResourceView } from 'openxiangda-contracts/browser';
 import {
   CloseOutlined,
   ExpandOutlined,
@@ -121,6 +121,24 @@ async function exportResourceRows(
   return { rowLimit: exported.rowLimit };
 }
 
+const SYSTEM_SORT_FIELD_LABELS: Record<string, string> = {
+  created_at: '创建时间',
+  updated_at: '更新时间',
+  created_by: '创建人',
+  updated_by: '更新人',
+  id: '记录 ID',
+  revision: '数据版本',
+};
+
+/** 内置审计列始终可排序；其余平台系统列仅在作为 defaultSort 声明时进入排序选项。 */
+export function systemSortFieldOptions(defaultSortField?: string): Array<{ key: string; label: string }> {
+  const offered = new Set<string>(['created_at', 'updated_at']);
+  if (defaultSortField && isDataSystemSortField(defaultSortField)) offered.add(defaultSortField);
+  return DATA_SYSTEM_SORT_FIELD_CODES
+    .filter(code => offered.has(code))
+    .map(code => ({ key: code, label: SYSTEM_SORT_FIELD_LABELS[code] ?? code }));
+}
+
 function useGeneratedList(
   definition: GeneratedResourceDefinition,
   readableFieldCodes: Set<string>
@@ -128,7 +146,7 @@ function useGeneratedList(
   const { code, surface } = definition;
   const declaredDefaultSort = surface.list?.defaultSort?.field;
   const defaultSortField =
-    (declaredDefaultSort && readableFieldCodes.has(declaredDefaultSort)
+    (declaredDefaultSort && (isDataSystemSortField(declaredDefaultSort) || readableFieldCodes.has(declaredDefaultSort))
       ? declaredDefaultSort
       : Object.keys(surface.fields).find((field) => readableFieldCodes.has(field) && surface.fields[field]?.sortable)) || '';
   const defaultSortOrder = surface.list?.defaultSort?.order || 'asc';
@@ -312,7 +330,10 @@ function GeneratedDesktopList({ definition, paths }: { definition: GeneratedReso
   const listKey = `openxiangda-v2:resource:${code}${definition.viewCode ? `:view:${definition.viewCode}` : ""}`;
   const filterFields = (surface.list?.filterFields || []).filter(key => readableFieldCodes.has(key));
   const filterDefinitions = filterFields.map(key => fieldFor(surface, key));
-  const sortFields = Object.keys(surface.fields).filter(key => readableFieldCodes.has(key) && (surface.fields[key]?.sortable || key === surface.list?.defaultSort?.field)).map(key => fieldFor(surface, key));
+  const sortFields = [
+    ...Object.keys(surface.fields).filter(key => readableFieldCodes.has(key) && (surface.fields[key]?.sortable || key === surface.list?.defaultSort?.field)).map(key => fieldFor(surface, key)),
+    ...systemSortFieldOptions(surface.list?.defaultSort?.field),
+  ];
   const orderedKeys = [...columnOrder.filter(key => configurableColumns.some(item => item.key === key)),
     ...configurableColumns.map(item => item.key).filter(key => !columnOrder.includes(key))];
   const display: ListDisplaySettings = { columns: orderedKeys.map(key => ({ key, visible: visibleColumnKeys.includes(key),
@@ -443,6 +464,8 @@ function GeneratedDesktopList({ definition, paths }: { definition: GeneratedReso
         dataIndex: 'created_at',
         key: 'created_at',
         width: 190, fixed: frozenKeys.includes('created_at') ? 'left' as const : undefined,
+        sorter: { multiple: Math.max(1, fields.length + 1 - state.sorts.findIndex(sort => sort.field === 'created_at')) },
+        sortOrder: state.sorts.find(sort => sort.field === 'created_at')?.order === 'asc' ? 'ascend' as const : state.sorts.find(sort => sort.field === 'created_at')?.order === 'desc' ? 'descend' as const : null,
         render: (value: unknown) => <PresentationTime value={value} />,
       }] : []),
       ...(visibleColumnKeys.includes('updated_at') ? [{
@@ -450,6 +473,8 @@ function GeneratedDesktopList({ definition, paths }: { definition: GeneratedReso
         dataIndex: 'updated_at',
         key: 'updated_at',
         width: 190, fixed: frozenKeys.includes('updated_at') ? 'left' as const : undefined,
+        sorter: { multiple: Math.max(1, fields.length + 1 - state.sorts.findIndex(sort => sort.field === 'updated_at')) },
+        sortOrder: state.sorts.find(sort => sort.field === 'updated_at')?.order === 'asc' ? 'ascend' as const : state.sorts.find(sort => sort.field === 'updated_at')?.order === 'desc' ? 'descend' as const : null,
         render: (value: unknown) => <PresentationTime value={value} />,
       }] : []),
       {

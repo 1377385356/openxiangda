@@ -1,4 +1,4 @@
-import { SCHEMA_VERSIONS, type Diagnostic } from 'openxiangda-contracts';
+import { SCHEMA_VERSIONS, isDataSystemSortField, type Diagnostic } from 'openxiangda-contracts';
 import type {
   AppDataFieldDeclaration,
   AppDataResourceDeclaration,
@@ -130,14 +130,25 @@ export function materializeApplicationModules(modules: readonly AppModuleDeclara
       // system 字段（服务端赋值、不由用户手写）可以出现在查询与分组类选择里：
       // 低层 data.resources 一直允许 system+filter（外键标识、归属快照按它们
       // 筛选）。展示/可写选择（list/form/detail.fields）与 hidden 字段仍拒绝。
-      const validateSelection = (selection: readonly string[] | undefined, pointer: string, allowSystemFields = false) => {
+      const validateSelection = (
+        selection: readonly string[] | undefined,
+        pointer: string,
+        allowSystemFields = false,
+        allowPlatformSortFields = false
+      ) => {
         if (!selection) return;
         const seen = new Set<string>();
         selection.forEach((code, index) => {
           const field = fields.get(code);
-          const blocked = !field || seen.has(code) || field.hidden === true || (field.system === true && !allowSystemFields);
+          const platformSortField = allowPlatformSortFields && isDataSystemSortField(code);
+          const blocked =
+            (!field && !platformSortField) ||
+            seen.has(code) ||
+            (field
+              ? field.hidden === true || (field.system === true && !allowSystemFields)
+              : false);
           if (blocked) {
-            issue('APP_VIEW_FIELD_INVALID', '视图字段必须存在、不重复且不是内部隐藏字段；system 字段仅可用于筛选/排序/搜索/分组类选择', `${pointer}[${index}]`);
+            issue('APP_VIEW_FIELD_INVALID', '视图字段必须存在、不重复且不是内部隐藏字段；system 字段仅可用于筛选/排序/搜索/分组类选择；平台审计列（如 created_at）仅可用于排序', `${pointer}[${index}]`);
           }
           seen.add(code);
         });
@@ -151,9 +162,9 @@ export function materializeApplicationModules(modules: readonly AppModuleDeclara
         validateSelection(definition?.fields, `${viewPath}.${kind}.fields`);
       }
       validateSelection(view.list?.filterFields, `${viewPath}.list.filterFields`, true);
-      validateSelection(view.list?.sortableFields, `${viewPath}.list.sortableFields`, true);
+      validateSelection(view.list?.sortableFields, `${viewPath}.list.sortableFields`, true, true);
       validateSelection(view.list?.searchableFields, `${viewPath}.list.searchableFields`, true);
-      if (view.list?.defaultSort) validateSelection([view.list.defaultSort.field], `${viewPath}.list.defaultSort.field`, true);
+      if (view.list?.defaultSort) validateSelection([view.list.defaultSort.field], `${viewPath}.list.defaultSort.field`, true, true);
       validateSelection(view.sections?.flatMap(section => [...section.fields]), `${viewPath}.sections.fields`, true);
       if (view.sections?.some(section => !section.title.trim() || section.title.length > 255)) {
         issue('APP_VIEW_SECTION_INVALID', '分组标题不能为空或超过 255 个字符', `${viewPath}.sections`);

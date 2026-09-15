@@ -541,3 +541,41 @@ test('system fields stay rejected in display and writable selections, hidden eve
     authz: { capabilities: [], roles: [] },
   }), error => Boolean((error as any).diagnostics?.some((item: any) => item.code === 'APP_VIEW_FIELD_INVALID')));
 });
+
+test('platform audit columns are valid modular list sort selections', () => {
+  const auditModule = defineApplicationModule({
+    code: 'records', models: [record],
+    crud: [{
+      model: record.code,
+      list: defineResourceList(record, {
+        fields: ['title'],
+        sortableFields: ['updated_at'],
+        defaultSort: { field: 'created_at', order: 'desc' },
+      }),
+    }],
+  });
+  const projected = materializeApplicationModules([auditModule]);
+  assert.equal(
+    projected.diagnostics.some(item => item.code === 'APP_VIEW_FIELD_INVALID'),
+    false
+  );
+  assert.deepEqual(projected.resources[0]!.list?.defaultSort, { field: 'created_at', order: 'desc' });
+  assert.doesNotThrow(() => compileApplicationSources(defineOpenXiangdaApp({
+    app: { code: 'foundation-test', name: '平台能力验证' },
+    frontend: { admin: { navigation: [] } },
+    modules: [auditModule],
+    authz: { capabilities: [], roles: [] },
+  })));
+
+  const typo = materializeApplicationModules([defineApplicationModule({
+    code: 'records', models: [record],
+    crud: [{
+      model: record.code,
+      list: defineResourceList(record, { fields: ['title'], defaultSort: { field: 'nope' } }),
+    }],
+  })]);
+  assert.equal(
+    typo.diagnostics.some(item => item.code === 'APP_VIEW_FIELD_INVALID'),
+    true
+  );
+});

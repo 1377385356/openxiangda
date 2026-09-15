@@ -194,7 +194,13 @@ crud: [{
 }]
 ```
 
-引用未声明字段按编译错误处理；低层 `data.resources[].fields[].sortable` 语义不变。
+排序字段可以是已声明字段，也可以是平台审计列（`created_at` / `updated_at` /
+`created_by` / `updated_by` / `id` / `revision`）——它们由平台维护、所有记录必有值，
+不需要也无法在模型 `fields` 中声明。"按真实创建时间倒序"直接写
+`defaultSort: { field: 'created_at', order: 'desc' }`，标准 Admin 列表的内置
+"创建时间/更新时间"列同样可点击排序；不要为排序复制一份业务时间字段。
+引用其他未声明字段仍按编译错误处理；低层 `data.resources[].fields[].sortable`
+语义不变。`filterFields` / `searchableFields` 仍只接受已声明字段。
 
 ## 资源详情路由声明 {#detail-route-code}
 

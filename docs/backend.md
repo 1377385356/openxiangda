@@ -109,6 +109,34 @@ try {
 ```
 
 事务守卫的 `errorCode` 必须匹配 `^OPENXIANGDA_[A-Z0-9_]{1,96}$`，例如 `OPENXIANGDA_REPAIR_REQUEST_NOT_PENDING`。
+
+## 在同一事务中引用前序 create 生成的 id {#transaction-references}
+
+一个事务内"先建主记录、再建引用它的子记录"不需要预先分配 id，也不需要两段式
+暂存。后续 create/update 的 `data` 字段值可以直接写
+`{ operationIndex, field: 'id' }` 引用本事务中**之前的 create** 生成的主键，
+平台在提交前解析替换：
+
+```ts
+await businessData.transaction({
+  schemaVersion: 'openxiangda.data-transaction-request/v2',
+  idempotencyKey: input.idempotencyKey,
+  operations: [
+    { operation: 'create', resourceCode: 'clubs', data: { name: input.name } },
+    { operation: 'create', resourceCode: 'club-memberships',
+      data: { clubId: { operationIndex: 0, field: 'id' }, userId: input.ownerId, role: 'owner' } },
+    { operation: 'create', resourceCode: 'club-memberships',
+      data: { clubId: { operationIndex: 0, field: 'id' }, userId: input.memberId, role: 'member' } },
+  ],
+});
+```
+
+引用约束：引用对象只含 `operationIndex`（0..99 的整数）与 `field: 'id'` 两个键；
+只能指向索引更小的 create 操作；引用不得嵌套在数组或对象里。违反形状报
+`OPENXIANGDA_NATIVE_DATA_TRANSACTION_REFERENCE_INVALID`，嵌套报
+`..._NESTED`，目标不可解析报 `..._UNRESOLVED`。任一操作失败时整个事务回滚，
+不会留下无成员的 club。
+
 ## 业务动作与普通查询 {#business-action}
 
 `OpenXiangdaDataApiService` 按当前用户的普通资源、行和字段权限执行。具名业务动作使用 `OpenXiangdaBusinessDataApiService`：入口先检查该动作 capability，平台在精确应用和环境内以受信任后端执行，并保留发起人与动作审计。业务动作不能接受任意模型/字段/用户 ID 后不做业务校验；应用负责该动作的输入约束和业务不变量。

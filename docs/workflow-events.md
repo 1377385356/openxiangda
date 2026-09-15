@@ -202,6 +202,15 @@ command 按固定版本完成，`cancel-on-deactivate` 在声明删除后取消�
 默认 1/200，最大 200。
 需要按流程实例串行投递时只声明 `ordering: 'workflow-instance'`，不接受下划线别名。
 
+平台按 desired set 直接覆盖环境 Head，不做版本比较。因此 `openxiangda deploy`
+与 `deploy --dry-run` 会在构建前只读比对源码激活声明与环境 Head：
+源码 `definitionVersion` 低于当前已激活版本时以
+`DEPLOY_WORKFLOW_ACTIVATION_VERSION_REGRESSION` 拒绝部署——把高版本定义与激活
+声明合入源码后再发，版本号与 digest 必须与已注册版本一致（同版本不同内容会被
+平台以 `WORKFLOW_V2_DEFINITION_VERSION_IMMUTABLE` 拒绝）；Head 已激活而源码
+缺声明的流程给出 `DEPLOY_WORKFLOW_ACTIVATION_ABSENT` 警告（本次部署会停用它）；
+目录查询不可用时以 `WORKFLOW_HEAD_PREFLIGHT_UNAVAILABLE` 拒绝盲部署。
+
 Notification Hub 消费事实：
 
 - `participant.activated` 创建待处理消息；
@@ -294,7 +303,12 @@ Workflow instance-scoped preview/content 路由，平台在每次文件读取时
 
 标准发起页使用独立的 `WorkflowLaunchSurface` 读取当前激活合同：桌面路径为
 `/workflows/:workflowCode/start`，移动路径为
-`/m/workflows/:workflowCode/start`。`standalone`/`hidden-handoff` 缺省使用同一个
+`/m/workflows/:workflowCode/start`。definition 必须显式声明
+`launch: { mode: 'standalone' | 'hidden-handoff' | ... }`，缺失会被编译器拒绝；
+factProjection 把 option/user/department/resource-ref/cascade 字段投影为
+`{ label, value }` 对象，对应 inputSchema 属性必须声明为 `type: 'object'`
+（multiple 类字段为 array + object items），条件表达式用 `path: '<fact>.value'`
+比较；声明成标量会在运行时 INPUT_SCHEMA_MISMATCH 并无限重试，编译器现已拦截。`standalone`/`hidden-handoff` 缺省使用同一个
 compiler-owned `processOperationCode`、subject declaration 和标准 process commit；平台在一个
 事务中写业务数据和 durable command。action-owned 资源改为声明
 `launch.submission.kind: 'named-operation'`，显式绑定 create/existing 请求来源、响应 subject/

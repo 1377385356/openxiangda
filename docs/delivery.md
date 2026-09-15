@@ -102,7 +102,7 @@ MCP 的 check_app、deployment_plan、deploy_app 使用与 CLI 相同的环境�
 
 ## 构建前运行配额
 
-`deploy --dry-run`（MCP `deployment_plan`）会只读查询目标 TEST 的运行配额，输出 `runtimeCapacity` 的核验时间、所需增量、各配额剩余量和缺口。`sufficient: false` 表示当前不足；`null` 表示无需新增或未核验，必须结合 `basis` 与 `capacity.checked` 阅读。专用命名空间未检查不能当成资源充足。
+`deploy --dry-run`（MCP `deployment_plan`）会只读查询目标 TEST 的运行配额，输出 `runtimeCapacity` 的核验时间、所需增量、各配额剩余量和缺口。`sufficient: false` 表示当前不足；`null` 表示无需新增或未核验，必须结合 `basis` 与 `capacity.checked` 阅读。专用命名空间未检查不能当成资源充足。同一预检还会比对源码 `workflows.activations` 与环境 Head，输出 `workflowActivation` 诊断：版本回退（error，拒绝部署）、源码缺失已激活流程（warning，本次部署会停用）、目录不可读（error，拒绝盲部署），详见 [Workflow 事件](./workflow-events.md)。
 
 正式 deploy 在检查脚本和镜像构建前预检；平台缺少配套能力或无法核验时明确停止。配额快照不预留资源，实际执行再次检查。已有可验证密封候选会携带摘要和幂等键，平台识别 `existing-run` 时返回原运行，不把它当作新副本；观察或恢复原运行使用 status/retry。不要为绕过配额创建新包或切换目标环境。
 

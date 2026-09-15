@@ -35,6 +35,12 @@
 
 | 规则 | 正确片段 |
 | --- | --- |
+| 数据策略是**白名单**语义：规则 `roleCodes` 之外的角色若不在 `unrestrictedRoleCodes` 中会被 RLS 全拒（报错只有 FIELD_ROW_FORBIDDEN） | `unrestrictedRoleCodes: ['admin']` 必须列出所有"不受限"角色 |
+| 基线角色（`authenticatedUserRoleCode`）进 `unrestrictedRoleCodes` = 策略对所有人失效（角色并集必含基线角色），编译器直接报错 | 把基线角色移出 unrestrictedRoleCodes，为其单独声明 rules |
+| 匿名公开策略的 `ownRecordFields` 必须是 `fields` 的子集；`create` 必须配套 `draft`；`requiredFields` ⊆ `fields` | 先定 fields，再从中选 required/own |
+| workflow definition 必须显式 `launch`（编译器强制） | `definitions: [{ version: 1, definition, launch: { mode: 'standalone' } }]` |
+| option/user/department/resource-ref/cascade 字段投影进工作流事实是 { label, value } 对象，不能声明为标量；条件比较用 `<fact>.value` | `inputSchema.properties.urgency = { type: 'object', ... }` + `path: 'urgency.value'` |
+| `cascade.*` 的写入/比较值形状是**数组路径** | `category: [{ label: '办公设备', value: 'office' }]` |
 | 平台保留能力（如 `app:<app>:directory:read`）**不能**在 `capabilities` 里重复声明，直接在角色中引用即可 | `const directoryRead = \`app:\${APP_CODE}:directory:read\`` → `roles: [{ code: 'admin', capabilities: [directoryRead] }]` |
 | 资源 CRUD 能力码用 `resourceCapabilityCodes(appCode, resourceCode)` 生成 | `const crud = resourceCapabilityCodes(APP_CODE, 'repair-requests')` → `capabilities: [crud.read, crud.create]` |
 | `authenticatedUserRoleCode` 是平台登录用户的基线角色 | `authz: { authenticatedUserRoleCode: 'app-user', ... }` |

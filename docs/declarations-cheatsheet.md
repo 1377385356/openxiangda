@@ -14,6 +14,7 @@
 | Workflow 详情接管的资源路由用模型级 `detailRouteCode` 表达（desktop/mobile 各引用一条 user surface 路由） | `defineDataModel({ code: 'x', detailRouteCode: { desktop: 'x-detail', mobile: 'x-detail-mobile' }, ... })` |
 | 迁移工具/验收脚本需要看模块投影结果时，用公共出口的 `materializeApplicationModules`，不要引用 devkit 的 dist 文件路径 | `import { defineApplicationModule, materializeApplicationModules } from 'openxiangda/config';` → `const { resources } = materializeApplicationModules([module])` |
 | system 字段（服务端赋值）可以进入查询与分组类选择（filterFields/searchableFields/sortableFields/defaultSort/sections.fields），不可进入展示与可写选择（list/form/detail.fields） | `filterFields: ['campaignId']`（system 外键筛选合法）；hidden 字段任何选择都拒绝 |
+| 平台审计列（created_at/updated_at/created_by/updated_by/id/revision）可直接作 `defaultSort`/`sortableFields`，无需声明；不可进入 filterFields/searchableFields/展示/可写选择 | `defaultSort: { field: 'created_at', order: 'desc' }`（按真实创建时间倒序，勿复制业务时间字段） |
 
 ## 字段声明
 
@@ -25,7 +26,7 @@
 | `audit.read` 可写 `true`（绑定本资源读能力）或能力数组 | `audit: { read: true }` |
 | `resource-ref.*` 必须带 `source` 来源协议 | `{ type: 'resource-ref.single', source: { kind: 'resource', resourceCode: 'repair-requests', labelField: 'title', searchFields: ['title'], pageSize: 20, loadMode: 'search' } }` |
 | `labelField` 必须指向目标资源的 `text.short` / `text.long` 字段 | 不要用流水号/选项字段当 label |
-| 列表可排序列用视图级 `sortableFields` 表达（`defaultSort.field` 隐式可排序） | `list: { sortableFields: ['capacity'], defaultSort: { field: 'name', order: 'asc' } }` |
+| 列表可排序列用视图级 `sortableFields` 表达（`defaultSort.field` 隐式可排序）；平台审计列（如 `created_at`）同样合法 | `list: { sortableFields: ['capacity'], defaultSort: { field: 'name', order: 'asc' } }`；`defaultSort: { field: 'created_at', order: 'desc' }` |
 | 每个字段都必须带中文/业务 `label`（含子表外键与排序字段） | `{ code: 'requestId', type: 'uuid', label: '所属申请', required: true }` |
 | 子表 `subtable` 的外键是子资源的 **uuid** 字段，排序字段是**可写 number.integer** | 子资源：`{ code: 'requestId', type: 'uuid', required: true }` + `{ code: 'sortOrder', type: 'number.integer', required: true }`；父表：`subtable: { resourceCode: 'repair-items', foreignKey: 'requestId', orderField: 'sortOrder', maxRows: 20 }` |
 | 图片/附件的 `file` 限定数量与大小 | `file: { maxCount: 3, maxSizeMb: 10, accept: ['image/png', 'image/jpeg'] }` |
@@ -34,6 +35,12 @@
 
 | 规则 | 正确片段 |
 | --- | --- |
+| 数据策略是**白名单**语义：规则 `roleCodes` 之外的角色若不在 `unrestrictedRoleCodes` 中会被 RLS 全拒（报错只有 FIELD_ROW_FORBIDDEN） | `unrestrictedRoleCodes: ['admin']` 必须列出所有"不受限"角色 |
+| 基线角色（`authenticatedUserRoleCode`）进 `unrestrictedRoleCodes` = 策略对所有人失效（角色并集必含基线角色），编译器直接报错 | 把基线角色移出 unrestrictedRoleCodes，为其单独声明 rules |
+| 匿名公开策略的 `ownRecordFields` 必须是 `fields` 的子集；`create` 必须配套 `draft`；`requiredFields` ⊆ `fields` | 先定 fields，再从中选 required/own |
+| workflow definition 必须显式 `launch`（编译器强制） | `definitions: [{ version: 1, definition, launch: { mode: 'standalone' } }]` |
+| option/user/department/resource-ref/cascade 字段投影进工作流事实是 { label, value } 对象，不能声明为标量；条件比较用 `<fact>.value` | `inputSchema.properties.urgency = { type: 'object', ... }` + `path: 'urgency.value'` |
+| `cascade.*` 的写入/比较值形状是**数组路径** | `category: [{ label: '办公设备', value: 'office' }]` |
 | 平台保留能力（如 `app:<app>:directory:read`）**不能**在 `capabilities` 里重复声明，直接在角色中引用即可 | `const directoryRead = \`app:\${APP_CODE}:directory:read\`` → `roles: [{ code: 'admin', capabilities: [directoryRead] }]` |
 | 资源 CRUD 能力码用 `resourceCapabilityCodes(appCode, resourceCode)` 生成 | `const crud = resourceCapabilityCodes(APP_CODE, 'repair-requests')` → `capabilities: [crud.read, crud.create]` |
 | `authenticatedUserRoleCode` 是平台登录用户的基线角色 | `authz: { authenticatedUserRoleCode: 'app-user', ... }` |

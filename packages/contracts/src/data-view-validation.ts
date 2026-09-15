@@ -1,4 +1,5 @@
 import type { Diagnostic } from './types.js';
+import { isDataSystemSortField } from './native-compiler/data-audit-access.js';
 import { diagnostic, isRecord } from './validation-common.js';
 
 export function validateDataResourceListActions(value: unknown, path: string): Diagnostic[] {
@@ -169,7 +170,11 @@ export function validateDataResourceViews(
             issue('排序必须声明字段', `${path}.list.defaultSort`);
           else {
             exact(sort, ['field', 'order'], `${path}.list.defaultSort`);
-            selection([sort.field], `${path}.list.defaultSort.field`);
+            // 平台系统列（如 created_at/updated_at）无需字段声明即可作为排序字段。
+            selection(
+              isDataSystemSortField(String(sort.field)) ? [] : [sort.field],
+              `${path}.list.defaultSort.field`
+            );
             if (
               sort.order !== undefined &&
               !['asc', 'desc'].includes(String(sort.order))

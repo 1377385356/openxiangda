@@ -41,7 +41,12 @@ import {
   sha256Bytes,
   validateAppConfig,
   type CompiledAppPackage,
+  type CompiledApplicationSources,
 } from "./compiler/index.js";
+import {
+  compareWorkflowActivationsWithHeads,
+  fetchWorkflowManagementDefinitionHeads,
+} from "./workflow-activation-precheck.js";
 import {
   OpenXiangdaControlPlaneClient,
   ControlPlaneError,
@@ -1679,8 +1684,10 @@ export class OpenXiangdaApplicationServices {
     );
     const client = await this.client(workspace.root);
     const runtimeCapacity = await this.runtimeCapacityPlan(workspace, client, await client.capabilities(), input);
-    return this.ok("deployment.plan", workspace.context.workspace, {
+    const workflowActivation = await this.workflowActivationDiagnostics(workspace, client, sources);
+    return this.result("deployment.plan", workspace.context.workspace, {
       runtimeCapacity,
+      workflowActivation,
       environment: input.environment,
       appCode: workspace.config.app.code,
       sealed: false,
@@ -1691,7 +1698,7 @@ export class OpenXiangdaApplicationServices {
       backendRoot: workspace.config.backend.root,
       configDigest: sources.config.digest,
       contractDigest: sources.contracts.digest,
-    });
+    }, workflowActivation);
   }
 
   async deploy(input: DeployOptions) {
@@ -1743,6 +1750,10 @@ export class OpenXiangdaApplicationServices {
     if (runtimeCapacity.sufficient === false) {
       throw new ControlPlaneError(409, 'APPLICATION_V2_RUNTIME_QUOTA_INSUFFICIENT', '应用运行资源不足，已在检查脚本与镜像构建前停止；请释放闲置后端或调整平台配额后重试', runtimeCapacity.capacity);
     }
+    const workflowActivation = await this.workflowActivationDiagnostics(workspace, client, sources);
+    if (workflowActivation.some(item => item.severity === 'error')) {
+      return this.result('deploy', workspace.context.workspace, { workflowActivation }, workflowActivation);
+    }
     const generated = await this.generate({ root: workspace.root, check: true });
     if (!generated.ok) return { ...generated, operation: 'deploy' };
     const lifecycle = await operationStage('development-records', '核对需求、架构与测试验收计划', async () => {
@@ -1789,7 +1800,7 @@ export class OpenXiangdaApplicationServices {
         `deploy:${built.data.package.digest}:${input.environment}${input.deploymentStrategy === 'maintenance-replace' ? ':maintenance-replace' : ''}`,
       ...(input.requestId ? { requestId: input.requestId } : {}),
     });
-    return this.ok("deploy", workspace.context.workspace, deployment, [
+    return this.result("deploy", workspace.context.workspace, deployment, workflowActivation, [
       {
         code: "status",
         label: "查看部署状态",
@@ -1811,6 +1822,35 @@ export class OpenXiangdaApplicationServices {
     const { assertRuntimeCapacityPreflight } = await import('./deployment.js');
     assertRuntimeCapacityPreflight(result, input.environmentId, input.deploymentStrategy);
     return result;
+  }
+
+  /**
+   * 只读预检 Workflow 激活版本：平台按 desired set 盲覆盖环境 Head，
+   * 源码版本低于 Head 时必须先合入高版本再部署；读取失败也拒绝盲部署。
+   */
+  private async workflowActivationDiagnostics(
+    workspace: LoadedWorkspace,
+    client: OpenXiangdaControlPlaneClient,
+    sources: CompiledApplicationSources
+  ): Promise<Diagnostic[]> {
+    const activations = sources.config.value.workflows?.activations || [];
+    try {
+      const heads = await operationStage('workflow-heads', '只读预检 Workflow 环境 Head', () =>
+        fetchWorkflowManagementDefinitionHeads(client, workspace.config.app.code, 'preproduction'));
+      return compareWorkflowActivationsWithHeads(activations, heads);
+    } catch (error) {
+      return [
+        {
+          schemaVersion: SCHEMA_VERSIONS.diagnostic,
+          code: 'WORKFLOW_HEAD_PREFLIGHT_UNAVAILABLE',
+          severity: 'error',
+          message: `无法读取 Workflow 环境 Head（${error instanceof Error ? error.message : String(error)}）；拒绝盲部署以免回退已激活定义`,
+          path: 'workflows.activations',
+          retryable: true,
+          remediation: '确认连接开发者会话具备 Workflow 管理查询权限后重试',
+        },
+      ];
+    }
   }
 
   async deploymentStatus(root: string | undefined, deploymentId?: string) {

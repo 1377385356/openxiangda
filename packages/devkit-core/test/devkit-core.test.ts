@@ -4571,3 +4571,51 @@ test("rejects artifact bytes changed after the AppPackage was sealed", async () 
       error.code === "OPENXIANGDA_ARTIFACT_DIGEST_MISMATCH"
   );
 });
+
+test("accepts platform audit columns as resource list defaultSort without field declaration", () => {
+  const declaration = (sortField: string) => ({
+    ...configDeclaration(),
+    data: {
+      resources: [
+        {
+          code: "instruments",
+          name: "仪器",
+          fields: [
+            { code: "name", type: "text.short", label: "仪器名称", required: true },
+          ],
+          list: { defaultSort: { field: sortField, order: "desc" as const } },
+        },
+      ],
+    },
+  });
+  assert.doesNotThrow(() => defineOpenXiangdaApp(declaration("created_at")));
+  assert.throws(
+    () => defineOpenXiangdaApp(declaration("nope")),
+    error =>
+      Boolean(
+        (error as { diagnostics?: Array<{ code: string }> }).diagnostics?.some(
+          item => item.code === "APP_CONFIG_DATA_RESOURCE_SORT_FIELD_INVALID"
+        )
+      )
+  );
+});
+
+test("deploy workflow head preflight refuses blind deploys when the catalog is unreadable", async () => {
+  const failingClient = {
+    workflowManagementDefinitions: async () => {
+      throw new Error("management denied");
+    },
+  };
+  const services = new OpenXiangdaApplicationServices({
+    client: failingClient as any,
+  });
+  const diagnostics = await (services as any).workflowActivationDiagnostics(
+    { config: { app: { code: "reference-app" } } },
+    failingClient,
+    { config: { value: { workflows: { activations: [] } } } }
+  );
+  assert.equal(diagnostics.length, 1);
+  assert.equal(diagnostics[0].code, "WORKFLOW_HEAD_PREFLIGHT_UNAVAILABLE");
+  assert.equal(diagnostics[0].severity, "error");
+  assert.equal(diagnostics[0].retryable, true);
+});
