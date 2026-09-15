@@ -3,6 +3,7 @@ import {
   copyFileSync,
   existsSync,
   mkdirSync,
+  renameSync,
   readFileSync,
   statSync,
   writeFileSync,
@@ -59,7 +60,12 @@ export function writeReleaseArtifactManifest({
     registry,
     packages: entries,
   };
-  writeFileSync(path, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+  const temporary = `${path}.${process.pid}.tmp`;
+  writeFileSync(temporary, `${JSON.stringify(manifest, null, 2)}\n`, {
+    encoding: "utf8",
+    mode: 0o600,
+  });
+  renameSync(temporary, path);
   return manifest;
 }
 

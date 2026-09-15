@@ -1,7 +1,7 @@
 # 发布链路优化与 CI 化方案（提案）
 
 日期：2026-09-13
-状态：Phase 1-3 代码与 workflow 已实施（见文末"实施状态"）；剩余为两个仓库管理员动作后即可试点
+状态：Phase 1-3 workflow 已实施；“CI-only 发布”责任约定由 2026-09-16 本机快路径决策 superseded，workflow 保留为可选验证/发布环境。阶段复用和本机默认发布以 `2026-09-16-local-release-fast-path.md` 为准。
 范围：`tools/openxiangda-v2` 发布火车（changesets → verify:release → npm → tag/GitHub Release → 回执 → 根仓 gitlink），不含平台镜像/OSS 发布线（那是根仓 `smart-build-and-push` 的职责，边界不变）。
 
 ---

@@ -100,13 +100,72 @@ export function canReuseBrowserStage(env = process.env) {
       || /^PLAYWRIGHT_(?:CHROMIUM_EXECUTABLE_PATH|SKIP_BROWSER_DOWNLOAD)$/.test(key)));
 }
 
+export function canReuseReleaseStage(env = process.env) {
+  return env.OPENXIANGDA_RELEASE_STAGE_CACHE !== 'false'
+    && env.OPENXIANGDA_RELEASE_FULL_VALIDATION !== '1'
+    && !Object.entries(env).some(([key, value]) => value && (
+      /^OPENXIANGDA_LIVE_/.test(key) && value !== '0'
+      || /^OPENXIANGDA_E2E_(?:PLATFORM_URL|BASE_URL)$/.test(key)
+    ));
+}
+
+export function releaseStageFingerprint({ stage, context }) {
+  if (!/^[a-z0-9-]+$/.test(stage)) throw new Error('RELEASE_STAGE_ID_INVALID');
+  return digest(canonical({ schema, stage, context }));
+}
+
+/**
+ * Async counterpart used by release validation commands. Successful stages
+ * leave an atomic receipt; failed stages leave no passing receipt behind.
+ */
+export async function runCachedStageAsync({
+  directory,
+  stage,
+  fingerprint,
+  execute,
+  currentFingerprint = () => fingerprint,
+  enabled = true,
+  now = Date.now,
+  report = console.log,
+}) {
+  if (!/^[a-z0-9-]+$/.test(stage) || !/^[a-f0-9]{64}$/.test(fingerprint)) {
+    throw new Error('RELEASE_STAGE_ID_INVALID');
+  }
+  const file = join(directory, `${stage}-${fingerprint}.json`);
+  let receipt;
+  try { receipt = JSON.parse(readFileSync(file, 'utf8')); } catch { /* Cache miss. */ }
+  if (enabled && isReusableStageReceipt(receipt, { stage, fingerprint, now })) {
+    report(`[release-stage] ${stage}: reused (${Math.round(receipt.elapsedMs / 1000)}s saved)`);
+    return { reused: true, receipt };
+  }
+  rmSync(file, { force: true });
+  const started = now();
+  await execute();
+  if (currentFingerprint() !== fingerprint) throw new Error('RELEASE_STAGE_INPUTS_CHANGED');
+  const completedAt = now();
+  receipt = {
+    schema,
+    stage,
+    fingerprint,
+    status: 'passed',
+    elapsedMs: completedAt - started,
+    completedAt: new Date(completedAt).toISOString(),
+    expiresAt: new Date(completedAt + 24 * 3600_000).toISOString(),
+  };
+  mkdirSync(directory, { recursive: true });
+  const temporary = `${file}.${process.pid}.tmp`;
+  writeFileSync(temporary, `${JSON.stringify(receipt, null, 2)}\n`, { mode: 0o600 });
+  renameSync(temporary, file);
+  report(`[release-stage] ${stage}: passed (${Math.round(receipt.elapsedMs / 1000)}s)`);
+  return { reused: false, receipt };
+}
+
 export function runCachedStage({ directory, stage, fingerprint, execute, currentFingerprint = () => fingerprint, enabled = true, now = Date.now, report = console.log }) {
   if (!/^[a-z0-9-]+$/.test(stage) || !/^[a-f0-9]{64}$/.test(fingerprint)) throw new Error('RELEASE_STAGE_ID_INVALID');
   const file = join(directory, `${stage}-${fingerprint}.json`);
   let receipt;
   try { receipt = JSON.parse(readFileSync(file, 'utf8')); } catch { /* Cache miss. */ }
-  if (enabled && receipt?.schema === schema && receipt.status === 'passed' && receipt.fingerprint === fingerprint
-      && receipt.stage === stage && Date.parse(receipt.completedAt) <= now() && Date.parse(receipt.expiresAt) > now()) {
+  if (enabled && isReusableStageReceipt(receipt, { stage, fingerprint, now })) {
     report(`[release-stage] ${stage}: reused (${Math.round(receipt.elapsedMs / 1000)}s saved)`);
     return { reused: true, receipt };
   }
@@ -125,4 +184,9 @@ export function runCachedStage({ directory, stage, fingerprint, execute, current
   renameSync(temporary, file);
   report(`[release-stage] ${stage}: passed (${Math.round(receipt.elapsedMs / 1000)}s)`);
   return { reused: false, receipt };
+}
+
+function isReusableStageReceipt(receipt, { stage, fingerprint, now }) {
+  return receipt?.schema === schema && receipt.status === 'passed' && receipt.fingerprint === fingerprint
+    && receipt.stage === stage && Date.parse(receipt.completedAt) <= now() && Date.parse(receipt.expiresAt) > now();
 }

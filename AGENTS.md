@@ -34,11 +34,11 @@
 
 ## 发布
 
-2026-09-06 已确认 npm 发布与 GitLab 无关，详见 `docs/architecture/2026-09-06-npm-release-ownership.md`。可信本机维护者串行执行正式发包，GitLab/镜像 CI 只验证源码，不保存 npm 凭据。
+2026-09-16 起可信本机是正式 npm 发布通道；GitHub/GitLab/镜像 CI 可做独立验证，也可按仓库权限手动运行发布 workflow，但不得把 CI 作为本机发布的前置条件。详见 `docs/architecture/2026-09-16-local-release-fast-path.md`。
 
 1. 评审 Changeset，在干净且同步的 master 执行 release:version。
-2. 评审生成版本差异，提交并推送；先执行 release:plan。只有计划要求 reference 时，运行 pnpm build、pnpm reference:install:from-build 准备候选锁文件，评审并提交推送参考仓库 master；正式参考应用验收由 verify:release 执行一次。
-3. verify:release 冻结同一候选 tarball，先检查 Skill/文档，再按影响运行包、安装和浏览器验证。24 小时内相同运行输入可复用浏览器成功记录；最终回执仍绑定当前 HEAD 与精确 tarball。verify:release:full 强制完整矩阵。
+2. 评审生成版本差异，提交并推送；执行 `release:plan` 时会一次性生成并持久化候选 tarball。只有计划要求 reference 时，运行 `pnpm build`、`pnpm reference:install:from-build` 准备候选锁文件，评审并提交推送参考仓库 master。
+3. `verify:release` 复用计划阶段的同一候选 tarball，并按阶段缓存成功的边界、脚本测试、build、包测试、Skill、文档、模板、packed 和 reference 门禁；失败重试只运行缺失或失败阶段。24 小时内相同运行输入可复用浏览器成功记录；`verify:release:full` 强制完整矩阵并禁用缓存。
 4. release:publish 只发布回执中的字节，按原制品恢复中断，读回 registry 内容和标签。
 5. reference 锁文件同步单独执行；平台组合固定精确主线提交与镜像摘要，按已有运维入口部署。
 

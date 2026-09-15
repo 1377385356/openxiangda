@@ -27,6 +27,10 @@ jobs:
     env:
       TURBO_TELEMETRY_DISABLED: '1'
       GH_TOKEN: ${{ github.token }}
+      # The freeze job's preceding steps already ran the workspace build and
+      # reference materialization. release-publish only needs to pack/check
+      # those outputs into the immutable artifact manifest.
+      OPENXIANGDA_RELEASE_SKIP_PREPARE: '1'
     outputs:
       release-head: ${{ steps.head.outputs.sha }}
     steps:
@@ -253,7 +257,6 @@ jobs:
     env:
       TURBO_TELEMETRY_DISABLED: '1'
       GH_TOKEN: ${{ github.token }}
-      OPENXIANGDA_RELEASE_REQUIRE_CI: '1'
     steps:
       - name: Configure reference application root
         run: echo "OPENXIANGDA_REFERENCE_APP_ROOT=$RUNNER_TEMP/openxiangda-v2-reference-app" >> "$GITHUB_ENV"

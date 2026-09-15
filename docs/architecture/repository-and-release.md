@@ -33,12 +33,12 @@ pnpm 管理 workspace，Turborepo 计算受影响任务，Changesets 确定版�
 2. 维护者评审 Changesets，然后在干净、同步权威远端的 `master` 上执行
    `pnpm release:version`。版本、内部依赖和模板 BOM 由工具确定；评审生成差异并提交、
    推送后，才得到可审计的候选源码。版本物化自身不发布。
-3. 先执行 `pnpm release:plan` 比较真实发行物。只有计划要求 reference 时，才运行
+3. 先执行 `pnpm release:plan` 比较真实发行物并持久化候选 tarball。只有计划要求 reference 时，才运行
    `pnpm build`、`pnpm reference:install:from-build` 准备候选依赖、生成合同与锁文件，
    评审并推送参考仓库 master。准备步骤安装、CLI check 并核对锁定字节；完整参考应用
    check/test/build/浏览器验收在正式门禁中执行一次。
-4. `pnpm verify:release` 固定候选摘要和 tarball，依计划执行候选闭合、全新独立应用、
-   reference 及相应浏览器门禁，留下绑定源码、registry 和制品摘要的 validated receipt。
+4. `pnpm verify:release` 复用已持久化的候选摘要和 tarball，依计划执行候选闭合、全新独立应用、
+   reference 及相应浏览器门禁；成功阶段写入 `.git/openxiangda-release-stage-cache/`，留下绑定源码、registry 和制品摘要的 validated receipt。
 5. `pnpm release:publish` 只发布该回执对应的字节。它复核主线、回执、制品及 registry
    并发状态，不重新打包、不重新选择版本，也不代替缺失的验证。
 6. registry 完成后，由独立的 `pnpm release:sync-reference` 收敛 reference 仓库锁文件。
@@ -51,7 +51,7 @@ pnpm 管理 workspace，Turborepo 计算受影响任务，Changesets 确定版�
 
 ## npm 发布与源码验证
 
-维护者在可信本机使用现有 `verify:release` 和 `release:publish` 发布 npm。
+维护者在可信本机使用现有 `verify:release` 和 `release:publish` 发布 npm；CI workflow 是可选的同一状态机执行环境，不得成为本机发布的强制前置。
 源码权威远端是 GitHub `1377385356/openxiangda` 的 master；GitLab 与镜像 CI 均只运行 `verify:affected`，不保存 npm
 发布凭据，也不决定 npm 版本或发布状态。用户确认与替代旧决定的边界见
 [npm 发布与 Git 托管分离](./2026-09-06-npm-release-ownership.md)。

@@ -18,13 +18,12 @@ import {
   artifactDigests,
   assertPublicArtifactManifest,
   loadReleaseArtifactManifest,
-  writeReleaseArtifactManifest,
 } from "./lib/release-artifacts.mjs";
 import {
-  inspectReleasePackages,
   isReleaseVersionPublished,
   resolveReleaseRegistry,
 } from "./lib/release-package-state.mjs";
+import { ensureReleaseArtifacts } from "./lib/release-artifact-preparation.mjs";
 import { assertReleaseVersionsMaterialized } from "./lib/release-changeset-state.mjs";
 import {
   isSupersededPrepublicationReceipt,
@@ -57,24 +56,8 @@ const validateOnly = process.argv.includes("--validate-only");
 //                      标记为 validated；只做安全断言，不重跑门禁、不碰 npm。
 const freezeOnly = process.argv.includes("--freeze-only");
 const markValidated = process.argv.includes("--mark-validated");
-// Phase 3 治理：npm 发布默认只属于受 environment 保护的 release workflow。
-// 显式开启 OPENXIANGDA_RELEASE_REQUIRE_CI 后，本地发布必须携带
-// OPENXIANGDA_RELEASE_BREAK_GLASS=1（紧急通道，回执中记录原因）。
-// freeze/mark 不写 npm，不受该治理限制。
-if (
-  !validateOnly &&
-  !freezeOnly &&
-  !markValidated &&
-  process.env.OPENXIANGDA_RELEASE_REQUIRE_CI === "1" &&
-  process.env.CI !== "true" &&
-  process.env.OPENXIANGDA_RELEASE_BREAK_GLASS !== "1"
-) {
-  process.stderr.write(
-    "RELEASE_PUBLISH_LOCAL_FORBIDDEN: npm 发布已迁移到 GitHub Actions（environment: npm）。" +
-      "紧急本地发布请设置 OPENXIANGDA_RELEASE_BREAK_GLASS=1 并在发布回执中记录原因。\n"
-  );
-  process.exit(1);
-}
+// 本机是正式发布通道；组织若需要 CI-only，可在受控环境自行设置外部门禁。
+// 发布状态机本身不因运行位置拒绝维护者的可信本机发布。
 const head = git(["rev-parse", "HEAD"]);
 const receiptPath = resolve(
   repositoryRoot,
@@ -123,22 +106,21 @@ if (
 }
 if (!receipt) {
   const registry = resolveReleaseRegistry(repositoryRoot);
-  rmSync(artifactRoot, { recursive: true, force: true });
-  const packageState = inspectReleasePackages(repositoryRoot, {
-    registry,
+  const packageState = ensureReleaseArtifacts(repositoryRoot, {
+    head,
     artifactRoot,
+    registry,
+    // The CI freeze job builds and materializes reference inputs immediately
+    // before freezing. Reuse those outputs instead of rebuilding them here.
+    prepare: process.env.OPENXIANGDA_RELEASE_SKIP_PREPARE !== "1",
   });
   const candidates = packageState.packages.filter(
     item => item.status === "candidate"
   );
   if (!candidates.length) fail("No unpublished package versions were found; refusing an empty release.");
-  const artifactManifest = writeReleaseArtifactManifest({
-    path: artifactManifestPath,
-    head,
-    registry,
-    packages: packageState.packages,
-  });
-  assertPublicArtifactManifest(artifactManifest);
+  const artifactManifest = assertPublicArtifactManifest(
+    loadReleaseArtifactManifest(artifactManifestPath, { head, registry })
+  );
   const artifactsByName = new Map(
     artifactManifest.packages.map(item => [item.name, item])
   );

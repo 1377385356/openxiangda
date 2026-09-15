@@ -47,23 +47,21 @@ pnpm verify:affected
 
 ## 工具链发包
 
-发包由可信本地发布机执行，GitHub Actions 负责源码验证；保留的 GitLab/镜像 CI 也不具有发包职责。修改可发布内容时提交 Changeset，并评审 `docs/releases/<产品版本>.json` 中的更新说明。审核后在干净、最新的 master 执行 `pnpm release:version`，物化版本、随包说明和公开版本目录。该命令不提交、不发包。审核版本差异并提交推送后，先准备独立参考应用：
-
-```bash
-pnpm build
-pnpm reference:install:from-build
-```
-
-该入口通过临时 registry 安装候选包、更新参考应用依赖和锁文件，并验证应用。评审参考仓库中的差异，提交并推送其 master；参考版本必须与候选一致，之后才能执行正式发布计划：
+发包默认由可信本地发布机执行，GitHub Actions 作为可选的独立验证/发布入口；GitLab/镜像 CI 只验证源码。修改可发布内容时提交 Changeset，并评审 `docs/releases/<产品版本>.json` 中的更新说明。审核后在干净、最新的 master 执行 `pnpm release:version`，物化版本、随包说明和公开版本目录。该命令不提交、不发包。审核版本差异并提交推送后，`pnpm release:plan` 会一次性生成并冻结候选 tarball，后续 verify/publish 复用同一份制品：
 
 ```bash
 pnpm release:plan
+```
+
+只有计划要求 reference 时，才通过临时 registry 安装候选包、更新参考应用依赖和锁文件。评审参考仓库中的差异，提交并推送其 master；参考版本必须与候选一致，之后执行正式验证和发布：
+
+```bash
 pnpm verify:release
 pnpm release:publish
 ```
 
-发布计划根据实际制品差异选择门禁；未知变更执行完整验证。verify:release 冻结候选 tarball 和 GitHub Release 正文，记录绑定主线提交、版本、制品摘要和验证方式的回执。release:publish 只接受匹配回执，复查不可变前提后写 registry，随后核对 dist-tag、Git tag 和 GitHub Release。GitHub 同步失败时继续原回执，不重复发布 npm 包；已存在但内容不一致的 Release 会停止，不自动覆盖。
+发布计划根据实际制品差异选择门禁；未知变更执行完整验证。verify:release 复用计划阶段冻结的 tarball，并缓存已经通过的阶段，失败重试不再重跑整套矩阵。release:publish 只接受匹配回执，复查不可变前提后写 registry，随后核对 dist-tag、Git tag 和 GitHub Release。GitHub 同步失败时继续原回执，不重复发布 npm 包；已存在但内容不一致的 Release 会停止，不自动覆盖。
 
-成功发布后，原始回执、制品清单和校验摘要保存在 Git 公共目录的 `openxiangda-release-history/<源码提交>/`，命令会输出实际路径。归档失败时保留活动回执和制品，可继续原发布；归档完成后才清理临时 tarball。该目录不会随 Git push 自动传给其他克隆，正式发布执行环境应将它作为发布证据备份；Git 托管 CI 仍只验证源码，不增加 npm 发布职责。
+成功发布后，原始回执、制品清单和校验摘要保存在 Git 公共目录的 `openxiangda-release-history/<源码提交>/`，命令会输出实际路径。归档失败时保留活动回执和制品，可继续原发布；归档完成后才清理临时 tarball。该目录不会随 Git push 自动传给其他克隆，正式发布执行环境应将它作为发布证据备份；GitLab/镜像 CI 仍只验证源码，GitHub release workflow 是可选的同一发布状态机执行环境。
 
 完整审计使用成对的 `verify:release:full` / `release:publish:full`。发布后的独立参考仓库依赖更新通过 `release:sync-reference` 完成。npm 发布、平台组合 gitlink、平台部署和真实业务验收分别记录；不要把其中一项成功当作全部完成。

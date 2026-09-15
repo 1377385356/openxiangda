@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import test from 'node:test';
-import { browserStageFingerprint, canReuseBrowserStage, runCachedStage } from '../lib/release-stage-cache.mjs';
+import { browserStageFingerprint, canReuseBrowserStage, canReuseReleaseStage, releaseStageFingerprint, runCachedStage, runCachedStageAsync } from '../lib/release-stage-cache.mjs';
 import { runReleaseCommand } from '../lib/release-command.mjs';
 
 function fixture(parent, name, guidance = 'first') {
@@ -98,6 +98,33 @@ test('successful stages reuse, expire, force rerun and invalidate earlier succes
     assert.throws(() => runCachedStage({ ...options, enabled: false, execute: () => { throw new Error('fixture failure'); } }), /fixture failure/);
     assert.equal(runCachedStage(options).reused, false);
     assert.equal(executions, 4);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('async release stages reuse only the exact release context', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'oxa-async-stage-result-'));
+  let executions = 0;
+  const context = { head: 'a'.repeat(40), artifact: 'b'.repeat(64), lockfile: 'c'.repeat(64) };
+  const fingerprint = releaseStageFingerprint({ stage: 'workspace', context });
+  try {
+    const options = {
+      directory,
+      stage: 'workspace',
+      fingerprint,
+      currentFingerprint: () => releaseStageFingerprint({ stage: 'workspace', context }),
+      execute: async () => { executions += 1; },
+      report: () => {},
+    };
+    assert.equal((await runCachedStageAsync(options)).reused, false);
+    assert.equal((await runCachedStageAsync(options)).reused, true);
+    assert.equal(executions, 1);
+    await assert.rejects(
+      runCachedStageAsync({ ...options, fingerprint: 'd'.repeat(64), execute: async () => { throw new Error('stage failed'); } }),
+      /stage failed/
+    );
+    assert.equal(executions, 1);
+    assert.equal(canReuseReleaseStage({}), true);
+    assert.equal(canReuseReleaseStage({ OPENXIANGDA_RELEASE_FULL_VALIDATION: '1' }), false);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
 
