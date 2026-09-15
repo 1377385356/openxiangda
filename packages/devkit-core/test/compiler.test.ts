@@ -1161,10 +1161,11 @@ test('projects bounded Workflow summary fields and rejects unsupported fields', 
     workflowCode: workflow.code,
     bindings: {},
   };
+  const workflowLaunch = { mode: 'standalone' } as const;
   const configured = defineOpenXiangdaApp({
     ...sourceDeclaration,
     workflows: {
-      definitions: [{ version: 1, definition: workflow }],
+      definitions: [{ version: 1, definition: workflow, launch: workflowLaunch }],
       bindings: [{ version: 1, binding }],
       activations: [],
     },
@@ -3389,7 +3390,7 @@ test('rejects public signatures and nested public subtables', () => {
           }, ...sourceDeclaration.data!.resources.slice(1)],
         },
       }),
-    error => diagnosticOf(error, 'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_INVALID', 'frontend.publicAccess.policies[0]')
+    error => diagnosticOf(error, 'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_PUBLIC_FIELDS_INVALID', 'frontend.publicAccess.policies[0].publicRecordFields')
   );
 });
 
@@ -3422,7 +3423,7 @@ test('rejects public reads without explicit scalar public fields', () => {
           },
         },
       }),
-    error => diagnosticOf(error, 'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_INVALID', 'frontend.publicAccess.policies[0]')
+    error => diagnosticOf(error, 'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_PUBLIC_FIELDS_INVALID', 'frontend.publicAccess.policies[0].publicRecordFields')
   );
 });
 
@@ -3466,8 +3467,8 @@ test('rejects anonymous public access that widens route, field, or validation sc
     error =>
       diagnosticOf(
         error,
-        'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_INVALID',
-        'frontend.publicAccess.policies[0]'
+        'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_ROUTE_INVALID',
+        'frontend.publicAccess.policies[0].routeCode'
       )
   );
   assert.throws(
@@ -3502,8 +3503,8 @@ test('rejects anonymous public access that widens route, field, or validation sc
     error =>
       diagnosticOf(
         error,
-        'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_INVALID',
-        'frontend.publicAccess.policies[0]'
+        'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_ROUTE_INVALID',
+        'frontend.publicAccess.policies[0].routeCode'
       )
   );
 });
