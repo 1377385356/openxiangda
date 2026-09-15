@@ -2,6 +2,8 @@
 'openxiangda-contracts': minor
 'openxiangda-devkit-core': minor
 'openxiangda': minor
+'openxiangda-cli': patch
+'openxiangda-skill-kit': minor
 ---
 
 平台审计列排序与部署 Workflow Head 预检（决策记录：docs/architecture/audit-sort-and-deployment-gates-v2.md）。

@@ -3,6 +3,7 @@
 'openxiangda': minor
 'openxiangda-cli': patch
 'openxiangda-contracts': patch
+'openxiangda-skill-kit': minor
 ---
 
 平台能力探针实测修复批（2026-09-15）：
