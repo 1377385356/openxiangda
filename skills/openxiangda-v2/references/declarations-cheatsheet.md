@@ -14,6 +14,7 @@
 | Workflow 详情接管的资源路由用模型级 `detailRouteCode` 表达（desktop/mobile 各引用一条 user surface 路由） | `defineDataModel({ code: 'x', detailRouteCode: { desktop: 'x-detail', mobile: 'x-detail-mobile' }, ... })` |
 | 迁移工具/验收脚本需要看模块投影结果时，用公共出口的 `materializeApplicationModules`，不要引用 devkit 的 dist 文件路径 | `import { defineApplicationModule, materializeApplicationModules } from 'openxiangda/config';` → `const { resources } = materializeApplicationModules([module])` |
 | system 字段（服务端赋值）可以进入查询与分组类选择（filterFields/searchableFields/sortableFields/defaultSort/sections.fields），不可进入展示与可写选择（list/form/detail.fields） | `filterFields: ['campaignId']`（system 外键筛选合法）；hidden 字段任何选择都拒绝 |
+| 平台审计列（created_at/updated_at/created_by/updated_by/id/revision）可直接作 `defaultSort`/`sortableFields`，无需声明；不可进入 filterFields/searchableFields/展示/可写选择 | `defaultSort: { field: 'created_at', order: 'desc' }`（按真实创建时间倒序，勿复制业务时间字段） |
 
 ## 字段声明
 
@@ -25,7 +26,7 @@
 | `audit.read` 可写 `true`（绑定本资源读能力）或能力数组 | `audit: { read: true }` |
 | `resource-ref.*` 必须带 `source` 来源协议 | `{ type: 'resource-ref.single', source: { kind: 'resource', resourceCode: 'repair-requests', labelField: 'title', searchFields: ['title'], pageSize: 20, loadMode: 'search' } }` |
 | `labelField` 必须指向目标资源的 `text.short` / `text.long` 字段 | 不要用流水号/选项字段当 label |
-| 列表可排序列用视图级 `sortableFields` 表达（`defaultSort.field` 隐式可排序） | `list: { sortableFields: ['capacity'], defaultSort: { field: 'name', order: 'asc' } }` |
+| 列表可排序列用视图级 `sortableFields` 表达（`defaultSort.field` 隐式可排序）；平台审计列（如 `created_at`）同样合法 | `list: { sortableFields: ['capacity'], defaultSort: { field: 'name', order: 'asc' } }`；`defaultSort: { field: 'created_at', order: 'desc' }` |
 | 每个字段都必须带中文/业务 `label`（含子表外键与排序字段） | `{ code: 'requestId', type: 'uuid', label: '所属申请', required: true }` |
 | 子表 `subtable` 的外键是子资源的 **uuid** 字段，排序字段是**可写 number.integer** | 子资源：`{ code: 'requestId', type: 'uuid', required: true }` + `{ code: 'sortOrder', type: 'number.integer', required: true }`；父表：`subtable: { resourceCode: 'repair-items', foreignKey: 'requestId', orderField: 'sortOrder', maxRows: 20 }` |
 | 图片/附件的 `file` 限定数量与大小 | `file: { maxCount: 3, maxSizeMb: 10, accept: ['image/png', 'image/jpeg'] }` |

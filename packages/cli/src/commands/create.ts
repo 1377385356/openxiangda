@@ -111,10 +111,14 @@ export default class Create extends OpenXiangdaCommand {
       : "inherit";
 
     this.emitStudioStatus("正在验证目标平台开发者会话", { stage: "identity", baseUrl });
-    const session = await OpenXiangdaDeveloperSession.load({ sessionPath: workspaceSessionPath(root) });
+    // 目标目录尚不存在时（首次创建），按既有的工作区发现规则向上继承会话；
+    // sessionWorkspaceRoot 会在 .git 边界停住，不会跨仓借用账号。
+    const session =
+      (await OpenXiangdaDeveloperSession.load({ sessionPath: workspaceSessionPath(root) })) ??
+      (await OpenXiangdaDeveloperSession.load());
     if (!session) {
       throw new Error(
-        `OPENXIANGDA_AUTH_REQUIRED: 先在目标目录登录：openxiangda login --cwd '${root.replaceAll("'", `'"'"'`)}' --base-url '${baseUrl.replaceAll("'", `'"'"'`)}'`
+        `OPENXIANGDA_AUTH_REQUIRED: 未找到可用的平台登录态：先运行 openxiangda login --base-url '${baseUrl.replaceAll("'", `'"'"'`)}'（或在目标目录/父目录完成登录）`
       );
     }
     session.assertPlatform(baseUrl);

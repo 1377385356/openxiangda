@@ -5,6 +5,7 @@ import {
   SCHEMA_VERSIONS,
   DATA_AUDIT_METADATA_FIELDS,
   isDataAuditMetadataField,
+  isDataSystemSortField,
   DATA_FIELD_TYPES,
   PLATFORM_EVENT_TYPES_V2,
   nativePlatformCapabilityCatalog,
@@ -2509,6 +2510,17 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
           }
           seenUnrestrictedRoleCodes.add(roleCode);
         });
+        if (seenUnrestrictedRoleCodes.has(authenticatedUserRoleCode)) {
+          // 运行时按"当前用户角色并集"判定：基线角色必在并集中，
+          // 进入 unrestrictedRoleCodes 即整个策略对所有登录用户失效。
+          diagnostics.push(
+            diagnostic(
+              'APP_CONFIG_AUTHZ_POLICY_BASELINE_UNRESTRICTED',
+              `unrestrictedRoleCodes 含基线角色 ${authenticatedUserRoleCode}：所有登录用户的角色并集都包含基线角色，该策略将永远不会限制任何人。若需按角色收窄，请把基线角色从 unrestrictedRoleCodes 移除并为其声明 rules（例如 current_user 规则）`,
+              `authz.dataPolicies[${index}].unrestrictedRoleCodes`
+            )
+          );
+        }
       }
       const policyFields = resourceFieldTypes.get(string(policy.resourceCode));
       policyRuleNodes(policy, policyPath, diagnostics).forEach(
@@ -3595,17 +3607,26 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
           )
         );
       }
-      if (
-        declaration.launch !== undefined &&
-        (Object.keys(launch).some(
+      if (declaration.launch === undefined) {
+        // 运行时按 launch.mode 路由发起入口；缺失会让发起页 409/白屏，
+        // 必须在编译期拒绝并直接给出可复制片段。
+        diagnostics.push(
+          diagnostic(
+            'APP_CONFIG_WORKFLOW_LAUNCH_REQUIRED',
+            'Workflow definition 必须显式声明 launch；标准发起页写 launch: { mode: \'standalone\' }，其余取值 custom-page、hidden-handoff、work-center-only',
+            `${path}.launch`
+          )
+        );
+      } else if (
+        Object.keys(launch).some(
           key => !['mode', 'submission'].includes(key)
         ) ||
-          ![
-            'standalone',
-            'custom-page',
-            'hidden-handoff',
-            'work-center-only',
-          ].includes(string(launch.mode)))
+        ![
+          'standalone',
+          'custom-page',
+          'hidden-handoff',
+          'work-center-only',
+        ].includes(string(launch.mode))
       ) {
         diagnostics.push(
           diagnostic(
@@ -3829,6 +3850,47 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
             `${path}.definition.subject.summaryFields`
           )
         );
+      }
+      // 快照字段（option/user/department/resource-ref/cascade）投影出 { label, value }
+      // 对象；标量 inputSchema 属性会在运行时 INPUT_SCHEMA_MISMATCH 且命令无限重试。
+      // 编译期强制形状一致，把错误从"部署后静默重试"提前到"编写时"。
+      const SNAPSHOT_FIELD_PROJECTION_TYPES = new Set([
+        'option.single',
+        'option.multiple',
+        'user.single',
+        'user.multiple',
+        'department.single',
+        'department.multiple',
+        'resource-ref.single',
+        'resource-ref.multiple',
+        'cascade.single',
+        'cascade.multiple',
+      ]);
+      if (subjectFields && isRecord(definition.subject.factProjection)) {
+        const workflowInputProperties = isRecord(definition.inputSchema) &&
+          isRecord((definition.inputSchema as Record<string, unknown>).properties)
+          ? ((definition.inputSchema as Record<string, unknown>).properties as Record<string, unknown>)
+          : {};
+        for (const [factKey, rawFieldCode] of factEntries) {
+          const fieldCode = string(rawFieldCode);
+          const fieldType = subjectFields.get(fieldCode);
+          if (!fieldType || !SNAPSHOT_FIELD_PROJECTION_TYPES.has(fieldType)) {
+            continue;
+          }
+          const property = workflowInputProperties[factKey];
+          const propertyType = isRecord(property)
+            ? string((property as Record<string, unknown>).type)
+            : '';
+          if (propertyType !== 'object') {
+            diagnostics.push(
+              diagnostic(
+                'APP_CONFIG_WORKFLOW_FACT_PROJECTION_SHAPE_INVALID',
+                `fact "${factKey}" 投影的字段 ${fieldCode} 是 ${fieldType} 快照字段，运行时投影为 { label, value } 对象；inputSchema.properties.${factKey} 必须声明 type: "object"（multiple 字段用 array + object items），条件表达式用 path "${factKey}.value" 比较`,
+                `${path}.definition.inputSchema.properties.${factKey}`
+              )
+            );
+          }
+        }
       }
       for (const error of validateWorkflowDefinition(definition)) {
         diagnostics.push(
@@ -5107,74 +5169,205 @@ function validateAnonymousPublicAccess(
       'draft',
       'validations',
     ];
-    const invalid =
-      Object.keys(policy).some(key => !exactRootKeys.includes(key)) ||
-      !OPERATION_CODE_PATTERN.test(code) ||
-      policyCodes.has(code) ||
-      policy.mode !== 'anonymous' ||
+    // 按失败面拆分诊断：每类问题给独立错误码与指针，外部表单开发者不需要
+    // 在一条聚合报错里猜具体违反了哪条规则。
+    const anonymousPolicyProblems: Array<{ code: string; message: string; pointer: string }> = [];
+    if (Object.keys(policy).some(key => !exactRootKeys.includes(key))) {
+      anonymousPolicyProblems.push({
+        code: 'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_ROOT_KEYS_INVALID',
+        message: `匿名公开策略只能声明 ${exactRootKeys.join('、')}`,
+        pointer: path,
+      });
+    }
+    if (!OPERATION_CODE_PATTERN.test(code) || policyCodes.has(code)) {
+      anonymousPolicyProblems.push({
+        code: 'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_CODE_INVALID',
+        message: '策略 code 必须是工作区内不重复的合法标识',
+        pointer: `${path}.code`,
+      });
+    }
+    if (policy.mode !== 'anonymous') {
+      anonymousPolicyProblems.push({
+        code: 'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_MODE_INVALID',
+        message: '匿名公开策略的 mode 必须是 anonymous',
+        pointer: `${path}.mode`,
+      });
+    }
+    if (
       !route ||
       route.surface !== 'user' ||
       route.capability !== undefined ||
       route.access !== undefined ||
-      /[:*]/.test(string(route.path)) ||
-      !resourceFields ||
+      /[:*]/.test(string(route.path))
+    ) {
+      anonymousPolicyProblems.push({
+        code: 'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_ROUTE_INVALID',
+        message: 'routeCode 必须绑定唯一静态 user 路由：不能带 capability/access、路径不能包含参数',
+        pointer: `${path}.routeCode`,
+      });
+    }
+    if (!resourceFields) {
+      anonymousPolicyProblems.push({
+        code: 'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_RESOURCE_INVALID',
+        message: 'resourceCode 必须引用已声明资源',
+        pointer: `${path}.resourceCode`,
+      });
+    }
+    if (
       operations.length < 1 ||
       operations.length > ANONYMOUS_PUBLIC_OPERATIONS.size ||
       new Set(operations).size !== operations.length ||
-      operations.some(operation => !ANONYMOUS_PUBLIC_OPERATIONS.has(operation)) ||
+      operations.some(operation => !ANONYMOUS_PUBLIC_OPERATIONS.has(operation))
+    ) {
+      anonymousPolicyProblems.push({
+        code: 'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_OPERATIONS_INVALID',
+        message: `operations 必须是 1 到 ${ANONYMOUS_PUBLIC_OPERATIONS.size} 个不重复的内置操作：${[...ANONYMOUS_PUBLIC_OPERATIONS].join('、')}`,
+        pointer: `${path}.operations`,
+      });
+    }
+    if (
       fields.length < 1 ||
       fields.length > 64 ||
       new Set(fields).size !== fields.length ||
-      fields.some(field => !resourceFields?.has(field)) ||
-      new Set(requiredFields).size !== requiredFields.length ||
-      requiredFields.some(field => !fields.includes(field)) ||
-      (operations.includes('create') && !resource?.nativeCreate) ||
-      (operations.includes('create') && policy.draft === undefined) ||
-      new Set(ownRecordFields).size !== ownRecordFields.length ||
-      ownRecordFields.some(field => !fields.includes(field)) ||
-      Object.keys(publicSubtableFields).length > 64 ||
-      publicSubtableInvalid ||
-      publicFilterInvalid ||
-      generatedFieldInvalid ||
-      scheduleInvalid ||
-      (operations.some(operation => operation.startsWith('public.')) &&
-        (!Array.isArray(policy.publicRecordFields) ||
-          policy.publicRecordFields.length < 1 ||
-          new Set(policy.publicRecordFields.map(string)).size !==
-            policy.publicRecordFields.length ||
-          policy.publicRecordFields.some(
-            (field: unknown) =>
-              !fields.includes(string(field)) ||
-              resourceFields?.get(string(field)) === 'signature' ||
-              (resourceFields?.get(string(field)) === 'subtable' &&
-                !Array.isArray(publicSubtableFields[string(field)]))
-          ))) ||
-      (operations.includes('draft.read') !== operations.includes('draft.update')) ||
-      (operations.some(operation => operation.startsWith('draft.')) &&
-        (policy.draft === undefined || draft.enabled !== true)) ||
-      (policy.draft !== undefined &&
-        (Object.keys(draft).some(
-          key => !['enabled', 'inactivityTtlSeconds', 'maxBytes'].includes(key)
-        ) ||
-          draft.enabled !== true ||
-          (draft.inactivityTtlSeconds !== undefined &&
-            (!Number.isSafeInteger(draft.inactivityTtlSeconds) ||
-              Number(draft.inactivityTtlSeconds) < 3600 ||
-              Number(draft.inactivityTtlSeconds) > 7_776_000)) ||
-          (draft.maxBytes !== undefined &&
-            (!Number.isSafeInteger(draft.maxBytes) ||
-              Number(draft.maxBytes) < 4096 ||
-              Number(draft.maxBytes) > 262_144)))) ||
-      validations.length > 16;
-    if (invalid) {
-      diagnostics.push(
-        diagnostic(
-          'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_INVALID',
-          '匿名公开策略必须绑定唯一静态 user route、已声明资源/字段和有界操作',
-          path
-        )
-      );
+      fields.some(field => !resourceFields?.has(field))
+    ) {
+      anonymousPolicyProblems.push({
+        code: 'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_FIELDS_INVALID',
+        message: 'fields 必须是 1 到 64 个不重复且已声明的资源字段',
+        pointer: `${path}.fields`,
+      });
     }
+    if (
+      new Set(requiredFields).size !== requiredFields.length ||
+      requiredFields.some(field => !fields.includes(field))
+    ) {
+      anonymousPolicyProblems.push({
+        code: 'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_REQUIRED_FIELDS_INVALID',
+        message: 'requiredFields 不能重复，且必须是 fields 的子集',
+        pointer: `${path}.requiredFields`,
+      });
+    }
+    if (operations.includes('create') && !resource?.nativeCreate) {
+      anonymousPolicyProblems.push({
+        code: 'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_CREATE_NATIVE_REQUIRED',
+        message: '声明 create 时资源必须保留标准创建（mutationOwner native 且未关闭 generated.create）',
+        pointer: `${path}.operations`,
+      });
+    }
+    if (operations.includes('create') && policy.draft === undefined) {
+      anonymousPolicyProblems.push({
+        code: 'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_CREATE_DRAFT_REQUIRED',
+        message: '声明 create 时必须配套 draft 配置（匿名提交以草稿为事务载体）',
+        pointer: `${path}.draft`,
+      });
+    }
+    if (
+      new Set(ownRecordFields).size !== ownRecordFields.length ||
+      ownRecordFields.some(field => !fields.includes(field))
+    ) {
+      anonymousPolicyProblems.push({
+        code: 'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_OWN_FIELDS_INVALID',
+        message: 'ownRecordFields 不能重复，且必须是 fields 的子集（本人记录只能看到公开字段投影内的内容）',
+        pointer: `${path}.ownRecordFields`,
+      });
+    }
+    if (Object.keys(publicSubtableFields).length > 64 || publicSubtableInvalid) {
+      anonymousPolicyProblems.push({
+        code: 'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_SUBTABLE_INVALID',
+        message: 'publicSubtableFields 必须引用 fields 内的子表字段，且子字段存在、不重复、不超过 64 个、不含 signature/subtable',
+        pointer: `${path}.publicSubtableFields`,
+      });
+    }
+    if (publicFilterInvalid) {
+      anonymousPolicyProblems.push({
+        code: 'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_FILTERS_INVALID',
+        message: 'publicFilters 每条只能用已声明字段的 eq 比较（boolean/text/number/date/time），最多 16 条且不重复',
+        pointer: `${path}.publicFilters`,
+      });
+    }
+    if (generatedFieldInvalid) {
+      anonymousPolicyProblems.push({
+        code: 'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_GENERATED_FIELDS_INVALID',
+        message: 'serverGeneratedFields 只能引用资源上合法的服务端生成字段',
+        pointer: `${path}.serverGeneratedFields`,
+      });
+    }
+    if (scheduleInvalid) {
+      anonymousPolicyProblems.push({
+        code: 'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_SCHEDULE_INVALID',
+        message: 'schedule 必须引用 fields 内的日期字段与已声明策略',
+        pointer: `${path}.schedule`,
+      });
+    }
+    if (
+      operations.some(operation => operation.startsWith('public.')) &&
+      (!Array.isArray(policy.publicRecordFields) ||
+        policy.publicRecordFields.length < 1 ||
+        new Set(policy.publicRecordFields.map(string)).size !==
+          policy.publicRecordFields.length ||
+        policy.publicRecordFields.some(
+          (field: unknown) =>
+            !fields.includes(string(field)) ||
+            resourceFields?.get(string(field)) === 'signature' ||
+            (resourceFields?.get(string(field)) === 'subtable' &&
+              !Array.isArray(publicSubtableFields[string(field)]))
+        ))
+    ) {
+      anonymousPolicyProblems.push({
+        code: 'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_PUBLIC_FIELDS_INVALID',
+        message: '声明 public.list/public.read 时必须给出不重复的 publicRecordFields（fields 子集，不含 signature；子表须配 publicSubtableFields）',
+        pointer: `${path}.publicRecordFields`,
+      });
+    }
+    if (operations.includes('draft.read') !== operations.includes('draft.update')) {
+      anonymousPolicyProblems.push({
+        code: 'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_DRAFT_PAIR_INVALID',
+        message: 'draft.read 与 draft.update 必须成对声明',
+        pointer: `${path}.operations`,
+      });
+    }
+    if (
+      operations.some(operation => operation.startsWith('draft.')) &&
+      (policy.draft === undefined || draft.enabled !== true)
+    ) {
+      anonymousPolicyProblems.push({
+        code: 'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_DRAFT_REQUIRED',
+        message: '声明 draft 操作时必须启用 draft: { enabled: true, ... }',
+        pointer: `${path}.draft`,
+      });
+    }
+    if (
+      policy.draft !== undefined &&
+      (Object.keys(draft).some(
+        key => !['enabled', 'inactivityTtlSeconds', 'maxBytes'].includes(key)
+      ) ||
+        draft.enabled !== true ||
+        (draft.inactivityTtlSeconds !== undefined &&
+          (!Number.isSafeInteger(draft.inactivityTtlSeconds) ||
+            Number(draft.inactivityTtlSeconds) < 3600 ||
+            Number(draft.inactivityTtlSeconds) > 7_776_000)) ||
+        (draft.maxBytes !== undefined &&
+          (!Number.isSafeInteger(draft.maxBytes) ||
+            Number(draft.maxBytes) < 4096 ||
+            Number(draft.maxBytes) > 262_144)))
+    ) {
+      anonymousPolicyProblems.push({
+        code: 'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_DRAFT_BOUNDS_INVALID',
+        message: 'draft 只能声明 enabled/inactivityTtlSeconds（3600–7776000 秒）/maxBytes（4096–262144 字节），且 enabled 必须为 true',
+        pointer: `${path}.draft`,
+      });
+    }
+    if (validations.length > 16) {
+      anonymousPolicyProblems.push({
+        code: 'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_VALIDATIONS_INVALID',
+        message: 'validations 最多 16 条',
+        pointer: `${path}.validations`,
+      });
+    }
+    anonymousPolicyProblems.forEach(problem => {
+      diagnostics.push(diagnostic(problem.code, problem.message, problem.pointer));
+    });
+
     if (operations.includes('create') && resource?.nativeCreate) {
       const missingFields = [...resource.requiredCreateFields].filter(field => !fields.includes(field));
       const missingRequired = [...resource.requiredCreateFields].filter(field => !requiredFields.includes(field));
@@ -6622,7 +6815,11 @@ export function validateAppDeclaration(value: unknown): Diagnostic[] {
       }
     }
     const defaultSortField = string(object(resource.list).defaultSort && object(object(resource.list).defaultSort).field);
-    if (defaultSortField && !declaredCodes.has(defaultSortField)) {
+    if (
+      defaultSortField &&
+      !declaredCodes.has(defaultSortField) &&
+      !isDataSystemSortField(defaultSortField)
+    ) {
       diagnostics.push(
         diagnostic(
           'APP_CONFIG_DATA_RESOURCE_SORT_FIELD_INVALID',
@@ -6643,6 +6840,7 @@ export function validateAppDeclaration(value: unknown): Diagnostic[] {
           ['defaultSort', view.list?.defaultSort ? [view.list.defaultSort.field] : [], supportsSort],
         ] as const) {
           for (const code of values) {
+            if (property === 'defaultSort' && isDataSystemSortField(code)) continue;
             const field = canonical.schema.fields.find(field => field.code === code);
             if (!field || !supports(field.type)) diagnostics.push(diagnostic(
               'APP_CONFIG_DATA_VIEW_QUERY_FIELD_INVALID',

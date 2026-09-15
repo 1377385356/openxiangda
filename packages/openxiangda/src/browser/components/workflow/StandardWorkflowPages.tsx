@@ -1950,7 +1950,7 @@ export function WorkflowSubmissionPage({
   if (commandId) newPageQuery.set('processCommandId', commandId);
   else if (subjectId) newPageQuery.set('subjectId', subjectId);
   const newPageHref = useHref(`${launchPagePath.current}${newPageQuery.size ? `?${newPageQuery}` : ''}`);
-  const generatedNamedSubmission = definition?.launch.submission;
+  const generatedNamedSubmission = definition?.launch?.submission;
   const [submissionMode, setSubmissionMode] = useState<'create' | 'existing'>(
     subjectId ? 'existing' : 'create',
   );
@@ -2025,7 +2025,7 @@ export function WorkflowSubmissionPage({
         const actualSummaryFields = [
           ...(surface.subject.summaryFields || []),
         ].sort();
-        const generatedSubmission = definition?.launch.submission;
+        const generatedSubmission = definition?.launch?.submission;
         const submissionMatches = generatedSubmission
           ? surface.submission.kind === 'named-operation' &&
             namedLaunchIntentMatches(
@@ -2198,7 +2198,19 @@ export function WorkflowSubmissionPage({
         }
         failures = 0;
         setProcessSurface(next);
-        setProcessError(null);
+        const lastError = next.command.lastError;
+        if (
+          next.command.status === 'retry_wait' &&
+          lastError &&
+          typeof lastError.code === 'string' &&
+          lastError.code
+        ) {
+          setProcessError(
+            `流程命令处理失败：${lastError.code}${typeof lastError.preview === 'string' && lastError.preview ? `（${lastError.preview}）` : ''}；平台正在自动重试，请勿重复提交，可返回或稍后刷新观察`,
+          );
+        } else {
+          setProcessError(null);
+        }
         if (next.command.status === 'started' && next.command.workflowInstanceId) {
           if (completionHandler.current) {
             if (completedCommandId.current !== next.command.id) {
@@ -2305,10 +2317,20 @@ export function WorkflowSubmissionPage({
   if (!definition)
     return frame(<Result status="404" title="未声明该工作流" />);
   if (
-    definition.launch.mode !== 'standalone' &&
-    definition.launch.mode !== 'hidden-handoff'
+    definition.launch?.mode !== 'standalone' &&
+    definition.launch?.mode !== 'hidden-handoff'
   )
-    return frame(<Result status="404" title="该工作流不提供标准发起页面" />);
+    return frame(
+      <Result
+        status="404"
+        title="该工作流不提供标准发起页面"
+        subTitle={
+          definition.launch
+            ? undefined
+            : '当前部署版本未声明 launch 配置；请升级工具链后为 workflows.definitions[].launch 显式声明 mode'
+        }
+      />
+    );
   if (!subjectDefinition)
     return frame(<Result status="500" title="标准流程合同不完整" />);
   if (launchError && !commandId)
