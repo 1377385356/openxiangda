@@ -199,8 +199,8 @@ test('公开过滤条件拒绝复杂值和不可过滤字段', () => {
   };
   assert.throws(() => defineOpenXiangdaApp(input), (error: any) =>
     error.diagnostics.some((item: any) =>
-      item.code === 'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_INVALID' &&
-      item.path === 'frontend.publicAccess.policies[0]'
+      item.code === 'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_FILTERS_INVALID' &&
+      item.path === 'frontend.publicAccess.policies[0].publicFilters'
     )
   );
 });
