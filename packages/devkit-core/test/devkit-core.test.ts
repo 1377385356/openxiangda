@@ -3385,7 +3385,7 @@ test("compiles Workflow v2 declarations and sends current-user commands", async 
   const configured = defineOpenXiangdaApp({
     ...configDeclaration(),
     workflows: {
-      definitions: [{ version: 1, definition: workflow }],
+      definitions: [{ version: 1, definition: workflow, launch: { mode: 'standalone' } }],
       bindings: [{ version: 1, binding }],
       activations: [
         {
@@ -3429,7 +3429,7 @@ test("compiles Workflow v2 declarations and sends current-user commands", async 
   const withoutActivation = defineOpenXiangdaApp({
     ...configDeclaration(),
     workflows: {
-      definitions: [{ version: 1, definition: workflow }],
+      definitions: [{ version: 1, definition: workflow, launch: { mode: 'standalone' } }],
       bindings: [{ version: 1, binding }],
       activations: [],
     },
