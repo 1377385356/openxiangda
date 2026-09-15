@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.20.0",
+  "version": "2.20.1",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -67,13 +67,13 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.4.20",
-    "openxiangda-contracts": "2.15.0",
-    "openxiangda-devkit-core": "2.18.0",
+    "openxiangda-cli": "2.4.21",
+    "openxiangda-contracts": "2.16.0",
+    "openxiangda-devkit-core": "2.18.1",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.27",
-    "openxiangda-nest": "2.4.4",
-    "openxiangda-skill-kit": "2.3.0",
+    "openxiangda-mcp": "2.0.28",
+    "openxiangda-nest": "2.4.5",
+    "openxiangda-skill-kit": "2.3.1",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -139,19 +139,14 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.20.0",
+    "version": "2.20.1",
     "status": "reviewed",
-    "title": "OpenXiangda 2.20.0：行级策略语义防护与匿名表单体验完善",
-    "summary": "把平台能力探针实测踩到的行级策略语义陷阱提前到编译期：matchMode AND 配多条不同角色规则会全拒（角色并集取最宽），编译器现在直接警告；匿名策略 requiredFields 比模型必填更严格时报错（标准控件将不带必填校验）；放开 created_by/updated_by 审计列作为 current_user 行规则（\"用户只看自己创建\"的基线收窄手段）；移除生产环境常驻数据警示横幅。",
+    "title": "OpenXiangda 2.20.1：contracts 资源级审计列排序修复",
+    "summary": "openxiangda-contracts 修复资源级 surface list defaultSort 对平台审计列（created_at/updated_at 等）的 fail-closed 误拒：与命名视图 defaultSort、Data API order 的系统列规则对齐。devkit 与 openxiangda 2.20.0 已含的行为不变。",
     "newFeatures": [
-      "created_by/updated_by 审计列支持 current_user 行规则：基线角色（无业务归属字段可用时）也能做\"只看自己创建\"的行级收窄；其余规则主体不支持审计列，编译期明确报错。",
-      "编译器新增 AND 多角色规则告警：matchMode AND 且多条规则面向不同角色时警告（规则对非目标角色恒为 false，AND 聚合会拒绝所有身份），提示改用 OR。",
-      "匿名公开策略 requiredFields 比模型必填更严格时编译报错：标准表单控件不会为它们生成必填校验，空值提交将被服务端拒绝——报错给出两条修复路径。",
-      "移除生产环境\"正在使用正式数据\"常驻警示横幅，生产页面回归正常视觉。"
+      "资源级 surface list defaultSort 支持平台审计列（created_at/updated_at/created_by/updated_by/id/revision），不再按未知字段 fail-closed；补回归测试。"
     ],
-    "fixes": [
-      "声明速查表补行级策略三坑：角色并集取最宽原则、AND/OR 多角色规则选择、created_by 审计列规则写法。"
-    ],
+    "fixes": [],
     "affectedUsers": [
       "所有使用数据策略、行级权限、匿名公开访问的 OpenXiangda 2.0 应用开发者与 AI 开发会话。"
     ],
@@ -160,8 +155,7 @@
       "使用 created_by 行规则需平台服务端配套版本；升级前请确认平台列车已包含该修复。"
     ],
     "knownLimitations": [
-      "created_by 行规则的运行时 WITH CHECK 正向匹配在当前平台版本仍会拒绝（平台开放缺陷），编译通过不代表运行时生效，待平台列车修复后放开使用。",
-      "行级策略按角色并集取最宽是平台语义：基线角色与限制性规则并存时限制会失效，无法通过声明规避。"
+      "created_by 行规则的运行时 WITH CHECK 正向匹配修复仍随平台列车交付。"
     ],
     "issues": [],
     "compatibility": {
@@ -170,7 +164,7 @@
       "platform": "无强制平台配合要求；created_by 行规则的运行时生效需平台列车跟进。",
       "v1": "V1 工作区不受影响。"
     },
-    "sha256": "7d381f9f33bcb0c2f14197b94a0bfe542c66dc1c859b83ae97117f9eddceaa86",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.20.0"
+    "sha256": "043a0bdb2615be80b4efff4a9f2e58107965e261e9294050a1decee22a6b7e6c",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.20.1"
   }
 }
