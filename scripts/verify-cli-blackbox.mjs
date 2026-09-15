@@ -506,6 +506,21 @@ async function handlePlatformRequest(request, response) {
     return envelope(response, { environmentKey });
   }
 
+  // deploy 的 Workflow 激活版本预检（2.19.0 起）：黑盒平台返回空 Head 页即可，
+  // 让用例继续走到 AppSpec 门禁断言。
+  if (method === 'GET' && /^\/openxiangda-api\/v2\/applications\/instrument-center\/workflow\/management\/definitions$/.test(path)) {
+    const environmentKey = url.searchParams.get('environmentKey');
+    assert.equal(environmentKey, 'preproduction');
+    return envelope(response, {
+      appCode: 'instrument-center',
+      environmentKey: 'preproduction',
+      total: 0,
+      limit: Number(url.searchParams.get('limit') || 100),
+      offset: 0,
+      items: [],
+    });
+  }
+
   if (method === "POST" && path === "/openxiangda-api/v2/auth/cli-sessions") {
     return envelope(response, {
       sessionId: "login-session-1",
