@@ -8,7 +8,7 @@
       "title": "OpenXiangda 2.19.0：平台探针实测修复——编译期拦截三大易错声明与错误透明化",
       "summary": "来自平台能力探针（platform-capability-probe）全流程实测的修复批：工作流 launch 缺失、快照字段标量投影、数据策略基线角色 unrestricted 三类错误从\"部署后白屏/无限重试/策略静默失效\"提前到编译期拦截；匿名公开策略校验拆分为带指针的独立诊断；发起页防白屏并透出流程命令 lastError；CLI create 支持会话向上继承；同步平台审计列排序与部署 Workflow Head 预检。",
       "newFeatures": [
-        "编译器新增三项编译期拦截：workflow definition 必须显式声明 launch；unrestrictedRoleCodes 含基线角色（authenticatedUserRoleCode）直接报错（角色并集必命中，策略会静默失效）；option/user/department/resource-ref/cascade 快照字段投影到标量 inputSchema 属性直接报错并给出对象形状与 <fact>.value 比较片段。",
+        "编译器新增三项编译期拦截：workflow definition 必须显式声明 launch；unrestrictedRoleCodes 含基线角色（authenticatedUserRoleCode）直接报错（角色并集必命中，策略会静默失效）；option/user/department/resource-ref/cascade 快照字段投影到标量 inputSchema 属性直接报错并给出对象形状与 `<fact>.value` 比较片段。",
         "匿名公开策略校验拆分为带独立错误码与指针的分组诊断（route 绑定/operations/fields/requiredFields/ownRecordFields 子集/draft 规则/public 投影等），不再聚合为一条无指针报错。",
         "工作流发起页：definition.launch 渲染期访问改为可选链，缺失时显示可诊断的 404 而不是白屏；提交后轮询透出 process command 的 lastError（不再无提示转圈）。",
         "平台审计列排序（contracts DATA_SYSTEM_SORT_FIELD_CODES）：列表 defaultSort/sortableFields 支持 created_at/updated_at/created_by/updated_by/id/revision，标准 Admin 列表内置创建/更新时间列可点击排序。",
@@ -23,10 +23,10 @@
       ],
       "upgradeSteps": [
         "应用把 openxiangda 精确钉扎到 2.19.0 并重跑 pnpm openxiangda check；此前能通过 check 的声明无需改动，此前靠运行时报错暴露的写法会在编译期给出带修复片段的明确报错。",
-        "工作流 definition 若未声明 launch，会在编译期被拒绝：按报错提示补 launch: { mode: 'standalone' } 等声明后重新部署。"
+        "工作流 definition 若未声明 launch，会在编译期被拒绝：按报错提示补 `launch: { mode: 'standalone' }` 等声明后重新部署。"
       ],
       "knownLimitations": [
-        "快照字段投影仅支持对象形状事实，标量投影不支持是契约决定而非缺陷；条件表达式需使用 <fact>.value 路径。",
+        "快照字段投影仅支持对象形状事实，标量投影不支持是契约决定而非缺陷；条件表达式需使用 `<fact>.value` 路径。",
         "平台侧配套修复（auth 落地路由兼容、不变量 NULL 语义、匿名错误透传、验收票据时效、token TTL）在平台服务端发布列车中交付，本工具链列车不含。"
       ],
       "issues": [],
@@ -36,7 +36,7 @@
         "platform": "平台服务端需随下一平台列车更新到匹配的 openxiangda-contracts；未更新前 check 的目标平台预检会报校验器版本不一致（fail-closed，属预期）。",
         "v1": "V1 工作区不受影响。"
       },
-      "sha256": "d8da5f17bed28ce1b3f243860843419692704b1e01ac3d0072a9180a1954834b",
+      "sha256": "89940c302299258200c67215c2ddadbcee505642cc586eda90434541b3f81468",
       "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.19.0"
     },
     {
