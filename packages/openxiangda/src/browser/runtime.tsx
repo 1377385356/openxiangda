@@ -289,15 +289,6 @@ export function RuntimeBoundary({
 
   return (
     <>
-      {production && (
-        <Alert
-          banner
-          showIcon
-          type="error"
-          data-testid="production-data-warning"
-          title="正在使用正式数据：所有新增、编辑和删除都会影响生产环境"
-        />
-      )}
       {error && failureKind === 'unauthenticated' && loginContribution ? (
         <ApplicationLoginController
           app={{ code: applicationCode(), name: applicationName() }}

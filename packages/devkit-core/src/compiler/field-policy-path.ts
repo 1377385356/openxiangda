@@ -121,9 +121,28 @@ export function validateAuthzSemanticBindings(input: {
       );
     }
 
+    // 每张 Native 物理行都带审计用户列（created_by/updated_by，裸 uuid）。
+    // 允许 current_user 规则直接绑定它们，表达"用户只能看到自己创建/维护的行"——
+    // 这是基线角色（无业务归属字段可用时）唯一可用的行级收窄手段。
+    const auditUserFields = new Set(['created_by', 'updated_by']);
     policyRuleEntries(policy, policyPath).forEach(({ rule, path: rulePath }) => {
       const fieldCode = text(rule.field);
+      const isAuditUserField = auditUserFields.has(fieldCode);
       const field = resource.fields.get(fieldCode);
+      if (isAuditUserField) {
+        // 审计用户列（created_by/updated_by）天然是裸 uuid：仅支持 current_user
+        // 规则，其余规则主体（constant/db_now/dimension/relation）语义不成立。
+        if (text(rule.subject) !== 'current_user') {
+          diagnostics.push(
+            issue(
+              'APP_CONFIG_AUTHZ_POLICY_AUDIT_FIELD_SUBJECT_INVALID',
+              `审计列 ${fieldCode} 只支持 current_user 规则`,
+              `${rulePath}.field`
+            )
+          );
+        }
+        return;
+      }
       if (!field) {
         diagnostics.push(
           issue(

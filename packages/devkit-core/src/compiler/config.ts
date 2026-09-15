@@ -5379,6 +5379,23 @@ function validateAnonymousPublicAccess(
         ));
       }
     }
+    // 策略 requiredFields 若含模型未声明 required 的字段，标准表单控件不带必填校验，
+    // 空表单会在提交时被服务端 REQUIRED_FIELD_MISSING 拒绝。编写时给出 warning，
+    // 让开发者显式选择：补模型 required，或确认自行承担客户端校验。
+    const stricterThanModel = requiredFields.filter(
+      field => !resource?.requiredCreateFields.has(field) && fields.includes(field)
+    );
+    if (stricterThanModel.length > 0) {
+      diagnostics.push({
+        schemaVersion: SCHEMA_VERSIONS.diagnostic,
+        code: 'APP_CONFIG_ANONYMOUS_POLICY_REQUIRED_FIELDS_STRICTER_THAN_MODEL',
+        severity: 'warning',
+        message: `策略 requiredFields 比模型必填更严格：${stricterThanModel.join('、')} 在模型中未声明 required: true。标准表单控件不会为它们生成必填校验，空值提交将被服务端 REQUIRED_FIELD_MISSING 拒绝；如需前端必填校验，请在模型字段上声明 required: true`,
+        path: `${path}.requiredFields`,
+        retryable: false,
+        source: 'openxiangda-app.config.ts',
+      });
+    }
     const validationCodes = new Set<string>();
     validations.forEach((rawValidation, validationIndex) => {
       const validation = object(rawValidation);
