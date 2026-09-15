@@ -2522,6 +2522,36 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
           );
         }
       }
+      // 行级策略按"角色并集取最宽"评估：多角色身份的可见行是各角色可见行的并集。
+      // matchMode AND 下，规则对非目标角色恒为 false——两条带不同 roleCodes 的规则
+      // 会让任何身份都无法同时匹配，实测表现为"整个策略全拒"。多角色白名单必须 OR。
+      const roleRestrictedRules = (Array.isArray(policy.rules) ? policy.rules : []).filter(
+        rawRule => {
+          const roleCodes = object(rawRule).roleCodes;
+          return Array.isArray(roleCodes) && roleCodes.length > 0;
+        }
+      );
+      if (
+        policy.matchMode === 'AND' &&
+        roleRestrictedRules.length > 1 &&
+        !policy.unrestrictedRoleCodes
+      ) {
+        const roleSets = roleRestrictedRules.map(rawRule =>
+          (object(rawRule).roleCodes as unknown[]).map(code => string(code)).sort().join(',')
+        );
+        const identicalSets = new Set(roleSets).size === 1;
+        if (!identicalSets) {
+          diagnostics.push({
+            schemaVersion: SCHEMA_VERSIONS.diagnostic,
+            code: 'APP_CONFIG_AUTHZ_POLICY_MULTI_ROLE_AND_WARNING',
+            severity: 'warning',
+            message: `matchMode AND 且存在 ${roleRestrictedRules.length} 条面向不同角色的规则：规则对非目标角色恒为 false，AND 聚合会拒绝所有身份。多角色白名单请改 matchMode: 'OR'（任一规则匹配即可见），或合并为单条规则`,
+            path: `${policyPath}.matchMode`,
+            retryable: false,
+            source: 'openxiangda-app.config.ts',
+          });
+        }
+      }
       const policyFields = resourceFieldTypes.get(string(policy.resourceCode));
       policyRuleNodes(policy, policyPath, diagnostics).forEach(
         ({ rule, path: rulePath }) => {
