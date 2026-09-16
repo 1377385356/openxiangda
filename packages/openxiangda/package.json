@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.20.3",
+  "version": "2.20.4",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -67,13 +67,13 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.4.23",
-    "openxiangda-contracts": "2.16.0",
-    "openxiangda-devkit-core": "2.18.2",
+    "openxiangda-cli": "2.4.24",
+    "openxiangda-contracts": "2.16.1",
+    "openxiangda-devkit-core": "2.18.3",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.29",
-    "openxiangda-nest": "2.4.5",
-    "openxiangda-skill-kit": "2.3.2",
+    "openxiangda-mcp": "2.0.30",
+    "openxiangda-nest": "2.4.6",
+    "openxiangda-skill-kit": "2.3.3",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -139,31 +139,32 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.20.3",
+    "version": "2.20.4",
     "status": "reviewed",
-    "title": "OpenXiangda 2.20.3：标准日期时间选择修复",
-    "summary": "修复指定时区的 PC 标准日期时间控件缺少小时和分钟列的问题，普通字段、生成表单、筛选与范围共用修复，不改变 UTC 存储和移动端协议。",
+    "title": "OpenXiangda 2.20.4：Native 事件审计来源契约修复",
+    "summary": "严格接收平台已有的 Native 数据事件操作来源审计信息，避免具名业务动作和封存数据修复事件在处理器执行前被错误拒绝。",
     "newFeatures": [],
     "fixes": [
-      "分钟精度显式显示时、分列，秒精度显式显示时、分、秒列。CLI 新应用模板同步钉扎修复后的根包。"
+      "Native 事件 actor 显式支持有界 initiatedBy、businessAction 和 platformMaintenance；未知字段、凭据形字段和错误签名仍严格拒绝。"
     ],
     "affectedUsers": [
-      "使用 Field Kit 指定时区日期时间输入的 OpenXiangda 2.0 应用。"
+      "使用 Nest 订阅具名业务动作或封存数据修复所产生 Native 数据事件的 OpenXiangda 2.0 应用。"
     ],
     "upgradeSteps": [
-      "将应用精确依赖升级到 openxiangda 2.20.3，按锁文件安装并验证日期选择后发布预发布版本。"
+      "将应用精确依赖升级到 openxiangda 2.20.4，按锁文件安装并刷新工作区技能，验证后部署测试环境。",
+      "需要恢复的既有失败事件应核对原投递后使用正式 replay API，不重复提交业务动作。"
     ],
     "knownLimitations": [
-      "服务端业务时间窗、权限、DST 不存在和重复墙上时间校验保持原约束。本修复不替代应用真实角色验收。"
+      "本修复不自动重放历史死信，也不替代应用真实角色、通知幂等和业务结果验收。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
       "workspaceGenerations": "v2",
-      "platform": "无需服务端或数据库迁移。",
+      "platform": "匹配现有平台 Native 事件生产者，无需服务端或数据库迁移。",
       "v1": "V1 工作区与维护引擎不受影响。"
     },
-    "sha256": "bd5d7d513df7ccc123d949842a5a987e585002848e98d52569190a687b212464",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.20.3"
+    "sha256": "b797b6e42ef1b54c312f40b14ecaea7064be9799d98bc9b200ed7dd88936e821",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.20.4"
   }
 }
