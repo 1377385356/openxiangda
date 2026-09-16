@@ -38,3 +38,8 @@ and second precision, assert exactly two/three visible columns with usable width
 select hours/minutes and verify canonical UTC output. Run affected repository
 gates and the deterministic package release train. Application regression must
 then pass against the published package, not a locally patched node_modules.
+
+The initial packed test found visible hour/minute columns but timed out locating
+the localized confirmation label: Ant Design renders it as "确 定". Match the
+accessible label with optional whitespace; keep the same real selection and UTC
+assertions. This changes only test evidence, not package/runtime bytes.

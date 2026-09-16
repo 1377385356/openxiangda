@@ -14,13 +14,13 @@ for (const seconds of [false, true]) {
       await columns.nth(0).getByText('09', { exact: true }).click();
       await columns.nth(1).getByText('30', { exact: true }).click();
       if (seconds) await columns.nth(2).getByText('00', { exact: true }).click();
-      await page.locator('.ant-picker-dropdown:visible').getByRole('button', { name: /OK|确定/ }).click();
+      await page.locator('.ant-picker-dropdown:visible').getByRole('button', { name: /^(?:OK|确\s*定)$/ }).click();
       if (control === 'range') {
         await page.getByTestId('range').locator('input').nth(1).click();
         await columns.nth(0).getByText('10', { exact: true }).click();
         await columns.nth(1).getByText('30', { exact: true }).click();
         if (seconds) await columns.nth(2).getByText('00', { exact: true }).click();
-        await page.locator('.ant-picker-dropdown:visible').getByRole('button', { name: /OK|确定/ }).click();
+        await page.locator('.ant-picker-dropdown:visible').getByRole('button', { name: /^(?:OK|确\s*定)$/ }).click();
         await expect(page.getByTestId('range-canonical')).toHaveText('{"start":"2026-03-08T01:30:00.000Z","end":"2026-03-08T02:30:00.000Z"}');
       } else {
         await expect(page.getByTestId(control === 'generated-form' ? 'form-canonical' : 'canonical'))
