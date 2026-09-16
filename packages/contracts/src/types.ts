@@ -1830,6 +1830,30 @@ export interface EventActor {
     | "timer"
     | "system";
   subjectId: string;
+  initiatedBy?: { principalType: "user"; subjectId: string } | null;
+  businessAction?: {
+    code: string;
+    requiredCapability: string;
+    proof: "gateway-invocation" | "connected-development" | "operation-file-upload";
+    invocationTokenId?: string;
+    deploymentRunId?: string;
+    backendRevisionId?: string;
+    devSessionId?: string;
+    managedFile?: {
+      resourceCode: string;
+      fieldCode: string;
+      intent: "create" | "update";
+      recordId?: string;
+    };
+  };
+  platformMaintenance?: {
+    kind: "sealed-data-repair";
+    manifestSha256: string;
+    actionIndex: number;
+    actionKind: "native-update" | "native-delete";
+    resourceCode: string;
+    recordId: string;
+  };
 }
 
 export interface EventCause {

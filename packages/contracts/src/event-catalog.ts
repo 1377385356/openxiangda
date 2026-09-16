@@ -82,7 +82,58 @@ export const DATA_RECORD_EVENT_DATA_SCHEMA_V2 = {
           ],
         },
         subjectId: { type: 'string', minLength: 1, maxLength: 255 },
+        initiatedBy: {
+          type: ['object', 'null'], additionalProperties: false,
+          required: ['principalType', 'subjectId'],
+          properties: {
+            principalType: { const: 'user' },
+            subjectId: { type: 'string', minLength: 1, maxLength: 255 },
+          },
+        },
+        businessAction: {
+          type: 'object', additionalProperties: false,
+          required: ['code', 'requiredCapability', 'proof'],
+          properties: {
+            code: { type: 'string', minLength: 1, maxLength: 128 },
+            requiredCapability: { type: 'string', minLength: 1, maxLength: 255 },
+            proof: { enum: ['gateway-invocation', 'connected-development', 'operation-file-upload'] },
+            invocationTokenId: { type: 'string', minLength: 1, maxLength: 128 },
+            deploymentRunId: { type: 'string', minLength: 1, maxLength: 128 },
+            backendRevisionId: { type: 'string', minLength: 1, maxLength: 128 },
+            devSessionId: { type: 'string', minLength: 1, maxLength: 128 },
+            managedFile: {
+              type: 'object', additionalProperties: false,
+              required: ['resourceCode', 'fieldCode', 'intent'],
+              properties: {
+                resourceCode: { type: 'string', minLength: 1, maxLength: 128 },
+                fieldCode: { type: 'string', minLength: 1, maxLength: 128 },
+                intent: { enum: ['create', 'update'] },
+                recordId: { type: 'string', minLength: 1, maxLength: 128 },
+              },
+            },
+          },
+        },
+        platformMaintenance: {
+          type: 'object', additionalProperties: false,
+          required: ['kind', 'manifestSha256', 'actionIndex', 'actionKind', 'resourceCode', 'recordId'],
+          properties: {
+            kind: { const: 'sealed-data-repair' },
+            manifestSha256: { type: 'string', pattern: '^[a-f0-9]{64}$' },
+            actionIndex: { type: 'integer', minimum: 0, maximum: Number.MAX_SAFE_INTEGER },
+            actionKind: { enum: ['native-update', 'native-delete'] },
+            resourceCode: { type: 'string', minLength: 1, maxLength: 128 },
+            recordId: { type: 'string', minLength: 1, maxLength: 128 },
+          },
+        },
       },
+      allOf: [{
+        if: { anyOf: [
+          { required: ['initiatedBy'] },
+          { required: ['businessAction'] },
+          { required: ['platformMaintenance'] },
+        ] },
+        then: { properties: { principalType: { const: 'application' } } },
+      }],
     },
     cause: {
       type: 'object',
