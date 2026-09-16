@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.20.2",
+  "status": "reviewed",
+  "title": "OpenXiangda 2.20.2：应用制品断线去重修复",
+  "summary": "Devkit 按平台制品收据的规范分类复用已验证的 Application v2 制品。修复 frontend/config/contracts/manifest 在平台已有相同摘要时仍重复完整上传的问题，保持 AppPackage 字节、权限和部署状态的原有权威边界。",
+  "newFeatures": [],
+  "fixes": [
+    "断线恢复时，仅在摘要、平台规范分类、Content-Type 和字节大小都匹配时复用已存制品；已存的大前端制品不再重复上传。"
+  ],
+  "affectedUsers": [
+    "经慢速或易断网络向支持 Application v2 制品收据的私有平台部署应用的 OpenXiangda 2.0 开发者。"
+  ],
+  "upgradeSteps": [
+    "将应用钉扎的 openxiangda-devkit-core 更新到 2.18.2，并按锁文件安装；如统一入口也被钉扎则升级到 openxiangda 2.20.2。",
+    "先回读原 DeploymentRun 和环境 Head；若此前失败仅发生在制品上传且无新运行，按 CLI 的可重试指针从原候选执行 deploy。"
+  ],
+  "knownLimitations": [
+    "平台尚未存储的制品仍需完整上传；本修复不能改善首次传输的链路速度或替代真实角色、CAS、人事与通知业务验收。"
+  ],
+  "issues": [],
+  "compatibility": {
+    "node": ">=24",
+    "workspaceGenerations": "v2",
+    "platform": "复用需要平台 Application v2 GET 制品收据返回规范分类、摘要、媒体类型和字节大小；无新数据库迁移。",
+    "v1": "V1 工作区与维护引擎不受影响。"
+  }
+}
