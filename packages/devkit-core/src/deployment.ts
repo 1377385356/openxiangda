@@ -37,7 +37,14 @@ export interface DeploymentControlPlane {
 async function uploadOrReuse(client: DeploymentControlPlane, input: UploadArtifactInput, stage: string, label: string) {
   return operationStage(stage, label, async () => {
     const stored = await client.artifactStatus?.(input.appCode, input.digest);
-    if (stored?.digest === input.digest && stored.kind === input.kind && stored.contentType === input.contentType && stored.sizeBytes === new Blob([input.content]).size) {
+    const receiptKind: Record<UploadArtifactInput['kind'], string> = {
+      frontend: 'runtime',
+      backend: 'backend',
+      config: 'configuration',
+      contracts: 'configuration',
+      manifest: 'package-manifest',
+    };
+    if (stored?.digest === input.digest && stored.kind === receiptKind[input.kind] && stored.contentType === input.contentType && stored.sizeBytes === new Blob([input.content]).size) {
       updateOperationStage(stage, `${label}（复用已有内容）`, { reused: true, digest: input.digest, bytes: stored.sizeBytes });
       return stored;
     }

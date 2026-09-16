@@ -4431,6 +4431,28 @@ test("derives environment lifecycle idempotency from the platform revision", asy
 });
 
 test("submits one immutable package instead of resource-level release steps", async () => {
+  const bodies = {
+    frontend: canonicalJson({ files: [] }),
+    backend: canonicalJson({ image: "registry.example.invalid/reference-app@sha256:test" }),
+    config: canonicalJson({
+      schemaVersion: CURRENT_APPLICATION_CONTRACT.configurationBundleSchemaVersion,
+      compilerContractVersion: CURRENT_APPLICATION_CONTRACT.compilerContractVersion,
+      appCode: "reference-app",
+      data: { resources: [] },
+    }),
+    contracts: canonicalJson({
+      schemaVersion: CURRENT_APPLICATION_CONTRACT.contractBundleSchemaVersion,
+      compilerContractVersion: CURRENT_APPLICATION_CONTRACT.compilerContractVersion,
+      appCode: "reference-app",
+      resources: [],
+    }),
+  };
+  const artifacts = (Object.keys(bodies) as Array<keyof typeof bodies>).map(kind => ({
+    kind,
+    digest: createHash('sha256').update(bodies[kind]).digest('hex'),
+    mediaType: 'application/json',
+    size: Buffer.byteLength(bodies[kind]),
+  }));
   const compiledPackage = compileAppPackage({
     config: config(),
     version: "2.0.0-test.1",
@@ -4441,8 +4463,13 @@ test("submits one immutable package instead of resource-level release steps", as
       dirty: false,
     },
     toolchainVersion: "2.0.0-alpha.1",
-    artifacts: [],
-    manifests: {},
+    artifacts,
+    manifests: {
+      frontend: artifacts[0]!.digest,
+      backend: artifacts[1]!.digest,
+      config: artifacts[2]!.digest,
+      dataContract: artifacts[3]!.digest,
+    },
     minimumPlatformVersion: "2.0.0-alpha.1",
   });
   const uploadArtifact = test.mock.fn(async () => ({}));
@@ -4465,7 +4492,18 @@ test("submits one immutable package instead of resource-level release steps", as
     updatedAt: "2026-08-10T00:00:00.000Z",
   }));
 
+  const receiptKinds = {
+    frontend: 'runtime',
+    backend: 'backend',
+    config: 'configuration',
+    contracts: 'configuration',
+    manifest: 'package-manifest',
+  } as const;
   let stored = false;
+  let mismatchedKind: string | null = null;
+  let mismatchedContentType: string | null = null;
+  let mismatchedDigest = false;
+  let mismatchedSize = false;
   const submission: Parameters<typeof submitAppPackage>[0] = {
     client: {
       capabilities: async () => ({
@@ -4512,26 +4550,54 @@ test("submits one immutable package instead of resource-level release steps", as
         },
       }),
       uploadArtifact,
-      artifactStatus: async (_appCode, digest) => stored ? {
-        digest, kind: 'manifest', contentType: 'application/vnd.openxiangda.app-package.v3+json', sizeBytes: Buffer.byteLength(canonicalJson(compiledPackage.manifest)),
-      } : null,
+      artifactStatus: async (_appCode, digest) => {
+        if (!stored) return null;
+        const artifact = artifacts.find(item => item.digest === digest);
+        const kind = artifact?.kind || 'manifest';
+        return {
+          digest: mismatchedDigest && kind === 'frontend' ? '0'.repeat(64) : digest,
+          kind: mismatchedKind && kind === 'frontend' ? mismatchedKind : receiptKinds[kind],
+          contentType: mismatchedContentType && kind === 'frontend'
+            ? mismatchedContentType
+            : artifact?.mediaType || 'application/vnd.openxiangda.app-package.v3+json',
+          sizeBytes: (artifact?.size || Buffer.byteLength(canonicalJson(compiledPackage.manifest)))
+            + (mismatchedSize && kind === 'frontend' ? 1 : 0),
+        };
+      },
       createDeployment,
     },
     compiledPackage,
+    artifactContent: Object.fromEntries(artifacts.map(item => [item.digest, bodies[item.kind]])),
     environmentKind: "preproduction",
     idempotencyKey: "reference-app:test.1",
   };
   const deployment = await submitAppPackage(submission);
 
   assert.equal(deployment.id, "deployment-1");
-  assert.equal(uploadArtifact.mock.callCount(), 1);
-  assert.equal(uploadArtifact.mock.calls[0]?.arguments[0].kind, "manifest");
+  assert.equal(uploadArtifact.mock.callCount(), 5);
+  assert.deepEqual(uploadArtifact.mock.calls.map(call => call.arguments[0].kind),
+    ['backend', 'config', 'contracts', 'frontend', 'manifest']);
   assert.equal(createDeployment.mock.callCount(), 1);
   stored = true;
   await submitAppPackage(submission);
-  assert.equal(uploadArtifact.mock.callCount(), 1, '原清单已上传时不重复上传');
+  assert.equal(uploadArtifact.mock.callCount(), 5, '规范分类收据已存在时不重复上传任何制品');
   assert.equal(createDeployment.mock.callCount(), 2);
   assert.equal(createDeployment.mock.calls[1]?.arguments[0].idempotencyKey, submission.idempotencyKey);
+  mismatchedKind = 'frontend';
+  await submitAppPackage(submission);
+  assert.equal(uploadArtifact.mock.callCount(), 6, '错误分类不得复用前端制品');
+  mismatchedKind = null;
+  mismatchedContentType = 'application/octet-stream';
+  await submitAppPackage(submission);
+  assert.equal(uploadArtifact.mock.callCount(), 7, '错误媒体类型不得复用前端制品');
+  mismatchedContentType = null;
+  mismatchedDigest = true;
+  await submitAppPackage(submission);
+  assert.equal(uploadArtifact.mock.callCount(), 8, '错误摘要不得复用前端制品');
+  mismatchedDigest = false;
+  mismatchedSize = true;
+  await submitAppPackage(submission);
+  assert.equal(uploadArtifact.mock.callCount(), 9, '错误长度不得复用前端制品');
 });
 
 test("rejects artifact bytes changed after the AppPackage was sealed", async () => {
