@@ -141,4 +141,4 @@ context 的 `readyForImplementation` 为真时才制定具体实现任务，把 
 - [Design OS，固定提交](https://github.com/buildermethods/design-os/tree/529dedb43bfec24b2cbb128f26dd8cbc6143f754)（MIT）。
 - [Spec Kit，固定提交](https://github.com/github/spec-kit/tree/4a7341a93d944d6efe153b71da4a1adb9c2b578c)（MIT）。
 
-有界面影响的工作默认由 AI 通过 design cli / 原版 MCP 使用 OpenDesign，完成可运行原型、浏览器修正及实现交接，见[设计工作流](./design-workflow.md)。客户端仅用于用户主动预览；原版运行时拥有完整设计资源和工作流，随包方法与 Craft 仅作离线参考。
+有界面影响的工作默认由当前 AI Agent 完成视觉方向、真实页面实现和浏览器修正，见[设计工作流](./design-workflow.md)。需要建立新方向时可按需使用 Image 2.5 等当前图片能力生成少量参考；图片不定义交互、权限或验收，采用的资源以 AppSpec assets 固定。

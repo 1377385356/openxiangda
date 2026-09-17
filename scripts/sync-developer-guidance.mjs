@@ -1,11 +1,9 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, rmSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { DOCUMENTATION_TOPICS, documentationReferenceFile } from '../packages/devkit-core/src/documentation.ts';
-import { generateDesignTopics } from './design-capabilities.mjs';
 
 const root = resolve(import.meta.dirname, '..');
 const check = process.argv.includes('--check');
-generateDesignTopics(root, check);
 const docsRoot = resolve(root, 'docs');
 const references = resolve(root, 'skills/openxiangda-v2/references');
 const byPath = new Map(DOCUMENTATION_TOPICS.map(topic => [resolve(docsRoot, topic.file), topic]));
@@ -27,7 +25,7 @@ for (const topic of DOCUMENTATION_TOPICS) {
     writeFileSync(target, content);
   }
 }
-for (const name of ['workspace.md', 'discovery.md', 'architecture.md', 'commands.md']) {
+for (const name of ['workspace.md', 'discovery.md', 'architecture.md', 'commands.md', 'opendesign-methods.md', 'design-craft.md']) {
   const retired = resolve(references, name);
   if (check && existsSync(retired)) throw new Error(`GUIDANCE_RETIRED_REFERENCE: ${name}`);
   if (!check) rmSync(retired, { force: true });

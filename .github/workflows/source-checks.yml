@@ -52,10 +52,10 @@ jobs:
           fi
           echo "TURBO_SCM_HEAD=$GITHUB_SHA" >> "$GITHUB_ENV"
       - run: pnpm verify:affected
-      - name: Select design integration checks
+      - name: Select visual integration checks
         id: design
         run: |
-          if ! git diff --quiet "$TURBO_SCM_BASE" "$GITHUB_SHA" -- .github/workflows/source-checks.yml design-capabilities docs/design-workflow.md scripts/design-capabilities.mjs scripts/verify-design-workbench.mjs scripts/fixtures/design-workbench packages/openxiangda/scripts/scope-mobile-css.mjs packages/openxiangda/src/field-kit.ts packages/openxiangda/src/browser/ui-provider.tsx packages/openxiangda/src/browser/components/resource/ResourceFormFrame.tsx packages/openxiangda/src/browser/styles.css packages/openxiangda/src/browser/mobile-fields.css; then
+          if ! git diff --quiet "$TURBO_SCM_BASE" "$GITHUB_SHA" -- .github/workflows/source-checks.yml docs/design-workflow.md scripts/verify-design-workbench.mjs scripts/fixtures/design-workbench packages/openxiangda/scripts/scope-mobile-css.mjs packages/openxiangda/src/field-kit.ts packages/openxiangda/src/browser/ui-provider.tsx packages/openxiangda/src/browser/components/resource/ResourceFormFrame.tsx packages/openxiangda/src/browser/styles.css packages/openxiangda/src/browser/mobile-fields.css; then
             echo 'affected=true' >> "$GITHUB_OUTPUT"
           fi
       - if: steps.design.outputs.affected == 'true'

@@ -238,7 +238,7 @@ function assertPackagedGuidance(root) {
   const guide = JSON.parse(runCaptured('pnpm', ['exec', 'openxiangda', 'docs', 'getting-started', '--json'], root, { stdoutOnly: true, quiet: true }));
   if (guide.data.content.includes('__OPENXIANGDA_VERSION__') || !guide.data.content.includes(`openxiangda@${version}`)) fail('PACKED_GUIDANCE_BOOTSTRAP_VERSION_INVALID');
   if (createHash('sha256').update(guide.data.content).digest('hex') !== guide.data.sha256) fail('PACKED_GUIDANCE_DIGEST_INVALID');
-  for (const id of ['product-design', 'interaction-patterns', 'design-workflow', 'opendesign-methods', 'design-craft']) {
+  for (const id of ['product-design', 'interaction-patterns', 'design-workflow']) {
     const designGuide = JSON.parse(runCaptured('pnpm', ['exec', 'openxiangda', 'docs', id, '--json'], root, { stdoutOnly: true, quiet: true }));
     if (!designGuide.ok || designGuide.data.version !== version || Buffer.byteLength(designGuide.data.content) < 1000 || createHash('sha256').update(designGuide.data.content).digest('hex') !== designGuide.data.sha256) fail(`PACKED_DESIGN_GUIDANCE_INVALID:${id}`);
   }
@@ -467,23 +467,16 @@ export default class Ninth extends Command { async run() { this.log("injected");
       fail(`openxiangda ${command} --help returned no command help`);
     }
   }
-  // Exercise the installed bridge without requiring OpenDesign on CI machines.
-  const nativeEntry = join(scratchRoot, 'native OpenDesign fixture.mjs');
-  writeFileSync(nativeEntry, `
-const args = process.argv.slice(2);
-if (args.includes('--open-design-cli-probe')) console.log('open-design-cli:mcp-install:v1');
-else {
-  let input = ''; for await (const chunk of process.stdin) input += chunk;
-  console.log(JSON.stringify({ args, input })); process.exitCode = 17;
-}
-`);
-  const nativeArgs = ['future-command', '--json', '--cwd', '/native-workspace', '--mcp-stdio', 'a b;$(false)'];
-  const nativeResult = spawnSync('pnpm', ['exec', 'openxiangda', 'design', 'cli', ...nativeArgs], {
-    cwd: root, env: { ...env, OPENXIANGDA_OPENDESIGN_CLI: nativeEntry, OD_BIN: '', OD_NODE_BIN: '' },
-    input: 'native input', encoding: 'utf8', timeout: 15000,
-  });
-  if (nativeResult.status !== 17 || nativeResult.stderr || JSON.stringify(JSON.parse(nativeResult.stdout)) !== JSON.stringify({ args: nativeArgs, input: 'native input' })) {
-    fail(`packed OpenDesign bridge changed native arguments, stdio or exit code: ${nativeResult.stderr}`);
+  const removedDesign = spawnSync(
+    'pnpm',
+    ['exec', 'openxiangda', 'design', '--json'],
+    { cwd: root, env, encoding: 'utf8' }
+  );
+  if (removedDesign.status !== 2 || removedDesign.stderr) {
+    fail('removed design command did not use the stable command-not-found boundary');
+  }
+  if (JSON.parse(removedDesign.stdout).error?.code !== 'OPENXIANGDA_COMMAND_NOT_FOUND') {
+    fail('removed design command did not return command-not-found');
   }
   const injected = spawnSync(
     "pnpm",

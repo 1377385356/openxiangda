@@ -1,6 +1,6 @@
 # Default component UI
 
-状态补充：2026-09-11 的 [OpenDesign 接入决定](./2026-09-11-opendesign-capabilities.md)已取代本文对默认外观和后台设备范围的限制；平台导航、字段与权限行为约定仍有效。本文保留为历史证据。
+状态补充：2026-09-17 的 [Agent 原生视觉开发决定](./2026-09-17-agent-native-visual-development.md)是当前方向；本文关于删除全局外观状态的边界仍有效，固定默认外观和后台设备限制不再有效。本文保留为历史证据。
 
 Status: user explicitly requested removal on 2026-09-05.
 

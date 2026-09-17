@@ -1,6 +1,6 @@
 ---
 name: openxiangda-v2
-description: 使用 OpenXiangda 2.0 从模糊业务想法、已有资料或具体变更出发，通过对话发现模块、完成详细产品设计，由 AI 在工作区内调用 OpenDesign 原版 CLI/Skill/MCP 形成整体视觉与可运行原型，再开发、检查和交付应用。OpenDesign 客户端只作为可选预览器；维护 1.x 应用时使用对应的 1.x 技能。
+description: 使用 OpenXiangda 2.0 从模糊业务想法、已有资料或具体变更出发，通过对话发现模块、完成详细产品设计，由当前 AI Agent 按需用 Image 2.5 等图片能力形成视觉参考，直接实现真实页面并在浏览器修正，再检查和交付应用；维护 1.x 应用时使用对应的 1.x 技能。
 ---
 
 # OpenXiangda 2.0
@@ -9,7 +9,7 @@ description: 使用 OpenXiangda 2.0 从模糊业务想法、已有资料或具�
 
 每个业务应用默认先建立并保留标准管理后台。管理后台是应用骨架，承载资源模型、表单、数据列表、详情/编辑、权限和流程入口；AI 必须先从后台完成数据与契约，再实现用户端体验。不得因为制作用户端首页而删除、隐藏或替换后台 Shell、后台路由或显式菜单。
 
-OpenDesign 按页面归属使用：后台页面可以用 OpenDesign 优化布局、视觉和交互，但必须复用平台后台 Shell、导航、字段行为和权限；用户端 PC 与移动端可以分别使用 OpenDesign 的完整视觉和交互，并通过平台 runtime/Data API 读取后台数据。不得用单页 HTML、iframe 或独立假后台冒充管理后台，也不得在用户端复制后台权限和导航状态。
+Agent 按页面归属优化布局、视觉和交互：后台必须复用平台 Shell、导航、字段行为和权限；用户端 PC 与移动端按真实任务分别设计，并通过平台 runtime/Data API 读取后台数据。图片参考不定义交互、权限或验收。不得用图片、单页 HTML、iframe 或独立假后台冒充管理后台，也不得在用户端复制后台权限和导航状态。
 
 设计、实现和发布验收必须分别核验管理后台入口、表单、数据列表、流程入口，以及用户端 PC/移动端入口。缺少标准管理后台的应用结构不完整，不能发布。
 
@@ -21,19 +21,19 @@ OpenDesign 按页面归属使用：后台页面可以用 OpenDesign 优化布局
 
 遇到已有 V1 项目时，先核实 V2 能力覆盖、项目是否仍在测试阶段和迁移成本；能力满足、仍在测试阶段且代价可控时，优先建议转用 V2。先做只读评估，再按项目确认详细设计、数据/流程映射、测试和回滚；迁移实施前的原项目维护仍使用匹配的 V1 引擎。
 
-有界面影响的开发和改版默认读[OpenDesign 工作流](references/design-workflow.md)，由 AI 在当前 OpenXiangda 工作区读取相关 Skill，并通过 `openxiangda design cli` 或原版 stdio MCP 自动完成设计方向、原型、lint、修正和产物交接；不要求用户打开或操作 OpenDesign 客户端。客户端只用于用户主动查看或人工预览。随包方法仅作离线参考，保留字段与权限行为，旧默认皮肤或设备偏好可按任务重新设计。设计与原型资源使用 AppSpec assets 固定；不把结构检查或示例数据当成实际验收。
+有界面影响的开发和改版默认读[Agent 原生设计工作流](references/design-workflow.md)，由当前 AI 在同一个 OpenXiangda 工作区确定视觉方向、直接实现真实页面并在浏览器修正。需要建立新方向时，按需使用用户指定或当前可用的图片生成能力（例如 Image 2.5）形成少量参考；图片不可用或质量不足时直接使用设计约束、成熟组件和浏览器迭代继续开发。保留字段与权限行为，旧默认皮肤或设备偏好可按任务重新设计。实际采用的参考图、token 和必要原型使用 AppSpec assets 固定；不把图片、结构检查或示例数据当成实际验收。
 
 ## AI 自动设计与开发
 
-AI 接到新应用、页面或改版任务时，在同一个 OpenXiangda 工作区内执行以下闭环，不把设计任务转交给用户操作客户端：
+AI 接到新应用、页面或改版任务时，在同一个 OpenXiangda 工作区内执行以下闭环，不建立第二个设计项目或把实现转交给用户：
 
-1. 读取本 Skill、`references/design-workflow.md` 和任务相关的 OpenDesign Skill；从当前 AppSpec、平台契约和用户材料确定页面、角色、设备与验收目标。
-2. 用 `openxiangda design cli` 查询原版方向、模板、设计系统和插件；需要持续会话时启动 `openxiangda design cli mcp`，把原版设计工具接入当前 AI Agent。所有 CLI 参数、JSON、标准输入输出和取消都由原版处理。
-3. 在任务工作区创建或复用原版项目，向原版 Agent 提交任务上下文，生成可运行原型；AI 自己读取文件、运行 lint/预览检查并按结果修正。
-4. 将本轮实际采用的设计文件、token、原型和来源版本复制或导出到 `appspec/design`，然后继续生成 OpenXiangda 页面、字段和业务实现。设计产物与应用源码属于同一变更链，不要求用户在客户端中搬运文件。
-5. 运行本项目的 check、浏览器和真实角色验收；只有实际证据通过后才进入部署流程。原型、示例数据或客户端截图不能替代业务验收。
+1. 读取本 Skill 和 `references/design-workflow.md`，从当前 AppSpec、平台契约和用户材料确定页面、角色、设备、状态与验收目标。
+2. 已有设计足够时直接沿用；需要新视觉方向时，用 Image 2.5 等当前图片能力生成一至三个关键视图，筛选后只固定实际采用的参考。图片中不得包含秘密、真实个人数据或未授权素材。
+3. 从参考和产品约束提取布局、排版、颜色、间距与组件关系，直接使用真实 React、平台 Shell、Field Kit 和受支持组件实现；不逐像素照抄伪文字、虚构控件或图片中的错误交互。
+4. 在目标视口打开真实页面，操作空、加载、失败、拒绝、校验、提交、恢复、未保存输入、键盘与响应式路径，依据截图和交互发现修正代码。图片和 Agent 自评不能替代浏览器断言。
+5. 将本轮实际采用的参考图、设计说明、token 和必要原型记录到 `appspec/design`，运行本项目的 check、浏览器和真实角色验收；只有实际证据通过后才进入部署流程。
 
-如果原版 CLI 或 MCP 不可用，保留真实错误并停止依赖原版的设计步骤；可以继续不依赖设计运行时的只读分析，但不能伪造设计产物或把离线参考当成原版执行结果。
+图片能力不可用、失败或结果不合格时，记录事实并继续直接实现和浏览器迭代；不能伪造设计产物或通过结果。静态图不拥有应用结构、交互、权限、数据或验收事实。
 
 ## 定位当前版本
 
@@ -61,7 +61,7 @@ pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ skill install --force
 | 安装、登录、创建、连接开发 | [开始开发](references/getting-started.md) |
 | 源码仓库、换电脑、旧项目导入、提交推送与重试 | [应用源码](references/getting-started.md#应用源码)；先用 `source status` 读取实际绑定 |
 | 模糊想法、模块发现、PRD、权限与架构设计 | [产品设计](references/product-design.md)、[交互模式](references/interaction-patterns.md) |
-| 界面设计、改版、原型和视觉修正 | 先读[设计工作流](references/design-workflow.md)，使用 `openxiangda design open` 和 `design cli` 调用原版；[离线方法](references/opendesign-methods.md)与[设计 Craft](references/design-craft.md)仅作补充 |
+| 界面设计、改版、原型和视觉修正 | 先读[Agent 原生设计工作流](references/design-workflow.md)，按需用 Image 2.5 等当前图片能力生成参考，直接实现真实页面并完成浏览器闭环 |
 | 理解需求与选择能力 | [开发流程](references/development.md)、[架构](references/concepts.md) |
 | 写 openxiangda.config.ts 声明、避免首轮校验返工 | [声明速查](references/declarations-cheatsheet.md)；先扫规则表再动手 |
 | 模型、CRUD、字段与移动表单 | [业务模块](references/application-foundation.md)、[字段](references/field-components.md) |

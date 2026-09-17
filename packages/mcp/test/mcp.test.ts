@@ -327,14 +327,14 @@ test('MCP documentation reads bodies and shared operations keep target, promotio
     const index = await client.callTool({ name: 'docs_read', arguments: {} });
     const topics = (index.structuredContent as any).data.topics;
     assert.deepEqual(topics.map((topic: any) => topic.id), DOCUMENTATION_TOPICS.map(topic => topic.id));
-    for (const id of ['design-workflow', 'opendesign-methods', 'design-craft']) {
-      const topic = topics.find((entry: any) => entry.id === id);
-      assert.ok(topic, `design topic available: ${id}`);
-      const toolBody = await client.callTool({ name: 'docs_read', arguments: { topic: id } });
-      const resourceBody = await client.readResource({ uri: topic.uri });
-      assert.equal((toolBody.structuredContent as any).data.content, (resourceBody.contents[0] as { text: string }).text);
-      assert.match((toolBody.structuredContent as any).data.content, /OpenDesign/);
-    }
+    const designTopic = topics.find((entry: any) => entry.id === 'design-workflow');
+    assert.ok(designTopic, 'agent-native design topic available');
+    assert.equal(topics.some((entry: any) => ['opendesign-methods', 'design-craft'].includes(entry.id)), false);
+    const designBody = await client.callTool({ name: 'docs_read', arguments: { topic: 'design-workflow' } });
+    const designResource = await client.readResource({ uri: designTopic.uri });
+    assert.equal((designBody.structuredContent as any).data.content, (designResource.contents[0] as { text: string }).text);
+    assert.match((designBody.structuredContent as any).data.content, /Image 2\.5|图片生成/);
+    assert.doesNotMatch((designBody.structuredContent as any).data.content, /OpenDesign/);
     const testing = topics.find((topic: any) => topic.id === 'testing');
     const resource = await client.readResource({ uri: testing.uri });
     assert.match((resource.contents[0] as { text: string }).text, /真实|验收/);
