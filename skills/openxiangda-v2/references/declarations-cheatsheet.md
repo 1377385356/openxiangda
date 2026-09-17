@@ -194,10 +194,12 @@ export default defineOpenXiangdaApp({
       { code: 'app-user', name: '应用用户', capabilities: [requestCrud.read, requestCrud.create] },
       { code: 'admin', name: '管理员', capabilities: [requestCrud.read, requestCrud.create, requestCrud.update, requestCrud.delete] },
     ],
-    scopeDimensions: [], scopeSources: [], dataPolicies: [], authorizationTransitions: [],
+    scopeDimensions: [], scopeSources: [], roleMembershipSources: [], relationshipGrantSources: [], dataPolicies: [], authorizationTransitions: [],
   },
 });
 ```
+
+授权来源声明的字段路径（`userIdField` 等）支持 `field` / `field.value` / `field.snapshot.<子字段>` 三种投影形式；`roleMembershipSources`/`relationshipGrantSources` 只允许 `failureMode: 'strict'`，`scopeSources` 额外允许 `last_known_good`。`authorizationTransitions` 只记录移除（`removeRoleCodes`/`removeCapabilityCodes`）并要求 `fromAuthzDigest` 匹配原授权摘要；新增授权不需要 transition。
 
 `request-items` 不出现在 `crud` 里：子表行随 `requests` 表单的 `subtable` 字段写入（在 `requests.fields` 里补 `{ code: 'items', type: 'subtable', subtable: { resourceCode: 'request-items', foreignKey: 'requestId', orderField: 'sortOrder', maxRows: 20 } }`）。
 

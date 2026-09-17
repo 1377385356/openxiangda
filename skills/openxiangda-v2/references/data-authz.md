@@ -29,6 +29,41 @@ pnpm openxiangda check
 
 角色成员、维度授权和平台管理员由平台管理面维护，不属于应用开发 CLI。
 
+### 授权来源声明
+
+应用可以在 `authz` 中声明四类授权来源，让平台从业务数据投影出维度授权、应用角色成员和
+行级关系授权；投影事实由平台物化并按当前配置重算，应用不维护第二份权限状态。各声明的
+`userIdField` 等字段路径支持 `field`、`field.value` 和 `field.snapshot.<子字段>` 投影形式。
+
+- `scopeDimensions`：`{ code, name, resourceCode?, valueType?: 'string'|'uuid',
+  hierarchyMode?: 'flat'|'self_parent', valueSource?: { kind: 'native_resource',
+  resourceCode, labelField, enabledField? } }`。定义数据范围的取值域；`valueSource` 把
+  Native 资源绑定取值来源，选择器只展示平台按当前 membership 与 create/update 闭包返回的
+  值；`self_parent` 表示取值记录通过父引用形成层级。
+- `scopeSources`：`{ code, name, resourceCode, subject, grants, operationField?,
+  enabledField?, effectiveFromField?, effectiveToField?, failureMode }`。从业务资源行投影
+  维度授权：`subject` 为 `{ type: 'user', userIdField }` 或
+  `{ type: 'role_membership', userIdField, roleCode }`，`grants: [{ dimensionCode,
+  valueField, parentValueField? }]` 把行字段值授为对应维度；生效窗口和启用开关由字段控制；
+  `failureMode: 'strict'` 投影失败即判定失败，`'last_known_good'` 在源数据暂不可读时沿用
+  最近一次成功投影。
+- `roleMembershipSources`：`{ code, name, resourceCode, userIdField, roleCode,
+  enabledField?, effectiveFromField?, effectiveToField?, failureMode: 'strict' }`。从业务
+  数据行授予应用角色，例如"成员表"一行代表某人拥有某角色。
+- `relationshipGrantSources`：`{ code, name, resourceCode, subject, relationCode,
+  targetResourceCode, resourceIdField, operations, enabledField?, effectiveFromField?,
+  effectiveToField?, failureMode: 'strict' }`。通过业务关系授予目标资源上指定操作
+  （1–20 个）的行级授权，例如"订单负责人可更新该订单"。
+
+`authorizationTransitions: [{ fromAuthzDigest, removeRoleCodes?,
+removeCapabilityCodes?, reason }]` 记录授权合同的关键收缩：从 `fromAuthzDigest`
+（64 位十六进制）标识的授权版本移除角色或能力时，必须逐条声明并给出原因，平台在两个授权
+修订之间核对覆盖情况后才放行发布；它不用于新增授权。
+
+`authz.capabilities` 的完整形状是 `{ code, kind: 'backend' | 'ui', name, description? }`；
+`kind: 'ui'` 声明页面级能力，`kind: 'backend'` 声明后端操作能力并配合
+[按需后端](backend.md)的 `platformAccess` 使用。
+
 自定义 PC/移动页面需要维护当前应用角色时，使用
 `openxiangda/core` 的 `loadRoleManagementCatalog`、
 `listRoleMemberships`、`searchRoleManagementUsers`、成员 mutation 与

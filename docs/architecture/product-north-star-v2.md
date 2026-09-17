@@ -553,6 +553,11 @@ openxiangda deploy
 - 同一命令通过 `--env test` 或 `--env production` 选择；
 - 环境配置只有普通变量和必要 Secret，不建立复杂配置内核。
 
+> 当前交付状态（2026-09）：尚未落到本节目标形态。已发布契约仍是每个应用先部署测试环境
+> （`preproduction`），生产晋级必须复用成功的测试 DeploymentRun（见中文使用文档
+> `docs/delivery.md` 与 MCP `deploy_app`）；test 不是可选环境。本节描述的是基础架构重构
+> 后续批次的目标方向，落地时应同步更新交付契约文档。
+
 ### 13.3 版本和回滚
 
 - 每次成功部署产生一个 release；
@@ -745,7 +750,7 @@ AI 的标准使用顺序固定为：加载 `openxiangda-v2` → 读取工作区 
 | Secret 轮换和复杂审计 | 从 MVP 删除，只保留普通 Secret 注入 |
 | 身份切换状态 | 从 2.0 应用公开路径和活动数据库结构删除；不提供兼容分支 |
 | RelationshipGrant/scope projection | 作为平台内部权限事实保留；应用只看到当前用户角色并集与简单 row policy |
-| 强制 test→production 晋级 | 删除；test 变成可选环境 |
+| 强制 test→production 晋级 | 删除；test 变成可选环境（目标态；当前交付契约仍强制生产复用成功测试运行，见 13.2 现状标注） |
 | Changesets/release receipt | 只用于工具链自身，不进入应用日常发布 |
 | SDD/OpenSpec | 重型工作流不进入应用模板；默认轻量 AppSpec，普通检查可继续，测试发布和生产晋级按阶段核对必要记录 |
 | 63 个 CLI 命令 | 收敛到约 8 个日常命令，其他移到平台管理 UI 或删除 |

@@ -161,15 +161,22 @@ publicFilters: [{ field: 'enabled', operator: 'eq', value: true }]
 
 匿名创建需要平台生成的不可预测字段时，使用 `serverGeneratedFields`。这些字段不属于
 `fields`，调用方不能在草稿中写入；提交事务会由平台生成随机值并在提交回执的 `generated`
-对象中返回。`random-token` 只适用于不承载身份信息的核验令牌等用途：
+对象中返回。目前仅支持 `random-token` 一种 kind，只适用于不承载身份信息的核验令牌等用途：
 
 ```ts
 serverGeneratedFields: [{ field: 'qrToken', kind: 'random-token' }]
 ```
 
-需要跨资源复核预约窗口等业务不变量时，可声明 `schedule`，绑定两个只读公开策略和资源字段。
-平台会在最终创建事务中重新读取启用校区与规则，校验星期、日期范围、提前小时数和离散时段；页面端
-校验只能改善体验，不能替代这次服务端复核。
+需要跨资源复核预约窗口等业务不变量时，可声明 `schedule`。它把本策略资源上的
+`campusField`（校区）、`dateField`（日期）和 `timeField`（时间）绑定到另外两个**只读公开
+策略**（`campusPolicyCode`/`rulePolicyCode`，必须是同 `publicAccess` 中已声明的策略 code），
+并在规则策略暴露的资源上指定读取哪些字段：`ruleCampusField`（规则所属校区）、
+`ruleWeekdaysField`（开放星期）、`ruleOpenAtField`/`ruleCloseAtField`（每日开放窗口）、
+`ruleSlotMinutesField`（离散时段分钟数）、`ruleAdvanceHoursField`/`ruleAdvanceDaysField`
+（可提前预约的小时/天数上限），以及两个策略各自的启用开关
+`campusEnabledField`/`ruleEnabledField`。十四个键全部必填，字段 code 必须真实存在于
+对应资源。平台会在最终创建事务中重新读取启用的校区与规则，校验星期、日期范围、提前量
+和离散时段；页面端校验只能改善体验，不能替代这次服务端复核。
 
 子表中的文件引用会自动带上受控的 `resourceCode` 与父字段绑定；应用如需为附件生成下载地址，使用
 `fileContentUrl(fileId, disposition, variant, resourceCode, parentFieldCode)`，不要自行拼接文件路径。

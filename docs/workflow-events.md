@@ -153,6 +153,8 @@ Workflow 发起只接受 `{ resourceCode, id }` 形式的 `dataRef`，并要求�
 
 首期只支持 `approval`、`condition`、`end`，以及 `single`、`any`、`all`、`sequence` 审批模式。标准操作为提交、同意、拒绝、退回、重新提交、转交、委托、前/后加签、撤回、管理员改派、管理员终止和不改变流程状态的催办。
 
+除命令集之外，平台为实例管理员提供两个维护动作：`admin_jump`（把处于运行或退回状态的实例跳转到指定节点）与 `admin_delete`（删除实例，可选同时删除表单数据、是否触发自动化）。两者走平台管理端点的预览/执行两步流程并要求同源浏览器请求，不属于应用声明的工作流命令，也不占用 `commandToken` 命令合同。
+
 复杂业务状态机继续放在应用领域服务。不要把任意 JavaScript、Service Task、BPMN、通用长事务或业务记录复制进 Workflow。
 
 所有页面和消息动作必须来自后端 Workflow Surface 的 `operations[]`。前端、模板和渠道 Adapter 不自行推断操作权限。

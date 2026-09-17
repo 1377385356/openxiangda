@@ -189,6 +189,44 @@ await businessData.transaction({
 分派已接受后撤销角色，不会自动撤销历史分派；后续处理动作必须重新验证当前权限，
 由管理员重新分派。此规则应写入 AppSpec，并实测撤销先发生和分派先发生两种顺序。
 
+## AI 能力目录与 MCP Facade {#ai-catalog}
+
+编译器为每个应用生成不可变的 AI 能力目录：资源的标准 CRUD 面（query/get/create/update/delete，
+按 `generated` 与 `mutationOwner` 实际开放的操作）自动成为 `generatedCrud` 能力；`backend.operations[]`
+中带 `ai` 声明的操作成为 `customAction` 能力。目录摘要（`aiCatalogDigest`）随当前声明生成并进入契约；
+平台 `GET .../native/ai/catalog` 按当前用户角色与字段权限裁剪后返回。为操作声明 `ai` 即把它加入目录：
+
+```ts
+operations: [{
+  code: 'dispatch-repair', method: 'POST', path: '/dispatch', capability: dispatchCapability,
+  ai: {
+    name: '受理派单', description: '把报修单派给指定技师并写入派工记录',
+    risk: 'write', resources: ['repair-requests'],
+    sideEffects: ['更新报修单状态为处理中', '写入一条派工记录'],
+  },
+}],
+```
+
+`ai` 的规则：`name` 与 `description` 必填；`risk` 取 `read | write | destructive | external`，
+`read` 等价于 `method: 'GET'`，DELETE 方法只能是 `destructive` 或 `external`；`resources`
+引用 1–16 个已声明资源；`sideEffects` 最多 20 条——只读必须为零，写操作至少一条具体副作用；
+`concurrency` 可选 `none | revision`，`timeoutMs` 限 100–30000。
+
+宿主（平台 AI 网关）用该目录装配 MCP Facade，应用不自己实现协议：
+
+- **单应用 Facade**（`createApplicationAiMcpServer`）：每个能力一个工具，只读能力直接以
+  `capability.code` 命名执行；写能力命名为 `capability.code + '.preview'`，只生成预览不落库；
+  存在写能力时额外提供 `openxiangda.ai.confirm`（入参 `previewId`），在用户明确确认预览摘要后
+  由宿主重新校验身份、权限、版本和幂等性再执行。目录本体通过资源 `openxiangda://ai/catalog`
+  读取。
+- **平台聚合 Facade**（`createAggregatedAiMcpServer`）：跨应用统一工具面
+  `apps.search`、`resources.describe`、`records.query`、`records.get`、`records.create`、
+  `records.update`、`records.delete`、`actions.invoke`、`mutations.confirm`；聚合器只把工具
+  路由到所属应用的执行器，不合并权限、不产生第二个数据或授权边界。
+
+这套 Facade 服务平台侧 AI 入口，与应用工作区开发用的 MCP（见[MCP 参考](mcp.md)）
+是两组互不重叠的工具。
+
 ## 启动与依赖注入 {#bootstrap}
 
 ```ts
