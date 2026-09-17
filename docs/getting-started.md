@@ -220,7 +220,7 @@ pnpm exec openxiangda --mcp-stdio --cwd <应用绝对路径>
 
 ## 工作区登录态
 
-平台授权保存到所选工作区的 `.openxiangda/session.json`，CLI、MCP、刷新与退出共用该文件。不再读取或迁移旧全局会话；升级后需在每个项目重新登录。已有项目可在根目录或子目录运行 `openxiangda login --base-url <platform>`；`login --cwd <directory>` 和 `auth --cwd <directory>` 明确选定工作区。嵌套应用不会继承父应用会话。
+平台授权保存到所选工作区的 `.openxiangda/session.json`，CLI、MCP、刷新与退出共用该文件。不再读取或迁移旧全局会话；升级后需在每个项目重新登录。已有项目可在根目录或子目录运行 `openxiangda login --base-url <platform>`；`login --cwd <directory>` 和 `auth status --cwd <directory>` 明确选定工作区。首次 `create` 目标目录尚无会话时，按工作区发现规则向上继承父目录会话，并在 `.git` 仓库边界停止，不跨仓借用账号。
 
 创建应用前先执行 `openxiangda login --cwd my-app --base-url <platform>`，再执行 `openxiangda create my-app --base-url <platform>`。仅含受管登录文件的目录允许初始化，凭据会保留并自动加入 Git 忽略规则。
 

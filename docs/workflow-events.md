@@ -58,6 +58,46 @@ events: {
 外部 Webhook 和自定义代码仍使用已有签名、回执、重试及接收端幂等协议，按至少
 一次投递处理。轻量操作历史仍通过已有审计 API 查询，不依赖是否订阅了事件。
 
+## 定时与日期触发
+
+除订阅平台数据事件外，`events` 还能声明两类自有时程触发器；两者都只负责在到期时
+发出应用事件，业务效果仍由订阅（含 `execution: native-data`）或应用后端处理。
+
+`events.timers` 按 cron 周期发事件。`code` 为 kebab-case 且唯一；`eventType` 必须是
+`events.schemas` 已声明的应用事件；`cronExpression` 为六段 cron（秒 分 时 日 月 周），
+`timezone` 使用 IANA 名称（如 `Asia/Shanghai`），最短触发间隔为 60 秒；`misfirePolicy`
+目前仅支持 `coalesce_one`（错过合并为一次）；`payload` 是普通对象，必须完整满足所引用
+事件的 JSON Schema 且不超过 64 KiB。定时声明属于环境中立的 AppVersion，不写
+`environmentKey`；启用/暂停和下次触发时间由平台按环境管理。
+
+```ts
+events: {
+  schemas: [{
+    eventType: 'app.report.digest.v1',
+    dataSchemaVersion: '1',
+    jsonSchema: {
+      type: 'object', additionalProperties: false,
+      required: ['kind'], properties: { kind: { type: 'string' } },
+    },
+  }],
+  timers: [{
+    code: 'daily-digest',
+    eventType: 'app.report.digest.v1',
+    cronExpression: '0 0 9 * * *',
+    timezone: 'Asia/Shanghai',
+    payload: { kind: 'daily' },
+  }],
+},
+```
+
+`events.dateTriggers` 相对记录的 date/datetime 字段发事件：字段值加 `offset`（ISO-8601
+时长，十年内，如 `-PT1H` 表示提前一小时）到达时触发。适合到期提醒、超期升级等场景；
+同一条记录的字段更新后按新值重算。`code` 唯一，`eventType` 同样引用已声明应用事件。
+
+两类触发器各最多 100 条。事件 Schema 用 `events.schemas` 声明
+（`{ eventType, dataSchemaVersion, jsonSchema, sensitiveFields? }`），`eventType` 遵循
+`xxx.yyy.v1` 版本后缀模式；触发器只发事件，不直接写数据或调用流程。
+
 ## 标准详情与当前用户入口
 
 普通记录、流程记录、任务和实例复用同一详情框架。流程详情提供申请内容、审批历史和变更记录三个标签页；管理员在当前抽屉或页面中切换到普通表单编辑，直接保存并自动留下变更记录，审批结果保持不变。PC 子表在表格内编辑，父表提交时统一校验。

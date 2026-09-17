@@ -36,11 +36,18 @@ appspec/
 ```bash
 pnpm openxiangda spec init
 pnpm openxiangda spec new booking-window --title "限制可预约时段" --risk L2
+pnpm openxiangda spec add-capability CAP-REPAIR-REQUEST --title "报修申请能力" --resources repair-requests
 pnpm openxiangda spec context booking-window --json
 pnpm openxiangda spec check
 ```
 
-已有工作区优先用 `spec new` 生成本地记录。访谈尚未创建应用时，可在 `appspec/changes/active/<变更ID>.md` 手工建草稿：front matter 使用 `schema: openxiangda.appspec/change/v1`、与文件名一致的 `id`、`title`、`status: draft`、`currentSpec: pending`、适用的 `risk`，以及 `documents: [实际评审ID]`。不必为整理设计先创建远端应用。
+已有工作区优先用 `spec new` 生成本地记录。跨变更复用的能力规格用
+`spec add-capability <CAP-*> --title <名称>` 单独建立（可带 `--resources`/`--actions`
+逗号分隔引用），排他创建 `appspec/capabilities/` 下的规格文件，绝不覆盖同名文件；
+ChangeSpec 通过 `capabilities` 引用这些 CAP-* 规格。访谈尚未创建应用时，可在
+`appspec/changes/active/<变更ID>.md` 手工建草稿：front matter 使用
+`schema: openxiangda.appspec/change/v1`、与文件名一致的 `id`、`title`、`status: draft`、
+`currentSpec: pending`、适用的 `risk`，以及 `documents: [实际评审ID]`。不必为整理设计先创建远端应用。
 
 | 阶段或风险 | ChangeSpec 必需正文 |
 | --- | --- |

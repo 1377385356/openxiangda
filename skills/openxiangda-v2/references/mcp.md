@@ -139,7 +139,8 @@ MCP 使用项目锁定的根包；在客户端配置下列 stdio 启动参数，
       "minimum": 0,
       "maximum": 9007199254740991
     }
-  }
+  },
+  "additionalProperties": false
 }
 ```
 
@@ -169,7 +170,8 @@ MCP 使用项目锁定的根包；在客户端配置下列 stdio 启动参数，
   },
   "required": [
     "deploymentId"
-  ]
+  ],
+  "additionalProperties": false
 }
 ```
 
@@ -229,7 +231,8 @@ MCP 使用项目锁定的根包；在客户端配置下列 stdio 启动参数，
         "production"
       ]
     }
-  }
+  },
+  "additionalProperties": false
 }
 ```
 
@@ -265,7 +268,8 @@ MCP 使用项目锁定的根包；在客户端配置下列 stdio 启动参数，
   },
   "required": [
     "workflowCode"
-  ]
+  ],
+  "additionalProperties": false
 }
 ```
 
@@ -298,7 +302,8 @@ MCP 使用项目锁定的根包；在客户端配置下列 stdio 启动参数，
       "description": "仅本地完整检查；结果 validationScope=local，不核对现场条件",
       "type": "boolean"
     }
-  }
+  },
+  "additionalProperties": false
 }
 ```
 
@@ -523,7 +528,8 @@ MCP 使用项目锁定的根包；在客户端配置下列 stdio 启动参数，
       "description": "持续跟踪原运行至结束，最多 15 分钟",
       "type": "boolean"
     }
-  }
+  },
+  "additionalProperties": false
 }
 ```
 

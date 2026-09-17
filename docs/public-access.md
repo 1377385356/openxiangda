@@ -92,8 +92,11 @@ export default defineOpenXiangdaApp({
 
 附件、图片、多选等多值字段使用数组，存储不允许 null；这不意味着用户必须填写。上例照片可选，
 可以省略或提交空数组，不放入 `requiredFields`。如果业务确实要求上传，资源字段声明 `required: true`，
-公开策略也必须将它列入 `requiredFields`；提交时省略、null 或空数组都会被拒绝。策略可以提出更严格的
-必填要求，但不能漏掉资源已有的必填业务字段。缺失覆盖的诊断会指出字段和 `fields`/`requiredFields` 路径。
+公开策略也必须将它列入 `requiredFields`；提交时省略、null 或空数组都会被拒绝。`requiredFields` 必须覆盖
+资源已有的必填业务字段；比模型必填**更严**（列入模型未声明 `required: true` 的字段）时编译器给出警告
+`APP_CONFIG_ANONYMOUS_POLICY_REQUIRED_FIELDS_STRICTER_THAN_MODEL`：标准表单控件不为这些字段生成必填
+校验，空值提交会被服务端 `REQUIRED_FIELD_MISSING` 拒绝。需要前端必填校验时在模型字段上声明
+`required: true`，使模型必填与策略对齐。缺失覆盖的诊断会指出字段和 `fields`/`requiredFields` 路径。
 
 操作按页面实际需要最小声明：
 

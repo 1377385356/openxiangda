@@ -38,8 +38,8 @@
 | 列表、筛选、排序、分页接口 | `createNativeResourceClient` 的 `list`，服务端条件树与分页 | [前端数据访问](./frontend.md#data-access) |
 | 新增 / 编辑 / 删除接口 | 标准 CRUD 页面，或同一客户端的 `create` / `update` / `remove`（`expectedRevision` 乐观锁） | [前端数据访问](./frontend.md#data-access) |
 | 提交防重、幂等重试 | `transactNativeData` / 事务请求自带 `idempotencyKey` 幂等回执 | [前端数据访问](./frontend.md#data-access)、[按需后端](./backend.md#business-action) |
-| 时间窗、状态前置、指定人角色校验 | 平台事务守卫：`operation-time`、`record-assert`、`record-exists`、`role-member` | [按需后端](./backend.md#business-action) |
-| 统计报表数据 | Data API 服务端聚合 `batchAggregateNativeResources`（单个指标也用它），前端不拉全量求和 | [前端](./frontend.md#component-selection) |
+| 时间窗、状态前置、指定人角色校验 | 平台事务守卫：`operation-time`、`record-assert`、`record-exists`、`record-match`、`role-member`、`databaseNowAssertion` | [按需后端](./backend.md#business-action) |
+| 统计报表数据 | Data API 服务端聚合 `batchAggregateNativeResources`（单个指标也用它），前端不拉全量求和 | [前端](./frontend.md#data-access) |
 | 导入 / 导出 | 标准 CRUD 的 `import` / `export` 动作声明 | [业务模块](./application-foundation.md) |
 | 跨模型原子写、外部 API、硬件或第三方推送 | Nest 具名 operation + 平台事务，必要时事务内 `emitEvent` | [按需后端](./backend.md) |
 

@@ -365,7 +365,14 @@ renderer，但共享同一授权与命令生命周期。主决策操作固定在
 
 资源用 `mutationOwner: 'native' | 'action' | 'readonly' | 'workflow'` 声明 mutation owner，
 并可用 `generated.list/detail/create/update/delete` 精确选择标准 surface。非 Native owner
-不能生成或向应用角色授予 Native mutation；零可写业务字段不能开放 create/update。
+不能生成或向应用角色授予 Native mutation；零可写业务字段不能开放 create/update。运行时直接对
+非 Native owner 资源调用 Data API create/update/delete 会被平台以 409
+`OPENXIANGDA_NATIVE_DATA_CAPABILITY_MISSING` 拒绝——这不是权限配置错误，而是 mutation owner
+契约：`readonly` 资源只能读，`action` 资源的写入走 named operation，`workflow` 资源由流程命令推进。
+`workflow` 资源的数据修正不绕过流程：平台为应用超级管理员提供专门的 correction 入口（记录的
+correction-surface/corrections），保留审批快照；非 workflow 资源走该入口返回 409
+`WORKFLOW_OWNER_REQUIRED`，修正失败错误码为 `OPENXIANGDA_WORKFLOW_CORRECTION_<reason>` 族。
+排查这两类错误先核对资源的 `mutationOwner` 声明和期望的写入通道，不要试图用扩角色绕过。
 Workflow definition 用 `launch.mode` 声明 `standalone`、`custom-page`、`hidden-handoff` 或
 `work-center-only`；只有 `standalone` 可进入菜单，`hidden-handoff` 保留同一标准 PC/移动路由
 但不进菜单。缺省 submission 使用 compiler 生成的标准 process operation。action-owned 资源

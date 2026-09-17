@@ -41,6 +41,10 @@
 | workflow definition 必须显式 `launch`（编译器强制） | `definitions: [{ version: 1, definition, launch: { mode: 'standalone' } }]` |
 | option/user/department/resource-ref/cascade 字段投影进工作流事实是 { label, value } 对象，不能声明为标量；条件比较用 `<fact>.value` | `inputSchema.properties.urgency = { type: 'object', ... }` + `path: 'urgency.value'` |
 | `cascade.*` 的写入/比较值形状是**数组路径** | `category: [{ label: '办公设备', value: 'office' }]` |
+| 行级策略按**角色并集取最宽**：多角色身份的可见行 = 各角色可见行的并集；基线角色与限制性规则并存时，限制会被宽松规则覆盖（平台语义，不是缺陷） | 给某角色做行级收窄前，先确认其角色并集里没有更宽的 unrestricted 角色 |
+| `matchMode: 'AND'` 且多条规则面向**不同角色**时，非目标角色规则恒 false → 全拒（编译器会警告） | 多角色白名单用 `matchMode: 'OR'`；单条规则用 AND/OR 等价 |
+| `created_by`/`updated_by` 审计列支持 `current_user` 行规则（"只看自己创建"）；运行时 WITH CHECK 正向匹配依赖平台版本，使用前在目标平台实测确认 | `{ subject: 'current_user', field: 'created_by', roleCodes: ['app-user'] }` |
+| 匿名策略 `requiredFields` 比模型必填更严格时编译器**警告**：标准控件不为这些字段生成必填校验，空值提交会被服务端 `REQUIRED_FIELD_MISSING` 拒绝 | 在模型字段上声明 `required: true`，使模型必填与策略对齐 |
 | 平台保留能力（如 `app:<app>:directory:read`）**不能**在 `capabilities` 里重复声明，直接在角色中引用即可 | `const directoryRead = \`app:\${APP_CODE}:directory:read\`` → `roles: [{ code: 'admin', capabilities: [directoryRead] }]` |
 | 资源 CRUD 能力码用 `resourceCapabilityCodes(appCode, resourceCode)` 生成 | `const crud = resourceCapabilityCodes(APP_CODE, 'repair-requests')` → `capabilities: [crud.read, crud.create]` |
 | `authenticatedUserRoleCode` 是平台登录用户的基线角色 | `authz: { authenticatedUserRoleCode: 'app-user', ... }` |

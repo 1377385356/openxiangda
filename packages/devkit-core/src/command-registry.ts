@@ -47,5 +47,5 @@ export function renderDevkitCommandReference(
     command =>
       `| \`${executable} ${command.id.replaceAll(":", " ")}\` | ${{read:'只读', 'write-local':'本地写入', deploy:'远端变更'}[command.risk]} | ${command.summary} |`
   ).join("\n");
-  return `# ${title}\n\n> 从实际命令注册表生成。参数与示例使用 \`pnpm openxiangda <命令> --help\` 查看；修改注册表后重新生成本页。\n\n| 命令 | 影响 | 用途 |\n| --- | --- | --- |\n${rows}\n\n只验证时运行 check；部署测试环境时直接运行 deploy，它已包含检查、测试和构建。生产使用 deploy --environment production --from <测试运行ID>；加 --dry-run 只读预览。登录、创建和长期 dev 进程由 CLI 管理。\n`;
+  return `# ${title}\n\n> 从实际命令注册表生成。参数与示例使用 \`pnpm openxiangda <命令> --help\` 查看；修改注册表后重新生成本页。\n\n| 命令 | 影响 | 用途 |\n| --- | --- | --- |\n${rows}\n\n只验证时运行 check；部署测试环境时直接运行 deploy，它已包含检查、测试和构建。生产使用 deploy --environment production --from <测试运行ID>；加 --dry-run 只读预览。登录、创建和长期 dev 进程由 CLI 管理。\n\n上表为项目工作区的 Devkit 命令。统一入口在转发给引擎之前还自带 \`version\`、\`update check|install\`、\`changelog\`、\`migrate assess\` 和 \`support status|bootstrap|login|join\`，分别用于版本诊断、工具链升级、变更日志、V1 项目迁移评估和支持通道授权；它们不属于 Devkit 注册表，用法与示例见「开始开发」主题（getting-started）。\n`;
 }

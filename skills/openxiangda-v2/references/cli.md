@@ -26,3 +26,5 @@
 | `pnpm openxiangda spec` | 本地写入 | 维护需求、设计、变更与业务验收记录 |
 
 只验证时运行 check；部署测试环境时直接运行 deploy，它已包含检查、测试和构建。生产使用 deploy --environment production --from <测试运行ID>；加 --dry-run 只读预览。登录、创建和长期 dev 进程由 CLI 管理。
+
+上表为项目工作区的 Devkit 命令。统一入口在转发给引擎之前还自带 `version`、`update check|install`、`changelog`、`migrate assess` 和 `support status|bootstrap|login|join`，分别用于版本诊断、工具链升级、变更日志、V1 项目迁移评估和支持通道授权；它们不属于 Devkit 注册表，用法与示例见「开始开发」主题（getting-started）。
