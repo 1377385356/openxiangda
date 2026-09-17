@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.20.4",
+  "version": "2.21.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -67,13 +67,13 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.4.24",
+    "openxiangda-cli": "2.4.25",
     "openxiangda-contracts": "2.16.1",
-    "openxiangda-devkit-core": "2.18.3",
+    "openxiangda-devkit-core": "2.18.4",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.30",
+    "openxiangda-mcp": "2.0.31",
     "openxiangda-nest": "2.4.6",
-    "openxiangda-skill-kit": "2.3.3",
+    "openxiangda-skill-kit": "2.3.4",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -139,32 +139,37 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.20.4",
+    "version": "2.21.0",
     "status": "reviewed",
-    "title": "OpenXiangda 2.20.4：Native 事件审计来源契约修复",
-    "summary": "严格接收平台已有的 Native 数据事件操作来源审计信息，避免具名业务动作和封存数据修复事件在处理器执行前被错误拒绝。",
-    "newFeatures": [],
+    "title": "OpenXiangda 2.21.0：Agent 原生视觉开发流程",
+    "summary": "移除效果和维护成本不匹配的 OpenDesign 运行时、命令与桥接层，把界面设计收敛为同一 AI Agent 内完成的闭环：按需使用 Image 2.5 等图片能力生成少量视觉参考，直接实现真实 React 页面，并以浏览器交互证据完成修正和验收。",
+    "newFeatures": [
+      "提供 Agent 原生设计工作流：视觉方向、React 实现、浏览器修正和 AppSpec 记录在同一个 OpenXiangda 工作区内完成。",
+      "支持把 Image 2.5 或当前可用的图片生成能力作为可选视觉参考；图片不可用或质量不足时可直接基于设计约束、成熟组件和浏览器迭代继续开发。"
+    ],
     "fixes": [
-      "Native 事件 actor 显式支持有界 initiatedBy、businessAction 和 platformMaintenance；未知字段、凭据形字段和错误签名仍严格拒绝。"
+      "移除 openxiangda design 命令、OpenDesign CLI/桌面/MCP 桥接、环境变量、内置方法资源和上游同步流程，避免 AI 自动开发依赖额外设计项目。",
+      "统一文档、Skill 和工作区模板中的界面开发指导，同时保留 AppSpec 设计资产、平台 Shell、Field Kit、权限、Data API、主题边界和真实角色验收契约。"
     ],
     "affectedUsers": [
-      "使用 Nest 订阅具名业务动作或封存数据修复所产生 Native 数据事件的 OpenXiangda 2.0 应用。"
+      "使用 OpenXiangda 2.0 创建或改版管理后台、PC 用户页和移动端页面的 AI 开发会话与维护者。"
     ],
     "upgradeSteps": [
-      "将应用精确依赖升级到 openxiangda 2.20.4，按锁文件安装并刷新工作区技能，验证后部署测试环境。",
-      "需要恢复的既有失败事件应核对原投递后使用正式 replay API，不重复提交业务动作。"
+      "将应用精确依赖升级到 openxiangda 2.21.0，按锁文件安装，并执行 pnpm openxiangda skill install --force 刷新本地 Skill。",
+      "删除自动化脚本中对 openxiangda design 的调用；改为按 Agent 原生设计工作流直接实现真实页面并运行项目检查与浏览器验收。"
     ],
     "knownLimitations": [
-      "本修复不自动重放历史死信，也不替代应用真实角色、通知幂等和业务结果验收。"
+      "Image 2.5 等图片能力只生成参考，不定义交互、权限、业务数据或验收结论；最终结果仍以真实 React 页面和浏览器证据为准。",
+      "本版本不会自动迁移或删除应用工作区中既有的 AppSpec 设计资产。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
       "workspaceGenerations": "v2",
-      "platform": "匹配现有平台 Native 事件生产者，无需服务端或数据库迁移。",
+      "platform": "无需服务端、数据库或平台容器升级。",
       "v1": "V1 工作区与维护引擎不受影响。"
     },
-    "sha256": "b797b6e42ef1b54c312f40b14ecaea7064be9799d98bc9b200ed7dd88936e821",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.20.4"
+    "sha256": "18c7d0d0c508dec38ab1685d649103dcd820c75203d4a67eddd9c17aabc7651d",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.21.0"
   }
 }
