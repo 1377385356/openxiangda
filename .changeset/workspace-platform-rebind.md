@@ -2,6 +2,7 @@
 "openxiangda": patch
 "openxiangda-cli": minor
 "openxiangda-devkit-core": minor
+"openxiangda-skill-kit": patch
 ---
 
 新增 `openxiangda link` 命令：默认只读展示工作区平台绑定、登录态匹配与 git origin 归属；`link rebind --base-url <平台>` 提供此前缺失的受支持换绑路径，替代手改 `.openxiangda/link.json`。
