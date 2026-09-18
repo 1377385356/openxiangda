@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.21.0",
+  "version": "2.21.1",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -67,13 +67,13 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.4.25",
+    "openxiangda-cli": "2.5.0",
     "openxiangda-contracts": "2.16.1",
-    "openxiangda-devkit-core": "2.18.4",
+    "openxiangda-devkit-core": "2.19.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.31",
+    "openxiangda-mcp": "2.0.32",
     "openxiangda-nest": "2.4.6",
-    "openxiangda-skill-kit": "2.3.4",
+    "openxiangda-skill-kit": "2.3.5",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -139,28 +139,28 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.21.0",
+    "version": "2.21.1",
     "status": "reviewed",
-    "title": "OpenXiangda 2.21.0：Agent 原生视觉开发流程",
-    "summary": "移除效果和维护成本不匹配的 OpenDesign 运行时、命令与桥接层，把界面设计收敛为同一 AI Agent 内完成的闭环：按需使用 Image 2.5 等图片能力生成少量视觉参考，直接实现真实 React 页面，并以浏览器交互证据完成修正和验收。",
+    "title": "OpenXiangda 2.21.1：工作区平台绑定查看与显式换绑",
+    "summary": "新增 `openxiangda link` 命令：只读查看工作区绑定的平台、登录态匹配与 git origin 归属，并通过 `link rebind --base-url` 提供此前缺失的受支持换绑路径，替代手改 `.openxiangda/link.json`；同时补齐应用交接与跨站点发布的使用说明。",
     "newFeatures": [
-      "提供 Agent 原生设计工作流：视觉方向、React 实现、浏览器修正和 AppSpec 记录在同一个 OpenXiangda 工作区内完成。",
-      "支持把 Image 2.5 或当前可用的图片生成能力作为可选视觉参考；图片不可用或质量不足时可直接基于设计约束、成熟组件和浏览器迭代继续开发。"
+      "新增 `openxiangda link` 命令：默认只读展示工作区平台绑定（appCode、平台地址、环境列表）、当前登录态匹配情况和 git origin 归属提示。",
+      "新增 `openxiangda link rebind --base-url <平台>` 显式换绑：只改写本地绑定文件（appCode 取自工作区声明、地址归一化、清空旧站点环境列表），不调用平台 API、不修改 git remote、不迁移登录凭据；绑定属于其他应用时拒绝执行，目标与当前一致时幂等，换错可随时 rebind 回退。",
+      "文档新增「跨站点与平台换绑」章节，覆盖应用交接给其他开发者、A 站点开发发布到 B 站点、发布永久切换站点与回退的完整步骤。"
     ],
     "fixes": [
-      "移除 openxiangda design 命令、OpenDesign CLI/桌面/MCP 桥接、环境变量、内置方法资源和上游同步流程，避免 AI 自动开发依赖额外设计项目。",
-      "统一文档、Skill 和工作区模板中的界面开发指导，同时保留 AppSpec 设计资产、平台 Shell、Field Kit、权限、Data API、主题边界和真实角色验收契约。"
+      "`login`、平台会话校验与错误恢复目录中「平台不一致」的提示全部改为指向显式换绑命令，避免使用者手改 link 文件绕过检查。"
     ],
     "affectedUsers": [
-      "使用 OpenXiangda 2.0 创建或改版管理后台、PC 用户页和移动端页面的 AI 开发会话与维护者。"
+      "在多个站点之间迁移或发布 OpenXiangda 2.0 应用、以及把应用交接给其他开发者的开发与维护会话。"
     ],
     "upgradeSteps": [
-      "将应用精确依赖升级到 openxiangda 2.21.0，按锁文件安装，并执行 pnpm openxiangda skill install --force 刷新本地 Skill。",
-      "删除自动化脚本中对 openxiangda design 的调用；改为按 Agent 原生设计工作流直接实现真实页面并运行项目检查与浏览器验收。"
+      "将应用精确依赖升级到 openxiangda 2.21.1，按锁文件安装，并执行 `pnpm openxiangda skill install --force` 刷新本地 Skill。",
+      "需要切换发布站点时，先运行 `openxiangda link` 查看当前绑定，再按文档执行 `openxiangda link rebind --base-url <新平台>`，随后登录新平台并运行 `openxiangda create <目录> --base-url <新平台>` 幂等初始化。"
     ],
     "knownLimitations": [
-      "Image 2.5 等图片能力只生成参考，不定义交互、权限、业务数据或验收结论；最终结果仍以真实 React 页面和浏览器证据为准。",
-      "本版本不会自动迁移或删除应用工作区中既有的 AppSpec 设计资产。"
+      "换绑只切换本地绑定，不在新平台创建应用或源码仓库；新平台的应用初始化与源码接入仍由 create 与 source 命令完成。",
+      "站点之间流动的只有代码（git）；应用的数据库数据、发布历史与环境配置不会自动迁移。"
     ],
     "issues": [],
     "compatibility": {
@@ -169,7 +169,7 @@
       "platform": "无需服务端、数据库或平台容器升级。",
       "v1": "V1 工作区与维护引擎不受影响。"
     },
-    "sha256": "18c7d0d0c508dec38ab1685d649103dcd820c75203d4a67eddd9c17aabc7651d",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.21.0"
+    "sha256": "e28d527016694b6f104cefd131a4fce097a73499fa71977eabcc06540cb85c51",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.21.1"
   }
 }
