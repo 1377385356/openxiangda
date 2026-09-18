@@ -41,6 +41,7 @@ const expected = [
   "stop",
   "rollback",
   "login",
+  "link",
   "skill",
   "spec",
 ];

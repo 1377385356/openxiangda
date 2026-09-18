@@ -22,6 +22,7 @@
 | `pnpm openxiangda stop` | 远端变更 | 将应用环境缩容为零并保留数据 |
 | `pnpm openxiangda rollback` | 远端变更 | 回滚测试或生产环境 |
 | `pnpm openxiangda login` | 本地写入 | 通过平台浏览器授权登录 |
+| `pnpm openxiangda link` | 本地写入 | 查看平台绑定或显式换绑到其他站点 |
 | `pnpm openxiangda skill` | 本地写入 | 安装当前版本的 AI Skill |
 | `pnpm openxiangda spec` | 本地写入 | 维护需求、设计、变更与业务验收记录 |
 

@@ -79,7 +79,7 @@ pnpm openxiangda dev
 
 将两处示例平台地址替换为同一个目标地址。`create` 先核对目标与当前登录平台，再创建本地目录、安装依赖并初始化远端应用；新应用不会自动沿用文件中最后登录的站点。CI 使用原有成对的 `OPENXIANGDA_BASE_URL` 和 `OPENXIANGDA_TOKEN` 时，可以由该显式地址指定目标。
 
-初始化中断后重试同一命令；已有目录会核对原平台绑定，不能通过 `create` 改绑到其他站点。地址不一致时先检查目标并登录正确的平台，不修改 link 文件绕过检查，也不要使用内部 provision 接口另建应用。创建操作应在用户要求创建应用的范围内执行。
+初始化中断后重试同一命令；已有目录会核对原平台绑定，不能通过 `create` 改绑到其他站点。地址不一致时先检查目标并登录正确的平台；确需把工作区切换到其他站点时，使用 `openxiangda link rebind --base-url <新平台>` 显式换绑（见[跨站点与换绑](#cross-site)），不手改 link 文件绕过检查，也不要使用内部 provision 接口另建应用。创建操作应在用户要求创建应用的范围内执行。
 
 进入项目后使用 `pnpm openxiangda`，由项目依赖和锁文件决定版本。查看使用资料运行 `pnpm openxiangda docs`；查看单一主题运行 `pnpm openxiangda docs frontend`。安装到其他 AI 工具时使用 `skill install --destination <Skill根目录>`。
 
@@ -145,6 +145,7 @@ pnpm openxiangda source push -m "完成本轮应用开发"
 | --- | --- |
 | 新应用 | 正常执行 `create`，平台启用后自动建仓、配置凭据和首次推送 |
 | 已有项目首次交接给另一个 AI | 先读 `context --json` 和 `source status`，沿用项目绑定与版本 |
+| 交接给另一位开发者 | 平台管理员先把对方加为该应用的应用管理员；对方执行 `source clone <仓库URL> <新目录> --base-url <平台>`，克隆后在同目录 `login --base-url <平台>` 继续开发 |
 | 换电脑或初始化中断 | 在应用目录执行 `pnpm openxiangda source setup`；已有提交及未提交修改会保留 |
 | 从个人远端迁入 | 明确迁入后运行 `source setup --import`，原远端保留为 `external-source` |
 | 本轮修改完成 | 检查差异后运行 `source push -m "AppSpec: <本轮变更ID> 变更说明"`；多个任务共享目录时先精确提交本轮文件，再不带 `-m` 推送 |
@@ -200,6 +201,32 @@ pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ source clone <仓库URL> <新目录
 使用 CLI 时无需自行调用凭据 API；支持工具不得记录其响应或另建身份体系。
 未登记的外部仓库先在原工作区执行 `source setup --import`，再使用平台返回的仓库 URL。
 
+## 跨站点与平台换绑 {#cross-site}
+
+源码仓库、应用与数据都归属各自站点：A 站点的平台只认 A 站点登记的仓库绑定，
+发布校验要求当前工作区 `origin` 与该站点绑定仓库一致。站点之间流动的是代码（git），
+应用的数据库数据、发布历史与环境配置不会自动迁移。
+
+```bash
+openxiangda link                       # 查看当前绑定、登录态匹配与 origin 归属
+openxiangda link rebind --base-url https://platform-b.example.com   # 显式换绑
+```
+
+一个工作区同一时间只绑定一个平台；换绑只改写 `.openxiangda/link.json`
+（清空旧站点环境列表），不修改 git remote、不迁移登录凭据，也不在远端产生变更。
+换绑后必须重新登录，`create` 会在新平台幂等初始化同 code 应用。
+
+| 场景 | 执行方式 |
+| --- | --- |
+| 在 A 开发、也要发布到 B | 在 B 站点创建同 code 应用并由其管理员启用源码；`source clone <B仓库URL> <B目录> --base-url <B平台>` 得到第二个检出；同步代码用 `git remote add external-source <A仓库URL>` 后 fetch/merge，再 `source push`；在 B 目录执行 `deploy` |
+| 后续发布永久切换到 B | 在原目录依次执行 `link rebind --base-url <B平台>` → `login --base-url <B平台>` → `create <目录> --base-url <B平台>`（幂等初始化）→ `source status` 核对 origin；如报告 `APPLICATION_SOURCE_ORIGIN_CONFLICT`，用 `source setup --import` 把 origin 切到 B 仓库（原 origin 保留为 `external-source`） |
+| 换绑后想回退 | `link rebind --base-url <原平台>` 即恢复；link.json 随仓库提交时也可用 git 还原该文件 |
+| 换绑对象不是同一应用 | 拒绝执行（`OPENXIANGDA_LINK_APP_CODE_CONFLICT`）；请在对应应用的目录操作 |
+
+换绑命令对地址做与 `login` 相同的归一化校验；地址拼错时失败会在下一步登录或
+幂等初始化处暴露，随时可以再次 rebind 修正。详细决策记录见仓库
+`docs/architecture-decisions/workspace-platform-rebind.md`。
+
 ## 检查与交付 {#delivery}
 
 只检查时运行 `pnpm openxiangda check`。需要部署测试环境时直接运行 `pnpm openxiangda deploy`，它已包含检查、测试和构建；无需再连续重复运行全部脚本。
@@ -225,3 +252,8 @@ pnpm exec openxiangda --mcp-stdio --cwd <应用绝对路径>
 创建应用前先执行 `openxiangda login --cwd my-app --base-url <platform>`，再执行 `openxiangda create my-app --base-url <platform>`。仅含受管登录文件的目录允许初始化，凭据会保留并自动加入 Git 忽略规则。
 
 本地文件优先；仅在文件缺失时使用成对的 `OPENXIANGDA_BASE_URL` 与 `OPENXIANGDA_TOKEN` CI 环境凭据。损坏、过期或平台不符的文件不会触发其他身份回退。请勿提交或打包登录文件。钉钉支持由 DWS 管理自己的授权，不与平台会话混用。
+
+查看当前绑定与登录态匹配情况运行 `openxiangda link`；登录地址与绑定平台不一致时
+`login` 会拒绝执行（`OPENXIANGDA_PLATFORM_SESSION_MISMATCH`），防止凭据跨平台发送。
+需要切换站点时先运行 `openxiangda link rebind --base-url <新平台>`，再登录，见
+[跨站点与平台换绑](#cross-site)。

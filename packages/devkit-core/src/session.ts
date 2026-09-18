@@ -353,7 +353,7 @@ export class OpenXiangdaDeveloperSession {
     if (linked !== this.session.baseUrl) {
       throw new DeveloperSessionError(
         "OPENXIANGDA_PLATFORM_SESSION_MISMATCH",
-        `工作区绑定平台 ${linked} 与当前登录平台 ${this.session.baseUrl} 不一致；为防止凭据跨平台发送，请切换登录会话或重新绑定工作区`
+        `工作区绑定平台 ${linked} 与当前登录平台 ${this.session.baseUrl} 不一致；为防止凭据跨平台发送，请登录绑定的平台，或先运行 openxiangda link rebind --base-url <platform> 显式换绑`
       );
     }
   }

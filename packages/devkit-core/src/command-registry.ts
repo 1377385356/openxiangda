@@ -27,6 +27,7 @@ export const DEVKIT_COMMANDS = [
   { id: "stop", operation: "environment.stop", summary: "将应用环境缩容为零并保留数据", risk: "deploy" },
   { id: "rollback", operation: "rollback", summary: "回滚测试或生产环境", risk: "deploy", studioJsonEvents: true },
   { id: "login", operation: "login", summary: "通过平台浏览器授权登录", risk: "write-local" },
+  { id: "link", operation: "app.link", summary: "查看平台绑定或显式换绑到其他站点", risk: "write-local" },
   { id: "skill", operation: "skill install", summary: "安装当前版本的 AI Skill", risk: "write-local" },
   { id: "spec", operation: "spec", summary: "维护需求、设计、变更与业务验收记录", risk: "write-local" },
 ] as const satisfies readonly DevkitCommandDefinition[];

@@ -27,7 +27,7 @@ export default class Login extends OpenXiangdaCommand {
     if (existsSync(linkPath)) {
       const link = JSON.parse(readFileSync(linkPath, 'utf8'));
       if (link.baseUrl && normalizePlatformBaseUrl(link.baseUrl) !== normalizePlatformBaseUrl(flags['base-url'])) {
-        throw new Error('OPENXIANGDA_PLATFORM_SESSION_MISMATCH: 登录平台与工作区绑定不一致，请使用该工作区的原平台地址');
+        throw new Error('OPENXIANGDA_PLATFORM_SESSION_MISMATCH: 登录平台与工作区绑定不一致；请使用该工作区的原平台地址，或先运行 openxiangda link rebind --base-url <platform> 显式换绑');
       }
     }
     const result = await authorizeDeveloperSession({

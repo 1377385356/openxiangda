@@ -230,6 +230,7 @@ export abstract class OpenXiangdaCommand extends Command {
       stop: "openxiangda stop",
       rollback: "openxiangda rollback --to <app-version-id>",
       login: "openxiangda login --base-url <platform>",
+      link: "openxiangda link",
       spec: "openxiangda spec context --json",
     };
     const currentId = this.id;

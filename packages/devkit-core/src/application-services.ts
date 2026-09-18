@@ -61,6 +61,7 @@ import {
   type UpdateOAuthClientInput,
 } from "./control-plane-client.js";
 import {
+  DeveloperSessionError,
   normalizePlatformBaseUrl,
   OpenXiangdaDeveloperSession,
   workspaceSessionPath,
@@ -1199,6 +1200,265 @@ export class OpenXiangdaApplicationServices {
     };
     writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`, "utf8");
     return this.ok("app.link", workspace.context.workspace, { path, ...value });
+  }
+
+  async linkStatus(root?: string) {
+    const workspace = await this.workspace(root);
+    const existing = this.readLinkFile(workspace.root);
+    const session = await this.linkSession(workspace.root);
+    const origin = git(workspace.root, ["config", "--get", "remote.origin.url"]);
+    const data = {
+      path: ".openxiangda/link.json",
+      appCode: existing.value?.appCode || workspace.config.app.code,
+      baseUrl: existing.value?.baseUrl || null,
+      environments: Array.isArray(existing.value?.environments)
+        ? existing.value.environments
+        : [],
+      session,
+      git: { origin: origin || null },
+    };
+    const diagnostics: Diagnostic[] = [];
+    if (!existing.value) {
+      diagnostics.push(
+        this.diagnostic(
+          "OPENXIANGDA_CONNECTED_LINK_REQUIRED",
+          "当前工作区尚未绑定 OpenXiangda 平台",
+          data.path,
+          "运行 openxiangda create <directory> --base-url <platform>"
+        )
+      );
+      return this.result("app.link.status", workspace.context.workspace, data, diagnostics);
+    }
+    if (
+      existing.value.schemaVersion !== 2 ||
+      existing.value.appCode !== workspace.config.app.code ||
+      !existing.value.baseUrl
+    ) {
+      diagnostics.push(
+        this.diagnostic(
+          "OPENXIANGDA_CONNECTED_LINK_INVALID",
+          "当前工作区的平台绑定无效或属于另一个应用",
+          data.path,
+          "运行 openxiangda create <directory> --base-url <platform> 重建绑定"
+        )
+      );
+      return this.result("app.link.status", workspace.context.workspace, data, diagnostics);
+    }
+    const baseUrl = normalizePlatformBaseUrl(existing.value.baseUrl);
+    data.baseUrl = baseUrl;
+    if (session.state === "invalid") {
+      diagnostics.push(
+        this.diagnostic(
+          "OPENXIANGDA_SESSION_INVALID",
+          "工作区登录态文件无效",
+          ".openxiangda/session.json",
+          `重新登录绑定的平台：openxiangda login --base-url ${baseUrl}`,
+          undefined,
+          "warning"
+        )
+      );
+    } else if (session.baseUrl && session.baseUrl !== baseUrl) {
+      diagnostics.push(
+        this.diagnostic(
+          "OPENXIANGDA_PLATFORM_SESSION_MISMATCH",
+          "工作区绑定平台与当前登录平台不一致",
+          ".openxiangda/session.json",
+          `登录绑定的平台（openxiangda login --base-url ${baseUrl}），或运行 openxiangda link rebind --base-url <platform> 显式换绑`,
+          undefined,
+          "warning"
+        )
+      );
+    } else if (session.state === "missing") {
+      diagnostics.push(
+        this.diagnostic(
+          "OPENXIANGDA_CONNECTED_LOGIN_REQUIRED",
+          "尚未登录工作区绑定的平台",
+          ".openxiangda/session.json",
+          `运行 openxiangda login --base-url ${baseUrl}`,
+          undefined,
+          "warning"
+        )
+      );
+    }
+    this.pushForeignOriginDiagnostic(diagnostics, origin, baseUrl);
+    return this.result("app.link.status", workspace.context.workspace, data, diagnostics);
+  }
+
+  async rebindLink(root: string | undefined, input: { baseUrl: string }) {
+    const workspace = await this.workspace(root);
+    const path = join(workspace.root, ".openxiangda", "link.json");
+    const target = normalizePlatformBaseUrl(input.baseUrl);
+    const existing = this.readLinkFile(workspace.root);
+    if (
+      existing.value?.appCode &&
+      existing.value.appCode !== workspace.config.app.code
+    ) {
+      throw new Error(
+        "OPENXIANGDA_LINK_APP_CODE_CONFLICT: 当前目录的平台绑定属于另一个应用；请在对应应用的目录执行换绑"
+      );
+    }
+    let previousBaseUrl: string | null = null;
+    if (existing.value?.baseUrl) {
+      try {
+        previousBaseUrl = normalizePlatformBaseUrl(existing.value.baseUrl);
+      } catch {
+        previousBaseUrl = null;
+      }
+    }
+    if (previousBaseUrl === target) {
+      const session = await this.linkSession(workspace.root);
+      const nextActions =
+        session.baseUrl === target
+          ? []
+          : [
+              {
+                code: "login",
+                label: "登录绑定平台",
+                command: `openxiangda login --base-url ${target}`,
+              },
+            ];
+      return this.ok(
+        "app.link.rebind",
+        workspace.context.workspace,
+        {
+          path: ".openxiangda/link.json",
+          appCode: workspace.config.app.code,
+          baseUrl: target,
+          previousBaseUrl,
+          changed: false,
+        },
+        nextActions
+      );
+    }
+    const session = await this.linkSession(workspace.root);
+    const diagnostics: Diagnostic[] = [];
+    if (session.baseUrl && session.baseUrl !== target) {
+      diagnostics.push(
+        this.diagnostic(
+          "OPENXIANGDA_LINK_SESSION_STALE",
+          "原平台登录态在换绑后不可用",
+          ".openxiangda/session.json",
+          `运行 openxiangda login --base-url ${target} 登录新平台`,
+          undefined,
+          "warning"
+        )
+      );
+    }
+    const origin = git(workspace.root, ["config", "--get", "remote.origin.url"]);
+    this.pushForeignOriginDiagnostic(diagnostics, origin, target);
+    mkdirSync(dirname(path), { recursive: true });
+    const value = {
+      schemaVersion: 2 as const,
+      appCode: workspace.config.app.code,
+      baseUrl: target,
+      environments: [] as const,
+    };
+    writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+    return this.result(
+      "app.link.rebind",
+      workspace.context.workspace,
+      {
+        path: ".openxiangda/link.json",
+        appCode: value.appCode,
+        baseUrl: target,
+        previousBaseUrl,
+        changed: true,
+      },
+      diagnostics,
+      [
+        {
+          code: "login",
+          label: "登录新平台",
+          command: `openxiangda login --base-url ${target}`,
+        },
+        {
+          code: "create",
+          label: "在新平台幂等初始化应用",
+          command: `openxiangda create <directory> --base-url ${target}`,
+        },
+      ]
+    );
+  }
+
+  private async linkSession(root: string) {
+    try {
+      const session = await OpenXiangdaDeveloperSession.load({
+        sessionPath: workspaceSessionPath(root),
+      });
+      if (!session)
+        return { state: "missing" as const, baseUrl: null, matchesLinkedPlatform: null };
+      return {
+        state:
+          session.summary().source === "environment"
+            ? ("environment" as const)
+            : ("file" as const),
+        baseUrl: session.baseUrl,
+        matchesLinkedPlatform: null,
+      };
+    } catch (error) {
+      if (error instanceof DeveloperSessionError) {
+        return { state: "invalid" as const, baseUrl: null, matchesLinkedPlatform: null };
+      }
+      throw error;
+    }
+  }
+
+  private pushForeignOriginDiagnostic(
+    diagnostics: Diagnostic[],
+    origin: string,
+    baseUrl: string
+  ) {
+    if (!origin) return;
+    let originHost: string | null = null;
+    try {
+      originHost = new URL(origin).origin;
+    } catch {
+      return;
+    }
+    let platformHost: string;
+    try {
+      platformHost = new URL(baseUrl).origin;
+    } catch {
+      return;
+    }
+    if (originHost && originHost !== platformHost) {
+      diagnostics.push(
+        this.diagnostic(
+          "OPENXIANGDA_LINK_ORIGIN_FOREIGN",
+          "当前 git origin 可能属于原平台或外部仓库",
+          ".git/config",
+          "登录新平台后运行 openxiangda source status 核对；如报告 APPLICATION_SOURCE_ORIGIN_CONFLICT，使用 openxiangda source setup --import 切换到新平台仓库",
+          undefined,
+          "warning"
+        )
+      );
+    }
+  }
+
+  private readLinkFile(root: string): {
+    value: {
+      schemaVersion?: number;
+      appCode?: string;
+      baseUrl?: string;
+      environments?: unknown;
+    } | null;
+  } {
+    const path = join(root, ".openxiangda", "link.json");
+    if (!existsSync(path)) return { value: null };
+    try {
+      const parsed = JSON.parse(readFileSync(path, "utf8")) as {
+        schemaVersion?: number;
+        appCode?: string;
+        baseUrl?: string;
+        environments?: unknown;
+      };
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        return { value: null };
+      }
+      return { value: parsed };
+    } catch {
+      return { value: null };
+    }
   }
 
   async generate(input: GenerateOptions = {}) {
@@ -2886,12 +3146,13 @@ export class OpenXiangdaApplicationServices {
     message: string,
     path: string,
     remediation?: string,
-    details?: Record<string, unknown>
+    details?: Record<string, unknown>,
+    severity: "info" | "warning" | "error" = "error"
   ): Diagnostic {
     return {
       schemaVersion: SCHEMA_VERSIONS.diagnostic,
       code,
-      severity: "error",
+      severity,
       message,
       path,
       retryable: false,
@@ -2946,10 +3207,11 @@ export class OpenXiangdaApplicationServices {
       },
       OPENXIANGDA_PLATFORM_SESSION_MISMATCH: {
         message: "工作区绑定平台与当前登录平台不一致",
-        remediation: "切换登录平台，或明确重新绑定当前工作区",
-        actionCode: "login",
-        actionLabel: "切换登录平台",
-        command: "openxiangda login --base-url <linked-platform>",
+        remediation:
+          "登录工作区绑定的平台；确需切换站点时先运行 openxiangda link rebind --base-url <platform>",
+        actionCode: "link.rebind",
+        actionLabel: "查看或换绑平台",
+        command: "openxiangda link",
         path: ".openxiangda/link.json",
       },
       OPENXIANGDA_CONNECTED_ACTIVE_ENVIRONMENT_REQUIRED: {
