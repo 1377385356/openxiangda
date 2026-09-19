@@ -150,7 +150,7 @@ importers:
         specifier: 0.3.7
         version: 0.3.7
       openxiangda-cli:
-        specifier: 2.5.1
+        specifier: 2.5.2
         version: link:../cli
       openxiangda-contracts:
         specifier: 2.16.2

@@ -3,6 +3,37 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.21.3",
+      "status": "reviewed",
+      "title": "OpenXiangda 2.21.3：移动运行时全局机制初始化",
+      "summary": "由 OpenXiangda React 运行时在移动组件加载前初始化 Ant Design Mobile 所需的 px 测量与触摸激活机制，消除业务应用无法跨包导入 antd-mobile/es/global 时的启动告警，并继续保持视觉样式的作用域隔离。",
+      "newFeatures": [],
+      "fixes": [
+        "openxiangda/react 会在 Ant Design Mobile 组件求值前安装唯一且最小的 px tester 样式和 touchstart 机制，不再要求业务应用直接依赖 antd-mobile。",
+        "初始化只包含上游运行时机械规则，不引入 html、body、链接或按钮的全局视觉重置；移动默认样式仍由 openxiangda/react/styles.css 的作用域文件提供。"
+      ],
+      "affectedUsers": [
+        "使用 OpenXiangda 2.0 React 运行时或标准移动字段，并在开发控制台看到 antd-mobile Global px tester 告警的应用开发与维护会话。"
+      ],
+      "upgradeSteps": [
+        "将应用对 openxiangda 的精确依赖升级到 2.21.3，并按锁文件重新安装依赖。",
+        "保留现有 openxiangda/react/styles.css 导入后重新启动开发服务器；业务应用不应新增 antd-mobile 或 antd-mobile/es/global 依赖。"
+      ],
+      "knownLimitations": [
+        "本修复只拥有 Ant Design Mobile 的运行时测量与触摸机制，不改变应用主题、移动页面布局或业务组件样式。"
+      ],
+      "issues": [],
+      "compatibility": {
+        "node": ">=24",
+        "workspaceGenerations": "v2",
+        "platform": "无需 platform-server 配套升级；浏览器应用需使用本版本的 openxiangda/react。",
+        "v1": "V1 工作区与维护引擎不受影响。"
+      },
+      "sha256": "61702a65c0e2780fda10622a33023c7123a695be39f0ac2379097c21bad19381",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.21.3"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.21.2",
       "status": "reviewed",
       "title": "OpenXiangda 2.21.2：后端镜像分片 gzip 传输",
