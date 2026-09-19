@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.22.0",
+  "status": "reviewed",
+  "title": "OpenXiangda 2.22.0：受控主体读取、操作与外部文件意图",
+  "summary": "为需要平台统一授权的业务详情页补齐三类通用能力：按父记录授权的限界关系读取、带强制幂等回执的受控后端操作，以及五分钟有效期、最大 100 MiB 的外部文件预览与下载意图；应用只声明稳定合同，身份、授权、审计与资源边界继续由平台统一拥有。",
+  "newFeatures": [
+    "应用可声明 subject read surface，由平台先证明当前用户对父记录的读取权，再按 AppVersion 固化的关系字段、排序与行数上限返回只读聚合；浏览器调用方不能自行扩大子记录查询范围。",
+    "应用可声明 browser operation catalog 与类型化执行回执；controlled 操作必须绑定父 subject、携带幂等键，并按不可变请求与响应 schema 执行，只返回声明过的刷新目标。",
+    "应用可声明 external-file intent，并通过浏览器 SDK 获取 opaque 的预览或下载 URL；意图默认五分钟过期、单文件最大 100 MiB，平台以限界流式代理隐藏上游定位信息。"
+  ],
+  "fixes": [],
+  "affectedUsers": [
+    "需要在 OpenXiangda 2.0 详情页中安全读取关联记录、触发有外部副作用的应用后端操作，或预览与下载外部系统文件的应用开发与平台维护会话。"
+  ],
+  "upgradeSteps": [
+    "将应用对 openxiangda 的精确依赖升级到 2.22.0，按锁文件重新安装依赖，并执行 pnpm openxiangda skill install --force 刷新本地 Skill。",
+    "同步部署与本版本 openxiangda-contracts 完全一致的平台服务版本，并通过打包 SQL migration runner 应用新增合同；在平台完成 allow/deny、幂等重放、过期与会话变化拒绝、真实文件预览/下载及日志脱敏验收前，不要启用应用入口。",
+    "在 AppSpec 和应用声明中显式列出 subject read surface、browser operation 与 external-file intent；不要由浏览器传入任意字段、排序、过滤、上游 URL 或长期下载凭据。"
+  ],
+  "knownLimitations": [
+    "这些能力需要配套平台服务和数据库 migration；仅升级 npm 包不会使远端环境自动具备运行时能力。",
+    "外部文件 intent 只代理已声明的应用后端文件源，不提供通用 URL 抓取、对象存储直签或超过 100 MiB 的传输通道。",
+    "受控操作的幂等回执防止同一意图被重复执行，但应用后端仍必须为每个外部副作用实现稳定的终态查询与供应商级幂等边界。"
+  ],
+  "issues": [],
+  "compatibility": {
+    "node": ">=24",
+    "workspaceGenerations": "v2",
+    "platform": "必须同步升级到声明相同 openxiangda-contracts 版本的平台服务，并通过打包 SQL migration runner 应用本版本 migration。",
+    "v1": "V1 工作区与维护引擎不受影响。"
+  }
+}
