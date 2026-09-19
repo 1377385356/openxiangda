@@ -732,6 +732,108 @@ test('rejects invalid admin navigation and malformed or unclosed global access',
   );
 });
 
+test('matches workflow snapshot fact schemas to their stored value shapes', () => {
+  const workflow = {
+    schemaVersion: SCHEMA_VERSIONS.workflowDefinition,
+    code: 'owners-approval',
+    title: '负责人审批',
+    acceptedCommandDeactivationPolicy: 'finish-pinned' as const,
+    subject: {
+      resourceCode: 'workflow-records',
+      factProjection: { owners: 'owners' },
+    },
+    startAt: 'done',
+    inputSchema: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        owners: { type: 'array', items: { type: 'object' } },
+      },
+    },
+    nodes: {
+      done: {
+        id: 'done',
+        kind: 'end' as const,
+        title: '完成',
+        outcome: 'approved',
+      },
+    },
+  };
+  const app = defineOpenXiangdaApp({
+    ...sourceDeclaration,
+    data: {
+      ...sourceDeclaration.data,
+      resources: [
+        ...sourceDeclaration.data.resources,
+        {
+          code: 'workflow-records',
+          name: 'Workflow records',
+          fields: [
+            { code: 'owners', type: 'user.multiple', label: 'Owners' },
+          ],
+        },
+      ],
+    },
+    workflows: {
+      definitions: [{ version: 1, definition: workflow, launch: { mode: 'standalone' } }],
+      bindings: [],
+      activations: [],
+    },
+  });
+  assert.doesNotThrow(() => compileApplicationSources(app));
+
+  const scalar = structuredClone(app) as any;
+  scalar.workflows.definitions[0].definition.inputSchema.properties.owners = {
+    type: 'object',
+  };
+  assert.ok(
+    validateAppConfig(scalar).some(
+      item =>
+        item.code === 'APP_CONFIG_WORKFLOW_FACT_PROJECTION_SHAPE_INVALID' &&
+        item.path ===
+          'workflows.definitions[0].definition.inputSchema.properties.owners',
+    ),
+  );
+});
+
+test('rejects workflow identifiers that the runtime provider cannot normalize', () => {
+  const invalid = structuredClone(sourceDeclaration) as any;
+  invalid.workflows = {
+    definitions: [{
+      version: 1,
+      definition: {
+        schemaVersion: SCHEMA_VERSIONS.workflowDefinition,
+        code: 'owners_approval',
+        title: '负责人审批',
+        acceptedCommandDeactivationPolicy: 'finish-pinned',
+        subject: { resourceCode: 'workflow_records', factProjection: { name: 'name' } },
+        startAt: 'done',
+        inputSchema: { type: 'object', additionalProperties: false },
+        nodes: {
+          done: { id: 'done', kind: 'end', title: '完成', outcome: 'approved' },
+        },
+      },
+      launch: { mode: 'standalone' },
+    }],
+    bindings: [],
+    activations: [],
+  };
+  assert.throws(
+    () => defineOpenXiangdaApp(invalid),
+    error =>
+      diagnosticOf(
+        error,
+        'APP_CONFIG_WORKFLOW_CODE_INVALID',
+        'workflows.definitions[0].definition.code',
+      ) &&
+      diagnosticOf(
+        error,
+        'APP_CONFIG_WORKFLOW_SUBJECT_RESOURCE_CODE_INVALID',
+        'workflows.definitions[0].definition.subject.resourceCode',
+      ),
+  );
+});
+
 test('compiles canonical desktop/mobile Workflow detail routes and rejects broken declarations', () => {
   const workflowDefinition = {
     schemaVersion: SCHEMA_VERSIONS.workflowDefinition,

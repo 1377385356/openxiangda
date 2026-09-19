@@ -169,6 +169,12 @@ export function validateWorkflowDefinition(definition: WorkflowDefinition) {
       diagnostics.push(`WORKFLOW_NODE_KIND_INVALID:${id}`);
       continue;
     }
+    if (
+      (node.kind === 'approval' || node.kind === 'end') &&
+      (typeof node.title !== 'string' || !node.title.trim())
+    ) {
+      diagnostics.push(`WORKFLOW_NODE_TITLE_REQUIRED:${id}`);
+    }
     for (const target of targets(node)) {
       if (!nodes[target]) diagnostics.push(`WORKFLOW_TARGET_NOT_FOUND:${id}:${target}`);
     }

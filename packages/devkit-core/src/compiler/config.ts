@@ -181,6 +181,7 @@ export type AppDataFieldAccessDeclaration = {
 
 
 const APP_DATA_FIELD_TYPES = new Set<string>(DATA_FIELD_TYPES);
+const WORKFLOW_RUNTIME_CODE_PATTERN = /^[a-z][a-z0-9-]{2,63}$/;
 
 /**
  * One source field owns storage, validation, presentation and field access.
@@ -3814,7 +3815,25 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
           )
         );
       }
+      if (!WORKFLOW_RUNTIME_CODE_PATTERN.test(string(definition.code))) {
+        diagnostics.push(
+          diagnostic(
+            'APP_CONFIG_WORKFLOW_CODE_INVALID',
+            'Workflow code 必须匹配 /^[a-z][a-z0-9-]{2,63}$/，不能包含下划线或大写字母',
+            `${path}.definition.code`
+          )
+        );
+      }
       const subject = object(definition.subject);
+      if (!WORKFLOW_RUNTIME_CODE_PATTERN.test(string(subject.resourceCode))) {
+        diagnostics.push(
+          diagnostic(
+            'APP_CONFIG_WORKFLOW_SUBJECT_RESOURCE_CODE_INVALID',
+            'Workflow subject.resourceCode 必须匹配 /^[a-z][a-z0-9-]{2,63}$/',
+            `${path}.definition.subject.resourceCode`
+          )
+        );
+      }
       const factProjection = object(subject.factProjection);
       const factEntries = Object.entries(factProjection);
       const subjectFields = eventResourceFields.get(
@@ -3881,9 +3900,8 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
           )
         );
       }
-      // 快照字段（option/user/department/resource-ref/cascade）投影出 { label, value }
-      // 对象；标量 inputSchema 属性会在运行时 INPUT_SCHEMA_MISMATCH 且命令无限重试。
-      // 编译期强制形状一致，把错误从"部署后静默重试"提前到"编写时"。
+      // 快照字段的投影形状必须与 Native 存储一致；否则命令会在运行时
+      // INPUT_SCHEMA_MISMATCH 并无限重试。编译期把错误提前到编写时。
       const SNAPSHOT_FIELD_PROJECTION_TYPES = new Set([
         'option.single',
         'option.multiple',
@@ -3908,14 +3926,33 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
             continue;
           }
           const property = workflowInputProperties[factKey];
-          const propertyType = isRecord(property)
-            ? string((property as Record<string, unknown>).type)
-            : '';
-          if (propertyType !== 'object') {
+          const propertyRecord = isRecord(property) ? property : {};
+          const propertyType = string(propertyRecord.type);
+          const itemRecord = isRecord(propertyRecord.items)
+            ? propertyRecord.items
+            : {};
+          const itemType = string(itemRecord.type);
+          const nestedItemRecord = isRecord(itemRecord.items)
+            ? itemRecord.items
+            : {};
+          const nestedItemType = string(nestedItemRecord.type);
+          const expected = fieldType === 'cascade.multiple'
+            ? 'array（items.type=array，items.items.type=object）'
+            : fieldType.endsWith('.multiple')
+              ? 'array（items.type=object）'
+              : 'object';
+          const shapeValid = fieldType === 'cascade.multiple'
+            ? propertyType === 'array' &&
+              itemType === 'array' &&
+              nestedItemType === 'object'
+            : fieldType.endsWith('.multiple')
+              ? propertyType === 'array' && itemType === 'object'
+              : propertyType === 'object';
+          if (!shapeValid) {
             diagnostics.push(
               diagnostic(
                 'APP_CONFIG_WORKFLOW_FACT_PROJECTION_SHAPE_INVALID',
-                `fact "${factKey}" 投影的字段 ${fieldCode} 是 ${fieldType} 快照字段，运行时投影为 { label, value } 对象；inputSchema.properties.${factKey} 必须声明 type: "object"（multiple 字段用 array + object items），条件表达式用 path "${factKey}.value" 比较`,
+                `fact "${factKey}" 投影的字段 ${fieldCode} 是 ${fieldType} 快照字段；inputSchema.properties.${factKey} 必须声明 ${expected}`,
                 `${path}.definition.inputSchema.properties.${factKey}`
               )
             );

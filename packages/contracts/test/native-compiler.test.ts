@@ -48,3 +48,14 @@ test('both distributions preserve rejection codes and pointers without database 
     assert.deepEqual(errors[0], errors[1]);
   }
 });
+
+test('rejects workflow identifiers that runtime normalization cannot accept', () => {
+  const config = JSON.parse(corpus.configuration.canonical);
+  config.workflows.definitions[0].definition.code = 'standard_record_approval';
+  assert.throws(
+    () => esm.compileNativeApplicationConfiguration(input(config)),
+    error =>
+      error instanceof esm.NativeConfigurationCompilerError &&
+      error.code === 'NATIVE_WORKFLOW_CODE_INVALID',
+  );
+});

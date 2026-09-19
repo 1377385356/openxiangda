@@ -48,7 +48,7 @@ const FIELD_CODE_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,62}$/;
 const PROPERTY_CODE_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,127}$/;
 const SECRET_NAME_PATTERN = /^[a-z][a-z0-9]*(?:[-_][a-z0-9]+)*$/;
 const SECRET_ENV_PATTERN = /^[A-Z][A-Z0-9_]*$/;
-const WORKFLOW_CODE_PATTERN = /^[A-Za-z][A-Za-z0-9_-]{0,127}$/;
+const WORKFLOW_CODE_PATTERN = /^[a-z][a-z0-9-]{2,63}$/;
 const WORKFLOW_BINDING_CODE_PATTERN = /^[A-Za-z][A-Za-z0-9_-]{0,127}$/;
 const WORKFLOW_FACT_KEY_PATTERN = /^[A-Za-z][A-Za-z0-9_.]{0,127}$/;
 const WORKFLOW_SUMMARY_MAX_FIELDS = 16;
@@ -6084,6 +6084,7 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
     }
     const targets: string[] = [];
     if (node.kind === 'approval') {
+      requiredString(node.title, `${nodePointer}/title`, 255);
       workflowBindingCode(node.binding, `${nodePointer}/binding`);
       if (!['single', 'any', 'all', 'sequence'].includes(node.mode)) {
         fail('NATIVE_WORKFLOW_APPROVAL_MODE_INVALID', `${nodePointer}/mode`);
@@ -6144,6 +6145,7 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
         requiredString(node.otherwise, `${nodePointer}/otherwise`, 128)
       );
     } else {
+      requiredString(node.title, `${nodePointer}/title`, 255);
       requiredString(node.outcome, `${nodePointer}/outcome`, 128);
     }
     for (const target of targets) {

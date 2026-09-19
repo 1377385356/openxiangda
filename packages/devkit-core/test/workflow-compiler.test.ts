@@ -139,6 +139,31 @@ test('rejects cycles and unsupported arbitrary nodes', () => {
   assert.throws(() => compileWorkflow(unsafe, binding), WorkflowCompilationError);
 });
 
+test('requires human-task titles instead of silently accepting name', () => {
+  const { definition, binding } = fixture();
+  const invalid = structuredClone(definition) as any;
+  delete invalid.nodes['college-review'].title;
+  invalid.nodes['college-review'].name = '部门负责人审批';
+  assert.throws(
+    () => compileWorkflow(invalid, binding),
+    (error: unknown) =>
+      error instanceof WorkflowCompilationError &&
+      error.diagnostics.includes('WORKFLOW_NODE_TITLE_REQUIRED:college-review'),
+  );
+});
+
+test('reports non-string human-task titles as compilation diagnostics', () => {
+  const { definition, binding } = fixture();
+  const invalid = structuredClone(definition) as any;
+  invalid.nodes['college-review'].title = 42;
+  assert.throws(
+    () => compileWorkflow(invalid, binding),
+    (error: unknown) =>
+      error instanceof WorkflowCompilationError &&
+      error.diagnostics.includes('WORKFLOW_NODE_TITLE_REQUIRED:college-review'),
+  );
+});
+
 test('rejects open workflow facts and invalid provider candidate limits', () => {
   const { definition, binding } = fixture();
   const openFacts = structuredClone(definition) as WorkflowDefinition;
