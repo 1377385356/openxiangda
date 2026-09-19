@@ -1,3 +1,5 @@
+import './browser/mobile-runtime-global';
+
 export * from './browser/application';
 export * from './browser/authentication';
 export * from './browser/admin-contributions';

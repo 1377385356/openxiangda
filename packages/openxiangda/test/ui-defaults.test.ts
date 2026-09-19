@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import test from 'node:test';
 import * as runtime from '../src/react';
+import { initializeAntdMobileRuntimeGlobal } from '../src/browser/mobile-runtime-global';
 import { scopeMobileCss } from '../scripts/scope-mobile-css.mjs';
 
 test('runtime exposes component infrastructure without visual preference APIs', () => {
@@ -28,4 +29,33 @@ test('mobile base CSS scopes only upstream defaults and retains scroll/measureme
   assert.match(scoped, /body\.adm-overflow-hidden/);
   assert.match(scoped, /div\.adm-px-tester/);
   assert.throws(() => scopeMobileCss(`${source}\ninput { color: red; }`), /Unreviewed/);
+});
+
+test('react entry initializes only the document mechanics required by Ant Design Mobile', () => {
+  const appended: Array<{ id: string; textContent: string | null }> = [];
+  const listeners: Array<{ type: string; capture: boolean }> = [];
+  const ids = new Set<string>();
+  const target = {
+    getElementById: (id: string) => (ids.has(id) ? {} : null),
+    createElement: () => ({ id: '', textContent: null }),
+    head: {
+      appendChild: (node: { id: string; textContent: string | null }) => {
+        ids.add(node.id);
+        appended.push(node);
+      },
+    },
+    documentElement: { appendChild: () => undefined },
+    addEventListener: (type: string, _listener: () => void, capture: boolean) => {
+      listeners.push({ type, capture });
+    },
+  } as unknown as Document;
+
+  initializeAntdMobileRuntimeGlobal(target);
+  initializeAntdMobileRuntimeGlobal(target);
+
+  assert.equal(appended.length, 1);
+  assert.equal(appended[0]?.id, 'openxiangda-antd-mobile-runtime-global');
+  assert.match(appended[0]?.textContent || '', /div\.adm-px-tester/);
+  assert.doesNotMatch(appended[0]?.textContent || '', /(?:^|\n)(?:html|body|a|button)[\s{,:]/);
+  assert.deepEqual(listeners, [{ type: 'touchstart', capture: true }]);
 });
