@@ -21,7 +21,9 @@ export {
   createResourceFormDraftClient,
   type ResourceFormDraft,
   createAnonymousPublicClient,
+  applicationFileIntentUrl,
   executeApplicationOperation,
+  issueApplicationFileIntent,
   loadApplicationOperationSurfaces,
   loadSubjectReadSurface,
   type AnonymousPublicDraft,
@@ -29,6 +31,7 @@ export {
 } from './browser/platform-client';
 export type {
   ApplicationOperationReceiptV2,
+  ApplicationFileIntentV2,
   ApplicationOperationSurfaceCatalogV2,
   ApplicationOperationSurfaceV2,
   WorkflowCommandResult,

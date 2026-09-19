@@ -19,6 +19,8 @@ import {
   listBusinessProcessCommands,
   loadAuthorizationMutationReceipt,
   executeApplicationOperation,
+  issueApplicationFileIntent,
+  applicationFileIntentUrl,
   loadApplicationOperationSurfaces,
   loadApplicationLoginSurface,
   loadSubjectReadSurface,
@@ -116,6 +118,8 @@ test('exposes the unified version line and browser-safe entrypoints', () => {
   assert.equal(typeof loadAuthorizationMutationReceipt, 'function');
   assert.equal(typeof loadApplicationOperationSurfaces, 'function');
   assert.equal(typeof executeApplicationOperation, 'function');
+  assert.equal(typeof issueApplicationFileIntent, 'function');
+  assert.equal(typeof applicationFileIntentUrl, 'function');
   assert.equal(typeof loadSubjectReadSurface, 'function');
   assert.equal(typeof nest.databaseNowAssertion, 'function');
 });
@@ -228,6 +232,158 @@ test('loads and executes only the immutable browser operation surface identity',
       input: { contractId: '11111111-1111-4111-8111-111111111111' },
       idempotencyKey: 'reconcile:11111111',
     });
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalDocument === undefined) delete globalThis.document;
+    else
+      Object.defineProperty(globalThis, 'document', {
+        configurable: true,
+        value: originalDocument,
+      });
+  }
+});
+
+test('issues and validates only a declared same-origin application file intent', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalDocument = globalThis.document;
+  const metadata: Record<string, string> = {
+    'openxiangda-runtime-base': '/runtime/root-package-test/preproduction',
+    'openxiangda-app-code': 'root-package-test',
+    'openxiangda-environment': 'preproduction',
+  };
+  Object.defineProperty(globalThis, 'document', {
+    configurable: true,
+    value: {
+      querySelector(selector: string) {
+        const name = /meta\[name="([^"]+)"\]/.exec(selector)?.[1];
+        return name && metadata[name] ? { content: metadata[name] } : null;
+      },
+    },
+  });
+  const requests: Array<{ url: string; init?: RequestInit }> = [];
+  const surface = {
+    code: 'documents.content',
+    method: 'GET' as const,
+    appVersionId: '22222222-2222-4222-8222-222222222222',
+    environmentHeadRevision: 7,
+    behavior: 'read' as const,
+    idempotency: 'none' as const,
+    requiredCapability: 'app:root-package-test:documents:read',
+    subject: { resourceCode: 'contracts', inputField: 'contractId' },
+    refreshTargets: [],
+    requestSchema: {
+      type: 'object' as const,
+      additionalProperties: false,
+      required: ['contractId', 'documentId'],
+      properties: {
+        contractId: { type: 'string' as const, format: 'uuid' as const },
+        documentId: { type: 'string' as const, format: 'uuid' as const },
+      },
+    },
+    responseSchema: {
+      type: 'object' as const,
+      additionalProperties: false,
+      properties: {},
+    },
+    fileIntent: {
+      recordResourceCode: 'contract-documents',
+      recordIdInputField: 'documentId',
+      relationField: 'contract',
+      fileNameField: 'fileName',
+      contentTypeField: 'mimeType',
+      sizeField: 'fileSize',
+      purposes: ['preview', 'download'] as const,
+      maxTtlSeconds: 300,
+      maxBytes: 104857600,
+    },
+  };
+  const contentUrl =
+    '/service/openxiangda-api/v2/applications/root-package-test/native/operation-surfaces/documents.content/file-intents/fi2.opaque_token/content?purpose=preview';
+  globalThis.fetch = async (url, init) => {
+    requests.push({ url: String(url), init });
+    if (String(url).includes('/auth/surface')) {
+      return new Response(
+        JSON.stringify({ code: 200, data: { csrfToken: 'csrf-file' } }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    }
+    return new Response(
+      JSON.stringify({
+        code: 200,
+        data: {
+          schemaVersion: 'openxiangda.application-file-intent/v2',
+          operationCode: surface.code,
+          purpose: 'preview',
+          contentUrl,
+          expiresAt: '2026-09-20T01:05:00.000Z',
+          fileName: 'approval.pdf',
+          contentType: 'application/pdf',
+          size: 5,
+          appVersionId: surface.appVersionId,
+          environmentHeadRevision: 7,
+        },
+      }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+  };
+  try {
+    await loadApplicationLoginSurface({ device: 'desktop', returnTo: '/' });
+    const intent = await issueApplicationFileIntent(
+      surface,
+      {
+        contractId: '11111111-1111-4111-8111-111111111111',
+        documentId: '33333333-3333-4333-8333-333333333333',
+      },
+      'preview',
+    );
+    assert.equal(applicationFileIntentUrl(intent), contentUrl);
+    const issueRequest = requests.find(request =>
+      request.url.endsWith(
+        '/operation-surfaces/documents.content/file-intents',
+      ),
+    );
+    assert.equal(issueRequest?.init?.method, 'POST');
+    assert.equal(
+      new Headers(issueRequest?.init?.headers).get(
+        'x-openxiangda-csrf-token',
+      ),
+      'csrf-file',
+    );
+    assert.deepEqual(JSON.parse(String(issueRequest?.init?.body)), {
+      environmentKey: 'preproduction',
+      expectedAppVersionId: surface.appVersionId,
+      expectedEnvironmentHeadRevision: 7,
+      purpose: 'preview',
+      input: {
+        contractId: '11111111-1111-4111-8111-111111111111',
+        documentId: '33333333-3333-4333-8333-333333333333',
+      },
+    });
+    await assert.rejects(
+      issueApplicationFileIntent(
+        { ...surface, fileIntent: undefined },
+        {},
+        'preview',
+      ),
+      /OPENXIANGDA_APPLICATION_FILE_INTENT_SURFACE_INVALID/,
+    );
+    for (const invalidContentUrl of [
+      '/service/openxiangda-api/v2/applications/root-package-test/native/operation-surfaces/documents.content/file-intents/../secret/content?purpose=preview',
+      '/service/openxiangda-api/v2/applications/root-package-test/native/operation-surfaces/other.content/file-intents/fi2.opaque_token/content?purpose=preview',
+      '/service/openxiangda-api/v2/applications/root-package-test/native/operation-surfaces/documents.content/file-intents/not-an-intent/content?purpose=preview',
+      '/service/openxiangda-api/v2/applications/root-package-test/native/operation-surfaces/documents.content/file-intents/fi2.opaque_token/content?purpose=download',
+      '/service/openxiangda-api/v2/applications/root-package-test/native/operation-surfaces/documents.content/file-intents/fi2.opaque_token/content?purpose=preview&extra=true',
+      'https://outside.invalid/service/openxiangda-api/v2/applications/root-package-test/native/operation-surfaces/documents.content/file-intents/fi2.opaque_token/content?purpose=preview',
+    ]) {
+      assert.throws(
+        () =>
+          applicationFileIntentUrl({
+            ...intent,
+            contentUrl: invalidContentUrl,
+          }),
+        /OPENXIANGDA_APPLICATION_FILE_INTENT_INVALID/,
+      );
+    }
   } finally {
     globalThis.fetch = originalFetch;
     if (originalDocument === undefined) delete globalThis.document;

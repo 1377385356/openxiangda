@@ -233,11 +233,32 @@ browser: {
     recordResourceCode: 'contract-documents',
     recordIdInputField: 'documentId',
     relationField: 'contract',
+    fileNameField: 'fileName',
+    contentTypeField: 'mimeType',
+    sizeField: 'fileSize',
     purposes: ['preview', 'download'],
     maxTtlSeconds: 300,
     maxBytes: 104857600
   }
 }
+```
+
+The three metadata field bindings are explicit rather than conventional. They keep the
+contract generic while allowing intent issuance to return a safe file name, media type,
+and authoritative byte bound without calling the application backend or exposing its
+locator. The name/content-type fields must be declared scalar text fields and the size
+field must be a declared integer field.
+
+Endpoints and SDK:
+
+```text
+POST /openxiangda-api/v2/applications/:appCode/native/operation-surfaces/
+     :operationCode/file-intents
+GET  /openxiangda-api/v2/applications/:appCode/native/operation-surfaces/
+     :operationCode/file-intents/:opaqueToken/content?purpose=preview|download
+
+issueApplicationFileIntent(operationSurface, input, purpose, { signal })
+applicationFileIntentUrl(intent)
 ```
 
 Issuance rules:
@@ -380,7 +401,46 @@ platform commits.
   dispatch behavior.
 - No npm package was published, no Platform Server image was released, no customer
   environment was deployed, and no database migration or application business change
-  was executed. Batch C file intents and bounded streaming remain pending.
+  was executed.
+
+### Batch C — implemented, not yet published or deployed
+
+- Backend `read` operations can opt into a closed `fileIntent` declaration that binds
+  one required record UUID, its parent relation, file name, content type, byte size,
+  permitted purposes, TTL, and maximum bytes. The compiler and Platform Server both
+  reject non-GET, controlled, unbounded, unknown-field, or mismatched declarations.
+- The public browser SDK issues an intent from a catalog surface and accepts only an
+  exact same-origin platform URL for that operation and purpose. It rejects traversal,
+  foreign origins, malformed tokens, extra query parameters, and hand-built operation
+  paths.
+- Platform Server proves ordinary parent capability and RLS first, then performs a
+  narrow tenant/app/environment/parent equality proof for the related file row without
+  granting global child-resource read. Only declared metadata leaves that proof; no
+  provider locator is read or returned.
+- AES-256-GCM intents derived from the configured JWT secret bind tenant, application,
+  environment Head, backend revision, operation, current user, login session,
+  authorization digest, subject, record, purpose, issue time, and expiry. Consumption
+  revalidates the active immutable closure, current authorization, parent RLS, relation,
+  and metadata before backend dispatch.
+- The dedicated gateway path is non-buffering, refuses redirects, enforces declared and
+  actual byte counts, terminates after 120 seconds, propagates downstream aborts, and
+  releases a Redis permit exactly once. Limits are 30 attempts per user/application per
+  minute and four concurrent streams; unavailable limit storage fails closed.
+- Responses use no-store, nosniff, restrictive CSP, safe content disposition, and
+  sanitized file name/media type. File-intent audit identifiers are digests only. The
+  Platform Server access/recovery logs and active-request diagnostics redact the opaque
+  token path and omit the raw user ID for this route. Deployment-owned edge proxies
+  must likewise suppress or redact this route before production acceptance.
+- Verification passed: toolchain `pnpm verify:affected` completed 24/24 tasks with the
+  shared validator digest `0378091333ea`; Platform Server build passed; five focused
+  gateway/service/controller/logging suites passed 140/140 tests; targeted ESLint passed
+  for the directly changed controller, gateway, browser-operation, observability, and
+  structured-logging sources. The whole legacy service file still has unrelated
+  pre-existing formatting findings outside this change.
+- No npm package was published, no image was built or pushed, no customer environment
+  was deployed, and no database migration or business-data write was executed. Real
+  preproduction allow/deny, expiry, and streamed-download acceptance remains a separate
+  release/deployment gate.
 
 ## 8. Falsifiable verification
 

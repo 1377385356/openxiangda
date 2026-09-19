@@ -1532,6 +1532,25 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
       ] as const;
     })
   );
+  const declaredResourceFields = new Map(
+    (Array.isArray(object(config.data).resources)
+      ? (object(config.data).resources as unknown[])
+      : []
+    ).map(resource => {
+      const item = object(resource);
+      const schema = object(item.schema);
+      const fields = Array.isArray(schema.fields) ? schema.fields : [];
+      return [
+        string(item.code),
+        new Map(
+          fields.map(field => {
+            const declaration = object(field);
+            return [string(declaration.code), declaration] as const;
+          })
+        ),
+      ] as const;
+    })
+  );
   const declaredResourceCodes = new Set(declaredResources.keys());
   validateSubjectReadSurfaces(
     string(object(config.app).code),
@@ -1554,6 +1573,7 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
   validateBackendOperations(
     backend.operations,
     declaredResources,
+    declaredResourceFields,
     declaredWorkflowCodes,
     new Set((Array.isArray(object(config.authz).roles) ? object(config.authz).roles as unknown[] : []).map(role => string(object(role).code))),
     new Map(
@@ -4507,6 +4527,7 @@ function validateSubjectReadSurfaces(
 function validateBackendOperations(
   rawOperations: unknown,
   declaredResources: Map<string, Map<string, string>>,
+  declaredResourceFields: Map<string, Map<string, Record<string, unknown>>>,
   declaredWorkflowCodes: Set<string>,
   declaredRoleCodes: Set<string>,
   declaredSubjectSurfaces: Map<string, string>,
@@ -4739,6 +4760,7 @@ function validateBackendOperations(
               'idempotency',
               'subject',
               'refreshTargets',
+              'fileIntent',
             ].includes(key)
         ) ||
         browser.exposure !== 'authenticated' ||
@@ -4772,11 +4794,71 @@ function validateBackendOperations(
           !declaredSubjectSurfaces.has(targetCode) ||
           declaredSubjectSurfaces.get(targetCode) !== subjectResourceCode;
       }
+      if (browser.fileIntent !== undefined) {
+        const fileIntent = object(browser.fileIntent);
+        const recordResourceCode = string(fileIntent.recordResourceCode);
+        const fields = declaredResourceFields.get(recordResourceCode);
+        const recordIdInputField = string(fileIntent.recordIdInputField);
+        const recordInputSchema = object(requestProperties[recordIdInputField]);
+        const relationField = string(fileIntent.relationField);
+        const relation = fields?.get(relationField);
+        const relationSource = object(relation?.source);
+        const fileNameField = string(fileIntent.fileNameField);
+        const contentTypeField = string(fileIntent.contentTypeField);
+        const sizeField = string(fileIntent.sizeField);
+        const purposes = Array.isArray(fileIntent.purposes)
+          ? fileIntent.purposes.map(string)
+          : [];
+        const allowedKeys = new Set([
+          'recordResourceCode',
+          'recordIdInputField',
+          'relationField',
+          'fileNameField',
+          'contentTypeField',
+          'sizeField',
+          'purposes',
+          'maxTtlSeconds',
+          'maxBytes',
+        ]);
+        invalid ||=
+          !isRecord(browser.fileIntent) ||
+          Object.keys(fileIntent).some(key => !allowedKeys.has(key)) ||
+          Object.keys(fileIntent).some(key => fileIntent[key] === undefined) ||
+          method !== 'GET' ||
+          browser.behavior !== 'read' ||
+          browser.idempotency !== 'none' ||
+          !fields ||
+          !requiredFields.includes(recordIdInputField) ||
+          recordInputSchema.type !== 'string' ||
+          recordInputSchema.format !== 'uuid' ||
+          !relation ||
+          !['uuid', 'resource-ref.single'].includes(string(relation.type)) ||
+          (relation.type === 'resource-ref.single' &&
+            (relationSource.kind !== 'resource' ||
+              relationSource.resourceCode !== subjectResourceCode)) ||
+          !['text.short', 'text.long'].includes(
+            string(fields?.get(fileNameField)?.type)
+          ) ||
+          !['text.short', 'text.long'].includes(
+            string(fields?.get(contentTypeField)?.type)
+          ) ||
+          string(fields?.get(sizeField)?.type) !== 'number.integer' ||
+          purposes.length < 1 ||
+          purposes.length > 2 ||
+          new Set(purposes).size !== purposes.length ||
+          purposes.some(purpose => !['preview', 'download'].includes(purpose)) ||
+          !Number.isSafeInteger(Number(fileIntent.maxTtlSeconds)) ||
+          Number(fileIntent.maxTtlSeconds) < 1 ||
+          Number(fileIntent.maxTtlSeconds) > 300 ||
+          !Number.isSafeInteger(Number(fileIntent.maxBytes)) ||
+          Number(fileIntent.maxBytes) < 1 ||
+          Number(fileIntent.maxBytes) > 104857600;
+      }
       if (invalid) {
         diagnostics.push(
           diagnostic(
             'APP_CONFIG_BACKEND_OPERATION_BROWSER_INVALID',
-            'browser operation 必须绑定已声明父资源和必填请求字段；controlled 必须强制幂等，刷新目标必须引用同一父资源的 subject surface',
+            'browser operation 必须绑定已声明父资源和必填请求字段；controlled 必须强制幂等，刷新目标必须引用同一父资源的 subject surface；fileIntent 必须是只读、绑定关系记录与元数据字段，并限制为 5 分钟/100 MiB 内',
             `${path}.browser`
           )
         );

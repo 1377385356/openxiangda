@@ -448,6 +448,27 @@ export function normalizeConfiguration(
                         ),
                       }
                     : {}),
+                  ...(operation.browser.fileIntent
+                    ? {
+                        fileIntent: {
+                          recordResourceCode:
+                            operation.browser.fileIntent.recordResourceCode,
+                          recordIdInputField:
+                            operation.browser.fileIntent.recordIdInputField,
+                          relationField: operation.browser.fileIntent.relationField,
+                          fileNameField: operation.browser.fileIntent.fileNameField,
+                          contentTypeField:
+                            operation.browser.fileIntent.contentTypeField,
+                          sizeField: operation.browser.fileIntent.sizeField,
+                          purposes: uniqueSorted(
+                            operation.browser.fileIntent.purposes
+                          ),
+                          maxTtlSeconds:
+                            operation.browser.fileIntent.maxTtlSeconds,
+                          maxBytes: operation.browser.fileIntent.maxBytes,
+                        },
+                      }
+                    : {}),
                 },
               }
             : {}),
@@ -1818,6 +1839,25 @@ function compileOperations(config: OpenXiangdaAppConfig) {
                       })),
                       target => `${target.kind}:${target.code}`
                     ),
+                  }
+                : {}),
+              ...(operation.browser.fileIntent
+                ? {
+                    fileIntent: {
+                      recordResourceCode:
+                        operation.browser.fileIntent.recordResourceCode,
+                      recordIdInputField:
+                        operation.browser.fileIntent.recordIdInputField,
+                      relationField: operation.browser.fileIntent.relationField,
+                      fileNameField: operation.browser.fileIntent.fileNameField,
+                      contentTypeField:
+                        operation.browser.fileIntent.contentTypeField,
+                      sizeField: operation.browser.fileIntent.sizeField,
+                      purposes: uniqueSorted(operation.browser.fileIntent.purposes),
+                      maxTtlSeconds:
+                        operation.browser.fileIntent.maxTtlSeconds,
+                      maxBytes: operation.browser.fileIntent.maxBytes,
+                    },
                   }
                 : {}),
             },

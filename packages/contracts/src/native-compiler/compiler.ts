@@ -2043,6 +2043,21 @@ function compileResourceDetailRoutes(config: JsonObject) {
 }
 
 function compileOperations(config: JsonObject) {
+  const declaredResourceFields = new Map<string, Map<string, JsonObject>>(
+    config.data.resources.map((resource: JsonObject, resourceIndex: number) => {
+      const pointer = `/config/data/resources/${resourceIndex}`;
+      const declaration = validateResource(resource, pointer, config.appCode);
+      return [
+        declaration.code,
+        new Map<string, JsonObject>(
+          declaration.schema.fields.map((field: JsonObject) => [
+            String(field.code),
+            field,
+          ])
+        ),
+      ];
+    })
+  );
   const declaredResources = new Map<string, Map<string, string>>(
     config.data.resources.map((resource: JsonObject, resourceIndex: number) => {
       const pointer = `/config/data/resources/${resourceIndex}`;
@@ -2110,9 +2125,11 @@ function compileOperations(config: JsonObject) {
       const browser = validateOperationBrowser(
         operation.browser,
         `${pointer}/browser`,
+        method,
         operation.requestSchema,
         operation.responseSchema,
         declaredResources,
+        declaredResourceFields,
         config.data.subjectReadSurfaces || []
       );
       return {
@@ -2150,9 +2167,11 @@ function compileOperations(config: JsonObject) {
 function validateOperationBrowser(
   value: unknown,
   pointer: string,
+  method: string,
   requestSchemaInput: unknown,
   responseSchemaInput: unknown,
   declaredResources: Map<string, Map<string, string>>,
+  declaredResourceFields: Map<string, Map<string, JsonObject>>,
   subjectReadSurfacesInput: unknown
 ) {
   if (value === undefined) return null;
@@ -2161,7 +2180,7 @@ function validateOperationBrowser(
     browser,
     ['exposure', 'behavior', 'idempotency', 'subject'],
     pointer,
-    ['refreshTargets']
+    ['refreshTargets', 'fileIntent']
   );
   equal(browser.exposure, 'authenticated', `${pointer}/exposure`);
   const behavior = requiredString(
@@ -2299,12 +2318,151 @@ function validateOperationBrowser(
     }),
     target => `${target.kind}:${target.code}`
   );
+  const fileIntent = validateOperationFileIntent(
+    browser.fileIntent,
+    `${pointer}/fileIntent`,
+    method,
+    behavior,
+    idempotency,
+    resource,
+    requestProperties,
+    requiredFields,
+    declaredResourceFields
+  );
   return {
     exposure: 'authenticated',
     behavior,
     idempotency,
     subject: { resourceCode: resource, inputField },
     ...(normalizedTargets.length ? { refreshTargets: normalizedTargets } : {}),
+    ...(fileIntent ? { fileIntent } : {}),
+  };
+}
+
+function validateOperationFileIntent(
+  value: unknown,
+  pointer: string,
+  method: string,
+  behavior: string,
+  idempotency: string,
+  subjectResourceCode: string,
+  requestProperties: JsonObject,
+  requiredFields: Set<string>,
+  declaredResources: Map<string, Map<string, JsonObject>>
+) {
+  if (value === undefined) return null;
+  const intent = object(value, pointer);
+  exactKeys(
+    intent,
+    [
+      'recordResourceCode',
+      'recordIdInputField',
+      'relationField',
+      'fileNameField',
+      'contentTypeField',
+      'sizeField',
+      'purposes',
+      'maxTtlSeconds',
+      'maxBytes',
+    ],
+    pointer
+  );
+  if (method !== 'GET' || behavior !== 'read' || idempotency !== 'none') {
+    fail('NATIVE_OPERATION_FILE_INTENT_BEHAVIOR_INVALID', pointer);
+  }
+  const recordResourceCode = resourceCode(
+    intent.recordResourceCode,
+    `${pointer}/recordResourceCode`
+  );
+  const fields = declaredResources.get(recordResourceCode);
+  if (!fields) {
+    fail(
+      'NATIVE_OPERATION_FILE_INTENT_RESOURCE_NOT_DECLARED',
+      `${pointer}/recordResourceCode`
+    );
+  }
+  const recordIdInputField = fieldCodeValue(
+    intent.recordIdInputField,
+    `${pointer}/recordIdInputField`
+  );
+  const recordIdSchema = object(
+    requestProperties[recordIdInputField],
+    `${pointer}/recordIdInputField`
+  );
+  if (
+    !requiredFields.has(recordIdInputField) ||
+    recordIdSchema.type !== 'string' ||
+    recordIdSchema.format !== 'uuid'
+  ) {
+    fail(
+      'NATIVE_OPERATION_FILE_INTENT_RECORD_INPUT_INVALID',
+      `${pointer}/recordIdInputField`
+    );
+  }
+  const relationField = fieldCodeValue(
+    intent.relationField,
+    `${pointer}/relationField`
+  );
+  const relation = fields!.get(relationField);
+  if (
+    !relation ||
+    !['uuid', 'resource-ref.single'].includes(String(relation.type)) ||
+    (String(relation.type) === 'resource-ref.single' &&
+      (String(object(relation.source, `${pointer}/relationField`).kind || '') !==
+        'resource' ||
+        String(object(relation.source, `${pointer}/relationField`).resourceCode || '') !==
+          subjectResourceCode))
+  ) {
+    fail(
+      'NATIVE_OPERATION_FILE_INTENT_RELATION_INVALID',
+      `${pointer}/relationField`
+    );
+  }
+  const metadata = [
+    ['fileNameField', ['text.short', 'text.long']],
+    ['contentTypeField', ['text.short', 'text.long']],
+    ['sizeField', ['number.integer']],
+  ] as const;
+  const normalizedMetadata: Record<string, string> = {};
+  for (const [key, allowedTypes] of metadata) {
+    const fieldCode = fieldCodeValue(intent[key], `${pointer}/${key}`);
+    if (!allowedTypes.includes(String(fields!.get(fieldCode)?.type) as never)) {
+      fail('NATIVE_OPERATION_FILE_INTENT_METADATA_INVALID', `${pointer}/${key}`);
+    }
+    normalizedMetadata[key] = fieldCode;
+  }
+  const purposes = sorted(
+    uniqueStrings(intent.purposes, `${pointer}/purposes`, 2),
+    item => item
+  );
+  if (
+    !purposes.length ||
+    purposes.some(purpose => !['preview', 'download'].includes(purpose))
+  ) {
+    fail('NATIVE_OPERATION_FILE_INTENT_PURPOSE_INVALID', `${pointer}/purposes`);
+  }
+  const maxTtlSeconds = Number(intent.maxTtlSeconds);
+  if (
+    !Number.isSafeInteger(maxTtlSeconds) ||
+    maxTtlSeconds < 1 ||
+    maxTtlSeconds > 300
+  ) {
+    fail('NATIVE_OPERATION_FILE_INTENT_TTL_INVALID', `${pointer}/maxTtlSeconds`);
+  }
+  const maxBytes = Number(intent.maxBytes);
+  if (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > 104857600) {
+    fail('NATIVE_OPERATION_FILE_INTENT_SIZE_INVALID', `${pointer}/maxBytes`);
+  }
+  return {
+    recordResourceCode,
+    recordIdInputField,
+    relationField,
+    fileNameField: normalizedMetadata.fileNameField,
+    contentTypeField: normalizedMetadata.contentTypeField,
+    sizeField: normalizedMetadata.sizeField,
+    purposes,
+    maxTtlSeconds,
+    maxBytes,
   };
 }
 

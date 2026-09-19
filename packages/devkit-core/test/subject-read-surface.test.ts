@@ -65,6 +65,25 @@ function declaration(): OpenXiangdaAppDeclaration {
             { code: 'failureCode', type: 'text.short', label: '失败码' },
           ],
         },
+        {
+          code: 'contract-documents',
+          name: '合同文件',
+          fields: [
+            {
+              code: 'contract',
+              type: 'resource-ref.single',
+              label: '合同',
+              source: {
+                kind: 'resource',
+                resourceCode: 'contracts',
+                labelField: 'contractNo',
+              },
+            },
+            { code: 'fileName', type: 'text.short', label: '文件名' },
+            { code: 'mimeType', type: 'text.short', label: '媒体类型' },
+            { code: 'fileSize', type: 'number.integer', label: '文件大小' },
+          ],
+        },
       ],
       subjectReadSurfaces: [
         {
@@ -207,6 +226,118 @@ test('keeps legacy operation bundle shape unchanged when browser exposure is abs
   const compiled = compileApplicationSources(defineOpenXiangdaApp(input));
   assert.equal('browser' in compiled.config.value.backend.operations[0]!, false);
   assert.equal('browser' in compiled.contracts.value.operations[0]!, false);
+});
+
+test('compiles a bounded external file intent specialization', () => {
+  const input = declaration();
+  input.backend!.operations = [
+    {
+      code: 'documents.content',
+      method: 'GET',
+      path: '/api/documents/content',
+      capability: reconcileCapability,
+      requestSchema: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['contractId', 'documentId'],
+        properties: {
+          contractId: { type: 'string', format: 'uuid' },
+          documentId: { type: 'string', format: 'uuid' },
+        },
+      },
+      responseSchema: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {},
+      },
+      browser: {
+        exposure: 'authenticated',
+        behavior: 'read',
+        idempotency: 'none',
+        subject: { resourceCode: 'contracts', inputField: 'contractId' },
+        fileIntent: {
+          recordResourceCode: 'contract-documents',
+          recordIdInputField: 'documentId',
+          relationField: 'contract',
+          fileNameField: 'fileName',
+          contentTypeField: 'mimeType',
+          sizeField: 'fileSize',
+          purposes: ['download', 'preview'],
+          maxTtlSeconds: 300,
+          maxBytes: 104857600,
+        },
+      },
+    },
+  ];
+  const compiled = compileApplicationSources(defineOpenXiangdaApp(input));
+  assert.deepEqual(compiled.contracts.value.operations[0]?.browser?.fileIntent, {
+    recordResourceCode: 'contract-documents',
+    recordIdInputField: 'documentId',
+    relationField: 'contract',
+    fileNameField: 'fileName',
+    contentTypeField: 'mimeType',
+    sizeField: 'fileSize',
+    purposes: ['download', 'preview'],
+    maxTtlSeconds: 300,
+    maxBytes: 104857600,
+  });
+  assert.doesNotThrow(() =>
+    compileNativeApplicationConfiguration({
+      appCode: compiled.config.value.appCode,
+      configBytes: canonicalJson(compiled.config.value),
+      contractBytes: canonicalJson(compiled.contracts.value),
+      expectedConfigDigest: compiled.config.digest,
+      expectedContractDigest: compiled.contracts.digest,
+    })
+  );
+});
+
+test('rejects file intents with a mutable method, wrong relation, or excessive bounds', () => {
+  const input = declaration();
+  input.backend!.operations = [
+    {
+      code: 'documents.content',
+      method: 'POST',
+      path: '/api/documents/content',
+      capability: reconcileCapability,
+      requestSchema: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['contractId', 'documentId'],
+        properties: {
+          contractId: { type: 'string', format: 'uuid' },
+          documentId: { type: 'string', format: 'uuid' },
+        },
+      },
+      responseSchema: { type: 'object', additionalProperties: false, properties: {} },
+      browser: {
+        exposure: 'authenticated',
+        behavior: 'read',
+        idempotency: 'none',
+        subject: { resourceCode: 'contracts', inputField: 'contractId' },
+        fileIntent: {
+          recordResourceCode: 'contract-documents',
+          recordIdInputField: 'documentId',
+          relationField: 'fileName',
+          fileNameField: 'fileName',
+          contentTypeField: 'mimeType',
+          sizeField: 'fileSize',
+          purposes: ['download'],
+          maxTtlSeconds: 301,
+          maxBytes: 104857601,
+        },
+      },
+    },
+  ];
+  assert.throws(
+    () => defineOpenXiangdaApp(input),
+    error =>
+      Boolean(
+        (error as { diagnostics?: Array<{ code: string }> }).diagnostics?.some(
+          item => item.code === 'APP_CONFIG_BACKEND_OPERATION_BROWSER_INVALID'
+        )
+      )
+  );
 });
 
 test('rejects controlled browser operations without required idempotency or a declared refresh surface', () => {

@@ -27,6 +27,7 @@ import {
   type RuntimeRoleSummary,
   type SubjectProfile,
   type ApplicationOperationReceiptV2,
+  type ApplicationFileIntentV2,
   type ApplicationOperationSurfaceCatalogV2,
   type ApplicationOperationSurfaceV2,
   type SubjectReadSurfaceResultV2,
@@ -1598,6 +1599,7 @@ export async function executeApplicationOperation<
   if (
     !operationSurface?.code ||
     !operationSurface.appVersionId ||
+    operationSurface.fileIntent ||
     !Number.isSafeInteger(operationSurface.environmentHeadRevision) ||
     operationSurface.environmentHeadRevision < 1
   ) {
@@ -1629,6 +1631,79 @@ export async function executeApplicationOperation<
       }),
     },
   );
+}
+
+/** Issues a short-lived, current-user-bound intent for one declared external file. */
+export async function issueApplicationFileIntent(
+  operationSurface: ApplicationOperationSurfaceV2,
+  input: Record<string, unknown>,
+  purpose: 'preview' | 'download',
+  options: { signal?: AbortSignal } = {},
+): Promise<ApplicationFileIntentV2> {
+  if (
+    !operationSurface?.code ||
+    !operationSurface.appVersionId ||
+    !operationSurface.fileIntent ||
+    !operationSurface.fileIntent.purposes.includes(purpose) ||
+    !Number.isSafeInteger(operationSurface.environmentHeadRevision) ||
+    operationSurface.environmentHeadRevision < 1
+  ) {
+    throw new Error('OPENXIANGDA_APPLICATION_FILE_INTENT_SURFACE_INVALID');
+  }
+  const csrfToken = await workflowCsrfToken();
+  return await request<ApplicationFileIntentV2>(
+    `${nativeBase()}/operation-surfaces/${encodeURIComponent(
+      operationSurface.code,
+    )}/file-intents`,
+    {
+      method: 'POST',
+      headers: { 'x-openxiangda-csrf-token': csrfToken },
+      signal: options.signal,
+      body: JSON.stringify({
+        environmentKey: currentEnvironmentKey(),
+        expectedAppVersionId: operationSurface.appVersionId,
+        expectedEnvironmentHeadRevision:
+          operationSurface.environmentHeadRevision,
+        purpose,
+        input,
+      }),
+    },
+  );
+}
+
+/** Returns the same-origin content URL from a platform-issued opaque intent. */
+export function applicationFileIntentUrl(intent: ApplicationFileIntentV2) {
+  const contentUrl = String(intent?.contentUrl || '').trim();
+  const expectedPrefix = `${nativeBase()}/operation-surfaces/${encodeURIComponent(
+    String(intent?.operationCode || ''),
+  )}/file-intents/`;
+  let valid =
+    intent?.schemaVersion === 'openxiangda.application-file-intent/v2' &&
+    ['preview', 'download'].includes(String(intent?.purpose || '')) &&
+    contentUrl.startsWith(expectedPrefix) &&
+    !contentUrl.startsWith('//') &&
+    !contentUrl.includes('\\') &&
+    !Array.from(contentUrl).some(character => {
+      const codePoint = character.codePointAt(0) || 0;
+      return codePoint <= 31 || codePoint === 127;
+    });
+  try {
+    const parsed = new URL(contentUrl, 'https://openxiangda.invalid');
+    const suffix = parsed.pathname.slice(expectedPrefix.length);
+    valid &&=
+      parsed.origin === 'https://openxiangda.invalid' &&
+      parsed.pathname.startsWith(expectedPrefix) &&
+      /^fi2\.[A-Za-z0-9_-]+\/content$/.test(suffix) &&
+      parsed.searchParams.size === 1 &&
+      parsed.searchParams.get('purpose') === intent.purpose &&
+      !parsed.hash;
+  } catch {
+    valid = false;
+  }
+  if (!valid) {
+    throw new Error('OPENXIANGDA_APPLICATION_FILE_INTENT_INVALID');
+  }
+  return contentUrl;
 }
 
 export interface ResourceListPreference {

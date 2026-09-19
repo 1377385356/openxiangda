@@ -271,6 +271,23 @@ export interface AppApiOperationBrowserDeclaration {
     kind: 'subject-surface';
     code: string;
   }>;
+  /**
+   * Optional external-file specialization. The platform authorizes the parent
+   * and related record, then exposes only a short-lived opaque platform URL.
+   */
+  fileIntent?: AppApiOperationFileIntentDeclaration;
+}
+
+export interface AppApiOperationFileIntentDeclaration {
+  recordResourceCode: string;
+  recordIdInputField: string;
+  relationField: string;
+  fileNameField: string;
+  contentTypeField: string;
+  sizeField: string;
+  purposes: ReadonlyArray<'preview' | 'download'>;
+  maxTtlSeconds: number;
+  maxBytes: number;
 }
 
 export interface AppApiOperationDeclaration {
@@ -319,6 +336,7 @@ export interface ApplicationOperationSurfaceV2 {
   }>;
   requestSchema: OpenXiangdaJsonSchema;
   responseSchema: OpenXiangdaJsonSchema;
+  fileIntent?: AppApiOperationFileIntentDeclaration;
   description?: string;
 }
 
@@ -342,6 +360,19 @@ export interface ApplicationOperationReceiptV2<
     code: string;
   }>;
   result: TResult;
+  appVersionId: string;
+  environmentHeadRevision: number;
+}
+
+export interface ApplicationFileIntentV2 {
+  schemaVersion: 'openxiangda.application-file-intent/v2';
+  operationCode: string;
+  purpose: 'preview' | 'download';
+  contentUrl: string;
+  expiresAt: string;
+  fileName: string;
+  contentType: string;
+  size: number;
   appVersionId: string;
   environmentHeadRevision: number;
 }
