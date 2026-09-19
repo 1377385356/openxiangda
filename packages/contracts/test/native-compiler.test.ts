@@ -52,8 +52,13 @@ test('both distributions preserve rejection codes and pointers without database 
 test('rejects workflow identifiers that runtime normalization cannot accept', () => {
   const config = JSON.parse(corpus.configuration.canonical);
   config.workflows.definitions[0].definition.code = 'standard_record_approval';
+  const invalid = input(config);
+  const contract = JSON.parse(invalid.contractBytes);
+  contract.configDigest = invalid.expectedConfigDigest;
+  invalid.contractBytes = canonicalJson(contract);
+  invalid.expectedContractDigest = sha256Digest(contract);
   assert.throws(
-    () => esm.compileNativeApplicationConfiguration(input(config)),
+    () => esm.compileNativeApplicationConfiguration(invalid),
     error =>
       error instanceof esm.NativeConfigurationCompilerError &&
       error.code === 'NATIVE_WORKFLOW_CODE_INVALID',
