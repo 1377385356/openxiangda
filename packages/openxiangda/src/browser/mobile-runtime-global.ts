@@ -12,9 +12,9 @@ const MOBILE_RUNTIME_STYLE = `div.adm-px-tester {
 }`;
 
 /**
- * Ant Design Mobile measures px values while its component modules evaluate.
- * Install only the required document-level mechanics before those modules load;
- * the reviewed visual defaults remain scoped in mobile-base.css.
+ * The CSS side-effect prelude on the mobile component graph owns evaluation
+ * ordering. This idempotent initializer keeps the identifiable fallback style
+ * and touch mechanic without importing upstream document visual defaults.
  */
 export function initializeAntdMobileRuntimeGlobal(
   target: Document | undefined = globalThis.document,

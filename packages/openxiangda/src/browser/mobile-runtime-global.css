@@ -1,0 +1,10 @@
+div.adm-px-tester {
+  --size: 1;
+  width: 0;
+  height: calc(var(--size) / 2 * 2px);
+  position: fixed;
+  top: -100vh;
+  left: -100vw;
+  user-select: none;
+  pointer-events: none;
+}

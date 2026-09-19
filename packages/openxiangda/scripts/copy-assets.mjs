@@ -11,6 +11,10 @@ cpSync(
   resolve(root, 'dist/browser/styles.css')
 );
 cpSync(resolve(root, 'src/browser/mobile-fields.css'), resolve(root, 'dist/browser/mobile-fields.css'));
+cpSync(
+  resolve(root, 'src/browser/mobile-runtime-global.css'),
+  resolve(root, 'dist/browser/mobile-runtime-global.css')
+);
 cpSync(resolve(root, 'src/browser/record-detail.css'), resolve(root, 'dist/browser/record-detail.css'));
 const require = createRequire(import.meta.url);
 writeFileSync(resolve(root, 'dist/browser/mobile-base.css'), scopeMobileCss(

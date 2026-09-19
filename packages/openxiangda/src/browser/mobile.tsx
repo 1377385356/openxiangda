@@ -1,3 +1,4 @@
+import './mobile-runtime-global.css';
 import ImageViewerControl, { type MultiImageViewerProps } from 'antd-mobile/es/components/image-viewer/index.js';
 import DatePickerControl, { type DatePickerProps, type DatePickerRef } from 'antd-mobile/es/components/date-picker/index.js';
 import PickerControl, { type PickerProps, type PickerRef } from 'antd-mobile/es/components/picker/index.js';

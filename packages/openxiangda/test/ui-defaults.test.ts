@@ -31,6 +31,16 @@ test('mobile base CSS scopes only upstream defaults and retains scroll/measureme
   assert.throws(() => scopeMobileCss(`${source}\ninput { color: red; }`), /Unreviewed/);
 });
 
+test('mobile component graph starts with the minimal runtime measurement prelude', () => {
+  const source = readFileSync(new URL('../src/browser/mobile.tsx', import.meta.url), 'utf8');
+  const prelude = readFileSync(new URL('../src/browser/mobile-runtime-global.css', import.meta.url), 'utf8');
+  assert.match(source, /^import '\.\/mobile-runtime-global\.css';/);
+  assert.match(prelude, /^div\.adm-px-tester \{/);
+  assert.match(prelude, /position: fixed;/);
+  assert.match(prelude, /height: calc\(var\(--size\) \/ 2 \* 2px\);/);
+  assert.doesNotMatch(prelude, /(?:^|\n)(?:html|body|a|button|:root)[\s{,:]/);
+});
+
 test('react entry initializes only the document mechanics required by Ant Design Mobile', () => {
   const appended: Array<{ id: string; textContent: string | null }> = [];
   const listeners: Array<{ type: string; capture: boolean }> = [];
