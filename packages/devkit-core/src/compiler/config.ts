@@ -41,6 +41,7 @@ import {
   type AppRelationshipGrantSourceDeclaration,
   type AppScopeDimensionDeclaration,
   type AppScopeSourceDeclaration,
+  type SubjectReadSurfaceDeclaration,
   type NativeWorkflowEditableParameterDeclaration,
   type DataFieldDefinition,
   type DataFieldPolicy,
@@ -270,7 +271,10 @@ export interface OpenXiangdaAppDeclaration {
   platform?: Partial<OpenXiangdaAppConfig['platform']>;
   modules?: readonly AppModuleDeclaration[];
   perspectives?: AppPerspectiveDeclaration[];
-  data?: { resources: AppDataResourceDeclaration[] };
+  data?: {
+    resources: AppDataResourceDeclaration[];
+    subjectReadSurfaces?: SubjectReadSurfaceDeclaration[];
+  };
   authz?: NonNullable<OpenXiangdaAppConfig['authz']>;
   events?: NonNullable<OpenXiangdaAppConfig['events']>;
   workflows?: NonNullable<OpenXiangdaAppConfig['workflows']>;
@@ -311,6 +315,7 @@ export interface OpenXiangdaAppConfig {
   perspectives?: AppPerspectiveDeclaration[];
   data?: {
     resources: AppConfiguredDataResource[];
+    subjectReadSurfaces?: SubjectReadSurfaceDeclaration[];
   };
   authz?: {
     /** Package role granted by the platform to every authenticated user on first access. */
@@ -880,6 +885,11 @@ export const openXiangdaAppConfigSchema = {
       required: ['resources'],
       properties: {
         resources: { type: 'array', maxItems: 100, items: { type: 'object' } },
+        subjectReadSurfaces: {
+          type: 'array',
+          maxItems: 50,
+          items: { type: 'object' },
+        },
       },
     },
     authz: {
@@ -1523,6 +1533,18 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
     })
   );
   const declaredResourceCodes = new Set(declaredResources.keys());
+  validateSubjectReadSurfaces(
+    string(object(config.app).code),
+    object(config.data).subjectReadSurfaces,
+    object(config.data).resources,
+    new Set(
+      (Array.isArray(object(config.authz).capabilities)
+        ? (object(config.authz).capabilities as unknown[])
+        : []
+      ).map(item => string(object(item).code))
+    ),
+    diagnostics
+  );
   const declaredWorkflowCodes = new Set(
     (Array.isArray(object(config.workflows).activations)
       ? (object(config.workflows).activations as unknown[])
@@ -4322,6 +4344,154 @@ function validateCapabilityDeclarations(
   });
 }
 
+function validateSubjectReadSurfaces(
+  appCode: string,
+  rawSurfaces: unknown,
+  rawResources: unknown,
+  declaredCapabilityCodes: Set<string>,
+  diagnostics: Diagnostic[]
+) {
+  if (rawSurfaces !== undefined && !Array.isArray(rawSurfaces)) {
+    diagnostics.push(
+      diagnostic(
+        'APP_CONFIG_SUBJECT_READ_SURFACES_INVALID',
+        'data.subjectReadSurfaces 必须是数组',
+        'data.subjectReadSurfaces'
+      )
+    );
+    return;
+  }
+  const resources = new Map(
+    (Array.isArray(rawResources) ? rawResources : []).map(raw => {
+      const resource = object(raw);
+      const schema = object(resource.schema);
+      const fields = Array.isArray(schema.fields) ? schema.fields : [];
+      return [
+        string(resource.code),
+        new Map(fields.map(field => [string(object(field).code), object(field)])),
+      ] as const;
+    })
+  );
+  const systemFields = new Set([
+    'id',
+    'revision',
+    'created_at',
+    'updated_at',
+    'created_by',
+    'updated_by',
+  ]);
+  const surfaceCodes = new Set<string>();
+  (Array.isArray(rawSurfaces) ? rawSurfaces : []).forEach((raw, index) => {
+    const surface = object(raw);
+    const path = `data.subjectReadSurfaces[${index}]`;
+    const code = string(surface.code);
+    const capability = string(surface.capability);
+    const subject = object(surface.subject);
+    const subjectResourceCode = string(subject.resourceCode);
+    const subjectFields = Array.isArray(subject.fields)
+      ? subject.fields.map(string)
+      : [];
+    const subjectResource = resources.get(subjectResourceCode);
+    let invalid =
+      Object.keys(surface).some(
+        key => !['code', 'name', 'capability', 'subject', 'relations'].includes(key)
+      ) ||
+      !OPERATION_CODE_PATTERN.test(code) ||
+      surfaceCodes.has(code) ||
+      !string(surface.name) ||
+      !CAPABILITY_PATTERN.test(capability) ||
+      !capability.startsWith(`app:${appCode}:`) ||
+      !declaredCapabilityCodes.has(capability) ||
+      Object.keys(subject).some(key => !['resourceCode', 'fields'].includes(key)) ||
+      !subjectResource ||
+      subjectFields.length < 1 ||
+      subjectFields.length > 100 ||
+      new Set(subjectFields).size !== subjectFields.length ||
+      subjectFields.some(field => {
+        const declaration = subjectResource?.get(field);
+        return !declaration || string(declaration.type) === 'subtable';
+      });
+    const relations = Array.isArray(surface.relations)
+      ? surface.relations
+      : [];
+    invalid ||= relations.length < 1 || relations.length > 8;
+    const relationCodes = new Set<string>();
+    let totalRows = 0;
+    relations.forEach(rawRelation => {
+      const relation = object(rawRelation);
+      const relationCode = string(relation.code);
+      const resourceCode = string(relation.resourceCode);
+      const foreignKeyField = string(relation.foreignKeyField);
+      const relationFields = Array.isArray(relation.fields)
+        ? relation.fields.map(string)
+        : [];
+      const resource = resources.get(resourceCode);
+      const foreignKey = resource?.get(foreignKeyField);
+      const source = object(foreignKey?.source);
+      const limit = Number(relation.limit);
+      const order = Array.isArray(relation.order) ? relation.order : [];
+      invalid ||=
+        Object.keys(relation).some(
+          key =>
+            ![
+              'code',
+              'resourceCode',
+              'foreignKeyField',
+              'fields',
+              'order',
+              'limit',
+            ].includes(key)
+        ) ||
+        !OPERATION_CODE_PATTERN.test(relationCode) ||
+        relationCodes.has(relationCode) ||
+        !resource ||
+        !foreignKey ||
+        !['uuid', 'resource-ref.single'].includes(string(foreignKey.type)) ||
+        (string(foreignKey.type) === 'resource-ref.single' &&
+          (string(source.kind) !== 'resource' ||
+            string(source.resourceCode) !== subjectResourceCode)) ||
+        relationFields.length < 1 ||
+        relationFields.length > 100 ||
+        new Set(relationFields).size !== relationFields.length ||
+        relationFields.some(field => {
+          const declaration = resource?.get(field);
+          return !declaration || string(declaration.type) === 'subtable';
+        }) ||
+        !Number.isSafeInteger(limit) ||
+        limit < 1 ||
+        limit > 100 ||
+        order.length > 10 ||
+        order.some(rawOrder => {
+          const item = object(rawOrder);
+          const field = string(item.field);
+          const declaration = resource?.get(field);
+          return (
+            Object.keys(item).some(key => !['field', 'direction'].includes(key)) ||
+            (!systemFields.has(field) && !declaration) ||
+            string(declaration?.type) === 'subtable' ||
+            (!systemFields.has(field) &&
+              !supportsSort(string(declaration?.type) as DataFieldDefinition['type'])) ||
+            !['asc', 'desc'].includes(string(item.direction))
+          );
+        });
+      relationCodes.add(relationCode);
+      if (Number.isSafeInteger(limit)) totalRows += limit;
+    });
+    invalid ||= totalRows > 400;
+    if (invalid) {
+      diagnostics.push(
+        diagnostic(
+          'APP_CONFIG_SUBJECT_READ_SURFACE_INVALID',
+          'subject read surface 必须声明唯一 code、显式 capability、一个可读父资源，以及最多 8 个直接等值且总计不超过 400 行的有界关系',
+          path,
+          '关系外键仅支持 uuid 或指向父资源的 resource-ref.single；字段、排序和行数必须全部由声明固定，不能由浏览器传入。'
+        )
+      );
+    }
+    surfaceCodes.add(code);
+  });
+}
+
 function validateBackendOperations(
   rawOperations: unknown,
   declaredResources: Map<string, Map<string, string>>,
@@ -7054,7 +7224,12 @@ export function defineOpenXiangdaApp(
     },
     platform: { root: 'platform', ...declaration.platform },
     ...(modules || declaration.data ? {
-      data: { resources: [...(declaration.data?.resources || []), ...projected.resources] },
+      data: {
+        resources: [...(declaration.data?.resources || []), ...projected.resources],
+        ...(declaration.data?.subjectReadSurfaces
+          ? { subjectReadSurfaces: declaration.data.subjectReadSurfaces }
+          : {}),
+      },
     } : {}),
   });
   // 生成式用户标准面：登录默认路由仍是模板占位时，指向首页资源的标准页。
@@ -7087,6 +7262,9 @@ export function defineOpenXiangdaApp(
             resources: data.resources.map(resource =>
               materializeDataResource(normalizedDeclaration.app.code, resource)
             ),
+            ...(data.subjectReadSurfaces
+              ? { subjectReadSurfaces: data.subjectReadSurfaces }
+              : {}),
           },
         }
       : {}),

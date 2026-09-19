@@ -456,6 +456,40 @@ export function normalizeConfiguration(
         (config.data?.resources || []).map(normalizeDataResource),
         item => item.code
       ),
+      ...(config.data?.subjectReadSurfaces?.length
+        ? {
+            subjectReadSurfaces: sorted(
+              config.data.subjectReadSurfaces.map(surface => ({
+                code: surface.code,
+                name: surface.name,
+                capability: surface.capability,
+                subject: {
+                  resourceCode: surface.subject.resourceCode,
+                  fields: uniqueSorted(surface.subject.fields),
+                },
+                relations: sorted(
+                  surface.relations.map(relation => ({
+                    code: relation.code,
+                    resourceCode: relation.resourceCode,
+                    foreignKeyField: relation.foreignKeyField,
+                    fields: uniqueSorted(relation.fields),
+                    ...(relation.order?.length
+                      ? {
+                          order: relation.order.map(item => ({
+                            field: item.field,
+                            direction: item.direction,
+                          })),
+                        }
+                      : {}),
+                    limit: relation.limit,
+                  })),
+                  item => item.code
+                ),
+              })),
+              item => item.code
+            ),
+          }
+        : {}),
       ...((config.data?.resources || []).some(
         resource => resource.detailRouteCode
       )
@@ -875,6 +909,12 @@ function compileContractBundleFromNormalized(
     configDigest,
     perspectives: normalizedConfiguration.perspectives,
     resources: compileResources(normalizedConfiguration),
+    ...(normalizedConfiguration.data.subjectReadSurfaces?.length
+      ? {
+          subjectReadSurfaces:
+            normalizedConfiguration.data.subjectReadSurfaces,
+        }
+      : {}),
     capabilities,
     operations: compileOperations(config),
     eventConsumers,

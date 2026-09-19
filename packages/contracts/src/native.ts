@@ -284,6 +284,62 @@ export interface AppApiOperationContract {
   platformAccess?: AppOperationPlatformAccessDeclaration;
 }
 
+export interface SubjectReadSurfaceOrderDeclaration {
+  field: string;
+  direction: 'asc' | 'desc';
+}
+
+export interface SubjectReadSurfaceRelationDeclaration {
+  code: string;
+  resourceCode: string;
+  foreignKeyField: string;
+  fields: readonly string[];
+  order?: readonly SubjectReadSurfaceOrderDeclaration[];
+  limit: number;
+}
+
+/**
+ * A bounded browser read projection rooted in one normally-authorized Native
+ * record. Relation rows are not a transitive resource grant: the platform may
+ * expose only the declared fields through the exact equality relation.
+ */
+export interface SubjectReadSurfaceDeclaration {
+  code: string;
+  name: string;
+  capability: string;
+  subject: {
+    resourceCode: string;
+    fields: readonly string[];
+  };
+  relations: readonly SubjectReadSurfaceRelationDeclaration[];
+}
+
+export interface SubjectReadSurfaceSectionV2<
+  T extends Record<string, unknown> = Record<string, unknown>,
+> {
+  code: string;
+  resourceCode: string;
+  items: T[];
+  limit: number;
+  truncated: boolean;
+}
+
+export interface SubjectReadSurfaceResultV2<
+  TSubject extends Record<string, unknown> = Record<string, unknown>,
+> {
+  schemaVersion: 'openxiangda.subject-read-surface/v2';
+  surfaceCode: string;
+  subject: {
+    resourceCode: string;
+    id: string;
+    revision: number;
+    data: TSubject;
+  };
+  sections: SubjectReadSurfaceSectionV2[];
+  appVersionId: string;
+  environmentHeadRevision: number;
+}
+
 export interface AppFrontendRouteDeclaration {
   code: string;
   path: string;
@@ -885,6 +941,7 @@ export interface ConfigurationBundleV3 {
   };
   data: {
     resources: DataResource[];
+    subjectReadSurfaces?: SubjectReadSurfaceDeclaration[];
     /** Compiler-owned catalog used to reproduce resource navigation contracts. */
     resourceDetailRoutes?: AppResourceDetailRouteDeclaration[];
   };
@@ -983,6 +1040,7 @@ export interface ContractBundleV3 {
   configDigest: string;
   perspectives: AppPerspectiveContract[];
   resources: AppResourceContract[];
+  subjectReadSurfaces?: SubjectReadSurfaceDeclaration[];
   capabilities: AppCapabilityContract[];
   operations: AppApiOperationContract[];
   eventConsumers: AppEventConsumerContract[];

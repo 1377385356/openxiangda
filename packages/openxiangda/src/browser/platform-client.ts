@@ -26,6 +26,7 @@ import {
   type RuntimeAuthorizationContext,
   type RuntimeRoleSummary,
   type SubjectProfile,
+  type SubjectReadSurfaceResultV2,
   type ResourceReferenceValue,
   type WorkflowCommand,
   type WorkflowCommandInput,
@@ -1543,6 +1544,30 @@ export async function uploadOperationManagedFile(input: {
 
 function nativeBase() {
   return `/service/openxiangda-api/v2/applications/${applicationCode()}/native`;
+}
+
+/**
+ * Loads one bounded relationship projection after the platform proves normal
+ * read access to the parent record. Callers never provide child resource
+ * fields, filters, sorting, or limits; those stay frozen in the AppVersion.
+ */
+export async function loadSubjectReadSurface<
+  TSubject extends Record<string, unknown> = Record<string, unknown>,
+>(
+  subjectResourceCode: string,
+  surfaceCode: string,
+  subjectId: string,
+  options: { signal?: AbortSignal } = {},
+): Promise<SubjectReadSurfaceResultV2<TSubject>> {
+  const query = new URLSearchParams({ environmentKey: currentEnvironmentKey() });
+  return await requestRead<SubjectReadSurfaceResultV2<TSubject>>(
+    `${nativeBase()}/subjects/${encodeURIComponent(
+      subjectResourceCode,
+    )}/${encodeURIComponent(subjectId)}/surfaces/${encodeURIComponent(
+      surfaceCode,
+    )}?${query.toString()}`,
+    { signal: options.signal },
+  );
 }
 
 export interface ResourceListPreference {

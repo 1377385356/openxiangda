@@ -2,7 +2,18 @@
 
 Date: 2026-09-20
 
-Status: proposed; architecture approval required before implementation
+Status: approved 2026-09-20; Batch A implemented and verified (unpublished and undeployed)
+
+Approved decisions:
+
+- Use generic platform contracts; do not encode contract-management or Tianyin domain
+  behavior in the platform.
+- Provider terminal-state reconciliation is a `controlled` operation with required
+  idempotency. The application backend remains the owner of provider queries, the
+  state machine, and compare-and-set persistence.
+- External-file intents default to a five-minute TTL and a 100 MiB maximum.
+- Reconciliation can be initiated only after the platform proves that the current
+  user can read the parent subject record.
 
 ## 1. Problem evidence
 
@@ -146,7 +157,7 @@ Endpoint and SDK:
 GET /openxiangda-api/v2/applications/:appCode/native/subjects/
     :subjectResourceCode/:subjectId/surfaces/:surfaceCode
 
-loadSubjectReadSurface(surfaceCode, subjectId, { signal })
+loadSubjectReadSurface(subjectResourceCode, surfaceCode, subjectId, { signal })
 ```
 
 The endpoint is generic. Contract V3 may later declare three related sections for
@@ -317,6 +328,30 @@ return to an explicit unavailable state. External files are not copied or delete
 
 Application adoption is a later, separate release. It must not be mixed into these
 platform commits.
+
+## 8. Implementation status
+
+### Batch A — implemented, not yet published or deployed
+
+- `openxiangda-contracts` now carries the additive subject-surface declaration and
+  response types plus bounded configuration and contract bundle schemas.
+- `openxiangda-devkit-core` validates resource, field, relation, capability, ordering,
+  per-section, and total-row invariants before producing deterministic bundles.
+- Platform Server reads the declaration from the active immutable contract, proves
+  normal parent capability, field access, and row policy in a repeatable-read read-only
+  transaction, then executes only the fixed equality projections. Missing or unreadable
+  parents share the same 403 result, and child global read capability is not granted.
+- The sensitive cookie-authenticated GET requires an affirmative same-origin browser
+  signal before opening a data transaction. Bearer-authenticated callers retain the
+  existing verified-source exemption.
+- `openxiangda` exports `loadSubjectReadSurface`; callers provide only parent resource,
+  surface code, parent ID, and optional cancellation signal.
+- The change adds no database migration and does not modify application business rows.
+  npm publication, Platform Server dependency alignment, and test-environment rollout
+  remain separate release steps.
+- Verification passed: toolchain `pnpm verify:affected` completed 24/24 tasks;
+  Platform Server build passed; the focused service/controller suites passed 36/36
+  tests, including cross-site rejection before any data transaction.
 
 ## 8. Falsifiable verification
 

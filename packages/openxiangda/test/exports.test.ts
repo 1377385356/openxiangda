@@ -18,6 +18,7 @@ import {
   loadBusinessProcessReceipt,
   listBusinessProcessCommands,
   loadAuthorizationMutationReceipt,
+  loadSubjectReadSurface,
   loadRoleManagementCatalog,
   pollBusinessProcessCommand,
   resolveApplicationBasename,
@@ -110,7 +111,74 @@ test('exposes the unified version line and browser-safe entrypoints', () => {
   assert.equal(typeof updateRoleManagementGrant, 'function');
   assert.equal(typeof revokeRoleManagementGrant, 'function');
   assert.equal(typeof loadAuthorizationMutationReceipt, 'function');
+  assert.equal(typeof loadSubjectReadSurface, 'function');
   assert.equal(typeof nest.databaseNowAssertion, 'function');
+});
+
+test('loads a declared subject surface without accepting browser filters or child fields', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalDocument = globalThis.document;
+  const metadata: Record<string, string> = {
+    'openxiangda-runtime-base': '/runtime/root-package-test/preproduction',
+    'openxiangda-app-code': 'root-package-test',
+    'openxiangda-environment': 'preproduction',
+  };
+  Object.defineProperty(globalThis, 'document', {
+    configurable: true,
+    value: {
+      querySelector(selector: string) {
+        const name = /meta\[name="([^"]+)"\]/.exec(selector)?.[1];
+        return name && metadata[name] ? { content: metadata[name] } : null;
+      },
+    },
+  });
+  const requests: Array<{ url: string; init?: RequestInit }> = [];
+  globalThis.fetch = async (url, init) => {
+    requests.push({ url: String(url), init });
+    return new Response(
+      JSON.stringify({
+        code: 200,
+        data: {
+          schemaVersion: 'openxiangda.subject-read-surface/v2',
+          surfaceCode: 'contract-signing-detail',
+          subject: {
+            resourceCode: 'contracts',
+            id: '11111111-1111-4111-8111-111111111111',
+            revision: 2,
+            data: { contractNo: 'C-001' },
+          },
+          sections: [],
+          appVersionId: 'version-1',
+          environmentHeadRevision: 7,
+        },
+      }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+  };
+  try {
+    const result = await loadSubjectReadSurface(
+      'contracts',
+      'contract-signing-detail',
+      '11111111-1111-4111-8111-111111111111',
+    );
+    assert.equal(result.subject.data.contractNo, 'C-001');
+    assert.equal(requests.length, 1);
+    assert.equal(
+      requests[0]?.url,
+      '/service/openxiangda-api/v2/applications/root-package-test/native/subjects/contracts/11111111-1111-4111-8111-111111111111/surfaces/contract-signing-detail?environmentKey=preproduction',
+    );
+    assert.equal(requests[0]?.init?.method, undefined);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalDocument === undefined) {
+      delete (globalThis as { document?: Document }).document;
+    } else {
+      Object.defineProperty(globalThis, 'document', {
+        configurable: true,
+        value: originalDocument,
+      });
+    }
+  }
 });
 
 test('exports aggregate query and page contracts from the public core entrypoint', () => {

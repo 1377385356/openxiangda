@@ -21,6 +21,7 @@ import {
   validateNativeDataResourceReferencesV2,
 } from './data-field.js';
 import { validateNativeDataResourceSurfaceV2 } from './data-surface.js';
+import { nativeFieldSupportsSortV2 } from './field-query-plan.js';
 import {
   NativeScopeSourceDimensionV2,
   nativeScopeSourceGrantPathSupportedV2,
@@ -119,6 +120,7 @@ const EVENT_AUTHORIZATION_SYSTEM_FIELDS = new Set([
 export const NATIVE_CONTRACT_CAPACITY_V2 = Object.freeze({
   perspectives: 100,
   resources: 100,
+  subjectReadSurfaces: 50,
   capabilities: 2000,
   operations: 500,
   eventConsumers: 100,
@@ -314,6 +316,9 @@ export function compileNativeApplicationConfiguration(
       appCode,
       resources: config.data.resources,
       resourceContracts: expectedContract.resources,
+      ...(expectedContract.subjectReadSurfaces
+        ? { subjectReadSurfaces: expectedContract.subjectReadSurfaces }
+        : {}),
     },
     events: {
       appCode,
@@ -974,8 +979,18 @@ function validateConfigurationEnvelope(config: JsonObject, appCode: string) {
   validateBackendSecrets(backend.secrets);
 
   const data = object(config.data, '/config/data');
-  exactKeys(data, ['resources'], '/config/data', ['resourceDetailRoutes']);
+  exactKeys(data, ['resources'], '/config/data', [
+    'resourceDetailRoutes',
+    'subjectReadSurfaces',
+  ]);
   boundedArray(data.resources, '/config/data/resources', 100);
+  if (data.subjectReadSurfaces !== undefined) {
+    boundedArray(
+      data.subjectReadSurfaces,
+      '/config/data/subjectReadSurfaces',
+      NATIVE_CONTRACT_CAPACITY_V2.subjectReadSurfaces
+    );
+  }
   if (data.resourceDetailRoutes !== undefined) {
     boundedArray(
       data.resourceDetailRoutes,
@@ -1120,7 +1135,12 @@ function validateContractEnvelope(
       'adminNavigation',
     ],
     '/contracts',
-    ['authentication', 'publicAccess', 'adminAccess']
+    [
+      'authentication',
+      'publicAccess',
+      'adminAccess',
+      'subjectReadSurfaces',
+    ]
   );
   equal(contract.schemaVersion, CONTRACT_SCHEMA, '/contracts/schemaVersion');
   equal(
@@ -1141,6 +1161,13 @@ function validateContractEnvelope(
     '/contracts/resources',
     NATIVE_CONTRACT_CAPACITY_V2.resources
   );
+  if (contract.subjectReadSurfaces !== undefined) {
+    boundedArray(
+      contract.subjectReadSurfaces,
+      '/contracts/subjectReadSurfaces',
+      NATIVE_CONTRACT_CAPACITY_V2.subjectReadSurfaces
+    );
+  }
   boundedArray(
     contract.capabilities,
     '/contracts/capabilities',
@@ -1360,6 +1387,7 @@ function compileExpectedContract(
   ]);
   validateAdminNavigationReferences(config);
   const adminPages = compileAdminPages(config);
+  const subjectReadSurfaces = compileSubjectReadSurfaces(config, capabilities);
   return {
     schemaVersion: CONTRACT_SCHEMA,
     compilerContractVersion: COMPILER_CONTRACT_VERSION,
@@ -1368,6 +1396,7 @@ function compileExpectedContract(
     configDigest,
     perspectives: config.perspectives,
     resources: compileResources(config),
+    ...(subjectReadSurfaces.length ? { subjectReadSurfaces } : {}),
     capabilities: sorted(capabilities, item => item.code),
     operations: compileOperations(config),
     eventConsumers,
@@ -1641,6 +1670,273 @@ function compileResources(config: JsonObject) {
       };
     }),
     (item: JsonObject) => item.code
+  );
+}
+
+function compileSubjectReadSurfaces(
+  config: JsonObject,
+  capabilities: JsonObject[]
+) {
+  if (config.data.subjectReadSurfaces === undefined) return [];
+  const declarations = boundedArray(
+    config.data.subjectReadSurfaces,
+    '/config/data/subjectReadSurfaces',
+    NATIVE_CONTRACT_CAPACITY_V2.subjectReadSurfaces
+  );
+  const capabilityCodes = new Set(
+    capabilities.map(capability => String(capability.code))
+  );
+  const resources = new Map<
+    string,
+    { resource: JsonObject; fields: Map<string, JsonObject> }
+  >(
+    config.data.resources.map((raw: unknown, index: number) => {
+      const pointer = `/config/data/resources/${index}`;
+      const resource = validateResource(raw, pointer, config.appCode);
+      return [
+        String(resource.code),
+        {
+          resource,
+          fields: new Map(
+            boundedArray(
+              object(resource.schema, `${pointer}/schema`).fields,
+              `${pointer}/schema/fields`,
+              500
+            ).map(field => {
+              const declaration = object(field, `${pointer}/schema/fields`);
+              return [String(declaration.code), declaration];
+            })
+          ),
+        },
+      ] as const;
+    })
+  );
+  const surfaceCodes = new Set<string>();
+  return sorted(
+    declarations.map((raw, surfaceIndex) => {
+      const pointer = `/config/data/subjectReadSurfaces/${surfaceIndex}`;
+      const surface = object(raw, pointer);
+      exactKeys(
+        surface,
+        ['code', 'name', 'capability', 'subject', 'relations'],
+        pointer
+      );
+      const code = stableCode(surface.code, `${pointer}/code`);
+      if (surfaceCodes.has(code)) {
+        fail('NATIVE_SUBJECT_READ_SURFACE_CODE_DUPLICATE', `${pointer}/code`);
+      }
+      surfaceCodes.add(code);
+      const capability = capabilityCode(
+        surface.capability,
+        `${pointer}/capability`,
+        config.appCode
+      );
+      if (!capabilityCodes.has(capability)) {
+        fail(
+          'NATIVE_SUBJECT_READ_SURFACE_CAPABILITY_NOT_DECLARED',
+          `${pointer}/capability`
+        );
+      }
+      const subject = object(surface.subject, `${pointer}/subject`);
+      exactKeys(
+        subject,
+        ['resourceCode', 'fields'],
+        `${pointer}/subject`
+      );
+      const subjectResourceCode = resourceCode(
+        subject.resourceCode,
+        `${pointer}/subject/resourceCode`
+      );
+      const subjectResource = resources.get(subjectResourceCode);
+      if (!subjectResource) {
+        fail(
+          'NATIVE_SUBJECT_READ_SURFACE_RESOURCE_NOT_DECLARED',
+          `${pointer}/subject/resourceCode`
+        );
+      }
+      const subjectFields = uniqueStrings(
+        subject.fields,
+        `${pointer}/subject/fields`,
+        100
+      ).map((field, index) =>
+        fieldCodeValue(field, `${pointer}/subject/fields/${index}`)
+      );
+      if (!subjectFields.length) {
+        fail(
+          'NATIVE_SUBJECT_READ_SURFACE_FIELDS_REQUIRED',
+          `${pointer}/subject/fields`
+        );
+      }
+      for (const [index, field] of subjectFields.entries()) {
+        const declaration = subjectResource!.fields.get(field);
+        if (!declaration || declaration.type === 'subtable') {
+          fail(
+            'NATIVE_SUBJECT_READ_SURFACE_FIELD_INVALID',
+            `${pointer}/subject/fields/${index}`
+          );
+        }
+      }
+      const rawRelations = boundedArray(
+        surface.relations,
+        `${pointer}/relations`,
+        8
+      );
+      if (!rawRelations.length) {
+        fail(
+          'NATIVE_SUBJECT_READ_SURFACE_RELATIONS_REQUIRED',
+          `${pointer}/relations`
+        );
+      }
+      const relationCodes = new Set<string>();
+      let rowBudget = 0;
+      const relations = sorted(
+        rawRelations.map((rawRelation, relationIndex) => {
+          const relationPointer = `${pointer}/relations/${relationIndex}`;
+          const relation = object(rawRelation, relationPointer);
+          exactKeys(
+            relation,
+            [
+              'code',
+              'resourceCode',
+              'foreignKeyField',
+              'fields',
+              'limit',
+            ],
+            relationPointer,
+            ['order']
+          );
+          const relationCode = stableCode(
+            relation.code,
+            `${relationPointer}/code`
+          );
+          if (relationCodes.has(relationCode)) {
+            fail(
+              'NATIVE_SUBJECT_READ_SURFACE_RELATION_CODE_DUPLICATE',
+              `${relationPointer}/code`
+            );
+          }
+          relationCodes.add(relationCode);
+          const relationResourceCode = resourceCode(
+            relation.resourceCode,
+            `${relationPointer}/resourceCode`
+          );
+          const relationResource = resources.get(relationResourceCode);
+          if (!relationResource) {
+            fail(
+              'NATIVE_SUBJECT_READ_SURFACE_RESOURCE_NOT_DECLARED',
+              `${relationPointer}/resourceCode`
+            );
+          }
+          const foreignKeyField = fieldCodeValue(
+            relation.foreignKeyField,
+            `${relationPointer}/foreignKeyField`
+          );
+          const foreignKey = relationResource!.fields.get(foreignKeyField);
+          const foreignKeySource = object(
+            foreignKey?.source || {},
+            `${relationPointer}/foreignKeyField/source`
+          );
+          if (
+            !foreignKey ||
+            !['uuid', 'resource-ref.single'].includes(String(foreignKey.type)) ||
+            (foreignKey.type === 'resource-ref.single' &&
+              (foreignKeySource.kind !== 'resource' ||
+                foreignKeySource.resourceCode !== subjectResourceCode))
+          ) {
+            fail(
+              'NATIVE_SUBJECT_READ_SURFACE_RELATION_INVALID',
+              `${relationPointer}/foreignKeyField`
+            );
+          }
+          const fields = uniqueStrings(
+            relation.fields,
+            `${relationPointer}/fields`,
+            100
+          ).map((field, index) =>
+            fieldCodeValue(field, `${relationPointer}/fields/${index}`)
+          );
+          if (!fields.length) {
+            fail(
+              'NATIVE_SUBJECT_READ_SURFACE_FIELDS_REQUIRED',
+              `${relationPointer}/fields`
+            );
+          }
+          for (const [index, field] of fields.entries()) {
+            const declaration = relationResource!.fields.get(field);
+            if (!declaration || declaration.type === 'subtable') {
+              fail(
+                'NATIVE_SUBJECT_READ_SURFACE_FIELD_INVALID',
+                `${relationPointer}/fields/${index}`
+              );
+            }
+          }
+          const order = boundedArray(
+            relation.order || [],
+            `${relationPointer}/order`,
+            10
+          ).map((rawOrder, orderIndex) => {
+            const orderPointer = `${relationPointer}/order/${orderIndex}`;
+            const item = object(rawOrder, orderPointer);
+            exactKeys(item, ['field', 'direction'], orderPointer);
+            const field = fieldCodeValue(item.field, `${orderPointer}/field`);
+            const declaration = relationResource!.fields.get(field);
+            if (
+              (!EVENT_AUTHORIZATION_SYSTEM_FIELDS.has(field) && !declaration) ||
+              declaration?.type === 'subtable' ||
+              (declaration &&
+                !nativeFieldSupportsSortV2(
+                  declaration.type as NativeDataFieldV2['type']
+                ))
+            ) {
+              fail(
+                'NATIVE_SUBJECT_READ_SURFACE_ORDER_FIELD_INVALID',
+                `${orderPointer}/field`
+              );
+            }
+            if (!['asc', 'desc'].includes(String(item.direction))) {
+              fail(
+                'NATIVE_SUBJECT_READ_SURFACE_ORDER_DIRECTION_INVALID',
+                `${orderPointer}/direction`
+              );
+            }
+            return { field, direction: item.direction };
+          });
+          const limit = boundedInteger(
+            relation.limit,
+            `${relationPointer}/limit`,
+            1,
+            100
+          );
+          rowBudget += limit;
+          return {
+            code: relationCode,
+            resourceCode: relationResourceCode,
+            foreignKeyField,
+            fields: uniqueSorted(fields),
+            ...(order.length ? { order } : {}),
+            limit,
+          };
+        }),
+        relation => relation.code
+      );
+      if (rowBudget > 400) {
+        fail(
+          'NATIVE_SUBJECT_READ_SURFACE_ROW_LIMIT_EXCEEDED',
+          `${pointer}/relations`
+        );
+      }
+      return {
+        code,
+        name: requiredString(surface.name, `${pointer}/name`, 255),
+        capability,
+        subject: {
+          resourceCode: subjectResourceCode,
+          fields: uniqueSorted(subjectFields),
+        },
+        relations,
+      };
+    }),
+    surface => surface.code
   );
 }
 

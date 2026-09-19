@@ -8009,6 +8009,74 @@ const appDataPolicyDeclarationSchema = {
   ],
 } as const;
 
+const subjectReadSurfaceDeclarationSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["code", "name", "capability", "subject", "relations"],
+  properties: {
+    code: stableCode,
+    name: nonEmptyString,
+    capability: nativeCapabilityCode,
+    subject: {
+      type: "object",
+      additionalProperties: false,
+      required: ["resourceCode", "fields"],
+      properties: {
+        resourceCode: dataResourceCode,
+        fields: {
+          type: "array",
+          minItems: 1,
+          maxItems: 100,
+          uniqueItems: true,
+          items: dataFieldCode,
+        },
+      },
+    },
+    relations: {
+      type: "array",
+      minItems: 1,
+      maxItems: 8,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: [
+          "code",
+          "resourceCode",
+          "foreignKeyField",
+          "fields",
+          "limit",
+        ],
+        properties: {
+          code: stableCode,
+          resourceCode: dataResourceCode,
+          foreignKeyField: dataFieldCode,
+          fields: {
+            type: "array",
+            minItems: 1,
+            maxItems: 100,
+            uniqueItems: true,
+            items: dataFieldCode,
+          },
+          order: {
+            type: "array",
+            maxItems: 10,
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: ["field", "direction"],
+              properties: {
+                field: stableCode,
+                direction: { enum: ["asc", "desc"] },
+              },
+            },
+          },
+          limit: { type: "integer", minimum: 1, maximum: 100 },
+        },
+      },
+    },
+  },
+} as const;
+
 export const configurationBundleSchema = {
   $id: SCHEMA_VERSIONS.configurationBundle,
   $defs: { appDataPolicyExpression: appDataPolicyExpressionSchema },
@@ -8113,6 +8181,11 @@ export const configurationBundleSchema = {
           type: "array",
           maxItems: 100,
           items: { $ref: SCHEMA_VERSIONS.dataResource },
+        },
+        subjectReadSurfaces: {
+          type: "array",
+          maxItems: 50,
+          items: subjectReadSurfaceDeclarationSchema,
         },
         resourceDetailRoutes: {
           type: "array",
@@ -8386,6 +8459,11 @@ export const contractBundleSchema = {
       items: appPerspectiveContractSchema,
     },
     resources: { type: "array", maxItems: 100, items: { type: "object" } },
+    subjectReadSurfaces: {
+      type: "array",
+      maxItems: 50,
+      items: subjectReadSurfaceDeclarationSchema,
+    },
     capabilities: { type: "array", maxItems: 2000, items: { type: "object" } },
     operations: { type: "array", maxItems: 500, items: { type: "object" } },
     eventConsumers: { type: "array", maxItems: 100, items: { type: "object" } },

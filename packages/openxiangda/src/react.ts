@@ -21,6 +21,7 @@ export {
   createResourceFormDraftClient,
   type ResourceFormDraft,
   createAnonymousPublicClient,
+  loadSubjectReadSurface,
   type AnonymousPublicDraft,
   type AnonymousPublicRecord,
 } from './browser/platform-client';
