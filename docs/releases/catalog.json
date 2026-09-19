@@ -3,6 +3,40 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.21.2",
+      "status": "reviewed",
+      "title": "OpenXiangda 2.21.2：后端镜像分片 gzip 传输",
+      "summary": "为平台托管的 OCI 后端镜像上传增加可协商的 gzip 分片传输，解决部分测试环境中 VPN 或 HTTP 内容检测设备误断开特定 OCI 配置内容的问题，同时保持镜像原始字节、摘要、断点续传和 registry 所有权不变。",
+      "newFeatures": [
+        "平台可通过 backendImageUpload.chunkEncoding 声明 gzip 分片传输；新版 Devkit 仅在平台明确声明时压缩请求体，并发送 X-OpenXiangda-Chunk-Encoding: gzip。"
+      ],
+      "fixes": [
+        "后端镜像上传不再因测试环境明文 HTTP 路径对特定 OCI 配置字节的内容检测误杀而反复 ECONNRESET；未声明该能力的平台继续使用原始 octet-stream 分片。",
+        "修正 workflow 标识校验测试的 contract digest 绑定，使发布验证能够到达并断言预期的 workflow 专用错误。"
+      ],
+      "affectedUsers": [
+        "通过 OpenXiangda 2.0 向启用了平台托管镜像上传、且网络路径会检测明文 HTTP 内容的测试环境部署 Nest 后端的开发与维护会话。"
+      ],
+      "upgradeSteps": [
+        "先部署支持 backendImageUpload.chunkEncoding 的新版 platform-server，再将应用精确依赖升级到 openxiangda 2.21.2 并按锁文件安装。",
+        "重新执行 openxiangda deploy；新版客户端会从平台 capability 自动选择 gzip 或兼容的 raw 分片路径，无需应用代码配置。"
+      ],
+      "knownLimitations": [
+        "gzip 只用于兼容受约束的测试环境 HTTP 传输路径，不替代 TLS；生产环境仍必须使用 HTTPS。",
+        "平台未声明 chunkEncoding 时客户端不会主动启用 gzip，因此只升级客户端不能修复不支持该能力的旧平台。"
+      ],
+      "issues": [],
+      "compatibility": {
+        "node": ">=24",
+        "workspaceGenerations": "v2",
+        "platform": "要使用 gzip 分片，需配套升级到声明 backendImageUpload.chunkEncoding=gzip 的 platform-server；旧平台保持 raw 分片兼容。",
+        "v1": "V1 工作区与维护引擎不受影响。"
+      },
+      "sha256": "30f2bf73b459663800abcd53f6f951d6a0d50d6090eec1692be05ba321db2e24",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.21.2"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.21.1",
       "status": "reviewed",
       "title": "OpenXiangda 2.21.1：工作区平台绑定查看与显式换绑",
