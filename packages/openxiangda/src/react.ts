@@ -21,11 +21,18 @@ export {
   createResourceFormDraftClient,
   type ResourceFormDraft,
   createAnonymousPublicClient,
+  executeApplicationOperation,
+  loadApplicationOperationSurfaces,
   loadSubjectReadSurface,
   type AnonymousPublicDraft,
   type AnonymousPublicRecord,
 } from './browser/platform-client';
-export type { WorkflowCommandResult } from 'openxiangda-contracts/browser';
+export type {
+  ApplicationOperationReceiptV2,
+  ApplicationOperationSurfaceCatalogV2,
+  ApplicationOperationSurfaceV2,
+  WorkflowCommandResult,
+} from 'openxiangda-contracts/browser';
 export * from './browser/components/resource/GeneratedResourceCrud';
 export * from './browser/components/resource/ResourceBatchActions';
 export * from './browser/components/resource/StandardResourcePages';

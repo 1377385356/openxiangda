@@ -26,6 +26,9 @@ import {
   type RuntimeAuthorizationContext,
   type RuntimeRoleSummary,
   type SubjectProfile,
+  type ApplicationOperationReceiptV2,
+  type ApplicationOperationSurfaceCatalogV2,
+  type ApplicationOperationSurfaceV2,
   type SubjectReadSurfaceResultV2,
   type ResourceReferenceValue,
   type WorkflowCommand,
@@ -1567,6 +1570,64 @@ export async function loadSubjectReadSurface<
       surfaceCode,
     )}?${query.toString()}`,
     { signal: options.signal },
+  );
+}
+
+/** Lists only active-version operations exposed to the current role union. */
+export async function loadApplicationOperationSurfaces(
+  options: { signal?: AbortSignal } = {},
+): Promise<ApplicationOperationSurfaceCatalogV2> {
+  const query = new URLSearchParams({ environmentKey: currentEnvironmentKey() });
+  return await requestRead<ApplicationOperationSurfaceCatalogV2>(
+    `${nativeBase()}/operation-surfaces?${query.toString()}`,
+    { signal: options.signal },
+  );
+}
+
+/**
+ * Executes the exact immutable operation surface returned by the catalog.
+ * The caller never supplies a runtime path, capability, or subject resource.
+ */
+export async function executeApplicationOperation<
+  TResult extends Record<string, unknown> = Record<string, unknown>,
+>(
+  operationSurface: ApplicationOperationSurfaceV2,
+  input: Record<string, unknown>,
+  options: { idempotencyKey?: string; signal?: AbortSignal } = {},
+): Promise<ApplicationOperationReceiptV2<TResult>> {
+  if (
+    !operationSurface?.code ||
+    !operationSurface.appVersionId ||
+    !Number.isSafeInteger(operationSurface.environmentHeadRevision) ||
+    operationSurface.environmentHeadRevision < 1
+  ) {
+    throw new Error('OPENXIANGDA_APPLICATION_OPERATION_SURFACE_INVALID');
+  }
+  const idempotencyKey = String(options.idempotencyKey || '').trim();
+  if (
+    operationSurface.idempotency === 'required' &&
+    (!idempotencyKey || idempotencyKey.length > 128)
+  ) {
+    throw new Error('OPENXIANGDA_APPLICATION_OPERATION_IDEMPOTENCY_REQUIRED');
+  }
+  const csrfToken = await workflowCsrfToken();
+  return await request<ApplicationOperationReceiptV2<TResult>>(
+    `${nativeBase()}/operation-surfaces/${encodeURIComponent(
+      operationSurface.code,
+    )}/execute`,
+    {
+      method: 'POST',
+      headers: { 'x-openxiangda-csrf-token': csrfToken },
+      signal: options.signal,
+      body: JSON.stringify({
+        environmentKey: currentEnvironmentKey(),
+        expectedAppVersionId: operationSurface.appVersionId,
+        expectedEnvironmentHeadRevision:
+          operationSurface.environmentHeadRevision,
+        input,
+        ...(idempotencyKey ? { idempotencyKey } : {}),
+      }),
+    },
   );
 }
 

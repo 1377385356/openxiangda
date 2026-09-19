@@ -353,6 +353,35 @@ platform commits.
   Platform Server build passed; the focused service/controller suites passed 36/36
   tests, including cross-site rejection before any data transaction.
 
+### Batch B — implemented, not yet published or deployed
+
+- Backend operations can opt into an authenticated browser catalog as either `read`
+  with no idempotency key or `controlled` with a required idempotency key. Every
+  declaration binds one required UUID request field to a declared parent resource and
+  can name only subject-read refresh targets owned by that same parent.
+- The browser SDK lists only capability-visible operations from the active immutable
+  AppVersion and executes an operation by code plus the expected AppVersion/Head. It
+  never accepts a runtime path, capability, parent resource, or refresh target from the
+  caller.
+- Platform Server revalidates the contract/configuration closure, same-origin and CSRF
+  proofs, published current-user role union, ordinary parent read capability and RLS,
+  request/response schemas, and the active backend target before dispatch. Connected
+  Dev projections cannot widen this authorization path.
+- Controlled execution serializes the actor/operation/idempotency tuple with a
+  transaction advisory lock, forwards a platform-derived backend idempotency key, and
+  stores one append-only receipt containing digests, declared refresh targets, and the
+  schema-validated result. A repeated key replays the same receipt; a different input
+  digest fails with a conflict before backend dispatch.
+- The additive SQL migration is verified but has not been executed. Verification passed:
+  toolchain `pnpm verify:affected` completed 24/24 tasks; Platform Server build and SQL
+  migration verification passed; the focused catalog/execute, controller, and gateway
+  suites passed 52/52 tests, including allow/deny, unreadable subject, stale Head,
+  request/response failure, refresh-owner closure, replay, conflict, and sanitized
+  dispatch behavior.
+- No npm package was published, no Platform Server image was released, no customer
+  environment was deployed, and no database migration or application business change
+  was executed. Batch C file intents and bounded streaming remain pending.
+
 ## 8. Falsifiable verification
 
 The platform work is not complete unless all of the following pass:

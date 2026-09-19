@@ -1556,6 +1556,18 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
     declaredResources,
     declaredWorkflowCodes,
     new Set((Array.isArray(object(config.authz).roles) ? object(config.authz).roles as unknown[] : []).map(role => string(object(role).code))),
+    new Map(
+      (Array.isArray(object(config.data).subjectReadSurfaces)
+        ? (object(config.data).subjectReadSurfaces as unknown[])
+        : []
+      ).map(surface => {
+        const declaration = object(surface);
+        return [
+          string(declaration.code),
+          string(object(declaration.subject).resourceCode),
+        ] as const;
+      })
+    ),
     diagnostics
   );
   const eventConfig = object(config.events);
@@ -4497,6 +4509,7 @@ function validateBackendOperations(
   declaredResources: Map<string, Map<string, string>>,
   declaredWorkflowCodes: Set<string>,
   declaredRoleCodes: Set<string>,
+  declaredSubjectSurfaces: Map<string, string>,
   diagnostics: Diagnostic[]
 ) {
   const declaredResourceCodes = new Set(declaredResources.keys());
@@ -4693,6 +4706,78 @@ function validateBackendOperations(
             'APP_CONFIG_BACKEND_OPERATION_PLATFORM_ACCESS_INVALID',
             'operation.platformAccess 必须只声明有界的发起人目录、托管文件、托管文件复制、标准通知、现有工作流或已声明角色条件依赖',
             `${path}.platformAccess`
+          )
+        );
+      }
+    }
+    if (operation.browser !== undefined) {
+      const browser = object(operation.browser);
+      const subject = object(browser.subject);
+      const subjectResourceCode = string(subject.resourceCode);
+      const inputField = string(subject.inputField);
+      const requestSchema = object(operation.requestSchema);
+      const responseSchema = object(operation.responseSchema);
+      const requestProperties = object(requestSchema.properties);
+      const subjectInputSchema = object(requestProperties[inputField]);
+      const requiredFields = Array.isArray(requestSchema.required)
+        ? requestSchema.required.map(string)
+        : [];
+      const refreshTargets = Array.isArray(browser.refreshTargets)
+        ? browser.refreshTargets
+        : [];
+      const refreshKeys = refreshTargets.map(rawTarget => {
+        const target = object(rawTarget);
+        return `${string(target.kind)}:${string(target.code)}`;
+      });
+      let invalid =
+        !isRecord(operation.browser) ||
+        Object.keys(browser).some(
+          key =>
+            ![
+              'exposure',
+              'behavior',
+              'idempotency',
+              'subject',
+              'refreshTargets',
+            ].includes(key)
+        ) ||
+        browser.exposure !== 'authenticated' ||
+        !['read', 'controlled'].includes(string(browser.behavior)) ||
+        !['none', 'required'].includes(string(browser.idempotency)) ||
+        (browser.behavior === 'controlled' &&
+          browser.idempotency !== 'required') ||
+        (browser.behavior === 'read' && browser.idempotency !== 'none') ||
+        !isRecord(browser.subject) ||
+        Object.keys(subject).some(
+          key => !['resourceCode', 'inputField'].includes(key)
+        ) ||
+        !declaredResources.has(subjectResourceCode) ||
+        requestSchema.type !== 'object' ||
+        requestSchema.additionalProperties !== false ||
+        responseSchema.type !== 'object' ||
+        responseSchema.additionalProperties !== false ||
+        !/^[A-Za-z][A-Za-z0-9_]{0,127}$/.test(inputField) ||
+        !(inputField in requestProperties) ||
+        !requiredFields.includes(inputField) ||
+        subjectInputSchema.type !== 'string' ||
+        subjectInputSchema.format !== 'uuid' ||
+        refreshTargets.length > 16 ||
+        new Set(refreshKeys).size !== refreshKeys.length;
+      for (const rawTarget of refreshTargets) {
+        const target = object(rawTarget);
+        const targetCode = string(target.code);
+        invalid ||=
+          Object.keys(target).some(key => !['kind', 'code'].includes(key)) ||
+          target.kind !== 'subject-surface' ||
+          !declaredSubjectSurfaces.has(targetCode) ||
+          declaredSubjectSurfaces.get(targetCode) !== subjectResourceCode;
+      }
+      if (invalid) {
+        diagnostics.push(
+          diagnostic(
+            'APP_CONFIG_BACKEND_OPERATION_BROWSER_INVALID',
+            'browser operation 必须绑定已声明父资源和必填请求字段；controlled 必须强制幂等，刷新目标必须引用同一父资源的 subject surface',
+            `${path}.browser`
           )
         );
       }

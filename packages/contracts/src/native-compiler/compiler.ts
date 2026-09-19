@@ -462,6 +462,7 @@ export function compileRequiredPlatformCapabilitiesV3(
         path: operation.path,
         capability: operation.capability,
         platformAccess: operation.platformAccess || null,
+        ...(operation.browser ? { browser: operation.browser } : {}),
         ai: operation.ai || null,
       })),
     },
@@ -2081,6 +2082,7 @@ function compileOperations(config: JsonObject) {
           'responseSchema',
           'description',
           'platformAccess',
+          'browser',
           'ai',
         ],
         pointer,
@@ -2104,6 +2106,14 @@ function compileOperations(config: JsonObject) {
         declaredResources,
         declaredWorkflowCodes,
         new Set<string>(config.authz.roles.map((role: JsonObject) => String(role.code)))
+      );
+      const browser = validateOperationBrowser(
+        operation.browser,
+        `${pointer}/browser`,
+        operation.requestSchema,
+        operation.responseSchema,
+        declaredResources,
+        config.data.subjectReadSurfaces || []
       );
       return {
         code,
@@ -2130,10 +2140,172 @@ function compileOperations(config: JsonObject) {
               ),
             }),
         ...(platformAccess ? { platformAccess } : {}),
+        ...(browser ? { browser } : {}),
       };
     }),
     (item: JsonObject) => item.code
   );
+}
+
+function validateOperationBrowser(
+  value: unknown,
+  pointer: string,
+  requestSchemaInput: unknown,
+  responseSchemaInput: unknown,
+  declaredResources: Map<string, Map<string, string>>,
+  subjectReadSurfacesInput: unknown
+) {
+  if (value === undefined) return null;
+  const browser = object(value, pointer);
+  exactKeys(
+    browser,
+    ['exposure', 'behavior', 'idempotency', 'subject'],
+    pointer,
+    ['refreshTargets']
+  );
+  equal(browser.exposure, 'authenticated', `${pointer}/exposure`);
+  const behavior = requiredString(
+    browser.behavior,
+    `${pointer}/behavior`,
+    32
+  );
+  if (!['read', 'controlled'].includes(behavior)) {
+    fail('NATIVE_OPERATION_BROWSER_BEHAVIOR_INVALID', `${pointer}/behavior`);
+  }
+  const idempotency = requiredString(
+    browser.idempotency,
+    `${pointer}/idempotency`,
+    32
+  );
+  if (
+    !['none', 'required'].includes(idempotency) ||
+    (behavior === 'controlled' && idempotency !== 'required') ||
+    (behavior === 'read' && idempotency !== 'none')
+  ) {
+    fail(
+      'NATIVE_OPERATION_BROWSER_IDEMPOTENCY_INVALID',
+      `${pointer}/idempotency`
+    );
+  }
+  const subject = object(browser.subject, `${pointer}/subject`);
+  exactKeys(
+    subject,
+    ['resourceCode', 'inputField'],
+    `${pointer}/subject`
+  );
+  const resource = resourceCode(
+    subject.resourceCode,
+    `${pointer}/subject/resourceCode`
+  );
+  if (!declaredResources.has(resource)) {
+    fail(
+      'NATIVE_OPERATION_BROWSER_SUBJECT_RESOURCE_NOT_DECLARED',
+      `${pointer}/subject/resourceCode`
+    );
+  }
+  const inputField = fieldCodeValue(
+    subject.inputField,
+    `${pointer}/subject/inputField`
+  );
+  const requestSchema = object(
+    requestSchemaInput,
+    `${pointer}/requestSchema`
+  );
+  const responseSchema = object(
+    responseSchemaInput,
+    `${pointer}/responseSchema`
+  );
+  if (
+    requestSchema.type !== 'object' ||
+    requestSchema.additionalProperties !== false ||
+    responseSchema.type !== 'object' ||
+    responseSchema.additionalProperties !== false
+  ) {
+    fail(
+      'NATIVE_OPERATION_BROWSER_SCHEMA_ROOT_INVALID',
+      `${pointer}/requestSchema`
+    );
+  }
+  const requestProperties = object(
+    requestSchema.properties,
+    `${pointer}/requestSchema/properties`
+  );
+  const requiredFields = new Set(
+    requestSchema.required === undefined
+      ? []
+      : uniqueStrings(
+          requestSchema.required,
+          `${pointer}/requestSchema/required`,
+          200
+        )
+  );
+  if (!(inputField in requestProperties) || !requiredFields.has(inputField)) {
+    fail(
+      'NATIVE_OPERATION_BROWSER_SUBJECT_INPUT_INVALID',
+      `${pointer}/subject/inputField`
+    );
+  }
+  const subjectInputSchema = object(
+    requestProperties[inputField],
+    `${pointer}/requestSchema/properties/${inputField}`
+  );
+  if (
+    subjectInputSchema.type !== 'string' ||
+    subjectInputSchema.format !== 'uuid'
+  ) {
+    fail(
+      'NATIVE_OPERATION_BROWSER_SUBJECT_INPUT_INVALID',
+      `${pointer}/subject/inputField`
+    );
+  }
+  const surfaces = new Map<string, string>(
+    (Array.isArray(subjectReadSurfacesInput) ? subjectReadSurfacesInput : []).map(
+      (raw: unknown, index: number) => {
+        const declaration = object(
+          raw,
+          `/config/data/subjectReadSurfaces/${index}`
+        );
+        return [
+          String(declaration.code),
+          String(object(declaration.subject, `/config/data/subjectReadSurfaces/${index}/subject`).resourceCode),
+        ];
+      }
+    )
+  );
+  const refreshTargets =
+    browser.refreshTargets === undefined
+      ? []
+      : boundedArray(browser.refreshTargets, `${pointer}/refreshTargets`, 16);
+  const refreshKeys = new Set<string>();
+  const normalizedTargets = sorted(
+    refreshTargets.map((raw, index) => {
+      const targetPointer = `${pointer}/refreshTargets/${index}`;
+      const target = object(raw, targetPointer);
+      exactKeys(target, ['kind', 'code'], targetPointer);
+      equal(target.kind, 'subject-surface', `${targetPointer}/kind`);
+      const code = stableCode(target.code, `${targetPointer}/code`);
+      if (
+        refreshKeys.has(code) ||
+        !surfaces.has(code) ||
+        surfaces.get(code) !== resource
+      ) {
+        fail(
+          'NATIVE_OPERATION_BROWSER_REFRESH_TARGET_INVALID',
+          `${targetPointer}/code`
+        );
+      }
+      refreshKeys.add(code);
+      return { kind: 'subject-surface', code };
+    }),
+    target => `${target.kind}:${target.code}`
+  );
+  return {
+    exposure: 'authenticated',
+    behavior,
+    idempotency,
+    subject: { resourceCode: resource, inputField },
+    ...(normalizedTargets.length ? { refreshTargets: normalizedTargets } : {}),
+  };
 }
 
 function validateOperationPlatformAccess(

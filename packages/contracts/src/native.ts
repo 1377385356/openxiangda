@@ -259,6 +259,20 @@ export interface AppOperationPlatformAccessDeclaration {
   workflow?: { codes: readonly string[] };
 }
 
+export interface AppApiOperationBrowserDeclaration {
+  exposure: 'authenticated';
+  behavior: 'read' | 'controlled';
+  idempotency: 'none' | 'required';
+  subject: {
+    resourceCode: string;
+    inputField: string;
+  };
+  refreshTargets?: ReadonlyArray<{
+    kind: 'subject-surface';
+    code: string;
+  }>;
+}
+
 export interface AppApiOperationDeclaration {
   code: string;
   method: AppHttpMethod;
@@ -269,6 +283,8 @@ export interface AppApiOperationDeclaration {
   description?: string;
   /** Platform-owned dependencies bounded to this immutable operation. */
   platformAccess?: AppOperationPlatformAccessDeclaration;
+  /** Explicit browser exposure through the capability-checked operation gateway. */
+  browser?: AppApiOperationBrowserDeclaration;
   /** Explicit opt-in. Backend operations without this declaration are not AI capabilities. */
   ai?: AppApiOperationAiDeclaration;
 }
@@ -282,6 +298,52 @@ export interface AppApiOperationContract {
   responseSchemaDigest: string;
   description?: string;
   platformAccess?: AppOperationPlatformAccessDeclaration;
+  browser?: AppApiOperationBrowserDeclaration;
+}
+
+export interface ApplicationOperationSurfaceV2 {
+  code: string;
+  method: AppHttpMethod;
+  appVersionId: string;
+  environmentHeadRevision: number;
+  behavior: 'read' | 'controlled';
+  idempotency: 'none' | 'required';
+  requiredCapability: string;
+  subject: {
+    resourceCode: string;
+    inputField: string;
+  };
+  refreshTargets: ReadonlyArray<{
+    kind: 'subject-surface';
+    code: string;
+  }>;
+  requestSchema: OpenXiangdaJsonSchema;
+  responseSchema: OpenXiangdaJsonSchema;
+  description?: string;
+}
+
+export interface ApplicationOperationSurfaceCatalogV2 {
+  schemaVersion: 'openxiangda.application-operation-surfaces/v2';
+  appVersionId: string;
+  environmentHeadRevision: number;
+  operations: ApplicationOperationSurfaceV2[];
+}
+
+export interface ApplicationOperationReceiptV2<
+  TResult extends Record<string, unknown> = Record<string, unknown>,
+> {
+  schemaVersion: 'openxiangda.application-operation-receipt/v2';
+  operationId: string;
+  operationCode: string;
+  replayed: boolean;
+  changed: boolean;
+  refreshTargets: ReadonlyArray<{
+    kind: 'subject-surface';
+    code: string;
+  }>;
+  result: TResult;
+  appVersionId: string;
+  environmentHeadRevision: number;
 }
 
 export interface SubjectReadSurfaceOrderDeclaration {

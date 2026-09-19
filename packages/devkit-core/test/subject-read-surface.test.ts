@@ -11,6 +11,7 @@ import {
 
 const surfaceCapability =
   'app:surface-app:surface:contract-signing-detail:read';
+const reconcileCapability = 'app:surface-app:signing:reconcile';
 
 function declaration(): OpenXiangdaAppDeclaration {
   return {
@@ -22,6 +23,7 @@ function declaration(): OpenXiangdaAppDeclaration {
     authz: {
       capabilities: [
         { code: surfaceCapability, kind: 'backend', name: '读取合同签署详情' },
+        { code: reconcileCapability, kind: 'backend', name: '对账签署终态' },
       ],
       roles: [
         {
@@ -30,6 +32,7 @@ function declaration(): OpenXiangdaAppDeclaration {
           capabilities: [
             ...resourceRoleCapabilities('surface-app', 'contracts', 'read'),
             surfaceCapability,
+            reconcileCapability,
           ],
         },
       ],
@@ -122,6 +125,204 @@ test('compiles bounded subject read surfaces into immutable config and contract 
   });
   assert.deepEqual(platform.projections.data.value.subjectReadSurfaces, [expected]);
   assert.deepEqual(platform.projections.contracts.value.subjectReadSurfaces, [expected]);
+});
+
+test('compiles authenticated controlled browser operations with immutable subject and refresh bindings', () => {
+  const input = declaration();
+  input.backend!.operations = [
+    {
+      code: 'signing.reconcile',
+      method: 'POST',
+      path: '/api/signing/reconcile',
+      capability: reconcileCapability,
+      requestSchema: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['contractId'],
+        properties: {
+          contractId: { type: 'string', format: 'uuid' },
+        },
+      },
+      responseSchema: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['status'],
+        properties: { status: { type: 'string' } },
+      },
+      browser: {
+        exposure: 'authenticated',
+        behavior: 'controlled',
+        idempotency: 'required',
+        subject: { resourceCode: 'contracts', inputField: 'contractId' },
+        refreshTargets: [
+          { kind: 'subject-surface', code: 'contract-signing-detail' },
+        ],
+      },
+    },
+  ];
+  const compiled = compileApplicationSources(defineOpenXiangdaApp(input));
+  const browser = compiled.contracts.value.operations[0]?.browser;
+  assert.deepEqual(browser, {
+    exposure: 'authenticated',
+    behavior: 'controlled',
+    idempotency: 'required',
+    subject: { resourceCode: 'contracts', inputField: 'contractId' },
+    refreshTargets: [
+      { kind: 'subject-surface', code: 'contract-signing-detail' },
+    ],
+  });
+  const platform = compileNativeApplicationConfiguration({
+    appCode: compiled.config.value.appCode,
+    configBytes: canonicalJson(compiled.config.value),
+    contractBytes: canonicalJson(compiled.contracts.value),
+    expectedConfigDigest: compiled.config.digest,
+    expectedContractDigest: compiled.contracts.digest,
+  });
+  assert.deepEqual(
+    platform.projections.runtime.value.backend.operations[0]?.browser,
+    browser
+  );
+});
+
+test('keeps legacy operation bundle shape unchanged when browser exposure is absent', () => {
+  const input = declaration();
+  input.backend!.operations = [
+    {
+      code: 'signing.lookup',
+      method: 'POST',
+      path: '/api/signing/lookup',
+      capability: reconcileCapability,
+      requestSchema: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {},
+      },
+      responseSchema: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {},
+      },
+    },
+  ];
+  const compiled = compileApplicationSources(defineOpenXiangdaApp(input));
+  assert.equal('browser' in compiled.config.value.backend.operations[0]!, false);
+  assert.equal('browser' in compiled.contracts.value.operations[0]!, false);
+});
+
+test('rejects controlled browser operations without required idempotency or a declared refresh surface', () => {
+  const input = declaration();
+  input.backend!.operations = [
+    {
+      code: 'signing.reconcile',
+      method: 'POST',
+      path: '/api/signing/reconcile',
+      capability: reconcileCapability,
+      requestSchema: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['contractId'],
+        properties: { contractId: { type: 'string', format: 'uuid' } },
+      },
+      responseSchema: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {},
+      },
+      browser: {
+        exposure: 'authenticated',
+        behavior: 'controlled',
+        idempotency: 'none',
+        subject: { resourceCode: 'contracts', inputField: 'contractId' },
+        refreshTargets: [
+          { kind: 'subject-surface', code: 'missing-surface' },
+        ],
+      },
+    },
+  ];
+  assert.throws(
+    () => defineOpenXiangdaApp(input),
+    error =>
+      Boolean(
+        (error as { diagnostics?: Array<{ code: string }> }).diagnostics?.some(
+          item => item.code === 'APP_CONFIG_BACKEND_OPERATION_BROWSER_INVALID'
+        )
+      )
+  );
+});
+
+test('rejects browser operations with an open request or response root schema', () => {
+  const input = declaration();
+  input.backend!.operations = [
+    {
+      code: 'signing.reconcile',
+      method: 'POST',
+      path: '/api/signing/reconcile',
+      capability: reconcileCapability,
+      requestSchema: {
+        type: 'object',
+        required: ['contractId'],
+        properties: { contractId: { type: 'string', format: 'uuid' } },
+      },
+      responseSchema: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {},
+      },
+      browser: {
+        exposure: 'authenticated',
+        behavior: 'controlled',
+        idempotency: 'required',
+        subject: { resourceCode: 'contracts', inputField: 'contractId' },
+      },
+    },
+  ];
+  assert.throws(
+    () => defineOpenXiangdaApp(input),
+    error =>
+      Boolean(
+        (error as { diagnostics?: Array<{ code: string }> }).diagnostics?.some(
+          item => item.code === 'APP_CONFIG_BACKEND_OPERATION_BROWSER_INVALID'
+        )
+      )
+  );
+});
+
+test('rejects a browser subject input that is not a required UUID field', () => {
+  const input = declaration();
+  input.backend!.operations = [
+    {
+      code: 'signing.reconcile',
+      method: 'POST',
+      path: '/api/signing/reconcile',
+      capability: reconcileCapability,
+      requestSchema: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['contractId'],
+        properties: { contractId: { type: 'string' } },
+      },
+      responseSchema: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {},
+      },
+      browser: {
+        exposure: 'authenticated',
+        behavior: 'controlled',
+        idempotency: 'required',
+        subject: { resourceCode: 'contracts', inputField: 'contractId' },
+      },
+    },
+  ];
+  assert.throws(
+    () => defineOpenXiangdaApp(input),
+    error =>
+      Boolean(
+        (error as { diagnostics?: Array<{ code: string }> }).diagnostics?.some(
+          item => item.code === 'APP_CONFIG_BACKEND_OPERATION_BROWSER_INVALID'
+        )
+      )
+  );
 });
 
 test('does not change bundle bytes for applications without subject surfaces', () => {

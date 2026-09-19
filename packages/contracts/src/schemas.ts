@@ -7123,6 +7123,43 @@ const appApiOperationDeclarationSchema = {
     responseSchema: jsonObjectSchema,
     description: { type: "string", maxLength: 2000 },
     platformAccess: appOperationPlatformAccessSchema,
+    browser: {
+      type: "object",
+      additionalProperties: false,
+      required: [
+        "exposure",
+        "behavior",
+        "idempotency",
+        "subject",
+      ],
+      properties: {
+        exposure: { const: "authenticated" },
+        behavior: { enum: ["read", "controlled"] },
+        idempotency: { enum: ["none", "required"] },
+        subject: {
+          type: "object",
+          additionalProperties: false,
+          required: ["resourceCode", "inputField"],
+          properties: {
+            resourceCode: dataResourceCode,
+            inputField: dataFieldCode,
+          },
+        },
+        refreshTargets: {
+          type: "array",
+          maxItems: 16,
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["kind", "code"],
+            properties: {
+              kind: { const: "subject-surface" },
+              code: stableCode,
+            },
+          },
+        },
+      },
+    },
     ai: {
       type: "object",
       additionalProperties: false,

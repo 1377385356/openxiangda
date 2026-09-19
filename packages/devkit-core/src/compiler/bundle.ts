@@ -427,6 +427,30 @@ export function normalizeConfiguration(
                 },
               }
             : {}),
+          ...(operation.browser
+            ? {
+                browser: {
+                  exposure: operation.browser.exposure,
+                  behavior: operation.browser.behavior,
+                  idempotency: operation.browser.idempotency,
+                  subject: {
+                    resourceCode: operation.browser.subject.resourceCode,
+                    inputField: operation.browser.subject.inputField,
+                  },
+                  ...(operation.browser.refreshTargets?.length
+                    ? {
+                        refreshTargets: sorted(
+                          operation.browser.refreshTargets.map(target => ({
+                            kind: target.kind,
+                            code: target.code,
+                          })),
+                          target => `${target.kind}:${target.code}`
+                        ),
+                      }
+                    : {}),
+                },
+              }
+            : {}),
           ...(operation.ai
             ? {
                 ai: {
@@ -1770,6 +1794,30 @@ function compileOperations(config: OpenXiangdaAppConfig) {
                     workflow: {
                       codes: uniqueSorted(operation.platformAccess.workflow.codes),
                     },
+                  }
+                : {}),
+            },
+          }
+        : {}),
+      ...(operation.browser
+        ? {
+            browser: {
+              exposure: operation.browser.exposure,
+              behavior: operation.browser.behavior,
+              idempotency: operation.browser.idempotency,
+              subject: {
+                resourceCode: operation.browser.subject.resourceCode,
+                inputField: operation.browser.subject.inputField,
+              },
+              ...(operation.browser.refreshTargets?.length
+                ? {
+                    refreshTargets: sorted(
+                      operation.browser.refreshTargets.map(target => ({
+                        kind: target.kind,
+                        code: target.code,
+                      })),
+                      target => `${target.kind}:${target.code}`
+                    ),
                   }
                 : {}),
             },

@@ -18,6 +18,9 @@ import {
   loadBusinessProcessReceipt,
   listBusinessProcessCommands,
   loadAuthorizationMutationReceipt,
+  executeApplicationOperation,
+  loadApplicationOperationSurfaces,
+  loadApplicationLoginSurface,
   loadSubjectReadSurface,
   loadRoleManagementCatalog,
   pollBusinessProcessCommand,
@@ -111,8 +114,129 @@ test('exposes the unified version line and browser-safe entrypoints', () => {
   assert.equal(typeof updateRoleManagementGrant, 'function');
   assert.equal(typeof revokeRoleManagementGrant, 'function');
   assert.equal(typeof loadAuthorizationMutationReceipt, 'function');
+  assert.equal(typeof loadApplicationOperationSurfaces, 'function');
+  assert.equal(typeof executeApplicationOperation, 'function');
   assert.equal(typeof loadSubjectReadSurface, 'function');
   assert.equal(typeof nest.databaseNowAssertion, 'function');
+});
+
+test('loads and executes only the immutable browser operation surface identity', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalDocument = globalThis.document;
+  const metadata: Record<string, string> = {
+    'openxiangda-runtime-base': '/runtime/root-package-test/preproduction',
+    'openxiangda-app-code': 'root-package-test',
+    'openxiangda-environment': 'preproduction',
+  };
+  Object.defineProperty(globalThis, 'document', {
+    configurable: true,
+    value: {
+      querySelector(selector: string) {
+        const name = /meta\[name="([^"]+)"\]/.exec(selector)?.[1];
+        return name && metadata[name] ? { content: metadata[name] } : null;
+      },
+    },
+  });
+  const requests: Array<{ url: string; init?: RequestInit }> = [];
+  const surface = {
+    code: 'signing.reconcile',
+    method: 'POST' as const,
+    appVersionId: '22222222-2222-4222-8222-222222222222',
+    environmentHeadRevision: 7,
+    behavior: 'controlled' as const,
+    idempotency: 'required' as const,
+    requiredCapability: 'app:root-package-test:signing:reconcile',
+    subject: { resourceCode: 'contracts', inputField: 'contractId' },
+    refreshTargets: [
+      { kind: 'subject-surface' as const, code: 'contract-signing-detail' },
+    ],
+    requestSchema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['contractId'],
+      properties: { contractId: { type: 'string', format: 'uuid' } },
+    },
+    responseSchema: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {},
+    },
+  };
+  globalThis.fetch = async (url, init) => {
+    requests.push({ url: String(url), init });
+    if (String(url).includes('/auth/surface')) {
+      return new Response(
+        JSON.stringify({ code: 200, data: { csrfToken: 'csrf-1' } }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    }
+    if (String(url).includes('/operation-surfaces?')) {
+      return new Response(
+        JSON.stringify({
+          code: 200,
+          data: {
+            schemaVersion: 'openxiangda.application-operation-surfaces/v2',
+            appVersionId: surface.appVersionId,
+            environmentHeadRevision: 7,
+            operations: [surface],
+          },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    }
+    return new Response(
+      JSON.stringify({
+        code: 200,
+        data: {
+          schemaVersion: 'openxiangda.application-operation-receipt/v2',
+          operationId: '33333333-3333-4333-8333-333333333333',
+          operationCode: surface.code,
+          replayed: false,
+          changed: true,
+          refreshTargets: surface.refreshTargets,
+          result: { status: 'succeeded' },
+          appVersionId: surface.appVersionId,
+          environmentHeadRevision: 7,
+        },
+      }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+  };
+  try {
+    await loadApplicationLoginSurface({ device: 'desktop', returnTo: '/' });
+    const catalog = await loadApplicationOperationSurfaces();
+    const receipt = await executeApplicationOperation(
+      catalog.operations[0]!,
+      { contractId: '11111111-1111-4111-8111-111111111111' },
+      { idempotencyKey: 'reconcile:11111111' },
+    );
+    assert.equal(receipt.result.status, 'succeeded');
+    const executeRequest = requests.find(request =>
+      request.url.endsWith('/operation-surfaces/signing.reconcile/execute'),
+    );
+    assert.equal(executeRequest?.init?.method, 'POST');
+    assert.equal(
+      new Headers(executeRequest?.init?.headers).get(
+        'x-openxiangda-csrf-token',
+      ),
+      'csrf-1',
+    );
+    assert.deepEqual(JSON.parse(String(executeRequest?.init?.body)), {
+      environmentKey: 'preproduction',
+      expectedAppVersionId: surface.appVersionId,
+      expectedEnvironmentHeadRevision: 7,
+      input: { contractId: '11111111-1111-4111-8111-111111111111' },
+      idempotencyKey: 'reconcile:11111111',
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalDocument === undefined) delete globalThis.document;
+    else
+      Object.defineProperty(globalThis, 'document', {
+        configurable: true,
+        value: originalDocument,
+      });
+  }
 });
 
 test('loads a declared subject surface without accepting browser filters or child fields', async () => {
