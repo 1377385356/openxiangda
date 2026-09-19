@@ -2,6 +2,9 @@ import { createReadStream, lstatSync, readFileSync } from 'node:fs';
 import { open } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
+import { gzipSync } from 'node:zlib';
+
+export type BackendImageChunkEncoding = 'gzip';
 
 export interface BackendImageUploadReceipt {
   digest: string;
@@ -15,7 +18,7 @@ export interface BackendImageUploadReceipt {
 export interface BackendImageUploader {
   beginBackendImage(appCode: string, input: { digest: string; manifest: string }): Promise<BackendImageUploadReceipt>;
   uploadBackendImageChunk(appCode: string, digest: string, blobDigest: string, offset: number,
-    content: Uint8Array): Promise<{ offset: number; complete: boolean }>;
+    content: Uint8Array, chunkEncoding?: BackendImageChunkEncoding): Promise<{ offset: number; complete: boolean }>;
   completeBackendImage(appCode: string, digest: string): Promise<BackendImageUploadReceipt>;
 }
 
@@ -54,6 +57,7 @@ export async function uploadBackendOciLayout(input: {
   directory: string;
   appCode: string;
   maxImageBytes: number;
+  chunkEncoding?: BackendImageChunkEncoding;
   uploader: BackendImageUploader;
 }): Promise<{ digest: string; reference: string }> {
   const layout = JSON.parse(metadata(join(input.directory, 'oci-layout')));
@@ -104,7 +108,9 @@ export async function uploadBackendOciLayout(input: {
           const content = Buffer.alloc(Math.min(CHUNK_BYTES, blob.size - offset));
           const read = await file.read(content, 0, content.length, offset);
           if (read.bytesRead !== content.length) invalid();
-          const result = await retry(() => input.uploader.uploadBackendImageChunk(input.appCode, digest, blob.digest, offset, content));
+          const encoded = input.chunkEncoding === 'gzip' ? gzipSync(content) : content;
+          const result = await retry(() => input.uploader.uploadBackendImageChunk(
+            input.appCode, digest, blob.digest, offset, encoded, input.chunkEncoding));
           if (!Number.isSafeInteger(result.offset) || result.offset < 0 || result.offset > blob.size ||
             typeof result.complete !== 'boolean' || (result.complete && result.offset !== blob.size)) invalid();
           stagnant = result.offset === offset && !result.complete ? stagnant + 1 : 0;

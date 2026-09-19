@@ -80,7 +80,7 @@ import {
   type WorkflowTimeline,
 } from "openxiangda-contracts/browser";
 import { Agent, fetch as undiciFetch } from "undici";
-import type { BackendImageUploadReceipt } from './backend-image-upload.js';
+import type { BackendImageChunkEncoding, BackendImageUploadReceipt } from './backend-image-upload.js';
 
 type FetchLike = (
   input: string | URL | Request,
@@ -933,11 +933,14 @@ export class OpenXiangdaControlPlaneClient {
       { method: 'POST', body: JSON.stringify(input), signal: AbortSignal.timeout(90000) });
   }
 
-  async uploadBackendImageChunk(appCode: string, digest: string, blobDigest: string, offset: number, content: Uint8Array) {
+  async uploadBackendImageChunk(appCode: string, digest: string, blobDigest: string, offset: number,
+    content: Uint8Array, chunkEncoding?: BackendImageChunkEncoding) {
     return this.request<{ offset: number; complete: boolean }>(
       `/openxiangda-api/v2/applications/${encodeURIComponent(appCode)}/backend-images/${encodeURIComponent(digest)}/blobs/${encodeURIComponent(blobDigest)}?offset=${offset}`,
       { method: 'POST', body: new Blob([Uint8Array.from(content)]),
-        headers: { 'Content-Type': 'application/octet-stream' }, signal: AbortSignal.timeout(90000) },
+        headers: { 'Content-Type': 'application/octet-stream',
+          ...(chunkEncoding ? { 'X-OpenXiangda-Chunk-Encoding': chunkEncoding } : {}) },
+        signal: AbortSignal.timeout(90000) },
       this.artifactUploadFetch);
   }
 

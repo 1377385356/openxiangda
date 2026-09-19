@@ -4503,6 +4503,7 @@ export const platformCapabilitiesSchema = {
             schemaVersion: { const: 'openxiangda.backend-image-upload/v2' },
             owner: { const: 'platform' }, available: { type: 'boolean' },
             platform: { const: 'linux/amd64' }, format: { const: 'oci-layout' },
+            chunkEncoding: { const: 'gzip' },
             maxChunkBytes: { const: 8388608 },
             maxImageBytes: { type: 'integer', minimum: 1 },
             endpointTemplate: { const: '/openxiangda-api/v2/applications/{appCode}/backend-images' },

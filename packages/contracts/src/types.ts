@@ -3437,6 +3437,7 @@ export interface PlatformCapabilities {
       available: boolean;
       platform: 'linux/amd64';
       format: 'oci-layout';
+      chunkEncoding?: 'gzip';
       maxChunkBytes: number;
       maxImageBytes: number;
       endpointTemplate: '/openxiangda-api/v2/applications/{appCode}/backend-images';

@@ -23,7 +23,11 @@ const SHA256_DIGEST = /^sha256:[a-f0-9]{64}$/;
 export interface BackendImageBuildTarget {
   repository: string;
   platform: "linux/amd64";
-  upload?: { appCode: string; maxImageBytes: number };
+  upload?: {
+    appCode: string;
+    maxImageBytes: number;
+    chunkEncoding?: 'gzip';
+  };
 }
 
 export interface PublishedBackendImage extends BackendImageBuildTarget {
@@ -51,6 +55,7 @@ export function backendImageBuildTarget(
     if (upload.schemaVersion !== 'openxiangda.backend-image-upload/v2' || upload.owner !== 'platform' ||
       upload.platform !== 'linux/amd64' || upload.format !== 'oci-layout' ||
       upload.endpointTemplate !== '/openxiangda-api/v2/applications/{appCode}/backend-images' ||
+      (upload.chunkEncoding !== undefined && upload.chunkEncoding !== 'gzip') ||
       upload.maxChunkBytes !== 8 * 1024 * 1024 || !Number.isSafeInteger(upload.maxImageBytes) || upload.maxImageBytes < 1) {
       throw new BackendImageBuildError('OPENXIANGDA_BACKEND_IMAGE_BUILD_CONFIG_INVALID', '平台镜像上传合同无效');
     }
@@ -61,7 +66,11 @@ export function backendImageBuildTarget(
       throw new BackendImageBuildError('OPENXIANGDA_BACKEND_IMAGE_APP_CODE_INVALID', '应用代码无效');
     }
     return { repository: `openxiangda-local/${appCode}-server`, platform: upload.platform,
-      upload: { appCode, maxImageBytes: upload.maxImageBytes } };
+      upload: {
+        appCode,
+        maxImageBytes: upload.maxImageBytes,
+        ...(upload.chunkEncoding ? { chunkEncoding: upload.chunkEncoding } : {}),
+      } };
   }
   const build = capabilities.deployment?.backendImageBuild;
   if (

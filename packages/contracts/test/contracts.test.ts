@@ -456,6 +456,14 @@ test('publishes the non-secret developer CLI backend image build target', () => 
   assert.deepEqual(build.properties.platform, { const: 'linux/amd64' });
 });
 
+test('publishes optional gzip transport for backend image chunks', () => {
+  const upload =
+    contractSchemas.platformCapabilities.properties.deployment.properties
+      .backendImageUpload;
+  assert.equal(upload.required.includes('chunkEncoding'), false);
+  assert.deepEqual(upload.properties.chunkEncoding, { const: 'gzip' });
+});
+
 test('publishes one bounded atomic application contract compatibility tuple', () => {
   assert.deepEqual(
     fixture().compatibility.applicationContract,

@@ -4,6 +4,8 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
+import { gunzipSync } from 'node:zlib';
+import { OpenXiangdaControlPlaneClient } from '../src/control-plane-client.js';
 import { backendImageBuildTarget, publishBackendImage } from '../src/backend-image-build.js';
 import { uploadBackendOciLayout, type BackendImageUploader, type BackendImageUploadReceipt } from '../src/backend-image-upload.js';
 
@@ -36,7 +38,8 @@ function fixture(layerBytes = 1234) {
     cleanup: () => rmSync(root, { recursive: true, force: true }) };
 }
 
-function uploader(sample: ReturnType<typeof fixture>, loseResponse = false): BackendImageUploader {
+function uploader(sample: ReturnType<typeof fixture>, loseResponse = false,
+  expectedEncoding?: 'gzip'): BackendImageUploader {
   const stored = new Map<string, Buffer>();
   let lost = false;
   return {
@@ -45,10 +48,12 @@ function uploader(sample: ReturnType<typeof fixture>, loseResponse = false): Bac
       assert.equal(input.digest, sample.digest);
       return structuredClone(sample.receipt);
     },
-    async uploadBackendImageChunk(appCode, digest, hash, offset, content) {
+    async uploadBackendImageChunk(appCode, digest, hash, offset, content, chunkEncoding) {
       assert.equal(appCode, 'test-app');
       assert.equal(digest, sample.digest);
       assert.ok(content.length <= chunkBytes);
+      assert.equal(chunkEncoding, expectedEncoding);
+      content = chunkEncoding === 'gzip' ? gunzipSync(content) : content;
       let previous = stored.get(hash) || Buffer.alloc(0);
       if (offset === previous.length) {
         previous = Buffer.concat([previous, Buffer.from(content)]);
@@ -72,11 +77,12 @@ function uploader(sample: ReturnType<typeof fixture>, loseResponse = false): Bac
   };
 }
 
-function capabilities() {
+function capabilities(chunkEncoding?: 'gzip') {
   return { deployment: { backendImageBuild: { available: false, repositoryPrefix: null },
     backendImageUpload: { schemaVersion: 'openxiangda.backend-image-upload/v2', owner: 'platform',
       available: true, format: 'oci-layout', platform: 'linux/amd64', maxChunkBytes: chunkBytes,
-      maxImageBytes: 1024 ** 3, endpointTemplate: '/openxiangda-api/v2/applications/{appCode}/backend-images' } } } as any;
+      maxImageBytes: 1024 ** 3, endpointTemplate: '/openxiangda-api/v2/applications/{appCode}/backend-images',
+      ...(chunkEncoding ? { chunkEncoding } : {}) } } } as any;
 }
 
 test('builds an OCI layout and uploads through the platform without a registry push target', async () => {
@@ -113,6 +119,32 @@ test('resends bounded chunks after response loss without appending bytes twice',
       maxImageBytes: 1024 ** 3, uploader: uploader(sample, true) });
     assert.equal(result.digest, sample.digest);
   } finally { sample.cleanup(); }
+});
+
+test('gzip-encodes chunks only when the platform advertises the transport', async () => {
+  const sample = fixture();
+  try {
+    const target = backendImageBuildTarget(capabilities('gzip'), 'test-app');
+    assert.equal(target.upload?.chunkEncoding, 'gzip');
+    const result = await uploadBackendOciLayout({ directory: sample.directory,
+      ...target.upload!, uploader: uploader(sample, false, 'gzip') });
+    assert.equal(result.digest, sample.digest);
+    assert.equal(backendImageBuildTarget(capabilities(), 'test-app').upload?.chunkEncoding, undefined);
+  } finally { sample.cleanup(); }
+});
+
+test('sends the gzip chunk header without changing the octet-stream content type', async () => {
+  const requests: Array<{ url: string; init?: RequestInit }> = [];
+  const client = new OpenXiangdaControlPlaneClient({ baseUrl: 'https://platform.example/service',
+    token: 'developer-access-token', fetch: async (input, init) => {
+      requests.push({ url: String(input), init });
+      return Response.json({ code: 200, message: 'success', data: { offset: 3, complete: true } });
+    } });
+  await client.uploadBackendImageChunk('test-app', `sha256:${'a'.repeat(64)}`,
+    `sha256:${'b'.repeat(64)}`, 0, Buffer.from('zip'), 'gzip');
+  const headers = new Headers(requests[0]!.init?.headers);
+  assert.equal(headers.get('Content-Type'), 'application/octet-stream');
+  assert.equal(headers.get('X-OpenXiangda-Chunk-Encoding'), 'gzip');
 });
 
 test('explains how to select an OCI exporter with a classic Docker image store', async () => {
