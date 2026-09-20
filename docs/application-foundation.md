@@ -174,7 +174,7 @@ import 'openxiangda/mobile/styles.css';
 
 PC 抽屉提供“全屏 / 新开页面 / 关闭”。全屏保留当前表单；新开页面先暂存，再通过草稿 ID 恢复，内容不放入 URL。移动录入使用平台移动字段的分组行式布局、简单标题和底部操作，不放“返回列表”或桌面输入控件；草稿箱和恢复确认使用底部弹层。
 
-自定义表单可从 `openxiangda/react` 使用 `createResourceFormDraftClient(resourceCode, mode, recordId?, viewCode?)`，提供 `list/save/remove/submit`。命名视图只能恢复和提交属于当前视图的草稿；所有视图仍共用每人每个模型 20 份的上限。`save` 使用草稿 ID、expectedRevision 和可编辑字段值；`submit` 消费现有 DataTransactionOperation，不另建 CRUD 后端。此能力需要平台的 authenticated-form-drafts SQL 迁移及对应服务端版本，平台未升级时界面会明确显示暂存失败并保留输入。
+自定义表单可从 `openxiangda/react` 使用 `createResourceFormDraftClient(resourceCode, mode, recordId?, viewCode?)`，提供 `list/save/remove/submit`。命名视图只能恢复和提交属于当前视图的草稿；所有视图仍共用每人每个模型 20 份的上限。`save` 使用草稿 ID、expectedRevision 和可编辑字段值；若表单声明了 `draftState`，还可单独传入受版本化 Schema 约束的 `state`，用于正文编辑模式、范本选择和变量快照等工作区状态。`state` 不会成为 Data API 字段、工作流事实或生成表单控件；`list` 会返回当前有效 Schema 及 digest，声明撤销、收窄或版本/digest 不匹配会稳定失败而不会静默丢字段。`submit` 消费现有 DataTransactionOperation，不另建 CRUD 后端。此能力需要平台的 authenticated-form-drafts SQL 迁移及对应服务端版本，平台未升级时界面会明确显示暂存失败并保留输入。
 
 ## 列表排序声明 {#sortable-fields}
 

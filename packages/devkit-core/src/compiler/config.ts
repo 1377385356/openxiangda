@@ -246,7 +246,12 @@ export interface AppDataResourceDeclaration {
     defaultPageSize?: number;
     defaultSort?: { field: string; order?: 'asc' | 'desc' };
   };
-  form?: { layout?: 'flat' | 'sections'; fields?: string[] };
+  form?: {
+    layout?: 'flat' | 'sections';
+    fields?: string[];
+    /** Versioned workspace-only state. It never becomes a model field. */
+    draftState?: NonNullable<DataResourceSurface['form']>['draftState'];
+  };
   detail?: { layout?: 'flat' | 'sections'; fields?: string[] };
   mobile?: DataResourceSurface['mobile'];
   dataPolicyCode?: string | null;
@@ -6826,6 +6831,9 @@ export function materializeDataResource(
     form: {
       layout: declaration.form?.layout || 'flat',
       fieldOrder: declaration.form?.fields || declaration.fields.map(field => field.code),
+      ...(declaration.form?.draftState
+        ? { draftState: declaration.form.draftState }
+        : {}),
     },
     detail: {
       layout: declaration.detail?.layout || 'flat',

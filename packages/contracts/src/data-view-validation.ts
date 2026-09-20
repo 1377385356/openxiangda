@@ -1,6 +1,52 @@
 import type { Diagnostic } from './types.js';
 import { isDataSystemSortField } from './native-compiler/data-audit-access.js';
 import { diagnostic, isRecord } from './validation-common.js';
+import {
+  validateNativeDataDraftStateV2,
+} from './native-compiler/draft-state.js';
+import { NativeDataFieldContractV2Error } from './native-compiler/data-field.js';
+
+export function validateDataResourceDraftStates(
+  resource: Record<string, unknown>
+): Diagnostic[] {
+  const surface = isRecord(resource.surface) ? resource.surface : {};
+  const candidates: Array<{ value: unknown; path: string }> = [];
+  if (isRecord(surface.form) && surface.form.draftState !== undefined) {
+    candidates.push({
+      value: surface.form.draftState,
+      path: 'surface.form.draftState',
+    });
+  }
+  if (Array.isArray(surface.views)) {
+    surface.views.forEach((view, index) => {
+      if (
+        isRecord(view) &&
+        isRecord(view.form) &&
+        view.form.draftState !== undefined
+      ) {
+        candidates.push({
+          value: view.form.draftState,
+          path: `surface.views[${index}].form.draftState`,
+        });
+      }
+    });
+  }
+  return candidates.flatMap(candidate => {
+    try {
+      validateNativeDataDraftStateV2(candidate.value, candidate.path);
+      return [];
+    } catch (error) {
+      const contractError = error as NativeDataFieldContractV2Error;
+      return [
+        diagnostic(
+          'DATA_RESOURCE_DRAFT_STATE_INVALID',
+          contractError.code || '草稿状态 Schema 无效',
+          contractError.pointer || candidate.path
+        ),
+      ];
+    }
+  });
+}
 
 export function validateDataResourceListActions(value: unknown, path: string): Diagnostic[] {
   if (value === undefined) return [];
@@ -138,7 +184,9 @@ export function validateDataResourceViews(
               'filterFields',
               'defaultSort',
             ]
-          : ['layout', 'fieldOrder'],
+          : kind === 'form'
+            ? ['layout', 'fieldOrder', 'draftState']
+            : ['layout', 'fieldOrder'],
         `${path}.${kind}`
       );
       selection(layout.fieldOrder, `${path}.${kind}.fieldOrder`);

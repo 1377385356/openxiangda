@@ -11,6 +11,10 @@ import {
   nativeFieldSupportsSearchV2,
   nativeFieldSupportsSortV2,
 } from './field-query-plan.js';
+import {
+  OPENXIANGDA_NATIVE_DRAFT_STATE_KEYS_V2,
+  validateNativeDataDraftStateV2,
+} from './draft-state.js';
 
 const MAX_LAYOUT_FIELD_ORDER_ENTRIES = 500;
 
@@ -64,7 +68,8 @@ export const OPENXIANGDA_NATIVE_DATA_SURFACE_KEYS_V2 = {
     'defaultSort',
   ],
   defaultSort: ['field', 'order'],
-  layout: ['layout', 'fieldOrder'],
+  layout: ['layout', 'fieldOrder', 'draftState'],
+  draftState: OPENXIANGDA_NATIVE_DRAFT_STATE_KEYS_V2,
   mobile: ['enabled'],
 } as const;
 
@@ -565,6 +570,7 @@ function validateLayout(
       }
     });
   }
+  validateNativeDataDraftStateV2(layout.draftState, `${pointer}/draftState`);
 }
 
 function assertProjection(

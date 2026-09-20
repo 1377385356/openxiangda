@@ -1,4 +1,9 @@
-import { SCHEMA_VERSIONS, isDataSystemSortField, type Diagnostic } from 'openxiangda-contracts';
+import {
+  SCHEMA_VERSIONS,
+  isDataSystemSortField,
+  type DataFormDraftStateSchema,
+  type Diagnostic,
+} from 'openxiangda-contracts';
 import type {
   AppDataFieldDeclaration,
   AppDataResourceDeclaration,
@@ -26,6 +31,8 @@ export interface AppResourceFormDeclaration {
   model: string;
   fields?: readonly string[];
   layout?: 'flat' | 'sections';
+  /** Versioned workspace-only state. It never becomes a model field. */
+  draftState?: DataFormDraftStateSchema;
 }
 
 export interface AppResourceListDeclaration {
@@ -208,7 +215,8 @@ export function materializeApplicationModules(modules: readonly AppModuleDeclara
               searchableFields: [...(item.list?.searchableFields || [])], filterFields: [...(item.list?.filterFields || [])],
               ...(item.list?.defaultSort ? { defaultSort: item.list.defaultSort } : {}) },
             form: { layout: item.form?.layout || (groups?.length ? 'sections' as const : 'flat' as const),
-              fieldOrder: [...(item.form?.fields || publicFields.filter(field => !field.system).map(field => field.code))] },
+              fieldOrder: [...(item.form?.fields || publicFields.filter(field => !field.system).map(field => field.code))],
+              ...(item.form?.draftState ? { draftState: item.form.draftState } : {}) },
             detail: { layout: item.detail?.layout || (groups?.length ? 'sections' as const : 'flat' as const),
               fieldOrder: [...(item.detail?.fields || publicFields.map(field => field.code))] },
             mobile: { enabled: item.mobile?.enabled ?? true }, ...(groups?.length ? { sections: groups } : {}),
@@ -258,7 +266,8 @@ export function materializeApplicationModules(modules: readonly AppModuleDeclara
           ...(view?.list?.defaultPageSize ? { defaultPageSize: view.list.defaultPageSize } : {}),
           ...(view?.list?.defaultSort ? { defaultSort: view.list.defaultSort } : {}),
         },
-        form: { layout: view?.form?.layout || (sections.size ? 'sections' : 'flat'), fields: [...formFields] },
+        form: { layout: view?.form?.layout || (sections.size ? 'sections' : 'flat'), fields: [...formFields],
+          ...(view?.form?.draftState ? { draftState: view.form.draftState } : {}) },
         detail: { layout: view?.detail?.layout || (sections.size ? 'sections' : 'flat'), fields: [...detailFields] },
         mobile: view?.mobile || { enabled: Boolean(view) },
       });

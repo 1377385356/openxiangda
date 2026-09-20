@@ -2405,6 +2405,61 @@ const dataResourceBaseSurfaceSchema = {
           maxItems: 500,
           items: dataFieldCode,
         },
+        draftState: {
+          type: "object",
+          additionalProperties: false,
+          required: ["version", "maxBytes", "fields"],
+          properties: {
+            version: { type: "integer", minimum: 1, maximum: 1000000 },
+            maxBytes: { type: "integer", minimum: 2, maximum: 196608 },
+            fields: {
+              type: "object",
+              minProperties: 1,
+              maxProperties: 50,
+              propertyNames: dataFieldCode,
+              additionalProperties: {
+                oneOf: [
+                  {
+                    type: "object",
+                    additionalProperties: false,
+                    required: ["type", "maxLength"],
+                    properties: {
+                      type: { const: "string" },
+                      required: { type: "boolean" },
+                      maxLength: { type: "integer", minimum: 1, maximum: 196608 },
+                      enum: {
+                        type: "array",
+                        minItems: 1,
+                        maxItems: 100,
+                        uniqueItems: true,
+                        items: { type: "string", maxLength: 255 },
+                      },
+                    },
+                  },
+                  {
+                    type: "object",
+                    additionalProperties: false,
+                    required: ["type"],
+                    properties: {
+                      type: { enum: ["number", "integer", "boolean"] },
+                      required: { type: "boolean" },
+                    },
+                  },
+                  {
+                    type: "object",
+                    additionalProperties: false,
+                    required: ["type", "maxBytes"],
+                    properties: {
+                      type: { const: "json.object" },
+                      required: { type: "boolean" },
+                      maxBytes: { type: "integer", minimum: 2, maximum: 65536 },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
       },
     },
     detail: {

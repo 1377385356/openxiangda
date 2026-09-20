@@ -1,4 +1,8 @@
-import { validateDataResourceViews, validateDataResourceListActions } from './data-view-validation.js';
+import {
+  validateDataResourceDraftStates,
+  validateDataResourceViews,
+  validateDataResourceListActions,
+} from './data-view-validation.js';
 import { isDataAuditMetadataField } from './native-compiler/data-audit-access.js';
 import {
   CURRENT_APPLICATION_CONTRACT,
@@ -497,6 +501,7 @@ export function validateDataResource(value: unknown): Diagnostic[] {
   }
   requireString(value.name, 'name', diagnostics);
   diagnostics.push(...validateDataResourceViews(value));
+  diagnostics.push(...validateDataResourceDraftStates(value));
   if (isRecord(value.surface) && isRecord(value.surface.list))
     diagnostics.push(...validateDataResourceListActions(value.surface.list.actions, 'surface.list.actions'));
   const schema = isRecord(value.schema) ? value.schema : {};

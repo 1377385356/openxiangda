@@ -18,6 +18,7 @@ import {
   type DataWhere,
   type DataRecord,
   type DataResourceSurface,
+  type DataFormDraftStateSchema,
   type DataTransactionOperation,
   type DataTransactionRequest,
   type DataTransactionResult,
@@ -2595,8 +2596,15 @@ export interface ResourceFormDraft {
   recordId?: string;
   recordRevision?: number;
   values: Record<string, unknown>;
+  state: Record<string, unknown>;
+  stateSchemaVersion?: number;
+  stateSchemaDigest?: string;
   updatedAt: string;
   expiresAt: string;
+}
+export interface ResourceFormDraftStateSchema extends DataFormDraftStateSchema {
+  schemaVersion: 'openxiangda.form-draft-state-schema/v2';
+  digest: string;
 }
 /** Authenticated drafts use the same current user/environment as Native CRUD. */
 export function createResourceFormDraftClient(resourceCode: string, mode: 'create' | 'update', recordId?: string, viewCode?: string) {
@@ -2604,9 +2612,9 @@ export function createResourceFormDraftClient(resourceCode: string, mode: 'creat
   const scope = () => ({ environmentKey: currentEnvironmentKey(), mode, ...(recordId ? { recordId } : {}), ...(viewCode ? { viewCode } : {}) });
   return {
     list() {
-      return request<{ items: ResourceFormDraft[]; limit: number; retentionDays: number }>(`${base}/?${new URLSearchParams(scope())}`);
+      return request<{ items: ResourceFormDraft[]; limit: number; retentionDays: number; stateSchema?: ResourceFormDraftStateSchema }>(`${base}/?${new URLSearchParams(scope())}`);
     },
-    save(input: { id: string; expectedRevision: number; recordRevision?: number; values: Record<string, unknown> }) {
+    save(input: { id: string; expectedRevision: number; recordRevision?: number; values: Record<string, unknown>; state?: Record<string, unknown> }) {
       return request<ResourceFormDraft>(`${base}/save`, { method: 'POST', body: JSON.stringify({ ...scope(), ...input }) });
     },
     remove(draft: Pick<ResourceFormDraft, 'id' | 'revision'>) {

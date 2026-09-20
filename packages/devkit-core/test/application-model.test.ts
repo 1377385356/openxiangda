@@ -84,6 +84,59 @@ test('selecting CRUD and form fields does not change storage or expose supportin
   assert.equal(compiled.config.value.data.resources[0].surface?.fields.title.section, '基本信息');
 });
 
+test('default and named forms project independent draft-only state schemas deterministically', () => {
+  const defaultDraftState = {
+    version: 2,
+    maxBytes: 4096,
+    fields: {
+      zeta: { type: 'boolean' as const },
+      mode: { type: 'string' as const, maxLength: 32, enum: ['template', 'custom'] },
+    },
+  };
+  const namedDraftState = {
+    version: 4,
+    maxBytes: 8192,
+    fields: {
+      variables: { type: 'json.object' as const, maxBytes: 4096 },
+    },
+  };
+  const config = defineOpenXiangdaApp({
+    app: { code: 'foundation-test', name: '平台能力验证' },
+    frontend: { admin: { navigation: [] } },
+    modules: [{ code: 'records', models: [record], crud: [
+      { model: 'records', form: defineResourceForm(record, { fields: ['title'], draftState: defaultDraftState }) },
+      { model: 'records', code: 'quick', name: '快速起草', form: defineResourceForm(record, { fields: ['title'], draftState: namedDraftState }) },
+    ] }],
+  });
+  const source = config.data!.resources[0];
+  assert.deepEqual(source.surface?.form?.draftState, defaultDraftState);
+  assert.deepEqual(source.surface?.views?.[0]?.form.draftState, namedDraftState);
+  assert.deepEqual(source.schema.fields.map(field => field.code), [
+    'title',
+    'enabled',
+    'note',
+    'source_key',
+  ]);
+  const compiled = compileApplicationSources(config).config.value.data.resources[0];
+  assert.deepEqual(Object.keys(compiled.surface!.form!.draftState!.fields), ['mode', 'zeta']);
+  assert.deepEqual(compiled.surface!.form!.draftState!.fields.mode.enum, ['custom', 'template']);
+  assert.deepEqual(compiled.surface!.views![0].form.draftState, namedDraftState);
+  assert.equal(compiled.schema.fields.some(field => field.code === 'mode'), false);
+});
+
+test('draft-only state schema errors fail at declaration compile time', () => {
+  const build = (draftState: any) => defineOpenXiangdaApp({
+    app: { code: 'foundation-test', name: '验证' }, frontend: {},
+    modules: [{ code: 'records', models: [record], crud: [{ model: 'records', form: { model: 'records', fields: ['title'], draftState } }] }],
+  });
+  for (const draftState of [
+    { version: 0, maxBytes: 64, fields: { mode: { type: 'boolean' } } },
+    { version: 1, maxBytes: 64, fields: { mode: { type: 'string', maxLength: 0 } } },
+    { version: 1, maxBytes: 64, fields: { mode: { type: 'json.object', maxBytes: 65 } } },
+    { version: 1, maxBytes: 64, fields: { mode: { type: 'boolean', extra: true } } },
+  ]) assert.throws(() => compileApplicationSources(build(draftState)));
+});
+
 test('read and manage grants remain explicit regardless of page generation', () => {
   for (const config of [application(), application(true)]) {
     assert.deepEqual(config.authz?.roles[0].capabilities, ['app:foundation-test:data:records:read']);

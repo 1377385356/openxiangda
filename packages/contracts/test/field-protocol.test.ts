@@ -151,6 +151,7 @@ test('keeps the complete generated resource surface in the public schema', () =>
   assert.deepEqual(Object.keys(surface.properties.form.properties), [
     'layout',
     'fieldOrder',
+    'draftState',
   ]);
   assert.deepEqual(Object.keys(surface.properties.detail.properties), [
     'layout',

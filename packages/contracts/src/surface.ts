@@ -84,6 +84,24 @@ export interface DataFieldSurface {
   };
 }
 
+export type DataFormDraftStateField =
+  | {
+      type: 'string';
+      required?: boolean;
+      maxLength: number;
+      enum?: string[];
+    }
+  | { type: 'number'; required?: boolean }
+  | { type: 'integer'; required?: boolean }
+  | { type: 'boolean'; required?: boolean }
+  | { type: 'json.object'; required?: boolean; maxBytes: number };
+
+export interface DataFormDraftStateSchema {
+  version: number;
+  maxBytes: number;
+  fields: Record<string, DataFormDraftStateField>;
+}
+
 export interface DataResourceSurface {
   /** Named presentations share this resource's field/value/authorization facts. */
   views?: DataResourceViewSurface[];
@@ -115,6 +133,8 @@ export interface DataResourceSurface {
     layout?: 'flat' | 'sections';
     /** Explicit selected fields in display order; omitted fields stay off this view. */
     fieldOrder?: string[];
+    /** Versioned transient workspace state; never a business Data API field. */
+    draftState?: DataFormDraftStateSchema;
   };
   detail?: {
     layout?: 'flat' | 'sections';

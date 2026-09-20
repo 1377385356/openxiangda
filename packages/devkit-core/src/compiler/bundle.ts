@@ -2482,7 +2482,14 @@ function normalizeResourceSurface(
       ])
   ) as Record<string, DataFieldSurface>;
   return {
-    ...(surface.views?.length ? { views: sorted(surface.views, view => view.code) } : {}),
+    ...(surface.views?.length
+      ? {
+          views: sorted(surface.views, view => view.code).map(view => ({
+            ...view,
+            form: normalizeFormSurface(view.form),
+          })),
+        }
+      : {}),
     ...(surface.mutationOwner !== undefined
       ? { mutationOwner: surface.mutationOwner }
       : {}),
@@ -2510,10 +2517,40 @@ function normalizeResourceSurface(
           },
         }
       : {}),
-    ...(surface.form ? { form: { ...surface.form } } : {}),
+    ...(surface.form ? { form: normalizeFormSurface(surface.form) } : {}),
     ...(surface.detail ? { detail: { ...surface.detail } } : {}),
     ...(surface.mobile ? { mobile: { ...surface.mobile } } : {}),
   };
+}
+
+function normalizeFormSurface<
+  T extends NonNullable<DataResourceSurface['form']>,
+>(form: T): T {
+  return {
+    ...form,
+    ...(form.fieldOrder ? { fieldOrder: [...form.fieldOrder] } : {}),
+    ...(form.draftState
+      ? {
+          draftState: {
+            version: form.draftState.version,
+            maxBytes: form.draftState.maxBytes,
+            fields: Object.fromEntries(
+              Object.entries(form.draftState.fields)
+                .sort(([left], [right]) => compare(left, right))
+                .map(([code, field]) => [
+                  code,
+                  {
+                    ...field,
+                    ...('enum' in field && field.enum
+                      ? { enum: [...field.enum].sort(compare) }
+                      : {}),
+                  },
+                ])
+            ),
+          },
+        }
+      : {}),
+  } as T;
 }
 
 function defaultResourceSurface(resource: DataResource): DataResourceSurface {
