@@ -31,6 +31,38 @@ const valid = () => ({
       },
     },
   },
+  detail: { fieldOrder: ['title'] },
+  views: [
+    {
+      code: 'drafting',
+      name: '起草',
+      generated: {
+        list: false,
+        detail: false,
+        create: false,
+        update: false,
+        delete: false,
+      },
+      list: { fieldOrder: ['title'] },
+      form: {
+        fieldOrder: ['title'],
+        draftState: {
+          version: 3,
+          maxBytes: 196_608,
+          fields: {
+            mode: {
+              type: 'string',
+              required: true,
+              maxLength: 32,
+              enum: ['template', 'custom'],
+            },
+          },
+        },
+      },
+      detail: { fieldOrder: ['title'] },
+      mobile: { enabled: true },
+    },
+  ],
 });
 
 const validate = (surface: unknown) =>
@@ -56,6 +88,21 @@ test('draft-only state rejects unknown options and every bounded edge', () => {
     (surface: any) => { surface.form.draftState.fields.variables.maxLength = 12; },
   ];
   for (const mutate of invalid) {
+    const surface = valid();
+    mutate(surface);
+    assert.throws(() => validate(surface));
+  }
+});
+
+test('draft-only state is restricted to default and named forms', () => {
+  for (const mutate of [
+    (surface: any) => {
+      surface.detail.draftState = surface.form.draftState;
+    },
+    (surface: any) => {
+      surface.views[0].detail.draftState = surface.views[0].form.draftState;
+    },
+  ]) {
     const surface = valid();
     mutate(surface);
     assert.throws(() => validate(surface));

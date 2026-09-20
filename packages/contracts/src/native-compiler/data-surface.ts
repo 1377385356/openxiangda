@@ -68,6 +68,9 @@ export const OPENXIANGDA_NATIVE_DATA_SURFACE_KEYS_V2 = {
     'defaultSort',
   ],
   defaultSort: ['field', 'order'],
+  form: ['layout', 'fieldOrder', 'draftState'],
+  detail: ['layout', 'fieldOrder'],
+  /** @deprecated Use the surface-kind-specific form/detail key lists. */
   layout: ['layout', 'fieldOrder', 'draftState'],
   draftState: OPENXIANGDA_NATIVE_DRAFT_STATE_KEYS_V2,
   mobile: ['enabled'],
@@ -190,8 +193,8 @@ export function validateNativeDataResourceSurfaceV2(
     }
   }
   validateList(surface.list, declared, `${pointer}/list`);
-  validateLayout(surface.form, declared, `${pointer}/form`);
-  validateLayout(surface.detail, declared, `${pointer}/detail`);
+  validateLayout(surface.form, declared, `${pointer}/form`, 'form');
+  validateLayout(surface.detail, declared, `${pointer}/detail`, 'detail');
   if (surface.mobile !== undefined) {
     const mobile = record(surface.mobile, `${pointer}/mobile`);
     exactKeys(
@@ -535,11 +538,12 @@ function validateList(
 function validateLayout(
   value: unknown,
   fields: Map<string, NativeDataFieldV2>,
-  pointer: string
+  pointer: string,
+  kind: 'form' | 'detail'
 ) {
   if (value === undefined) return;
   const layout = record(value, pointer);
-  exactKeys(layout, OPENXIANGDA_NATIVE_DATA_SURFACE_KEYS_V2.layout, pointer);
+  exactKeys(layout, OPENXIANGDA_NATIVE_DATA_SURFACE_KEYS_V2[kind], pointer);
   if (
     layout.layout !== undefined &&
     !['flat', 'sections'].includes(layout.layout)
@@ -570,7 +574,9 @@ function validateLayout(
       }
     });
   }
-  validateNativeDataDraftStateV2(layout.draftState, `${pointer}/draftState`);
+  if (kind === 'form') {
+    validateNativeDataDraftStateV2(layout.draftState, `${pointer}/draftState`);
+  }
 }
 
 function assertProjection(
