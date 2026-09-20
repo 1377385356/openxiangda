@@ -2684,18 +2684,19 @@ export class OpenXiangdaApplicationServices {
     );
     } catch (error) {
       const failure = this.connectedDevelopmentFailure(error, workspace.root);
+      const diagnostic = this.diagnostic(
+        failure.code,
+        failure.message,
+        failure.path,
+        failure.remediation,
+        failure.details
+      );
+      diagnostic.retryable = failure.retryable;
       return this.result(
         "dev",
         workspace.context.workspace,
         undefined,
-        [
-          this.diagnostic(
-            failure.code,
-            failure.message,
-            failure.path,
-            failure.remediation
-          ),
-        ],
+        [diagnostic],
         [{ code: failure.actionCode, label: failure.actionLabel, command: failure.command }]
       );
     }
@@ -3229,6 +3230,33 @@ export class OpenXiangdaApplicationServices {
         ? error.remote?.remediation ||
           (typeof dataRemediation === "string" ? dataRemediation : undefined)
         : undefined;
+    const transportData =
+      error instanceof DeveloperSessionError || error instanceof ControlPlaneError
+        ? error.data && typeof error.data === "object" && !Array.isArray(error.data)
+          ? (error.data as Record<string, unknown>)
+          : {}
+        : {};
+    const transportPath = String(
+      (error instanceof ControlPlaneError ? error.remote?.path : "") ||
+        transportData.path ||
+        ""
+    ).trim();
+    const requestId = String(
+      (error instanceof ControlPlaneError ? error.remote?.requestId : "") ||
+        transportData.requestId ||
+        ""
+    ).trim();
+    const method = String(transportData.method || "").trim();
+    const causeCode = String(transportData.causeCode || "").trim();
+    const details = {
+      ...(requestId ? { requestId } : {}),
+      ...(method ? { method } : {}),
+      ...(transportPath ? { path: transportPath } : {}),
+      ...(causeCode ? { causeCode } : {}),
+      ...(requestId && rawCode.startsWith("OPENXIANGDA_PLATFORM_")
+        ? { requestIdOwner: "client" }
+        : {}),
+    };
     const selected = known[rawCode] || {
       message: "连接式开发预检失败",
       remediation:
@@ -3246,7 +3274,14 @@ export class OpenXiangdaApplicationServices {
       actionCode: selected.actionCode,
       actionLabel: selected.actionLabel,
       command: selected.command,
-      path: selected.path || workspaceRoot,
+      path: selected.path || transportPath || workspaceRoot,
+      retryable:
+        error instanceof ControlPlaneError
+          ? error.remote?.retryable === true || error.status >= 500
+          : error instanceof DeveloperSessionError
+            ? Number(error.status || 0) >= 500
+            : false,
+      ...(Object.keys(details).length ? { details } : {}),
     };
   }
 

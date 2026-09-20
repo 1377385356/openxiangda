@@ -1,4 +1,8 @@
 import type { DeploymentStrategy } from 'openxiangda-contracts';
+import {
+  describePlatformTransportFailure,
+  preparePlatformRequest,
+} from './platform-transport.js';
 import type { ApplicationSourceRepository, ApplicationSourceCredential } from 'openxiangda-contracts';
 import {
   RUNTIME_CAPACITY_PREFLIGHT_SCHEMA,
@@ -971,9 +975,19 @@ export class OpenXiangdaControlPlaneClient {
         this.artifactUploadFetch
       );
     } catch (error) {
-      if (error instanceof ControlPlaneError) throw error;
+      if (
+        error instanceof ControlPlaneError &&
+        ![
+          "OPENXIANGDA_PLATFORM_REQUEST_TIMEOUT",
+          "OPENXIANGDA_PLATFORM_TRANSPORT_FAILED",
+        ].includes(error.code)
+      ) {
+        throw error;
+      }
       const causeCode = String(
-        (error as any)?.cause?.code || (error as any)?.code || ""
+        (error instanceof ControlPlaneError
+          ? (error.data as { causeCode?: unknown } | undefined)?.causeCode
+          : (error as any)?.cause?.code || (error as any)?.code) || ""
       ).trim();
       throw new ControlPlaneError(
         503,
@@ -988,6 +1002,12 @@ export class OpenXiangdaControlPlaneClient {
           retryable: true,
           remediation:
             "重新运行 openxiangda deploy；已完成的内容寻址制品会自动去重",
+          ...(error instanceof ControlPlaneError && error.remote?.requestId
+            ? { requestId: error.remote.requestId }
+            : {}),
+          ...(error instanceof ControlPlaneError && error.remote?.path
+            ? { path: error.remote.path }
+            : {}),
         }
       );
     }
@@ -2604,7 +2624,7 @@ export class OpenXiangdaControlPlaneClient {
     fetcher: FetchLike
   ) {
     const token = await this.accessToken(forceRefresh);
-    const response = await fetcher(`${this.baseUrl}${path}`, {
+    const requestInit: RequestInit = {
       ...init,
       credentials:
         init.credentials || this.options.credentials || "same-origin",
@@ -2613,7 +2633,32 @@ export class OpenXiangdaControlPlaneClient {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(init.headers || {}),
       },
-    });
+    };
+    const prepared = preparePlatformRequest(path, requestInit);
+    let response: Response;
+    try {
+      response = await fetcher(`${this.baseUrl}${path}`, {
+        ...requestInit,
+        headers: prepared.headers,
+      });
+    } catch (error) {
+      const failure = describePlatformTransportFailure(error);
+      throw new ControlPlaneError(
+        failure.status,
+        failure.code,
+        failure.message,
+        {
+          ...prepared.diagnostic,
+          ...(failure.causeCode ? { causeCode: failure.causeCode } : {}),
+        },
+        {
+          retryable: true,
+          remediation: "检查目标平台地址、VPN/网络路由和代理后重试",
+          requestId: prepared.diagnostic.requestId,
+          path: prepared.diagnostic.path,
+        }
+      );
+    }
     let envelope: PlatformEnvelope<T>;
     try {
       envelope = (await response.json()) as PlatformEnvelope<T>;

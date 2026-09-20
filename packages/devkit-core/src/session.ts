@@ -10,6 +10,10 @@ import {
 import { existsSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
+import {
+  describePlatformTransportFailure,
+  preparePlatformRequest,
+} from "./platform-transport.js";
 
 type FetchLike = (
   input: string | URL | Request,
@@ -478,7 +482,7 @@ export class OpenXiangdaDeveloperSession {
     path: string,
     input: { method?: string; token?: string; body?: string } = {}
   ) {
-    const response = await this.fetch(`${this.session.baseUrl}${path}`, {
+    const init: RequestInit = {
       method: input.method || "GET",
       headers: {
         Accept: "application/json",
@@ -486,7 +490,26 @@ export class OpenXiangdaDeveloperSession {
         ...(input.token ? { Authorization: `Bearer ${input.token}` } : {}),
       },
       ...(input.body ? { body: input.body } : {}),
-    });
+    };
+    const prepared = preparePlatformRequest(path, init);
+    let response: Response;
+    try {
+      response = await this.fetch(`${this.session.baseUrl}${path}`, {
+        ...init,
+        headers: prepared.headers,
+      });
+    } catch (error) {
+      const failure = describePlatformTransportFailure(error);
+      throw new DeveloperSessionError(
+        failure.code,
+        failure.message,
+        failure.status,
+        {
+          ...prepared.diagnostic,
+          ...(failure.causeCode ? { causeCode: failure.causeCode } : {}),
+        }
+      );
+    }
     return await parseEnvelope<T>(response);
   }
 

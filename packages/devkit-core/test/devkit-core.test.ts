@@ -40,6 +40,7 @@ import {
 import {
   AppConfigValidationError,
   ControlPlaneError,
+  DeveloperSessionError,
   OpenXiangdaControlPlaneClient,
   OpenXiangdaApplicationServices,
   OPENXIANGDA_TOOLCHAIN_VERSION,
@@ -885,6 +886,85 @@ test("refreshes an expired developer session once and persists the rotated pair"
   }
 });
 
+test("classifies developer-session transport timeouts without leaking the platform URL", async () => {
+  let requestId = "";
+  const manager = new OpenXiangdaDeveloperSession(
+    {
+      schemaVersion: 2,
+      baseUrl: "https://private-platform.example/service",
+      accessToken: "secret-access-token",
+      savedAt: new Date().toISOString(),
+      source: "environment",
+    },
+    {
+      fetch: async (_input, init) => {
+        requestId = new Headers(init?.headers).get("x-request-id") || "";
+        const cause = Object.assign(new Error("connect timeout"), {
+          code: "UND_ERR_CONNECT_TIMEOUT",
+        });
+        throw Object.assign(new TypeError("fetch failed"), { cause });
+      },
+    }
+  );
+
+  await assert.rejects(
+    () => manager.whoami(),
+    (error: unknown) => {
+      assert.ok(error instanceof DeveloperSessionError);
+      assert.equal(error.status, 504);
+      assert.equal(error.code, "OPENXIANGDA_PLATFORM_REQUEST_TIMEOUT");
+      assert.deepEqual(error.data, {
+        requestId,
+        method: "GET",
+        path: "/openxiangda-api/v2/auth/whoami",
+        causeCode: "UND_ERR_CONNECT_TIMEOUT",
+      });
+      assert.doesNotMatch(error.message, /secret-access-token|private-platform/);
+      return true;
+    }
+  );
+  assert.match(requestId, /^[0-9a-f-]{36}$/);
+});
+
+test("classifies control-plane transport failures with a redacted relative path", async () => {
+  let requestId = "";
+  const client = new OpenXiangdaControlPlaneClient({
+    baseUrl: "https://private-platform.example/service",
+    token: "secret-access-token",
+    fetch: async (_input, init) => {
+      requestId = new Headers(init?.headers).get("x-request-id") || "";
+      const cause = Object.assign(new Error("connection refused"), {
+        code: "ECONNREFUSED",
+      });
+      throw Object.assign(new TypeError("fetch failed"), { cause });
+    },
+  });
+
+  await assert.rejects(
+    () => client.applicationEnvironments("reference-app"),
+    (error: unknown) => {
+      assert.ok(error instanceof ControlPlaneError);
+      assert.equal(error.status, 503);
+      assert.equal(error.code, "OPENXIANGDA_PLATFORM_TRANSPORT_FAILED");
+      assert.equal(error.remote?.retryable, true);
+      assert.equal(error.remote?.requestId, requestId);
+      assert.equal(
+        error.remote?.path,
+        "/openxiangda-api/v2/applications/reference-app/environments"
+      );
+      assert.deepEqual(error.data, {
+        requestId,
+        method: "GET",
+        path: "/openxiangda-api/v2/applications/reference-app/environments",
+        causeCode: "ECONNREFUSED",
+      });
+      assert.doesNotMatch(error.message, /secret-access-token|private-platform/);
+      return true;
+    }
+  );
+  assert.match(requestId, /^[0-9a-f-]{36}$/);
+});
+
 test("retries a control-plane request exactly once after a remote 401 envelope", async () => {
   const tokenCalls: boolean[] = [];
   const requests: string[] = [];
@@ -967,7 +1047,8 @@ test("always clears the local session when server-side logout cannot be confirme
     assert.ok(manager);
     const result = await manager.logout();
     assert.equal(result.serverRevoked, false);
-    assert.match(result.serverError || "", /network unavailable/);
+    assert.match(result.serverError || "", /取得响应前连接失败/);
+    assert.doesNotMatch(result.serverError || "", /network unavailable/);
     assert.equal(await loadSession(path), null);
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -1123,6 +1204,68 @@ test("returns an actionable DevkitResult when connected dev preflight fails", as
       command: "openxiangda create <directory> --base-url <platform>",
     });
   } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("reports the failing endpoint when connected dev cannot reach the platform", async () => {
+  const root = mkdtempSync(join(tmpdir(), "openxiangda-connected-transport-"));
+  const originalFetch = globalThis.fetch;
+  try {
+    mkdirSync(join(root, "packages/contracts/src"), { recursive: true });
+    mkdirSync(join(root, "apps/web"), { recursive: true });
+    mkdirSync(join(root, "apps/server"), { recursive: true });
+    mkdirSync(join(root, "platform"), { recursive: true });
+    writeFileSync(join(root, "package.json"), JSON.stringify({
+      name: "reference-app",
+      private: true,
+      packageManager: "pnpm@10.15.1",
+    }));
+    writeFileSync(
+      join(root, "openxiangda.config.ts"),
+      `export default ${JSON.stringify(configDeclaration())};\n`
+    );
+    mkdirSync(join(root, ".openxiangda"), { recursive: true });
+    writeFileSync(join(root, ".openxiangda", "link.json"), JSON.stringify({
+      schemaVersion: 2,
+      appCode: "reference-app",
+      baseUrl: "https://platform.example/service",
+    }));
+    await saveSession({
+      baseUrl: "https://platform.example/service",
+      accessToken: "developer-token",
+    }, join(root, ".openxiangda", "session.json"));
+    globalThis.fetch = async () => {
+      const cause = Object.assign(new Error("connect timeout"), {
+        code: "UND_ERR_CONNECT_TIMEOUT",
+      });
+      throw Object.assign(new TypeError("fetch failed"), { cause });
+    };
+
+    const result = await new OpenXiangdaApplicationServices().dev(root, {
+      noOpen: true,
+    });
+    const diagnostic = result.diagnostics[0];
+    assert.equal(result.ok, false);
+    assert.equal(
+      diagnostic?.code,
+      "OPENXIANGDA_PLATFORM_REQUEST_TIMEOUT"
+    );
+    assert.equal(
+      diagnostic?.path,
+      "/openxiangda-api/v2/auth/whoami"
+    );
+    assert.equal(diagnostic?.retryable, true);
+    assert.equal(diagnostic?.details?.method, "GET");
+    assert.equal(
+      diagnostic?.details?.causeCode,
+      "UND_ERR_CONNECT_TIMEOUT"
+    );
+    assert.equal(diagnostic?.details?.requestIdOwner, "client");
+    assert.match(String(diagnostic?.details?.requestId || ""), /^[0-9a-f-]{36}$/);
+    assert.doesNotMatch(JSON.stringify(diagnostic), /developer-token|platform\.example/);
+  } finally {
+    globalThis.fetch = originalFetch;
     rmSync(root, { recursive: true, force: true });
   }
 });
