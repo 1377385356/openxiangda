@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.22.1",
+  "version": "2.22.2",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -67,13 +67,13 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.5.5",
-    "openxiangda-contracts": "2.17.0",
-    "openxiangda-devkit-core": "2.20.1",
+    "openxiangda-cli": "2.5.6",
+    "openxiangda-contracts": "2.17.1",
+    "openxiangda-devkit-core": "2.20.2",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.35",
-    "openxiangda-nest": "2.4.8",
-    "openxiangda-skill-kit": "2.3.8",
+    "openxiangda-mcp": "2.0.36",
+    "openxiangda-nest": "2.4.9",
+    "openxiangda-skill-kit": "2.3.9",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -139,34 +139,37 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.22.1",
+    "version": "2.22.2",
     "status": "reviewed",
-    "title": "OpenXiangda 2.22.1：平台传输失败诊断",
-    "summary": "为 Connected Dev、检查和部署控制面请求补充稳定、脱敏的传输失败诊断，使开发者能够区分请求超时与其他网络连接失败，并定位到具体请求阶段，而不泄露平台地址、查询参数或凭据。",
-    "newFeatures": [],
+    "title": "OpenXiangda 2.22.2：认证表单草稿原子提交与工作区状态",
+    "summary": "为认证表单草稿补充具名业务流程原子消费，以及独立、版本化的草稿工作区状态合同，使正文编辑模式、范本选择和变量快照等临时状态可以在不放宽业务字段的前提下安全暂存。",
+    "newFeatures": [
+      "具名业务流程提交可以绑定一份认证表单草稿及其精确 revision，在同一平台事务内完成业务写入、流程命令和草稿消费；原幂等键可恢复既有结果，不重复创建业务记录或启动流程。",
+      "默认表单和具名视图可分别声明有界 draftState Schema；浏览器 SDK 将 state 与业务 values 分离保存，并回读 Schema 版本、canonical digest 和已保存状态。"
+    ],
     "fixes": [
-      "平台请求尚未取得 HTTP 响应时，统一返回 OPENXIANGDA_PLATFORM_REQUEST_TIMEOUT 或 OPENXIANGDA_PLATFORM_TRANSPORT_FAILED，并附带客户端 requestId、HTTP method、脱敏相对路径和限长 cause code。",
-      "Connected Dev 顶层诊断会保留稳定错误码、可重试标记和具体失败端点；制品上传仍维持原有专用错误合同，不增加自动重试或 Dev Session 副作用。"
+      "草稿状态在声明撤销、范围收窄或版本和 digest 不一致时稳定失败，不会静默丢字段、误解释旧状态或把草稿字段加入 Data API 业务模型。",
+      "公开合同、编译器、浏览器 SDK 和 Nest 业务流程客户端使用同一版本化合同，并继续保持 Node-only 校验代码不进入浏览器产物。"
     ],
     "affectedUsers": [
-      "通过 VPN、堡垒网络或其他私网连接平台，且需要排查 openxiangda dev、check 或 deploy 预检连接失败的 OpenXiangda 2.0 开发者和平台维护人员。"
+      "使用 OpenXiangda 2.0 自定义表单、具名视图、认证草稿或具名业务流程提交的应用开发者，以及负责升级对应平台服务的维护人员。"
     ],
     "upgradeSteps": [
-      "将应用对 openxiangda 的精确依赖升级到 2.22.1，按锁文件重新安装依赖，并执行 pnpm openxiangda skill install --force 刷新本地 Skill。",
-      "连接目标平台前先确认 VPN 和目标私网路由；若诊断显示请求尚未取得响应，应使用客户端 requestId 和脱敏端点定位本地网络阶段，不要假定平台服务端已收到请求。"
+      "将应用对 openxiangda 的精确依赖升级到 2.22.2，按锁文件重新安装依赖，并执行 pnpm openxiangda skill install --force 刷新本地 Skill。",
+      "平台维护者需先升级到包含认证草稿原子消费和 draftState 支持的服务端版本，并按正式迁移流程应用新增的草稿状态列；应用应在目标环境回读有效 Schema 后再启用完整工作区草稿。"
     ],
     "knownLimitations": [
-      "传输失败时的 requestId 由客户端生成，仅用于本地关联；请求未到达 nginx 或平台服务时不会产生对应服务端日志。",
-      "本版本只改善诊断，不会自动恢复 VPN、代理、DNS 或路由，也不会自动重建 Dev Session。"
+      "draftState 只保存受声明约束的临时工作区状态，不是业务 Data API 字段、工作流事实或永久文档存储；单份 state 上限为 192 KiB，values 与 state 合计上限为 256 KiB。",
+      "仅升级 npm 包不会升级平台服务或执行数据库迁移；在平台尚未升级时，应用必须保留本地输入并显示失败，不得回退到 localStorage 冒充服务端草稿。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
       "workspaceGenerations": "v2",
-      "platform": "不要求平台服务或数据库升级；现有 OpenXiangda 2.0 平台 API 合同保持不变。",
+      "platform": "完整能力要求升级到支持认证草稿原子消费和 draftState Schema 的平台服务，并应用对应的 expand-only SQL migration；旧平台不会自动获得该能力。",
       "v1": "V1 工作区与维护引擎不受影响。"
     },
-    "sha256": "8ef92b92e9b992bc29703c2063f26b472a873fbf4599cd52f22e7809a8b7c840",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.22.1"
+    "sha256": "5859a8c6ef4f6342f270d4d595df1ea7ef77e8421f4042646e4308eba41c2fbe",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.22.2"
   }
 }
