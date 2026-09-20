@@ -2434,6 +2434,15 @@ export type BusinessProcessDataOperation =
       amount: number;
     };
 
+export interface BusinessProcessFormDraft {
+  resourceCode: string;
+  id: string;
+  expectedRevision: number;
+  mode: "create" | "update";
+  recordId?: string;
+  viewCode?: string;
+}
+
 /** Wire command accepted only from a verified Named Action. */
 export interface BusinessProcessCommit {
   schemaVersion: typeof SCHEMA_VERSIONS.businessProcessCommit;
@@ -2443,6 +2452,7 @@ export interface BusinessProcessCommit {
     guards?: DataTransactionGuard[];
     operations: BusinessProcessDataOperation[];
   };
+  formDraft?: BusinessProcessFormDraft;
   workflow: {
     workflowCode: string;
     subject: { fromOperation: string };

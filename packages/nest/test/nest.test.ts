@@ -2402,6 +2402,13 @@ test("durable business process SDK sends only verified Named Action proof", asyn
         },
       ],
     },
+    formDraft: {
+      resourceCode: "applications",
+      id: "11111111-1111-4111-8111-111111111111",
+      expectedRevision: 3,
+      mode: "create",
+      viewCode: "application-submit",
+    },
     workflow: {
       workflowCode: "application-approval",
       subject: { fromOperation: "application" },
@@ -2422,6 +2429,13 @@ test("durable business process SDK sends only verified Named Action proof", asyn
             data: { title: "申请" },
           },
         ],
+      },
+      formDraft: {
+        resourceCode: "applications",
+        id: "11111111-1111-4111-8111-111111111111",
+        expectedRevision: 3,
+        mode: "create",
+        viewCode: "application-submit",
       },
       workflow: {
         workflowCode: "application-approval",

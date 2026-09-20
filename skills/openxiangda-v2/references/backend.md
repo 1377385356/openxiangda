@@ -41,6 +41,14 @@ SDK 继承当前环境与身份，平台沿用发起人或既有超级管理员�
 `items/nextCursor`，分页与多次流程的选择规则见[前端](frontend.md)。找回后使用原
 `receipt/poll/surface`；查询不重放提交、不生成第二份命令状态。
 
+自定义表单页若先用 `createResourceFormDraftClient` 保存认证草稿，并由 Named Action
+提交业务记录和流程，则在同一次 `OpenXiangdaBusinessProcessService.commit` 中传入
+`formDraft: { resourceCode, id, expectedRevision, mode, recordId?, viewCode? }`。草稿必须
+与 `workflow.subject.fromOperation` 指向的 create/update 操作完全同资源、同模式和同
+记录；平台按当前真实用户、应用与环境锁定 revision，在业务写入和 durable command
+同一事务中消费。失败或未知结果时不要先删草稿，也不要换幂等键；使用原
+`idempotencyKey` 重放或读取 `receipt/poll`。成功后也不要再做 best-effort 删除。
+
 自定义 operation 的 capability 必须先在 `authz.capabilities` 以
 `kind: 'backend'` 声明，再由 operation 和允许调用它的角色共同引用。普通资源 CRUD
 能力仍由编译器生成，不写入显式 capability catalog。

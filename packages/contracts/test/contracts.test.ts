@@ -333,6 +333,22 @@ test('publishes strict durable business process wire contracts', () => {
       .maxItems,
     16,
   );
+  const formDraft = contractSchemas.businessProcessCommit.properties.formDraft;
+  assert.equal(formDraft.additionalProperties, false);
+  assert.deepEqual(formDraft.required, [
+    'resourceCode',
+    'id',
+    'expectedRevision',
+    'mode',
+  ]);
+  assert.deepEqual(formDraft.properties.mode.enum, ['create', 'update']);
+  assert.equal(formDraft.properties.expectedRevision.minimum, 1);
+  assert.equal(
+    formDraft.properties.viewCode.pattern,
+    '^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$',
+  );
+  assert.deepEqual(formDraft.allOf[0].then.required, ['recordId']);
+  assert.deepEqual(formDraft.allOf[0].else.not.required, ['recordId']);
   assert.equal(
     contractSchemas.businessProcessAnswer.properties.answers.maxProperties,
     64,

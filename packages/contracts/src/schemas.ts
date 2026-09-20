@@ -5713,6 +5713,32 @@ const businessProcessDataOperation = {
   ],
 } as const;
 
+const businessProcessFormDraft = {
+  type: "object",
+  additionalProperties: false,
+  required: ["resourceCode", "id", "expectedRevision", "mode"],
+  properties: {
+    resourceCode: dataResourceCode,
+    id: businessProcessUuid,
+    expectedRevision: { type: "integer", minimum: 1 },
+    mode: { enum: ["create", "update"] },
+    recordId: businessProcessUuid,
+    viewCode: {
+      type: "string",
+      minLength: 1,
+      maxLength: 64,
+      pattern: "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+    },
+  },
+  allOf: [
+    {
+      if: { properties: { mode: { const: "update" } }, required: ["mode"] },
+      then: { required: ["recordId"] },
+      else: { not: { required: ["recordId"] } },
+    },
+  ],
+} as const;
+
 export const businessProcessCommitSchema = {
   $id: SCHEMA_VERSIONS.businessProcessCommit,
   type: "object",
@@ -5731,6 +5757,7 @@ export const businessProcessCommitSchema = {
         operations: { type: "array", minItems: 1, maxItems: 16, items: businessProcessDataOperation },
       },
     },
+    formDraft: businessProcessFormDraft,
     workflow: {
       type: "object",
       additionalProperties: false,
