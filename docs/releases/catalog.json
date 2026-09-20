@@ -3,6 +3,38 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.22.3",
+      "status": "reviewed",
+      "title": "OpenXiangda 2.22.3：草稿状态保持表单专属",
+      "summary": "修复 Native 编译器对 draftState 的执行校验边界，使默认与具名详情布局和公开 JSON Schema 一致地拒绝草稿工作区状态。",
+      "newFeatures": [],
+      "fixes": [
+        "默认详情布局和具名视图详情布局不再接受 draftState；该声明继续只允许出现在默认表单和具名表单上。",
+        "公开 Surface 键清单新增表单与详情的独立白名单，服务端消费者不再需要把同一 layout 白名单错误地复用于两个不同 Surface。"
+      ],
+      "affectedUsers": [
+        "使用 OpenXiangda 2.0 认证草稿工作区状态的应用开发者，以及复用 Native Surface 纯校验器或键清单的平台维护人员。"
+      ],
+      "upgradeSteps": [
+        "将应用对 openxiangda 的精确依赖升级到 2.22.3，按锁文件重新安装依赖，并执行 pnpm openxiangda skill install --force 刷新本地 Skill。",
+        "平台维护者应同步升级 openxiangda-contracts，并使用独立的 form/detail 键清单校验 Surface；已把 draftState 错误声明在 detail 下的配置需移回 form。"
+      ],
+      "knownLimitations": [
+        "本补丁只收紧编译期与服务端 Surface 校验边界，不会自行升级平台服务、执行数据库迁移或修改已部署应用。",
+        "draftState 仍只保存受声明约束的临时工作区状态，不是业务 Data API 字段、工作流事实或永久文档存储。"
+      ],
+      "issues": [],
+      "compatibility": {
+        "node": ">=24",
+        "workspaceGenerations": "v2",
+        "platform": "完整草稿工作区能力仍要求升级到支持认证草稿原子消费和 draftState Schema 的平台服务，并应用对应的 expand-only SQL migration。",
+        "v1": "V1 工作区与维护引擎不受影响。"
+      },
+      "sha256": "f0b7c256057a3366b4e4e85823f0447382f51c75e15ce11a7e4a04f15a3c8069",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.22.3"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.22.2",
       "status": "reviewed",
       "title": "OpenXiangda 2.22.2：认证表单草稿原子提交与工作区状态",
