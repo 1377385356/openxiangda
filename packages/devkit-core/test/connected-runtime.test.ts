@@ -43,6 +43,7 @@ server.listen(Number(process.env.OPENXIANGDA_WEB_PORT), '127.0.0.1');
       revoke: async token => { revoked.push(token); },
     },
     noOpen: true, readinessTimeoutMs: 15_000,
+    operationPaths: ['/ai/probe-op'],
   };
   return { root, options, grant, revoked, created: () => created, close: () => rmSync(root, { recursive: true, force: true }) };
 }
@@ -89,7 +90,7 @@ test('frontend-only connected development starts no Nest and rejects application
     const result = await runConnectedDevelopment({ ...f.options, onReady: async session => {
       assert.equal(session.urls.app, null);
       assert.equal(session.ports.app, null);
-      for (const route of ['/api/probe', '/service/openxiangda-app-api/v2/connected-app/preproduction/api/probe']) {
+      for (const route of ['/api/probe', '/service/openxiangda-app-api/v2/connected-app/preproduction/api/probe', '/ai/probe-op']) {
         const response = await fetch(`${session.urls.proxy}${route}`);
         assert.equal(response.status, 404);
         assert.equal((await response.json() as any).code, 'OPENXIANGDA_CONNECTED_BACKEND_DISABLED');

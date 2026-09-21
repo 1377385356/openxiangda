@@ -45,6 +45,13 @@ export interface ConnectedDevelopmentOptions {
   remoteSession: ConnectedDevelopmentSessionApi;
   /** Configured package directory, present only when local Nest execution is required. */
   backendRoot?: string;
+  /**
+   * Declared backend operation paths (openxiangda.config.ts backend.operations[].path).
+   * The proxy forwards bare requests that exactly match one of these static paths to
+   * the local backend, so browser code calling applicationApiPath() without runtime
+   * mount metadata works unchanged in connected dev (PL-09).
+   */
+  operationPaths?: readonly string[];
   noOpen?: boolean;
   webPort?: number;
   onStatus?: (message: string) => void;
@@ -181,6 +188,10 @@ export async function runConnectedDevelopment(
     }
     return { "x-openxiangda-dev-session": grant.token };
   };
+  const operationPaths = new Set(
+    (input.operationPaths ?? [])
+      .map(path => `/${String(path).replace(/^\/+/, '').replace(/\/+$/, '')}`)
+  );
   const proxy = createConnectedProxy({
     appCode: input.appCode,
     environmentKey,
@@ -188,6 +199,7 @@ export async function runConnectedDevelopment(
     localAppBaseUrl: urls.app,
     developerSession: input.developerSession,
     sessionHeaders,
+    operationPaths,
   });
 
   try {
@@ -283,6 +295,7 @@ function createConnectedProxy(input: {
   localAppBaseUrl: string | null;
   developerSession: OpenXiangdaDeveloperSession;
   sessionHeaders: () => Promise<Record<string, string>>;
+  operationPaths: ReadonlySet<string>;
 }) {
   return createHttpServer((request, response) => {
     void (async () => {
@@ -291,11 +304,12 @@ function createConnectedProxy(input: {
         input.appCode,
         input.environmentKey,
         input.platformBaseUrl,
-        input.localAppBaseUrl
+        input.localAppBaseUrl,
+        input.operationPaths
       );
       if (!route) {
         response.statusCode = 404;
-        response.end("OpenXiangda connected dev proxy only serves /service and /api");
+        response.end("OpenXiangda connected dev proxy serves /api, /service and declared application operation paths");
         return;
       }
       if (route.kind === "disabled") {
@@ -333,9 +347,16 @@ function proxyRoute(
   appCode: string,
   environmentKey: DeploymentEnvironment,
   platformBaseUrl: string,
-  localAppBaseUrl: string | null
+  localAppBaseUrl: string | null,
+  operationPaths: ReadonlySet<string>
 ) {
   const incoming = new URL(requestUrl, "http://connected.local");
+  // Bare declared operation path (no runtime mount metadata in connected dev):
+  // forward to the local backend exactly as the mounted app-api branch would.
+  if (operationPaths.has(incoming.pathname.replace(/\/+$/, "") || "/")) {
+    if (!localAppBaseUrl) return { kind: "disabled" as const };
+    return { kind: "local" as const, url: new URL(`${incoming.pathname}${incoming.search}`, `${localAppBaseUrl}/`) };
+  }
   if (incoming.pathname === "/api" || incoming.pathname.startsWith("/api/")) {
     if (!localAppBaseUrl) return { kind: "disabled" as const };
     return { kind: "local" as const, url: new URL(`${incoming.pathname}${incoming.search}`, `${localAppBaseUrl}/`) };

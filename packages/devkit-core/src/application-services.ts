@@ -2662,6 +2662,7 @@ export class OpenXiangdaApplicationServices {
       developerSession,
       remoteSession,
       ...(backendRuntimeRequired(workspace.config) ? { backendRoot: workspace.config.backend.root } : {}),
+      operationPaths: (workspace.config.backend?.operations ?? []).map(operation => operation.path),
       ...(input.noOpen === undefined ? {} : { noOpen: input.noOpen }),
       ...(input.webPort === undefined ? {} : { webPort: input.webPort }),
       ...(input.onStatus ? { onStatus: input.onStatus } : {}),
