@@ -269,7 +269,7 @@ import {
 ```
 
 用户动作 send 的 schemaVersion 使用 OPENXIANGDA_NOTIFICATION_BUSINESS_SEND_V2；事件处理 sendFromEvent 使用 OPENXIANGDA_NOTIFICATION_EVENT_SEND_V2。二者的调用上下文和收件人来源不同，不能混用。
-# 外部处理受控文件
+## 外部处理受控文件
 
 需要水印或归档处理时，Nest DataApi 可签发短期对象下载地址。不要把要求登录态的 content URL 或用户 Cookie 交给外部服务。
 
