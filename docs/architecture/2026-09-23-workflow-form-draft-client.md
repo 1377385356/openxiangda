@@ -1,0 +1,3 @@
+# 具名工作流草稿客户端
+
+平台已定位无NativeCreate的经办人无法暂存的问题。新增createWorkflowFormDraftClient(resourceCode,{workflowCode,operationCode})，仅提供list/save/remove；无普通submit入口。服务端以当前发布workflow named intent与当前用户能力验证范围，持久化工作流/操作并限制字段，草稿仍为当前用户私有。提交继续使用既有BusinessProcess.formDraft的id/revision/resource/mode，服务端从已验证业务命令对比真实workflow/operation，不接受客户端扩大消费范围。旧createResourceFormDraftClient不变。必须先部署服务端新迁移与授权能力；接口不存在/权限不足时显示失败，不回退NativeCreate或localStorage。后端失败保留草稿，原子成功才消费。

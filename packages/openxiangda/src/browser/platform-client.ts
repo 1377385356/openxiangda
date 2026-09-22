@@ -2588,7 +2588,14 @@ async function workflowCsrfToken() {
   return applicationCsrfToken;
 }
 
+export interface ResourceFormDraftWorkflowScope {
+  workflowCode: string;
+  operationCode: string;
+}
+
 export interface ResourceFormDraft {
+  workflowCode?: string;
+  operationCode?: string;
   viewCode?: string;
   id: string;
   revision: number;
@@ -2607,15 +2614,15 @@ export interface ResourceFormDraftStateSchema extends DataFormDraftStateSchema {
   digest: string;
 }
 /** Authenticated drafts use the same current user/environment as Native CRUD. */
-export function createResourceFormDraftClient(resourceCode: string, mode: 'create' | 'update', recordId?: string, viewCode?: string) {
+export function createResourceFormDraftClient(resourceCode: string, mode: 'create' | 'update', recordId?: string, viewCode?: string, workflowScope?: ResourceFormDraftWorkflowScope) {
   const base = `${nativeBase()}/form-drafts/${encodeURIComponent(resourceCode)}`;
-  const scope = () => ({ environmentKey: currentEnvironmentKey(), mode, ...(recordId ? { recordId } : {}), ...(viewCode ? { viewCode } : {}) });
+  const scope = () => ({ environmentKey: currentEnvironmentKey(), mode, ...(recordId ? { recordId } : {}), ...(viewCode ? { viewCode } : {}), ...(workflowScope || {}) });
   return {
     list() {
       return request<{ items: ResourceFormDraft[]; limit: number; retentionDays: number; stateSchema?: ResourceFormDraftStateSchema }>(`${base}/?${new URLSearchParams(scope())}`);
     },
     save(input: { id: string; expectedRevision: number; recordRevision?: number; values: Record<string, unknown>; state?: Record<string, unknown> }) {
-      return request<ResourceFormDraft>(`${base}/save`, { method: 'POST', body: JSON.stringify({ ...scope(), ...input }) });
+      return request<ResourceFormDraft>(`${base}/save`, { method: 'POST', body: JSON.stringify({ ...input, ...scope() }) });
     },
     remove(draft: Pick<ResourceFormDraft, 'id' | 'revision'>) {
       return request<{ deleted: boolean }>(`${base}/delete`, { method: 'POST', body: JSON.stringify({ ...scope(), id: draft.id, expectedRevision: draft.revision }) });
@@ -2624,6 +2631,15 @@ export function createResourceFormDraftClient(resourceCode: string, mode: 'creat
       return request<DataTransactionResult>(`${base}/submit`, { method: 'POST', body: JSON.stringify({ ...scope(), id: draft.id, expectedRevision: draft.revision, operations }) });
     },
   };
+}
+
+
+/** Private drafting for one published named workflow intent; submit through BusinessProcess. */
+export function createWorkflowFormDraftClient(resourceCode: string, scope: ResourceFormDraftWorkflowScope) {
+  const client = createResourceFormDraftClient(resourceCode, 'create', undefined, undefined, {
+    workflowCode: scope.workflowCode, operationCode: scope.operationCode,
+  });
+  return { list: client.list, save: client.save, remove: client.remove };
 }
 
 

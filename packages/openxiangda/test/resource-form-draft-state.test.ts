@@ -76,3 +76,40 @@ test('authenticated form drafts keep business values and workspace state separat
     else globalThis.document = originalDocument;
   }
 });
+
+test('named workflow drafts pin environment and workflow scope without a Native submit client', async () => {
+  const { createWorkflowFormDraftClient } = await import('../src/browser/platform-client');
+  const oldFetch = globalThis.fetch;
+  const oldDocument = globalThis.document;
+  const requests: Array<{ url: string; body: any }> = [];
+  configureApplicationIdentity({ appCode: 'draft-demo', appName: '草稿验证' });
+  const meta: Record<string, string> = {
+    'openxiangda-runtime-base': '/runtime/draft-demo',
+    'openxiangda-app-code': 'draft-demo',
+    'openxiangda-environment': 'preproduction',
+  };
+  globalThis.document = { querySelector: (selector: string) => ({ content: meta[selector.match(/name="([^"]+)"/)?.[1] || ''] || '' }) } as any;
+  globalThis.fetch = async (url, init) => {
+    requests.push({ url: String(url), body: init?.body ? JSON.parse(String(init.body)) : null });
+    return new Response(JSON.stringify({ code: 200, data: { items: [], id: 'draft', revision: 1 } }), { headers: { 'content-type': 'application/json' } });
+  };
+  try {
+    const client = createWorkflowFormDraftClient('contracts', { workflowCode: 'contract-approval', operationCode: 'submit-contract-approval' });
+    assert.equal('submit' in client, false);
+    await client.list();
+    const query = new URL(requests[0].url, 'http://localhost').searchParams;
+    assert.equal(query.get('workflowCode'), 'contract-approval');
+    assert.equal(query.get('operationCode'), 'submit-contract-approval');
+    assert.equal(query.get('environmentKey'), 'preproduction');
+    await client.save({ id: 'draft', expectedRevision: 0, values: { title: 'draft' }, state: { editor: 'content' }, mode: 'update', workflowCode: 'wrong' } as any);
+    assert.equal(requests[1].body.workflowCode, 'contract-approval');
+    assert.equal(requests[1].body.mode, 'create');
+    assert.deepEqual(requests[1].body.state, { editor: 'content' });
+    await client.remove({ id: 'draft', revision: 1 });
+    assert.equal(requests[2].body.operationCode, 'submit-contract-approval');
+    assert.equal(requests[2].body.expectedRevision, 1);
+  } finally {
+    globalThis.fetch = oldFetch;
+    globalThis.document = oldDocument;
+  }
+});

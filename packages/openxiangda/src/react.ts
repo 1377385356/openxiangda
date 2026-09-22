@@ -19,6 +19,8 @@ export * from './browser/workflow-definitions';
 export * from './browser/workflow-launch';
 export {
   createResourceFormDraftClient,
+  createWorkflowFormDraftClient,
+  type ResourceFormDraftWorkflowScope,
   type ResourceFormDraft,
   createAnonymousPublicClient,
   applicationFileIntentUrl,
