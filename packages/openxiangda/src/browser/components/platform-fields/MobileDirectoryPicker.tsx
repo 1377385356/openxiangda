@@ -1,3 +1,4 @@
+import { isDirectorySearchKeyword, directorySearchKeywordHint } from './directory-keyword';
 import type { DirectoryEntry } from 'openxiangda-contracts/browser';
 import { useCallback, useState } from 'react';
 import { Button, CheckList, SearchBar } from '../../mobile';
@@ -39,7 +40,7 @@ function DirectorySelection({ kind, value, onChange, multiple = false, placehold
   const loadSearch = useCallback((cursor?: string) => searchDirectory(kind, { keyword: query, cursor }), [kind, query]);
   const departments = useMobilePickerPage({ loadPage: loadDepartments, enabled: !query && parent?.hasChildren !== false });
   const members = useMobilePickerPage({ loadPage: loadMembers, enabled: !query && kind === 'user' && Boolean(parentId) });
-  const search = useMobilePickerPage({ loadPage: loadSearch, enabled: query.length >= 2, delay: 300 });
+  const search = useMobilePickerPage({ loadPage: loadSearch, enabled: isDirectorySearchKeyword(query), delay: 300 });
 
   const choices = (entries: DirectoryEntry[], drill = false) => {
     const rows = [...new Map(entries.map(item => [item.id, item])).values()];
@@ -59,7 +60,7 @@ function DirectorySelection({ kind, value, onChange, multiple = false, placehold
     onClose={onClose} onClear={() => setSelected([])} onRemove={id => setSelected(current => current.filter(item => item.id !== id))}
     onConfirm={() => { onChange?.(directoryStoredValueFromEntries(selected, multiple)); onClose(); }}>
     <SearchBar aria-label={copy.search} placeholder={copy.search} value={keyword} onChange={setKeyword} />
-    {query ? query.length < 2 ? <p className="oxa-mobile-selection-hint">请输入至少 2 个字符搜索</p> : <>
+    {query ? !isDirectorySearchKeyword(query) ? <p className="oxa-mobile-selection-hint">{directorySearchKeywordHint}</p> : <>
       {choices(search.items)}<MobileSelectionPageStatus page={search} />
     </> : <>
       <nav className="oxa-mobile-selection-breadcrumb" aria-label="部门路径">

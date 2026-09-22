@@ -1,3 +1,4 @@
+import { isDirectorySearchKeyword, directorySearchKeywordHint } from './directory-keyword';
 import {
   ApartmentOutlined,
   CloseOutlined,
@@ -294,7 +295,7 @@ function MemberPanel({
   }, [departmentId, keyword]);
   useEffect(() => {
     const query = keyword.trim();
-    if (query && query.length < 2) {
+    if (query && !isDirectorySearchKeyword(query)) {
       setMembers([]);
       setNextCursor(null);
       return;
@@ -406,8 +407,8 @@ function MemberPanel({
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
                   description={
                     error ||
-                    (keyword.trim().length === 1
-                      ? '请输入至少 2 个字符'
+                    (Boolean(keyword.trim()) && !isDirectorySearchKeyword(keyword)
+                      ? directorySearchKeywordHint
                       : '暂无成员')
                   }
                 />
@@ -457,7 +458,7 @@ function DepartmentPanel({
   }, [tree.loadRoots]);
   useEffect(() => {
     const query = keyword.trim();
-    if (query.length < 2) {
+    if (!isDirectorySearchKeyword(query)) {
       setSearchResults([]);
       setSearchError('');
       return;
@@ -518,7 +519,7 @@ function DepartmentPanel({
       <div className="oxa-directory-main oxa-department-main">
         <section className="oxa-directory-tree-pane">
           <Spin spinning={tree.loading || searching}>
-            {keyword.trim().length >= 2 ? (
+            {isDirectorySearchKeyword(keyword) ? (
               <div className="oxa-directory-results">
                 {searchResults.length ? (
                   searchResults.map(entry => (
