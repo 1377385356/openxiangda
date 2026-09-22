@@ -3211,6 +3211,41 @@ export const dataFileRefSchema = {
   },
 } as const;
 
+export const dataFileDownloadSessionSchema = {
+  $id: SCHEMA_VERSIONS.dataFileDownloadSession,
+  type: "object", additionalProperties: false,
+  required: ["schemaVersion", "fileId", "fileName", "fileSize", "contentType", "downloadUrl", "expiresAt"],
+  properties: {
+    schemaVersion: { const: SCHEMA_VERSIONS.dataFileDownloadSession },
+    fileId: nonEmptyString, fileName: nonEmptyString,
+    fileSize: { type: "integer", minimum: 0, maximum: 104857600 },
+    contentType: nonEmptyString, downloadUrl: nonEmptyString, expiresAt: dateTime,
+  },
+} as const;
+
+export const dataFileOutputPlanSchema = {
+  $id: SCHEMA_VERSIONS.dataFileOutputPlan,
+  oneOf: [{
+    type: "object", additionalProperties: false,
+    required: ["schemaVersion", "fileId", "status", "maxFileSize", "uploadMethod", "uploadUrl", "formFields", "expiresAt"],
+    properties: {
+      schemaVersion: { const: SCHEMA_VERSIONS.dataFileOutputPlan },
+      fileId: nonEmptyString, status: { const: "pending" },
+      maxFileSize: { type: "integer", minimum: 1, maximum: 104857600 },
+      uploadMethod: { const: "POST" }, uploadUrl: nonEmptyString,
+      formFields: { type: "object", additionalProperties: { type: "string" } }, expiresAt: dateTime,
+    },
+  }, {
+    type: "object", additionalProperties: false,
+    required: ["schemaVersion", "fileId", "status", "file"],
+    properties: {
+      schemaVersion: { const: SCHEMA_VERSIONS.dataFileOutputPlan },
+      fileId: nonEmptyString, status: { const: "completed" },
+      file: { $ref: SCHEMA_VERSIONS.dataFileRef },
+    },
+  }],
+} as const;
+
 export const dataFileUploadPlanSchema = {
   $id: SCHEMA_VERSIONS.dataFileUploadPlan,
   type: "object",
@@ -8733,6 +8768,8 @@ export const contractSchemas = {
   dataAuditPage: dataAuditPageSchema,
   dataFileRef: dataFileRefSchema,
   dataFileUploadPlan: dataFileUploadPlanSchema,
+  dataFileDownloadSession: dataFileDownloadSessionSchema,
+  dataFileOutputPlan: dataFileOutputPlanSchema,
   dataFileCopyRequest: dataFileCopyRequestSchema,
   dataFileCopyReceipt: dataFileCopyReceiptSchema,
   dataFilePreview: dataFilePreviewSchema,

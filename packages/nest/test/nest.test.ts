@@ -3576,3 +3576,27 @@ test('snapshot value helpers produce platform-stable shapes', async () => {
   assert.equal(isIdempotencyConflict(new Error('x')), false);
   assert.equal(isIdempotencyConflict({ code: 'OPENXIANGDA_NATIVE_DATA_IDEMPOTENCY_CONFLICT' }), false);
 });
+
+test('managed exchange keeps application environment and business action on all three requests', async () => {
+  const calls: Array<{ url: string; init?: RequestInit }> = [];
+  const client = new OpenXiangdaPlatformClient(options(async (input, init) => {
+    calls.push({ url: String(input), init });
+    return response({ status: 'pending' });
+  }));
+  const action = { code: 'prepare', requiredCapability: 'prepare-file', requestId: 'request-1' };
+  await client.createFileDownloadSession('Bearer app', 'view-1', 'documents', 'file/1', { purpose: 'watermark', expiresInSeconds: 60 }, action);
+  await client.initiateFileOutput('Bearer app', 'view-1', 'documents', { fieldCode: 'file', fileName: 'out.pdf', contentType: 'application/pdf', maxFileSize: 1024, idempotencyKey: 'job-1' }, action);
+  await client.completeFileOutput('Bearer app', 'view-1', 'documents', 'file/2', action);
+  assert.ok(calls[0]!.url.endsWith('/files/file%2F1/download-session'));
+  assert.ok(calls[1]!.url.endsWith('/files/outputs/initiate'));
+  assert.ok(calls[2]!.url.endsWith('/files/file%2F2/output-complete'));
+  for (const call of calls) {
+    assert.equal(call.init?.method, 'POST');
+    const headers = new Headers(call.init?.headers);
+    assert.equal(headers.get('Authorization'), 'Bearer app');
+    assert.equal(headers.get('X-OpenXiangda-Perspective'), 'view-1');
+    assert.equal(headers.get('X-OpenXiangda-Business-Action-Code'), 'prepare');
+    assert.equal(JSON.parse(String(call.init?.body)).environmentKey, 'preproduction');
+  }
+  assert.equal(JSON.parse(String(calls[1]!.init?.body)).fileSize, undefined);
+});

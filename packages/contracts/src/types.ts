@@ -99,6 +99,8 @@ export const SCHEMA_VERSIONS = {
   dataAuditPage: "openxiangda.data-audit-page/v2",
   dataFileRef: "openxiangda.data-file-ref/v2",
   dataFileUploadPlan: "openxiangda.data-file-upload-plan/v2",
+  dataFileDownloadSession: "openxiangda.data-file-download-session/v2",
+  dataFileOutputPlan: "openxiangda.data-file-output-plan/v2",
   dataFilePreview: "openxiangda.data-file-preview/v2",
   dataFileCopyRequest: "openxiangda.data-file-copy-request/v2",
   dataFileCopyReceipt: "openxiangda.data-file-copy-receipt/v2",
@@ -1484,6 +1486,40 @@ export type DataFieldValue<T extends DataFieldType> = T extends
   : T extends "subtable"
   ? Array<Record<string, unknown>>
   : unknown;
+
+export interface DataFileDownloadSession {
+  schemaVersion: typeof SCHEMA_VERSIONS.dataFileDownloadSession;
+  fileId: string;
+  fileName: string;
+  fileSize: number;
+  contentType: string;
+  downloadUrl: string;
+  expiresAt: IsoDateTime;
+}
+
+export interface DataFileOutputRequest {
+  fieldCode: string;
+  fileName: string;
+  contentType: string;
+  maxFileSize: number;
+  idempotencyKey: string;
+  recordId?: string;
+}
+
+export type DataFileOutputPlan = {
+  schemaVersion: typeof SCHEMA_VERSIONS.dataFileOutputPlan;
+  fileId: string;
+} & ({
+  status: "pending";
+  maxFileSize: number;
+  uploadMethod: "POST";
+  uploadUrl: string;
+  formFields: Record<string, string>;
+  expiresAt: IsoDateTime;
+} | {
+  status: "completed";
+  file: DataFileRef;
+});
 
 export interface DataFileUploadPlan {
   schemaVersion: typeof SCHEMA_VERSIONS.dataFileUploadPlan;

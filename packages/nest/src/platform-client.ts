@@ -7,6 +7,9 @@ import type {
   DataAuditPage,
   DataFileRef,
   DataFileUploadPlan,
+  DataFileDownloadSession,
+  DataFileOutputRequest,
+  DataFileOutputPlan,
   DataFileCopyRequest,
   DataFileCopyReceipt,
   DataQuery,
@@ -282,6 +285,33 @@ export class OpenXiangdaPlatformClient {
       `${this.dataPath(resourceCode, `records/${encodeURIComponent(id)}/audit`)}${suffix}`,
       { headers: this.identityHeaders(authorization, perspectiveCode, businessAction) }
     );
+  }
+
+  async createFileDownloadSession(authorization: string, perspectiveCode: string | null,
+    resourceCode: string, fileId: string, input: { purpose: string; expiresInSeconds?: number }, businessAction?: OpenXiangdaBusinessActionContext): Promise<DataFileDownloadSession> {
+    return await this.request<DataFileDownloadSession>(this.dataPath(resourceCode, `files/${encodeURIComponent(fileId)}/download-session`), {
+      method: "POST",
+      headers: this.identityHeaders(authorization, perspectiveCode, businessAction),
+      body: JSON.stringify({ ...input, environmentKey: this.options.environmentKey }),
+    });
+  }
+
+  async initiateFileOutput(authorization: string, perspectiveCode: string | null,
+    resourceCode: string, input: DataFileOutputRequest, businessAction?: OpenXiangdaBusinessActionContext): Promise<DataFileOutputPlan> {
+    return await this.request<DataFileOutputPlan>(this.dataPath(resourceCode, "files/outputs/initiate"), {
+      method: "POST",
+      headers: this.identityHeaders(authorization, perspectiveCode, businessAction),
+      body: JSON.stringify({ ...input, environmentKey: this.options.environmentKey }),
+    });
+  }
+
+  async completeFileOutput(authorization: string, perspectiveCode: string | null,
+    resourceCode: string, fileId: string, businessAction?: OpenXiangdaBusinessActionContext): Promise<DataFileRef> {
+    return await this.request<DataFileRef>(this.dataPath(resourceCode, `files/${encodeURIComponent(fileId)}/output-complete`), {
+      method: "POST",
+      headers: this.identityHeaders(authorization, perspectiveCode, businessAction),
+      body: JSON.stringify({  environmentKey: this.options.environmentKey }),
+    });
   }
 
   async initiateDataFileUpload(

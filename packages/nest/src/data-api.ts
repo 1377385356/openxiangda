@@ -7,6 +7,9 @@ import type {
   DataAuditPage,
   DataFileRef,
   DataFileUploadPlan,
+  DataFileDownloadSession,
+  DataFileOutputRequest,
+  DataFileOutputPlan,
   DataFileCopyRequest,
   DataFileCopyReceipt,
   DataQuery,
@@ -124,6 +127,21 @@ export class OpenXiangdaDataApiService {
       id,
       input
     );
+  }
+
+  async createFileDownloadSession(resourceCode: string, fileId: string, input: { purpose: string; expiresInSeconds?: number }): Promise<DataFileDownloadSession> {
+    const context = this.context();
+    return await this.platform.createFileDownloadSession(context.authorization, context.perspectiveCode, resourceCode, fileId, input);
+  }
+
+  async initiateFileOutput(resourceCode: string, input: DataFileOutputRequest): Promise<DataFileOutputPlan> {
+    const context = this.context();
+    return await this.platform.initiateFileOutput(context.authorization, context.perspectiveCode, resourceCode, input);
+  }
+
+  async completeFileOutput(resourceCode: string, fileId: string): Promise<DataFileRef> {
+    const context = this.context();
+    return await this.platform.completeFileOutput(context.authorization, context.perspectiveCode, resourceCode, fileId);
   }
 
   async initiateFileUpload(
@@ -318,6 +336,21 @@ export class OpenXiangdaBusinessDataApiService {
     );
   }
 
+  async createFileDownloadSession(resourceCode: string, fileId: string, input: { purpose: string; expiresInSeconds?: number }): Promise<DataFileDownloadSession> {
+    const context = this.context();
+    return await this.platform.createFileDownloadSession(context.authorization, context.perspectiveCode, resourceCode, fileId, input, context.action);
+  }
+
+  async initiateFileOutput(resourceCode: string, input: DataFileOutputRequest): Promise<DataFileOutputPlan> {
+    const context = this.context();
+    return await this.platform.initiateFileOutput(context.authorization, context.perspectiveCode, resourceCode, input, context.action);
+  }
+
+  async completeFileOutput(resourceCode: string, fileId: string): Promise<DataFileRef> {
+    const context = this.context();
+    return await this.platform.completeFileOutput(context.authorization, context.perspectiveCode, resourceCode, fileId, context.action);
+  }
+
   async initiateFileUpload(
     resourceCode: string,
     input: {
@@ -487,6 +520,18 @@ export class OpenXiangdaApplicationDataApiService {
     return await this.credentials.withAuthorization(async authorization =>
       this.platform.dataAudit(authorization, null, resourceCode, id, input)
     );
+  }
+
+  async createFileDownloadSession(resourceCode: string, fileId: string, input: { purpose: string; expiresInSeconds?: number }): Promise<DataFileDownloadSession> {
+    return await this.credentials.withAuthorization(async authorization => this.platform.createFileDownloadSession(authorization, null, resourceCode, fileId, input));
+  }
+
+  async initiateFileOutput(resourceCode: string, input: DataFileOutputRequest): Promise<DataFileOutputPlan> {
+    return await this.credentials.withAuthorization(async authorization => this.platform.initiateFileOutput(authorization, null, resourceCode, input));
+  }
+
+  async completeFileOutput(resourceCode: string, fileId: string): Promise<DataFileRef> {
+    return await this.credentials.withAuthorization(async authorization => this.platform.completeFileOutput(authorization, null, resourceCode, fileId));
   }
 
   async initiateFileUpload(
