@@ -126,7 +126,10 @@ export class OpenXiangdaGatewayAssertionVerifier {
       payload.iat > now + 5 ||
       payload.exp < now - 5 ||
       payload.exp <= payload.iat ||
-      payload.exp - payload.iat > 30 ||
+      // 平台网关断言 TTL 默认 30s、可配至 300s（冷启动/慢请求的三跳串行链路
+      // 曾把 30s 打穿成间歇 401）。应用侧校验接受平台可配上限内的一切窗口，
+      // 真实有效期仍由签名与 exp/nbf 保证；此上限只拒绝自签超长令牌。
+      payload.exp - payload.iat > 300 ||
       payload.app_code !== this.options.appCode ||
       payload.environment_key !== this.options.environmentKey ||
       payload.environment_id !== this.options.environmentId ||

@@ -1373,6 +1373,8 @@ function gatewayAssertion(input: {
   body: Buffer;
   token: string;
   perspectiveCode?: string | null;
+  /** Assertion lifetime in seconds; defaults to the platform legacy 30s window. */
+  ttlSeconds?: number;
 }) {
   const now = Math.floor(Date.now() / 1000);
   const header = Buffer.from(
@@ -1404,7 +1406,7 @@ function gatewayAssertion(input: {
       jti: "assertion-test-1",
       iat: now,
       nbf: now - 2,
-      exp: now + 30,
+      exp: now + (input.ttlSeconds ?? 30),
     })
   ).toString("base64url");
   const signingInput = `${header}.${payload}`;
@@ -1474,6 +1476,57 @@ test("global Gateway guard binds a request to the active deployment before busin
   assert.equal(request.openxiangdaInvocation.target.deploymentRunId, "deployment-run-1");
   assert.equal(platform.verifyGatewayInvocation.mock.callCount(), 1);
   assert.equal(platform.gatewayAssertionKeys.mock.callCount(), 1);
+});
+
+test("gateway assertion accepts platform-configurable TTL windows and rejects forged longer ones", async () => {
+  const body = Buffer.alloc(0);
+  const base = {
+    method: "GET",
+    path: "/api/instruments/context",
+    query: "",
+    body,
+    token: "ttl-window-invocation-token",
+  };
+  const platform = gatewayPlatform();
+  const moduleOptions = options(globalThis.fetch);
+  const guardFor = () =>
+    new OpenXiangdaGatewayTransportGuard(
+      new OpenXiangdaGatewayAssertionVerifier(platform as any, moduleOptions),
+      platform as any,
+      moduleOptions
+    );
+
+  // 平台默认 30s 与可配 120s/300s 窗口都必须被应用侧接受。
+  for (const ttlSeconds of [30, 120, 300]) {
+    const request: any = {
+      method: "GET",
+      url: "/api/instruments/context",
+      rawBody: body,
+      headers: {
+        authorization: `Bearer ${base.token}`,
+        "x-openxiangda-gateway-assertion": gatewayAssertion({
+          ...base,
+          ttlSeconds,
+        }),
+      },
+    };
+    await assert.doesNotReject(() => guardFor().canActivate(httpContext(request)));
+  }
+
+  // 自签超过平台上限（300s）的令牌仍被拒绝。
+  const forgedRequest: any = {
+    method: "GET",
+    url: "/api/instruments/context",
+    rawBody: body,
+    headers: {
+      authorization: `Bearer ${base.token}`,
+      "x-openxiangda-gateway-assertion": gatewayAssertion({
+        ...base,
+        ttlSeconds: 301,
+      }),
+    },
+  };
+  await assert.rejects(() => guardFor().canActivate(httpContext(forgedRequest)));
 });
 
 test("signed Gateway role union flows through transport, AuthzGuard and CurrentUser", async () => {
