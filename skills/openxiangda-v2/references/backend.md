@@ -269,3 +269,26 @@ import {
 ```
 
 用户动作 send 的 schemaVersion 使用 OPENXIANGDA_NOTIFICATION_BUSINESS_SEND_V2；事件处理 sendFromEvent 使用 OPENXIANGDA_NOTIFICATION_EVENT_SEND_V2。二者的调用上下文和收件人来源不同，不能混用。
+## 外部处理受控文件
+
+需要水印或归档处理时，Nest DataApi 可签发短期对象下载地址。不要把要求登录态的 content URL 或用户 Cookie 交给外部服务。
+
+```ts
+const source = await data.createFileDownloadSession('documents', sourceFileId, {
+  purpose: 'watermark', expiresInSeconds: 120,
+});
+const output = await data.initiateFileOutput('documents', {
+  fieldCode: 'file', fileName: 'processed.pdf', contentType: 'application/pdf',
+  maxFileSize: 20 * 1024 * 1024, idempotencyKey: jobKey,
+});
+if (output.status === 'pending') {
+  // 交给受信任服务：source.downloadUrl、output.uploadUrl、uploadMethod、formFields。
+  // 服务须按 POST multipart 原样提交 formFields，并将 file 字段放最后。
+  // 服务确认上传后，再调用 completeFileOutput；不要预估或伪造 fileSize。
+  const file = await data.completeFileOutput('documents', output.fileId);
+} else {
+  const file = output.file; // 同一意图已经完成，复用回执。
+}
+```
+
+这些方法适用于当前用户、具名业务动作和应用服务身份，沿用各自权限；业务记录绑定仍需正式数据事务。输出目前支持 OSS/MinIO，受字段上限与100MiB硬上限约束，上传凭据五分钟后过期，完成须在额外十分钟内进行。过期错误应由调用者建立新的处理意图，不能无限重试相同过期计划。下载最长五分钟，签发后到期前为短期委托，不能即时撤回。不要在日志、持久草稿或业务数据中保存签名地址、POST policy 或签名字段。
