@@ -219,19 +219,18 @@ function StandardUserRoute({
   portalRoot: AppRouteManifestV3['rootEntry'];
   workflow?: boolean;
 }) {
-  const content = (
+  return (
     <StandardUserPageSurface
       device={device}
       entry={entry}
       portalRoot={portalRoot}
     >
-      {children}
+      {workflow ? (
+        <WorkflowRoute>{children}</WorkflowRoute>
+      ) : (
+        <ApplicationRoute>{children}</ApplicationRoute>
+      )}
     </StandardUserPageSurface>
-  );
-  return workflow ? (
-    <WorkflowRoute>{content}</WorkflowRoute>
-  ) : (
-    <ApplicationRoute>{content}</ApplicationRoute>
   );
 }
 

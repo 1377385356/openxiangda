@@ -1313,3 +1313,32 @@ test('does not negotiate non-standard application contribution routes', async ({
     .poll(() => page.url(), { timeout: 1_000 })
     .toBe(customUrl);
 });
+
+
+for (const device of ['desktop', 'mobile']) {
+  test(`lazy work center preserves the ${device} user frame while its module is pending`, async ({ page }) => {
+    await mockWorkflow(page);
+    let release!: () => void;
+    let requested!: () => void;
+    const moduleRequested = new Promise<void>(resolve => { requested = resolve; });
+    const moduleRelease = new Promise<void>(resolve => { release = resolve; });
+    await page.route(/StandardWorkflowPages[^/]*\.(?:tsx|js)(?:\?.*)?$/, async route => {
+      requested();
+      await moduleRelease;
+      await route.continue();
+    });
+    const path = device === 'mobile' ? '/m/work-center' : '/work-center';
+    try {
+      await page.goto(`/workflow-experience.e2e.html?initial=${encodeURIComponent(path)}&surfaces=custom`, { waitUntil: 'domcontentloaded' });
+      await moduleRequested;
+      const frame = page.getByTestId(`standard-frame-${device}`);
+      await expect(frame).toBeVisible();
+      await expect(frame.getByText('正在加载审批页面…', { exact: true })).toBeVisible();
+      await frame.evaluate(node => { (node as HTMLElement).dataset.retainedFrame = 'yes'; });
+      release();
+      await expect(page.getByText('正在加载审批页面…', { exact: true })).toHaveCount(0);
+      await expect(frame).toHaveAttribute('data-retained-frame', 'yes');
+      await expect(frame).toHaveCount(1);
+    } finally { release(); }
+  });
+}
