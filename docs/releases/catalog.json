@@ -3,6 +3,40 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.23.0",
+      "status": "reviewed",
+      "title": "OpenXiangda 2.23.0：受控文件外部处理",
+      "summary": "Nest 支持短期外部下载及未知大小的有界输出文件会话，自定义用户框架获得公开退出登录入口。",
+      "newFeatures": [
+        "三种 Nest DataApi 身份提供 createFileDownloadSession、initiateFileOutput、completeFileOutput。",
+        "输出使用 POST policy 约束大小、类型和暂存对象，完成后返回真实大小的受控文件引用。",
+        "openxiangda/react 公开 logoutCurrentUser 及退出回执类型，复用平台身份清理和广播。"
+      ],
+      "fixes": [],
+      "affectedUsers": [
+        "需要水印、归档等服务端文件处理或自定义用户框架的 V2 应用。"
+      ],
+      "upgradeSteps": [
+        "先部署包含 server 048009e 的平台版本及输出会话迁移，再升级 openxiangda 至 2.23.0 并重建应用。",
+        "外部服务按 uploadMethod=POST 和 formFields 上传 multipart，file 放最后；已完成计划直接使用 file。"
+      ],
+      "knownLimitations": [
+        "输出会话目前支持 OSS 和 MinIO；COS 明确返回能力不可用。旧固定大小 PUT 上传不变。",
+        "下载签名最多300秒，授权变动不能即时撤回已签发 URL；不得记录 URL 或转发用户 Cookie。",
+        "外部服务部署、网络路由和真实业务验收独立于 npm 发布。"
+      ],
+      "issues": [],
+      "compatibility": {
+        "node": ">=24",
+        "workspaceGenerations": "v2",
+        "platform": "server 048009e 或包含该提交及数据库迁移的版本",
+        "v1": "独立 V1 不受影响。"
+      },
+      "sha256": "5294829c402c9af8d0dbda1fd13b0ed33d9e38821f0f18191c92f45f1d59875d",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.23.0"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.22.7",
       "status": "reviewed",
       "title": "OpenXiangda 2.22.7：中文单字目录检索",
