@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.22.6",
+  "version": "2.22.7",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -67,7 +67,7 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.5.9",
+    "openxiangda-cli": "2.5.10",
     "openxiangda-contracts": "2.17.2",
     "openxiangda-devkit-core": "2.21.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
@@ -139,31 +139,31 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.22.6",
+    "version": "2.22.7",
     "status": "reviewed",
-    "title": "OpenXiangda 2.22.6：cli 分发模板与 2.22.5 工具链对齐",
-    "summary": "openxiangda-cli 分发模板的锁文件随 openxiangda 2.22.5 / openxiangda-nest 2.4.11 重新生成，使新建应用直接落到断言 TTL 双端一致的 SDK 组合。",
+    "title": "OpenXiangda 2.22.7：中文单字目录检索",
+    "summary": "PC 与移动目录选择器支持中文姓氏检索，避免单字输入被组件阻止发出查询。",
     "newFeatures": [],
     "fixes": [
-      "修复 cli 2.5.8 制品与本地模板内容不一致导致 release-immutability 门禁拒绝的问题：模板锁文件现随同发布单元递增（openxiangda-cli 2.5.9）。"
+      "成员和部门选择器统一支持单个汉字，并保留普通关键词 2–64 字符约束及无效输入提示。"
     ],
     "affectedUsers": [
-      "通过 openxiangda create / cli 模板新建 2.x 应用的开发者。"
+      "使用平台成员、部门选择器的 2.x 应用。"
     ],
     "upgradeSteps": [
-      "无需手动操作；新模板自动携带 openxiangda-nest 2.4.11（应用侧断言 TTL 上限跟随平台配置）。"
+      "升级 openxiangda 至 2.22.7 并重建发布应用；服务端须包含 PL-20 单汉字目录检索修复（server 2bfd3e1）。"
     ],
     "knownLimitations": [
-      "模板锁文件对齐为随版次发布的机械变更；存量应用仍按各自锁文件升级，不受本版影响。"
+      "不能仅升级应用而保留拒绝单字查询的旧平台后端；非汉字单字符仍不支持。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
       "workspaceGenerations": "v2",
-      "platform": "无平台服务依赖。",
-      "v1": "V1 工作区不受影响。"
+      "platform": "server 2bfd3e1 或包含该提交的版本",
+      "v1": "独立 V1 不受影响。"
     },
-    "sha256": "7124b2bf86fd5d3c1043fe6c27d73227403e117f72b3fe18336792d22ce36f9c",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.22.6"
+    "sha256": "820e3b753c71e313a1b18697a32a0c039ff2b375c696b66ecee1c399d1a64fdf",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.22.7"
   }
 }
