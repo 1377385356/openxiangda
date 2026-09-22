@@ -435,3 +435,7 @@ pnpm --filter @app/web build
 测试必须真实断言 Vite LAN 不可达、production 警示 DOM 常驻、Data/Directory/App API
 使用同一当前用户角色并集、Perspective 读取投影协议，并约束源码文件数、LOC、构建
 体积和 gzip 体积。
+
+## 具名工作流私有草稿
+
+普通创建能力被应用关闭时，使用 `createWorkflowFormDraftClient('contracts', { workflowCode: 'contract-approval', operationCode: 'submit-contract-approval' })`（从 `openxiangda/react` 导入）。客户端提供 `list/save/remove`，保持当前用户、环境、工作流与具名操作范围；仅支持默认 create 表单，不包含 Native submit。保存 `values` 与已声明的 `state`；正式提交仍将既有 `formDraft:{resourceCode,id,expectedRevision,mode:'create'}` 交给业务操作的 BusinessProcess 原子消费。服务端从真实业务命令核验工作流/操作，不能传任意范围冒用草稿。需先部署支持该能力与新增草稿作用域列的平台版本；不得通过增加普通 NativeCreate 或本地存储绕过拒绝。
