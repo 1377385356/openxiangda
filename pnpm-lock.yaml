@@ -165,7 +165,7 @@ importers:
         specifier: 2.0.38
         version: link:../mcp
       openxiangda-nest:
-        specifier: 2.4.10
+        specifier: 2.4.11
         version: link:../nest
       openxiangda-skill-kit:
         specifier: 2.3.11

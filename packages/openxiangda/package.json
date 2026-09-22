@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.22.4",
+  "version": "2.22.5",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -72,7 +72,7 @@
     "openxiangda-devkit-core": "2.21.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
     "openxiangda-mcp": "2.0.38",
-    "openxiangda-nest": "2.4.10",
+    "openxiangda-nest": "2.4.11",
     "openxiangda-skill-kit": "2.3.11",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
@@ -139,35 +139,33 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.22.4",
+    "version": "2.22.5",
     "status": "reviewed",
-    "title": "OpenXiangda 2.22.4：connected dev 代理转发声明式应用操作路径",
-    "summary": "连接式开发代理新增按应用声明的 backend.operations 静态路径精确转发裸请求，浏览器端 applicationApiPath() 在无运行挂载元数据时也能直连本地后端，消除本地联调 404。",
-    "newFeatures": [
-      "openxiangda dev 代理将与应用 backend.operations[] 声明完全一致的裸路径请求转发到本地 Nest 后端（配置驱动、精确匹配，无前缀通配、不注入 authz 挂载元数据）。"
-    ],
+    "title": "OpenXiangda 2.22.5：应用侧网关断言校验跟随平台可配 TTL",
+    "summary": "应用后端 SDK 的网关断言验签器把硬编码的 30 秒寿命上限放宽到平台可配置上限（300 秒），平台网关提升断言 TTL 不再导致应用侧全量 401；防伪造上界保持。",
+    "newFeatures": [],
     "fixes": [
-      "修复本地联调应用操作端点（如 /ai/console/*、/ai/risk-review-session*）404 的问题：此前代理只服务 /service 与 /api，裸 applicationApiPath 请求无法到达本地后端（协同清单 PL-09）。"
+      "修复平台网关调整断言 TTL（OPENXIANGDA_GATEWAY_ASSERTION_TTL_SECONDS，30..300s）后应用侧一律返回 OPENXIANGDA_GATEWAY_ASSERTION_CONTEXT_INVALID 的问题：此前 openxiangda-nest 的 gateway-transport 验签器硬编码 exp-iat≤30s，与平台配置解耦后双端不一致（协同清单 PL-16）。"
     ],
     "affectedUsers": [
-      "使用 openxiangda dev 连接式开发且应用声明了 backend operations 的应用开发者。"
+      "使用 openxiangda-nest 标准启动器且平台网关配置了非默认断言 TTL 的应用后端。"
     ],
     "upgradeSteps": [
-      "将应用对 openxiangda 的精确依赖升级到 2.22.4 并按锁文件重新安装依赖。",
-      "重跑 openxiangda dev 后，浏览器发起的裸应用操作路径（如 /ai/console/sessions）将由本地代理直达本地后端，无需改应用代码或注入挂载元数据。"
+      "应用升级 openxiangda-nest 到 2.4.11（或经 openxiangda 统一包 2.22.5 组合）并重新部署后端。",
+      "平台网关可在应用升级完成后安全地把断言 TTL 配置为 30..300 秒内的任意值；默认 30 秒不变。"
     ],
     "knownLimitations": [
-      "仅转发与应用声明完全一致（去尾斜杠归一）的静态操作路径；未声明的裸路径仍返回 404。",
-      "未声明本地后端的前端-only 应用，命中操作路径时返回 OPENXIANGDA_CONNECTED_BACKEND_DISABLED，与既有行为一致。"
+      "自签寿命超过 300 秒的断言仍被应用侧拒绝；该上限为平台配置硬界。",
+      "断言真实有效期仍由签名、exp/nbf 与一次性 jti 保证，放宽仅针对签发窗口长度。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
       "workspaceGenerations": "v2",
-      "platform": "无平台服务依赖；代理行为变更仅影响本地开发链路。",
+      "platform": "需平台网关断言签名密钥跨重启稳定（固定 SEED）；TTL 放宽只在平台同时提升 TTL 时生效。",
       "v1": "V1 工作区不受影响。"
     },
-    "sha256": "082690f330ed05eb91ca9dc7393eef8867c4d3c8958c701288a8bda4aaf4beef",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.22.4"
+    "sha256": "df1f5f4ba9e8c45bfdea6e93306d8fc89c7b3c831031989181c93d69c0c8d6b1",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.22.5"
   }
 }
