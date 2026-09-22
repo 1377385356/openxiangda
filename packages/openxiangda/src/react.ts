@@ -26,11 +26,13 @@ export {
   issueApplicationFileIntent,
   loadApplicationOperationSurfaces,
   loadSubjectReadSurface,
+  logoutCurrentUser,
   type AnonymousPublicDraft,
   type AnonymousPublicRecord,
 } from './browser/platform-client';
 export type {
   ApplicationOperationReceiptV2,
+  ApplicationLogoutReceiptV2,
   ApplicationFileIntentV2,
   ApplicationOperationSurfaceCatalogV2,
   ApplicationOperationSurfaceV2,
