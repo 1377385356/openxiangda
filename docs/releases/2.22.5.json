@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.22.5",
+  "status": "reviewed",
+  "title": "OpenXiangda 2.22.5：应用侧网关断言校验跟随平台可配 TTL",
+  "summary": "应用后端 SDK 的网关断言验签器把硬编码的 30 秒寿命上限放宽到平台可配置上限（300 秒），平台网关提升断言 TTL 不再导致应用侧全量 401；防伪造上界保持。",
+  "newFeatures": [],
+  "fixes": [
+    "修复平台网关调整断言 TTL（OPENXIANGDA_GATEWAY_ASSERTION_TTL_SECONDS，30..300s）后应用侧一律返回 OPENXIANGDA_GATEWAY_ASSERTION_CONTEXT_INVALID 的问题：此前 openxiangda-nest 的 gateway-transport 验签器硬编码 exp-iat≤30s，与平台配置解耦后双端不一致（协同清单 PL-16）。"
+  ],
+  "affectedUsers": [
+    "使用 openxiangda-nest 标准启动器且平台网关配置了非默认断言 TTL 的应用后端。"
+  ],
+  "upgradeSteps": [
+    "应用升级 openxiangda-nest 到 2.4.11（或经 openxiangda 统一包 2.22.5 组合）并重新部署后端。",
+    "平台网关可在应用升级完成后安全地把断言 TTL 配置为 30..300 秒内的任意值；默认 30 秒不变。"
+  ],
+  "knownLimitations": [
+    "自签寿命超过 300 秒的断言仍被应用侧拒绝；该上限为平台配置硬界。",
+    "断言真实有效期仍由签名、exp/nbf 与一次性 jti 保证，放宽仅针对签发窗口长度。"
+  ],
+  "issues": [],
+  "compatibility": {
+    "node": ">=24",
+    "workspaceGenerations": "v2",
+    "platform": "需平台网关断言签名密钥跨重启稳定（固定 SEED）；TTL 放宽只在平台同时提升 TTL 时生效。",
+    "v1": "V1 工作区不受影响。"
+  }
+}
