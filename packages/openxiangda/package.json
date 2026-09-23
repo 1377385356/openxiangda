@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.24.1",
+  "version": "2.24.2",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -67,13 +67,13 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.5.13",
-    "openxiangda-contracts": "2.18.0",
-    "openxiangda-devkit-core": "2.21.1",
+    "openxiangda-cli": "2.5.14",
+    "openxiangda-contracts": "2.18.1",
+    "openxiangda-devkit-core": "2.21.2",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.39",
-    "openxiangda-nest": "2.5.0",
-    "openxiangda-skill-kit": "2.3.13",
+    "openxiangda-mcp": "2.0.40",
+    "openxiangda-nest": "2.5.1",
+    "openxiangda-skill-kit": "2.3.14",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -139,35 +139,33 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.24.1",
+    "version": "2.24.2",
     "status": "reviewed",
-    "title": "OpenXiangda 2.24.1：具名工作流草稿与稳定用户框架",
-    "summary": "为具名工作流创建操作提供私有草稿客户端；标准工作中心首次加载页面时保留用户框架。",
-    "newFeatures": [
-      "openxiangda/react 提供 createWorkflowFormDraftClient，按 resourceCode、workflowCode、operationCode 列出、保存和删除具名操作草稿。"
-    ],
+    "title": "OpenXiangda 2.24.2：工作流详情进入用户界面",
+    "summary": "工作流桌面详情路由可以直接指向应用用户界面，待办和通知深链无需先进入默认后台。",
+    "newFeatures": [],
     "fixes": [
-      "标准工作中心与标准用户页懒加载期间，加载提示留在页面内容区域，用户框架不再被整体替换。"
+      "工作流 detailRouteCode.desktop 接受已声明的 admin 或 user surface；移动详情继续要求 user surface。"
     ],
     "affectedUsers": [
-      "使用具名工作流发起并需暂存表单的 V2 应用，以及使用标准用户框架的 V2 应用。"
+      "需要从待办或通知直接进入自定义用户审批详情的 V2 应用。"
     ],
     "upgradeSteps": [
-      "先部署包含 server 0a8b09e 及 AddWorkflowOwnedFormDrafts 迁移的版本，再升级 openxiangda 至 2.24.1 并重建应用。",
-      "草稿客户端传入与已声明工作流创建操作一致的 workflowCode 和 operationCode；最终提交仍走具名操作。"
+      "先部署包含 server bb3ac0e 且安装新 contracts 版本的平台，再升级 openxiangda 并重新生成应用契约。",
+      "将工作流 detailRouteCode.desktop 指向路径仅含 :instanceId 的已声明 user route，重新检查和发布应用；旧 admin route 可继续使用。"
     ],
     "knownLimitations": [
-      "具名草稿仅绑定该操作允许的直接字段；不支持子表草稿，不能通过原生 submit 提交。",
-      "npm 发布不代表客户平台已部署；真实经办人保存、恢复和提交仍需上线后验收。"
+      "深链仍要求应用登录，详情数据授权由应用服务和路由访问表达式执行；通知历史静态 URL 不会自动改写。",
+      "npm 发布与客户平台部署分别验收；真实身份点击通知和待办后还须回读目标实例。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
       "workspaceGenerations": "v2",
-      "platform": "server 0a8b09e 或包含该提交及数据库迁移的版本",
+      "platform": "server bb3ac0e 或包含该提交和匹配 contracts 包的版本",
       "v1": "独立 V1 不受影响。"
     },
-    "sha256": "8a1bbe8c18bafee07a94704cda1770a54a2dcd12d3aa3b81703b790ccb4ed048",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.24.1"
+    "sha256": "508815619cc6eabdd008b4016c6e7e4ff41d6c061e816bac30efbb8e66f37dad",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.24.2"
   }
 }
