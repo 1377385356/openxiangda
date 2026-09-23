@@ -15,6 +15,7 @@ function declaration(): OpenXiangdaAppDeclaration {
     data: { resources: [{
       code: 'contracts', name: 'Contracts', fields: [
         { code: 'amount', label: 'Amount', type: 'number.decimal', precision: 18, scale: 2, exactDecimal: true },
+        { code: 'amountAlternate', label: 'Alternate amount', type: 'number.decimal', precision: 18, scale: 2, exactDecimal: true },
         { code: 'currencyCode', label: 'Currency', type: 'option.single', options: [{ label: 'CNY', value: 'CNY' }] },
         { code: 'relation', label: 'Relation', type: 'option.single', options: [{ label: 'Main', value: 'main' }, { label: 'Child', value: 'child' }] },
         { code: 'parent', label: 'Parent', type: 'resource-ref.single', source: { kind: 'resource', resourceCode: 'contracts', labelField: 'name' } },
@@ -67,9 +68,51 @@ test('decimal reservation declaration rejects imprecise amount and foreign paren
     error.diagnostics?.some((item: any) => item.code === 'APP_CONFIG_BACKEND_OPERATION_PLATFORM_ACCESS_INVALID'));
 
   const foreign = declaration();
-  foreign.data!.resources[0]!.fields[3]!.source!.resourceCode = 'other';
+  foreign.data!.resources[0]!.fields[4]!.source!.resourceCode = 'other';
   assert.throws(() => defineOpenXiangdaApp(foreign), (error: any) =>
     error.diagnostics?.some((item: any) => item.code === 'APP_CONFIG_BACKEND_OPERATION_PLATFORM_ACCESS_INVALID'));
+});
+
+test('reservation actions sharing a resource cannot disagree on the money mapping', () => {
+  const conflicting = declaration();
+  const original = conflicting.backend!.operations![0]!;
+  conflicting.backend!.operations!.push({
+    ...original,
+    code: 'contract.release',
+    path: '/contracts/release',
+    platformAccess: { decimalReservation: {
+      ...original.platformAccess!.decimalReservation!,
+      mode: 'release',
+      amountFieldCode: 'amountAlternate',
+    } },
+  });
+  assert.throws(() => defineOpenXiangdaApp(conflicting), (error: any) =>
+    error.diagnostics?.some((item: any) => item.code === 'APP_CONFIG_BACKEND_OPERATION_PLATFORM_ACCESS_INVALID'));
+
+  const consistent = declaration();
+  consistent.backend!.operations!.push({
+    ...consistent.backend!.operations![0]!,
+    code: 'contract.release',
+    path: '/contracts/release',
+    platformAccess: { decimalReservation: {
+      ...consistent.backend!.operations![0]!.platformAccess!.decimalReservation!,
+      mode: 'release',
+    } },
+  });
+  const compiled = compileApplicationSources(defineOpenXiangdaApp(consistent));
+  const config = structuredClone(compiled.config.value);
+  config.backend.operations[1]!.platformAccess!.decimalReservation!.amountFieldCode = 'amountAlternate';
+  const contracts = structuredClone(compiled.contracts.value);
+  contracts.configDigest = sha256Digest(config);
+  contracts.operations.find(operation => operation.code === 'contract.release')!
+    .platformAccess!.decimalReservation!.amountFieldCode = 'amountAlternate';
+  assert.throws(() => compileNativeApplicationConfiguration({
+    appCode: 'quota-example',
+    configBytes: canonicalJson(config),
+    contractBytes: canonicalJson(contracts),
+    expectedConfigDigest: sha256Digest(config),
+    expectedContractDigest: sha256Digest(contracts),
+  }), (error: any) => error.code === 'NATIVE_DECIMAL_RESERVATION_MAPPING_CONFLICT');
 });
 
 test('decimal reservation declaration rejects unknown status and undeclared contract values', () => {

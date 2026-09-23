@@ -2093,6 +2093,7 @@ function compileOperations(config: JsonObject) {
       )
     )
   );
+  const decimalReservationMappings = new Map<string, string>();
   return sorted(
     config.backend.operations.map((raw: any, index: number) => {
       const pointer = `/config/backend/operations/${index}`;
@@ -2134,6 +2135,21 @@ function compileOperations(config: JsonObject) {
         declaredWorkflowCodes,
         new Set<string>(config.authz.roles.map((role: JsonObject) => String(role.code)))
       );
+      if (platformAccess?.decimalReservation) {
+        const reservation = platformAccess.decimalReservation as JsonObject;
+        const resourceCode = String(reservation.resourceCode);
+        const mapping = JSON.stringify([
+          reservation.amountFieldCode, reservation.currencyFieldCode,
+          reservation.relationFieldCode, reservation.parentFieldCode,
+          reservation.rootFieldCode, reservation.statusFieldCode,
+          reservation.parentRelationValue, reservation.childRelationValue,
+        ]);
+        const priorMapping = decimalReservationMappings.get(resourceCode);
+        if (priorMapping && priorMapping !== mapping) {
+          fail('NATIVE_DECIMAL_RESERVATION_MAPPING_CONFLICT', `${pointer}/platformAccess/decimalReservation`);
+        }
+        decimalReservationMappings.set(resourceCode, mapping);
+      }
       const browser = validateOperationBrowser(
         operation.browser,
         `${pointer}/browser`,

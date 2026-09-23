@@ -4552,6 +4552,7 @@ function validateBackendOperations(
   }
   const codes = new Set<string>();
   const routes = new Set<string>();
+  const decimalReservationMappings = new Map<string, string>();
   (Array.isArray(rawOperations) ? rawOperations : []).forEach((raw, index) => {
     const operation = object(raw);
     const code = string(operation.code);
@@ -4731,6 +4732,18 @@ function validateBackendOperations(
       if (access.decimalReservation !== undefined) {
         const reservation = object(access.decimalReservation);
         const resourceCode = string(reservation.resourceCode);
+        const mappingKeys = [
+          'amountFieldCode', 'currencyFieldCode', 'relationFieldCode',
+          'parentFieldCode', 'rootFieldCode', 'statusFieldCode',
+          'parentRelationValue', 'childRelationValue',
+        ];
+        const mapping = JSON.stringify(mappingKeys.map(key => string(reservation[key])));
+        const priorMapping = decimalReservationMappings.get(resourceCode);
+        if (priorMapping && priorMapping !== mapping) {
+          invalid = true;
+        } else if (resourceCode) {
+          decimalReservationMappings.set(resourceCode, mapping);
+        }
         const fields = declaredResourceFields.get(resourceCode);
         const field = (key: string) => object(fields?.get(string(reservation[key])));
         const optionValues = (key: string) => new Set(
