@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.25.1",
+  "version": "2.25.2",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -67,7 +67,7 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.5.17",
+    "openxiangda-cli": "2.5.18",
     "openxiangda-contracts": "2.21.0",
     "openxiangda-devkit-core": "2.23.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
@@ -139,35 +139,34 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.25.1",
+    "version": "2.25.2",
     "status": "reviewed",
-    "title": "OpenXiangda 2.25.1：精确十进制契约对齐",
-    "summary": "补齐可选精确十进制字段的公开 Schema 与共享 contracts 包版本，并声明 Native 十进制额度预留动作的受限契约。",
+    "title": "OpenXiangda 2.25.2：标准工作中心视图深链",
+    "summary": "标准工作中心可从 PC 或移动端链接直接打开我创建的、待我审批、我已处理或抄送我的视图。",
     "newFeatures": [
-      "Native 精确十进制额度预留动作提供有界声明和请求契约；编译器校验资源字段、状态及同资源动作的金额映射冲突。"
+      "标准工作中心支持 view=created、pending、handled、cc 查询参数，切换标签时同步 URL。"
     ],
     "fixes": [
-      "公开字段 Schema 中的 exactDecimal 与共享 contracts 包的字段清单、生成 Action 和资源 Schema 保持一致。"
+      "不支持的 view 参数回退到待我审批，不会传入 Workflow 列表请求。"
     ],
     "affectedUsers": [
-      "显式启用 exactDecimal 的 V2 Native 应用和准备使用额度预留动作的开发者；未启用这些能力的应用行为不变。"
+      "使用 OpenXiangda 2.0 标准工作中心的 PC 和移动端应用；无参数入口仍默认为待我审批。"
     ],
     "upgradeSteps": [
-      "先发布并部署匹配的 contracts 包与平台服务端，再生成和发布使用 exactDecimal 的应用。",
-      "额度预留动作只有在目标平台完成对应运行时部署及真实业务验收后才能启用。"
+      "应用更新到 openxiangda@2.25.2 并重新构建发布后，可将我的申请入口链接设为 /work-center?view=created 或移动端 /m/work-center?view=created。",
+      "以目标环境的具名用户读取列表，确认视图数据仍由 Workflow API 的当前用户授权决定。"
     ],
     "knownLimitations": [
-      "本版工具链提供声明和请求契约，不单独证明额度预留动作在任何客户生产环境已经可用。",
-      "npm 包发布、平台部署和应用真实角色验收分别记录。"
+      "此版不改变平台服务端授权、工作流数据或任何旧应用的现有链接；应用预发部署与具名角色验收需分别记录。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
       "workspaceGenerations": "v2",
-      "platform": "需要部署支持精确十进制字段及相应动作契约的匹配平台服务端",
+      "platform": "兼容已有 Workflow Work Center v2 API，无需服务端升级",
       "v1": "独立 V1 不受影响。"
     },
-    "sha256": "23677498fc26073ccfedbbfe25871b3f1cd24525b72dcd0f580207c8e75be602",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.25.1"
+    "sha256": "b7b77167c479d809e72fc0c1cd980a36f491fa4639cf259510b0ad1b0a94f1b7",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.25.2"
   }
 }

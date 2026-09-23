@@ -3,6 +3,38 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.25.2",
+      "status": "reviewed",
+      "title": "OpenXiangda 2.25.2：标准工作中心视图深链",
+      "summary": "标准工作中心可从 PC 或移动端链接直接打开我创建的、待我审批、我已处理或抄送我的视图。",
+      "newFeatures": [
+        "标准工作中心支持 view=created、pending、handled、cc 查询参数，切换标签时同步 URL。"
+      ],
+      "fixes": [
+        "不支持的 view 参数回退到待我审批，不会传入 Workflow 列表请求。"
+      ],
+      "affectedUsers": [
+        "使用 OpenXiangda 2.0 标准工作中心的 PC 和移动端应用；无参数入口仍默认为待我审批。"
+      ],
+      "upgradeSteps": [
+        "应用更新到 openxiangda@2.25.2 并重新构建发布后，可将我的申请入口链接设为 /work-center?view=created 或移动端 /m/work-center?view=created。",
+        "以目标环境的具名用户读取列表，确认视图数据仍由 Workflow API 的当前用户授权决定。"
+      ],
+      "knownLimitations": [
+        "此版不改变平台服务端授权、工作流数据或任何旧应用的现有链接；应用预发部署与具名角色验收需分别记录。"
+      ],
+      "issues": [],
+      "compatibility": {
+        "node": ">=24",
+        "workspaceGenerations": "v2",
+        "platform": "兼容已有 Workflow Work Center v2 API，无需服务端升级",
+        "v1": "独立 V1 不受影响。"
+      },
+      "sha256": "b7b77167c479d809e72fc0c1cd980a36f491fa4639cf259510b0ad1b0a94f1b7",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.25.2"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.25.1",
       "status": "reviewed",
       "title": "OpenXiangda 2.25.1：精确十进制契约对齐",
