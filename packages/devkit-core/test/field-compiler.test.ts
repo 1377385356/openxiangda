@@ -502,6 +502,26 @@ test('projects authoritative field bounds into the standard Surface', () => {
   );
 });
 
+test('projects a conditional text invariant without altering field comparison rules', () => {
+  const declaration = allFieldDeclaration();
+  declaration.data!.resources[0]!.invariants!.push({
+    code: 'effective-template-has-content',
+    expression: {
+      kind: 'nonBlankTextWhenOption',
+      optionField: 'option_single',
+      optionValue: 'open',
+      textField: 'text_long',
+    },
+  });
+  const sources = compileApplicationSources(defineOpenXiangdaApp(declaration));
+  assert.deepEqual(
+    sources.config.value.data.resources[0]!.invariants?.find(
+      invariant => invariant.code === 'effective-template-has-content'
+    ),
+    declaration.data!.resources[0]!.invariants![1]
+  );
+});
+
 test('rejects a subtable order field that is not a writable required integer', () => {
   const declaration = allFieldDeclaration();
   const child = declaration.data!.resources.find(

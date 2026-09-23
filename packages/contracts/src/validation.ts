@@ -11,6 +11,7 @@ import {
   SCHEMA_VERSIONS,
   type AppArtifact,
   type AppPackage,
+  type DataFieldDefinition,
   type DataExportRequest,
   type DataQuery,
   type DataResource,
@@ -517,6 +518,7 @@ export function validateDataResource(value: unknown): Diagnostic[] {
   }
   const fieldCodes = new Set<string>();
   const fieldTypes = new Map<string, string>();
+  const fieldDefinitions = new Map<string, DataFieldDefinition>();
   fields.forEach((field, index) => {
     const path = `schema.fields[${index}]`;
     if (!isRecord(field)) {
@@ -548,6 +550,7 @@ export function validateDataResource(value: unknown): Diagnostic[] {
     } else {
       fieldCodes.add(fieldCode);
       fieldTypes.set(fieldCode, String(field.type || ''));
+      fieldDefinitions.set(fieldCode, field as unknown as DataFieldDefinition);
     }
     validateDataFieldDefinition(field, path, diagnostics);
   });
@@ -624,6 +627,51 @@ export function validateDataResource(value: unknown): Diagnostic[] {
           `${path}.expression`
         )
       );
+    }
+    if (expression.kind === 'nonBlankTextWhenOption') {
+      const optionField = String(expression.optionField || '');
+      const optionValue = String(expression.optionValue || '');
+      const textField = String(expression.textField || '');
+      const optionDefinition = fieldDefinitions.get(optionField);
+      const textDefinition = fieldDefinitions.get(textField);
+      if (!optionDefinition || !textDefinition) {
+        diagnostics.push(
+          diagnostic(
+            'DATA_RESOURCE_INVARIANT_FIELD_UNKNOWN',
+            `${path}.expression 字段未声明`,
+            `${path}.expression`
+          )
+        );
+      } else if (
+        optionDefinition.type !== 'option.single' ||
+        !['text.short', 'text.long'].includes(textDefinition.type) ||
+        !optionDefinition.options?.some(option => option.value === optionValue)
+      ) {
+        diagnostics.push(
+          diagnostic(
+            'DATA_RESOURCE_INVARIANT_FIELD_TYPES_INVALID',
+            `${path}.expression 必须引用已声明的单选值和文本字段`,
+            `${path}.expression`
+          )
+        );
+      }
+      if (
+        Object.keys(rawInvariant).some(key => !['code', 'message', 'expression'].includes(key)) ||
+        Object.keys(expression).some(
+          key => !['kind', 'optionField', 'optionValue', 'textField'].includes(key)
+        ) ||
+        !optionValue ||
+        optionValue.length > 128
+      ) {
+        diagnostics.push(
+          diagnostic(
+            'DATA_RESOURCE_INVARIANT_EXPRESSION_UNBOUNDED',
+            `${path} 只允许有界条件文本约束`,
+            path
+          )
+        );
+      }
+      return;
     }
     const leftField = String(expression.leftField || '');
     const rightField = String(expression.rightField || '');

@@ -1195,11 +1195,18 @@ export type DataResourceInvariantOperator =
 export interface DataResourceInvariant {
   code: string;
   message?: string;
-  expression: {
-    leftField: string;
-    operator: DataResourceInvariantOperator;
-    rightField: string;
-  };
+  expression:
+    | {
+        leftField: string;
+        operator: DataResourceInvariantOperator;
+        rightField: string;
+      }
+    | {
+        kind: "nonBlankTextWhenOption";
+        optionField: string;
+        optionValue: string;
+        textField: string;
+      };
 }
 
 export interface DataResource {

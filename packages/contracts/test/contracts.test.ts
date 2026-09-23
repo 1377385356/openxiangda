@@ -1392,6 +1392,46 @@ test('accepts only canonical resources and operation-specific field policies', (
     fieldPolicies: {},
   };
   assert.doesNotThrow(() => assertDataResource(dataResource));
+  const conditionalResource = {
+    ...dataResource,
+    schema: {
+      fields: [
+        ...dataResource.schema.fields,
+        {
+          code: 'status',
+          type: 'option.single' as const,
+          options: [
+            { label: 'Draft', value: 'draft' },
+            { label: 'Effective', value: 'effective' },
+          ],
+        },
+        { code: 'templateContent', type: 'text.long' as const },
+      ],
+    },
+    invariants: [{
+      code: 'effective-template-has-content',
+      expression: {
+        kind: 'nonBlankTextWhenOption' as const,
+        optionField: 'status',
+        optionValue: 'effective',
+        textField: 'templateContent',
+      },
+    }],
+  };
+  assert.doesNotThrow(() => assertDataResource(conditionalResource));
+  assert.throws(
+    () => assertDataResource({
+      ...conditionalResource,
+      invariants: [{
+        ...conditionalResource.invariants[0]!,
+        expression: {
+          ...conditionalResource.invariants[0]!.expression,
+          optionValue: 'undeclared',
+        },
+      }],
+    }),
+    ContractValidationError
+  );
   assert.throws(
     () =>
       assertDataResource({

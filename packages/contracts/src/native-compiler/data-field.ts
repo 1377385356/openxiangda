@@ -130,11 +130,18 @@ export interface NativeDataFieldV2 {
 export interface NativeDataResourceInvariantV2 {
   code: string;
   message?: string;
-  expression: {
-    leftField: string;
-    operator: 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte';
-    rightField: string;
-  };
+  expression:
+    | {
+        leftField: string;
+        operator: 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte';
+        rightField: string;
+      }
+    | {
+        kind: 'nonBlankTextWhenOption';
+        optionField: string;
+        optionValue: string;
+        textField: string;
+      };
 }
 
 export const OPENXIANGDA_NATIVE_SYSTEM_FIELDS_V2: readonly NativeDataFieldV2[] =
@@ -398,6 +405,54 @@ export function parseNativeDataResourceInvariantsV2(
       invariant.expression,
       `${invariantPointer}/expression`
     );
+    if (expression.kind === 'nonBlankTextWhenOption') {
+      exactKeys(
+        expression,
+        ['kind', 'optionField', 'optionValue', 'textField'],
+        `${invariantPointer}/expression`
+      );
+      const optionField = fieldCode(
+        expression.optionField,
+        `${invariantPointer}/expression/optionField`
+      );
+      const textField = fieldCode(
+        expression.textField,
+        `${invariantPointer}/expression/textField`
+      );
+      const optionValue = requiredString(
+        expression.optionValue,
+        `${invariantPointer}/expression/optionValue`,
+        128
+      );
+      const option = declared.get(optionField);
+      const text = declared.get(textField);
+      if (!option || !text) {
+        issue(
+          'NATIVE_DATA_RESOURCE_INVARIANT_FIELD_UNKNOWN',
+          `${invariantPointer}/expression`
+        );
+      }
+      if (
+        option.type !== 'option.single' ||
+        !['text.short', 'text.long'].includes(text.type) ||
+        !option.options?.some(item => item.value === optionValue)
+      ) {
+        issue(
+          'NATIVE_DATA_RESOURCE_INVARIANT_FIELD_TYPES_INVALID',
+          `${invariantPointer}/expression`
+        );
+      }
+      return {
+        code,
+        ...(message === undefined ? {} : { message }),
+        expression: {
+          kind: 'nonBlankTextWhenOption' as const,
+          optionField,
+          optionValue,
+          textField,
+        },
+      };
+    }
     exactKeys(
       expression,
       ['leftField', 'operator', 'rightField'],
@@ -449,7 +504,7 @@ export function parseNativeDataResourceInvariantsV2(
       ...(message === undefined ? {} : { message }),
       expression: {
         leftField,
-        operator: operator as NativeDataResourceInvariantV2['expression']['operator'],
+        operator: operator as 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte',
         rightField,
       },
     };

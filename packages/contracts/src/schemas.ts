@@ -2676,14 +2676,29 @@ export const dataResourceSchema = {
           },
           message: { type: "string", minLength: 1, maxLength: 500 },
           expression: {
-            type: "object",
-            additionalProperties: false,
-            required: ["leftField", "operator", "rightField"],
-            properties: {
-              leftField: dataFieldCode,
-              operator: { enum: ["eq", "neq", "gt", "gte", "lt", "lte"] },
-              rightField: dataFieldCode,
-            },
+            oneOf: [
+              {
+                type: "object",
+                additionalProperties: false,
+                required: ["leftField", "operator", "rightField"],
+                properties: {
+                  leftField: dataFieldCode,
+                  operator: { enum: ["eq", "neq", "gt", "gte", "lt", "lte"] },
+                  rightField: dataFieldCode,
+                },
+              },
+              {
+                type: "object",
+                additionalProperties: false,
+                required: ["kind", "optionField", "optionValue", "textField"],
+                properties: {
+                  kind: { const: "nonBlankTextWhenOption" },
+                  optionField: dataFieldCode,
+                  optionValue: { type: "string", minLength: 1, maxLength: 128 },
+                  textField: dataFieldCode,
+                },
+              },
+            ],
           },
         },
       },

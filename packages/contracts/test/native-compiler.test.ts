@@ -14,6 +14,37 @@ function input(config = JSON.parse(corpus.configuration.canonical)) {
   };
 }
 
+test('conditional text invariant accepts only declared option values and text fields', () => {
+  const fields = [
+    { code: 'status', type: 'option.single', options: [{ label: '生效', value: 'effective' }] },
+    { code: 'templateContent', type: 'text.long' },
+  ] as Parameters<typeof esm.parseNativeDataResourceInvariantsV2>[1];
+  const declaration = [{
+    code: 'effective-template-has-content',
+    expression: {
+      kind: 'nonBlankTextWhenOption',
+      optionField: 'status',
+      optionValue: 'effective',
+      textField: 'templateContent',
+    },
+  }];
+  for (const implementation of [esm, cjs]) {
+    assert.deepEqual(
+      implementation.parseNativeDataResourceInvariantsV2(declaration, fields, '/invariants'),
+      declaration
+    );
+    assert.throws(
+      () => implementation.parseNativeDataResourceInvariantsV2(
+        [{ ...declaration[0], expression: { ...declaration[0]!.expression, optionValue: 'undeclared' } }],
+        fields,
+        '/invariants'
+      ),
+      (error: Error & { code?: string }) =>
+        error.code === 'NATIVE_DATA_RESOURCE_INVARIANT_FIELD_TYPES_INVALID'
+    );
+  }
+});
+
 test('one shared validator preserves the reviewed platform projection across ESM and CJS', () => {
   const expected = 'df2836af06f119b343bb7207633e51686d18e19ee7edcf1d7a19a3936142fc00';
   const a = esm.compileNativeApplicationConfiguration(input());
