@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.23.0",
+  "version": "2.24.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -67,7 +67,7 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.5.11",
+    "openxiangda-cli": "2.5.12",
     "openxiangda-contracts": "2.18.0",
     "openxiangda-devkit-core": "2.21.1",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
@@ -139,36 +139,35 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.23.0",
+    "version": "2.24.0",
     "status": "reviewed",
-    "title": "OpenXiangda 2.23.0：受控文件外部处理",
-    "summary": "Nest 支持短期外部下载及未知大小的有界输出文件会话，自定义用户框架获得公开退出登录入口。",
+    "title": "OpenXiangda 2.24.0：具名工作流草稿与稳定用户框架",
+    "summary": "为具名工作流创建操作提供私有草稿客户端；标准工作中心首次加载页面时保留用户框架。",
     "newFeatures": [
-      "三种 Nest DataApi 身份提供 createFileDownloadSession、initiateFileOutput、completeFileOutput。",
-      "输出使用 POST policy 约束大小、类型和暂存对象，完成后返回真实大小的受控文件引用。",
-      "openxiangda/react 公开 logoutCurrentUser 及退出回执类型，复用平台身份清理和广播。"
+      "openxiangda/react 提供 createWorkflowFormDraftClient，按 resourceCode、workflowCode、operationCode 列出、保存和删除具名操作草稿。"
     ],
-    "fixes": [],
+    "fixes": [
+      "标准工作中心与标准用户页懒加载期间，加载提示留在页面内容区域，用户框架不再被整体替换。"
+    ],
     "affectedUsers": [
-      "需要水印、归档等服务端文件处理或自定义用户框架的 V2 应用。"
+      "使用具名工作流发起并需暂存表单的 V2 应用，以及使用标准用户框架的 V2 应用。"
     ],
     "upgradeSteps": [
-      "先部署包含 server 048009e 的平台版本及输出会话迁移，再升级 openxiangda 至 2.23.0 并重建应用。",
-      "外部服务按 uploadMethod=POST 和 formFields 上传 multipart，file 放最后；已完成计划直接使用 file。"
+      "先部署包含 server 0a8b09e 及 AddWorkflowOwnedFormDrafts 迁移的版本，再升级 openxiangda 至 2.24.0 并重建应用。",
+      "草稿客户端传入与已声明工作流创建操作一致的 workflowCode 和 operationCode；最终提交仍走具名操作。"
     ],
     "knownLimitations": [
-      "输出会话目前支持 OSS 和 MinIO；COS 明确返回能力不可用。旧固定大小 PUT 上传不变。",
-      "下载签名最多300秒，授权变动不能即时撤回已签发 URL；不得记录 URL 或转发用户 Cookie。",
-      "外部服务部署、网络路由和真实业务验收独立于 npm 发布。"
+      "具名草稿仅绑定该操作允许的直接字段；不支持子表草稿，不能通过原生 submit 提交。",
+      "npm 发布不代表客户平台已部署；真实经办人保存、恢复和提交仍需上线后验收。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
       "workspaceGenerations": "v2",
-      "platform": "server 048009e 或包含该提交及数据库迁移的版本",
+      "platform": "server 0a8b09e 或包含该提交及数据库迁移的版本",
       "v1": "独立 V1 不受影响。"
     },
-    "sha256": "5294829c402c9af8d0dbda1fd13b0ed33d9e38821f0f18191c92f45f1d59875d",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.23.0"
+    "sha256": "9d5c5752838680a1e9ef50a06a52c1eb38aac1286cfefa9f5cc4428611b1ac2c",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.24.0"
   }
 }

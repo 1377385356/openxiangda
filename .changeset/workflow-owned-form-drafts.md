@@ -1,6 +1,0 @@
----
-"openxiangda": minor
-"openxiangda-cli": patch
----
-
-为具名工作流发起新增私有草稿客户端，保留普通创建权限边界并支持原子提交消费。
