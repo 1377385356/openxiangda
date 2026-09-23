@@ -971,6 +971,16 @@ test('compiles canonical desktop/mobile Workflow detail routes and rejects broke
     /"processOperationCode": "openxiangda\.workflow\.purchase-approval\.submit"/
   );
 
+  const userFrameDetail = structuredClone(declaration) as OpenXiangdaAppDeclaration;
+  userFrameDetail.frontend.routes[0].surface = 'user';
+  userFrameDetail.frontend.routes[0].path = '/approval-detail/:instanceId';
+  const userFrameCompiled = compileApplicationSources(defineOpenXiangdaApp(userFrameDetail));
+  assert.deepEqual(userFrameCompiled.contracts.value.workflows[0]?.detailRouteCode, {
+    desktop: 'purchase-detail',
+    mobile: 'purchase-detail-mobile',
+  });
+  assert.equal(userFrameCompiled.contracts.value.routes.find(route => route.code === 'purchase-detail')?.surface, 'user');
+
   const invalidCases: Array<[(value: any) => void, string, string]> = [
     [
       value => {

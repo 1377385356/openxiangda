@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.24.2",
+  "status": "reviewed",
+  "title": "OpenXiangda 2.24.2：工作流详情进入用户界面",
+  "summary": "工作流桌面详情路由可以直接指向应用用户界面，待办和通知深链无需先进入默认后台。",
+  "newFeatures": [],
+  "fixes": [
+    "工作流 detailRouteCode.desktop 接受已声明的 admin 或 user surface；移动详情继续要求 user surface。"
+  ],
+  "affectedUsers": [
+    "需要从待办或通知直接进入自定义用户审批详情的 V2 应用。"
+  ],
+  "upgradeSteps": [
+    "先部署包含 server bb3ac0e 且安装新 contracts 版本的平台，再升级 openxiangda 并重新生成应用契约。",
+    "将工作流 detailRouteCode.desktop 指向路径仅含 :instanceId 的已声明 user route，重新检查和发布应用；旧 admin route 可继续使用。"
+  ],
+  "knownLimitations": [
+    "深链仍要求应用登录，详情数据授权由应用服务和路由访问表达式执行；通知历史静态 URL 不会自动改写。",
+    "npm 发布与客户平台部署分别验收；真实身份点击通知和待办后还须回读目标实例。"
+  ],
+  "issues": [],
+  "compatibility": {
+    "node": ">=24",
+    "workspaceGenerations": "v2",
+    "platform": "server bb3ac0e 或包含该提交和匹配 contracts 包的版本",
+    "v1": "独立 V1 不受影响。"
+  }
+}

@@ -3809,9 +3809,9 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
             )
           );
         } else {
-          for (const [device, code, surface] of [
-            ['desktop', desktopCode, 'admin'],
-            ['mobile', mobileCode, 'user'],
+          for (const [device, code, surfaces] of [
+            ['desktop', desktopCode, ['admin', 'user']],
+            ['mobile', mobileCode, ['user']],
           ] as const) {
             const route = frontendRoutesByCode.get(code);
             const routePointer = `${path}.detailRouteCode.${device}`;
@@ -3825,11 +3825,11 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
               );
               continue;
             }
-            if (string(route.surface) !== surface) {
+            if (!surfaces.some(surface => surface === string(route.surface))) {
               diagnostics.push(
                 diagnostic(
                   'APP_CONFIG_WORKFLOW_DETAIL_ROUTE_SURFACE_INVALID',
-                  `detailRouteCode.${device} 必须引用 ${surface} surface`,
+                  `detailRouteCode.${device} 必须引用 ${surfaces.join(' 或 ')} surface`,
                   routePointer
                 )
               );

@@ -6273,16 +6273,16 @@ function validateWorkflowReferences(config: JsonObject) {
         item.detailRouteCode,
         `${pointer}/detailRouteCode`
       );
-      for (const [device, routeCode, expectedSurface] of [
-        ['desktop', detailRouteCode.desktop, 'admin'],
-        ['mobile', detailRouteCode.mobile, 'user'],
+      for (const [device, routeCode, allowedSurfaces] of [
+        ['desktop', detailRouteCode.desktop, ['admin', 'user']],
+        ['mobile', detailRouteCode.mobile, ['user']],
       ] as const) {
         const routePointer = `${pointer}/detailRouteCode/${device}`;
         const route = frontendRoutesByCode.get(routeCode);
         if (!route) {
           fail('NATIVE_WORKFLOW_DETAIL_ROUTE_MISSING', routePointer);
         }
-        if (route.surface !== expectedSurface) {
+        if (!allowedSurfaces.some(surface => surface === route.surface)) {
           fail('NATIVE_WORKFLOW_DETAIL_ROUTE_SURFACE_INVALID', routePointer);
         }
         const routePath = absolutePath(route.path, routePointer);
