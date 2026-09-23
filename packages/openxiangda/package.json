@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.24.2",
+  "version": "2.24.3",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -67,13 +67,13 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.5.14",
-    "openxiangda-contracts": "2.18.1",
-    "openxiangda-devkit-core": "2.21.2",
+    "openxiangda-cli": "2.5.15",
+    "openxiangda-contracts": "2.19.0",
+    "openxiangda-devkit-core": "2.21.3",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.40",
-    "openxiangda-nest": "2.5.1",
-    "openxiangda-skill-kit": "2.3.14",
+    "openxiangda-mcp": "2.0.41",
+    "openxiangda-nest": "2.5.2",
+    "openxiangda-skill-kit": "2.3.15",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -139,33 +139,35 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.24.2",
+    "version": "2.24.3",
     "status": "reviewed",
-    "title": "OpenXiangda 2.24.2：工作流详情进入用户界面",
-    "summary": "工作流桌面详情路由可以直接指向应用用户界面，待办和通知深链无需先进入默认后台。",
-    "newFeatures": [],
-    "fixes": [
-      "工作流 detailRouteCode.desktop 接受已声明的 admin 或 user surface；移动详情继续要求 user surface。"
+    "title": "OpenXiangda 2.24.3：资源条件文本不变量",
+    "summary": "Native 资源可声明单选字段取指定值时，另一个文本字段必须包含非空白正文；平台在写入最终候选记录时统一校验。",
+    "newFeatures": [
+      "资源 invariants 新增有界 nonBlankTextWhenOption 表达式，只接受已声明的单选值和长短文本字段。"
     ],
+    "fixes": [],
     "affectedUsers": [
-      "需要从待办或通知直接进入自定义用户审批详情的 V2 应用。"
+      "需要阻止标准管理页面或直接 Native CRUD 绕过表单校验的 V2 应用。"
     ],
     "upgradeSteps": [
-      "先部署包含 server bb3ac0e 且安装新 contracts 版本的平台，再升级 openxiangda 并重新生成应用契约。",
-      "将工作流 detailRouteCode.desktop 指向路径仅含 :instanceId 的已声明 user route，重新检查和发布应用；旧 admin route 可继续使用。"
+      "先升级安装匹配 contracts 包且已部署条件不变量校验的 Native 平台服务。",
+      "逐环境盘点并按业务审批修复既有违反条件的记录，再在应用资源模型声明新规则、重新检查和发布应用。"
     ],
     "knownLimitations": [
-      "深链仍要求应用登录，详情数据授权由应用服务和路由访问表达式执行；通知历史静态 URL 不会自动改写。",
-      "npm 发布与客户平台部署分别验收；真实身份点击通知和待办后还须回读目标实例。"
+      "规则只约束声明后的 Native 写入；历史记录不会被自动更改，应用读取与业务渲染仍须保持失败关闭。",
+      "规则不读取附件正文，不能用文件存在代替可审阅电子正文；npm 发布和客户平台发布分别验收。"
     ],
-    "issues": [],
+    "issues": [
+      "PL-30"
+    ],
     "compatibility": {
       "node": ">=24",
       "workspaceGenerations": "v2",
-      "platform": "server bb3ac0e 或包含该提交和匹配 contracts 包的版本",
+      "platform": "需部署支持 nonBlankTextWhenOption 的 Native Data API 和匹配 contracts 包",
       "v1": "独立 V1 不受影响。"
     },
-    "sha256": "508815619cc6eabdd008b4016c6e7e4ff41d6c061e816bac30efbb8e66f37dad",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.24.2"
+    "sha256": "34393d580f3dbc35f0ec0079192df9605074dbd2311c7271f085da7c1413d5e2",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.24.3"
   }
 }
