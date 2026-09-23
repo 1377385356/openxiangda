@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.25.0",
+  "status": "reviewed",
+  "title": "OpenXiangda 2.25.0：可选精确十进制字段",
+  "summary": "Native number.decimal 字段可显式启用字符串传输，保留 NUMERIC 金额精度；未启用字段沿用原有行为。",
+  "newFeatures": [
+    "字段声明 exactDecimal: true 时，数据契约、生成的 TypeScript 类型、标准表单、导入与工作流上下文均使用十进制字符串。"
+  ],
+  "fixes": [],
+  "affectedUsers": [
+    "需要保留完整十进制精度的 V2 Native 应用；未启用该声明的应用行为不变。"
+  ],
+  "upgradeSteps": [
+    "先部署包含服务端 2ed9ebd 与匹配 openxiangda-contracts 版本的平台，再在应用资源字段显式启用 exactDecimal 并重新生成、检查和发布应用。",
+    "启用字段的应用读写必须发送规范十进制字符串，不能把金额转换为 JavaScript number。"
+  ],
+  "knownLimitations": [
+    "本版只提供精确字段传输，不提供主子合同额度预留、释放或父占额授权原语；相关业务入口应继续关闭。",
+    "npm 包发布与客户平台部署分别验收；真实业务数据读写需在应用的受权测试环境独立验证。"
+  ],
+  "issues": [],
+  "compatibility": {
+    "node": ">=24",
+    "workspaceGenerations": "v2",
+    "platform": "服务端 2ed9ebd 或后续包含该提交且安装匹配 contracts 包的版本",
+    "v1": "独立 V1 不受影响。"
+  }
+}
