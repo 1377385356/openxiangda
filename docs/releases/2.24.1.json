@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.24.1",
+  "status": "reviewed",
+  "title": "OpenXiangda 2.24.1：具名工作流草稿与稳定用户框架",
+  "summary": "为具名工作流创建操作提供私有草稿客户端；标准工作中心首次加载页面时保留用户框架。",
+  "newFeatures": [
+    "openxiangda/react 提供 createWorkflowFormDraftClient，按 resourceCode、workflowCode、operationCode 列出、保存和删除具名操作草稿。"
+  ],
+  "fixes": [
+    "标准工作中心与标准用户页懒加载期间，加载提示留在页面内容区域，用户框架不再被整体替换。"
+  ],
+  "affectedUsers": [
+    "使用具名工作流发起并需暂存表单的 V2 应用，以及使用标准用户框架的 V2 应用。"
+  ],
+  "upgradeSteps": [
+    "先部署包含 server 0a8b09e 及 AddWorkflowOwnedFormDrafts 迁移的版本，再升级 openxiangda 至 2.24.1 并重建应用。",
+    "草稿客户端传入与已声明工作流创建操作一致的 workflowCode 和 operationCode；最终提交仍走具名操作。"
+  ],
+  "knownLimitations": [
+    "具名草稿仅绑定该操作允许的直接字段；不支持子表草稿，不能通过原生 submit 提交。",
+    "npm 发布不代表客户平台已部署；真实经办人保存、恢复和提交仍需上线后验收。"
+  ],
+  "issues": [],
+  "compatibility": {
+    "node": ">=24",
+    "workspaceGenerations": "v2",
+    "platform": "server 0a8b09e 或包含该提交及数据库迁移的版本",
+    "v1": "独立 V1 不受影响。"
+  }
+}
