@@ -838,6 +838,25 @@ test('renders a paged desktop work center from the current-user role union', asy
   }
 });
 
+test('work-center deep links select only supported initial views on desktop and mobile', async ({ page }) => {
+  await mockWorkflow(page);
+  for (const devicePath of ['/work-center', '/m/work-center']) {
+    for (const [query, expected, label] of [
+      ['view=created', 'created', '我创建的'],
+      ['view=cc', 'cc', '抄送我的'],
+      ['view=untrusted', 'pending', '待我审批'],
+    ]) {
+      const request = page.waitForRequest(request =>
+        new URL(request.url()).pathname.endsWith('/workflow/work-center/items') &&
+        new URL(request.url()).searchParams.get('view') === expected,
+      );
+      await page.goto(`/workflow-experience.e2e.html?initial=${encodeURIComponent(`${devicePath}?${query}`)}`);
+      await request;
+      await expect(page.getByRole('tab', { name: new RegExp(label) })).toHaveAttribute('aria-selected', 'true');
+    }
+  }
+});
+
 test.describe('application timezone boundary', () => {
   test.use({ timezoneId: 'America/Los_Angeles' });
   test('standard workflow business dates, submission and centers inherit application zone', async ({ page }) => {

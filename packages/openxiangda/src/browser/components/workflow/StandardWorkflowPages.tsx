@@ -1657,7 +1657,8 @@ const WORK_VIEWS = [
 
 export function WorkflowWorkCenterPage({ variant = 'desktop' }: { variant?: PageVariant }) {
   const navigate = useNavigate();
-  const [view, setView] = useState<import('openxiangda-contracts/browser').WorkflowWorkCenterView>('pending');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const view = WORK_VIEWS.find(item => item.value === searchParams.get('view'))?.value || 'pending';
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [page, setPage] = useState<WorkflowWorkCenterResult | null>(null);
@@ -1689,7 +1690,14 @@ export function WorkflowWorkCenterPage({ variant = 'desktop' }: { variant?: Page
       </div>
       <Button icon={<ReloadOutlined />} loading={loading} onClick={() => setAttempt(value => value + 1)}>刷新</Button>
     </header>
-    <Tabs activeKey={view} onChange={value => { setView(value as typeof view); setPageNumber(1); }} items={WORK_VIEWS.map(item => ({
+    <Tabs activeKey={view} onChange={value => {
+      setSearchParams(current => {
+        const next = new URLSearchParams(current);
+        next.set('view', value);
+        return next;
+      });
+      setPageNumber(1);
+    }} items={WORK_VIEWS.map(item => ({
       key: item.value, label: <span>{item.label}{page?.counts && <span className="oxa-work-count">{page.counts[item.value]}</span>}</span>,
     }))} />
     {error && <Alert title="待办加载失败" description={error} type="error" showIcon action={<Button onClick={() => setAttempt(value => value + 1)}>重试</Button>} />}
