@@ -4596,6 +4596,7 @@ function validateBackendOperations(
         'notification',
         'workflow',
         'roleAssertions',
+        'decimalReservation',
       ]);
       let invalid =
         !isRecord(operation.platformAccess) ||
@@ -4727,11 +4728,60 @@ function validateBackendOperations(
           workflowCodes.some(code => !declaredWorkflowCodes.has(code)) ||
           Object.keys(workflow).some(key => key !== 'codes');
       }
+      if (access.decimalReservation !== undefined) {
+        const reservation = object(access.decimalReservation);
+        const resourceCode = string(reservation.resourceCode);
+        const fields = declaredResourceFields.get(resourceCode);
+        const field = (key: string) => object(fields?.get(string(reservation[key])));
+        const optionValues = (key: string) => new Set(
+          ((Array.isArray(field(key).options) ? field(key).options : []) as unknown[])
+            .map((option: unknown) => string(object(option).value))
+        );
+        const parentStatuses = Array.isArray(reservation.eligibleParentStatuses)
+          ? reservation.eligibleParentStatuses.map(string)
+          : [];
+        const childStatuses = Array.isArray(reservation.eligibleChildStatuses)
+          ? reservation.eligibleChildStatuses.map(string)
+          : [];
+        const relationValues = optionValues('relationFieldCode');
+        const statusValues = optionValues('statusFieldCode');
+        const validStatuses = (values: string[]) =>
+          values.length >= 1 && values.length <= 16 &&
+          new Set(values).size === values.length &&
+          values.every(value => OPERATION_CODE_PATTERN.test(value) && statusValues.has(value));
+        invalid ||=
+          !isRecord(access.decimalReservation) ||
+          Object.keys(reservation).some(key => ![
+            'mode', 'resourceCode', 'amountFieldCode', 'currencyFieldCode',
+            'relationFieldCode', 'parentFieldCode', 'rootFieldCode',
+            'statusFieldCode', 'parentRelationValue', 'childRelationValue',
+            'eligibleParentStatuses', 'eligibleChildStatuses',
+          ].includes(key)) ||
+          !['reserve', 'commit', 'release'].includes(string(reservation.mode)) ||
+          !fields ||
+          field('amountFieldCode').type !== 'number.decimal' ||
+          field('amountFieldCode').exactDecimal !== true ||
+          field('amountFieldCode').precision !== 18 ||
+          field('amountFieldCode').scale !== 2 ||
+          field('currencyFieldCode').type !== 'option.single' ||
+          field('relationFieldCode').type !== 'option.single' ||
+          field('parentFieldCode').type !== 'resource-ref.single' ||
+          object(field('parentFieldCode').source).resourceCode !== resourceCode ||
+          field('rootFieldCode').type !== 'uuid' ||
+          field('statusFieldCode').type !== 'option.single' ||
+          !OPERATION_CODE_PATTERN.test(string(reservation.parentRelationValue)) ||
+          !OPERATION_CODE_PATTERN.test(string(reservation.childRelationValue)) ||
+          reservation.parentRelationValue === reservation.childRelationValue ||
+          !relationValues.has(string(reservation.parentRelationValue)) ||
+          !relationValues.has(string(reservation.childRelationValue)) ||
+          !validStatuses(parentStatuses) ||
+          !validStatuses(childStatuses);
+      }
       if (invalid) {
         diagnostics.push(
           diagnostic(
             'APP_CONFIG_BACKEND_OPERATION_PLATFORM_ACCESS_INVALID',
-            'operation.platformAccess 必须只声明有界的发起人目录、托管文件、托管文件复制、标准通知、现有工作流或已声明角色条件依赖',
+            'operation.platformAccess 必须只声明有界且与已声明资源字段相符的平台依赖',
             `${path}.platformAccess`
           )
         );

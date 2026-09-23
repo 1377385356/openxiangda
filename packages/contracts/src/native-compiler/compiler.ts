@@ -471,6 +471,17 @@ export function compileRequiredPlatformCapabilitiesV3(
     code: OpenXiangdaPlatformCapabilityCode;
     declaration: unknown;
   }> = [
+    ...(operations.some(operation => operation.platformAccess?.decimalReservation)
+      ? [{
+          code: 'data.decimal-reservations' as const,
+          declaration: operations
+            .filter(operation => operation.platformAccess?.decimalReservation)
+            .map(operation => ({
+              code: operation.code,
+              decimalReservation: operation.platformAccess.decimalReservation,
+            })),
+        }]
+      : []),
     { code: 'application-native-2', declaration: runtimeUsage },
     { code: 'authz.native-batch-explain', declaration: authzUsage },
     { code: 'authz.native-management', declaration: authzUsage },
@@ -2119,6 +2130,7 @@ function compileOperations(config: JsonObject) {
         operation.platformAccess,
         `${pointer}/platformAccess`,
         declaredResources,
+        declaredResourceFields,
         declaredWorkflowCodes,
         new Set<string>(config.authz.roles.map((role: JsonObject) => String(role.code)))
       );
@@ -2470,6 +2482,7 @@ function validateOperationPlatformAccess(
   value: unknown,
   pointer: string,
   declaredResources: Map<string, Map<string, string>>,
+  declaredResourceFields: Map<string, Map<string, JsonObject>>,
   declaredWorkflowCodes: Set<string>,
   declaredRoleCodes: Set<string>
 ) {
@@ -2477,7 +2490,7 @@ function validateOperationPlatformAccess(
   const access = object(value, pointer);
   exactKeys(
     access,
-    ['directory', 'managedFiles', 'managedFileCopies', 'notification', 'workflow', 'roleAssertions'],
+    ['directory', 'managedFiles', 'managedFileCopies', 'notification', 'workflow', 'roleAssertions', 'decimalReservation'],
     pointer,
     true
   );
@@ -2678,6 +2691,64 @@ function validateOperationPlatformAccess(
       );
     }
     result.workflow = { codes: uniqueSorted(codes) };
+  }
+  if (access.decimalReservation !== undefined) {
+    const reservationPointer = `${pointer}/decimalReservation`;
+    const reservation = object(access.decimalReservation, reservationPointer);
+    exactKeys(reservation, [
+      'mode', 'resourceCode', 'amountFieldCode', 'currencyFieldCode',
+      'relationFieldCode', 'parentFieldCode', 'rootFieldCode',
+      'statusFieldCode', 'parentRelationValue', 'childRelationValue',
+      'eligibleParentStatuses', 'eligibleChildStatuses',
+    ], reservationPointer);
+    const mode = requiredString(reservation.mode, `${reservationPointer}/mode`, 16);
+    if (!['reserve', 'commit', 'release'].includes(mode)) {
+      fail('NATIVE_DECIMAL_RESERVATION_MODE_INVALID', `${reservationPointer}/mode`);
+    }
+    const code = resourceCode(reservation.resourceCode, `${reservationPointer}/resourceCode`);
+    const fields = declaredResourceFields.get(code);
+    if (!fields) fail('NATIVE_DECIMAL_RESERVATION_RESOURCE_MISSING', `${reservationPointer}/resourceCode`);
+    const fieldNames = [
+      'amountFieldCode', 'currencyFieldCode', 'relationFieldCode',
+      'parentFieldCode', 'rootFieldCode', 'statusFieldCode',
+    ] as const;
+    const names = Object.fromEntries(fieldNames.map(key => [
+      key, fieldCodeValue(reservation[key], `${reservationPointer}/${key}`),
+    ])) as Record<(typeof fieldNames)[number], string>;
+    const field = (key: (typeof fieldNames)[number]) => fields!.get(names[key]);
+    const options = (key: 'relationFieldCode' | 'statusFieldCode') => new Set(
+      ((field(key)?.options || []) as JsonObject[]).map(option => String(option.value))
+    );
+    const parentRelationValue = stableCode(reservation.parentRelationValue, `${reservationPointer}/parentRelationValue`);
+    const childRelationValue = stableCode(reservation.childRelationValue, `${reservationPointer}/childRelationValue`);
+    const parentStatuses = uniqueStrings(reservation.eligibleParentStatuses, `${reservationPointer}/eligibleParentStatuses`, 16);
+    const childStatuses = uniqueStrings(reservation.eligibleChildStatuses, `${reservationPointer}/eligibleChildStatuses`, 16);
+    if (
+      field('amountFieldCode')?.type !== 'number.decimal' ||
+      field('amountFieldCode')?.exactDecimal !== true ||
+      field('amountFieldCode')?.precision !== 18 ||
+      field('amountFieldCode')?.scale !== 2 ||
+      field('currencyFieldCode')?.type !== 'option.single' ||
+      field('relationFieldCode')?.type !== 'option.single' ||
+      field('parentFieldCode')?.type !== 'resource-ref.single' ||
+      (field('parentFieldCode')?.source as JsonObject | undefined)?.resourceCode !== code ||
+      field('rootFieldCode')?.type !== 'uuid' ||
+      field('statusFieldCode')?.type !== 'option.single' ||
+      parentRelationValue === childRelationValue ||
+      !options('relationFieldCode').has(parentRelationValue) ||
+      !options('relationFieldCode').has(childRelationValue) ||
+      !parentStatuses.length || !childStatuses.length ||
+      parentStatuses.some(value => !options('statusFieldCode').has(value)) ||
+      childStatuses.some(value => !options('statusFieldCode').has(value))
+    ) {
+      fail('NATIVE_DECIMAL_RESERVATION_FIELD_INVALID', reservationPointer);
+    }
+    result.decimalReservation = {
+      mode, resourceCode: code, ...names,
+      parentRelationValue, childRelationValue,
+      eligibleParentStatuses: uniqueSorted(parentStatuses),
+      eligibleChildStatuses: uniqueSorted(childStatuses),
+    };
   }
   return result;
 }

@@ -44,6 +44,7 @@ export const OPENXIANGDA_NATIVE_DATA_SURFACE_KEYS_V2 = {
     'maxLength',
     'precision',
     'scale',
+    'exactDecimal',
     'min',
     'max',
     'rangeBoundary',
@@ -431,6 +432,7 @@ function validateSurfaceField(
     'maxLength',
     'precision',
     'scale',
+    'exactDecimal',
     'min',
     'max',
     'rangeBoundary',
@@ -586,6 +588,7 @@ function assertProjection(
     | 'maxLength'
     | 'precision'
     | 'scale'
+    | 'exactDecimal'
     | 'min'
     | 'max'
     | 'rangeBoundary'

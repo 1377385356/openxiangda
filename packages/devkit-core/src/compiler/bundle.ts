@@ -424,6 +424,15 @@ export function normalizeConfiguration(
                         },
                       }
                     : {}),
+                  ...(operation.platformAccess.decimalReservation
+                    ? {
+                        decimalReservation: {
+                          ...operation.platformAccess.decimalReservation,
+                          eligibleParentStatuses: uniqueSorted(operation.platformAccess.decimalReservation.eligibleParentStatuses),
+                          eligibleChildStatuses: uniqueSorted(operation.platformAccess.decimalReservation.eligibleChildStatuses),
+                        },
+                      }
+                    : {}),
                 },
               }
             : {}),
@@ -1817,6 +1826,15 @@ function compileOperations(config: OpenXiangdaAppConfig) {
                     },
                   }
                 : {}),
+              ...(operation.platformAccess.decimalReservation
+                ? {
+                    decimalReservation: {
+                      ...operation.platformAccess.decimalReservation,
+                      eligibleParentStatuses: uniqueSorted(operation.platformAccess.decimalReservation.eligibleParentStatuses),
+                      eligibleChildStatuses: uniqueSorted(operation.platformAccess.decimalReservation.eligibleChildStatuses),
+                    },
+                  }
+                : {}),
             },
           }
         : {}),
@@ -1973,6 +1991,9 @@ function runtimeProtocolCapabilities(config: OpenXiangdaAppConfig) {
         declaration.launch?.mode === 'hidden-handoff'
     )
       ? ['business-process.durable-command']
+      : []),
+    ...(operations.some(operation => operation.platformAccess?.decimalReservation)
+      ? ['data.decimal-reservations']
       : []),
     ...(config.events?.subscriptions.length ||
     config.events?.timers?.length ||

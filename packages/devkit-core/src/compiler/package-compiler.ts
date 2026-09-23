@@ -129,6 +129,17 @@ export function requiredPlatformCapabilitiesFromConfiguration(
     },
   };
   const usages: Array<{ code: PlatformCapabilityCode; declaration: unknown }> = [
+    ...(operations.some(operation => operation.platformAccess?.decimalReservation)
+      ? [{
+          code: 'data.decimal-reservations' as const,
+          declaration: operations
+            .filter(operation => operation.platformAccess?.decimalReservation)
+            .map(operation => ({
+              code: operation.code,
+              decimalReservation: operation.platformAccess!.decimalReservation,
+            })),
+        }]
+      : []),
     ...(config.data.resources.some(hasDataAuditReadPolicy)
       ? [{ code: 'data.audit-read-access' as const, declaration: dataUsage }]
       : []),

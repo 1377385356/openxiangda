@@ -7234,6 +7234,36 @@ const appOperationPlatformAccessSchema = {
         },
       },
     },
+    decimalReservation: {
+      type: "object",
+      additionalProperties: false,
+      required: [
+        "mode", "resourceCode", "amountFieldCode", "currencyFieldCode",
+        "relationFieldCode", "parentFieldCode", "rootFieldCode",
+        "statusFieldCode", "parentRelationValue", "childRelationValue",
+        "eligibleParentStatuses", "eligibleChildStatuses",
+      ],
+      properties: {
+        mode: { enum: ["reserve", "commit", "release"] },
+        resourceCode: dataResourceCode,
+        amountFieldCode: stableCode,
+        currencyFieldCode: stableCode,
+        relationFieldCode: stableCode,
+        parentFieldCode: stableCode,
+        rootFieldCode: stableCode,
+        statusFieldCode: stableCode,
+        parentRelationValue: stableCode,
+        childRelationValue: stableCode,
+        eligibleParentStatuses: {
+          type: "array", minItems: 1, maxItems: 16, uniqueItems: true,
+          items: stableCode,
+        },
+        eligibleChildStatuses: {
+          type: "array", minItems: 1, maxItems: 16, uniqueItems: true,
+          items: stableCode,
+        },
+      },
+    },
   },
 } as const;
 

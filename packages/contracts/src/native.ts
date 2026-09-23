@@ -257,6 +257,21 @@ export interface AppOperationPlatformAccessDeclaration {
   }>;
   notification?: { mode: 'business-standard' };
   workflow?: { codes: readonly string[] };
+  /** Exact NUMERIC(18,2) reservation transitions are owned by the Native transaction kernel. */
+  decimalReservation?: {
+    mode: 'reserve' | 'commit' | 'release';
+    resourceCode: string;
+    amountFieldCode: string;
+    currencyFieldCode: string;
+    relationFieldCode: string;
+    parentFieldCode: string;
+    rootFieldCode: string;
+    statusFieldCode: string;
+    parentRelationValue: string;
+    childRelationValue: string;
+    eligibleParentStatuses: readonly string[];
+    eligibleChildStatuses: readonly string[];
+  };
 }
 
 export interface AppApiOperationBrowserDeclaration {

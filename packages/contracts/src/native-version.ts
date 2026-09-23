@@ -13,6 +13,7 @@ export const PLATFORM_CAPABILITY_CONTRACT_VERSIONS = {
   "data.native-golden-crud": "1.0.0",
   "data.audit-read-access": "1.0.0",
   "data.managed-files": "1.1.0",
+  "data.decimal-reservations": "1.0.0",
   "workflow.named-input-sources": "1.0.0",
   "directory-v2": "1.0.0",
   "events-v2": "1.0.0",
