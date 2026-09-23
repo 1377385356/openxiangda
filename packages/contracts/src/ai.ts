@@ -1,9 +1,8 @@
 import {
   SCHEMA_VERSIONS,
-  type DataFieldDefinition,
   type Diagnostic,
 } from "./types.js";
-import { fieldValueSchemaForDefinition } from "./field-value-schemas.js";
+import { fieldValueSchemaForDefinition, type FieldValueSchemaDefinition } from "./field-value-schemas.js";
 
 export type AiJsonSchema = Record<string, unknown>;
 
@@ -388,7 +387,7 @@ export function assertAiCapabilityCatalog(
 }
 
 export function aiJsonSchemaForField(
-  field: Pick<DataFieldDefinition, "type" | "rangeBoundary">
+  field: FieldValueSchemaDefinition
 ): AiJsonSchema {
   const type = field.type;
   const labeledValue = {
@@ -417,7 +416,7 @@ export function aiJsonSchemaForField(
     case "number.integer":
       return { type: "integer" };
     case "number.decimal":
-      return { type: "number" };
+      return fieldValueSchemaForDefinition(field);
     case "boolean":
       return { type: "boolean" };
     case "date":

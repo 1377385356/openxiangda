@@ -228,6 +228,21 @@ test('requires explicit range boundaries and projects them into value schemas', 
   assert.throws(() => fieldValueSchemaForDefinition({ type: 'date-range' }));
 });
 
+test('exact decimal schemas require lossless bounded string values', () => {
+  const schema = fieldValueSchemaForDefinition({
+    type: 'number.decimal', exactDecimal: true, precision: 18, scale: 2,
+  });
+  assert.equal(schema.type, 'string');
+  const pattern = new RegExp(String(schema.pattern));
+  assert.equal(pattern.test('9999999999999999.99'), true);
+  assert.equal(pattern.test('-0.01'), true);
+  assert.equal(pattern.test('10000000000000000.00'), false);
+  assert.equal(pattern.test('1.001'), false);
+  assert.equal(pattern.test('01.00'), false);
+  assert.equal(pattern.test('1e2'), false);
+  assert.equal(fieldValueSchemaForDefinition({ type: 'number.decimal', precision: 18, scale: 2 }).type, 'number');
+});
+
 test('publishes the canonical event v2 catalog and bounded subscription contracts', () => {
   assert.deepEqual(DATA_EVENT_TYPES_V2, [
     'openxiangda.data.record.created.v2',

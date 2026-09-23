@@ -235,9 +235,34 @@ export const FIELD_VALUE_SCHEMAS = {
   },
 } as const satisfies Record<DataFieldType, JsonSchema>;
 
+export type FieldValueSchemaDefinition = Pick<DataFieldDefinition, 'type'> & {
+  rangeBoundary?: DataFieldDefinition['rangeBoundary'] | undefined;
+  exactDecimal?: boolean | undefined;
+  precision?: number | undefined;
+  scale?: number | undefined;
+};
+
 export function fieldValueSchemaForDefinition(
-  field: Pick<DataFieldDefinition, 'type' | 'rangeBoundary'>
+  field: FieldValueSchemaDefinition
 ): JsonSchema {
+  if (field.type === 'number.decimal' && field.exactDecimal === true) {
+    const precision = field.precision;
+    const scale = field.scale;
+    if (typeof precision === 'number' && typeof scale === 'number' &&
+        Number.isInteger(precision) && Number.isInteger(scale) &&
+        precision >= 1 && scale >= 0 && scale <= precision) {
+      const integerDigits = Math.max(1, precision - scale);
+      const fractionPattern = scale > 0
+        ? `(?:\\.[0-9]{1,${scale}})?`
+        : '';
+      return {
+        type: 'string',
+        pattern: `^-?(?:0|[1-9][0-9]{0,${integerDigits - 1}})${fractionPattern}$`,
+        maxLength: integerDigits + (scale > 0 ? scale + 1 : 0) + 1,
+      };
+    }
+    return { type: 'string', pattern: '^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$' };
+  }
   const schema = structuredClone(FIELD_VALUE_SCHEMAS[field.type]) as JsonSchema;
   if (field.type !== 'date-range' && field.type !== 'datetime-range') {
     return schema;

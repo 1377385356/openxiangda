@@ -81,6 +81,20 @@ test('projects one declared resource into canonical bounded record schemas', () 
   assert.deepEqual(FIELD_VALUE_SCHEMAS['user.single'], canonicalOwner);
 });
 
+test('projects exact decimal fields as strings without numeric JSON Schema bounds', () => {
+  const exactResource: AppDataResourceDeclaration = {
+    ...resource,
+    fields: [...resource.fields, {
+      code: 'amount', type: 'number.decimal', label: 'Amount',
+      precision: 18, scale: 2, min: 0, exactDecimal: true,
+    }],
+  };
+  const schema = resourceRecordSchema(exactResource) as any;
+  assert.equal(schema.properties.amount.type, 'string');
+  assert.equal(schema.properties.amount.minimum, undefined);
+  assert.equal(new RegExp(schema.properties.amount.pattern).test('9999999999999999.99'), true);
+});
+
 test('selects operation fields and rejects unknown, duplicate, or unselected required fields', () => {
   const createSchema = resourceRecordSchema(resource, {
     fields: ['name', 'college'],

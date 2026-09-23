@@ -138,13 +138,13 @@ function projectFieldValueSchema(
   schema.title = field.label;
   if (
     field.min !== undefined &&
-    (field.type === 'number.integer' || field.type === 'number.decimal')
+    (field.type === 'number.integer' || (field.type === 'number.decimal' && !field.exactDecimal))
   ) {
     schema.minimum = field.min;
   }
   if (
     field.max !== undefined &&
-    (field.type === 'number.integer' || field.type === 'number.decimal')
+    (field.type === 'number.integer' || (field.type === 'number.decimal' && !field.exactDecimal))
   ) {
     schema.maximum = field.max;
   }
