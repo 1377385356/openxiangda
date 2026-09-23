@@ -2487,6 +2487,16 @@ export interface BusinessProcessFormDraft {
   viewCode?: string;
 }
 
+/** The parent capacity check and child creation share the BusinessProcess transaction. */
+export interface BusinessProcessDecimalReservation {
+  parentId: string;
+  expectedParentRevision: number;
+  childOperationKey: string;
+  reservationKey: string;
+  amount: string;
+  currencyCode: string;
+}
+
 /** Wire command accepted only from a verified Named Action. */
 export interface BusinessProcessCommit {
   schemaVersion: typeof SCHEMA_VERSIONS.businessProcessCommit;
@@ -2497,6 +2507,7 @@ export interface BusinessProcessCommit {
     operations: BusinessProcessDataOperation[];
   };
   formDraft?: BusinessProcessFormDraft;
+  decimalReservation?: BusinessProcessDecimalReservation;
   workflow: {
     workflowCode: string;
     subject: { fromOperation: string };

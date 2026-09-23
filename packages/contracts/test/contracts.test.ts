@@ -382,6 +382,23 @@ test('publishes strict durable business process wire contracts', () => {
   );
 });
 
+test('bounds a BusinessProcess money reservation before Native arithmetic', () => {
+  const reservation = contractSchemas.businessProcessCommit.properties.decimalReservation;
+  assert.equal(reservation.additionalProperties, false);
+  assert.deepEqual(reservation.required, [
+    'parentId', 'expectedParentRevision', 'childOperationKey',
+    'reservationKey', 'amount', 'currencyCode',
+  ]);
+  const amount = reservation.properties.amount;
+  const valid = new RegExp(amount.pattern);
+  for (const value of ['0.01', '1', '12.34', '9999999999999999.99']) {
+    assert.equal(valid.test(value) && value.length <= amount.maxLength, true, value);
+  }
+  for (const value of ['0', '0.00', '-1', '01.00', '1.234', '10000000000000000.00']) {
+    assert.equal(valid.test(value) && value.length <= amount.maxLength, false, value);
+  }
+});
+
 test('publishes the digest-bound desktop/mobile standard route manifest contract', () => {
   const manifest = contractSchemas.applicationRouteManifest;
   assert.equal(manifest.$id, SCHEMA_VERSIONS.applicationRouteManifest);

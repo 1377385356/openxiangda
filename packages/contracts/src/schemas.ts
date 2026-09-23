@@ -5846,6 +5846,26 @@ const businessProcessFormDraft = {
   ],
 } as const;
 
+const businessProcessDecimalReservation = {
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "parentId", "expectedParentRevision", "childOperationKey",
+    "reservationKey", "amount", "currencyCode",
+  ],
+  properties: {
+    parentId: businessProcessUuid,
+    expectedParentRevision: { type: "integer", minimum: 1 },
+    childOperationKey: { type: "string", minLength: 1, maxLength: 128 },
+    reservationKey: { type: "string", minLength: 1, maxLength: 128 },
+    amount: {
+      type: "string", minLength: 1, maxLength: 19,
+      pattern: "^(?!0(?:\\.0{1,2})?$)(?:0|[1-9][0-9]{0,15})(?:\\.[0-9]{1,2})?$",
+    },
+    currencyCode: { type: "string", pattern: "^[A-Z]{3}$" },
+  },
+} as const;
+
 export const businessProcessCommitSchema = {
   $id: SCHEMA_VERSIONS.businessProcessCommit,
   type: "object",
@@ -5865,6 +5885,7 @@ export const businessProcessCommitSchema = {
       },
     },
     formDraft: businessProcessFormDraft,
+    decimalReservation: businessProcessDecimalReservation,
     workflow: {
       type: "object",
       additionalProperties: false,
