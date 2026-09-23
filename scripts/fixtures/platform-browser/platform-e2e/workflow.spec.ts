@@ -1318,6 +1318,7 @@ test('does not negotiate non-standard application contribution routes', async ({
 for (const device of ['desktop', 'mobile']) {
   test(`lazy work center preserves the ${device} user frame while its module is pending`, async ({ page }) => {
     await mockWorkflow(page);
+    await page.setViewportSize(device === 'mobile' ? { width: 390, height: 844 } : { width: 1440, height: 900 });
     let release!: () => void;
     let requested!: () => void;
     const moduleRequested = new Promise<void>(resolve => { requested = resolve; });
