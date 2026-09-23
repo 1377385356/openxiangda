@@ -295,6 +295,11 @@ export function parseResourceImportMatrix(
 function importValue(field: DataFieldSurface, input: unknown): unknown {
   if (input === undefined || input === null || input === '') return undefined;
   if (field.type === 'number.integer' || field.type === 'number.decimal') {
+    if (field.type === 'number.decimal' && field.exactDecimal) {
+      const exact = String(input).trim();
+      if (!/^-?(?:0|[1-9]\d*)(?:\.\d+)?$/.test(exact)) throw new Error('必须是十进制数字');
+      return exact;
+    }
     const value = Number(input);
     if (!Number.isFinite(value)) throw new Error('必须是数字');
     if (field.type === 'number.integer' && !Number.isInteger(value)) throw new Error('必须是整数');

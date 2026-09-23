@@ -20,6 +20,8 @@ test('流程上下文单选值从当前枚举恢复显示快照，拒绝未知�
   assert.throws(() => workflowContextScalarValue(field, 'REMOVED'), /CONTEXT_VALUE_INVALID/);
   assert.throws(() => workflowContextScalarValue({ ...field, options: [] }, 'JOIN'), /CONTEXT_VALUE_INVALID/);
   assert.equal(workflowContextScalarValue({ type: 'boolean' }, 'false'), false);
+  assert.equal(workflowContextScalarValue({ type: 'number.decimal', exactDecimal: true }, '9999999999999999.99'), '9999999999999999.99');
+  assert.throws(() => workflowContextScalarValue({ type: 'number.decimal', exactDecimal: true }, '1e5'), /CONTEXT_VALUE_INVALID/);
 });
 
 test('mounts workflow submission as a standalone user page on both devices', () => {

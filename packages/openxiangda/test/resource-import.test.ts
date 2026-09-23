@@ -87,6 +87,24 @@ test('maps exact labels and codes into one canonical create transaction', () => 
   ]);
 });
 
+test('imports opt-in exact decimals as strings without losing cents', () => {
+  const exactSurface = {
+    ...surface,
+    fields: {
+      amount: { label: '金额', type: 'number.decimal', widget: 'money', precision: 18, scale: 2, exactDecimal: true },
+    },
+  } as unknown as DataResourceSurface;
+  const preview = parseResourceImportMatrix(
+    '金额.csv',
+    [['金额'], ['9999999999999999.99']],
+    'contracts',
+    exactSurface,
+    ['amount']
+  );
+  assert.deepEqual(preview.errors, []);
+  assert.equal(preview.operations[0]?.data.amount, '9999999999999999.99');
+});
+
 test('preserves exact dates and rejects impossible calendar dates', () => {
   const valid = parseResourceImportMatrix(
     '日期.csv',

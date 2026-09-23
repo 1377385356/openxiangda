@@ -153,7 +153,8 @@ function numberInputProps(field: SurfaceField) {
   const scale = field.type === 'number.integer' ? 0 : field.scale;
   return {
     ...(scale === undefined ? {} : { precision: scale }),
-    step: scale === undefined ? 'any' : scale === 0 ? 1 : 10 ** -scale,
+    step: scale === undefined ? 'any' : scale === 0 ? 1 : field.exactDecimal ? `0.${'0'.repeat(scale - 1)}1` : 10 ** -scale,
+    ...(field.exactDecimal ? { stringMode: true as const } : {}),
     ...(field.widget === 'money' ? { prefix: '¥' } : {}),
     ...(field.widget === 'percent' ? { suffix: '%' } : {}),
   };
@@ -228,15 +229,15 @@ export function SurfaceFilterControl({
     case 'money':
     case 'percent':
       if (range) {
-        const values = Array.isArray(value) ? value as [number | undefined, number | undefined] : [];
+        const values = Array.isArray(value) ? value as [number | string | undefined, number | string | undefined] : [];
         return (
           <Space.Compact>
-            <InputNumber {...numberInputProps(field)} onChange={next => onChange([next === null ? undefined : Number(next), values[1]])} placeholder={`最低${field.label}`} value={values[0]} />
-            <InputNumber {...numberInputProps(field)} onChange={next => onChange([values[0], next === null ? undefined : Number(next)])} placeholder={`最高${field.label}`} value={values[1]} />
+            <InputNumber {...numberInputProps(field)} onChange={next => onChange([next === null ? undefined : field.exactDecimal ? String(next) : Number(next), values[1]])} placeholder={`最低${field.label}`} value={values[0]} />
+            <InputNumber {...numberInputProps(field)} onChange={next => onChange([values[0], next === null ? undefined : field.exactDecimal ? String(next) : Number(next)])} placeholder={`最高${field.label}`} value={values[1]} />
           </Space.Compact>
         );
       }
-      return <InputNumber {...numberInputProps(field)} onChange={onChange} placeholder={placeholder} value={value as number | null | undefined} />;
+      return <InputNumber {...numberInputProps(field)} onChange={onChange} placeholder={placeholder} value={value as number | string | null | undefined} />;
     case 'scope':
       return renderers?.renderScope?.({ field, disabled: false, operation: 'update' }) || <Input allowClear value={value as string | undefined} onChange={event => onChange(event.target.value)} placeholder={placeholder} />;
     case 'directory-user':

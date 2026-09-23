@@ -199,6 +199,7 @@ export interface AppDataFieldDeclaration {
   maxLength?: DataFieldDefinition['maxLength'];
   precision?: DataFieldDefinition['precision'];
   scale?: DataFieldDefinition['scale'];
+  exactDecimal?: DataFieldDefinition['exactDecimal'];
   min?: DataFieldDefinition['min'];
   max?: DataFieldDefinition['max'];
   rangeBoundary?: NonNullable<DataFieldDefinition['rangeBoundary']>;
@@ -6723,6 +6724,7 @@ export function materializeDataResource(
       ...(field.maxLength !== undefined ? { maxLength: field.maxLength } : {}),
       ...(field.precision !== undefined ? { precision: field.precision } : {}),
       ...(field.scale !== undefined ? { scale: field.scale } : {}),
+      ...(field.exactDecimal !== undefined ? { exactDecimal: field.exactDecimal } : {}),
       ...(field.min !== undefined ? { min: field.min } : {}),
       ...(field.max !== undefined ? { max: field.max } : {}),
       ...(field.rangeBoundary
@@ -6789,6 +6791,7 @@ export function materializeDataResource(
           ...(field.maxLength !== undefined ? { maxLength: field.maxLength } : {}),
           ...(field.precision !== undefined ? { precision: field.precision } : {}),
           ...(field.scale !== undefined ? { scale: field.scale } : {}),
+          ...(field.exactDecimal !== undefined ? { exactDecimal: field.exactDecimal } : {}),
           ...(field.min !== undefined ? { min: field.min } : {}),
           ...(field.max !== undefined ? { max: field.max } : {}),
           ...(field.rangeBoundary
@@ -6912,6 +6915,7 @@ export function validateAppDeclaration(value: unknown): Diagnostic[] {
     'maxLength',
     'precision',
     'scale',
+    'exactDecimal',
     'min',
     'max',
     'rangeBoundary',
@@ -7045,6 +7049,19 @@ export function validateAppDeclaration(value: unknown): Diagnostic[] {
       }
       const code = string(field.code);
       const fieldType = string(field.type);
+      if (
+        field.exactDecimal !== undefined &&
+        (typeof field.exactDecimal !== 'boolean' || fieldType !== 'number.decimal')
+      ) {
+        materializable = false;
+        diagnostics.push(
+          diagnostic(
+            'APP_CONFIG_DATA_EXACT_DECIMAL_INVALID',
+            `${fieldPath}.exactDecimal 仅可用于 number.decimal 布尔声明`,
+            `${fieldPath}.exactDecimal`
+          )
+        );
+      }
       if (!APP_DATA_FIELD_TYPES.has(fieldType)) {
         materializable = false;
         diagnostics.push(

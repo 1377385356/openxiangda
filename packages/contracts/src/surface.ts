@@ -58,6 +58,7 @@ export interface DataFieldSurface {
   maxLength?: number;
   precision?: number;
   scale?: number;
+  exactDecimal?: boolean;
   min?: number;
   max?: number;
   /** Exact interval semantics projected from the authoritative range field. */

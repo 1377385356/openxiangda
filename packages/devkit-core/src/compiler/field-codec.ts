@@ -31,7 +31,8 @@ export function fieldNullable(field: Pick<DataFieldDefinition, 'type' | 'nullabl
     : false;
 }
 
-export function typescriptType(type: DataFieldType): string {
+export function typescriptType(type: DataFieldType, exactDecimal = false): string {
+  if (type === 'number.decimal' && exactDecimal) return 'string';
   switch (type) {
     case 'text.short': case 'text.long': case 'text.rich': case 'date':
     case 'time': case 'datetime': case 'uuid': case 'serial-number':

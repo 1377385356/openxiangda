@@ -121,6 +121,7 @@ test('keeps the complete generated resource surface in the public schema', () =>
     'maxLength',
     'precision',
     'scale',
+    'exactDecimal',
     'min',
     'max',
     'rangeBoundary',
@@ -501,4 +502,10 @@ test('number.decimal keeps precision required and scale bounded', () => {
   assert.equal(validateField({ ...base, precision: 12, scale: 2 }).length, 0);
   assert.equal(validateField({ ...base, scale: 2 })[0]?.code, 'DATA_RESOURCE_FIELD_DECIMAL_CONFIG_INVALID');
   assert.equal(validateField({ ...base, precision: 12, scale: 13 })[0]?.code, 'DATA_RESOURCE_FIELD_DECIMAL_CONFIG_INVALID');
+});
+
+test('exactDecimal is an opt-in decimal-only field contract', () => {
+  assert.equal(validateField({ code: 'amount', type: 'number.decimal', precision: 18, scale: 2, exactDecimal: true }).length, 0);
+  assert.equal(validateField({ code: 'amount', type: 'number.integer', exactDecimal: true })[0]?.code, 'DATA_RESOURCE_FIELD_EXACT_DECIMAL_INVALID');
+  assert.equal(validateField({ code: 'amount', type: 'number.decimal', precision: 18, scale: 2, exactDecimal: 'true' })[0]?.code, 'DATA_RESOURCE_FIELD_EXACT_DECIMAL_INVALID');
 });

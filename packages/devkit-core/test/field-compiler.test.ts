@@ -502,6 +502,17 @@ test('projects authoritative field bounds into the standard Surface', () => {
   );
 });
 
+test('opt-in exact decimal projects string transport without changing number fields', () => {
+  const declaration = baseDeclaration([
+    { code: 'amount', type: 'number.decimal', label: 'Amount', precision: 18, scale: 2, exactDecimal: true },
+    { code: 'count', type: 'number.decimal', label: 'Count', precision: 12, scale: 2 },
+  ]);
+  const compiled = compileApplicationSources(defineOpenXiangdaApp(declaration)).contracts.typescript;
+  assert.match(compiled, /amount\?: string \| null;/);
+  assert.match(compiled, /count\?: number \| null;/);
+  assert.match(compiled, /"exactDecimal": true/);
+});
+
 test('projects a conditional text invariant without altering field comparison rules', () => {
   const declaration = allFieldDeclaration();
   declaration.data!.resources[0]!.invariants!.push({

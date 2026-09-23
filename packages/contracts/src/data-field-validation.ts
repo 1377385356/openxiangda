@@ -44,6 +44,7 @@ const DATA_FIELD_PROPERTIES = new Set([
   'maxLength',
   'precision',
   'scale',
+  'exactDecimal',
   'min',
   'max',
   'rangeBoundary',
@@ -460,6 +461,18 @@ function validateScalarConfig(
   diagnostics: Diagnostic[]
 ) {
   const type = String(field.type || '');
+  if (
+    field.exactDecimal !== undefined &&
+    (type !== 'number.decimal' || typeof field.exactDecimal !== 'boolean')
+  ) {
+    diagnostics.push(
+      diagnostic(
+        'DATA_RESOURCE_FIELD_EXACT_DECIMAL_INVALID',
+        `${path}.exactDecimal 仅可用于 number.decimal 布尔声明`,
+        `${path}.exactDecimal`
+      )
+    );
+  }
   if (
     field.maxLength !== undefined &&
     (!['text.short', 'text.long', 'text.rich'].includes(type) ||

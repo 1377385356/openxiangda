@@ -2017,6 +2017,7 @@ function normalizeDataResource(resource: DataResource): DataResource {
         ...(field.maxLength !== undefined ? { maxLength: field.maxLength } : {}),
         ...(field.precision !== undefined ? { precision: field.precision } : {}),
         ...(field.scale !== undefined ? { scale: field.scale } : {}),
+        ...(field.exactDecimal !== undefined ? { exactDecimal: field.exactDecimal } : {}),
         ...(field.min !== undefined ? { min: field.min } : {}),
         ...(field.max !== undefined ? { max: field.max } : {}),
         ...(field.rangeBoundary
@@ -2389,7 +2390,7 @@ export function renderGeneratedContracts(
       const nullable = fieldNullable(field);
       const optional = nullable ? '?' : '';
       lines.push(
-        `  ${safeProperty(field.code)}${optional}: ${typescriptType(field.type)}${
+        `  ${safeProperty(field.code)}${optional}: ${typescriptType(field.type, field.exactDecimal)}${
           nullable ? ' | null' : ''
         };`
       );
@@ -2408,7 +2409,7 @@ export function renderGeneratedContracts(
       const nullable = fieldNullable(field);
       const optional = nullable ? '?' : '';
       lines.push(
-        `  ${safeProperty(field.code)}${optional}: ${typescriptType(field.type)}${nullable ? ' | null' : ''};`
+        `  ${safeProperty(field.code)}${optional}: ${typescriptType(field.type, field.exactDecimal)}${nullable ? ' | null' : ''};`
       );
     }
     lines.push('}', '');
@@ -2424,7 +2425,7 @@ export function renderGeneratedContracts(
       ) continue;
       const nullable = fieldNullable(field);
       lines.push(
-        `  ${safeProperty(field.code)}?: ${typescriptType(field.type)}${nullable ? ' | null' : ''};`
+        `  ${safeProperty(field.code)}?: ${typescriptType(field.type, field.exactDecimal)}${nullable ? ' | null' : ''};`
       );
     }
     lines.push('}', '');
@@ -2456,6 +2457,7 @@ function normalizeResourceSurface(
           ...(field.maxLength !== undefined ? { maxLength: field.maxLength } : {}),
           ...(field.precision !== undefined ? { precision: field.precision } : {}),
           ...(field.scale !== undefined ? { scale: field.scale } : {}),
+          ...(field.exactDecimal !== undefined ? { exactDecimal: field.exactDecimal } : {}),
           ...(field.min !== undefined ? { min: field.min } : {}),
           ...(field.max !== undefined ? { max: field.max } : {}),
           ...(field.rangeBoundary
@@ -2572,6 +2574,7 @@ function defaultResourceSurface(resource: DataResource): DataResourceSurface {
         ...(field.maxLength !== undefined ? { maxLength: field.maxLength } : {}),
         ...(field.precision !== undefined ? { precision: field.precision } : {}),
         ...(field.scale !== undefined ? { scale: field.scale } : {}),
+        ...(field.exactDecimal !== undefined ? { exactDecimal: field.exactDecimal } : {}),
         ...(field.min !== undefined ? { min: field.min } : {}),
         ...(field.max !== undefined ? { max: field.max } : {}),
         ...(field.rangeBoundary

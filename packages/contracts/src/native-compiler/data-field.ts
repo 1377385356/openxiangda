@@ -105,6 +105,8 @@ export interface NativeDataFieldV2 {
   maxLength?: number;
   precision?: number;
   scale?: number;
+  /** Opt-in lossless decimal-string transport for NUMERIC fields. */
+  exactDecimal?: boolean;
   min?: number;
   max?: number;
   rangeBoundary?: NativeDataRangeBoundaryV2;
@@ -206,6 +208,7 @@ export function parseNativeDataFieldsV2(
         'maxLength',
         'precision',
         'scale',
+        'exactDecimal',
         'min',
         'max',
         'rangeBoundary',
@@ -243,6 +246,13 @@ export function parseNativeDataFieldsV2(
     const options = parseOptions(field.options, semanticType, fieldPointer);
     const source = parseSource(field.source, semanticType, fieldPointer);
     const scalar = parseScalarConfiguration(field, semanticType, fieldPointer);
+    const exactDecimal = optionalBoolean(
+      field.exactDecimal,
+      `${fieldPointer}/exactDecimal`
+    );
+    if (exactDecimal !== undefined && semanticType !== 'number.decimal') {
+      issue('NATIVE_DATA_FIELD_EXACT_DECIMAL_TYPE_INVALID', `${fieldPointer}/exactDecimal`);
+    }
     const rangeBoundary = parseRangeBoundary(
       field.rangeBoundary,
       semanticType,
@@ -259,6 +269,7 @@ export function parseNativeDataFieldsV2(
       ...(options ? { options } : {}),
       ...(source ? { source } : {}),
       ...scalar,
+      ...(exactDecimal === undefined ? {} : { exactDecimal }),
       ...(rangeBoundary ? { rangeBoundary } : {}),
       ...(file ? { file } : {}),
       ...(serial ? { serial } : {}),

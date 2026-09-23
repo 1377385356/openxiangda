@@ -7,7 +7,7 @@ import {
 } from 'openxiangda-contracts/browser';
 
 export function workflowContextScalarValue(
-  field: Pick<DataFieldSurface, 'type' | 'options'>,
+  field: Pick<DataFieldSurface, 'type' | 'options' | 'exactDecimal'>,
   value: string,
 ): unknown {
   if (field.type === 'option.single') {
@@ -17,6 +17,10 @@ export function workflowContextScalarValue(
     return { label, value: key, ...(description ? { description } : {}), ...(color ? { color } : {}) };
   }
   if (field.type === 'number.integer' || field.type === 'number.decimal') {
+    if (field.type === 'number.decimal' && field.exactDecimal) {
+      if (!/^-?(?:0|[1-9]\d*)(?:\.\d+)?$/.test(value)) throw new Error('OPENXIANGDA_WORKFLOW_LAUNCH_CONTEXT_VALUE_INVALID');
+      return value;
+    }
     const parsed = Number(value);
     if (!Number.isFinite(parsed)) throw new Error('OPENXIANGDA_WORKFLOW_LAUNCH_CONTEXT_VALUE_INVALID');
     return parsed;

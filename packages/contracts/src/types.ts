@@ -1148,6 +1148,7 @@ export interface DataFieldDefinition {
   maxLength?: number;
   precision?: number;
   scale?: number;
+  exactDecimal?: boolean;
   /** Inclusive numeric lower bound. Only valid for number fields. */
   min?: number;
   /** Inclusive numeric upper bound. Only valid for number fields. */
