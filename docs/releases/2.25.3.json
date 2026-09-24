@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.25.3",
+  "status": "reviewed",
+  "title": "OpenXiangda 2.25.3：浏览器跨标签身份重核",
+  "summary": "应用标签重新获得焦点时，先读取平台当前身份与权限，避免旧页面继续展示原账号的功能。",
+  "newFeatures": [],
+  "fixes": [
+    "返回应用标签时重核当前授权；主体或权限作用域变化时停用旧页面，显示明确提示并要求用户确认后进入新身份。",
+    "同身份重核保留未保存表单，重核失败或退出广播发生时不继续使用旧授权。"
+  ],
+  "affectedUsers": [
+    "使用 OpenXiangda 2.0 浏览器运行时的应用，尤其是同一浏览器中切换登录账号或权限发生变化的用户。"
+  ],
+  "upgradeSteps": [
+    "应用更新到 openxiangda@2.25.3 后重新构建发布；CLI 对应版本为 openxiangda-cli@2.5.19。",
+    "在预发环境以具名管理员和经办人双向切换标签，核对旧页面停用、未保存表单保护及当前角色能力。"
+  ],
+  "knownLimitations": [
+    "重核在标签重新获得焦点或变为可见时触发；停留在前台的其他标签登录变更不会主动推送到当前页面。",
+    "应用预发部署与具名角色验收需单独记录。"
+  ],
+  "issues": [],
+  "compatibility": {
+    "node": ">=24",
+    "workspaceGenerations": "v2",
+    "platform": "使用现有 authz/current API，无需服务端升级",
+    "v1": "独立 V1 不受影响。"
+  }
+}

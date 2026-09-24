@@ -1,10 +1,11 @@
-import { Alert, Button, Result, Spin } from 'antd';
+import { Alert, Button, Modal, Result, Spin } from 'antd';
 import {
   createContext,
   useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
@@ -161,6 +162,9 @@ export function RuntimeBoundary({
   const [error, setError] = useState<Error>();
   const [attempt, setAttempt] = useState(0);
   const [identityEpoch, setIdentityEpoch] = useState(0);
+  const [sessionChecking, setSessionChecking] = useState(false);
+  const [changedAuthorization, setChangedAuthorization] = useState<RuntimeAuthorization>();
+  const recheckEpoch = useRef(0);
   const [pendingRedirect, setPendingRedirect] = useState<string>();
   const location = useLocation();
   const navigate = useNavigate();
@@ -174,6 +178,8 @@ export function RuntimeBoundary({
   useEffect(() => {
     let active = true;
     if (publicPolicy) {
+      setChangedAuthorization(undefined);
+      setSessionChecking(false);
       setAuthorization(undefined);
       setError(undefined);
       setPublicReady(false);
@@ -197,6 +203,8 @@ export function RuntimeBoundary({
     }
     setPublicReady(false);
     setPublicError(undefined);
+    setChangedAuthorization(undefined);
+    setSessionChecking(false);
     setAuthorization(undefined);
     setError(undefined);
     void loadRuntimeAuthorization({ refresh: attempt > 0 }).then(
@@ -217,6 +225,9 @@ export function RuntimeBoundary({
   useEffect(
     () =>
       subscribePlatformSessionInvalidation(() => {
+        recheckEpoch.current += 1;
+        setChangedAuthorization(undefined);
+        setSessionChecking(false);
         setAuthorization(undefined);
         setError(
           new OpenXiangdaPlatformRequestError({
@@ -228,6 +239,56 @@ export function RuntimeBoundary({
       }),
     [],
   );
+
+  const currentScope = authorization?.identity?.identityScope;
+  const currentUserId = authorization?.identity?.userId;
+  const currentEnvironment = authorization?.identity?.environment.key;
+  useEffect(() => {
+    if (publicPolicy || !authorization || changedAuthorization || error) return;
+    let active = true;
+    let pending = false;
+    const check = () => {
+      if (!active || pending || document.visibilityState === 'hidden') return;
+      pending = true;
+      const epoch = ++recheckEpoch.current;
+      setSessionChecking(true);
+      void loadRuntimeAuthorization({ refresh: true }).then(
+        value => {
+          if (!active || epoch !== recheckEpoch.current) return;
+          pending = false;
+          setSessionChecking(false);
+          if (
+            value.identity?.userId === currentUserId &&
+            value.identity?.environment.key === currentEnvironment &&
+            value.identity?.identityScope === currentScope
+          ) {
+            setAuthorization(value);
+          } else {
+            setAuthorization(undefined);
+            setChangedAuthorization(value);
+          }
+        },
+        reason => {
+          if (!active || epoch !== recheckEpoch.current) return;
+          pending = false;
+          setSessionChecking(false);
+          setAuthorization(undefined);
+          setError(reason instanceof Error ? reason : new Error(String(reason)));
+        },
+      );
+    };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') check();
+    };
+    window.addEventListener('focus', check);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      active = false;
+      recheckEpoch.current += 1;
+      window.removeEventListener('focus', check);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [currentScope, currentUserId, currentEnvironment, Boolean(authorization), Boolean(changedAuthorization), Boolean(error), publicPolicy?.code]);
 
   const identity = authorization?.identity || null;
   const production =
@@ -289,7 +350,21 @@ export function RuntimeBoundary({
 
   return (
     <>
-      {error && failureKind === 'unauthenticated' && loginContribution ? (
+      <Modal open={sessionChecking} closable={false} footer={null} maskClosable={false} keyboard={false} centered>
+        <Spin description="正在核对当前登录身份与权限" />
+      </Modal>
+      {changedAuthorization ? (
+        <Result
+          status="warning"
+          title="登录身份或权限已变化"
+          subTitle="旧页面已停止使用。未保存内容不会跨账号或权限作用域提交。"
+          extra={<Button type="primary" onClick={() => {
+            setAuthorization(changedAuthorization);
+            setChangedAuthorization(undefined);
+            setIdentityEpoch(epoch => epoch + 1);
+          }}>以当前身份继续</Button>}
+        />
+      ) : error && failureKind === 'unauthenticated' && loginContribution ? (
         <ApplicationLoginController
           app={{ code: applicationCode(), name: applicationName() }}
           contribution={loginContribution}

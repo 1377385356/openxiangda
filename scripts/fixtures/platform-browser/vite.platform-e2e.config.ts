@@ -13,6 +13,7 @@ export default mergeConfig(applicationConfig, {
       'workflow-experience.e2e.html',
       'workflow-entry.e2e.html',
       'login-return.e2e.html',
+      'session-switch.e2e.html',
       'zoned-time.e2e.html',
       'guard-navigation.e2e.html',
       'user-surface.e2e.html',

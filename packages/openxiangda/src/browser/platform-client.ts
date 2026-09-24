@@ -377,6 +377,7 @@ export interface RuntimeAuthorization {
 
 let activeIdentity: RuntimeIdentity | undefined;
 let runtimeAuthorizationLoad: Promise<RuntimeAuthorization> | undefined;
+let runtimeAuthorizationGeneration = 0;
 
 function applicationServiceBase() {
   return `/service/openxiangda-api/v2/applications/${applicationCode()}`;
@@ -422,6 +423,7 @@ function isPlatformLogoutSignal(value: unknown): value is PlatformLogoutSignal {
 }
 
 function invalidatePlatformSession() {
+  runtimeAuthorizationGeneration += 1;
   activeIdentity = undefined;
   runtimeAuthorizationLoad = undefined;
   applicationCsrfToken = '';
@@ -675,7 +677,9 @@ function validateRuntimeAuthorization(
   return { state: context.state, identity: activeIdentity };
 }
 
-async function requestRuntimeAuthorization(): Promise<RuntimeAuthorization> {
+async function requestRuntimeAuthorization(
+  generation: number,
+): Promise<RuntimeAuthorization> {
   const mount = runtimeMount();
   if (mount) {
     const context = await requestRead<RuntimeAuthorizationContext>(
@@ -683,11 +687,17 @@ async function requestRuntimeAuthorization(): Promise<RuntimeAuthorization> {
         mount.environmentKey,
       )}`,
     );
+    if (generation !== runtimeAuthorizationGeneration) {
+      throw new Error('OPENXIANGDA_RUNTIME_AUTHORIZATION_SUPERSEDED');
+    }
     return validateRuntimeAuthorization(context);
   }
   const current = await requestRead<ConnectedCurrent>(
     `${applicationServiceBase()}/dev-sessions/current`,
   );
+  if (generation !== runtimeAuthorizationGeneration) {
+    throw new Error('OPENXIANGDA_RUNTIME_AUTHORIZATION_SUPERSEDED');
+  }
   activeIdentity = {
     ...current.principal,
     identityScope: `connected-dev:${applicationCode()}:${
@@ -703,10 +713,15 @@ async function requestRuntimeAuthorization(): Promise<RuntimeAuthorization> {
 export async function loadRuntimeAuthorization(
   options: { refresh?: boolean } = {},
 ): Promise<RuntimeAuthorization> {
-  if (options.refresh) runtimeAuthorizationLoad = undefined;
+  if (options.refresh) {
+    runtimeAuthorizationGeneration += 1;
+    activeIdentity = undefined;
+    runtimeAuthorizationLoad = undefined;
+  }
   if (runtimeAuthorizationLoad) return await runtimeAuthorizationLoad;
+  const generation = runtimeAuthorizationGeneration;
   const pending = (async () => {
-    return await requestRuntimeAuthorization();
+    return await requestRuntimeAuthorization(generation);
   })();
   runtimeAuthorizationLoad = pending;
   try {
@@ -734,6 +749,7 @@ export async function logoutCurrentUser() {
     headers: { 'x-openxiangda-csrf-token': applicationCsrfToken },
     body: JSON.stringify({ environmentKey: runtimeEnvironmentKey(), device }),
   });
+  runtimeAuthorizationGeneration += 1;
   activeIdentity = undefined;
   runtimeAuthorizationLoad = undefined;
   applicationCsrfToken = '';
