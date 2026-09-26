@@ -1,4 +1,5 @@
 ---
+"openxiangda": patch
 "openxiangda-contracts": minor
 "openxiangda-devkit-core": minor
 "openxiangda-cli": minor
