@@ -263,3 +263,6 @@ export type StableLocationValue = StableLocationSnapshot & {
   longitude: number;
   latitude: number;
 };
+
+export interface ResourceTypes {
+}
