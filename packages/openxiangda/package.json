@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.30.0",
+  "version": "2.31.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -67,13 +67,13 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.6.1",
-    "openxiangda-contracts": "2.27.0",
-    "openxiangda-devkit-core": "2.30.0",
+    "openxiangda-cli": "2.6.2",
+    "openxiangda-contracts": "2.28.0",
+    "openxiangda-devkit-core": "2.31.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.51",
-    "openxiangda-nest": "2.7.4",
-    "openxiangda-skill-kit": "2.3.25",
+    "openxiangda-mcp": "2.0.52",
+    "openxiangda-nest": "2.7.5",
+    "openxiangda-skill-kit": "2.3.26",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -139,36 +139,41 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.30.0",
+    "version": "2.31.0",
     "status": "reviewed",
-    "title": "OpenXiangda 2.30.0：平台条件唯一键",
-    "summary": "模型可声明条件唯一键，统一约束普通 CRUD、导入和业务事务；编译器在发布前检查规则并识别目标平台是否支持。",
+    "title": "OpenXiangda 2.31.0：缓存、排队与原子配额",
+    "summary": "应用可声明热点内容缓存、全局准入、可恢复的 Native 命令和整数配额。平台承担回源保护、受理幂等与事务内分配，React 和移动端 SDK 提供等待、提交及原结果恢复。",
     "newFeatures": [
-      "模型与数据资源支持有界 uniqueKeys 声明，可选择精确比较、NFKC 空白折叠或 ASCII 大写，并按文本空值或单选集合限定参与记录。",
-      "两端编译器、JSON Schema、声明诊断和能力清单使用一致契约，自动要求 data.unique-keys@1.0.0。未声明的模型不增加能力要求。"
+      "data.concurrency 由两端共享编译器验证，缓存读取声明包含权限范围、有限参数、失效依赖和回源预算。",
+      "等待准入按可信主体合并重复请求，持久命令返回原操作回执，响应丢失和页面刷新后可继续核对结果。",
+      "整数配额支持立即分配、预占、确认、释放与到期；配额、业务记录、事件和结果在同一 Native 事务提交，受管模型阻止普通 CRUD 绕过。",
+      "openxiangda/react 和 openxiangda/mobile 提供 createManagedConcurrencyClient、useManagedCommand、ManagedCommandStatus 与 ManagedCommandGate。"
     ],
     "fixes": [],
     "affectedUsers": [
-      "需要跨并发写入保障业务编号或复合字段唯一性的 OpenXiangda 2.0 应用开发者。"
+      "需要缓存、排队、限量申领、预约或抢票的 OpenXiangda 2.0 应用开发者。"
     ],
     "upgradeSteps": [
-      "更新到 openxiangda@2.30.0 并更新锁文件；在需要唯一性的模型声明 uniqueKeys，使用当前版本的数据与权限文档。",
-      "先确认目标平台实际提供 data.unique-keys@1.0.0，再激活测试版本。历史重复或超长数据会明确拒绝激活并保留原环境。",
-      "重复写入处理 HTTP 409 和规则标识；长度超限处理 HTTP 422。避免盲目重试创建，事务失败后按原业务状态恢复。"
+      "升级到 openxiangda@2.31.0 并更新锁文件，按 docs/managed-concurrency.md 及完整声明示例配置资源和权限。",
+      "先确认目标平台已部署 data.managed-concurrency@1.0.0 及对应 SQL migration，再激活测试版本。未启用此声明的应用沿用原路径。",
+      "上线前按目标硬件、真实权限和业务规模验证完成速率、P95/P99、回源 SQL、锁等待及恢复时间；部署和容量验收独立于 npm 发行。",
+      "停用或切换不兼容版本前停止新受理并排空非终态命令，保留历史命令、分配及回执。"
     ],
     "knownLimitations": [
-      "每资源最多 8 条、每条 1–4 个键字段和最多 4 个 AND 条件；参与比较字段归一化后最多 256 个 UTF-8 字节。",
-      "已有规则的修改、删除和所用字段替换需要平台受管迁移；连接开发不能私自改变规则。",
-      "平台升级与 SDK 发行分别验收；npm 发行不代表客户节点已经上线。跨 PostgreSQL 大版本变更须先安排归一化索引的受管重建。"
+      "首版执行编译后的 Native 原子动作，不把任意 JS、SQL 或第三方调用纳入原子事务。",
+      "Redis 故障时暂停新准入和缓存回源；临时等待位置不承诺持久，已持久受理命令可恢复。",
+      "缓存减少内容 SQL，当前身份和权限链路仍有数据库访问；不提供公共 CDN 发布或自动全量预热。",
+      "同一配额池和主体永久去重，释放后不会自动重新报名；新一轮业务使用新的权威资源或配额池。",
+      "资源保护上限不代表生产吞吐保证；公开包升级不会自动升级客户平台。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
       "workspaceGenerations": "v2",
-      "platform": "声明规则时要求 data.unique-keys@1.0.0；普通应用沿用现有能力。",
+      "platform": "声明并发能力时要求 data.managed-concurrency@1.0.0；同时声明业务唯一键时还要求 data.unique-keys@1.0.0。",
       "v1": "独立 V1 引擎和工作区不受影响。"
     },
-    "sha256": "cbe1a5766e0cc0d8948d54b6d2129320b5d2fbe1e8f7120874b9f56c774b1fcb",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.30.0"
+    "sha256": "6258bae64bad0db43a319ecb6886a037952e0c77410edd6a790d18b8cd470645",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.31.0"
   }
 }
