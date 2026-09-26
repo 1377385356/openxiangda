@@ -447,6 +447,19 @@ export class OpenXiangdaControlPlaneClient {
     return `${url.origin}${url.pathname.replace(/\/+$/, '')}`;
   }
 
+  /** Reuses the authoritative login identity; no credentials are persisted in the image cache. */
+  async backendImageUploadIdentity(): Promise<{ platform: string; tenantId: string; userId: string }> {
+    const identity = await this.json<{ user?: { id?: unknown } | null; tenant?: { id?: unknown } | null }>(
+      '/openxiangda-api/v2/auth/whoami', { signal: AbortSignal.timeout(10_000) });
+    const tenantId = identity.tenant?.id;
+    const userId = identity.user?.id;
+    if (typeof tenantId !== 'string' || !tenantId || tenantId.length > 256 ||
+      typeof userId !== 'string' || !userId || userId.length > 256) {
+      throw new ControlPlaneError(401, 'OPENXIANGDA_BACKEND_IMAGE_IDENTITY_REQUIRED', '镜像恢复需要当前平台身份，请重新登录');
+    }
+    return { platform: this.diagnosticSite(), tenantId, userId };
+  }
+
   async capabilities(signal?: AbortSignal): Promise<PlatformCapabilities> {
     const capabilities = await this.json<PlatformCapabilities>(
       "/openxiangda-api/v2/capabilities",

@@ -36,10 +36,12 @@
     "test": "tsx --test --test-concurrency=1 test/*.test.ts"
   },
   "dependencies": {
+    "@balena/dockerignore": "1.0.2",
     "ajv": "8.20.0",
     "cron-parser": "5.4.0",
-    "openxiangda-contracts": "2.24.0",
     "esbuild": "0.28.2",
+    "openxiangda-contracts": "2.24.0",
+    "proper-lockfile": "4.1.2",
     "typescript": "5.9.3",
     "undici": "6.28.0"
   },
@@ -55,5 +57,8 @@
   "homepage": "https://github.com/1377385356/openxiangda",
   "bugs": {
     "url": "https://github.com/1377385356/openxiangda/issues"
+  },
+  "devDependencies": {
+    "@types/proper-lockfile": "4.1.4"
   }
 }

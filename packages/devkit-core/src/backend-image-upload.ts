@@ -1,4 +1,4 @@
-import { createReadStream, lstatSync, readFileSync } from 'node:fs';
+import { createReadStream, lstatSync, readFileSync, readdirSync } from 'node:fs';
 import { open } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
@@ -53,13 +53,14 @@ async function retry<T>(operation: () => Promise<T>): Promise<T> {
   }
 }
 
-export async function uploadBackendOciLayout(input: {
+export async function inspectBackendOciLayout(input: {
   directory: string;
-  appCode: string;
   maxImageBytes: number;
-  chunkEncoding?: BackendImageChunkEncoding;
-  uploader: BackendImageUploader;
-}): Promise<{ digest: string; reference: string }> {
+}) {
+  for (const path of [input.directory, join(input.directory, 'blobs'), join(input.directory, 'blobs', 'sha256')]) {
+    const stat = lstatSync(path);
+    if (!stat.isDirectory() || stat.isSymbolicLink()) invalid();
+  }
   const layout = JSON.parse(metadata(join(input.directory, 'oci-layout')));
   const index = JSON.parse(metadata(join(input.directory, 'index.json')));
   if (layout.imageLayoutVersion !== '1.0.0' || index.schemaVersion !== 2 ||
@@ -82,6 +83,18 @@ export async function uploadBackendOciLayout(input: {
     throw Object.assign(new Error('OPENXIANGDA_BACKEND_IMAGE_TOO_LARGE: 镜像超过平台上传额度'),
       { code: 'OPENXIANGDA_BACKEND_IMAGE_TOO_LARGE' });
   }
+  const expected = new Set([digest, ...blobs.keys()].map(value => value.slice(7)));
+  const paths = readdirSync(join(input.directory, 'blobs', 'sha256'));
+  const rootEntries = readdirSync(input.directory);
+  // Buildx/containerd leaves this empty staging directory after a completed export.
+  if (rootEntries.includes('ingest')) {
+    const ingest = join(input.directory, 'ingest');
+    const stat = lstatSync(ingest);
+    if (!stat.isDirectory() || stat.isSymbolicLink() || readdirSync(ingest).length) invalid();
+  }
+  if (rootEntries.filter(name => name !== 'ingest').sort().join(',') !== 'blobs,index.json,oci-layout' ||
+    readdirSync(join(input.directory, 'blobs')).join(',') !== 'sha256' ||
+    paths.length !== expected.size || paths.some(path => !expected.has(path))) invalid();
   for (const blob of blobs.values()) {
     const path = blobPath(input.directory, blob.digest);
     const stat = lstatSync(path);
@@ -90,10 +103,34 @@ export async function uploadBackendOciLayout(input: {
     for await (const chunk of createReadStream(path)) hash.update(chunk);
     if (`sha256:${hash.digest('hex')}` !== blob.digest) invalid();
   }
-  let receipt = await retry(() => input.uploader.beginBackendImage(input.appCode, { digest, manifest }));
+  return { digest, manifest, sizeBytes, blobs };
+}
+
+export async function uploadBackendOciLayout(input: {
+  directory: string;
+  appCode: string;
+  maxImageBytes: number;
+  chunkEncoding?: BackendImageChunkEncoding;
+  uploader: BackendImageUploader;
+  expectedDigest?: string;
+  assertOwnership?: () => void;
+}): Promise<{ digest: string; reference: string }> {
+  const { digest, manifest, sizeBytes, blobs } = await inspectBackendOciLayout(input);
+  if (input.expectedDigest !== undefined && input.expectedDigest !== digest) invalid();
+  const owned = async <T>(operation: () => Promise<T>) => {
+    input.assertOwnership?.();
+    return operation();
+  };
+  let receipt = await retry(() => owned(() => input.uploader.beginBackendImage(input.appCode, { digest, manifest })));
   if (receipt.digest !== digest || receipt.sizeBytes !== sizeBytes || receipt.maxChunkBytes !== CHUNK_BYTES ||
+    !['ready', 'uploading'].includes(receipt.status) ||
     !Array.isArray(receipt.blobs) || receipt.blobs.length !== blobs.size ||
     new Set(receipt.blobs.map(blob => blob.digest)).size !== blobs.size) invalid();
+  for (const progress of receipt.blobs) {
+    const blob = blobs.get(progress.digest);
+    if (!blob || progress.size !== blob.size || !Number.isSafeInteger(progress.offset) || progress.offset < 0 ||
+      progress.offset > blob.size || typeof progress.complete !== 'boolean' || (progress.complete && progress.offset !== blob.size)) invalid();
+  }
   if (receipt.status !== 'ready') {
     for (const progress of receipt.blobs) {
       const blob = blobs.get(progress.digest);
@@ -109,8 +146,8 @@ export async function uploadBackendOciLayout(input: {
           const read = await file.read(content, 0, content.length, offset);
           if (read.bytesRead !== content.length) invalid();
           const encoded = input.chunkEncoding === 'gzip' ? gzipSync(content) : content;
-          const result = await retry(() => input.uploader.uploadBackendImageChunk(
-            input.appCode, digest, blob.digest, offset, encoded, input.chunkEncoding));
+          const result = await retry(() => owned(() => input.uploader.uploadBackendImageChunk(
+            input.appCode, digest, blob.digest, offset, encoded, input.chunkEncoding)));
           if (!Number.isSafeInteger(result.offset) || result.offset < 0 || result.offset > blob.size ||
             typeof result.complete !== 'boolean' || (result.complete && result.offset !== blob.size)) invalid();
           stagnant = result.offset === offset && !result.complete ? stagnant + 1 : 0;
@@ -120,7 +157,7 @@ export async function uploadBackendOciLayout(input: {
         }
       } finally { await file.close(); }
     }
-    receipt = await retry(() => input.uploader.completeBackendImage(input.appCode, digest));
+    receipt = await retry(() => owned(() => input.uploader.completeBackendImage(input.appCode, digest)));
   }
   if (receipt.digest !== digest || receipt.status !== 'ready' || typeof receipt.reference !== 'string' ||
     !receipt.reference.endsWith(`@${digest}`) || /[\s?#\\]/.test(receipt.reference)) invalid();

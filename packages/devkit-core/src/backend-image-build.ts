@@ -1,5 +1,6 @@
 import { runCommandProcess } from './command-process.js';
 import { uploadBackendOciLayout, type BackendImageUploader } from './backend-image-upload.js';
+import { withBackendImageCandidate, type BackendImageRecoveryScope } from './backend-image-candidate.js';
 import {
   existsSync,
   mkdtempSync,
@@ -173,6 +174,9 @@ export async function publishBackendImage(input: {
   target: BackendImageBuildTarget;
   dockerExecutable?: string;
   uploader?: BackendImageUploader;
+  recoveryScope?: BackendImageRecoveryScope;
+  /** @internal Private test cache, outside the build context. */
+  candidateCacheRoot?: string;
 }): Promise<PublishedBackendImage> {
   const root = resolve(input.root);
   const dockerfile = resolve(root, input.backendRoot, "Dockerfile");
@@ -201,27 +205,28 @@ export async function publishBackendImage(input: {
   }
 
   const docker = input.dockerExecutable || "docker";
-  const version = await runDocker(docker, ["buildx", "version"], root);
-  if (version.error?.code === "ENOENT") {
-    throw new BackendImageBuildError(
-      "OPENXIANGDA_DOCKER_REQUIRED",
-      "未找到 Docker CLI，请安装并启动 Docker Desktop"
-    );
-  }
-  if (version.error || version.status !== 0) {
-    throw new BackendImageBuildError(
-      "OPENXIANGDA_DOCKER_BUILDX_REQUIRED",
-      "当前 Docker CLI 未提供可用的 Buildx"
-    );
-  }
+  const assertBuilder = async () => {
+    const version = await runDocker(docker, ["buildx", "version"], root);
+    if (version.error?.code === "ENOENT") {
+      throw new BackendImageBuildError(
+        "OPENXIANGDA_DOCKER_REQUIRED",
+        "未找到 Docker CLI，请安装并启动 Docker Desktop"
+      );
+    }
+    if (version.error || version.status !== 0) {
+      throw new BackendImageBuildError(
+        "OPENXIANGDA_DOCKER_BUILDX_REQUIRED",
+        "当前 Docker CLI 未提供可用的 Buildx"
+      );
+    }
+  };
 
   if (input.target.upload) {
     if (!input.uploader) {
       throw new BackendImageBuildError('OPENXIANGDA_BACKEND_IMAGE_UPLOADER_REQUIRED', '缺少平台登录态镜像上传通道');
     }
-    const scratch = mkdtempSync(join(tmpdir(), 'openxiangda-oci-'));
-    const directory = join(scratch, 'image');
-    try {
+    const build = async (directory: string) => {
+      await assertBuilder();
       const built = await runDocker(docker, ['buildx', 'build', '--file', dockerfile,
         '--platform', input.target.platform, '--provenance=false', '--sbom=false',
         '--tag', input.target.repository,
@@ -236,11 +241,30 @@ export async function publishBackendImage(input: {
         }
         throw new BackendImageBuildError('OPENXIANGDA_BACKEND_IMAGE_BUILD_FAILED', '本地后端镜像构建失败');
       }
-      const uploaded = await uploadBackendOciLayout({ directory, ...input.target.upload, uploader: input.uploader });
+    };
+    const upload = async (directory: string, expectedDigest?: string, assertOwnership?: () => void) => {
+      const uploaded = await uploadBackendOciLayout({ directory, ...input.target.upload!, uploader: input.uploader!,
+        ...(expectedDigest ? { expectedDigest } : {}), ...(assertOwnership ? { assertOwnership } : {}) });
       return { repository: uploaded.reference.split('@')[0]!, platform: input.target.platform, ...uploaded };
+    };
+    // Local recovery capacity must not lower the platform's accepted image limit.
+    if (input.recoveryScope && input.target.upload.maxImageBytes <= 8 * 1024 ** 3) {
+      if (input.recoveryScope.appCode !== input.target.upload.appCode) {
+        throw new BackendImageBuildError('OPENXIANGDA_BACKEND_IMAGE_RECOVERY_SCOPE_INVALID', '恢复应用与上传目标不一致');
+      }
+      return withBackendImageCandidate({ root, dockerfile, scope: input.recoveryScope,
+        maxImageBytes: input.target.upload.maxImageBytes,
+        ...(input.candidateCacheRoot ? { cacheRoot: input.candidateCacheRoot } : {}), build, upload });
+    }
+    const scratch = mkdtempSync(join(tmpdir(), 'openxiangda-oci-'));
+    const directory = join(scratch, 'image');
+    try {
+      await build(directory);
+      return await upload(directory);
     } finally { rmSync(scratch, { recursive: true, force: true }); }
   }
 
+  await assertBuilder();
   const scratch = mkdtempSync(join(tmpdir(), "openxiangda-buildx-"));
   const metadataFile = join(scratch, "metadata.json");
   const revision = String(input.sourceRevision || "").toLowerCase();
