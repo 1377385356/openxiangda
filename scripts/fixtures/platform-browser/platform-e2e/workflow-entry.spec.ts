@@ -28,7 +28,8 @@ async function workflowEntryPlatform(page: Page) {
     correctionReads: 0, correctionWrites: [] as any[], correctionEffects: 0,
     correctionReadFailure: false, wrongSurfaceScope: false, forbiddenEditable: false,
     loseCorrectionResponse: false, loseLaunchResponse: false,
-    launches: [] as any[], launchEffects: 0, statusReads: 0, failStatusOnce: false, statusFailureCode: 500,
+    launches: [] as any[], launchEffects: 0, statusReads: 0, resolutionReads: 0,
+    commandKey: 'fixture-command-key', failStatusOnce: false, statusFailureCode: 500,
     processStatus: 'started' as 'accepted' | 'started' | 'awaiting_input',
     statusReadGate: null as Promise<void> | null,
     answers: [] as any[], nativeWrites: [] as string[],
@@ -40,7 +41,7 @@ async function workflowEntryPlatform(page: Page) {
     return {
       schemaVersion: 'openxiangda.business-process.command/v2', id: commandId, appCode,
       environmentKey: 'preproduction', operationCode: 'openxiangda.workflow.purchase-approval.submit',
-      idempotencyKey: 'fixture-command-key', workflowCode: 'purchase-approval', status,
+      idempotencyKey: state.commandKey, workflowCode: 'purchase-approval', status,
       revision: status === 'started' ? 4 : 1,
       subject: { resourceCode, id: state.record.id, dataRevision: state.record.revision, factDigest: 'a'.repeat(64) },
       definitionVersion: 1, bindingVersion: 1, requirements: [], answers: {}, preview: {},
@@ -182,10 +183,25 @@ async function workflowEntryPlatform(page: Page) {
       await new Promise(resolve => setTimeout(resolve, 300));
       Object.assign(state.record, input.mutation.data, { id: 'record-created', revision: 1, decision: '审批中' });
       state.launchEffects += 1;
+      state.commandKey = input.idempotencyKey;
       const result = command('accepted');
       state.commands.set(input.idempotencyKey, result);
       if (state.loseLaunchResponse) { state.loseLaunchResponse = false; return fail(500, '响应暂时不可用，请重试'); }
       return ok(result);
+    }
+    if (path.endsWith('/business-process/commands/resolve')) {
+      const input = request.postDataJSON();
+      state.resolutionReads += 1;
+      const stored = state.commands.get(input.idempotencyKey);
+      return ok({
+        schemaVersion: 'openxiangda.business-process-resolution/v1', appCode, ...input,
+        observedAt: new Date().toISOString(), outcome: stored ? 'committed' : 'not_observed',
+        receipt: stored ? {
+          schemaVersion: 'openxiangda.business-process-receipt/v2', receiptId: commandId, commandId,
+          operationCode: input.operationCode, idempotencyKey: input.idempotencyKey,
+          requestDigest: 'a'.repeat(64), command: stored, createdAt: '2026-09-06T01:00:00.000Z',
+        } : null,
+      });
     }
     if (path.endsWith(`/business-process/commands/${commandId}/surface`)) {
       state.statusReads += 1;
@@ -317,7 +333,7 @@ test('record edit load retries and rejects a Surface for another environment or 
   expect(state.correctionWrites).toEqual([]);
 });
 
-test('workflow launch retries one command, blocks close while processing and opens readonly record detail', async ({ page }, testInfo) => {
+test('workflow launch resolves a lost response without another write and opens readonly record detail', async ({ page }, testInfo) => {
   const state = await workflowEntryPlatform(page);
   state.admin = false;
   state.loseLaunchResponse = true;
@@ -332,8 +348,10 @@ test('workflow launch retries one command, blocks close while processing and ope
   await drawer.getByRole('button', { name: '提交审批' }).dblclick();
   await expect(drawer.getByRole('button', { name: '关闭', exact: true })).toBeDisabled();
   await expect(page.getByText('响应暂时不可用，请重试')).toBeVisible();
-  await expect(drawer.getByLabel('申请名称', { exact: true })).toHaveValue('抽屉新增的申请');
-  await drawer.getByRole('button', { name: '提交审批' }).click();
+  await expect(drawer.getByText('上次提交结果尚未确认', { exact: true })).toBeVisible();
+  await expect(drawer.getByRole('button', { name: '提交审批' })).toHaveCount(0);
+  expect(state.launches[0].mutation.data).toMatchObject({ title: '抽屉新增的申请', amount: 1200 });
+  await drawer.getByRole('button', { name: '查询提交结果' }).click();
   await expect.poll(() => state.statusReads).toBeGreaterThan(0);
   await expect(drawer.getByRole('link', { name: '新开页面' })).toHaveAttribute('href', `/workflows/purchase-approval/start?processCommandId=${commandId}`);
   await expect(drawer.getByRole('button', { name: '关闭', exact: true })).toBeDisabled();
@@ -343,8 +361,8 @@ test('workflow launch retries one command, blocks close while processing and ope
   const detail = page.getByRole('dialog', { name: '申请详情' });
   await expect(detail.getByRole('heading', { name: '抽屉新增的申请', exact: true })).toBeVisible();
   await expect(detail.locator('input,textarea')).toHaveCount(0);
-  expect(state.launches).toHaveLength(2);
-  expect(state.launches[1]).toEqual(state.launches[0]);
+  expect(state.launches).toHaveLength(1);
+  expect(state.resolutionReads).toBe(1);
   expect(state.launchEffects).toBe(1);
   expect(state.nativeWrites).toEqual([]);
   expect(state.correctionWrites).toEqual([]);
