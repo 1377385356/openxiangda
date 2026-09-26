@@ -437,6 +437,12 @@ export class OpenXiangdaControlPlaneClient {
     this.artifactUploadFetch = options.fetch || createArtifactUploadFetch();
   }
 
+  /** Exact configured site for diagnostics; credentials and query parameters are never returned. */
+  diagnosticSite(): string {
+    const url = new URL(this.baseUrl);
+    return `${url.origin}${url.pathname.replace(/\/+$/, '')}`;
+  }
+
   async capabilities(): Promise<PlatformCapabilities> {
     const capabilities = await this.json<PlatformCapabilities>(
       "/openxiangda-api/v2/capabilities",

@@ -4828,3 +4828,30 @@ test("deploy workflow head preflight refuses blind deploys when the catalog is u
   assert.equal(diagnostics[0].severity, "error");
   assert.equal(diagnostics[0].retryable, true);
 });
+
+test('collects independent target capability and configuration gaps without concealing either', async () => {
+  const { collectTargetReadiness } = await import('../src/target-readiness.js');
+  let reads = 0;
+  const inspect = async (): Promise<any> => { reads++; throw new ControlPlaneError(409, 'SECRET_REQUIRED', 'target unavailable', {
+    issues: [{ code: 'SECRET_REQUIRED', pointer: '/secrets/example' }, { code: 'PROVIDER_REQUIRED', pointer: '/authentication' }],
+  }, { requestId: 'request-1' }); };
+  const input = { site: 'https://site.example/service', appCode: 'app', environmentKey: 'preproduction',
+    capabilities: platformCapabilitiesFixture(), required: CURRENT_APPLICATION_CONTRACT,
+    requiredCapabilities: [{ code: 'data-api-v2' as const, contractVersion: 'v2' }, { code: 'deployment.durable-runs' as const, contractVersion: 'v2' }], inspect };
+  await assert.rejects(collectTargetReadiness(input), (error: unknown) => {
+    assert.ok(error instanceof ControlPlaneError); const data = error.data as any;
+    assert.equal(data.issues.length, 4); assert.equal(data.unavailable.length, 2);
+    assert.equal(data.configurationRequestId, 'request-1');
+    assert.deepEqual({ ...data.target, observedAt: '' }, { site: input.site, appCode: 'app', environmentKey: 'preproduction', platformVersion: '2.0.0-test', observedAt: '' });
+    assert.ok(Number.isFinite(Date.parse(data.target.observedAt))); return true;
+  });
+  assert.equal(reads, 1);
+  await assert.rejects(collectTargetReadiness({ ...input, capabilities: { ...input.capabilities,
+    configurationCompatibility: { ...input.capabilities.configurationCompatibility, validatorDigest: 'f'.repeat(64) } } }), /校验|规则|validator|编译/);
+  assert.equal(reads, 1, 'unknown protocol must not probe configuration endpoints');
+});
+
+test('target diagnostics remove credentials, query and fragment from the configured site', () => {
+  const client = new OpenXiangdaControlPlaneClient({ baseUrl: 'https://private:secret@site.example/service/?token=secret#private' });
+  assert.equal(client.diagnosticSite(), 'https://site.example/service');
+});

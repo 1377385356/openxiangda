@@ -1,3 +1,4 @@
+import { collectTargetReadiness } from './target-readiness.js';
 import type { DeploymentStrategy } from 'openxiangda-contracts';
 import { cloneSourceGit, initializeSourceGit, installSourceCredential, pushSourceGit } from './source-git.js';
 import { randomUUID } from "node:crypto";
@@ -1989,22 +1990,9 @@ export class OpenXiangdaApplicationServices {
       workspace.config,
       this.toolchainVersion
     );
-    const {
-      assertApplicationContractCompatible,
-      assertRequiredCapabilitiesAvailable,
-    } = await import(
-      "./deployment.js"
-    );
-    assertApplicationContractCompatible(capabilities, {
-      appPackageSchemaVersion: SCHEMA_VERSIONS.appPackage,
-      configurationBundleSchemaVersion: sources.config.value.schemaVersion,
-      contractBundleSchemaVersion: sources.contracts.value.schemaVersion,
-      compilerContractVersion: sources.config.value.compilerContractVersion,
-    });
-    assertRequiredCapabilitiesAvailable(
-      capabilities,
-      requiredPlatformCapabilities(workspace.config)
-    );
+    await operationStage('target-preflight', '目标平台只读预检', () => this.validateTargetConfigurationCompatibility(
+      workspace, input.environment, compileLocalConfiguration(workspace.config, this.toolchainVersion),
+    ));
     const hasBackend = backendRuntimeRequired(workspace.config);
     const runtimeCapacity = await this.runtimeCapacityPlan(workspace, client, capabilities, input);
     if (runtimeCapacity.sufficient === false) {
@@ -2746,17 +2734,11 @@ export class OpenXiangdaApplicationServices {
       contractBundleSchemaVersion: sources.contracts.value.schemaVersion,
       compilerContractVersion: sources.config.value.compilerContractVersion,
     };
-    const {
-      assertApplicationContractCompatible,
-      assertConfigurationValidationResult,
-      assertRequiredCapabilitiesAvailable,
-    } = await import("./deployment.js");
-    assertApplicationContractCompatible(capabilities, required);
-    assertRequiredCapabilitiesAvailable(
-      capabilities,
-      requiredPlatformCapabilities(workspace.config)
-    );
-    const result = await client.validateConfigurationCompatibility(
+    const { assertConfigurationValidationResult } = await import('./deployment.js');
+    const result = await collectTargetReadiness({
+      site: client.diagnosticSite?.() || 'unknown', appCode: workspace.config.app.code,
+      environmentKey, capabilities, required, requiredCapabilities: requiredPlatformCapabilities(workspace.config),
+      inspect: () => client.validateConfigurationCompatibility(
       workspace.config.app.code,
       capabilities,
       {
@@ -2775,7 +2757,8 @@ export class OpenXiangdaApplicationServices {
           canonical: sources.contracts.content,
         },
       }
-    );
+    ),
+    });
     assertConfigurationValidationResult(capabilities, required, result, {
       configurationDigest: sources.config.digest,
       contractDigest: sources.contracts.digest,
@@ -2829,6 +2812,7 @@ export class OpenXiangdaApplicationServices {
       required,
       supported: [],
       ...data,
+      ...(error instanceof ControlPlaneError && error.remote?.requestId ? { requestId: error.remote.requestId } : {}),
     };
     const diagnostic = this.diagnostic(
       String(
