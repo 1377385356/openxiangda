@@ -64,6 +64,21 @@ pnpm openxiangda accept --plan .openxiangda/acceptance-plan.json --json
 
 记录源码/包版本、AppVersion、环境、角色、预期及实际结果、必要请求标识。区分本地检查、分发安装、部署激活与业务验收。某项未执行时说明原因，不将其写成通过。
 
+## 复制请求诊断 {#request-diagnostics}
+
+标准浏览器请求错误保留服务端 requestId，文件导出及权限读取重试耗尽也使用同一错误类型。自定义页面通过公开入口读取固定格式诊断：
+
+```ts
+import { platformRequestDiagnostic } from 'openxiangda/react';
+
+function supportDetails(error: unknown) {
+  const diagnostic = platformRequestDiagnostic(error);
+  return diagnostic ? JSON.stringify(diagnostic, null, 2) : null;
+}
+```
+
+将这段结果放入当前操作的错误详情，附应用版本和原 operationId/DeploymentRun；不要复制 Cookie、令牌、完整请求正文或原始响应。诊断包含错误码、请求路径（无 query）、方法、站点内应用/环境、观测时间和合法 requestId。网络未收到响应时 requestId 为 null，不能编造关联标识。该信息不等于提交结果：写入未知时查询原操作，保留原键与原输入；不要自动换键再写。Nest SDK 的平台错误已有 `request` 上下文，平台管理仍通过授权范围内的日志/支持通道检索。
+
 ## 并发执行
 
 同一工作区的公共 check 和测试 deploy 共享本地互斥锁，前一个命令结束后才能启动下一个。出现 WORKSPACE_OPERATION_BUSY 时等待当前进程完成；异常退出时先确认锁中进程已经退出，再移除提示中的锁文件。锁只保护工具执行，不阻止编辑器修改源码；检查和部署期间应暂停其他写入。平台部署状态仍以 status/logs 为准。

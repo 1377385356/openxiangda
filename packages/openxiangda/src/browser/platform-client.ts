@@ -102,19 +102,63 @@ export class OpenXiangdaPlatformRequestError extends Error {
   readonly code: string;
   readonly status: number;
   readonly data: unknown;
+  readonly request?: Readonly<PlatformRequestContext>;
 
   constructor(input: {
     code: string;
     status: number;
     message: string;
     data?: unknown;
+    request?: PlatformRequestContext;
   }) {
     super(input.message);
     this.name = 'OpenXiangdaPlatformRequestError';
     this.code = input.code;
     this.status = input.status;
     this.data = input.data ?? null;
+    this.request = input.request ? Object.freeze({ ...input.request }) : undefined;
   }
+}
+
+export interface PlatformRequestContext {
+  requestId: string | null;
+  method: string;
+  path: string;
+  observedAt: string;
+  appCode: string | null;
+  environmentKey: string | null;
+}
+
+const safeRequestId = (value: unknown): string | null => typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(value) ? value : null;
+function requestContext(path: string, init: RequestInit = {}, response?: Response, bodyId?: unknown): PlatformRequestContext {
+  const cleanPath = path.split(/[?#]/)[0] || '/';
+  let appCode: string | null = null;
+  let environmentKey: string | null = null;
+  try {
+    const candidate = applicationCode();
+    appCode = /^[a-z][a-z0-9-]{2,63}$/.test(candidate) ? candidate : null;
+    environmentKey = activeIdentity?.environment.key || runtimeMount()?.environmentKey || null;
+  } catch { /* Authentication can fail before application metadata is installed. */ }
+  return { requestId: safeRequestId(response?.headers.get('x-request-id')) || safeRequestId(bodyId),
+    method: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'].includes(String(init.method || 'GET').toUpperCase()) ? String(init.method || 'GET').toUpperCase() : 'UNKNOWN',
+    path: /^\/(?!\/)[A-Za-z0-9_./%:@+-]*$/.test(cleanPath) ? cleanPath.slice(0, 1000) : '/',
+    observedAt: new Date().toISOString(), appCode, environmentKey };
+}
+
+/** A support copy contains no request body, response data, credentials or free-text message. */
+export function platformRequestDiagnostic(error: unknown) {
+  if (!(error instanceof OpenXiangdaPlatformRequestError) || !error.request) return null;
+  return { schemaVersion: 'openxiangda.request-diagnostic/v1' as const,
+    code: /^[A-Z][A-Z0-9_]{0,127}$/.test(error.code) ? error.code : 'PLATFORM_REQUEST_FAILED',
+    status: error.status, ...error.request };
+}
+
+function responseRequestError(path: string, init: RequestInit | undefined, response: Response, payload: PlatformEnvelope<unknown> | null, fallback: string) {
+  const context = requestContext(path, init, response, payload?.requestId);
+  const code = String(payload?.errorCode || payload?.code || `HTTP_${response.status}`);
+  return new OpenXiangdaPlatformRequestError({ code, status: response.status,
+    message: `${code}: ${payload?.message || fallback}${context.requestId ? ` (requestId: ${context.requestId})` : ''}`,
+    data: payload?.data ?? null, request: context });
 }
 
 let globalRequestCount = 0;
@@ -161,12 +205,7 @@ async function refreshPlatformBrowserSession() {
       | PlatformEnvelope<unknown>
       | null;
     if (!response.ok || (payload && payload.code !== 200)) {
-      throw new OpenXiangdaPlatformRequestError({
-        code: String(payload?.errorCode || payload?.code || `HTTP_${response.status}`),
-        status: response.status,
-        message: payload?.message || '平台登录状态刷新失败',
-        data: payload?.data ?? null,
-      });
+      throw responseRequestError('/service/api/auth/refresh', { method: 'POST' }, response, payload, '平台登录状态刷新失败');
     }
   })();
   platformRefreshPromise = pending;
@@ -213,7 +252,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     if (perspective && !headers.has('x-openxiangda-perspective')) {
       headers.set('x-openxiangda-perspective', perspective);
     }
-    const response = await fetchWithPlatformSession(path, {
+    const response = await fetchWithDiagnostics(path, {
       ...init,
       headers,
     });
@@ -226,22 +265,20 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
         ? (payload as PlatformEnvelope<T>)
         : null;
     if (!response.ok || (envelope && envelope.code !== 200)) {
-      const requestId = envelope?.requestId
-        ? ` (requestId: ${envelope.requestId})`
-        : '';
-      const code = String(
-        envelope?.errorCode || envelope?.code || `HTTP_${response.status}`,
-      );
-      throw new OpenXiangdaPlatformRequestError({
-        code,
-        status: response.status,
-        message: `${code}: ${envelope?.message || '平台请求失败'}${requestId}`,
-        data: envelope?.data ?? null,
-      });
+      throw responseRequestError(path, init, response, envelope, '平台请求失败');
     }
     return envelope ? envelope.data : (payload as T);
   } finally {
     endGlobalRequest();
+  }
+}
+
+async function fetchWithDiagnostics(path: string, init: RequestInit) {
+  try { return await fetchWithPlatformSession(path, init); }
+  catch (error) {
+    if (error instanceof OpenXiangdaPlatformRequestError || (error as Error)?.name === 'AbortError' || init.signal?.aborted) throw error;
+    throw new OpenXiangdaPlatformRequestError({ code: 'PLATFORM_TRANSPORT_UNAVAILABLE', status: 503,
+      message: '平台请求未取得确定响应；写操作请先查询原操作状态', request: requestContext(path, init) });
   }
 }
 
@@ -274,6 +311,7 @@ async function requestRead<T>(path: string, init: RequestInit = {}): Promise<T> 
         if (attempt >= 3 || controller.signal.aborted) throw new OpenXiangdaPlatformRequestError({
           code: error.code, status: error.status,
           message: '读取权限正在更新，请稍后刷新；已完成的操作无需重复提交',
+          request: error.request,
         });
         await Promise.race([new Promise(resolve => setTimeout(resolve, [250, 750, 1500][attempt])), aborted]);
       }
@@ -297,7 +335,7 @@ async function requestBlob(path: string, init?: RequestInit) {
     if (perspective && !headers.has('x-openxiangda-perspective')) {
       headers.set('x-openxiangda-perspective', perspective);
     }
-    const response = await fetchWithPlatformSession(path, {
+    const response = await fetchWithDiagnostics(path, {
       ...init,
       headers,
     });
@@ -305,21 +343,7 @@ async function requestBlob(path: string, init?: RequestInit) {
       const payload = (await response
         .json()
         .catch(() => null)) as PlatformEnvelope<unknown> | null;
-      const requestId = payload?.requestId
-        ? ` (requestId: ${payload.requestId})`
-        : '';
-      throw Object.assign(
-        new Error(
-          `${payload?.errorCode || `HTTP_${response.status}`}: ${
-            payload?.message || '平台导出失败'
-          }${requestId}`,
-        ),
-        {
-          code: payload?.errorCode || `HTTP_${response.status}`,
-          status: response.status,
-          data: payload?.data ?? null,
-        },
-      );
+      throw responseRequestError(path, init, response, payload, '平台导出失败');
     }
     const disposition = response.headers.get('content-disposition') || '';
     const encodedName = /filename\*=UTF-8''([^;]+)/i.exec(disposition)?.[1];

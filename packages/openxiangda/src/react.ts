@@ -18,6 +18,9 @@ export * from './browser/resource-definitions';
 export * from './browser/workflow-definitions';
 export * from './browser/workflow-launch';
 export {
+  OpenXiangdaPlatformRequestError,
+  platformRequestDiagnostic,
+  type PlatformRequestContext,
   resolveBusinessProcessOriginal,
   createResourceFormDraftClient,
   createWorkflowFormDraftClient,
