@@ -1233,6 +1233,16 @@ export interface DataDecimalReservationLifecycle {
   lockedParentStatuses: string[];
 }
 
+export type DataUniqueKeyNormalizer = 'exact-v1' | 'nfkc-space-v1' | 'nfkc-upper-ascii-v1';
+export type DataUniqueKeyCondition =
+  | { fieldCode: string; operator: 'empty' | 'nonempty' }
+  | { fieldCode: string; operator: 'in' | 'notIn'; values: string[] };
+export interface DataUniqueKey {
+  code: string;
+  fields: Array<{ fieldCode: string; normalizer?: DataUniqueKeyNormalizer }>;
+  when?: DataUniqueKeyCondition[];
+}
+
 export interface DataResource {
   schemaVersion: typeof SCHEMA_VERSIONS.dataResource;
   id?: string;
@@ -1245,6 +1255,7 @@ export interface DataResource {
   };
   invariants?: DataResourceInvariant[];
   decimalReservationLifecycle?: DataDecimalReservationLifecycle;
+  uniqueKeys?: DataUniqueKey[];
   /** Default UI metadata projected with the authoritative Data Resource. */
   surface?: DataResourceSurface;
   capabilities: {

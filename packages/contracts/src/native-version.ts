@@ -15,6 +15,7 @@ export const PLATFORM_CAPABILITY_CONTRACT_VERSIONS = {
   "data.managed-files": "1.1.0",
   "data.decimal-reservations": "1.1.0",
   "data.decimal-reservation-lifecycle": "1.0.0",
+  "data.unique-keys": "1.0.0",
   "workflow.named-input-sources": "1.0.0",
   "directory-v2": "1.0.0",
   "events-v2": "1.0.0",

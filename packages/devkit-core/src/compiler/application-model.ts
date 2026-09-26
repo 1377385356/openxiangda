@@ -23,6 +23,7 @@ export interface AppDataModelDeclaration {
   mutationOwner?: AppDataResourceDeclaration['mutationOwner'];
   invariants?: AppDataResourceDeclaration['invariants'];
   decimalReservationLifecycle?: AppDataResourceDeclaration['decimalReservationLifecycle'];
+  uniqueKeys?: AppDataResourceDeclaration['uniqueKeys'];
   dataPolicyCode?: string | null;
   /** Bind the model to custom PC/mobile detail routes (Workflow detail takeover). */
   detailRouteCode?: AppDataResourceDeclaration['detailRouteCode'];
@@ -102,7 +103,7 @@ export function defineApplicationModule<const Module extends AppModuleDeclaratio
 
 /** One authoring projection into the platform's existing execution contract. */
 export const APP_MODEL_DECLARATION_KEYS = [
-  'code', 'name', 'fields', 'audit', 'mutationOwner', 'invariants', 'decimalReservationLifecycle', 'dataPolicyCode', 'detailRouteCode',
+  'code', 'name', 'fields', 'audit', 'mutationOwner', 'invariants', 'decimalReservationLifecycle', 'uniqueKeys', 'dataPolicyCode', 'detailRouteCode',
 ] as const;
 
 export function materializeApplicationModules(modules: readonly AppModuleDeclaration[]) {
@@ -238,6 +239,7 @@ export function materializeApplicationModules(modules: readonly AppModuleDeclara
           : {}),
         ...(model.invariants ? { invariants: model.invariants } : {}),
         ...(model.decimalReservationLifecycle !== undefined ? { decimalReservationLifecycle: model.decimalReservationLifecycle } : {}),
+        ...(model.uniqueKeys !== undefined ? { uniqueKeys: model.uniqueKeys } : {}),
         ...(model.dataPolicyCode ? { dataPolicyCode: model.dataPolicyCode } : {}),
         ...(model.detailRouteCode ? { detailRouteCode: { ...model.detailRouteCode } } : {}),
         ...(model.audit !== undefined ? { audit: model.audit } : {}),

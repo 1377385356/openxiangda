@@ -17,3 +17,5 @@ export type { RequiredPlatformCapabilityContract, PlatformCapabilityCode } from 
 export const NATIVE_CONFIGURATION_VALIDATOR_DIGEST: string = "__OPENXIANGDA_NATIVE_VALIDATOR_DIGEST__";
 
 export * from './event-action.js';
+
+export * from './unique-keys.js';

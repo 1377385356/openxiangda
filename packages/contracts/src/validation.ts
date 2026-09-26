@@ -5,6 +5,7 @@ import {
 } from './data-view-validation.js';
 import { isDataAuditMetadataField } from './native-compiler/data-audit-access.js';
 import { NativeDecimalLifecycleContractError, parseDecimalReservationLifecycle } from './native-compiler/decimal-lifecycle.js';
+import { NativeUniqueKeyContractError, parseNativeUniqueKeys } from './native-compiler/unique-keys.js';
 import {
   CURRENT_APPLICATION_CONTRACT,
   OPENXIANGDA_CONTRACT_VERSION,
@@ -514,6 +515,12 @@ export function validateDataResource(value: unknown): Diagnostic[] {
     diagnostics.push(...validateDataResourceListActions(value.surface.list.actions, 'surface.list.actions'));
   const schema = isRecord(value.schema) ? value.schema : {};
   const fields = Array.isArray(schema.fields) ? schema.fields : [];
+  try {
+    parseNativeUniqueKeys(value.uniqueKeys, fields.filter(isRecord) as any);
+  } catch (error) {
+    if (!(error instanceof NativeUniqueKeyContractError)) throw error;
+    diagnostics.push(diagnostic(error.code, error.message, error.pointer.replace(/^\//, '').replace(/\//g, '.')));
+  }
   if (fields.length === 0 || fields.length > 100) {
     diagnostics.push(
       diagnostic(

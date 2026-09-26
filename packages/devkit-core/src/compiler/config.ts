@@ -1,3 +1,4 @@
+import { parseNativeUniqueKeys } from 'openxiangda-contracts';
 import { normalizeDecimalReservationEventDeclaration, decimalReservationEventContext } from 'openxiangda-contracts';
 import type { NativeEventActionDeclaration } from 'openxiangda-contracts';
 import { materializeApplicationModules, type AppModuleDeclaration } from './application-model.js';
@@ -244,6 +245,7 @@ export interface AppDataResourceDeclaration {
   audit?: { read: string[] | boolean };
   invariants?: DataResource['invariants'];
   decimalReservationLifecycle?: DataResource['decimalReservationLifecycle'];
+  uniqueKeys?: DataResource['uniqueKeys'];
   list?: {
     fields?: string[];
     actions?: NonNullable<DataResourceSurface['list']>['actions'];
@@ -6925,6 +6927,7 @@ export function materializeDataResource(
     },
     mobile: declaration.mobile || { enabled: true },
   };
+  const uniqueKeys = parseNativeUniqueKeys(declaration.uniqueKeys, fields, '/uniqueKeys');
   return {
     schemaVersion: SCHEMA_VERSIONS.dataResource,
     appCode,
@@ -6933,6 +6936,7 @@ export function materializeDataResource(
     schema: { fields },
     ...(declaration.invariants ? { invariants: declaration.invariants } : {}),
     ...(declaration.decimalReservationLifecycle !== undefined ? { decimalReservationLifecycle: declaration.decimalReservationLifecycle } : {}),
+    ...(uniqueKeys !== undefined ? { uniqueKeys } : {}),
     surface,
     capabilities,
     ...(declaration.dataPolicyCode
@@ -6978,6 +6982,7 @@ export function validateAppDeclaration(value: unknown): Diagnostic[] {
     'fields',
     'invariants',
     'decimalReservationLifecycle',
+    'uniqueKeys',
     'list',
     'form',
     'detail',

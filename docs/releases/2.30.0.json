@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.30.0",
+  "status": "reviewed",
+  "title": "OpenXiangda 2.30.0：平台条件唯一键",
+  "summary": "模型可声明条件唯一键，统一约束普通 CRUD、导入和业务事务；编译器在发布前检查规则并识别目标平台是否支持。",
+  "newFeatures": [
+    "模型与数据资源支持有界 uniqueKeys 声明，可选择精确比较、NFKC 空白折叠或 ASCII 大写，并按文本空值或单选集合限定参与记录。",
+    "两端编译器、JSON Schema、声明诊断和能力清单使用一致契约，自动要求 data.unique-keys@1.0.0。未声明的模型不增加能力要求。"
+  ],
+  "fixes": [],
+  "affectedUsers": [
+    "需要跨并发写入保障业务编号或复合字段唯一性的 OpenXiangda 2.0 应用开发者。"
+  ],
+  "upgradeSteps": [
+    "更新到 openxiangda@2.30.0 并更新锁文件；在需要唯一性的模型声明 uniqueKeys，使用当前版本的数据与权限文档。",
+    "先确认目标平台实际提供 data.unique-keys@1.0.0，再激活测试版本。历史重复或超长数据会明确拒绝激活并保留原环境。",
+    "重复写入处理 HTTP 409 和规则标识；长度超限处理 HTTP 422。避免盲目重试创建，事务失败后按原业务状态恢复。"
+  ],
+  "knownLimitations": [
+    "每资源最多 8 条、每条 1–4 个键字段和最多 4 个 AND 条件；参与比较字段归一化后最多 256 个 UTF-8 字节。",
+    "已有规则的修改、删除和所用字段替换需要平台受管迁移；连接开发不能私自改变规则。",
+    "平台升级与 SDK 发行分别验收；npm 发行不代表客户节点已经上线。跨 PostgreSQL 大版本变更须先安排归一化索引的受管重建。"
+  ],
+  "issues": [],
+  "compatibility": {
+    "node": ">=24",
+    "workspaceGenerations": "v2",
+    "platform": "声明规则时要求 data.unique-keys@1.0.0；普通应用沿用现有能力。",
+    "v1": "独立 V1 引擎和工作区不受影响。"
+  }
+}

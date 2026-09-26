@@ -16,3 +16,5 @@ export * from './native-compiler/data-audit-access.js';
 
 export * from './process-resolution.js';
 export * from './application-diagnostics.js';
+
+export * from './native-compiler/unique-keys.js';

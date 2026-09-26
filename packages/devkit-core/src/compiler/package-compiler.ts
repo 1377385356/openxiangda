@@ -130,6 +130,9 @@ export function requiredPlatformCapabilitiesFromConfiguration(
     },
   };
   const usages: Array<{ code: PlatformCapabilityCode; declaration: unknown }> = [
+    ...(resources.some(resource => resource.uniqueKeys?.length)
+      ? [{ code: 'data.unique-keys' as const, declaration: resources.filter(resource => resource.uniqueKeys?.length)
+          .map(resource => ({ code: resource.code, uniqueKeys: resource.uniqueKeys })) }] : []),
     ...(resources.some(resource => resource.decimalReservationLifecycle)
       ? [{ code: 'data.decimal-reservation-lifecycle' as const,
           declaration: resources.filter(resource => resource.decimalReservationLifecycle)

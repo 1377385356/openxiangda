@@ -1,3 +1,4 @@
+import { NativeUniqueKeyContractError, parseNativeUniqueKeys } from './unique-keys.js';
 import { normalizeDecimalReservationEventDeclaration, decimalReservationEventContext } from './decimal-reservation.js';
 import { NativeDecimalLifecycleContractError, parseDecimalReservationLifecycle, validateDecimalReservationLifecycles } from './decimal-lifecycle.js';
 import { compileNativeEventAction } from './event-action.js';
@@ -473,6 +474,9 @@ export function compileRequiredPlatformCapabilitiesV3(
     code: OpenXiangdaPlatformCapabilityCode;
     declaration: unknown;
   }> = [
+    ...(resources.some(resource => resource.uniqueKeys?.length)
+      ? [{ code: 'data.unique-keys' as const, declaration: resources.filter(resource => resource.uniqueKeys?.length)
+          .map(resource => ({ code: resource.code, uniqueKeys: resource.uniqueKeys })) }] : []),
     ...(resources.some(resource => resource.decimalReservationLifecycle)
       ? [{ code: 'data.decimal-reservation-lifecycle' as const,
           declaration: resources.filter(resource => resource.decimalReservationLifecycle)
@@ -7180,6 +7184,7 @@ function validateResource(raw: any, pointer: string, appCode: string) {
       'surface',
       'invariants',
       'decimalReservationLifecycle',
+      'uniqueKeys',
       'capabilities',
       'dataPolicyCode',
       'fieldPolicies',
@@ -7200,9 +7205,11 @@ function validateResource(raw: any, pointer: string, appCode: string) {
   let fields;
   let invariants;
   let decimalReservationLifecycle;
+  let uniqueKeys;
   try {
     decimalReservationLifecycle = parseDecimalReservationLifecycle(resource.decimalReservationLifecycle, `${pointer}/decimalReservationLifecycle`);
     fields = parseNativeDataFieldsV2(schema.fields, `${pointer}/schema/fields`);
+    uniqueKeys = parseNativeUniqueKeys(resource.uniqueKeys, fields, `${pointer}/uniqueKeys`);
     invariants = parseNativeDataResourceInvariantsV2(
       resource.invariants,
       fields,
@@ -7214,7 +7221,7 @@ function validateResource(raw: any, pointer: string, appCode: string) {
       `${pointer}/surface`
     );
   } catch (error) {
-    if (error instanceof NativeDataFieldContractV2Error || error instanceof NativeDecimalLifecycleContractError) {
+    if (error instanceof NativeDataFieldContractV2Error || error instanceof NativeDecimalLifecycleContractError || error instanceof NativeUniqueKeyContractError) {
       fail(error.code, error.pointer);
     }
     throw error;
@@ -7264,6 +7271,7 @@ function validateResource(raw: any, pointer: string, appCode: string) {
     schema: { fields },
     ...(resource.invariants === undefined ? {} : { invariants }),
     ...(decimalReservationLifecycle ? { decimalReservationLifecycle } : {}),
+    ...(uniqueKeys !== undefined ? { uniqueKeys } : {}),
     capabilities,
     fieldPolicies,
   };

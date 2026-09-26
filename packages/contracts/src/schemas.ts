@@ -1,3 +1,4 @@
+import { nativeUniqueKeysJsonSchema } from './native-compiler/unique-keys.js';
 import { DATA_AUDIT_METADATA_FIELDS } from './native-compiler/data-audit-access.js';
 import {
   CONFIGURATION_COMPATIBILITY_CAPABILITY,
@@ -2522,6 +2523,7 @@ export const dataResourceSchema = {
         },
       },
     },
+    uniqueKeys: nativeUniqueKeysJsonSchema,
     decimalReservationLifecycle: {
       type: 'object',
       additionalProperties: false,

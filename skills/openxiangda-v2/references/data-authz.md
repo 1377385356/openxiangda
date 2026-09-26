@@ -29,6 +29,61 @@ pnpm openxiangda check
 
 角色成员、维度授权和平台管理员由平台管理面维护，不属于应用开发 CLI。
 
+### 条件唯一键
+
+需要“同一编号只能有一条有效主档”时，在模型声明 `uniqueKeys`。平台在环境
+激活时安装约束；普通 CRUD、导入和业务事务共用该约束。应用无需先查重再创建，
+也无需另建锁服务。声明会自动要求平台能力 `data.unique-keys@1.0.0`，旧平台在
+发布前明确报告缺少能力。未声明的模型不增加这一要求。
+
+```ts
+const partners = defineDataModel({
+  code: 'partners', name: '往来单位',
+  fields: [
+    { code: 'externalId', label: '外部编号', type: 'text.short' },
+    { code: 'name', label: '名称', type: 'text.short' },
+    { code: 'state', label: '状态', type: 'option.single', options: [
+      { value: 'active', label: '有效' }, { value: 'void', label: '作废' },
+    ] },
+  ],
+  uniqueKeys: [{
+    code: 'active-external-id',
+    fields: [{ fieldCode: 'externalId', normalizer: 'nfkc-upper-ascii-v1' }],
+    when: [{ fieldCode: 'state', operator: 'in', values: ['active'] }],
+  }],
+});
+```
+
+规则只比较同一租户、应用与环境内的记录。上例中 `ＡＢＣ` 和 `abc` 视为相同
+编号，只有 `active` 记录参与；切换状态进入比较集合时也执行约束。平台不会猜测
+业务中的有效、作废或软删除语义，条件由应用声明。
+
+- 每模型最多 8 条，稳定 `code` 使用最长 20 字符的 lower-kebab-case；每条包含
+  1–4 个不重复字段、最多 4 个 AND 条件。
+- 字段支持短文本、UUID、单选和单记录引用；单选/引用比较保存的 `value`，忽略标签。
+- `exact-v1` 原样比较（默认）；文本可用 `nfkc-space-v1` 做 NFKC 归一化、Unicode
+  空白折叠和首尾修剪，或 `nfkc-upper-ascii-v1` 再将 ASCII 小写转大写。非文本只
+  支持 exact；不按操作系统 locale 折叠其他文字大小写。
+- 文本条件是 `empty` / `nonempty`，按 NFKC 空白规则判断；单选条件是 `in` /
+  `notIn`，包含 1–16 个已声明选项值。缺失选项不满足 `notIn`。
+- 任一键字段为空或归一化后为空，该行不参加比较。需要每行填写时仍应声明字段
+  必填。参与比较的每个字段归一化后最多 256 个 UTF-8 字节。
+
+重复写入返回 HTTP 409 `OPENXIANGDA_NATIVE_DATA_RESOURCE_UNIQUE_CONFLICT`，并给出
+`resourceCode`、`ruleCode`；不会泄露其他记录 ID、值或原始 SQL。界面应让用户核实
+输入并复用自己有权访问的记录，不自动重试创建。超长返回 HTTP 422
+`OPENXIANGDA_NATIVE_DATA_RESOURCE_UNIQUE_VALUE_TOO_LONG`。事务中的任何操作失败，
+该事务的记录、事件及回执整体回滚。
+
+首次启用会检查历史数据。发现重复或超长时，激活失败且原环境 Head 保持；平台
+不会自动合并、改名或删除数据。已有规则可原样保留或新增规则，修改/移除规则、
+替换其字段类型或删除所用字段需要平台受管迁移。连接开发仍可添加普通字段，但
+规则变化会要求先正式激活测试版本。回滚到旧模型时也应保留已经安装的规则。
+
+平台为安装设置有界锁等待与扫描预算，超时不会留下部分约束。归一化依赖数据库
+版本；跨 PostgreSQL 大版本升级由平台安排受管重建，不能由应用绕过规则或重试
+写入来修复。
+
 ### 授权来源声明
 
 应用可以在 `authz` 中声明四类授权来源，让平台从业务数据投影出维度授权、应用角色成员和
