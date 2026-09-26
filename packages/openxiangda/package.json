@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.28.0",
+  "version": "2.28.1",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -67,13 +67,13 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.5.22",
+    "openxiangda-cli": "2.5.23",
     "openxiangda-contracts": "2.24.0",
-    "openxiangda-devkit-core": "2.26.0",
+    "openxiangda-devkit-core": "2.27.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.46",
+    "openxiangda-mcp": "2.0.47",
     "openxiangda-nest": "2.7.1",
-    "openxiangda-skill-kit": "2.3.20",
+    "openxiangda-skill-kit": "2.3.21",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -139,39 +139,36 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.28.0",
+    "version": "2.28.1",
     "status": "reviewed",
-    "title": "OpenXiangda 2.28.0：应用原操作自助诊断",
-    "summary": "应用管理员通过现有工作区查询原请求、持久命令、部署和受管文件的脱敏事实，减少依赖平台人员登录服务器定位问题的情况。",
-    "newFeatures": [
-      "logs 增加 request-id、command-id、deployment-run-id、file-id 四种互斥定位器，MCP 提供相同范围的 application_diagnostics 只读工具。",
-      "结果显示实际站点、应用、环境、时间窗口及观测时间；SDK 校验查询与响应关联，只保留受支持的元数据。"
-    ],
+    "title": "OpenXiangda 2.28.1：后端镜像原制品上传恢复",
+    "summary": "上传中断后保留原 OCI 镜像，普通 deploy 重试直接从平台已有偏移或 ready 回执恢复，减少重建和重复传输。",
+    "newFeatures": [],
     "fixes": [
-      "明确区分已观测、未观测和诊断暂不可用；未知结果不再被解释成原操作未执行，也不会触发换键重放。"
+      "已导出的后端镜像不会再因为上传失败或响应丢失被立即删除；相同输入重试保持原摘要，已封存候选不再依赖 Docker 重建。",
+      "缓存绑定当前站点、租户、用户、应用环境和实际构建上下文，包含未提交源码；恢复前验证全部 blob，使用跨进程租约阻止重复上传。"
     ],
     "affectedUsers": [
-      "需要按原操作 ID 自助排查发布、工作流和文件状态的 OpenXiangda 2.0 应用管理员及开发者。"
+      "通过平台登录态分块上传后端镜像的 OpenXiangda 2.0 应用开发者。"
     ],
     "upgradeSteps": [
-      "应用消费 openxiangda@2.28.0 并更新锁文件；使用已有工作区开发者登录，不需要服务器账号。",
-      "平台应提供 application.scoped-diagnostics@1；查询默认使用 test，生产环境需显式传 --environment production。",
-      "保留原操作 ID。request-id 默认查询最近一小时，也可传一对 UTC from/to，窗口最多 24 小时；其他定位器不接受时间窗口。"
+      "应用消费 openxiangda@2.28.1 并更新锁文件。上传中断时保留工作区输入，恢复网络或登录后重复原 deploy 命令。",
+      "无需平台数据库迁移，也无需手工寻找 BuildKit 历史或镜像上传会话。"
     ],
     "knownLimitations": [
-      "诊断受应用管理权限和当前租户、环境约束；普通应用服务凭据不因此获得管理权限。",
-      "每次最多返回 50 条事实，可能标记截断；不返回业务正文、文件名、原始日志或密钥。",
-      "未观测不表示原写入未发生，已观测不表示业务验收完成。暂不可用时保留原键与输入，按提示继续查询。",
-      "此次新增能力不改变共享 Native 编译器摘要；公开包发行与实际站点部署分别验证。"
+      "最多保留 8 个候选、总预留空间 8 GiB、24 小时；平台单镜像上限超过 8 GiB 时继续原临时上传路径。缓存过期或被预算清理后需要重新构建。",
+      "源码、身份、环境、配置或工具版本变化会形成新候选；恢复原镜像不重新求值远程 FROM/RUN 输入。",
+      "本机上下文校验有 100000 条目、8 GiB、60 秒预算；构建期间源码变化会拒绝上传，需要保存完成后重试。",
+      "真实 Docker 导出及故障恢复、隔离的传输协议和发行门禁分别验证，不代表任何客户应用已发布或通过业务验收。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
       "workspaceGenerations": "v2",
-      "platform": "新诊断入口要求 application.scoped-diagnostics@1.0.0 或兼容 1.x；原 logs [deploymentId] 和未使用此能力的应用保持原行为。",
+      "platform": "复用既有 backendImageUpload 协议和 auth/whoami，不新增远端上传状态或服务器账号要求。",
       "v1": "独立 V1 引擎和工作区不受影响。"
     },
-    "sha256": "80c18512f5cb76850e738b9e802261af68e27f6582b3f686781da7c9d4367c2a",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.28.0"
+    "sha256": "762fa08d9c2818264ed9b65383f1ec60ad6bc4236978ee07cf0c19cdce45ad16",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.28.1"
   }
 }
