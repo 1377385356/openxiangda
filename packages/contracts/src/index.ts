@@ -20,3 +20,4 @@ export * from './native-compiler/workflow-instance-policy.js';
 export { validateDataFieldDefinition } from './data-field-validation.js';
 
 export * from './process-resolution.js';
+export * from './application-diagnostics.js';

@@ -15,3 +15,4 @@ export * from './workflow-correction.js';
 export * from './native-compiler/data-audit-access.js';
 
 export * from './process-resolution.js';
+export * from './application-diagnostics.js';

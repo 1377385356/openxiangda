@@ -520,6 +520,7 @@ export const MCP_TOOL_DEFINITIONS = {
   deploy_app: definition('部署或晋级应用', 'test 包含检查、按需后端镜像构建、密封和提交；production 必须用 from 复用成功测试版本。已有明确授权无需再次确认。默认持续报告进度并等待平台部署完成，真实业务验收另行执行。观察中断后继续查询原运行。', deploymentInput, false, true, true),
   deployment_status: definition('查询部署状态', '查询指定或最近部署，平台状态和恢复决定是权威；watch 跟踪原运行，不重新构建或部署。', z.object({ deploymentId: z.string().min(1).optional().describe('省略时查询最近部署'), watch: z.boolean().default(false).describe('持续跟踪原运行至结束，最多 15 分钟') }).strict()),
   deployment_logs: definition('读取部署日志', '读取检查点、首个和最近失败、候选状态与恢复下一步。', runInput),
+  application_diagnostics: definition('查询应用原操作事实', '在当前应用和明确环境内只读查询 requestId、commandId、deploymentRunId 或 fileId。requestId 必须传成对 UTC from/to，最多 24 小时；其余类型不传窗口。未观测到不表示未执行，禁止据此换键重放。', z.object({ environment, kind: z.enum(['requestId', 'commandId', 'deploymentRunId', 'fileId']), id: z.string().min(1).max(128), from: z.string().optional(), to: z.string().optional() }).strict()),
   cancel_deployment: definition('取消未激活部署', '仅在用户授权且平台 recovery.cancelAllowed 为真时取消；激活后的运行不能取消。', runInput, false, true, true),
   retry_deployment: definition('重试可恢复部署', '在用户授权范围内按平台 recovery.nextCommand 重试原运行；不创建新的候选绕过失败。', runInput, false, true, true),
   rollback_app: definition('回滚应用版本', '在用户授权范围内回滚到指定历史 AppVersion；版本回滚不承诺撤销业务数据写入。', z.object({ environment, appVersionId: z.string().min(1).describe('已知历史 AppVersion ID') }).strict(), false, true, true),
@@ -576,6 +577,7 @@ export function createOpenXiangdaMcpServer(options: { services?: OpenXiangdaAppl
   register('deploy_app', (input, onProgress) => deployApplication(services, { ...local, ...definedDeploymentInput(input), onProgress }));
   register('deployment_status', (input, onProgress) => input.watch ? watchDeployment(services, { ...local, ...(input.deploymentId ? { deploymentId: input.deploymentId } : {}), onProgress }) : services.deploymentStatus(root, input.deploymentId));
   register('deployment_logs', input => services.deploymentLogs(root, input.deploymentId));
+  register('application_diagnostics', input => services.applicationDiagnostics(root, { environmentKey: developerEnvironment(input.environment), kind: input.kind, id: input.id, ...(input.from !== undefined ? { from: input.from } : {}), ...(input.to !== undefined ? { to: input.to } : {}) }));
   register('cancel_deployment', input => services.cancel(root, input.deploymentId));
   register('retry_deployment', input => services.retry(root, input.deploymentId));
   register('rollback_app', input => services.rollback(root, developerEnvironment(input.environment), input.appVersionId));

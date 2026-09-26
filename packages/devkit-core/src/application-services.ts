@@ -30,6 +30,7 @@ import {
   type DeploymentRun,
   type DevkitResult,
   type Diagnostic,
+  type ApplicationDiagnosticQuery,
   type ConfigurationValidationResult,
   type WorkspaceIdentity,
 } from "openxiangda-contracts";
@@ -2193,6 +2194,14 @@ export class OpenXiangdaApplicationServices {
         traceId: run.result?.traceId,
       },
     };
+  }
+
+  async applicationDiagnostics(root: string | undefined, query: ApplicationDiagnosticQuery) {
+    const workspace = await this.workspace(root);
+    const client = await this.client(workspace.root);
+    const result = await client.applicationDiagnostics(workspace.config.app.code, query);
+    return this.ok('logs', workspace.context.workspace, { site: client.diagnosticSite(), ...result },
+      result.nextActions.map(action => ({ code: action.code, label: action.message })));
   }
 
   async retry(root: string | undefined, deploymentId: string) {

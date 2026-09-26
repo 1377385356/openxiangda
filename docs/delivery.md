@@ -2,6 +2,30 @@
 
 应用开发者从工作区执行 `pnpm openxiangda`。平台负责应用版本、运行状态和恢复决定。工具链自身的 npm 发布由平台维护者负责，应用项目无需复制发包脚本或平台验证矩阵。
 
+## 按原操作自助诊断
+
+保留原 requestId、commandId、DeploymentRun ID 或 fileId；应用管理员可在已有
+登录工作区查询，不需要服务器账号。目标平台需提供 `application.scoped-diagnostics@1`。
+
+```bash
+pnpm openxiangda logs --request-id <原请求ID> --json
+pnpm openxiangda logs --command-id <原命令UUID> --json
+pnpm openxiangda logs --file-id <受管文件UUID> --environment test --json
+pnpm openxiangda logs --deployment-run-id <原RunUUID> --environment production --json
+```
+
+requestId 默认最近一小时，结果会显示实际 from/to；跨日排查可传一对 UTC ISO
+时间 `--from` / `--to`（最多 24 小时）。其余定位器按原 ID 查，不接受时间窗口。
+默认环境是 test；production 必须显式选择。结果包含实际站点、应用、环境、观测时间、
+持久状态和是否截断，只投影允许的元数据，不返回业务正文、文件名或密钥。
+
+`observed` 仅表示查到事实，仍需看每条状态；`not_observed` 不表示原写入没有发生；
+`unavailable` 表示本次诊断暂不可用。三者都不会重放原操作。保留原 ID、输入和幂等键，
+按返回的下一步查询原回执，不创建新运行代替未知结果。文件存在不等于当前用户可下载。
+
+原有 `pnpm openxiangda logs [deploymentId]` 保持部署日志行为。MCP 的
+`application_diagnostics` 使用同一范围和状态约定；requestId 的 from/to 必须明确提供。
+
 ## 测试部署
 
 源码托管仍可通过 `pnpm openxiangda source push` 提交和推送，但不是测试发布的前置步骤。

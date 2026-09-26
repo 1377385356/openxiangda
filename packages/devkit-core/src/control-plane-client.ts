@@ -5,6 +5,10 @@ import {
 } from './platform-transport.js';
 import type { ApplicationSourceRepository, ApplicationSourceCredential } from 'openxiangda-contracts';
 import {
+  parseApplicationDiagnosticQuery,
+  parseApplicationDiagnosticResult,
+  type ApplicationDiagnosticQuery,
+  type ApplicationDiagnosticResult,
   RUNTIME_CAPACITY_PREFLIGHT_SCHEMA,
   type RuntimeCapacityPreflight,
   type RuntimeCapacityPreflightRequest,
@@ -443,10 +447,11 @@ export class OpenXiangdaControlPlaneClient {
     return `${url.origin}${url.pathname.replace(/\/+$/, '')}`;
   }
 
-  async capabilities(): Promise<PlatformCapabilities> {
+  async capabilities(signal?: AbortSignal): Promise<PlatformCapabilities> {
     const capabilities = await this.json<PlatformCapabilities>(
       "/openxiangda-api/v2/capabilities",
       {
+        ...(signal ? { signal } : {}),
         headers: {
           "X-OpenXiangda-Client-Contract-Version": OPENXIANGDA_CONTRACT_VERSION,
         },
@@ -484,6 +489,23 @@ export class OpenXiangdaControlPlaneClient {
       );
     }
     return capabilities;
+  }
+
+  /** Read the original operation's scoped facts; never retries a business write. */
+  async applicationDiagnostics(appCode: string, input: ApplicationDiagnosticQuery): Promise<ApplicationDiagnosticResult> {
+    const query = parseApplicationDiagnosticQuery(input);
+    const signal = AbortSignal.timeout(10_000);
+    const capability = (await this.capabilities(signal)).features?.['application.scoped-diagnostics'];
+    if (capability?.status !== 'available' || !/^1\.\d+\.\d+$/.test(capability.contractVersion)) {
+      throw new ControlPlaneError(409, 'OPENXIANGDA_DIAGNOSTIC_CAPABILITY_REQUIRED',
+        '此站点尚未提供应用原操作诊断；请保留原操作 ID 并提交平台支持，不要重新执行原操作');
+    }
+    const params = new URLSearchParams({ environmentKey: query.environmentKey, kind: query.kind, id: query.id });
+    if (query.from && query.to) { params.set('from', query.from); params.set('to', query.to); }
+    const result = await this.json<unknown>(`/openxiangda-api/v2/applications/${encodeURIComponent(appCode)}/diagnostics/lookup?${params}`, {
+      method: 'GET', signal,
+    });
+    return parseApplicationDiagnosticResult(result, { ...query, appCode });
   }
 
   async runtimeCapacityPreflight(appCode: string, capabilities: PlatformCapabilities, input: RuntimeCapacityPreflightRequest): Promise<RuntimeCapacityPreflight> {

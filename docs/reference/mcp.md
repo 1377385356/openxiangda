@@ -561,6 +561,59 @@ MCP 使用项目锁定的根包；在客户端配置下列 stdio 启动参数，
 }
 ```
 
+## application_diagnostics
+
+查询应用原操作事实。在当前应用和明确环境内只读查询 requestId、commandId、deploymentRunId 或 fileId。requestId 必须传成对 UTC from/to，最多 24 小时；其余类型不传窗口。未观测到不表示未执行，禁止据此换键重放。
+
+- 只读：是
+- 可替换文件或改变远端状态：否
+- 幂等：否
+
+输入参数：
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "environment": {
+      "default": "test",
+      "description": "目标环境；默认 test，production 必须明确选择",
+      "type": "string",
+      "enum": [
+        "test",
+        "production"
+      ]
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "requestId",
+        "commandId",
+        "deploymentRunId",
+        "fileId"
+      ]
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "from": {
+      "type": "string"
+    },
+    "to": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "kind",
+    "id"
+  ],
+  "additionalProperties": false
+}
+```
+
 ## cancel_deployment
 
 取消未激活部署。仅在用户授权且平台 recovery.cancelAllowed 为真时取消；激活后的运行不能取消。

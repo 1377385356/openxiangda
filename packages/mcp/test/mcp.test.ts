@@ -6,7 +6,7 @@ import test from 'node:test';
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import { InMemoryTransport } from '@modelcontextprotocol/server';
-import { DOCUMENTATION_TOPICS, operationStage, saveSession, workspaceSessionPath } from 'openxiangda-devkit-core';
+import { DOCUMENTATION_TOPICS, operationStage, saveSession, workspaceSessionPath, type OpenXiangdaApplicationServices } from 'openxiangda-devkit-core';
 import { MCP_RESOURCE_URIS, MCP_TOOL_NAMES, createOpenXiangdaMcpServer } from '../src/index.js';
 
 test('publishes a library without a second executable', () => {
@@ -95,6 +95,27 @@ test('streams progress through the real MCP protocol before the tool result', as
     assert.ok(progress.some(event => !event.completed && /应用测试.*进行中/.test(event.message || '')));
     assert.ok(progress.some(event => /应用测试.*完成/.test(event.message || '')));
     assert.equal((result.structuredContent as any).data.execution.stages[0].state, 'passed');
+  } finally { await client.close(); await server.close(); }
+});
+
+test('scoped diagnostics preserve explicit environment and original locator over MCP', async () => {
+  const calls: unknown[] = [];
+  const server = createOpenXiangdaMcpServer({ root: '/tmp/example', services: {
+    applicationDiagnostics: async (root: string, query: unknown) => {
+      calls.push({ root, query });
+      return { ok: true, operation: 'logs', data: { state: 'not_observed' } };
+    },
+  } as unknown as OpenXiangdaApplicationServices });
+  const client = new Client({ name: 'diagnostic-test', version: '1.0.0' });
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+  await server.connect(serverTransport); await client.connect(clientTransport);
+  try {
+    const tools = await client.listTools();
+    assert.equal(tools.tools.find(t => t.name === 'application_diagnostics')?.annotations?.readOnlyHint, true);
+    const id = 'fe2f7bac-8e0a-4d47-a3aa-3df77e9776a4';
+    const response = await client.callTool({ name: 'application_diagnostics', arguments: { environment: 'production', kind: 'commandId', id } });
+    assert.equal((response.structuredContent as any).data.state, 'not_observed');
+    assert.deepEqual(calls, [{ root: '/tmp/example', query: { environmentKey: 'production', kind: 'commandId', id } }]);
   } finally { await client.close(); await server.close(); }
 });
 

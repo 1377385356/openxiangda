@@ -20,7 +20,7 @@ export const DEVKIT_COMMANDS = [
   { id: "accept", operation: "accept", summary: "按计划准备可选的真实预发验收身份", risk: "deploy" },
   { id: "deploy", operation: "deploy", summary: "部署测试环境或显式复用测试版本部署生产", risk: "deploy", studioJsonEvents: true },
   { id: "status", operation: "status", summary: "查询最近或指定部署状态", risk: "read" },
-  { id: "logs", operation: "logs", summary: "查询最近或指定部署日志", risk: "read", studioJsonEvents: true },
+  { id: "logs", operation: "logs", summary: "查询部署日志或应用原操作事实", risk: "read", studioJsonEvents: true },
   { id: "cancel", operation: "cancel", summary: "幂等取消尚未提交激活的部署", risk: "deploy" },
   { id: "retry", operation: "retry", summary: "显式重试可恢复的失败部署", risk: "deploy" },
   { id: "start", operation: "environment.start", summary: "从当前不可变版本启动应用环境", risk: "deploy" },
