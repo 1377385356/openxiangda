@@ -53,10 +53,12 @@ import type {
   BusinessProcessCommit,
   BusinessProcessPoll,
   BusinessProcessReceipt,
+  BusinessProcessResolution,
+  BusinessProcessResolutionQuery,
   BusinessProcessRetry,
   ProcessCommandSurface,
 } from "openxiangda-contracts";
-import { normalizeWorkflowSurface } from "openxiangda-contracts";
+import { normalizeWorkflowSurface, parseBusinessProcessResolution } from "openxiangda-contracts";
 import { OPENXIANGDA_MODULE_OPTIONS } from "./tokens.js";
 import { OpenXiangdaEventContext } from "./event-context.js";
 import type {
@@ -546,6 +548,18 @@ export class OpenXiangdaPlatformClient {
       `${this.businessProcessPath()}/commands/${encodeURIComponent(commandId)}`,
       { headers: this.identityHeaders(authorization, null, businessAction) }
     );
+  }
+
+  async resolveBusinessProcessOriginal(
+    authorization: string, input: BusinessProcessResolutionQuery,
+    businessAction?: OpenXiangdaBusinessActionContext,
+  ): Promise<BusinessProcessResolution> {
+    if (input.environmentKey !== this.options.environmentKey) throw new OpenXiangdaPlatformError(400,
+      'OPENXIANGDA_BUSINESS_PROCESS_ENVIRONMENT_MISMATCH', '原操作环境与当前请求不一致');
+    const value = await this.request<unknown>(`${this.businessProcessPath()}/commands/resolve`, {
+      method: 'POST', headers: this.identityHeaders(authorization, null, businessAction), body: JSON.stringify(input),
+    });
+    return parseBusinessProcessResolution(value, { ...input, appCode: this.options.appCode });
   }
 
   async businessProcessReceipt(

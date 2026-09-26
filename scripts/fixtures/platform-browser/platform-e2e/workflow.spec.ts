@@ -704,7 +704,7 @@ async function mockWorkflow(
       }
       return route.fulfill({
         contentType: 'application/json',
-        body: JSON.stringify(envelope(processCommand('accepted'))),
+        body: JSON.stringify(envelope({ ...processCommand('accepted'), idempotencyKey: body.idempotencyKey })),
       });
     }
     if (
@@ -1362,3 +1362,73 @@ for (const device of ['desktop', 'mobile']) {
     } finally { release(); }
   });
 }
+
+for (const mobile of [false, true]) test(`restores an unknown workflow submission after refresh without a new write ${mobile ? 'mobile' : 'desktop'}`, async ({ page }) => {
+  await mockWorkflow(page, { customDetail: true });
+  if (mobile) await page.setViewportSize({ width: 390, height: 844 });
+  let original: any; let writes = 0;
+  await page.route('**/business-process/standard-commands', async route => {
+    original = route.request().postDataJSON(); writes += 1;
+    await route.abort('connectionreset');
+  });
+  let observed = false;
+  await page.route('**/business-process/commands/resolve', async route => {
+    const query = route.request().postDataJSON();
+    expect(query.idempotencyKey).toBe(original.idempotencyKey);
+    const command = { ...processCommand('accepted'), idempotencyKey: query.idempotencyKey };
+    await route.fulfill({ contentType: 'application/json', body: JSON.stringify(envelope({
+      schemaVersion: 'openxiangda.business-process-resolution/v1', appCode, ...query,
+      observedAt: '2026-09-26T00:00:00.000Z', outcome: observed ? 'committed' : 'not_observed',
+      receipt: observed ? { schemaVersion: 'openxiangda.business-process-receipt/v2', receiptId: commandId,
+        commandId, operationCode: query.operationCode, idempotencyKey: query.idempotencyKey,
+        requestDigest: 'a'.repeat(64), command, createdAt: '2026-09-26T00:00:00.000Z' } : null,
+    })) });
+  });
+  await page.goto(workflowFixtureUrl(`${mobile ? '/m' : ''}/workflows/purchase-approval/start`));
+  await page.getByRole(mobile ? 'textbox' : 'spinbutton', { name: /申请金额/ }).fill('28600');
+  await page.getByRole('button', { name: '提交审批' }).click();
+  await expect(page.getByText('上次提交结果尚未确认', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '提交审批', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: '查询提交结果' }).click();
+  await expect(page.getByText(/暂未查到原提交结果/)).toBeVisible();
+  // Reload the same SPA entry; the fixture normally replaces its HTML URL with a real app path.
+  await page.route('**/workflows/purchase-approval/start*', async route => {
+    if (!route.request().isNavigationRequest()) return route.fallback();
+    const response = await route.fetch({ url: new URL('/workflow-experience.e2e.html', page.url()).href });
+    await route.fulfill({ response });
+  });
+  await page.reload();
+  await expect(page.getByText('上次提交结果尚未确认', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '重试原提交' })).toHaveCount(0);
+  observed = true;
+  await page.getByRole('button', { name: '查询提交结果' }).click();
+  await expect(page.getByTestId('custom-workflow-detail')).toBeVisible();
+  expect(writes).toBe(1);
+});
+
+for (const rejected of [false, true]) test(`retries only the frozen standard payload after an unobserved response rejected=${rejected}`, async ({ page }) => {
+  await mockWorkflow(page, { customDetail: true });
+  const writes: any[] = [];
+  await page.route('**/business-process/standard-commands', async route => {
+    const body = route.request().postDataJSON(); writes.push(body);
+    if (writes.length === 1) return route.abort('connectionreset');
+    if (rejected) return route.fulfill({ status: 403, contentType: 'application/json', body: JSON.stringify({ code: 'OPENXIANGDA_BUSINESS_PROCESS_FORBIDDEN', message: '权限已变化' }) });
+    return route.fulfill({ contentType: 'application/json', body: JSON.stringify(envelope({ ...processCommand('accepted'), idempotencyKey: body.idempotencyKey })) });
+  });
+  await page.route('**/business-process/commands/resolve', async route => route.fulfill({ contentType: 'application/json', body: JSON.stringify(envelope({
+    schemaVersion: 'openxiangda.business-process-resolution/v1', appCode, ...route.request().postDataJSON(),
+    observedAt: '2026-09-26T00:00:00.000Z', outcome: 'not_observed', receipt: null,
+  })) }));
+  await page.goto(workflowFixtureUrl('/workflows/purchase-approval/start'));
+  await page.getByRole('spinbutton', { name: /申请金额/ }).fill('28600');
+  await page.getByRole('button', { name: '提交审批' }).click();
+  await expect(page.getByText('上次提交结果尚未确认', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '查询提交结果' }).click();
+  await page.getByRole('button', { name: '重试原提交' }).click();
+  if (rejected) {
+    await expect(page.getByText('上次提交结果尚未确认', { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: '提交审批', exact: true })).toHaveCount(0);
+    expect(await page.evaluate(() => Object.keys(sessionStorage).filter(key => key.startsWith('openxiangda:pending-workflow:')).length)).toBe(1);
+  } else await expect(page.getByTestId('custom-workflow-detail')).toBeVisible();
+  expect(writes).toHaveLength(2); expect(writes[1]).toEqual(writes[0]);
+});

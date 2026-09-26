@@ -6046,6 +6046,24 @@ export const businessProcessReceiptSchema = {
   },
 } as const;
 
+export const businessProcessResolutionSchema = {
+  $id: SCHEMA_VERSIONS.businessProcessResolution,
+  type: "object", additionalProperties: false,
+  required: ["schemaVersion", "appCode", "environmentKey", "operationCode", "workflowCode", "idempotencyKey", "observedAt", "outcome", "receipt"],
+  properties: {
+    schemaVersion: { const: SCHEMA_VERSIONS.businessProcessResolution },
+    appCode: nonEmptyString, environmentKey: { enum: ["preproduction", "production"] },
+    operationCode: nonEmptyString, workflowCode: nonEmptyString,
+    idempotencyKey: { type: "string", minLength: 1, maxLength: 128 }, observedAt: dateTime,
+    outcome: { enum: ["committed", "not_observed"] },
+    receipt: { anyOf: [{ $ref: SCHEMA_VERSIONS.businessProcessReceipt }, { type: "null" }] },
+  },
+  oneOf: [
+    { properties: { outcome: { const: "committed" }, receipt: { type: "object" } } },
+    { properties: { outcome: { const: "not_observed" }, receipt: { type: "null" } } },
+  ],
+} as const;
+
 export const businessProcessPollSchema = {
   $id: SCHEMA_VERSIONS.businessProcessPoll,
   type: "object",
@@ -8892,6 +8910,7 @@ export const contractSchemas = {
   standardProcessCommit: standardProcessCommitSchema,
   businessProcessCommand: businessProcessCommandSchema,
   businessProcessReceipt: businessProcessReceiptSchema,
+  businessProcessResolution: businessProcessResolutionSchema,
   businessProcessPoll: businessProcessPollSchema,
   businessProcessCommandList: businessProcessCommandListSchema,
   processCommandSurface: processCommandSurfaceSchema,

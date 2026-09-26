@@ -9,6 +9,7 @@ import {
   type BusinessProcessCommit,
   type BusinessProcessPoll,
   type BusinessProcessReceipt,
+  type BusinessProcessResolution,
   type BusinessProcessRetry,
   type ProcessCommandSurface,
 } from 'openxiangda-contracts';
@@ -75,6 +76,13 @@ export class OpenXiangdaBusinessProcessService {
       ),
       context.workflowCodes
     );
+  }
+
+  async resolveOriginal(input: { workflowCode: string; idempotencyKey: string }): Promise<BusinessProcessResolution> {
+    const context = this.context(input.workflowCode);
+    return this.platform.resolveBusinessProcessOriginal(context.authorization, {
+      ...input, operationCode: context.action.code, environmentKey: context.environmentKey,
+    }, context.action);
   }
 
   async receipt(commandId: string): Promise<BusinessProcessReceipt> {

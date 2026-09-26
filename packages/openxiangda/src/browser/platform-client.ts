@@ -1,3 +1,4 @@
+import { parseBusinessProcessResolution, parseBusinessProcessCommitResult } from 'openxiangda-contracts/browser';
 import {
   normalizeWorkflowSurface,
   SCHEMA_VERSIONS,
@@ -62,6 +63,8 @@ import {
   type BusinessProcessCommandList,
   type BusinessProcessPoll,
   type BusinessProcessReceipt,
+  type BusinessProcessResolution,
+  type BusinessProcessResolutionQuery,
   type BusinessProcessRetry,
   type ProcessCommandSurface,
   type StandardProcessCommit,
@@ -2261,7 +2264,7 @@ export async function commitStandardProcess(
     throw new Error('OPENXIANGDA_STANDARD_PROCESS_OPERATION_MISMATCH');
   }
   const { processOperationCode: _sealedOperation, ...wire } = input;
-  return await request<BusinessProcessCommand>(
+  const command = await request<unknown>(
     `${businessProcessBase()}/standard-commands`,
     {
       method: 'POST',
@@ -2272,6 +2275,8 @@ export async function commitStandardProcess(
       } satisfies StandardProcessCommit),
     },
   );
+  return parseBusinessProcessCommitResult(command, { appCode: applicationCode(), environmentKey: currentEnvironmentKey() as 'preproduction' | 'production',
+    operationCode: input.processOperationCode, workflowCode: input.workflowCode, idempotencyKey: input.idempotencyKey });
 }
 
 /** Find readable original commands when entering from a subject record. */
@@ -2298,6 +2303,18 @@ export async function loadBusinessProcessCommand(
   return await request<BusinessProcessCommand>(
     `${businessProcessBase()}/commands/${encodeURIComponent(commandId)}`,
   );
+}
+
+/** Read-only lookup: not_observed is never permission to repeat the write with a new key. */
+export async function resolveBusinessProcessOriginal(
+  input: Omit<BusinessProcessResolutionQuery, 'environmentKey'>,
+  signal?: AbortSignal,
+): Promise<BusinessProcessResolution> {
+  const query = { ...input, environmentKey: currentEnvironmentKey() as 'preproduction' | 'production' };
+  const result = await request<unknown>(`${businessProcessBase()}/commands/resolve`, {
+    method: 'POST', body: JSON.stringify(query), signal,
+  });
+  return parseBusinessProcessResolution(result, { ...query, appCode: applicationCode() });
 }
 
 /** Read the durable idempotency receipt without creating or replaying a command. */

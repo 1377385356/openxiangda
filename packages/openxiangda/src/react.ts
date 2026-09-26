@@ -18,6 +18,7 @@ export * from './browser/resource-definitions';
 export * from './browser/workflow-definitions';
 export * from './browser/workflow-launch';
 export {
+  resolveBusinessProcessOriginal,
   createResourceFormDraftClient,
   createWorkflowFormDraftClient,
   type ResourceFormDraftWorkflowScope,

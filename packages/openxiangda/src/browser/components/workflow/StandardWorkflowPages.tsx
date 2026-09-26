@@ -1,3 +1,5 @@
+import { applicationCode } from '../../runtime-meta';
+import { readPendingWorkflowSubmission, writePendingWorkflowSubmission, clearPendingWorkflowSubmission, workflowSubmissionScope, submissionLocatorStorage, standardProcessWasRejected, type PendingWorkflowSubmission } from '../../workflow-submission-recovery';
 import { PresentationTime, usePresentationTimeZone } from '../../presentation-time';
 import {
   ArrowLeftOutlined,
@@ -84,6 +86,7 @@ import {
   loadWorkflowWorkCenter,
   answerBusinessProcessCommand,
   commitStandardProcess,
+  resolveBusinessProcessOriginal,
   createNativeResourceClient,
   loadProcessCommandSurface,
   retryBusinessProcessCommand,
@@ -1942,6 +1945,19 @@ export function WorkflowSubmissionPage({
   } | null>(null);
   const submitInFlight = useRef(false);
   const submissionAttempt = useRef<{ signature: string; idempotencyKey: string; requestedAt: string } | null>(null);
+  const recoveryScope = workflowSubmissionScope(applicationCode(), identity.environment.key, identity.userId, workflowCode);
+  const activeRecoveryScope = useRef(recoveryScope);
+  activeRecoveryScope.current = recoveryScope;
+  const [pendingSubmission, setPendingSubmission] = useState<PendingWorkflowSubmission | null>(() => readPendingWorkflowSubmission(submissionLocatorStorage(), recoveryScope));
+  const [recoveryError, setRecoveryError] = useState<string | null>(null);
+  const [recoveryObservedAbsent, setRecoveryObservedAbsent] = useState(false);
+  const [recoveryPersisted, setRecoveryPersisted] = useState(true);
+  const originalRetry = useRef<{ context: string; send: () => Promise<import('openxiangda-contracts/browser').BusinessProcessCommand> } | null>(null);
+  const currentWriteContext = JSON.stringify([recoveryScope, identity.environment.activeAppVersionId, identity.environment.headRevision, identity.identityScope]);
+  useEffect(() => {
+    setPendingSubmission(readPendingWorkflowSubmission(submissionLocatorStorage(), recoveryScope));
+    setRecoveryError(null); setRecoveryObservedAbsent(false); setRecoveryPersisted(true); originalRetry.current = null;
+  }, [recoveryScope]);
   const completedCommandId = useRef('');
   const completionHandler = useRef(onCompleted);
   completionHandler.current = onCompleted;
@@ -2322,6 +2338,56 @@ export function WorkflowSubmissionPage({
       </div>
     ) : content;
 
+  const clearOriginal = (attempt: PendingWorkflowSubmission) => {
+    clearPendingWorkflowSubmission(submissionLocatorStorage(), recoveryScope, attempt.idempotencyKey);
+    if (activeRecoveryScope.current === recoveryScope) {
+      setPendingSubmission(null); setRecoveryError(null); setRecoveryObservedAbsent(false); originalRetry.current = null;
+    }
+  };
+  const resumeOriginal = (id: string, attempt: PendingWorkflowSubmission) => {
+    if (activeRecoveryScope.current !== recoveryScope) return;
+    clearOriginal(attempt);
+    if (onDismiss) { setLocalCommandId(id); return; }
+    const next = new URLSearchParams(searchParams);
+    next.set('processCommandId', id); next.delete('subjectId');
+    setSearchParams(next, { replace: true });
+  };
+  if (pendingSubmission && !commandId) {
+    const checkOriginal = async () => {
+      if (submitInFlight.current) return;
+      submitInFlight.current = true; setLoading(true); setRecoveryError(null); setRecoveryObservedAbsent(false);
+      const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), 10000);
+      try {
+        const result = await resolveBusinessProcessOriginal({ operationCode: pendingSubmission.operationCode,
+          workflowCode: pendingSubmission.workflowCode, idempotencyKey: pendingSubmission.idempotencyKey }, controller.signal);
+        if (activeRecoveryScope.current !== recoveryScope) return;
+        if (result.outcome === 'committed') resumeOriginal(result.receipt.commandId, pendingSubmission);
+        else { setRecoveryObservedAbsent(true); setRecoveryError('暂未查到原提交结果。这不代表提交失败，请稍后再查询。'); }
+      } catch (error) { if (activeRecoveryScope.current === recoveryScope) setRecoveryError(errorMessage(error, '原提交结果暂时不可读，请稍后再查询')); }
+      finally { clearTimeout(timer); submitInFlight.current = false; if (activeRecoveryScope.current === recoveryScope) setLoading(false); }
+    };
+    const retryOriginal = async () => {
+      const replay = originalRetry.current;
+      if (submitInFlight.current || !recoveryObservedAbsent || !replay || replay.context !== currentWriteContext) return;
+      submitInFlight.current = true; setLoading(true); setRecoveryError(null); setRecoveryObservedAbsent(false);
+      try { const command = await replay.send(); resumeOriginal(command.id, pendingSubmission); }
+      catch (error) {
+        if (activeRecoveryScope.current !== recoveryScope) return;
+        // A later rejection cannot prove that the earlier unknown request did not commit.
+        setRecoveryError(errorMessage(error, '原提交结果仍未确认，请查询后继续'));
+      } finally { submitInFlight.current = false; if (activeRecoveryScope.current === recoveryScope) setLoading(false); }
+    };
+    return frame(<Result status="info" title={loading ? '正在确认提交结果' : '上次提交结果尚未确认'}
+      subTitle={recoveryPersisted ? "请先恢复上次提交的结果，避免重复产生申请。刷新页面后可继续查询。" : "请先查询上次提交结果。浏览器未能保存恢复信息，请保留本页和原操作编号。"}
+      extra={<Space direction="vertical"><Typography.Text type="secondary">原操作：{pendingSubmission.idempotencyKey}</Typography.Text>
+        {recoveryError && <Alert type="warning" showIcon title={recoveryError} />}
+        <Space><Button onClick={onDismiss ? dismissDrawer : () => navigate(-1)} disabled={loading}>返回</Button>
+          <Button type="primary" loading={loading} onClick={() => void checkOriginal()}>查询提交结果</Button>
+          {recoveryObservedAbsent && pendingSubmission.kind === 'standard' && originalRetry.current?.context === currentWriteContext
+            && <Button disabled={loading} onClick={() => void retryOriginal()}>重试原提交</Button>}
+        </Space></Space>} />);
+  }
+
   if (!definition)
     return frame(<Result status="404" title="未声明该工作流" />);
   if (
@@ -2373,8 +2439,17 @@ export function WorkflowSubmissionPage({
 
   const submit = async (values: JsonObject) => {
     if (submitInFlight.current || commandId || completion || !launchSurface) return;
+    const unresolved = readPendingWorkflowSubmission(submissionLocatorStorage(), recoveryScope);
+    if (pendingSubmission || unresolved) { if (unresolved) setPendingSubmission(unresolved); return; }
     submitInFlight.current = true;
     setLoading(true);
+    let dispatched: PendingWorkflowSubmission | null = null;
+    const retainOriginal = (operationCode: string, kind: 'standard' | 'named') => {
+      const attempt = submissionAttempt.current!;
+      dispatched = { operationCode, workflowCode, kind, idempotencyKey: attempt.idempotencyKey, requestedAt: attempt.requestedAt };
+      setRecoveryPersisted(writePendingWorkflowSubmission(submissionLocatorStorage(), recoveryScope, dispatched));
+      setPendingSubmission(dispatched); setRecoveryError(null); setRecoveryObservedAbsent(false);
+    };
     try {
       const encoded = normalizeFormValues(values, subjectDefinition.surface);
       const data = Object.fromEntries(fields.filter(field => Object.hasOwn(encoded, field.key)).map(field => [field.key, encoded[field.key]]));
@@ -2397,16 +2472,12 @@ export function WorkflowSubmissionPage({
           }
           subject = { id: subjectId, revision };
         }
-        const response = await executeWorkflowLaunchNamedOperation(
-          namedIntent,
-          buildWorkflowNamedOperationInput(namedIntent, {
-            values: data,
-            idempotencyKey: attempt.idempotencyKey,
-            requestedAt: attempt.requestedAt,
-            subjectProfile: identity.subjectProfile,
-            ...(subject ? { subject } : {}),
-          }),
-        );
+        const namedInput = buildWorkflowNamedOperationInput(namedIntent, {
+          values: data, idempotencyKey: attempt.idempotencyKey, requestedAt: attempt.requestedAt,
+          subjectProfile: identity.subjectProfile, ...(subject ? { subject } : {}),
+        });
+        retainOriginal(namedIntent.operationCode, 'named');
+        const response = await executeWorkflowLaunchNamedOperation(namedIntent, namedInput);
         const outcome = parseWorkflowNamedOperationResult(
           namedIntent,
           response,
@@ -2417,6 +2488,8 @@ export function WorkflowSubmissionPage({
             resourceCode: subjectDefinition.code,
           },
         );
+        clearOriginal(dispatched!);
+        if (activeRecoveryScope.current !== recoveryScope) return;
         if (outcome.kind === 'workflow-command') {
           if (onDismiss) { setLocalCommandId(outcome.command.id); return; }
           const next = new URLSearchParams(searchParams);
@@ -2452,22 +2525,29 @@ export function WorkflowSubmissionPage({
       } else {
         mutation = { kind: 'create', data };
       }
-      const command = await commitStandardProcess({
-        processOperationCode: definition.processOperationCode!,
-        workflowCode,
-        idempotencyKey: attempt.idempotencyKey,
-        mutation,
-      });
+      const frozenInput = JSON.parse(JSON.stringify({ processOperationCode: definition.processOperationCode!,
+        workflowCode, idempotencyKey: attempt.idempotencyKey, mutation }));
+      originalRetry.current = { context: currentWriteContext, send: () => commitStandardProcess(frozenInput) };
+      retainOriginal(definition.processOperationCode!, 'standard');
+      const command = await originalRetry.current.send();
+      clearOriginal(dispatched!);
+      if (activeRecoveryScope.current !== recoveryScope) return;
       if (onDismiss) { setLocalCommandId(command.id); return; }
       const next = new URLSearchParams(searchParams);
       next.set('processCommandId', command.id);
       next.delete('subjectId');
       setSearchParams(next, { replace: true });
     } catch (error) {
-      message.error(errorMessage(error, '业务与流程命令提交失败'));
+      if (activeRecoveryScope.current !== recoveryScope) return;
+      if (!dispatched || (!namedIntent && standardProcessWasRejected(error))) {
+        if (dispatched) clearOriginal(dispatched);
+        message.error(errorMessage(error, '业务提交被拒绝，请修正后再提交'));
+      } else {
+        setRecoveryError(errorMessage(error, '提交结果尚未确认，请查询原操作'));
+      }
     } finally {
       submitInFlight.current = false;
-      setLoading(false);
+      if (activeRecoveryScope.current === recoveryScope) setLoading(false);
     }
   };
 

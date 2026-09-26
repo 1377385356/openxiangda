@@ -138,6 +138,7 @@ export const SCHEMA_VERSIONS = {
   standardProcessCommit: "openxiangda.standard-process.commit/v2",
   businessProcessCommand: "openxiangda.business-process.command/v2",
   businessProcessReceipt: "openxiangda.business-process-receipt/v2",
+  businessProcessResolution: "openxiangda.business-process-resolution/v1",
   businessProcessPoll: "openxiangda.business-process-poll/v2",
   businessProcessCommandList: "openxiangda.business-process-command-list/v2",
   processCommandSurface: "openxiangda.process-command-surface/v2",
@@ -2608,6 +2609,19 @@ export interface BusinessProcessReceipt {
   command: BusinessProcessCommand;
   createdAt: IsoDateTime | null;
 }
+
+export interface BusinessProcessResolutionQuery {
+  environmentKey: 'preproduction' | 'production';
+  operationCode: string;
+  workflowCode: string;
+  idempotencyKey: string;
+}
+
+export type BusinessProcessResolution = BusinessProcessResolutionQuery & {
+  schemaVersion: typeof SCHEMA_VERSIONS.businessProcessResolution;
+  appCode: string;
+  observedAt: IsoDateTime;
+} & ({ outcome: 'committed'; receipt: BusinessProcessReceipt } | { outcome: 'not_observed'; receipt: null });
 
 /** Revision-cursor read; the platform remains the owner of command progress. */
 export interface BusinessProcessPoll {

@@ -41,6 +41,15 @@ SDK 继承当前环境与身份，平台沿用发起人或既有超级管理员�
 `items/nextCursor`，分页与多次流程的选择规则见[前端](frontend.md)。找回后使用原
 `receipt/poll/surface`；查询不重放提交、不生成第二份命令状态。
 
+连 commandId 都没收到时，用同一动作的 `businessProcess.resolveOriginal({ workflowCode,
+ idempotencyKey })` 查询原操作。此能力需要 `business-process.original-resolution` 1.0.0。
+`committed` 才有可信回执；`not_observed` 可能仍在提交，不能据此生成新键或宣称回滚。
+前端可用 `resolveBusinessProcessOriginal`（`openxiangda/react`），传原 workflowCode、
+operationCode、idempotencyKey；SDK 绑定当前环境并核验返回关联。Named Action 如果业务无需
+审批，没有流程回执并不代表业务没写入，应沿该动作自身回执诊断。
+标准 PC/移动发起页在响应未知时保留原操作定位信息，刷新可继续查询；同一页面、原身份和
+版本内可手动重试冻结的标准输入，绝不自动重发或悄悄换键。
+
 自定义表单页若先用 `createResourceFormDraftClient` 保存认证草稿，并由 Named Action
 提交业务记录和流程，则在同一次 `OpenXiangdaBusinessProcessService.commit` 中传入
 `formDraft: { resourceCode, id, expectedRevision, mode, recordId?, viewCode? }`。草稿必须
