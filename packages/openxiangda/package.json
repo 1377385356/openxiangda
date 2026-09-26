@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.27.0",
+  "version": "2.28.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -67,13 +67,13 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.5.21",
-    "openxiangda-contracts": "2.23.0",
-    "openxiangda-devkit-core": "2.25.0",
+    "openxiangda-cli": "2.5.22",
+    "openxiangda-contracts": "2.24.0",
+    "openxiangda-devkit-core": "2.26.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.45",
-    "openxiangda-nest": "2.7.0",
-    "openxiangda-skill-kit": "2.3.19",
+    "openxiangda-mcp": "2.0.46",
+    "openxiangda-nest": "2.7.1",
+    "openxiangda-skill-kit": "2.3.20",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -139,40 +139,39 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.27.0",
+    "version": "2.28.0",
     "status": "reviewed",
-    "title": "OpenXiangda 2.27.0：精确额度审批生命周期",
-    "summary": "补齐主子记录精确金额占用的审批终态声明、原轮次事务参数及撤回修订重提接入，保持平台对金额、身份和审批事实的统一校验。",
+    "title": "OpenXiangda 2.28.0：应用原操作自助诊断",
+    "summary": "应用管理员通过现有工作区查询原请求、持久命令、部署和受管文件的脱敏事实，减少依赖平台人员登录服务器定位问题的情况。",
     "newFeatures": [
-      "HTTP 事件订阅可声明同资源审批的额度终态：通过继续占额，驳回或撤回释放；两侧编译器共同校验审批、资源、状态和固定迁移模式。",
-      "Native 事务支持绑定原 reservationKey、transitionKey 和唯一子记录 update，Nest 继承已验证的事件上下文，不允许客户端自报额度迁移模式。",
-      "提供本人 FormDraft 与 BusinessProcess update 重提组合示例，将修改正式金额、重新占额、消费草稿和生成审批命令放在同一平台事务。"
+      "logs 增加 request-id、command-id、deployment-run-id、file-id 四种互斥定位器，MCP 提供相同范围的 application_diagnostics 只读工具。",
+      "结果显示实际站点、应用、环境、时间窗口及观测时间；SDK 校验查询与响应关联，只保留受支持的元数据。"
     ],
     "fixes": [
-      "事件终态声明参与能力使用摘要；目标必须满足 data.decimal-reservations@1.1.0，不能把仅有数据表和通用防护的旧服务端当作完整额度能力。"
+      "明确区分已观测、未观测和诊断暂不可用；未知结果不再被解释成原操作未执行，也不会触发换键重放。"
     ],
     "affectedUsers": [
-      "需要以主记录金额约束多条子记录，并在审批通过、驳回、撤回和重提间管理额度的 OpenXiangda 2.0 应用。"
+      "需要按原操作 ID 自助排查发布、工作流和文件状态的 OpenXiangda 2.0 应用管理员及开发者。"
     ],
     "upgradeSteps": [
-      "应用固定 openxiangda@2.27.0，更新锁文件，重新生成契约并执行适用检查；平台同步升级匹配的公共编译器、额度实现和向前迁移。",
-      "在实际资源和审批中声明 reserve 动作及终态订阅，先确认没有未入账的历史子记录。保留未完成请求的原幂等键和输入。",
-      "预发验证并发超额、精确小数、权限拒绝、通过保留占额、释放一次及同记录修订重提。真实验收前保持额度入口禁用。"
+      "应用消费 openxiangda@2.28.0 并更新锁文件；使用已有工作区开发者登录，不需要服务器账号。",
+      "平台应提供 application.scoped-diagnostics@1；查询默认使用 test，生产环境需显式传 --environment production。",
+      "保留原操作 ID。request-id 默认查询最近一小时，也可传一对 UTC from/to，窗口最多 24 小时；其他定位器不接受时间窗口。"
     ],
     "knownLimitations": [
-      "普通 CRUD 不开放 released 子记录保护字段写入；修订先保存本人草稿，再通过原子 update 重提。",
-      "作废或终止需要另行实现真实受管业务动作，签后金额变更不在首批能力内。旧轮次事件不能释放新轮次额度。",
-      "原回执重放仍要求当前授权、有效事件租约和父记录可读性。",
-      "公开包发行不是客户部署或业务验收，不提供应用侧浮点求和替代台账的降级路径。"
+      "诊断受应用管理权限和当前租户、环境约束；普通应用服务凭据不因此获得管理权限。",
+      "每次最多返回 50 条事实，可能标记截断；不返回业务正文、文件名、原始日志或密钥。",
+      "未观测不表示原写入未发生，已观测不表示业务验收完成。暂不可用时保留原键与输入，按提示继续查询。",
+      "此次新增能力不改变共享 Native 编译器摘要；公开包发行与实际站点部署分别验证。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
       "workspaceGenerations": "v2",
-      "platform": "额度应用要求 data.decimal-reservations@1.1.0，并使用与目标平台一致的共享编译器。未启用额度的应用保持原有行为。",
+      "platform": "新诊断入口要求 application.scoped-diagnostics@1.0.0 或兼容 1.x；原 logs [deploymentId] 和未使用此能力的应用保持原行为。",
       "v1": "独立 V1 引擎和工作区不受影响。"
     },
-    "sha256": "ff07310ebff47f32988ba6c6117f0072daca6497700c8f24ed1c10c92c081b06",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.27.0"
+    "sha256": "80c18512f5cb76850e738b9e802261af68e27f6582b3f686781da7c9d4367c2a",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.28.0"
   }
 }
