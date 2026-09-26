@@ -26,15 +26,10 @@ import {
   OPENXIANGDA_CONTRACT_VERSION,
   PLATFORM_CAPABILITY_CONTRACT_VERSIONS,
   SCHEMA_VERSIONS,
-  STUDIO_CAPABILITIES_SCHEMA_VERSION,
-  STUDIO_PLATFORM_CONTRACT_VERSION,
-  STUDIO_SITE_PROFILE_ENDPOINT,
-  STUDIO_SITE_PROFILE_SCHEMA_VERSION,
   contractSchemas,
   canonicalJson,
   type PlatformCapabilityCode,
   type PlatformCapabilities,
-  type StudioCapabilities,
   type NativeAuthorizationManagementCatalog,
 } from "openxiangda-contracts";
 import {
@@ -1361,116 +1356,6 @@ test('validates optional source hosting from the platform without opening the ca
   }
 });
 
-const validateStudioCapabilities = new Ajv2020({
-  allErrors: true,
-  strict: false,
-  validateFormats: false,
-}).compile(contractSchemas.studioCapabilities);
-
-function assertStudioCapabilitiesInvalid(value: unknown) {
-  assert.equal(validateStudioCapabilities(value), false);
-  assert.ok((validateStudioCapabilities.errors || []).length > 0);
-}
-
-test("keeps platform v3 closed and validates standalone Studio discovery", () => {
-  const base = platformCapabilitiesFixture();
-  assert.doesNotThrow(() =>
-    assertApplicationContractCompatible(base, CURRENT_APPLICATION_CONTRACT)
-  );
-
-  const available = {
-    schemaVersion: STUDIO_CAPABILITIES_SCHEMA_VERSION,
-    studioContractVersion: STUDIO_PLATFORM_CONTRACT_VERSION,
-    studio: {
-      contractVersion: STUDIO_PLATFORM_CONTRACT_VERSION,
-      profile: {
-        schemaVersion: STUDIO_SITE_PROFILE_SCHEMA_VERSION,
-        endpoint: STUDIO_SITE_PROFILE_ENDPOINT,
-        status: "available",
-        signatureAlgorithm: "Ed25519",
-        verificationOwner: "studio-client-trust-store",
-      },
-      compatibility: {
-        studioContractRange: "^1.0.0",
-        cliContractRange: ">=2.0.0-alpha.135 <3.0.0",
-      },
-    },
-  } as const satisfies StudioCapabilities;
-  assert.equal(validateStudioCapabilities(available), true);
-
-  const unavailable = {
-    schemaVersion: STUDIO_CAPABILITIES_SCHEMA_VERSION,
-    studioContractVersion: STUDIO_PLATFORM_CONTRACT_VERSION,
-    studio: {
-      contractVersion: STUDIO_PLATFORM_CONTRACT_VERSION,
-      profile: {
-        schemaVersion: STUDIO_SITE_PROFILE_SCHEMA_VERSION,
-        endpoint: STUDIO_SITE_PROFILE_ENDPOINT,
-        status: "unavailable",
-        unavailableCode: "STUDIO_SITE_PROFILE_NOT_CONFIGURED",
-        signatureAlgorithm: "Ed25519",
-        verificationOwner: "studio-client-trust-store",
-      },
-      compatibility: {
-        studioContractRange: null,
-        cliContractRange: null,
-      },
-    },
-  } as const satisfies StudioCapabilities;
-  assert.equal(validateStudioCapabilities(unavailable), true);
-
-  assertPlatformCapabilitiesInvalid({
-    ...base,
-    studioContractVersion: STUDIO_PLATFORM_CONTRACT_VERSION,
-    studio: available.studio,
-  } as unknown as PlatformCapabilities);
-  assertStudioCapabilitiesInvalid({
-    schemaVersion: STUDIO_CAPABILITIES_SCHEMA_VERSION,
-    studioContractVersion: STUDIO_PLATFORM_CONTRACT_VERSION,
-  });
-  assertStudioCapabilitiesInvalid({
-    schemaVersion: STUDIO_CAPABILITIES_SCHEMA_VERSION,
-    studio: available.studio,
-  });
-  assertStudioCapabilitiesInvalid({
-    ...available,
-    studio: {
-      ...available.studio,
-      profile: {
-        ...available.studio.profile,
-        privateKey: "must-never-be-accepted",
-      },
-    },
-  });
-  assertStudioCapabilitiesInvalid({
-    ...available,
-    studio: {
-      ...available.studio,
-      contractVersion: "1.0.1",
-    },
-  });
-  assertStudioCapabilitiesInvalid({
-    ...available,
-    studio: {
-      ...available.studio,
-      compatibility: {
-        studioContractRange: null,
-        cliContractRange: null,
-      },
-    },
-  });
-  assertStudioCapabilitiesInvalid({
-    ...unavailable,
-    studio: {
-      ...unavailable.studio,
-      compatibility: {
-        studioContractRange: "^1.0.0",
-        cliContractRange: ">=2.0.0-alpha.135 <3.0.0",
-      },
-    },
-  });
-});
-
 test("accepts Native schemaVersion 3 and rejects the removed alpha generation", () => {
   assert.equal(validateAppConfig(config()).length, 0);
   assert.throws(
@@ -2202,34 +2087,18 @@ test("creates deterministic workspace roots and compiles an AppPackage", () => {
   assert.equal(context.toolchain.packageName, "openxiangda-devkit-core");
   assert.equal(context.schemaVersion, SCHEMA_VERSIONS.workspaceContext);
   assert.equal(
-    context.toolchain.studio!.schemaVersion,
-    "openxiangda.studio-workspace/v2"
+    context.toolchain.cli!.schemaVersion,
+    "openxiangda.cli/v1"
   );
   assert.deepEqual(
-    context.toolchain.studio!.cliEvents.commands.map(command => command.id),
+    context.toolchain.cli!.cliEvents.commands.map(command => command.id),
     ["create", "dev", "check", "deploy", "logs", "rollback"]
   );
-  assert.deepEqual(context.toolchain.studio!.templates.supportedReferences, [
+  assert.deepEqual(context.toolchain.cli!.templates.supportedReferences, [
     "builtin:application",
     "file",
   ]);
-  assert.deepEqual(context.toolchain.studio!.initialization, {
-    schemaVersion: "openxiangda.studio-workspace-initialization/v1",
-    bindingSchemaVersion: "openxiangda.studio-workspace-binding/v1",
-    applicationAuthority: "site-project-provisioning-run",
-    applicationKey: "appType",
-    requiredCreateFlags: [
-      "app-code",
-      "name",
-      "template-ref",
-      "template-digest",
-      "studio-project-id",
-      "provisioning-run-id",
-      "json-events",
-      "run-id",
-    ],
-    repositoryAuthority: "site-git-broker",
-  });
+
 
   const compiled = compileAppPackage({
     config: appConfig,

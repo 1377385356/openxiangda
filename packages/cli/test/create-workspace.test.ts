@@ -16,12 +16,7 @@ import test from 'node:test';
 import {
   calculateTemplateDigest,
   createWorkspace,
-  ensureStudioWorkspaceBinding,
-  isPlatformUuid,
   prepareWorkspace,
-  readStudioWorkspaceBinding,
-  studioWorkspaceBindingDigest,
-  studioWorkspaceInitializationDigest,
 } from '../src/create-workspace.js';
 
 const repositoryTemplate = resolve(
@@ -303,123 +298,6 @@ test('rejects invalid app codes and non-empty targets', async () => {
   } finally {
     rmSync(temporary, { recursive: true, force: true });
   }
-});
-
-test('persists one fail-closed Studio project binding and compiler summary', () => {
-  const temporary = mkdtempSync(join(tmpdir(), 'openxiangda-studio-binding-'));
-  try {
-    const root = join(temporary, 'workspace');
-    const template = {
-      schemaVersion: 'openxiangda.workspace-template-binding/v1' as const,
-      ref: 'builtin:application',
-      digest: `sha256:${'1'.repeat(64)}` as const,
-    };
-    const input = {
-      siteBaseUrl: 'https://site.example/openxiangda',
-      projectId: '11111111-1111-4111-8111-111111111111',
-      provisioningRunId: '22222222-2222-4222-8222-222222222222',
-      appType: 'studio-app',
-      appName: 'Studio App',
-      template,
-    };
-    const prepared = ensureStudioWorkspaceBinding(root, input);
-    assert.equal(prepared.state, 'prepared');
-    assert.equal(prepared.compiler, null);
-    assert.equal(prepared.applicationAuthority, 'site-project-provisioning-run');
-    assert.equal(
-      statSync(join(root, '.openxiangda/studio-binding.json')).mode & 0o777,
-      0o600
-    );
-
-    const compiler = {
-      toolchainVersion: '2.0.0-alpha.50',
-      contractVersion: '2.0.0-alpha.5',
-      compilerContractVersion: 'native-4',
-      configurationDigest: '2'.repeat(64),
-      contractDigest: '3'.repeat(64),
-      aiCatalogDigest: '4'.repeat(64),
-    };
-    const compiled = ensureStudioWorkspaceBinding(root, { ...input, compiler });
-    assert.equal(compiled.state, 'compiled');
-    assert.deepEqual(compiled.compiler, compiler);
-    assert.deepEqual(readStudioWorkspaceBinding(root), compiled);
-    assert.equal(
-      studioWorkspaceBindingDigest(compiled),
-      studioWorkspaceBindingDigest(
-        ensureStudioWorkspaceBinding(root, { ...input, compiler })
-      )
-    );
-    const initializationFacts = {
-      schemaVersion: 'openxiangda.studio-workspace-initialization/v1' as const,
-      applicationAuthority: 'site-project-provisioning-run' as const,
-      siteBaseUrl: input.siteBaseUrl,
-      projectId: input.projectId,
-      provisioningRunId: input.provisioningRunId,
-      appType: input.appType,
-      appName: input.appName,
-      workspace: { reused: false },
-      cliVersion: compiler.toolchainVersion,
-      protocolVersion: 'openxiangda.studio-workspace/v2' as const,
-      template,
-      compiler,
-      bindingDigest: studioWorkspaceBindingDigest(compiled),
-    };
-    assert.equal(
-      studioWorkspaceInitializationDigest(initializationFacts),
-      studioWorkspaceInitializationDigest({
-        ...initializationFacts,
-        compiler: {
-          aiCatalogDigest: compiler.aiCatalogDigest,
-          contractDigest: compiler.contractDigest,
-          configurationDigest: compiler.configurationDigest,
-          compilerContractVersion: compiler.compilerContractVersion,
-          contractVersion: compiler.contractVersion,
-          toolchainVersion: compiler.toolchainVersion,
-        },
-      })
-    );
-    assert.equal(
-      studioWorkspaceInitializationDigest(initializationFacts),
-      studioWorkspaceInitializationDigest({
-        ...initializationFacts,
-        workspace: { reused: true },
-      })
-    );
-
-    assert.throws(
-      () =>
-        ensureStudioWorkspaceBinding(root, {
-          ...input,
-          projectId: '33333333-3333-4333-8333-333333333333',
-        }),
-      /STUDIO_WORKSPACE_BINDING_MISMATCH/
-    );
-    assert.throws(
-      () =>
-        ensureStudioWorkspaceBinding(root, {
-          ...input,
-          compiler: { ...compiler, contractDigest: '5'.repeat(64) },
-        }),
-      /STUDIO_WORKSPACE_COMPILER_DRIFT/
-    );
-    assert.throws(
-      () =>
-        ensureStudioWorkspaceBinding(join(temporary, 'insecure'), {
-          ...input,
-          siteBaseUrl: 'http://site.example',
-        }),
-      /STUDIO_WORKSPACE_BINDING_INPUT_INVALID/
-    );
-  } finally {
-    rmSync(temporary, { recursive: true, force: true });
-  }
-});
-
-test('accepts only RFC versioned and variant-qualified platform UUIDs', () => {
-  assert.equal(isPlatformUuid('11111111-1111-4111-8111-111111111111'), true);
-  assert.equal(isPlatformUuid('11111111-1111-0111-8111-111111111111'), false);
-  assert.equal(isPlatformUuid('11111111-1111-4111-7111-111111111111'), false);
-  assert.equal(isPlatformUuid('11111111-1111-6111-8111-111111111111'), false);
 });
 
 function writeFixture(root: string, path: string, source: string) {

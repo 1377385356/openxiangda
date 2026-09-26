@@ -193,7 +193,7 @@ test("keeps the minimal delivery defaults and machine-output boundary", () => {
   assert.equal("json-events" in Login.flags, false);
   assert.deepEqual(
     DEVKIT_COMMANDS.filter(
-      command => "studioJsonEvents" in command && command.studioJsonEvents
+      command => "jsonEvents" in command && command.jsonEvents
     ).map(command => command.id),
     ["create", "dev", "check", "deploy", "logs", "rollback"]
   );
@@ -201,8 +201,8 @@ test("keeps the minimal delivery defaults and machine-output boundary", () => {
   assert.ok("name" in Create.flags);
   assert.ok("template-ref" in Create.flags);
   assert.ok("template-digest" in Create.flags);
-  assert.ok("studio-project-id" in Create.flags);
-  assert.ok("provisioning-run-id" in Create.flags);
+  assert.equal("studio-project-id" in Create.flags, false);
+  assert.equal("provisioning-run-id" in Create.flags, false);
   assert.equal("repository-url" in Create.flags, false);
   assert.equal("repository" in Create.flags, false);
 
@@ -218,7 +218,7 @@ test("keeps the minimal delivery defaults and machine-output boundary", () => {
     ),
     'utf8'
   );
-  assert.match(base, /STUDIO_CLI_RESULT_SCHEMA_VERSION/);
+  assert.match(base, /CLI_RESULT_SCHEMA_VERSION/);
   assert.match(base, /openxiangda\.cli-event\/v1/);
   assert.match(base, /nextCommand/);
   assert.match(base, /DELIVERY_RUN_ALREADY_ACTIVE/);

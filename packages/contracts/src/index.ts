@@ -10,7 +10,7 @@ export * from './notification.js';
 export * from './references.js';
 export * from './schemas.js';
 export * from './surface.js';
-export * from './studio.js';
+export * from './cli.js';
 export * from './types.js';
 export * from './workflow-summary.js';
 export * from './workflow-detail.js';

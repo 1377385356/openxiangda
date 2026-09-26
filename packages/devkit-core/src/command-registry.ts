@@ -5,7 +5,7 @@ export interface DevkitCommandDefinition {
   operation: string;
   summary: string;
   risk: DevkitCommandRisk;
-  studioJsonEvents?: true;
+  jsonEvents?: true;
 }
 
 export const DEVKIT_COMMANDS = [
@@ -13,19 +13,19 @@ export const DEVKIT_COMMANDS = [
   { id: "context", operation: "workspace.context", summary: "只读查看工作区、版本与平台绑定", risk: "read" },
   { id: "docs", operation: "docs", summary: "按主题和章节读取当前版本中文资料", risk: "read" },
   { id: "admin", operation: "admin", summary: "只读查看应用管理能力和流程节点运行配置", risk: "read" },
-  { id: "create", operation: "create", summary: "创建、绑定并初始化应用", risk: "deploy", studioJsonEvents: true },
+  { id: "create", operation: "create", summary: "创建、绑定并初始化应用", risk: "deploy", jsonEvents: true },
   { id: 'source', operation: 'source', summary: '配置应用源码仓库、查看状态或提交推送', risk: 'deploy' },
-  { id: "dev", operation: "dev", summary: "连接平台测试数据启动本地 Web，按需启动 Nest", risk: "write-local", studioJsonEvents: true },
-  { id: "check", operation: "check", summary: "生成契约并在目标平台预检后执行检查、测试和构建", risk: "write-local", studioJsonEvents: true },
+  { id: "dev", operation: "dev", summary: "连接平台测试数据启动本地 Web，按需启动 Nest", risk: "write-local", jsonEvents: true },
+  { id: "check", operation: "check", summary: "生成契约并在目标平台预检后执行检查、测试和构建", risk: "write-local", jsonEvents: true },
   { id: "accept", operation: "accept", summary: "按计划准备可选的真实预发验收身份", risk: "deploy" },
-  { id: "deploy", operation: "deploy", summary: "部署测试环境或显式复用测试版本部署生产", risk: "deploy", studioJsonEvents: true },
+  { id: "deploy", operation: "deploy", summary: "部署测试环境或显式复用测试版本部署生产", risk: "deploy", jsonEvents: true },
   { id: "status", operation: "status", summary: "查询最近或指定部署状态", risk: "read" },
-  { id: "logs", operation: "logs", summary: "查询部署日志或应用原操作事实", risk: "read", studioJsonEvents: true },
+  { id: "logs", operation: "logs", summary: "查询部署日志或应用原操作事实", risk: "read", jsonEvents: true },
   { id: "cancel", operation: "cancel", summary: "幂等取消尚未提交激活的部署", risk: "deploy" },
   { id: "retry", operation: "retry", summary: "显式重试可恢复的失败部署", risk: "deploy" },
   { id: "start", operation: "environment.start", summary: "从当前不可变版本启动应用环境", risk: "deploy" },
   { id: "stop", operation: "environment.stop", summary: "将应用环境缩容为零并保留数据", risk: "deploy" },
-  { id: "rollback", operation: "rollback", summary: "回滚测试或生产环境", risk: "deploy", studioJsonEvents: true },
+  { id: "rollback", operation: "rollback", summary: "回滚测试或生产环境", risk: "deploy", jsonEvents: true },
   { id: "login", operation: "login", summary: "通过平台浏览器授权登录", risk: "write-local" },
   { id: "link", operation: "app.link", summary: "查看平台绑定或显式换绑到其他站点", risk: "write-local" },
   { id: "skill", operation: "skill install", summary: "安装当前版本的 AI Skill", risk: "write-local" },

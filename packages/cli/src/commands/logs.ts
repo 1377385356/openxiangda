@@ -1,6 +1,6 @@
 import { Args, Flags } from '@oclif/core';
 import { parseApplicationDiagnosticQuery, type ApplicationDiagnosticQuery } from 'openxiangda-contracts';
-import { OpenXiangdaCommand, studioWorkspaceFlags } from '../base.js';
+import { OpenXiangdaCommand, eventWorkspaceFlags } from '../base.js';
 
 const locators = { 'request-id': 'requestId', 'command-id': 'commandId', 'deployment-run-id': 'deploymentRunId', 'file-id': 'fileId' } as const;
 type LogFlags = Partial<Record<keyof typeof locators | 'from' | 'to' | 'environment', string | undefined>>;
@@ -26,7 +26,7 @@ export default class Logs extends OpenXiangdaCommand {
   static summary = '查询部署日志或应用原请求/命令/文件事实；默认最近一次部署';
   static args = { deploymentId: Args.string() };
   static flags = {
-    ...studioWorkspaceFlags,
+    ...eventWorkspaceFlags,
     'request-id': Flags.string({ summary: '原请求 ID；默认查询最近一小时' }),
     'command-id': Flags.string({ summary: '原持久命令 ID' }),
     'deployment-run-id': Flags.string({ summary: '原部署 Run ID 的范围诊断' }),
@@ -37,7 +37,7 @@ export default class Logs extends OpenXiangdaCommand {
   };
   async run() {
     const { args, flags } = await this.parse(Logs);
-    this.beginStudioEvents('logs');
+    this.beginCliEvents('logs');
     const query = resolveLogQuery(flags, args.deploymentId);
     return this.present(
       query ? await this.services.applicationDiagnostics(flags.cwd, query) : await this.services.deploymentLogs(flags.cwd, args.deploymentId)

@@ -23,22 +23,16 @@ import type {
   AppWorkflowNamedOperationOutputDeclaration,
 } from "./native.js";
 import {
-  STUDIO_CAPABILITIES_SCHEMA_VERSION,
-  STUDIO_CLI_EVENT_SCHEMA_VERSION,
-  STUDIO_WORKSPACE_BINDING_SCHEMA_VERSION,
-  STUDIO_WORKSPACE_INITIALIZATION_SCHEMA_VERSION,
+  CLI_EVENT_SCHEMA_VERSION,
   WORKSPACE_TEMPLATE_BINDING_SCHEMA_VERSION,
-  type StudioWorkspaceProtocolCapabilities,
-} from "./studio.js";
+  type CliProtocolCapabilities,
+} from "./cli.js";
 
 export const OPENXIANGDA_CONTRACT_VERSION = "2.0.0-alpha.5" as const;
 
 
 export const SCHEMA_VERSIONS = {
-  studioCapabilities: STUDIO_CAPABILITIES_SCHEMA_VERSION,
-  studioCliEvent: STUDIO_CLI_EVENT_SCHEMA_VERSION,
-  studioWorkspaceBinding: STUDIO_WORKSPACE_BINDING_SCHEMA_VERSION,
-  studioWorkspaceInitialization: STUDIO_WORKSPACE_INITIALIZATION_SCHEMA_VERSION,
+  cliEvent: CLI_EVENT_SCHEMA_VERSION,
   workspaceTemplateBinding: WORKSPACE_TEMPLATE_BINDING_SCHEMA_VERSION,
   workspaceContext: "openxiangda.workspace-context/v3",
   application: "openxiangda.application/v2",
@@ -212,7 +206,7 @@ export interface WorkspaceContext {
     contractVersion: typeof OPENXIANGDA_CONTRACT_VERSION;
     nodeVersion: string;
     packageManager: string;
-    studio?: StudioWorkspaceProtocolCapabilities;
+    cli?: CliProtocolCapabilities;
   };
   environments: Array<{
     id?: string;

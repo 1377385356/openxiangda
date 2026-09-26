@@ -1,10 +1,10 @@
 import { Flags } from "@oclif/core";
-import { OpenXiangdaCommand, studioWorkspaceFlags } from "../base.js";
+import { OpenXiangdaCommand, eventWorkspaceFlags } from "../base.js";
 import { deployApplication, DEVELOPER_ENVIRONMENTS } from 'openxiangda-devkit-core';
 export default class Deploy extends OpenXiangdaCommand {
   static summary = "部署到测试环境，或显式复用测试版本部署生产";
   static flags = {
-    ...studioWorkspaceFlags,
+    ...eventWorkspaceFlags,
     environment: Flags.string({
       options: [...DEVELOPER_ENVIRONMENTS],
       default: "test",
@@ -22,7 +22,7 @@ export default class Deploy extends OpenXiangdaCommand {
   };
   async run() {
     const { flags } = await this.parse(Deploy);
-    this.beginStudioEvents("deploy");
+    this.beginCliEvents("deploy");
     return this.present(
       await deployApplication(this.services, {
         onProgress: event => this.presentOperationProgress(event),

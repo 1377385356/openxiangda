@@ -1,12 +1,9 @@
 import { resolve } from 'node:path';
 import {
   OPENXIANGDA_CONTRACT_VERSION,
-  STUDIO_APPLICATION_AUTHORITY,
-  STUDIO_CLI_EVENT_SCHEMA_VERSION,
-  STUDIO_CLI_RESULT_SCHEMA_VERSION,
-  STUDIO_WORKSPACE_BINDING_SCHEMA_VERSION,
-  STUDIO_WORKSPACE_INITIALIZATION_SCHEMA_VERSION,
-  STUDIO_WORKSPACE_PROTOCOL_VERSION,
+  CLI_EVENT_SCHEMA_VERSION,
+  CLI_RESULT_SCHEMA_VERSION,
+  CLI_PROTOCOL_VERSION,
   WORKSPACE_TEMPLATE_BINDING_SCHEMA_VERSION,
   SCHEMA_VERSIONS,
   type WorkspaceContext,
@@ -58,14 +55,14 @@ export function createWorkspaceContext(
       contractVersion: OPENXIANGDA_CONTRACT_VERSION,
       nodeVersion: options.nodeVersion,
       packageManager: options.packageManager,
-      studio: {
-        schemaVersion: STUDIO_WORKSPACE_PROTOCOL_VERSION,
-        cliResultSchemaVersion: STUDIO_CLI_RESULT_SCHEMA_VERSION,
+      cli: {
+        schemaVersion: CLI_PROTOCOL_VERSION,
+        cliResultSchemaVersion: CLI_RESULT_SCHEMA_VERSION,
         cliEvents: {
-          schemaVersion: STUDIO_CLI_EVENT_SCHEMA_VERSION,
+          schemaVersion: CLI_EVENT_SCHEMA_VERSION,
           commands: DEVKIT_COMMANDS.filter(
             command =>
-              'studioJsonEvents' in command && command.studioJsonEvents
+              'jsonEvents' in command && command.jsonEvents
           ).map(command => ({
             id: command.id,
             operation: command.operation,
@@ -76,23 +73,6 @@ export function createWorkspaceContext(
           schemaVersion: WORKSPACE_TEMPLATE_BINDING_SCHEMA_VERSION,
           digestAlgorithm: 'sha256',
           supportedReferences: ['builtin:application', 'file'],
-        },
-        initialization: {
-          schemaVersion: STUDIO_WORKSPACE_INITIALIZATION_SCHEMA_VERSION,
-          bindingSchemaVersion: STUDIO_WORKSPACE_BINDING_SCHEMA_VERSION,
-          applicationAuthority: STUDIO_APPLICATION_AUTHORITY,
-          applicationKey: 'appType',
-          requiredCreateFlags: [
-            'app-code',
-            'name',
-            'template-ref',
-            'template-digest',
-            'studio-project-id',
-            'provisioning-run-id',
-            'json-events',
-            'run-id',
-          ],
-          repositoryAuthority: 'site-git-broker',
         },
       },
     },

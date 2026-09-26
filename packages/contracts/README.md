@@ -1,6 +1,6 @@
 # openxiangda-contracts
 
-维护 OpenXiangda 2.0 的 TypeScript 与 JSON Schema 协议，包括应用声明、Data API、当前用户的角色与能力并集、AppPackage、部署结果及 Studio 工作区事件。
+维护 OpenXiangda 2.0 的 TypeScript 与 JSON Schema 协议，包括应用声明、Data API、当前用户的角色与能力并集、AppPackage、部署结果及 CLI 工作区事件。
 
 应用使用根包 `openxiangda/core` 等公开子路径。平台与工具链维护者在此修改共享协议，并验证调用双方及包版本组合；不要在应用中复制身份、权限或部署状态协议。
 

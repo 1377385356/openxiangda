@@ -1,9 +1,9 @@
 import { Flags } from '@oclif/core';
-import { OpenXiangdaCommand, studioWorkspaceFlags } from '../base.js';
+import { OpenXiangdaCommand, eventWorkspaceFlags } from '../base.js';
 export default class Rollback extends OpenXiangdaCommand {
   static summary = '以历史 AppVersion 创建回滚部署';
   static flags = {
-    ...studioWorkspaceFlags,
+    ...eventWorkspaceFlags,
     environment: Flags.string({ options: ['test', 'production'], default: 'test' }),
     to: Flags.string({ required: true, summary: '目标 AppVersion ID' }),
     'operation-id': Flags.string({
@@ -12,7 +12,7 @@ export default class Rollback extends OpenXiangdaCommand {
   };
   async run() {
     const { flags } = await this.parse(Rollback);
-    this.beginStudioEvents('rollback');
+    this.beginCliEvents('rollback');
     const environment = flags.environment === 'production' ? 'production' : 'preproduction';
     return this.present(
       await this.services.rollback(flags.cwd, environment, flags.to, {

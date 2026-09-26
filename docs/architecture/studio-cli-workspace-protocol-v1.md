@@ -1,6 +1,6 @@
 # Studio CLI 与工作区协议 v1
 
-状态：Accepted
+状态：Retired（2026-09-27）。Studio 专属协议已删除；通用 CLI JSON/JSONL 与模板绑定继续维护。见 [退役决策](./2026-09-27-retire-studio.md)。以下仅为历史记录。
 
 ## 问题证据与能力所有者
 

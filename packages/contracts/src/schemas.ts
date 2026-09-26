@@ -11,20 +11,12 @@ import {
   DATA_FIELD_TYPES,
 } from "./types.js";
 import {
-  STUDIO_APPLICATION_AUTHORITY,
-  STUDIO_CAPABILITIES_SCHEMA_VERSION,
-  STUDIO_CLI_EVENT_SCHEMA_VERSION,
-  STUDIO_CLI_EVENT_TYPES,
-  STUDIO_CLI_RESULT_SCHEMA_VERSION,
-  STUDIO_PLATFORM_CONTRACT_VERSION,
-  STUDIO_SITE_PROFILE_ENDPOINT,
-  STUDIO_SITE_PROFILE_SCHEMA_VERSION,
-  STUDIO_SITE_PROFILE_UNAVAILABLE_CODES,
-  STUDIO_WORKSPACE_BINDING_SCHEMA_VERSION,
-  STUDIO_WORKSPACE_INITIALIZATION_SCHEMA_VERSION,
-  STUDIO_WORKSPACE_PROTOCOL_VERSION,
+  CLI_EVENT_SCHEMA_VERSION,
+  CLI_EVENT_TYPES,
+  CLI_RESULT_SCHEMA_VERSION,
+  CLI_PROTOCOL_VERSION,
   WORKSPACE_TEMPLATE_BINDING_SCHEMA_VERSION,
-} from "./studio.js";
+} from "./cli.js";
 import { aiCapabilityCatalogSchema } from "./ai.js";
 import {
   departmentReferenceValueSchema,
@@ -50,12 +42,6 @@ const prefixedDigest = {
 } as const;
 const dateTime = { type: "string", format: "date-time" } as const;
 const nonEmptyString = { type: "string", minLength: 1 } as const;
-const studioSiteBaseUrl = {
-  type: "string",
-  format: "uri",
-  pattern: "^https://[^/?#@]+(?:/[^?#]*)?$",
-  maxLength: 2048,
-} as const;
 
 export const diagnosticSchema = {
   $id: SCHEMA_VERSIONS.diagnostic,
@@ -75,8 +61,8 @@ export const diagnosticSchema = {
   },
 } as const;
 
-export const studioCliEventSchema = {
-  $id: STUDIO_CLI_EVENT_SCHEMA_VERSION,
+export const cliEventSchema = {
+  $id: CLI_EVENT_SCHEMA_VERSION,
   type: "object",
   additionalProperties: false,
   required: [
@@ -89,11 +75,11 @@ export const studioCliEventSchema = {
     "payload",
   ],
   properties: {
-    schemaVersion: { const: STUDIO_CLI_EVENT_SCHEMA_VERSION },
+    schemaVersion: { const: CLI_EVENT_SCHEMA_VERSION },
     eventId: nonEmptyString,
     runId: { type: "string", minLength: 1, maxLength: 256 },
     seq: { type: "integer", minimum: 1 },
-    type: { enum: STUDIO_CLI_EVENT_TYPES },
+    type: { enum: CLI_EVENT_TYPES },
     timestamp: dateTime,
     payload: { type: "object" },
   },
@@ -108,110 +94,6 @@ export const workspaceTemplateBindingSchema = {
     schemaVersion: { const: WORKSPACE_TEMPLATE_BINDING_SCHEMA_VERSION },
     ref: nonEmptyString,
     digest: prefixedDigest,
-  },
-} as const;
-
-const studioWorkspaceCompilerSummarySchema = {
-  type: "object",
-  additionalProperties: false,
-  required: [
-    "toolchainVersion",
-    "contractVersion",
-    "compilerContractVersion",
-    "configurationDigest",
-    "contractDigest",
-    "aiCatalogDigest",
-  ],
-  properties: {
-    toolchainVersion: nonEmptyString,
-    contractVersion: nonEmptyString,
-    compilerContractVersion: nonEmptyString,
-    configurationDigest: digest,
-    contractDigest: digest,
-    aiCatalogDigest: digest,
-  },
-} as const;
-
-export const studioWorkspaceBindingSchema = {
-  $id: STUDIO_WORKSPACE_BINDING_SCHEMA_VERSION,
-  type: "object",
-  additionalProperties: false,
-  required: [
-    "schemaVersion",
-    "applicationAuthority",
-    "siteBaseUrl",
-    "projectId",
-    "provisioningRunId",
-    "appType",
-    "appName",
-    "template",
-    "state",
-    "compiler",
-  ],
-  properties: {
-    schemaVersion: { const: STUDIO_WORKSPACE_BINDING_SCHEMA_VERSION },
-    applicationAuthority: { const: STUDIO_APPLICATION_AUTHORITY },
-    siteBaseUrl: studioSiteBaseUrl,
-    projectId: { type: "string", format: "uuid" },
-    provisioningRunId: { type: "string", format: "uuid" },
-    appType: {
-      type: "string",
-      pattern: "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
-    },
-    appName: { type: "string", minLength: 1, maxLength: 256 },
-    template: workspaceTemplateBindingSchema,
-    state: { enum: ["prepared", "compiled"] },
-    compiler: {
-      anyOf: [{ type: "null" }, studioWorkspaceCompilerSummarySchema],
-    },
-  },
-} as const;
-
-export const studioWorkspaceInitializationSchema = {
-  $id: STUDIO_WORKSPACE_INITIALIZATION_SCHEMA_VERSION,
-  type: "object",
-  additionalProperties: false,
-  required: [
-    "schemaVersion",
-    "applicationAuthority",
-    "siteBaseUrl",
-    "projectId",
-    "provisioningRunId",
-    "appType",
-    "appName",
-    "workspace",
-    "cliVersion",
-    "protocolVersion",
-    "template",
-    "compiler",
-    "bindingDigest",
-    "workspaceDigest",
-  ],
-  properties: {
-    schemaVersion: { const: STUDIO_WORKSPACE_INITIALIZATION_SCHEMA_VERSION },
-    applicationAuthority: { const: STUDIO_APPLICATION_AUTHORITY },
-    siteBaseUrl: studioSiteBaseUrl,
-    projectId: { type: "string", format: "uuid" },
-    provisioningRunId: { type: "string", format: "uuid" },
-    appType: {
-      type: "string",
-      pattern: "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
-    },
-    appName: { type: "string", minLength: 1, maxLength: 256 },
-    workspace: {
-      type: "object",
-      additionalProperties: false,
-      required: ["reused"],
-      properties: {
-        reused: { type: "boolean" },
-      },
-    },
-    cliVersion: nonEmptyString,
-    protocolVersion: { const: STUDIO_WORKSPACE_PROTOCOL_VERSION },
-    template: workspaceTemplateBindingSchema,
-    compiler: studioWorkspaceCompilerSummarySchema,
-    bindingDigest: prefixedDigest,
-    workspaceDigest: prefixedDigest,
   },
 } as const;
 
@@ -297,7 +179,7 @@ export const workspaceContextSchema = {
         contractVersion: { const: OPENXIANGDA_CONTRACT_VERSION },
         nodeVersion: nonEmptyString,
         packageManager: nonEmptyString,
-        studio: {
+        cli: {
           type: "object",
           additionalProperties: false,
           required: [
@@ -305,19 +187,18 @@ export const workspaceContextSchema = {
             "cliResultSchemaVersion",
             "cliEvents",
             "templates",
-            "initialization",
           ],
           properties: {
-            schemaVersion: { const: STUDIO_WORKSPACE_PROTOCOL_VERSION },
+            schemaVersion: { const: CLI_PROTOCOL_VERSION },
             cliResultSchemaVersion: {
-              const: STUDIO_CLI_RESULT_SCHEMA_VERSION,
+              const: CLI_RESULT_SCHEMA_VERSION,
             },
             cliEvents: {
               type: "object",
               additionalProperties: false,
               required: ["schemaVersion", "commands"],
               properties: {
-                schemaVersion: { const: STUDIO_CLI_EVENT_SCHEMA_VERSION },
+                schemaVersion: { const: CLI_EVENT_SCHEMA_VERSION },
                 commands: {
                   type: "array",
                   maxItems: 32,
@@ -356,44 +237,6 @@ export const workspaceContextSchema = {
                   minItems: 2,
                   maxItems: 2,
                 },
-              },
-            },
-            initialization: {
-              type: "object",
-              additionalProperties: false,
-              required: [
-                "schemaVersion",
-                "bindingSchemaVersion",
-                "applicationAuthority",
-                "applicationKey",
-                "requiredCreateFlags",
-                "repositoryAuthority",
-              ],
-              properties: {
-                schemaVersion: {
-                  const: STUDIO_WORKSPACE_INITIALIZATION_SCHEMA_VERSION,
-                },
-                bindingSchemaVersion: {
-                  const: STUDIO_WORKSPACE_BINDING_SCHEMA_VERSION,
-                },
-                applicationAuthority: { const: STUDIO_APPLICATION_AUTHORITY },
-                applicationKey: { const: "appType" },
-                requiredCreateFlags: {
-                  type: "array",
-                  prefixItems: [
-                    { const: "app-code" },
-                    { const: "name" },
-                    { const: "template-ref" },
-                    { const: "template-digest" },
-                    { const: "studio-project-id" },
-                    { const: "provisioning-run-id" },
-                    { const: "json-events" },
-                    { const: "run-id" },
-                  ],
-                  minItems: 8,
-                  maxItems: 8,
-                },
-                repositoryAuthority: { const: "site-git-broker" },
               },
             },
           },
@@ -4464,129 +4307,6 @@ export const deploymentRunSchema = {
     finishedAt: dateTime,
     createdAt: dateTime,
     updatedAt: dateTime,
-  },
-} as const;
-
-const studioPlatformDiscoveryCapabilitiesSchema = {
-  type: "object",
-  additionalProperties: false,
-  required: ["contractVersion", "profile", "compatibility"],
-  properties: {
-    contractVersion: { const: STUDIO_PLATFORM_CONTRACT_VERSION },
-    profile: {
-      oneOf: [
-        {
-          type: "object",
-          additionalProperties: false,
-          required: [
-            "schemaVersion",
-            "endpoint",
-            "status",
-            "signatureAlgorithm",
-            "verificationOwner",
-          ],
-          properties: {
-            schemaVersion: { const: STUDIO_SITE_PROFILE_SCHEMA_VERSION },
-            endpoint: { const: STUDIO_SITE_PROFILE_ENDPOINT },
-            status: { const: "available" },
-            signatureAlgorithm: { const: "Ed25519" },
-            verificationOwner: { const: "studio-client-trust-store" },
-          },
-        },
-        {
-          type: "object",
-          additionalProperties: false,
-          required: [
-            "schemaVersion",
-            "endpoint",
-            "status",
-            "unavailableCode",
-            "signatureAlgorithm",
-            "verificationOwner",
-          ],
-          properties: {
-            schemaVersion: { const: STUDIO_SITE_PROFILE_SCHEMA_VERSION },
-            endpoint: { const: STUDIO_SITE_PROFILE_ENDPOINT },
-            status: { const: "unavailable" },
-            unavailableCode: {
-              enum: STUDIO_SITE_PROFILE_UNAVAILABLE_CODES,
-            },
-            signatureAlgorithm: { const: "Ed25519" },
-            verificationOwner: { const: "studio-client-trust-store" },
-          },
-        },
-      ],
-    },
-    compatibility: {
-      type: "object",
-      additionalProperties: false,
-      required: ["studioContractRange", "cliContractRange"],
-      properties: {
-        studioContractRange: {
-          type: ["string", "null"],
-          minLength: 1,
-          maxLength: 128,
-        },
-        cliContractRange: {
-          type: ["string", "null"],
-          minLength: 1,
-          maxLength: 128,
-        },
-      },
-    },
-  },
-  allOf: [
-    {
-      if: {
-        properties: {
-          profile: {
-            properties: { status: { const: "available" } },
-            required: ["status"],
-          },
-        },
-        required: ["profile"],
-      },
-      then: {
-        properties: {
-          compatibility: {
-            properties: {
-              studioContractRange: {
-                type: "string",
-                minLength: 1,
-                maxLength: 128,
-              },
-              cliContractRange: {
-                type: "string",
-                minLength: 1,
-                maxLength: 128,
-              },
-            },
-          },
-        },
-      },
-      else: {
-        properties: {
-          compatibility: {
-            properties: {
-              studioContractRange: { const: null },
-              cliContractRange: { const: null },
-            },
-          },
-        },
-      },
-    },
-  ],
-} as const;
-
-export const studioCapabilitiesSchema = {
-  $id: STUDIO_CAPABILITIES_SCHEMA_VERSION,
-  type: "object",
-  additionalProperties: false,
-  required: ["schemaVersion", "studioContractVersion", "studio"],
-  properties: {
-    schemaVersion: { const: STUDIO_CAPABILITIES_SCHEMA_VERSION },
-    studioContractVersion: { const: STUDIO_PLATFORM_CONTRACT_VERSION },
-    studio: studioPlatformDiscoveryCapabilitiesSchema,
   },
 } as const;
 
@@ -8864,10 +8584,7 @@ export const runtimeCapacityPreflightSchema = {
 export const contractSchemas = {
   runtimeCapacityPreflight: runtimeCapacityPreflightSchema,
   diagnostic: diagnosticSchema,
-  studioCapabilities: studioCapabilitiesSchema,
-  studioCliEvent: studioCliEventSchema,
-  studioWorkspaceBinding: studioWorkspaceBindingSchema,
-  studioWorkspaceInitialization: studioWorkspaceInitializationSchema,
+  cliEvent: cliEventSchema,
   workspaceTemplateBinding: workspaceTemplateBindingSchema,
   workspaceContext: workspaceContextSchema,
   application: applicationSchema,

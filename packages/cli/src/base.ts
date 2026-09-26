@@ -2,7 +2,7 @@ import { developerError } from 'openxiangda-devkit-core';
 import { Command, Flags } from "@oclif/core";
 import { randomUUID } from "node:crypto";
 import {
-  STUDIO_CLI_RESULT_SCHEMA_VERSION,
+  CLI_RESULT_SCHEMA_VERSION,
   type DevkitResult,
 } from "openxiangda-contracts";
 import {
@@ -10,27 +10,27 @@ import {
   commandDefinition,
   type OperationProgress,
 } from "openxiangda-devkit-core";
-import { StudioCliEventStream } from "./studio-events.js";
+import { CliEventStream } from "./cli-events.js";
 import { resolveCliToolchainCapsule } from "./toolchain-capsule.js";
 
 export const workspaceFlags = {
   cwd: Flags.string({ summary: "应用工作区目录", helpValue: "<directory>" }),
 };
 
-export const studioEventFlags = {
+export const cliEventFlags = {
   "json-events": Flags.boolean({
     summary: "按 openxiangda.cli-event/v1 输出 JSONL 事件",
     exclusive: ["json"],
   }),
   "run-id": Flags.string({
-    summary: "Studio AgentRun ID；仅与 --json-events 一起使用",
+    summary: "CLI Run ID；仅与 --json-events 一起使用",
     helpValue: "<run-id>",
     dependsOn: ["json-events"],
     parse: async input => {
       if (!input || input.length > 256) {
         throw Object.assign(
-          new Error("STUDIO_RUN_ID_INVALID: runId 必须为 1 到 256 个字符"),
-          { code: "STUDIO_RUN_ID_INVALID", retryable: false }
+          new Error("CLI_RUN_ID_INVALID: runId 必须为 1 到 256 个字符"),
+          { code: "CLI_RUN_ID_INVALID", retryable: false }
         );
       }
       return input;
@@ -38,9 +38,9 @@ export const studioEventFlags = {
   }),
 };
 
-export const studioWorkspaceFlags = {
+export const eventWorkspaceFlags = {
   ...workspaceFlags,
-  ...studioEventFlags,
+  ...cliEventFlags,
 };
 
 export abstract class OpenXiangdaCommand extends Command {
@@ -49,14 +49,14 @@ export abstract class OpenXiangdaCommand extends Command {
   protected readonly services = new OpenXiangdaApplicationServices({
     toolchainCapsule: resolveCliToolchainCapsule(),
   });
-  private studioEventStream?: StudioCliEventStream;
-  private studioEventStarted = false;
+  private cliEventStream?: CliEventStream;
+  private cliEventStarted = false;
 
   protected async catch(error: Error & { exitCode?: number }) {
     process.exitCode = error.exitCode ?? 1;
-    if (this.studioEventsEnabled()) {
-      this.beginStudioEvents();
-      this.studioEventStream!.emit("command.failed", {
+    if (this.cliEventsEnabled()) {
+      this.beginCliEvents();
+      this.cliEventStream!.emit("command.failed", {
         operation: this.id || "unknown",
         result: this.toErrorJson(error),
       });
@@ -71,10 +71,10 @@ export abstract class OpenXiangdaCommand extends Command {
 
   protected present(result: DevkitResult<unknown>) {
     if (!result.ok) process.exitCode = 1;
-    if (this.studioEventsEnabled()) {
-      this.beginStudioEvents(result.operation);
+    if (this.cliEventsEnabled()) {
+      this.beginCliEvents(result.operation);
       const envelope = this.envelope(result);
-      this.studioEventStream!.emit(
+      this.cliEventStream!.emit(
         result.ok ? "command.completed" : "command.failed",
         { operation: result.operation, result: envelope }
       );
@@ -93,29 +93,29 @@ export abstract class OpenXiangdaCommand extends Command {
   }
 
   protected machineOutputEnabled() {
-    return this.jsonEnabled() || this.studioEventsEnabled();
+    return this.jsonEnabled() || this.cliEventsEnabled();
   }
 
-  protected beginStudioEvents(operation = this.id || "unknown") {
-    if (!this.studioEventsEnabled()) return;
-    if (!this.studioEventStream) {
-      this.studioEventStream = new StudioCliEventStream(
-        this.studioRunId() || randomUUID()
+  protected beginCliEvents(operation = this.id || "unknown") {
+    if (!this.cliEventsEnabled()) return;
+    if (!this.cliEventStream) {
+      this.cliEventStream = new CliEventStream(
+        this.cliRunId() || randomUUID()
       );
     }
-    if (!this.studioEventStarted) {
-      this.studioEventStarted = true;
-      this.studioEventStream.emit("command.started", { operation });
+    if (!this.cliEventStarted) {
+      this.cliEventStarted = true;
+      this.cliEventStream.emit("command.started", { operation });
     }
   }
 
-  protected emitStudioStatus(
+  protected emitCliStatus(
     message: string,
     details: Record<string, unknown> = {}
   ) {
-    if (!this.studioEventsEnabled()) return;
-    this.beginStudioEvents();
-    this.studioEventStream!.emit("command.status", {
+    if (!this.cliEventsEnabled()) return;
+    this.beginCliEvents();
+    this.cliEventStream!.emit("command.status", {
       operation: this.id || "unknown",
       message,
       ...details,
@@ -125,7 +125,7 @@ export abstract class OpenXiangdaCommand extends Command {
   protected presentOperationProgress(event: OperationProgress) {
     const state = { running: '进行中', passed: '完成', failed: '失败', skipped: '未执行' }[event.state];
     const message = `${event.label}：${state}，${(event.durationMs / 1000).toFixed(1)} 秒`;
-    if (this.studioEventsEnabled()) this.emitStudioStatus(message, { progress: event });
+    if (this.cliEventsEnabled()) this.emitCliStatus(message, { progress: event });
     else process.stderr.write(`${message}\n`);
   }
 
@@ -139,7 +139,7 @@ export abstract class OpenXiangdaCommand extends Command {
     );
     const nextCommand = this.errorNextCommand(code);
     return {
-      schemaVersion: STUDIO_CLI_RESULT_SCHEMA_VERSION,
+      schemaVersion: CLI_RESULT_SCHEMA_VERSION,
       ok: false,
       operation: this.id || "unknown",
       workspace: null,
@@ -153,20 +153,11 @@ export abstract class OpenXiangdaCommand extends Command {
     const nextCommand =
       result.nextActions.find(action => action.command?.startsWith("openxiangda "))
         ?.command || (diagnostic ? this.errorNextCommand(diagnostic.code) : null);
-    const studioInitialization =
-      result.data &&
-      typeof result.data === "object" &&
-      "studioInitialization" in result.data;
     return {
-      schemaVersion: STUDIO_CLI_RESULT_SCHEMA_VERSION,
+      schemaVersion: CLI_RESULT_SCHEMA_VERSION,
       ok: result.ok,
       operation: result.operation,
-      workspace: studioInitialization
-        ? {
-            appCode: result.workspace.appCode,
-            name: result.workspace.name,
-          }
-        : result.workspace,
+      workspace: result.workspace,
       data: result.data ?? null,
       error: diagnostic
         ? {
@@ -184,17 +175,17 @@ export abstract class OpenXiangdaCommand extends Command {
     };
   }
 
-  private studioEventsEnabled() {
+  private cliEventsEnabled() {
     if (!this.argv.includes("--json-events")) return false;
     const command = commandDefinition(this.id || "");
     return Boolean(
       command &&
-        "studioJsonEvents" in command &&
-        command.studioJsonEvents === true
+        "jsonEvents" in command &&
+        command.jsonEvents === true
     );
   }
 
-  private studioRunId() {
+  private cliRunId() {
     const inline = this.argv.find(argument => argument.startsWith("--run-id="));
     if (inline) {
       const value = inline.slice("--run-id=".length);

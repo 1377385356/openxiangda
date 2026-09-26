@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { StudioCliEventStream } from '../src/studio-events.js';
+import { CliEventStream } from '../src/cli-events.js';
 
 test('emits one ordered JSONL-compatible event stream per AgentRun', () => {
   const events: Array<Record<string, unknown>> = [];
-  const stream = new StudioCliEventStream('run-123', event => {
+  const stream = new CliEventStream('run-123', event => {
     events.push(event as unknown as Record<string, unknown>);
   });
   stream.emit('command.started', { operation: 'check' });
@@ -34,7 +34,7 @@ test('emits one ordered JSONL-compatible event stream per AgentRun', () => {
 
 test('bounds the externally supplied AgentRun identifier', () => {
   assert.throws(
-    () => new StudioCliEventStream('x'.repeat(257), () => undefined),
-    /STUDIO_RUN_ID_INVALID/
+    () => new CliEventStream('x'.repeat(257), () => undefined),
+    /CLI_RUN_ID_INVALID/
   );
 });

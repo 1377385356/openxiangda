@@ -170,17 +170,13 @@ test('serves the same workspace contracts through the MCP protocol', async () =>
     assert.equal((context.structuredContent as any).data.development.schemaVersion, 'openxiangda.development-lifecycle/v2');
     assert.equal((context.structuredContent as any).data.development.readyForTest, false);
     assert.ok((context.structuredContent as any).data.development.diagnostics.length > 0);
-    const studio = (context.structuredContent as any).data.toolchain.studio;
-    assert.equal(studio.schemaVersion, 'openxiangda.studio-workspace/v2');
+    const cli = (context.structuredContent as any).data.toolchain.cli;
+    assert.equal(cli.schemaVersion, 'openxiangda.cli/v1');
     assert.deepEqual(
-      studio.cliEvents.commands.map((command: { id: string }) => command.id),
+      cli.cliEvents.commands.map((command: { id: string }) => command.id),
       ['create', 'dev', 'check', 'deploy', 'logs', 'rollback']
     );
-    assert.equal(
-      studio.initialization.applicationAuthority,
-      'site-project-provisioning-run'
-    );
-    assert.equal(studio.initialization.repositoryAuthority, 'site-git-broker');
+
 
     const contracts = await client.readResource({ uri: MCP_RESOURCE_URIS[1] });
     const resourceDescription = JSON.parse((contracts.contents[0] as { text: string }).text);

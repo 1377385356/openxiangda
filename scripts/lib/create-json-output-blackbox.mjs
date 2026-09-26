@@ -139,9 +139,9 @@ export async function verifyCreateJsonOutputBoundary(options) {
         "create",
         eventRoot,
         "--app-code",
-        "studio-events-app",
+        "cli-events-app",
         "--name",
-        "Studio Events App",
+        "CLI Events App",
         "--json-events",
         "--run-id",
         "agent-run-123",
@@ -151,201 +151,14 @@ export async function verifyCreateJsonOutputBoundary(options) {
       0
     );
     assertEventStream(events, "create", "agent-run-123");
-    assert.equal(events.value.at(-1).payload.result.workspace.appCode, "studio-events-app");
-    assert.equal(events.value.at(-1).payload.result.workspace.name, "Studio Events App");
+    assert.equal(events.value.at(-1).payload.result.workspace.appCode, "cli-events-app");
+    assert.equal(events.value.at(-1).payload.result.workspace.name, "CLI Events App");
     assert.match(
       events.value.at(-1).payload.result.data.workspace.template.digest,
       /^sha256:[0-9a-f]{64}$/
     );
     assert.equal(events.stderr, "", `${options.label} event stderr`);
     assertNoInstallSecrets(events);
-
-    let studioInvocationCount = 0;
-    if (options.source) {
-      const studioRoot = join(scratchRoot, `${options.label}-studio`);
-      const template = events.value.at(-1).payload.result.data.workspace.template;
-      const incompleteStudio = await runCommand(
-        command,
-        [
-          "create",
-          join(scratchRoot, `${options.label}-studio-incomplete`),
-          "--studio-project-id",
-          "11111111-1111-4111-8111-111111111111",
-          "--json-events",
-          "--run-id",
-          "33333333-3333-4333-8333-333333333333",
-        ],
-        options.cwd,
-        environment,
-        1
-      );
-      assert.equal(
-        parseEvents(incompleteStudio.stdout).at(-1).payload.result.error.code,
-        "STUDIO_CREATE_FLAGS_REQUIRED"
-      );
-      const studioArgs = [
-        "create",
-        studioRoot,
-        "--app-code",
-        "studio-bound-app",
-        "--name",
-        "Studio Bound App",
-        "--template-ref",
-        template.ref,
-        "--template-digest",
-        template.digest,
-        "--studio-project-id",
-        "11111111-1111-4111-8111-111111111111",
-        "--provisioning-run-id",
-        "22222222-2222-4222-8222-222222222222",
-        "--json-events",
-        "--run-id",
-        "33333333-3333-4333-8333-333333333333",
-      ];
-      const studioEnvironment = {
-        ...environment,
-        OPENXIANGDA_BASE_URL: "https://studio.example/service",
-        OPENXIANGDA_TEST_STUDIO_FETCH: "1",
-      };
-      const invalidUuidRoot = join(
-        scratchRoot,
-        `${options.label}-studio-invalid-uuid`
-      );
-      const invalidUuidStudio = await runCommand(
-        command,
-        studioArgs.map(argument => {
-          if (argument === studioRoot) return invalidUuidRoot;
-          if (argument === "11111111-1111-4111-8111-111111111111") {
-            return "11111111-1111-0111-7111-111111111111";
-          }
-          return argument;
-        }),
-        options.cwd,
-        studioEnvironment,
-        1
-      );
-      assert.equal(
-        parseEvents(invalidUuidStudio.stdout).at(-1).payload.result.error.code,
-        "STUDIO_CREATE_UUID_INVALID"
-      );
-      assert.equal(existsSync(invalidUuidRoot), false);
-      const insecureStudioRoot = join(
-        scratchRoot,
-        `${options.label}-studio-insecure`
-      );
-      const insecureStudio = await runCommand(
-        command,
-        studioArgs.map(argument =>
-          argument === studioRoot ? insecureStudioRoot : argument
-        ),
-        options.cwd,
-        environment,
-        1
-      );
-      assert.equal(
-        parseEvents(insecureStudio.stdout).at(-1).payload.result.error.code,
-        "STUDIO_SITE_BASE_URL_INVALID"
-      );
-      assert.equal(existsSync(insecureStudioRoot), false);
-      const firstStudio = await runCommand(
-        command,
-        studioArgs,
-        options.cwd,
-        studioEnvironment,
-        0
-      );
-      assertEventStream(
-        firstStudio,
-        "create",
-        "33333333-3333-4333-8333-333333333333"
-      );
-      const firstInitialization = assertStudioInitialization(
-        firstStudio,
-        false,
-        scratchRoot,
-        expectedCliVersion
-      );
-      studioInvocationCount += 1;
-
-      const repeatedStudio = await runCommand(
-        command,
-        studioArgs,
-        options.cwd,
-        studioEnvironment,
-        0
-      );
-      assertEventStream(
-        repeatedStudio,
-        "create",
-        "33333333-3333-4333-8333-333333333333"
-      );
-      const repeatedInitialization = assertStudioInitialization(
-        repeatedStudio,
-        true,
-        scratchRoot,
-        expectedCliVersion
-      );
-      assert.equal(
-        repeatedInitialization.workspaceDigest,
-        firstInitialization.workspaceDigest
-      );
-      studioInvocationCount += 1;
-
-      const studioConfigPath = join(studioRoot, "openxiangda.config.ts");
-      const originalStudioConfig = readFileSync(studioConfigPath, "utf8");
-      const driftedStudioConfig = originalStudioConfig.replace(
-        "Studio Bound App",
-        "Drifted Studio App"
-      );
-      assert.notEqual(driftedStudioConfig, originalStudioConfig);
-      writeFileSync(studioConfigPath, driftedStudioConfig, "utf8");
-      const compilerDrift = await runCommand(
-        command,
-        studioArgs,
-        options.cwd,
-        studioEnvironment,
-        1
-      );
-      const compilerDriftEvents = parseEvents(compilerDrift.stdout);
-      assert.equal(compilerDriftEvents.at(-1).type, "command.failed");
-      assert.equal(
-        compilerDriftEvents.at(-1).payload.result.error.code,
-        "STUDIO_WORKSPACE_COMPILER_DRIFT"
-      );
-      writeFileSync(studioConfigPath, originalStudioConfig, "utf8");
-
-      const driftedStudio = await runCommand(
-        command,
-        studioArgs.map(argument =>
-          argument === "11111111-1111-4111-8111-111111111111"
-            ? "44444444-4444-4444-8444-444444444444"
-            : argument
-        ),
-        options.cwd,
-        studioEnvironment,
-        1
-      );
-      const driftedEvents = parseEvents(driftedStudio.stdout);
-      assert.equal(driftedEvents.at(-1).type, "command.failed");
-      assert.equal(
-        driftedEvents.at(-1).payload.result.error.code,
-        "STUDIO_WORKSPACE_BINDING_MISMATCH"
-      );
-      assertNoInstallSecrets(driftedStudio);
-
-      const storedBinding = JSON.parse(
-        readFileSync(
-          join(studioRoot, ".openxiangda", "studio-binding.json"),
-          "utf8"
-        )
-      );
-      assert.equal(storedBinding.state, "compiled");
-      assert.equal(storedBinding.appType, "studio-bound-app");
-      assert.equal("repositoryUrl" in storedBinding, false);
-      assert.equal("repository" in storedBinding, false);
-      assert.equal("root" in storedBinding, false);
-      assert.equal("token" in storedBinding, false);
-    }
 
     const humanRoot = join(scratchRoot, `${options.label}-human`);
     const human = await runCommand(
@@ -365,7 +178,7 @@ export async function verifyCreateJsonOutputBoundary(options) {
       .map(line => JSON.parse(line));
     assert.equal(
       invocations.length,
-      4 + studioInvocationCount,
+      4,
       `${options.label} pnpm invocation count`
     );
     for (const invocation of invocations) {
@@ -388,19 +201,7 @@ function createCommand(options, scratchRoot) {
   const runner = join(scratchRoot, "source-create-runner.mjs");
   writeFileSync(
     runner,
-    `if (process.env.OPENXIANGDA_TEST_STUDIO_FETCH === "1") {
-  globalThis.fetch = async input => {
-    const url = String(input);
-    if (url.endsWith("/openxiangda-api/v2/auth/whoami")) {
-      return new Response(JSON.stringify({ code: 200, message: "success", data: {
-        user: { id: "developer-1" }, tenant: { id: "tenant-1" },
-        isPlatformAdmin: true, manageableAppTypes: ["native"]
-      } }), { status: 200, headers: { "content-type": "application/json" } });
-    }
-    throw new Error("STUDIO_TEST_UNEXPECTED_REMOTE_REQUEST:" + url);
-  };
-}
-const { default: Create } = await import(${JSON.stringify(
+    `const { default: Create } = await import(${JSON.stringify(
       pathToFileURL(resolve(options.source.commandModule)).href
     )});
 const args = process.argv.slice(2);
@@ -544,35 +345,6 @@ function parseEvents(stdout) {
     .split(/\r?\n/)
     .filter(Boolean)
     .map(line => JSON.parse(line));
-}
-
-function assertStudioInitialization(result, reused, scratchRoot, expectedCliVersion) {
-  const completed = result.value.at(-1).payload.result;
-  const initialization = completed.data.studioInitialization;
-  assert.equal(
-    initialization.schemaVersion,
-    "openxiangda.studio-workspace-initialization/v1"
-  );
-  assert.equal(
-    initialization.applicationAuthority,
-    "site-project-provisioning-run"
-  );
-  assert.equal(initialization.appType, "studio-bound-app");
-  assert.equal(initialization.workspace.reused, reused);
-  assert.match(initialization.bindingDigest, /^sha256:[0-9a-f]{64}$/);
-  assert.match(initialization.workspaceDigest, /^sha256:[0-9a-f]{64}$/);
-  assert.equal(initialization.cliVersion, expectedCliVersion);
-  assert.equal(initialization.protocolVersion, "openxiangda.studio-workspace/v2");
-  assert.match(initialization.compiler.configurationDigest, /^[0-9a-f]{64}$/);
-  assert.match(initialization.compiler.contractDigest, /^[0-9a-f]{64}$/);
-  assert.match(initialization.compiler.aiCatalogDigest, /^[0-9a-f]{64}$/);
-  assert.equal(completed.data.provision, null);
-  assert.equal("root" in completed.workspace, false);
-  assert.equal("path" in completed.data.link, false);
-  assert.equal("root" in initialization.workspace, false);
-  assert.equal(result.stdout.includes(scratchRoot), false);
-  assert.equal(result.stderr, "");
-  return initialization;
 }
 
 function assertNoInstallSecrets(result) {
