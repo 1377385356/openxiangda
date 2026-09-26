@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { canonicalJson, sha256Digest } from 'openxiangda-contracts';
+import { Ajv2020 } from 'ajv/dist/2020.js';
+import { canonicalJson, sha256Digest, contractSchemas, validateDataResource } from 'openxiangda-contracts';
 import { compileNativeApplicationConfiguration } from 'openxiangda-contracts/native-compiler';
 import {
   compileApplicationSources,
@@ -172,6 +173,84 @@ function platformCompile(output: ReturnType<typeof compileApplicationSources>) {
     expectedConfigDigest: sha256Digest(output.config.value), expectedContractDigest: sha256Digest(output.contracts.value),
   });
 }
+
+function committedLifecycleDeclaration(): OpenXiangdaAppDeclaration {
+  const source = declaration();
+  const resource = source.data!.resources[0]!;
+  resource.fields.find(field => field.code === 'status')!.options!.push(
+    { label: 'Fulfilled', value: 'fulfilled' }, { label: 'Closed', value: 'closed' },
+    { label: 'Terminated', value: 'terminated' });
+  resource.decimalReservationLifecycle = {
+    parentTransitions: [{ from: 'signing', to: 'closed' }, { from: 'closed', to: 'signing' }],
+    childTransitions: [{ from: 'signing', to: 'fulfilled' }, { from: 'fulfilled', to: 'signing' },
+      { from: 'signing', to: 'terminated' }],
+    fulfilledChildStatuses: ['fulfilled'], lockedParentStatuses: ['closed'],
+  };
+  return source;
+}
+
+test('committed lifecycle survives model and resource authoring with identical platform capability evidence', () => {
+  const source = committedLifecycleDeclaration();
+  const direct = compileApplicationSources(defineOpenXiangdaApp(source));
+  const resource = source.data!.resources[0]!;
+  delete source.data;
+  source.modules = [{ code: 'quota', models: [resource], crud: [{ model: resource.code }] }];
+  const model = compileApplicationSources(defineOpenXiangdaApp(source));
+  assert.deepEqual(model.config.value.data.resources[0]!.decimalReservationLifecycle,
+    direct.config.value.data.resources[0]!.decimalReservationLifecycle);
+  const defined = defineOpenXiangdaApp(committedLifecycleDeclaration());
+  const requirement = requiredPlatformCapabilities(defined).find(item => item.code === 'data.decimal-reservation-lifecycle');
+  assert.equal(requirement?.contractVersion, '1.0.0');
+  assert.deepEqual(platformCompile(direct).requiredPlatformCapabilities.find(item => item.code === requirement!.code), requirement);
+  assert.deepEqual(platformCompile(model).requiredPlatformCapabilities.find(item => item.code === requirement!.code), requirement);
+  const changed = committedLifecycleDeclaration();
+  changed.data!.resources[0]!.decimalReservationLifecycle!.childTransitions.pop();
+  assert.notDeepEqual(requiredPlatformCapabilities(defineOpenXiangdaApp(changed)).find(item => item.code === requirement!.code), requirement);
+  assert.ok(!requiredPlatformCapabilities(defineOpenXiangdaApp(declaration())).some(item => item.code === requirement!.code));
+  const reordered = committedLifecycleDeclaration();
+  reordered.data!.resources[0]!.decimalReservationLifecycle!.childTransitions.reverse();
+  assert.deepEqual(compileApplicationSources(defineOpenXiangdaApp(reordered)).config, direct.config);
+});
+
+test('both compilers reject unknown states, invalid edges, absent grants and reserve into locked parents before deployment', () => {
+  const mutations: Array<(rule: any, config: any) => void> = [
+    rule => { rule.parentTransitions[0].to = 'missing'; },
+    rule => { rule.childTransitions[0].to = rule.childTransitions[0].from; },
+    rule => { rule.childTransitions.push(rule.childTransitions[0]); },
+    rule => { rule.childTransitions[0].extra = true; },
+    rule => { rule.fulfilledChildStatuses = ['fulfilled', 'fulfilled']; },
+    rule => { rule.lockedParentStatuses = []; },
+    rule => { rule.extra = true; },
+    (_rule, config) => { config.backend.operations = []; },
+    (_rule, config) => { config.backend.operations[0].platformAccess.decimalReservation.eligibleParentStatuses = ['closed']; },
+  ];
+  for (const mutate of mutations) {
+    const source = committedLifecycleDeclaration();
+    mutate(source.data!.resources[0]!.decimalReservationLifecycle, source);
+    assert.throws(() => defineOpenXiangdaApp(source), (error: any) => error.diagnostics?.some((item: any) =>
+      ['APP_CONFIG_DECIMAL_LIFECYCLE_INVALID', 'NATIVE_DECIMAL_LIFECYCLE_INVALID'].includes(item.code) && item.path.includes('decimalReservationLifecycle')));
+    const compiled = compileApplicationSources(defineOpenXiangdaApp(committedLifecycleDeclaration()));
+    mutate(compiled.config.value.data.resources[0]!.decimalReservationLifecycle, compiled.config.value);
+    compiled.contracts.value.configDigest = sha256Digest(compiled.config.value);
+    assert.throws(() => platformCompile(compiled), (error: any) =>
+      error.code === 'NATIVE_DECIMAL_LIFECYCLE_INVALID' && error.pointer.includes('decimalReservationLifecycle'));
+  }
+});
+
+test('DataResource schema and public validator enforce the same bounded closed lifecycle shape', () => {
+  const resource = compileApplicationSources(defineOpenXiangdaApp(committedLifecycleDeclaration())).config.value.data.resources[0]!;
+  const validate = new Ajv2020({ strict: false, formats: { 'date-time': true } }).compile(contractSchemas.dataResource);
+  assert.equal(validate(resource), true, JSON.stringify(validate.errors));
+  assert.deepEqual(validateDataResource(resource), []);
+  const invalid = [null, {}, { ...resource.decimalReservationLifecycle, childTransitions: Array(65).fill({ from: 'signing', to: 'fulfilled' }) },
+    { ...resource.decimalReservationLifecycle, childTransitions: [{ from: 'signing', to: 'fulfilled', authority: true }] },
+    { ...resource.decimalReservationLifecycle, lockedParentStatuses: ['closed', 'closed'] }];
+  for (const rule of invalid) {
+    const value = { ...resource, decimalReservationLifecycle: rule };
+    assert.equal(validate(value), false);
+    assert.ok(validateDataResource(value).some(item => item.code === 'NATIVE_DECIMAL_LIFECYCLE_INVALID'));
+  }
+});
 
 test('workflow outcome grants survive both compilers and bind the same 1.1 capability digest', () => {
   const compiled = compileApplicationSources(defineOpenXiangdaApp(lifecycleDeclaration()));

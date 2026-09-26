@@ -1,4 +1,5 @@
 import { compileNativeEventAction } from 'openxiangda-contracts/native-compiler';
+import { parseDecimalReservationLifecycle } from 'openxiangda-contracts/native-compiler';
 import { DATA_AUDIT_METADATA_FIELDS, isDataAuditMetadataField, projectDataResourceView } from 'openxiangda-contracts';
 import { nativeFieldRequiresCreateInputV2 } from 'openxiangda-contracts/native-compiler';
 import { createHash } from 'node:crypto';
@@ -1964,6 +1965,8 @@ function runtimeProtocolCapabilities(config: OpenXiangdaAppConfig) {
       config.events?.subscriptions.some(subscription => subscription.platformAccess?.decimalReservation)
       ? ['data.decimal-reservations']
       : []),
+    ...(config.data?.resources.some(resource => resource.decimalReservationLifecycle)
+      ? ['data.decimal-reservation-lifecycle'] : []),
     ...(config.events?.subscriptions.length ||
     config.events?.timers?.length ||
     config.events?.dateTriggers?.length
@@ -1989,6 +1992,7 @@ function platformCapabilities(appCode: string): AppCapabilityContract[] {
 }
 
 function normalizeDataResource(resource: DataResource): DataResource {
+  const decimalReservationLifecycle = parseDecimalReservationLifecycle(resource.decimalReservationLifecycle);
   return {
     schemaVersion: resource.schemaVersion,
     appCode: resource.appCode,
@@ -2036,6 +2040,7 @@ function normalizeDataResource(resource: DataResource): DataResource {
     ...(resource.surface
       ? { surface: normalizeResourceSurface(resource.surface) }
       : {}),
+    ...(decimalReservationLifecycle ? { decimalReservationLifecycle } : {}),
     ...(resource.invariants
       ? {
           invariants: [...resource.invariants]

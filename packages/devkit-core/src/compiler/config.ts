@@ -2,6 +2,7 @@ import { normalizeDecimalReservationEventDeclaration, decimalReservationEventCon
 import type { NativeEventActionDeclaration } from 'openxiangda-contracts';
 import { materializeApplicationModules, type AppModuleDeclaration } from './application-model.js';
 import { nativeFieldRequiresCreateInputV2 } from 'openxiangda-contracts/native-compiler';
+import { NativeDecimalLifecycleContractError, validateDecimalReservationLifecycles } from 'openxiangda-contracts/native-compiler';
 import {
   SCHEMA_VERSIONS,
   DATA_AUDIT_METADATA_FIELDS,
@@ -242,6 +243,7 @@ export interface AppDataResourceDeclaration {
   /** Read access to provenance metadata and record history; omission preserves defaults. */
   audit?: { read: string[] | boolean };
   invariants?: DataResource['invariants'];
+  decimalReservationLifecycle?: DataResource['decimalReservationLifecycle'];
   list?: {
     fields?: string[];
     actions?: NonNullable<DataResourceSurface['list']>['actions'];
@@ -1407,6 +1409,13 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
   }
   const frontend = object(config.frontend);
   const backend = object(config.backend);
+  try {
+    validateDecimalReservationLifecycles(object(config.data).resources, backend.operations, '/data/resources');
+  } catch (error) {
+    if (!(error instanceof NativeDecimalLifecycleContractError)) throw error;
+    diagnostics.push(diagnostic('APP_CONFIG_DECIMAL_LIFECYCLE_INVALID', error.message, error.pointer,
+      '在同一模型声明合法状态边、已履行子状态和锁定父状态；字段映射复用已有 reserve 动作'));
+  }
   const backendKeys = new Set([
     'root',
     'runtime',
@@ -6923,6 +6932,7 @@ export function materializeDataResource(
     name: declaration.name,
     schema: { fields },
     ...(declaration.invariants ? { invariants: declaration.invariants } : {}),
+    ...(declaration.decimalReservationLifecycle !== undefined ? { decimalReservationLifecycle: declaration.decimalReservationLifecycle } : {}),
     surface,
     capabilities,
     ...(declaration.dataPolicyCode
@@ -6967,6 +6977,7 @@ export function validateAppDeclaration(value: unknown): Diagnostic[] {
     'generated',
     'fields',
     'invariants',
+    'decimalReservationLifecycle',
     'list',
     'form',
     'detail',

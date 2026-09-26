@@ -4,6 +4,7 @@ import {
   validateDataResourceListActions,
 } from './data-view-validation.js';
 import { isDataAuditMetadataField } from './native-compiler/data-audit-access.js';
+import { NativeDecimalLifecycleContractError, parseDecimalReservationLifecycle } from './native-compiler/decimal-lifecycle.js';
 import {
   CURRENT_APPLICATION_CONTRACT,
   OPENXIANGDA_CONTRACT_VERSION,
@@ -501,6 +502,12 @@ export function validateDataResource(value: unknown): Diagnostic[] {
     );
   }
   requireString(value.name, 'name', diagnostics);
+  try {
+    parseDecimalReservationLifecycle(value.decimalReservationLifecycle);
+  } catch (error) {
+    if (!(error instanceof NativeDecimalLifecycleContractError)) throw error;
+    diagnostics.push(diagnostic(error.code, error.message, error.pointer.replace(/^\//, '').replace(/\//g, '.')));
+  }
   diagnostics.push(...validateDataResourceViews(value));
   diagnostics.push(...validateDataResourceDraftStates(value));
   if (isRecord(value.surface) && isRecord(value.surface.list))

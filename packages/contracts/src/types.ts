@@ -1231,6 +1231,14 @@ export interface DataResourceInvariant {
       };
 }
 
+/** Optional status rules over the existing immutable decimal-reservation mapping. */
+export interface DataDecimalReservationLifecycle {
+  parentTransitions: Array<{ from: string; to: string }>;
+  childTransitions: Array<{ from: string; to: string }>;
+  fulfilledChildStatuses: string[];
+  lockedParentStatuses: string[];
+}
+
 export interface DataResource {
   schemaVersion: typeof SCHEMA_VERSIONS.dataResource;
   id?: string;
@@ -1242,6 +1250,7 @@ export interface DataResource {
     fields: DataFieldDefinition[];
   };
   invariants?: DataResourceInvariant[];
+  decimalReservationLifecycle?: DataDecimalReservationLifecycle;
   /** Default UI metadata projected with the authoritative Data Resource. */
   surface?: DataResourceSurface;
   capabilities: {

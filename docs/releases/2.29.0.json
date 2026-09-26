@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.29.0",
+  "status": "reviewed",
+  "title": "OpenXiangda 2.29.0：金额提交后的声明式生命周期",
+  "summary": "模型可以声明金额提交后的合法状态变化、子记录履行状态和父记录锁定状态；编译时检查规则，平台在原 Native 写入和激活边界执行一致性保护。",
+  "newFeatures": [
+    "模型与 DataResource 增加可选 decimalReservationLifecycle，复用现有额度字段映射并派生 data.decimal-reservation-lifecycle@1.0.0。",
+    "应用编译器、平台纯编译器和 JSON Schema 同步支持有界声明；未知状态、重复或自身状态边、缺少 reserve 动作及锁定状态可新预留在发布前拒绝。"
+  ],
+  "fixes": [
+    "为已 committed 子记录的正常履行更新提供受约束的原 Data API 路径，继续保护金额、币种和主子关系。"
+  ],
+  "affectedUsers": [
+    "使用主子记录精确金额预留，且需要在审批提交金额后继续履行、关闭或解锁的 OpenXiangda 2.0 应用。"
+  ],
+  "upgradeSteps": [
+    "先确认目标平台支持 data.decimal-reservation-lifecycle@1.0.0，再安装 openxiangda@2.29.0 并更新锁文件。",
+    "在模型显式声明合法状态边、已履行子状态和锁定父状态；继续通过已授权 Data API update/transaction 与 expectedRevision 更新。",
+    "本能力不需要新增数据库迁移；新版本激活会检查现有关闭父记录，不自动改写历史状态。"
+  ],
+  "knownLimitations": [
+    "状态声明不授予资源、字段或行权限；reserved/released 子记录仍须走原受管审批或重新提交。",
+    "终止或作废不自动代表履行，也不会释放 committed 金额。每类最多 64 条边，两个状态集合各 1–16 项。",
+    "未声明的资源保留严格保护；回滚到不支持本能力的服务器前须停用依赖新声明的入口。",
+    "公开包发行与目标平台部署、应用适配及业务验收分别记录；包安装成功不代表目标环境具备运行能力。"
+  ],
+  "issues": [],
+  "compatibility": {
+    "node": ">=24",
+    "workspaceGenerations": "v2",
+    "platform": "显式声明才要求 data.decimal-reservation-lifecycle@1.0.0；共享 Native validator 随新契约更新，按目标预检结果配套升级平台。",
+    "v1": "独立 V1 引擎和未声明生命周期的资源不受运行行为变更影响。"
+  }
+}

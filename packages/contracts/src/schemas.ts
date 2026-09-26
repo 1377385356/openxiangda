@@ -2679,6 +2679,24 @@ export const dataResourceSchema = {
         },
       },
     },
+    decimalReservationLifecycle: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['parentTransitions', 'childTransitions', 'fulfilledChildStatuses', 'lockedParentStatuses'],
+      properties: {
+        ...Object.fromEntries(['parentTransitions', 'childTransitions'].map(key => [key, {
+          type: 'array', maxItems: 64, uniqueItems: true,
+          items: { type: 'object', additionalProperties: false, required: ['from', 'to'],
+            properties: Object.fromEntries(['from', 'to'].map(name => [name, {
+              type: 'string', pattern: '^[A-Za-z0-9._:-]{1,128}$',
+            }])) },
+        }])),
+        ...Object.fromEntries(['fulfilledChildStatuses', 'lockedParentStatuses'].map(key => [key, {
+          type: 'array', minItems: 1, maxItems: 16, uniqueItems: true,
+          items: { type: 'string', pattern: '^[A-Za-z0-9._:-]{1,128}$' },
+        }])),
+      },
+    },
     invariants: {
       type: "array",
       uniqueItems: true,

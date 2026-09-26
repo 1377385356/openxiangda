@@ -1,4 +1,5 @@
 import { normalizeDecimalReservationEventDeclaration, decimalReservationEventContext } from './decimal-reservation.js';
+import { NativeDecimalLifecycleContractError, parseDecimalReservationLifecycle, validateDecimalReservationLifecycles } from './decimal-lifecycle.js';
 import { compileNativeEventAction } from './event-action.js';
 import { projectNativeDataResourceViewV2 } from './data-surface.js';
 import { hasDataAuditReadPolicy, isDataAuditMetadataField } from './data-audit-access.js';
@@ -472,6 +473,11 @@ export function compileRequiredPlatformCapabilitiesV3(
     code: OpenXiangdaPlatformCapabilityCode;
     declaration: unknown;
   }> = [
+    ...(resources.some(resource => resource.decimalReservationLifecycle)
+      ? [{ code: 'data.decimal-reservation-lifecycle' as const,
+          declaration: resources.filter(resource => resource.decimalReservationLifecycle)
+            .map(resource => ({ code: resource.code, decimalReservationLifecycle: resource.decimalReservationLifecycle })) }]
+      : []),
     ...(operations.some(operation => operation.platformAccess?.decimalReservation) ||
       config.events.subscriptions.some((subscription: any) => subscription.platformAccess?.decimalReservation)
       ? [{
@@ -1408,6 +1414,13 @@ function compileExpectedContract(
   validateAdminNavigationReferences(config);
   const adminPages = compileAdminPages(config);
   const subjectReadSurfaces = compileSubjectReadSurfaces(config, capabilities);
+  const operations = compileOperations(config);
+  try {
+    validateDecimalReservationLifecycles(config.data.resources, operations);
+  } catch (error) {
+    if (error instanceof NativeDecimalLifecycleContractError) fail(error.code, error.pointer, { reason: error.reason });
+    throw error;
+  }
   return {
     schemaVersion: CONTRACT_SCHEMA,
     compilerContractVersion: COMPILER_CONTRACT_VERSION,
@@ -1418,7 +1431,7 @@ function compileExpectedContract(
     resources: compileResources(config),
     ...(subjectReadSurfaces.length ? { subjectReadSurfaces } : {}),
     capabilities: sorted(capabilities, item => item.code),
-    operations: compileOperations(config),
+    operations,
     eventConsumers,
     eventProducers,
     eventSchemas,
@@ -7166,6 +7179,7 @@ function validateResource(raw: any, pointer: string, appCode: string) {
       'schema',
       'surface',
       'invariants',
+      'decimalReservationLifecycle',
       'capabilities',
       'dataPolicyCode',
       'fieldPolicies',
@@ -7185,7 +7199,9 @@ function validateResource(raw: any, pointer: string, appCode: string) {
   exactKeys(schema, ['fields'], `${pointer}/schema`);
   let fields;
   let invariants;
+  let decimalReservationLifecycle;
   try {
+    decimalReservationLifecycle = parseDecimalReservationLifecycle(resource.decimalReservationLifecycle, `${pointer}/decimalReservationLifecycle`);
     fields = parseNativeDataFieldsV2(schema.fields, `${pointer}/schema/fields`);
     invariants = parseNativeDataResourceInvariantsV2(
       resource.invariants,
@@ -7198,7 +7214,7 @@ function validateResource(raw: any, pointer: string, appCode: string) {
       `${pointer}/surface`
     );
   } catch (error) {
-    if (error instanceof NativeDataFieldContractV2Error) {
+    if (error instanceof NativeDataFieldContractV2Error || error instanceof NativeDecimalLifecycleContractError) {
       fail(error.code, error.pointer);
     }
     throw error;
@@ -7247,6 +7263,7 @@ function validateResource(raw: any, pointer: string, appCode: string) {
     name,
     schema: { fields },
     ...(resource.invariants === undefined ? {} : { invariants }),
+    ...(decimalReservationLifecycle ? { decimalReservationLifecycle } : {}),
     capabilities,
     fieldPolicies,
   };

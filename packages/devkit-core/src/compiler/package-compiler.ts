@@ -51,6 +51,7 @@ export function requiredPlatformCapabilities(
 export function requiredPlatformCapabilitiesFromConfiguration(
   config: ConfigurationBundleV3
 ): RequiredPlatformCapabilityContract[] {
+  const resources = config.data.resources;
   const operations = config.backend.operations;
   const requiresDirectoryV2 =
     config.authz.roles.some(role =>
@@ -129,6 +130,11 @@ export function requiredPlatformCapabilitiesFromConfiguration(
     },
   };
   const usages: Array<{ code: PlatformCapabilityCode; declaration: unknown }> = [
+    ...(resources.some(resource => resource.decimalReservationLifecycle)
+      ? [{ code: 'data.decimal-reservation-lifecycle' as const,
+          declaration: resources.filter(resource => resource.decimalReservationLifecycle)
+            .map(resource => ({ code: resource.code, decimalReservationLifecycle: resource.decimalReservationLifecycle })) }]
+      : []),
     ...(operations.some(operation => operation.platformAccess?.decimalReservation) ||
       config.events.subscriptions.some((subscription: any) => subscription.platformAccess?.decimalReservation)
       ? [{

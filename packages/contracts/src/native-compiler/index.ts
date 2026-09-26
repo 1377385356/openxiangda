@@ -3,6 +3,7 @@ export * from './draft-state.js';
 export * from './data-audit-access.js';
 export * from './field-query-plan.js';
 export * from './data-field.js';
+export * from './decimal-lifecycle.js';
 export * from './field-physical-plan.js';
 export * from './scope-source-field-path.js';
 export * from './field-query-path.js';
