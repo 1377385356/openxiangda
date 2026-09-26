@@ -5,6 +5,7 @@ import {
 } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { dependencyInstallDiagnostic } from './dependency-install-diagnostic.js';
 import { backendRuntimeRequired, type OpenXiangdaAppConfig } from './compiler/config.js';
 
 export interface OptionalBackendInitialization {
@@ -134,7 +135,7 @@ function installBackendDependencies(root: string) {
   });
   if (installed.status !== 0 || installed.error) {
     throw initializationError('OPENXIANGDA_BACKEND_INSTALL_FAILED',
-      '后端源码已保留，依赖安装未完成；检查包管理器/网络后重新运行 openxiangda check 或 dev', true);
+      `后端源码已保留，依赖安装未完成；${dependencyInstallDiagnostic(installed)}。修复后重新运行 openxiangda check 或 dev`, true);
   }
 }
 

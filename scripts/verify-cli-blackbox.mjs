@@ -415,9 +415,9 @@ if (args[0] === "install") {
   const sourceBuild = spawnSync(
     process.env.OPENXIANGDA_REAL_PNPM,
     ["run", "build"],
-    { cwd: sourceRoot, stdio: "ignore", env: sourceEnvironment }
+    { cwd: sourceRoot, encoding: "utf8", env: sourceEnvironment }
   );
-  if (sourceBuild.status !== 0) process.exit(sourceBuild.status ?? 1);
+  if (sourceBuild.status !== 0) { reportInstallFailure("source-build", sourceBuild); process.exit(sourceBuild.status ?? 1); }
   const manifestPath = path.join(process.cwd(), "package.json");
   const originalManifest = fs.readFileSync(manifestPath, "utf8");
   const manifest = JSON.parse(originalManifest);
@@ -440,10 +440,18 @@ if (args[0] === "install") {
   const installed = spawnSync(
     process.env.OPENXIANGDA_REAL_PNPM,
     ["install", "--no-frozen-lockfile", "--ignore-scripts"],
-    { cwd: process.cwd(), stdio: "ignore", env: process.env }
+    { cwd: process.cwd(), encoding: "utf8", env: process.env }
   );
   fs.writeFileSync(manifestPath, originalManifest);
+  if (installed.status !== 0) reportInstallFailure("install", installed);
   process.exit(installed.status ?? 1);
+}
+
+function reportInstallFailure(stage, result) {
+  // Installation output can include registry credentials; only emit fixed codes.
+  const text = String(result.stdout || "") + String(result.stderr || "");
+  const known = ["ERR_PNPM_FETCH_401", "ERR_PNPM_FETCH_403", "ERR_PNPM_FETCH_404", "ERR_PNPM_NO_MATCHING_VERSION", "ERR_PNPM_OUTDATED_LOCKFILE", "ERR_PNPM_UNSUPPORTED_ENGINE", "ECONNRESET", "ETIMEDOUT", "ENOTFOUND", "EAI_AGAIN", "ENOSPC", "EACCES", "EPERM"];
+  process.stderr.write(JSON.stringify({ stage, status: result.status, codes: known.filter(code => text.includes(code)) }));
 }
 
 function isOpenXiangdaPackageName(name) {
