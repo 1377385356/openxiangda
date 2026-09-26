@@ -51,6 +51,7 @@ export const SCHEMA_VERSIONS = {
     "openxiangda.current-initiator-directory-request/v2",
   currentInitiatorDirectorySnapshot:
     "openxiangda.current-initiator-directory-snapshot/v2",
+  assignmentCandidatePage: "openxiangda.assignment-candidate-page/v1",
   roleSubjectPage: "openxiangda.role-subject-page/v2",
   runtimeAuthorization: "openxiangda.runtime-authorization/v2",
   nativeRoleMembershipPage: "openxiangda.native-role-membership-page/v2",
@@ -358,6 +359,25 @@ export interface CurrentInitiatorDirectorySnapshot {
   departments?: Array<{ value: string; label: string }>;
   snapshotRevision: Sha256Digest;
   resolvedAt: IsoDateTime;
+}
+
+/** Query hints only; revalidate the selected member in the committing transaction. */
+export interface AssignmentCandidateQuery {
+  roleCode: string;
+  keyword?: string;
+  limit?: number;
+  cursor?: string;
+}
+
+export interface AssignmentCandidatePage {
+  schemaVersion: typeof SCHEMA_VERSIONS.assignmentCandidatePage;
+  appCode: string;
+  environmentKey: string;
+  roleCode: string;
+  observedAt: IsoDateTime;
+  headRevision: number;
+  items: Array<{ value: string; label: string }>;
+  nextCursor: string | null;
 }
 
 export interface RoleSubjectScopeSummary {

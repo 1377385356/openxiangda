@@ -168,8 +168,21 @@ platformAccess: { roleAssertions: { roleCodes: ['technician'] } }
 ```
 
 `technician` 必须存在于本应用 `authz.roles`，最多声明 20 个角色。应用管理员身份
-不自动代表维修角色。人员候选可以使用已有且已委托管理范围的成员查询；这项声明
-本身不授予成员管理或人员目录权限。
+不自动代表维修角色。经办人使用请求作用域 `OpenXiangdaBusinessDirectoryService` 查询
+本动作声明的候选，无需成员管理权：
+
+```ts
+const page = await businessDirectory.assignmentCandidates({
+  roleCode: 'technician', keyword: input.keyword, limit: 20,
+  ...(input.cursor ? { cursor: input.cursor } : {}),
+});
+// page.items 仅有 value/label；下一页沿用同一关键词和 page.nextCursor。
+```
+
+这项可选能力需要目标平台 `directory.assignment-candidates` 1.0.0。环境由 SDK 绑定，
+禁止传入任意环境或账号。平台只返回生效、未过期、正常且未锁定的成员，验证账号与正式
+账号隔离。游标绑定环境 Head、调用者、动作和角色，收到上下文变化错误后清空游标重新查询。
+候选结果只用于选人；提交时仍使用下面的事务条件，不能凭查询结果绕过重新核验。
 
 在 `OpenXiangdaBusinessDataApiService` 的同一次事务中表达业务状态与目标角色：
 

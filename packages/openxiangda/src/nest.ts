@@ -45,6 +45,8 @@ export {
 } from 'openxiangda-nest';
 
 export type {
+  AssignmentCandidatePage,
+  AssignmentCandidateQuery,
   OpenXiangdaApplicationBootstrapOptions,
   OpenXiangdaModuleOptions,
   OpenXiangdaApplicationModuleOptions,

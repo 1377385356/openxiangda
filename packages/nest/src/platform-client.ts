@@ -17,6 +17,8 @@ import type {
   DataTransactionRequest,
   DataTransactionResult,
   CurrentInitiatorDirectorySnapshot,
+  AssignmentCandidatePage,
+  AssignmentCandidateQuery,
   GatewayAssertionJwks,
   GatewayInvocationPrincipal,
   PlatformCapabilities,
@@ -145,6 +147,39 @@ export class OpenXiangdaPlatformClient {
         }),
       }
     );
+  }
+
+  async assignmentCandidates(
+    authorization: string,
+    businessAction: OpenXiangdaBusinessActionContext,
+    input: AssignmentCandidateQuery
+  ): Promise<AssignmentCandidatePage> {
+    if (!input || Object.keys(input).some(key => !['roleCode', 'keyword', 'limit', 'cursor'].includes(key))
+      || typeof input.roleCode !== 'string' || !input.roleCode.trim() || input.roleCode.length > 128
+      || (input.keyword !== undefined && (typeof input.keyword !== 'string' || input.keyword.length > 64))
+      || (input.limit !== undefined && (!Number.isInteger(input.limit) || input.limit < 1 || input.limit > 50))
+      || (input.cursor !== undefined && (typeof input.cursor !== 'string' || input.cursor.length > 2048))) {
+      throw new OpenXiangdaPlatformError(400, 'OPENXIANGDA_DIRECTORY_CANDIDATE_INPUT_INVALID', '候选查询参数无效');
+    }
+    const result = await this.request<AssignmentCandidatePage>(
+      `/openxiangda-api/v2/applications/${encodeURIComponent(this.options.appCode)}/directory/assignment-candidates`,
+      { method: 'POST', headers: this.identityHeaders(authorization, null, businessAction),
+        body: JSON.stringify({ ...input, environmentKey: this.options.environmentKey }) }
+    );
+    const keys = ['schemaVersion', 'appCode', 'environmentKey', 'roleCode', 'observedAt', 'headRevision', 'items', 'nextCursor'];
+    if (!result || typeof result !== 'object' || Object.keys(result).some(key => !keys.includes(key))
+      || result.schemaVersion !== 'openxiangda.assignment-candidate-page/v1'
+      || result.appCode !== this.options.appCode || result.environmentKey !== this.options.environmentKey
+      || result.roleCode !== input.roleCode || !Number.isSafeInteger(result.headRevision) || result.headRevision < 1
+      || typeof result.observedAt !== 'string' || !Number.isFinite(Date.parse(result.observedAt))
+      || !Array.isArray(result.items) || result.items.length > (input.limit ?? 20)
+      || result.items.some(item => !item || typeof item !== 'object'
+        || Object.keys(item).some(key => !['value', 'label'].includes(key))
+        || typeof item.value !== 'string' || !item.value || typeof item.label !== 'string' || !item.label)
+      || (result.nextCursor !== null && (typeof result.nextCursor !== 'string' || !result.nextCursor || result.nextCursor.length > 2048))) {
+      throw new OpenXiangdaPlatformError(502, 'OPENXIANGDA_DIRECTORY_CANDIDATE_RESPONSE_INVALID', '候选响应与当前请求不一致，请重新查询');
+    }
+    return result;
   }
 
   async connectedDevelopmentSession(

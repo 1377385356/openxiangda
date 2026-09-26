@@ -914,6 +914,23 @@ export const currentInitiatorDirectorySnapshotSchema = {
   },
 } as const;
 
+export const assignmentCandidatePageSchema = {
+  $id: SCHEMA_VERSIONS.assignmentCandidatePage,
+  type: "object",
+  additionalProperties: false,
+  required: ["schemaVersion", "appCode", "environmentKey", "roleCode", "observedAt", "headRevision", "items", "nextCursor"],
+  properties: {
+    schemaVersion: { const: SCHEMA_VERSIONS.assignmentCandidatePage },
+    appCode: nonEmptyString,
+    environmentKey: nonEmptyString,
+    roleCode: nonEmptyString,
+    observedAt: dateTime,
+    headRevision: { type: "integer", minimum: 1 },
+    items: { type: "array", maxItems: 50, items: directorySnapshotValueSchema },
+    nextCursor: { anyOf: [{ type: "string", minLength: 1, maxLength: 2048 }, { type: "null" }] },
+  },
+} as const;
+
 const roleSubjectChoiceSchema = {
   type: "object",
   additionalProperties: false,
@@ -8796,6 +8813,7 @@ export const contractSchemas = {
   subjectProfile: subjectProfileSchema,
   currentInitiatorDirectoryRequest: currentInitiatorDirectoryRequestSchema,
   currentInitiatorDirectorySnapshot: currentInitiatorDirectorySnapshotSchema,
+  assignmentCandidatePage: assignmentCandidatePageSchema,
   roleSubjectPage: roleSubjectPageSchema,
   runtimeAuthorization: runtimeAuthorizationSchema,
   nativeAuthorizationManagementCatalog:
