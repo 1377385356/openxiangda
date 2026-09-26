@@ -1,4 +1,8 @@
 import './browser/mobile-runtime-global';
+export * from './browser/ManagedCommand';
+export * from './browser/managed-command';
+export { createManagedConcurrencyClient } from './browser/platform-client';
+export type { ManagedReadResult, CommandReceipt, WaitingReceipt } from 'openxiangda-contracts/browser';
 
 export * from './browser/application';
 export * from './browser/authentication';

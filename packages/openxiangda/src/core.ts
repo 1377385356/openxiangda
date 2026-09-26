@@ -1,3 +1,6 @@
+export { createManagedConcurrencyClient } from './browser/platform-client';
+export * from './browser/managed-command';
+export type { ManagedReadResult, CommandReceipt, WaitingReceipt } from 'openxiangda-contracts/browser';
 export type {
   BusinessProcessCommand,
   BusinessProcessCommandQuery,

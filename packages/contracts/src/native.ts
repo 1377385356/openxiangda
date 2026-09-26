@@ -1062,6 +1062,7 @@ export interface ConfigurationBundleV3 {
   };
   data: {
     resources: DataResource[];
+    concurrency?: import('./concurrency.js').ManagedConcurrencyDeclaration;
     subjectReadSurfaces?: SubjectReadSurfaceDeclaration[];
     /** Compiler-owned catalog used to reproduce resource navigation contracts. */
     resourceDetailRoutes?: AppResourceDetailRouteDeclaration[];
@@ -1161,6 +1162,7 @@ export interface ContractBundleV3 {
   configDigest: string;
   perspectives: AppPerspectiveContract[];
   resources: AppResourceContract[];
+  concurrency?: import('./concurrency.js').ManagedConcurrencyDeclaration;
   subjectReadSurfaces?: SubjectReadSurfaceDeclaration[];
   capabilities: AppCapabilityContract[];
   operations: AppApiOperationContract[];

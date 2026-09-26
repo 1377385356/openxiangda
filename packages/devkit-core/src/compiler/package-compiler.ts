@@ -133,6 +133,7 @@ export function requiredPlatformCapabilitiesFromConfiguration(
     ...(resources.some(resource => resource.uniqueKeys?.length)
       ? [{ code: 'data.unique-keys' as const, declaration: resources.filter(resource => resource.uniqueKeys?.length)
           .map(resource => ({ code: resource.code, uniqueKeys: resource.uniqueKeys })) }] : []),
+    ...(config.data.concurrency ? [{ code: 'data.managed-concurrency' as const, declaration: config.data.concurrency }] : []),
     ...(resources.some(resource => resource.decimalReservationLifecycle)
       ? [{ code: 'data.decimal-reservation-lifecycle' as const,
           declaration: resources.filter(resource => resource.decimalReservationLifecycle)

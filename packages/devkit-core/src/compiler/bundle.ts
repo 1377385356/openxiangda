@@ -528,6 +528,7 @@ export function normalizeConfiguration(
       ),
     },
     data: {
+      ...(config.data?.concurrency ? { concurrency: config.data.concurrency } : {}),
       resources: sorted(
         (config.data?.resources || []).map(normalizeDataResource),
         item => item.code
@@ -932,6 +933,7 @@ function compileContractBundleFromNormalized(
     configDigest,
     perspectives: normalizedConfiguration.perspectives,
     resources: compileResources(normalizedConfiguration),
+    ...(normalizedConfiguration.data.concurrency ? { concurrency: normalizedConfiguration.data.concurrency } : {}),
     ...(normalizedConfiguration.data.subjectReadSurfaces?.length
       ? {
           subjectReadSurfaces:
@@ -1966,6 +1968,7 @@ function runtimeProtocolCapabilities(config: OpenXiangdaAppConfig) {
       ? ['data.decimal-reservations']
       : []),
     ...(config.data?.resources.some(resource => resource.uniqueKeys?.length) ? ['data.unique-keys'] : []),
+    ...(config.data?.concurrency ? ['data.managed-concurrency'] : []),
     ...(config.data?.resources.some(resource => resource.decimalReservationLifecycle)
       ? ['data.decimal-reservation-lifecycle'] : []),
     ...(config.events?.subscriptions.length ||

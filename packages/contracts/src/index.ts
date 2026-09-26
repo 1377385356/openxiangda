@@ -1,4 +1,5 @@
 export * from './canonical.js';
+export * from './concurrency.js';
 export * from './native-compiler/decimal-reservation.js';
 export * from './native-compiler/data-audit-access.js';
 export * from './ai.js';

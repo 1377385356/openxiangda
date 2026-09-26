@@ -1,4 +1,5 @@
 import { NativeUniqueKeyContractError, parseNativeUniqueKeys } from './unique-keys.js';
+import { validateManagedConcurrency, ManagedConcurrencyContractError } from './managed-concurrency.js';
 import { normalizeDecimalReservationEventDeclaration, decimalReservationEventContext } from './decimal-reservation.js';
 import { NativeDecimalLifecycleContractError, parseDecimalReservationLifecycle, validateDecimalReservationLifecycles } from './decimal-lifecycle.js';
 import { compileNativeEventAction } from './event-action.js';
@@ -319,6 +320,7 @@ export function compileNativeApplicationConfiguration(
       appCode,
       resources: config.data.resources,
       resourceContracts: expectedContract.resources,
+      ...(expectedContract.concurrency ? { concurrency: expectedContract.concurrency } : {}),
       ...(expectedContract.subjectReadSurfaces
         ? { subjectReadSurfaces: expectedContract.subjectReadSurfaces }
         : {}),
@@ -477,6 +479,7 @@ export function compileRequiredPlatformCapabilitiesV3(
     ...(resources.some(resource => resource.uniqueKeys?.length)
       ? [{ code: 'data.unique-keys' as const, declaration: resources.filter(resource => resource.uniqueKeys?.length)
           .map(resource => ({ code: resource.code, uniqueKeys: resource.uniqueKeys })) }] : []),
+    ...(config.data.concurrency ? [{ code: 'data.managed-concurrency' as const, declaration: config.data.concurrency }] : []),
     ...(resources.some(resource => resource.decimalReservationLifecycle)
       ? [{ code: 'data.decimal-reservation-lifecycle' as const,
           declaration: resources.filter(resource => resource.decimalReservationLifecycle)
@@ -1010,6 +1013,7 @@ function validateConfigurationEnvelope(config: JsonObject, appCode: string) {
   exactKeys(data, ['resources'], '/config/data', [
     'resourceDetailRoutes',
     'subjectReadSurfaces',
+    'concurrency',
   ]);
   boundedArray(data.resources, '/config/data/resources', 100);
   if (data.subjectReadSurfaces !== undefined) {
@@ -1168,6 +1172,7 @@ function validateContractEnvelope(
       'publicAccess',
       'adminAccess',
       'subjectReadSurfaces',
+      'concurrency',
     ]
   );
   equal(contract.schemaVersion, CONTRACT_SCHEMA, '/contracts/schemaVersion');
@@ -1417,6 +1422,11 @@ function compileExpectedContract(
   ]);
   validateAdminNavigationReferences(config);
   const adminPages = compileAdminPages(config);
+  let concurrency;
+  try { concurrency = validateManagedConcurrency(config.data.concurrency, config.data.resources, capabilities); } catch (error) {
+    if (error instanceof ManagedConcurrencyContractError) fail(error.code, error.pointer, { reason: error.reason });
+    throw error;
+  }
   const subjectReadSurfaces = compileSubjectReadSurfaces(config, capabilities);
   const operations = compileOperations(config);
   try {
@@ -1434,6 +1444,7 @@ function compileExpectedContract(
     perspectives: config.perspectives,
     resources: compileResources(config),
     ...(subjectReadSurfaces.length ? { subjectReadSurfaces } : {}),
+    ...(concurrency ? { concurrency } : {}),
     capabilities: sorted(capabilities, item => item.code),
     operations,
     eventConsumers,
@@ -5326,7 +5337,7 @@ function validateAuthorizationReferences(
       resource.surface === undefined
         ? {}
         : object(resource.surface, `${resourcePointer}/surface`);
-    if ((surface.mutationOwner || 'native') === 'native') return;
+    if (['native', 'queued-command'].includes(surface.mutationOwner || 'native')) return;
     const resourceCapabilities = object(
       resource.capabilities,
       `${resourcePointer}/capabilities`

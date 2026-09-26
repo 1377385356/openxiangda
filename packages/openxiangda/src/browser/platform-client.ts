@@ -78,6 +78,7 @@ import {
   type NativeScopeGrant,
 } from 'openxiangda-contracts/browser';
 import { useSyncExternalStore } from 'react';
+import type { ManagedConcurrencyClient } from './managed-command';
 import {
   buildResourceWhere,
   type GenericResourceQuery,
@@ -828,6 +829,37 @@ function currentEnvironmentKey() {
   const key = activeIdentity?.environment.key || runtimeMount()?.environmentKey;
   if (!key) throw new Error('OPENXIANGDA_CURRENT_ENVIRONMENT_REQUIRED');
   return key;
+}
+
+/** Uses the same authenticated transport and identity owner as ordinary Native data. */
+export function createManagedConcurrencyClient(): ManagedConcurrencyClient {
+  const identity = activeIdentity;
+  if (!identity?.userId) throw new Error('OPENXIANGDA_CURRENT_USER_REQUIRED');
+  const appCode = applicationCode(), environmentKey = currentEnvironmentKey();
+  const scope = JSON.stringify([appCode, identity.environment.id, identity.userId]);
+  const assertScope = () => {
+    if (applicationCode() !== appCode || currentEnvironmentKey() !== environmentKey ||
+        activeIdentity?.userId !== identity.userId || activeIdentity?.environment.id !== identity.environment.id)
+      throw new OpenXiangdaPlatformRequestError({ code: 'CONCURRENCY_IDENTITY_CHANGED', status: 401, message: '用户或应用环境已变化，请重新打开原操作' });
+  };
+  const call = async <T>(path: string, body: Record<string, unknown>, signal?: AbortSignal): Promise<T> => {
+    assertScope();
+    const value = await request<T>(`${nativeBase()}/concurrency/${path}`, {
+      method: 'POST', body: JSON.stringify({ ...body, environmentKey }), signal,
+    });
+    assertScope(); return value;
+  };
+  return {
+    scope,
+    read: (code, input, signal) => call(`reads/${encodeURIComponent(code)}`, { input }, signal),
+    join: (command, input, requestKey, signal) => call(`commands/${encodeURIComponent(command)}/wait`, { input, requestKey }, signal),
+    poll: (ticket, signal) => call('waiting/status', { ticket }, signal),
+    leave: (ticket, signal) => call('waiting/leave', { ticket }, signal),
+    accept: (permit, signal) => call('commands/accept', { permit }, signal),
+    result: (input, signal) => call('commands/result', input, signal),
+    cancel: (operationId, signal) => call('commands/cancel', { operationId }, signal),
+    allocation: (allocationId, signal) => call('allocations/status', { allocationId }, signal),
+  };
 }
 
 export interface AnonymousPublicDraft {

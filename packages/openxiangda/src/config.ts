@@ -40,3 +40,7 @@ export {
   type JsonSchemaDefinitions,
   type ResourceRecordSchemaOptions,
 } from 'openxiangda-devkit-core';
+export type {
+  ManagedConcurrencyDeclaration, ManagedReadDeclaration, QueuedCommandDeclaration,
+  IntegerQuotaDeclaration, AdmissionPolicy, ConcurrencyBinding, ConcurrencyParameter,
+} from 'openxiangda-contracts';

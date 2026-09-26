@@ -1,4 +1,6 @@
 import { parseNativeUniqueKeys } from 'openxiangda-contracts';
+import type { ManagedConcurrencyDeclaration } from 'openxiangda-contracts';
+import { validateManagedConcurrency } from 'openxiangda-contracts/native-compiler';
 import { normalizeDecimalReservationEventDeclaration, decimalReservationEventContext } from 'openxiangda-contracts';
 import type { NativeEventActionDeclaration } from 'openxiangda-contracts';
 import { materializeApplicationModules, type AppModuleDeclaration } from './application-model.js';
@@ -226,7 +228,7 @@ export interface AppDataResourceDeclaration {
   views?: DataResourceSurface['views'];
   code: string;
   name: string;
-  mutationOwner?: 'native' | 'action' | 'readonly' | 'workflow';
+  mutationOwner?: 'native' | 'action' | 'readonly' | 'workflow' | 'queued-command';
   generated?: {
     list?: boolean;
     detail?: boolean;
@@ -284,6 +286,7 @@ export interface OpenXiangdaAppDeclaration {
   perspectives?: AppPerspectiveDeclaration[];
   data?: {
     resources: AppDataResourceDeclaration[];
+    concurrency?: ManagedConcurrencyDeclaration;
     subjectReadSurfaces?: SubjectReadSurfaceDeclaration[];
   };
   authz?: NonNullable<OpenXiangdaAppConfig['authz']>;
@@ -326,6 +329,7 @@ export interface OpenXiangdaAppConfig {
   perspectives?: AppPerspectiveDeclaration[];
   data?: {
     resources: AppConfiguredDataResource[];
+    concurrency?: ManagedConcurrencyDeclaration;
     subjectReadSurfaces?: SubjectReadSurfaceDeclaration[];
   };
   authz?: {
@@ -896,6 +900,7 @@ export const openXiangdaAppConfigSchema = {
       required: ['resources'],
       properties: {
         resources: { type: 'array', maxItems: 100, items: { type: 'object' } },
+        concurrency: { type: 'object' },
         subjectReadSurfaces: {
           type: 'array',
           maxItems: 50,
@@ -1877,7 +1882,7 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
       const resource = object(rawResource);
       const mutationOwner =
         string(object(resource.surface).mutationOwner) || 'native';
-      if (mutationOwner === 'native') continue;
+      if (['native', 'queued-command'].includes(mutationOwner)) continue;
       for (const operation of ['create', 'update', 'delete'] as const) {
         const capability = string(object(resource.capabilities)[operation]);
         if (capability) {
@@ -4235,6 +4240,12 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
         }
       }
     });
+  }
+  try {
+    const concurrencyConfig=value as OpenXiangdaAppConfig;
+    validateManagedConcurrency(concurrencyConfig.data?.concurrency,concurrencyConfig.data?.resources||[],concurrencyConfig.authz?.capabilities||[]);
+  } catch(error) {
+    diagnostics.push(diagnostic('NATIVE_MANAGED_CONCURRENCY_INVALID',(error as Error).message,(error as any).pointer||'data.concurrency'));
   }
   return diagnostics;
 }
@@ -7068,7 +7079,7 @@ export function validateAppDeclaration(value: unknown): Diagnostic[] {
     }
     const mutationOwner = string(resource.mutationOwner) || 'native';
     const generated = object(resource.generated);
-    if (!['native', 'action', 'readonly', 'workflow'].includes(mutationOwner)) {
+    if (!['native', 'action', 'readonly', 'workflow', 'queued-command'].includes(mutationOwner)) {
       diagnostics.push(
         diagnostic(
           'APP_CONFIG_DATA_RESOURCE_MUTATION_OWNER_INVALID',
@@ -7506,6 +7517,7 @@ export function defineOpenXiangdaApp(
     ...(modules || declaration.data ? {
       data: {
         resources: [...(declaration.data?.resources || []), ...projected.resources],
+        ...(declaration.data?.concurrency ? { concurrency: declaration.data.concurrency } : {}),
         ...(declaration.data?.subjectReadSurfaces
           ? { subjectReadSurfaces: declaration.data.subjectReadSurfaces }
           : {}),
@@ -7539,6 +7551,7 @@ export function defineOpenXiangdaApp(
     ...(data
       ? {
           data: {
+            ...(data.concurrency ? { concurrency: data.concurrency } : {}),
             resources: data.resources.map(resource =>
               materializeDataResource(normalizedDeclaration.app.code, resource)
             ),

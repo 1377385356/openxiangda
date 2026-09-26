@@ -2202,7 +2202,7 @@ const dataResourceBaseSurfaceSchema = {
   additionalProperties: false,
   required: ["fields"],
   properties: {
-    mutationOwner: { enum: ["native", "action", "readonly", "workflow"] },
+    mutationOwner: { enum: ["native", "action", "readonly", "workflow", "queued-command"] },
     generated: {
       type: "object",
       additionalProperties: false,
@@ -8242,7 +8242,8 @@ export const configurationBundleSchema = {
           maxItems: 100,
           items: { $ref: SCHEMA_VERSIONS.dataResource },
         },
-        subjectReadSurfaces: {
+        concurrency: { type: "object" },
+    subjectReadSurfaces: {
           type: "array",
           maxItems: 50,
           items: subjectReadSurfaceDeclarationSchema,
@@ -8519,6 +8520,7 @@ export const contractBundleSchema = {
       items: appPerspectiveContractSchema,
     },
     resources: { type: "array", maxItems: 100, items: { type: "object" } },
+    concurrency: { type: "object" },
     subjectReadSurfaces: {
       type: "array",
       maxItems: 50,

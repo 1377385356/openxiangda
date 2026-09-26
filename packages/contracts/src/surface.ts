@@ -107,7 +107,7 @@ export interface DataResourceSurface {
   /** Named presentations share this resource's field/value/authorization facts. */
   views?: DataResourceViewSurface[];
   /** Capability owner for mutations; only native may expose standard mutations. */
-  mutationOwner?: 'native' | 'action' | 'readonly' | 'workflow';
+  mutationOwner?: 'native' | 'action' | 'readonly' | 'workflow' | 'queued-command';
   /** Compiler-owned route/page closure. Omitted values are resolved before emission. */
   generated?: {
     list?: boolean;

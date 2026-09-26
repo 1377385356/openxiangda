@@ -1,4 +1,5 @@
 /** Browser-safe contract surface. Node-only canonical hashing stays on the root export. */
+export * from './concurrency.js';
 export * from './field-values.js';
 export * from './event-catalog.js';
 export * from './ai.js';

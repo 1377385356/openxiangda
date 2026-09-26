@@ -122,7 +122,7 @@ export function validateNativeDataResourceSurfaceV2(
     surface.mutationOwner === undefined
       ? 'native'
       : requiredString(surface.mutationOwner, `${pointer}/mutationOwner`, 16);
-  if (!['native', 'action', 'readonly', 'workflow'].includes(mutationOwner)) {
+  if (!['native', 'action', 'readonly', 'workflow', 'queued-command'].includes(mutationOwner)) {
     issue(
       'NATIVE_DATA_SURFACE_MUTATION_OWNER_INVALID',
       `${pointer}/mutationOwner`
