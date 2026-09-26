@@ -3,6 +3,40 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.29.1",
+      "status": "reviewed",
+      "title": "OpenXiangda 2.29.1：镜像上传失败的准确恢复指引",
+      "summary": "镜像上传因存储额度被拒绝时，保留安全额度数据并指向平台受管清理，停止立即重复请求；原候选仍可在处理后恢复。",
+      "newFeatures": [],
+      "fixes": [
+        "候选恢复错误保留真实 causeCode，额度拒绝只投影应用占用字节、镜像数、应用预算、本次请求字节和固定恢复标识，不再丢失可用于平台排查的安全数据。",
+        "额度不足不再误导重新登录或修复网络，也不会立即重试同一准入；登录、权限、网络及未知失败分别提供对应指引。",
+        "保留原候选 ID、镜像摘要、失效时间和恢复租约，处理后相同输入可继续原摘要上传。"
+      ],
+      "affectedUsers": [
+        "通过平台登录态上传后端镜像的 OpenXiangda 2.0 应用开发者与平台支持人员。"
+      ],
+      "upgradeSteps": [
+        "尚有待恢复原候选时，先保持原 SDK、源码、账号和目标，完成原上传后再升级；工具版本参与候选身份。",
+        "新的开发工作消费 openxiangda@2.29.1 并更新锁文件。额度错误先请平台核实受管保留与清理，再显式重试原 deploy 命令。无需平台数据库迁移。"
+      ],
+      "knownLimitations": [
+        "错误详情只包含服务器实际提供的安全字段，不能据此假定额度已经恢复或判断未提供的全局、租户预算。",
+        "retryable=false 表示额度需先处理；原候选仍受 24 小时、8 个候选、8 GiB 的既有本地保留界限约束。",
+        "本次不修改平台预算或镜像退休策略，不执行客户应用部署；客户现场计费和受保护引用仍须独立核实。"
+      ],
+      "issues": [],
+      "compatibility": {
+        "node": ">=24",
+        "workspaceGenerations": "v2",
+        "platform": "复用现有镜像上传响应，缺少额度数据的旧平台不会被补造数据。",
+        "v1": "独立 V1 引擎和工作区不受影响。"
+      },
+      "sha256": "057a446ac3871147ca22a80b059bf13c2510a341de93798e0326259c553bb382",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.29.1"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.29.0",
       "status": "reviewed",
       "title": "OpenXiangda 2.29.0：金额提交后的声明式生命周期",

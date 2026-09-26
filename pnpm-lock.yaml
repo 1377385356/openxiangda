@@ -36,13 +36,13 @@ importers:
         specifier: 2.25.0
         version: link:../contracts
       openxiangda-devkit-core:
-        specifier: 2.28.0
+        specifier: 2.28.1
         version: link:../devkit-core
       openxiangda-mcp:
-        specifier: 2.0.48
+        specifier: 2.0.49
         version: link:../mcp
       openxiangda-skill-kit:
-        specifier: 2.3.22
+        specifier: 2.3.23
         version: link:../skill-kit
     devDependencies:
       tsx:
@@ -101,7 +101,7 @@ importers:
         specifier: 2.25.0
         version: link:../contracts
       openxiangda-devkit-core:
-        specifier: 2.28.0
+        specifier: 2.28.1
         version: link:../devkit-core
       zod:
         specifier: 4.4.3
@@ -160,25 +160,25 @@ importers:
         specifier: 0.3.7
         version: 0.3.7
       openxiangda-cli:
-        specifier: 2.5.24
+        specifier: 2.5.25
         version: link:../cli
       openxiangda-contracts:
         specifier: 2.25.0
         version: link:../contracts
       openxiangda-devkit-core:
-        specifier: 2.28.0
+        specifier: 2.28.1
         version: link:../devkit-core
       openxiangda-legacy:
         specifier: npm:openxiangda@1.0.269
         version: openxiangda@1.0.269(@floating-ui/dom@1.8.0)(@tiptap/extensions@3.31.3(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3))(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(date-fns@2.30.0)(highlight.js@11.11.2)(jiti@1.21.7)(less@4.9.0)(lightningcss@1.33.0)(luxon@3.7.2)(moment@2.30.1)(postcss@8.5.26)(sass@1.54.0)(terser@5.50.0)
       openxiangda-mcp:
-        specifier: 2.0.48
+        specifier: 2.0.49
         version: link:../mcp
       openxiangda-nest:
         specifier: 2.7.2
         version: link:../nest
       openxiangda-skill-kit:
-        specifier: 2.3.22
+        specifier: 2.3.23
         version: link:../skill-kit
       xlsx:
         specifier: https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz
@@ -236,7 +236,7 @@ importers:
   packages/skill-kit:
     dependencies:
       openxiangda-devkit-core:
-        specifier: 2.28.0
+        specifier: 2.28.1
         version: link:../devkit-core
     devDependencies:
       tsx:

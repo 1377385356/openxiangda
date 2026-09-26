@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.29.0",
+  "version": "2.29.1",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -67,13 +67,13 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.5.24",
+    "openxiangda-cli": "2.5.25",
     "openxiangda-contracts": "2.25.0",
-    "openxiangda-devkit-core": "2.28.0",
+    "openxiangda-devkit-core": "2.28.1",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.48",
+    "openxiangda-mcp": "2.0.49",
     "openxiangda-nest": "2.7.2",
-    "openxiangda-skill-kit": "2.3.22",
+    "openxiangda-skill-kit": "2.3.23",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -139,39 +139,36 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.29.0",
+    "version": "2.29.1",
     "status": "reviewed",
-    "title": "OpenXiangda 2.29.0：金额提交后的声明式生命周期",
-    "summary": "模型可以声明金额提交后的合法状态变化、子记录履行状态和父记录锁定状态；编译时检查规则，平台在原 Native 写入和激活边界执行一致性保护。",
-    "newFeatures": [
-      "模型与 DataResource 增加可选 decimalReservationLifecycle，复用现有额度字段映射并派生 data.decimal-reservation-lifecycle@1.0.0。",
-      "应用编译器、平台纯编译器和 JSON Schema 同步支持有界声明；未知状态、重复或自身状态边、缺少 reserve 动作及锁定状态可新预留在发布前拒绝。"
-    ],
+    "title": "OpenXiangda 2.29.1：镜像上传失败的准确恢复指引",
+    "summary": "镜像上传因存储额度被拒绝时，保留安全额度数据并指向平台受管清理，停止立即重复请求；原候选仍可在处理后恢复。",
+    "newFeatures": [],
     "fixes": [
-      "为已 committed 子记录的正常履行更新提供受约束的原 Data API 路径，继续保护金额、币种和主子关系。"
+      "候选恢复错误保留真实 causeCode，额度拒绝只投影应用占用字节、镜像数、应用预算、本次请求字节和固定恢复标识，不再丢失可用于平台排查的安全数据。",
+      "额度不足不再误导重新登录或修复网络，也不会立即重试同一准入；登录、权限、网络及未知失败分别提供对应指引。",
+      "保留原候选 ID、镜像摘要、失效时间和恢复租约，处理后相同输入可继续原摘要上传。"
     ],
     "affectedUsers": [
-      "使用主子记录精确金额预留，且需要在审批提交金额后继续履行、关闭或解锁的 OpenXiangda 2.0 应用。"
+      "通过平台登录态上传后端镜像的 OpenXiangda 2.0 应用开发者与平台支持人员。"
     ],
     "upgradeSteps": [
-      "先确认目标平台支持 data.decimal-reservation-lifecycle@1.0.0，再安装 openxiangda@2.29.0 并更新锁文件。",
-      "在模型显式声明合法状态边、已履行子状态和锁定父状态；继续通过已授权 Data API update/transaction 与 expectedRevision 更新。",
-      "本能力不需要新增数据库迁移；新版本激活会检查现有关闭父记录，不自动改写历史状态。"
+      "尚有待恢复原候选时，先保持原 SDK、源码、账号和目标，完成原上传后再升级；工具版本参与候选身份。",
+      "新的开发工作消费 openxiangda@2.29.1 并更新锁文件。额度错误先请平台核实受管保留与清理，再显式重试原 deploy 命令。无需平台数据库迁移。"
     ],
     "knownLimitations": [
-      "状态声明不授予资源、字段或行权限；reserved/released 子记录仍须走原受管审批或重新提交。",
-      "终止或作废不自动代表履行，也不会释放 committed 金额。每类最多 64 条边，两个状态集合各 1–16 项。",
-      "未声明的资源保留严格保护；回滚到不支持本能力的服务器前须停用依赖新声明的入口。",
-      "公开包发行与目标平台部署、应用适配及业务验收分别记录；包安装成功不代表目标环境具备运行能力。"
+      "错误详情只包含服务器实际提供的安全字段，不能据此假定额度已经恢复或判断未提供的全局、租户预算。",
+      "retryable=false 表示额度需先处理；原候选仍受 24 小时、8 个候选、8 GiB 的既有本地保留界限约束。",
+      "本次不修改平台预算或镜像退休策略，不执行客户应用部署；客户现场计费和受保护引用仍须独立核实。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
       "workspaceGenerations": "v2",
-      "platform": "显式声明才要求 data.decimal-reservation-lifecycle@1.0.0；共享 Native validator 随新契约更新，按目标预检结果配套升级平台。",
-      "v1": "独立 V1 引擎和未声明生命周期的资源不受运行行为变更影响。"
+      "platform": "复用现有镜像上传响应，缺少额度数据的旧平台不会被补造数据。",
+      "v1": "独立 V1 引擎和工作区不受影响。"
     },
-    "sha256": "967c751ef6dd40ae7e593bebef5ac48e94ad366272b6622702e05a89338fb021",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.29.0"
+    "sha256": "057a446ac3871147ca22a80b059bf13c2510a341de93798e0326259c553bb382",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.29.1"
   }
 }
