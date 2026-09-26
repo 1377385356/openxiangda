@@ -79,6 +79,33 @@ test('preflights the workspace capsule before package installation', async () =>
   }
 });
 
+test('create captures safe package-manager diagnostics and preserves the workspace', async () => {
+  const temporary = mkdtempSync(join(tmpdir(), 'openxiangda-create-install-failure-'));
+  const originalPath = process.env.PATH;
+  try {
+    const root = join(temporary, 'app');
+    await createWorkspace({ directory: root, appCode: 'install-failure', name: 'Install failure', templateRoot: repositoryTemplate, install: false });
+    const bin = join(temporary, 'bin');
+    mkdirSync(bin);
+    writeFileSync(join(bin, 'pnpm'), '#!/bin/sh\necho "ERR_PNPM_FETCH_401 https://user:never-leak@registry.invalid/?token=secret" >&2\nexit 17\n', { mode: 0o755 });
+    process.env.PATH = `${bin}:${originalPath || ''}`;
+    await assert.rejects(() => prepareWorkspace(root, { installOutput: 'capture' }), (error: unknown) => {
+      const result = error as Error & { code: string; retryable: boolean };
+      assert.equal(result.code, 'WORKSPACE_INSTALL_FAILED');
+      assert.equal(result.retryable, true);
+      assert.match(result.message, /ERR_PNPM_FETCH_401/);
+      assert.match(result.message, /exit=17/);
+      assert.match(result.message, /认证或访问权限/);
+      for (const secret of ['never-leak', 'registry.invalid', 'token=', 'secret', temporary]) assert.equal(result.message.includes(secret), false);
+      return true;
+    });
+    assert.ok(existsSync(join(root, 'package.json')));
+  } finally {
+    process.env.PATH = originalPath;
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
 test('creates the compact Vite/Refine instrument workspace', async () => {
   const temporary = mkdtempSync(join(tmpdir(), 'openxiangda-cli-create-'));
   try {

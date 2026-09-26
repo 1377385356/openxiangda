@@ -20,6 +20,7 @@ export * from './toolchain-capsule.js';
 export * from './application-ui-contract.js';
 
 export * from './optional-backend.js';
+export { dependencyInstallDiagnostic } from './dependency-install-diagnostic.js';
 export * from './developer-operations.js';
 export * from './operation-progress.js';
 export * from './deployment-observer.js';

@@ -15,6 +15,7 @@ import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   collectWorkspaceToolchainDependencies,
+  dependencyInstallDiagnostic,
   isOpenXiangdaPackageName,
   OpenXiangdaApplicationServices,
   toolchainCapsuleDiagnostic,
@@ -616,10 +617,10 @@ export async function prepareWorkspace(
     "pnpm",
     ["install"],
     options.installOutput === "capture"
-      ? { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }
-      : { cwd: root, stdio: "inherit" }
+      ? { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout: 180_000, maxBuffer: 4 * 1024 * 1024 }
+      : { cwd: root, encoding: "utf8", stdio: "inherit", timeout: 180_000 }
   );
-  if (result.error || result.status !== 0) throw workspaceInstallError();
+  if (result.error || result.status !== 0) throw workspaceInstallError(result);
   const generated = await new OpenXiangdaApplicationServices({
     toolchainCapsule,
   }).generate({ root });
@@ -644,10 +645,10 @@ function workspaceCapsuleError(diagnostic: Diagnostic) {
   );
 }
 
-function workspaceInstallError() {
+function workspaceInstallError(result: Parameters<typeof dependencyInstallDiagnostic>[0]) {
   return Object.assign(
     new Error(
-      "WORKSPACE_INSTALL_FAILED: 依赖安装失败；请检查网络或包管理器配置后重试"
+      `WORKSPACE_INSTALL_FAILED: 工作区源码已保留，${dependencyInstallDiagnostic(result)}`
     ),
     { code: "WORKSPACE_INSTALL_FAILED", retryable: true }
   );
