@@ -19,6 +19,7 @@ export const DOCUMENTATION_TOPICS = [
   { id: 'public-access', title: '无账号的匿名公开访问', file: 'public-access.md' },
   { id: 'workflow-events', title: '审批、事件与通知', file: 'workflow-events.md' },
   { id: 'backend', title: '按需后端与业务动作', file: 'backend.md' },
+  { id: 'decimal-reservations', title: '主子记录精确金额占用', file: 'decimal-reservations.md' },
   { id: 'administration', title: '应用管理与有效配置', file: 'administration.md' },
   { id: 'testing', title: '检查与真实业务验收', file: 'testing.md' },
   { id: 'delivery', title: '部署、生产晋级与恢复', file: 'delivery.md' },

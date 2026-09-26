@@ -42,6 +42,7 @@ export default defineConfig({
         { text: '匿名公开访问', link: '/public-access' },
         { text: '审批、事件与通知', link: '/workflow-events' },
         { text: '按需后端', link: '/backend' },
+        { text: '精确金额占用', link: '/decimal-reservations' },
         { text: '应用管理', link: '/administration' },
       ] },
       { text: '校验与交付', items: [

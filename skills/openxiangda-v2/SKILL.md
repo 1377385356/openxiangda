@@ -71,6 +71,7 @@ pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ skill install --force
 | 外部无账号表单、续填、上传、本人记录 | [匿名公开访问](references/public-access.md) |
 | 审批、待办、消息或事件 | [工作流与通知](references/workflow-events.md) |
 | 自定义事务、校验或外部集成 | [按需后端](references/backend.md) |
+| 主子额度、审批占用释放、撤回修订重提 | [精确金额占用](references/decimal-reservations.md) |
 | 管理成员或查看有效流程参数 | [应用管理](references/administration.md) |
 | 检查、部署、生产发布与故障恢复 | [验收](references/testing.md)、[交付](references/delivery.md) |
 | 需求记录与版本升级 | [全流程记录](references/appspec.md)、[升级](references/upgrading.md) |

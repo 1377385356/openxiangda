@@ -1100,6 +1100,20 @@ export function validateDataTransactionRequest(
     }
   });
   const operations = Array.isArray(value.operations) ? value.operations : [];
+  if (value.decimalReservation !== undefined) {
+    const reservation = isRecord(value.decimalReservation) ? value.decimalReservation : {};
+    const child = operations[Number(reservation.childOperationIndex)];
+    if (!isRecord(value.decimalReservation) ||
+        Object.keys(reservation).some(key => !['reservationKey', 'transitionKey', 'childOperationIndex'].includes(key)) ||
+        ['reservationKey', 'transitionKey'].some(key => typeof reservation[key] !== 'string' ||
+          !String(reservation[key]).trim() || String(reservation[key]).length > 128) ||
+        !Number.isSafeInteger(reservation.childOperationIndex) || Number(reservation.childOperationIndex) < 0 ||
+        !isRecord(child) || child.operation !== 'update' ||
+        operations.filter(item => isRecord(item) && item.operation !== 'emitEvent' && item.resourceCode === child.resourceCode).length !== 1) {
+      diagnostics.push(diagnostic('DATA_TRANSACTION_DECIMAL_RESERVATION_INVALID',
+        '额度终态必须保留原轮次和迁移键，并选中该资源唯一的 update；模式由平台授权确定', 'decimalReservation'));
+    }
+  }
   if (operations.length === 0 || operations.length > 100) {
     diagnostics.push(
       diagnostic(

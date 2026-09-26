@@ -59,6 +59,7 @@ import {
   OpenXiangdaRuntimeSecrets,
   OpenXiangdaStandardOperations,
   databaseNowAssertion,
+  idempotentTransaction,
   OpenXiangdaWorkflowService,
   PlatformOpenXiangdaEventReceiptStore,
   eventSigningSecretsFromEnvironment,
@@ -984,6 +985,33 @@ test("event context propagates causation and trace headers to Native Data API", 
   );
   assert.equal(headers.get("X-OpenXiangda-Causation-Depth"), "3");
   assert.equal(headers.get("X-OpenXiangda-Trace-Id"), "trace-causation");
+  assert.equal(eventContext.current(), null);
+});
+
+test("managed quota outcome retains the original transaction and event context without invented authority", async () => {
+  const requests: Array<{ url: string; init?: RequestInit }> = [];
+  const eventContext = new OpenXiangdaEventContext();
+  const client = new OpenXiangdaPlatformClient(options(async (input, init) => {
+    requests.push({ url: String(input), init });
+    return response({ schemaVersion: SCHEMA_VERSIONS.dataTransactionResult,
+      idempotencyKey: 'event-original', replayed: false, items: [] });
+  }), eventContext);
+  const credentials: any = { withAuthorization: (work: any) => work('Bearer runtime-token') };
+  const service = new OpenXiangdaApplicationDataApiService(client, credentials);
+  const transaction = idempotentTransaction('event-original', [{ operation: 'update',
+    resourceCode: 'contracts', id: 'child', expectedRevision: 4, data: { status: { value: 'draft' } } }], [], {
+    decimalReservation: { reservationKey: 'cycle-original', transitionKey: 'outcome-original', childOperationIndex: 0 },
+  });
+  const event = JSON.parse(eventBody({ id: 'event-original', type: 'openxiangda.workflow.instance.withdrawn.v2', recordId: 'child' }));
+  await eventContext.run(event, 'delivery-original', 'approval-outcome', () => service.transaction(transaction));
+  const headers = new Headers(requests[0]?.init?.headers);
+  assert.equal(headers.get('X-OpenXiangda-Causation-Event-Id'), 'event-original');
+  assert.equal(headers.get('X-OpenXiangda-Origin-Delivery-Id'), 'delivery-original');
+  assert.equal(headers.get('X-OpenXiangda-Origin-Subscription-Code'), 'approval-outcome');
+  assert.equal(headers.get('X-OpenXiangda-Business-Action-Code'), null);
+  assert.deepEqual(JSON.parse(String(requests[0]!.init!.body)), { ...transaction, environmentKey: 'preproduction' });
+  await service.transaction(transaction);
+  assert.equal(new Headers(requests[1]?.init?.headers).get('X-OpenXiangda-Causation-Event-Id'), null);
   assert.equal(eventContext.current(), null);
 });
 
@@ -2500,6 +2528,22 @@ test("durable business process SDK sends only verified Named Action proof", asyn
       requiredCapability: operation.requiredCapability,
     },
   ]);
+
+  const resubmit = {
+    idempotencyKey: 'submit-new-cycle',
+    data: { operations: [{ key: 'child', kind: 'update' as const, resourceCode: 'applications',
+      id: '22222222-2222-4222-8222-222222222222', expectedRevision: 4,
+      data: { title: '修订后申请', amount: '123.45', status: { value: 'approving' } } }] },
+    formDraft: { resourceCode: 'applications', id: '11111111-1111-4111-8111-111111111111',
+      expectedRevision: 6, mode: 'update' as const, recordId: '22222222-2222-4222-8222-222222222222' },
+    decimalReservation: { parentId: '33333333-3333-4333-8333-333333333333', expectedParentRevision: 8,
+      childOperationKey: 'child', reservationKey: 'reservation-new-cycle', amount: '123.45', currencyCode: 'CNY' },
+    workflow: { workflowCode: 'application-approval', subject: { fromOperation: 'child' } },
+  };
+  await process.commit(resubmit);
+  assert.deepEqual(platform.commitBusinessProcess.mock.calls[1]!.arguments[1], {
+    ...resubmit, schemaVersion: SCHEMA_VERSIONS.businessProcessCommit, environmentKey: 'preproduction',
+  });
 
   (request.openxiangda as any).operation = undefined;
   await assert.rejects(

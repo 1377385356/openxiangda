@@ -12,6 +12,7 @@ import {
   WORKFLOW_EVENT_TYPES_V2,
   sha256Digest,
   type AppApiOperationContract,
+  type AppEventSubscriptionPlatformAccessDeclaration,
   type AppAdminNavigationGroupContract,
   type AppAdminPageContract,
   type AppPerspectiveContract,
@@ -96,6 +97,26 @@ const DEFAULT_EVENT_DELIVERY = {
   ordering: 'none' as const,
   concurrency: 10,
 };
+
+function normalizeEventPlatformAccess(access: AppEventSubscriptionPlatformAccessDeclaration) {
+  return {
+    ...(access.notification ? { notification: { mode: access.notification.mode } } : {}),
+    ...(access.managedFileCopies ? { managedFileCopies: sorted(
+      access.managedFileCopies.map(item => ({ mode: item.mode,
+        sourceResourceCode: item.sourceResourceCode, sourceFieldCodes: uniqueSorted(item.sourceFieldCodes),
+        targetResourceCode: item.targetResourceCode, targetFieldCodes: uniqueSorted(item.targetFieldCodes) })),
+      item => `${item.sourceResourceCode}:${item.sourceFieldCodes.join(',')}=>${item.targetResourceCode}:${item.targetFieldCodes.join(',')}`
+    ) } : {}),
+    ...(access.decimalReservation ? { decimalReservation: {
+      resourceCode: access.decimalReservation.resourceCode,
+      workflowCode: access.decimalReservation.workflowCode,
+      outcomes: sorted(access.decimalReservation.outcomes.map(outcome => ({
+        eventType: outcome.eventType, mode: outcome.mode,
+        eligibleChildStatuses: uniqueSorted(outcome.eligibleChildStatuses),
+      })), outcome => outcome.eventType),
+    } } : {}),
+  };
+}
 
 function normalizeEventFilter(
   filter: EventSubscriptionFilter | undefined
@@ -593,38 +614,9 @@ export function normalizeConfiguration(
             includeChanges: subscription.execution ? subscription.payload?.includeChanges === true : subscription.payload?.includeChanges !== false,
             fields: uniqueSorted(subscription.payload?.fields || []),
           },
-          ...(subscription.platformAccess?.notification
-            ? {
-                platformAccess: {
-                  notification: {
-                    mode: subscription.platformAccess.notification.mode,
-                  },
-                },
-            }
-            : {}),
-          ...(subscription.platformAccess?.managedFileCopies
-            ? {
-                platformAccess: {
-                  ...(subscription.platformAccess.notification
-                    ? {
-                        notification: {
-                          mode: subscription.platformAccess.notification.mode,
-                        },
-                      }
-                    : {}),
-                  managedFileCopies: sorted(
-                    subscription.platformAccess.managedFileCopies.map(item => ({
-                      mode: item.mode,
-                      sourceResourceCode: item.sourceResourceCode,
-                      sourceFieldCodes: uniqueSorted(item.sourceFieldCodes),
-                      targetResourceCode: item.targetResourceCode,
-                      targetFieldCodes: uniqueSorted(item.targetFieldCodes),
-                    })),
-                    item => `${item.sourceResourceCode}:${item.sourceFieldCodes.join(',')}=>${item.targetResourceCode}:${item.targetFieldCodes.join(',')}`
-                  ),
-                },
-              }
-            : {}),
+          ...(subscription.platformAccess ? {
+            platformAccess: normalizeEventPlatformAccess(subscription.platformAccess),
+          } : {}),
           ...(subscription.execution ? { execution: subscription.execution } : {}),
           endpointPath: applicationEventHandlerPathV2(subscription.code),
           delivery: { ...DEFAULT_EVENT_DELIVERY, ...subscription.delivery },
@@ -865,33 +857,9 @@ function compileContractBundleFromNormalized(
       eventTypes: subscription.eventTypes,
       filter: subscription.filter,
       payload: subscription.payload,
-      ...(subscription.platformAccess
-        ? {
-            platformAccess: {
-              ...(subscription.platformAccess.notification
-                ? {
-                    notification: {
-                      mode: subscription.platformAccess.notification.mode,
-                    },
-                  }
-                : {}),
-              ...(subscription.platformAccess.managedFileCopies
-                ? {
-                    managedFileCopies: sorted(
-                      subscription.platformAccess.managedFileCopies.map(item => ({
-                        mode: item.mode,
-                        sourceResourceCode: item.sourceResourceCode,
-                        sourceFieldCodes: uniqueSorted(item.sourceFieldCodes),
-                        targetResourceCode: item.targetResourceCode,
-                        targetFieldCodes: uniqueSorted(item.targetFieldCodes),
-                      })),
-                      item => `${item.sourceResourceCode}:${item.sourceFieldCodes.join(',')}=>${item.targetResourceCode}:${item.targetFieldCodes.join(',')}`
-                    ),
-                  }
-                : {}),
-            },
-          }
-        : {}),
+      ...(subscription.platformAccess ? {
+        platformAccess: normalizeEventPlatformAccess(subscription.platformAccess),
+      } : {}),
       delivery: subscription.delivery,
       ...compileNativeEventAction(subscription, normalizedConfiguration.data.resources),
     })),
@@ -1992,7 +1960,8 @@ function runtimeProtocolCapabilities(config: OpenXiangdaAppConfig) {
     )
       ? ['business-process.durable-command']
       : []),
-    ...(operations.some(operation => operation.platformAccess?.decimalReservation)
+    ...(operations.some(operation => operation.platformAccess?.decimalReservation) ||
+      config.events?.subscriptions.some(subscription => subscription.platformAccess?.decimalReservation)
       ? ['data.decimal-reservations']
       : []),
     ...(config.events?.subscriptions.length ||

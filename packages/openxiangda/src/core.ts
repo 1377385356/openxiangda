@@ -28,6 +28,7 @@ export type {
   DataRecord,
   DataResourceSurface,
   DataTransactionOperation,
+  DataDecimalReservationTransition,
   DataTransactionRequest,
   DataTransactionResult,
   DataWhere,

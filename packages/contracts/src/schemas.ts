@@ -3741,6 +3741,15 @@ export const dataTransactionRequestSchema = {
   properties: {
     schemaVersion: { const: SCHEMA_VERSIONS.dataTransactionRequest },
     idempotencyKey: nonEmptyString,
+    decimalReservation: {
+      type: "object", additionalProperties: false,
+      required: ["reservationKey", "transitionKey", "childOperationIndex"],
+      properties: {
+        reservationKey: { type: "string", minLength: 1, maxLength: 128 },
+        transitionKey: { type: "string", minLength: 1, maxLength: 128 },
+        childOperationIndex: { type: "integer", minimum: 0, maximum: 99 },
+      },
+    },
     guards: {
       type: "array",
       maxItems: 20,
@@ -4894,6 +4903,28 @@ const eventSubscriptionPlatformAccessSchema = {
   additionalProperties: false,
   minProperties: 1,
   properties: {
+    decimalReservation: {
+      type: "object", additionalProperties: false,
+      required: ["resourceCode", "workflowCode", "outcomes"],
+      properties: {
+        resourceCode: dataResourceCode,
+        workflowCode: { type: "string", minLength: 1, maxLength: 128 },
+        outcomes: {
+          type: "array", minItems: 1, maxItems: 3,
+          items: {
+            type: "object", additionalProperties: false,
+            required: ["eventType", "mode", "eligibleChildStatuses"],
+            properties: {
+              eventType: { enum: ["openxiangda.workflow.instance.completed.v2", "openxiangda.workflow.instance.rejected.v2", "openxiangda.workflow.instance.withdrawn.v2"] },
+              mode: { enum: ["commit", "release"] },
+              eligibleChildStatuses: { type: "array", minItems: 1, maxItems: 16, uniqueItems: true, items: { type: "string", minLength: 1, maxLength: 128 } },
+            },
+            allOf: [{ if: { properties: { eventType: { const: "openxiangda.workflow.instance.completed.v2" } } },
+              then: { properties: { mode: { const: "commit" } } }, else: { properties: { mode: { const: "release" } } } }],
+          },
+        },
+      },
+    },
     notification: {
       type: "object",
       additionalProperties: false,

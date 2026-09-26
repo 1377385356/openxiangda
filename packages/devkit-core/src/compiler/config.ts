@@ -1,3 +1,4 @@
+import { normalizeDecimalReservationEventDeclaration, decimalReservationEventContext } from 'openxiangda-contracts';
 import type { NativeEventActionDeclaration } from 'openxiangda-contracts';
 import { materializeApplicationModules, type AppModuleDeclaration } from './application-model.js';
 import { nativeFieldRequiresCreateInputV2 } from 'openxiangda-contracts/native-compiler';
@@ -3176,18 +3177,26 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
             if (copyKeys.has(key)) copiesInvalid = true;
             copyKeys.add(key);
           }
+          let decimalInvalid = false;
+          if (access.decimalReservation !== undefined) {
+            try {
+              normalizeDecimalReservationEventDeclaration(access.decimalReservation,
+                decimalReservationEventContext(config, subscription));
+            } catch { decimalInvalid = true; }
+          }
           if (
-            Object.keys(access).some(key => !['notification', 'managedFileCopies'].includes(key)) ||
+            decimalInvalid ||
+            Object.keys(access).some(key => !['notification', 'managedFileCopies', 'decimalReservation'].includes(key)) ||
             (access.notification !== undefined &&
               (notification.mode !== 'business-standard' ||
                 Object.keys(notification).some(key => key !== 'mode'))) ||
-            (access.notification === undefined && access.managedFileCopies === undefined) ||
+            (access.notification === undefined && access.managedFileCopies === undefined && access.decimalReservation === undefined) ||
             copiesInvalid
           ) {
             diagnostics.push(
               diagnostic(
                 'APP_CONFIG_EVENT_PLATFORM_ACCESS_INVALID',
-                '事件订阅 platformAccess 只能显式声明标准业务通知或有界托管文件复制依赖',
+                '事件订阅 platformAccess 必须显式声明标准通知、托管文件复制或与审批/额度资源匹配的受管终态',
                 `${path}.platformAccess`
               )
             );

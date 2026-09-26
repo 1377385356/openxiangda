@@ -17,6 +17,7 @@
 - [无账号的匿名公开访问](./public-access.md)：主题 ID `public-access`
 - [审批、事件与通知](./workflow-events.md)：主题 ID `workflow-events`
 - [按需后端与业务动作](./backend.md)：主题 ID `backend`
+- [主子记录精确金额占用](./decimal-reservations.md)：主题 ID `decimal-reservations`
 - [应用管理与有效配置](./administration.md)：主题 ID `administration`
 - [检查与真实业务验收](./testing.md)：主题 ID `testing`
 - [部署、生产晋级与恢复](./delivery.md)：主题 ID `delivery`

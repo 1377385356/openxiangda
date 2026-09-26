@@ -1,3 +1,4 @@
+import { normalizeDecimalReservationEventDeclaration, decimalReservationEventContext } from './decimal-reservation.js';
 import { compileNativeEventAction } from './event-action.js';
 import { projectNativeDataResourceViewV2 } from './data-surface.js';
 import { hasDataAuditReadPolicy, isDataAuditMetadataField } from './data-audit-access.js';
@@ -471,15 +472,20 @@ export function compileRequiredPlatformCapabilitiesV3(
     code: OpenXiangdaPlatformCapabilityCode;
     declaration: unknown;
   }> = [
-    ...(operations.some(operation => operation.platformAccess?.decimalReservation)
+    ...(operations.some(operation => operation.platformAccess?.decimalReservation) ||
+      config.events.subscriptions.some((subscription: any) => subscription.platformAccess?.decimalReservation)
       ? [{
           code: 'data.decimal-reservations' as const,
-          declaration: operations
+          declaration: [...operations
             .filter(operation => operation.platformAccess?.decimalReservation)
             .map(operation => ({
               code: operation.code,
               decimalReservation: operation.platformAccess.decimalReservation,
             })),
+            ...config.events.subscriptions
+              .filter((subscription: any) => subscription.platformAccess?.decimalReservation)
+              .map((subscription: any) => ({ subscriptionCode: subscription.code,
+                decimalReservation: subscription.platformAccess.decimalReservation }))],
         }]
       : []),
     { code: 'application-native-2', declaration: runtimeUsage },
@@ -1325,7 +1331,9 @@ function compileExpectedContract(
       const platformAccess = validateEventSubscriptionPlatformAccess(
         subscription.platformAccess,
         `${pointer}/platformAccess`,
-        eventResourceFields
+        eventResourceFields,
+        config,
+        subscription
       );
       return {
         code: stableCode(subscription.code, `${pointer}/code`),
@@ -1453,12 +1461,23 @@ function compileExpectedContract(
 function validateEventSubscriptionPlatformAccess(
   value: unknown,
   pointer: string,
-  declaredResources: Map<string, Map<string, string>>
+  declaredResources: Map<string, Map<string, string>>,
+  config: JsonObject,
+  subscription: JsonObject
 ) {
   if (value === undefined) return undefined;
   const access = object(value, pointer);
-  exactKeys(access, ['notification', 'managedFileCopies'], pointer, true);
+  exactKeys(access, ['notification', 'managedFileCopies', 'decimalReservation'], pointer, true);
   const result: JsonObject = {};
+  if (access.decimalReservation !== undefined) {
+    try {
+      result.decimalReservation = normalizeDecimalReservationEventDeclaration(
+        access.decimalReservation, decimalReservationEventContext(config, subscription)
+      );
+    } catch {
+      fail('NATIVE_EVENT_DECIMAL_RESERVATION_INVALID', `${pointer}/decimalReservation`);
+    }
+  }
   if (access.notification !== undefined) {
     const notification = object(access.notification, `${pointer}/notification`);
     exactKeys(notification, ['mode'], `${pointer}/notification`);

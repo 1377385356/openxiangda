@@ -1737,11 +1737,19 @@ export type DataTransactionGuard =
       assertions: DataTransactionRecordAssertion[];
     };
 
+/** Terminal authority is resolved from a verified action or actual workflow delivery. */
+export interface DataDecimalReservationTransition {
+  reservationKey: string;
+  transitionKey: string;
+  childOperationIndex: number;
+}
+
 export interface DataTransactionRequest {
   schemaVersion: typeof SCHEMA_VERSIONS.dataTransactionRequest;
   idempotencyKey: string;
   guards?: DataTransactionGuard[];
   operations: DataTransactionOperation[];
+  decimalReservation?: DataDecimalReservationTransition;
 }
 
 export interface DataTransactionResult {
@@ -2508,7 +2516,7 @@ export interface BusinessProcessFormDraft {
   viewCode?: string;
 }
 
-/** The parent capacity check and child creation share the BusinessProcess transaction. */
+/** Parent capacity, child create/update, draft consumption and workflow share one transaction. */
 export interface BusinessProcessDecimalReservation {
   parentId: string;
   expectedParentRevision: number;

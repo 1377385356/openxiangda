@@ -946,7 +946,20 @@ export interface NativeEventCapturePolicy {
   mode: 'all' | 'subscribed';
 }
 
+export interface AppEventDecimalReservationDeclaration {
+  resourceCode: string;
+  workflowCode: string;
+  outcomes: ReadonlyArray<{
+    eventType: 'openxiangda.workflow.instance.completed.v2' |
+      'openxiangda.workflow.instance.rejected.v2' |
+      'openxiangda.workflow.instance.withdrawn.v2';
+    mode: 'commit' | 'release';
+    eligibleChildStatuses: readonly string[];
+  }>;
+}
+
 export interface AppEventSubscriptionPlatformAccessDeclaration {
+  decimalReservation?: AppEventDecimalReservationDeclaration;
   notification?: { mode: 'business-standard' };
   managedFileCopies?: ReadonlyArray<{
     mode: 'copy';

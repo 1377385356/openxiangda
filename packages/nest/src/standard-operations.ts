@@ -27,6 +27,7 @@ export function idempotentTransaction(
   idempotencyKey: string,
   operations: DataTransactionOperation[],
   guards: DataTransactionGuard[] = [],
+  options: Pick<DataTransactionRequest, 'decimalReservation'> = {},
 ): DataTransactionRequest {
   if (!idempotencyKey.trim()) throw new ConflictException('OPENXIANGDA_IDEMPOTENCY_KEY_REQUIRED');
   return {
@@ -34,6 +35,7 @@ export function idempotentTransaction(
     idempotencyKey,
     ...(guards.length ? { guards } : {}),
     operations,
+    ...(options.decimalReservation ? { decimalReservation: options.decimalReservation } : {}),
   };
 }
 

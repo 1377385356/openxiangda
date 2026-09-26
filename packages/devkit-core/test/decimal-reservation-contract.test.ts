@@ -126,3 +126,88 @@ test('decimal reservation declaration rejects unknown status and undeclared cont
   assert.throws(() => defineOpenXiangdaApp(badRelation), (error: any) =>
     error.diagnostics?.some((item: any) => item.code === 'APP_CONFIG_BACKEND_OPERATION_PLATFORM_ACCESS_INVALID'));
 });
+
+function lifecycleDeclaration(): OpenXiangdaAppDeclaration {
+  const source = declaration();
+  const definition = {
+    schemaVersion: 'openxiangda.workflow-definition/v2' as const,
+    code: 'contract-approval', title: 'Contract approval',
+    acceptedCommandDeactivationPolicy: 'finish-pinned' as const,
+    subject: { resourceCode: 'contracts', factProjection: { name: 'name' } },
+    inputSchema: { type: 'object', additionalProperties: false, properties: { name: { type: 'string' } } },
+    startAt: 'review', nodes: {
+      review: { id: 'review', title: 'Review', kind: 'approval' as const, mode: 'single' as const,
+        binding: 'reviewer', onApprove: 'approved', onReject: 'rejected' },
+      approved: { id: 'approved', title: 'Approved', kind: 'end' as const, outcome: 'approved' as const },
+      rejected: { id: 'rejected', title: 'Rejected', kind: 'end' as const, outcome: 'rejected' as const },
+    },
+  };
+  source.workflows = {
+    definitions: [{ version: 1, definition, launch: { mode: 'work-center-only' } }],
+    bindings: [{ version: 1, binding: {
+      schemaVersion: 'openxiangda.workflow-binding/v2', workflowCode: definition.code,
+      bindings: { reviewer: { provider: 'app_role', roleCode: 'manager' } },
+    } }],
+    activations: [{ workflowCode: definition.code, definitionVersion: 1, bindingVersion: 1,
+      acceptedCommandDeactivationPolicy: 'finish-pinned' }],
+  };
+  source.events = { subscriptions: [{
+    code: 'approval-outcome',
+    eventTypes: ['openxiangda.workflow.instance.withdrawn.v2', 'openxiangda.workflow.instance.completed.v2'],
+    platformAccess: { decimalReservation: {
+      resourceCode: 'contracts', workflowCode: 'contract-approval', outcomes: [
+        { eventType: 'openxiangda.workflow.instance.withdrawn.v2', mode: 'release', eligibleChildStatuses: ['draft'] },
+        { eventType: 'openxiangda.workflow.instance.completed.v2', mode: 'commit', eligibleChildStatuses: ['signing'] },
+      ],
+    } },
+    delivery: { ordering: 'workflow-instance' },
+  }] };
+  return source;
+}
+
+function platformCompile(output: ReturnType<typeof compileApplicationSources>) {
+  return compileNativeApplicationConfiguration({
+    appCode: 'quota-example', configBytes: canonicalJson(output.config.value),
+    contractBytes: canonicalJson(output.contracts.value),
+    expectedConfigDigest: sha256Digest(output.config.value), expectedContractDigest: sha256Digest(output.contracts.value),
+  });
+}
+
+test('workflow outcome grants survive both compilers and bind the same 1.1 capability digest', () => {
+  const compiled = compileApplicationSources(defineOpenXiangdaApp(lifecycleDeclaration()));
+  const platform = platformCompile(compiled);
+  const requirement = requiredPlatformCapabilities(defineOpenXiangdaApp(lifecycleDeclaration()))
+    .find(item => item.code === 'data.decimal-reservations');
+  assert.deepEqual(platform.requiredPlatformCapabilities.find(item => item.code === requirement!.code), requirement);
+  assert.equal(requirement!.contractVersion, '1.1.0');
+  assert.deepEqual(compiled.contracts.value.eventConsumers[0]!.platformAccess,
+    compiled.config.value.events.subscriptions[0]!.platformAccess);
+  const altered = lifecycleDeclaration();
+  altered.events!.subscriptions[0]!.platformAccess!.decimalReservation!.outcomes[0]!.eligibleChildStatuses = ['draft', 'signing'];
+  const changed = requiredPlatformCapabilities(defineOpenXiangdaApp(altered)).find(item => item.code === requirement!.code);
+  assert.notDeepEqual(changed, requirement);
+});
+
+test('both compilers reject forged workflow outcome grants without widening authority', () => {
+  const mutations: Array<(grant: any, config: any) => void> = [
+    grant => { grant.outcomes[0].mode = grant.outcomes[0].mode === 'commit' ? 'release' : 'commit'; },
+    grant => { grant.outcomes[0].eligibleChildStatuses = ['missing']; },
+    grant => { grant.outcomes.push(grant.outcomes[0]); },
+    grant => { grant.outcomes[0].eventType = 'custom.completed.v2'; },
+    grant => { grant.workflowCode = 'unknown'; },
+    grant => { grant.resourceCode = 'missing'; },
+    grant => { grant.mode = 'release'; },
+    (_grant, config) => { config.backend.operations = []; },
+    (_grant, config) => { config.events.subscriptions[0].eventTypes = ['openxiangda.workflow.instance.completed.v2']; },
+  ];
+  for (const mutate of mutations) {
+    const source = lifecycleDeclaration();
+    mutate(source.events!.subscriptions[0]!.platformAccess!.decimalReservation, source);
+    assert.throws(() => defineOpenXiangdaApp(source), (error: any) =>
+      error.diagnostics?.some((item: any) => item.code === 'APP_CONFIG_EVENT_PLATFORM_ACCESS_INVALID'));
+    const compiled = compileApplicationSources(defineOpenXiangdaApp(lifecycleDeclaration()));
+    mutate(compiled.config.value.events.subscriptions[0]!.platformAccess!.decimalReservation, compiled.config.value);
+    compiled.contracts.value.configDigest = sha256Digest(compiled.config.value);
+    assert.throws(() => platformCompile(compiled), (error: any) => error.code === 'NATIVE_EVENT_DECIMAL_RESERVATION_INVALID');
+  }
+});
