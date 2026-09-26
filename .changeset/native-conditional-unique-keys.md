@@ -2,6 +2,7 @@
 "openxiangda": minor
 "openxiangda-contracts": minor
 "openxiangda-devkit-core": minor
+"openxiangda-cli": patch
 ---
 
 模型支持可选条件唯一键，统一编译 uniqueKeys 并推导 data.unique-keys@1.0.0。
