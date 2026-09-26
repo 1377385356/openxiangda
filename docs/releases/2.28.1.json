@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.28.1",
+  "status": "reviewed",
+  "title": "OpenXiangda 2.28.1：后端镜像原制品上传恢复",
+  "summary": "上传中断后保留原 OCI 镜像，普通 deploy 重试直接从平台已有偏移或 ready 回执恢复，减少重建和重复传输。",
+  "newFeatures": [],
+  "fixes": [
+    "已导出的后端镜像不会再因为上传失败或响应丢失被立即删除；相同输入重试保持原摘要，已封存候选不再依赖 Docker 重建。",
+    "缓存绑定当前站点、租户、用户、应用环境和实际构建上下文，包含未提交源码；恢复前验证全部 blob，使用跨进程租约阻止重复上传。"
+  ],
+  "affectedUsers": [
+    "通过平台登录态分块上传后端镜像的 OpenXiangda 2.0 应用开发者。"
+  ],
+  "upgradeSteps": [
+    "应用消费 openxiangda@2.28.1 并更新锁文件。上传中断时保留工作区输入，恢复网络或登录后重复原 deploy 命令。",
+    "无需平台数据库迁移，也无需手工寻找 BuildKit 历史或镜像上传会话。"
+  ],
+  "knownLimitations": [
+    "最多保留 8 个候选、总预留空间 8 GiB、24 小时；平台单镜像上限超过 8 GiB 时继续原临时上传路径。缓存过期或被预算清理后需要重新构建。",
+    "源码、身份、环境、配置或工具版本变化会形成新候选；恢复原镜像不重新求值远程 FROM/RUN 输入。",
+    "本机上下文校验有 100000 条目、8 GiB、60 秒预算；构建期间源码变化会拒绝上传，需要保存完成后重试。",
+    "真实 Docker 导出及故障恢复、隔离的传输协议和发行门禁分别验证，不代表任何客户应用已发布或通过业务验收。"
+  ],
+  "issues": [],
+  "compatibility": {
+    "node": ">=24",
+    "workspaceGenerations": "v2",
+    "platform": "复用既有 backendImageUpload 协议和 auth/whoami，不新增远端上传状态或服务器账号要求。",
+    "v1": "独立 V1 引擎和工作区不受影响。"
+  }
+}
