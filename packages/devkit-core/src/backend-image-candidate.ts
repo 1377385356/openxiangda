@@ -7,6 +7,7 @@ import { createRequire } from 'node:module';
 import type { Ignore } from '@balena/dockerignore';
 import { lock } from 'proper-lockfile';
 import { inspectBackendOciLayout } from './backend-image-upload.js';
+import { backendImageUploadFailure } from './backend-image-upload-failure.js';
 
 const SCHEMA = 'openxiangda.backend-image-candidate/v1';
 const KEY = /^[a-f0-9]{64}$/;
@@ -269,11 +270,11 @@ export async function withBackendImageCandidate<T>(input: {
       try { await removeOwnedCandidate(cacheRoot, selected.directory, selected.owned); } catch { /* retain incomplete state for the next owner */ }
       throw error;
     }
-    const causeCode = String((error as { code?: unknown })?.code ?? 'UPLOAD_FAILED');
+    const failure = backendImageUploadFailure(error);
     throw new BackendImageCandidateError('OPENXIANGDA_BACKEND_IMAGE_UPLOAD_PENDING',
-      '原镜像候选已保留；恢复网络或登录后，在相同工作区重试 openxiangda deploy 即可继续原摘要上传',
+      failure.message,
       { candidateId: key, digest: selected.candidate.digest, expiresAt: new Date(selected.candidate.createdAt + TTL).toISOString(),
-        nextCommand: 'pnpm openxiangda deploy', remediation: '恢复网络或登录后，在原工作区执行 pnpm openxiangda deploy；保持原输入将恢复同一镜像摘要。',
-        causeCode: /^[A-Z0-9_]{1,128}$/.test(causeCode) ? causeCode : 'UPLOAD_FAILED' }, true);
+        nextCommand: 'pnpm openxiangda deploy', remediation: failure.remediation,
+        causeCode: failure.causeCode, ...(failure.causeDetails ? { causeDetails: failure.causeDetails } : {}) }, failure.retryable);
   } finally { await selected.owned.release(); }
 }

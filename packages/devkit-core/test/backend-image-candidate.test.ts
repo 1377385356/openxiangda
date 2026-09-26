@@ -7,7 +7,8 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { backendImageContextDigest, withBackendImageCandidate, type BackendImageRecoveryScope } from '../src/backend-image-candidate.js';
 import { publishBackendImage } from '../src/backend-image-build.js';
-import { OpenXiangdaControlPlaneClient } from '../src/control-plane-client.js';
+import { ControlPlaneError, OpenXiangdaControlPlaneClient } from '../src/control-plane-client.js';
+import { developerError } from '../src/developer-errors.js';
 import { uploadBackendOciLayout, type BackendImageUploader, type BackendImageUploadReceipt } from '../src/backend-image-upload.js';
 
 const hash = (value: string | Uint8Array) => `sha256:${createHash('sha256').update(value).digest('hex')}`;
@@ -116,6 +117,92 @@ test('unknown completion recovers the already ready artifact without repeating c
     assert.equal(result.digest, sample.digest);
     assert.equal(remote.counters().chunkCalls, before);
     assert.equal(readFileSync(sample.marker, 'utf8'), 'build\n');
+  } finally { sample.cleanup(); }
+});
+
+test('HTTP budget rejection preserves safe CLI evidence without retrying, then resumes original bytes after recovery', async () => {
+  const sample = fixture();
+  try {
+    let attempts = 0;
+    const budget = { appBytes: 4 * 1024 ** 3, appImages: 12, appBudgetBytes: 4 * 1024 ** 3,
+      appImageLimit: 200, requestedBytes: sample.receipt.sizeBytes, recovery: 'inspect-image-retention' };
+    const client = new OpenXiangdaControlPlaneClient({ baseUrl: scope.platform, token: 'must-not-leak', fetch: async (url, init) => {
+      attempts++;
+      assert.equal(String(url), `${scope.platform}/openxiangda-api/v2/applications/demo/backend-images`);
+      assert.equal(init?.method, 'POST');
+      assert.equal(JSON.parse(String(init?.body)).digest, sample.digest);
+      return Response.json({ code: 409, errorCode: 'APPLICATION_IMAGE_STORAGE_BUDGET_EXCEEDED',
+        message: 'private registry response must-not-leak', retryable: true,
+        data: { ...budget, token: 'must-not-leak', tenantBytes: 9999, sql: 'must-not-leak',
+          remediation: 'https://example.invalid/?token=must-not-leak' } }, { status: 409 });
+    } });
+    await assert.rejects(publishBackendImage({ ...sample.publish, uploader: client }), error => {
+      const projected = developerError(error, 'openxiangda deploy');
+      assert.equal(projected.code, 'OPENXIANGDA_BACKEND_IMAGE_UPLOAD_PENDING');
+      assert.equal(projected.retryable, false);
+      assert.equal(projected.details?.causeCode, 'APPLICATION_IMAGE_STORAGE_BUDGET_EXCEEDED');
+      assert.equal(projected.details?.digest, sample.digest);
+      assert.deepEqual(projected.details?.causeDetails, budget);
+      assert.match(projected.remediation, /受管清理/);
+      assert.doesNotMatch(projected.message + projected.remediation, /恢复网络或登录/);
+      assert.doesNotMatch(JSON.stringify(projected), /must-not-leak|tenantBytes|example.invalid/);
+      return true;
+    });
+    assert.equal(attempts, 1); // retryable=true on the server does not cause immediate admission retries
+    assert.equal(sample.entries().length, 1);
+    const saved = JSON.parse(readFileSync(join(sample.cacheRoot, sample.entries()[0]!, 'candidate.json'), 'utf8'));
+    assert.equal(saved.digest, sample.digest);
+    assert.doesNotMatch(JSON.stringify(saved), /appBytes|must-not-leak/);
+    rmSync(sample.docker);
+    const remote = transport(sample);
+    const result = await publishBackendImage({ ...sample.publish, uploader: remote.uploader });
+    assert.equal(result.digest, sample.digest);
+    assert.equal(remote.counters().beginCalls, 1);
+    assert.equal(remote.counters().chunkCalls, sample.receipt.blobs.length);
+    assert.equal(readFileSync(sample.marker, 'utf8'), 'build\n');
+    assert.equal(sample.entries().length, 0);
+  } finally { sample.cleanup(); }
+});
+
+test('budget evidence excludes malformed numbers and unknown recovery data', async () => {
+  const sample = fixture();
+  try {
+    await assert.rejects(withBackendImageCandidate({ ...sample.input, upload: async () => {
+      throw new ControlPlaneError(409, 'APPLICATION_IMAGE_STORAGE_BUDGET_EXCEEDED', 'must-not-leak',
+        { appBytes: -1, appImages: '10', appBudgetBytes: Infinity, appImageLimit: 1.5,
+          requestedBytes: Number.MAX_SAFE_INTEGER + 1, recovery: 'must-not-leak' });
+    } }), error => {
+      const projected = developerError(error);
+      assert.deepEqual(projected.details?.causeDetails, {});
+      assert.equal(projected.retryable, false);
+      assert.doesNotMatch(JSON.stringify(projected), /must-not-leak|Infinity/);
+      return true;
+    });
+    assert.equal(sample.entries().length, 1);
+  } finally { sample.cleanup(); }
+});
+
+test('candidate guidance distinguishes authentication, permissions, transport and unknown failures without raw error text', async () => {
+  const sample = fixture();
+  try {
+    for (const [failure, expectedHint, canRetry] of [
+      [new ControlPlaneError(401, 'AUTH_REQUIRED', 'must-not-leak'), /同一账号.*登录态/, false],
+      [new ControlPlaneError(403, 'FORBIDDEN', 'must-not-leak'), /应用部署权限/, false],
+      [new ControlPlaneError(503, 'OPENXIANGDA_PLATFORM_TRANSPORT_FAILED', 'must-not-leak', {}, { retryable: true }), /网络与连接/, true],
+      [new ControlPlaneError(422, 'APPLICATION_IMAGE_MANIFEST_INVALID', 'must-not-leak', {}, { retryable: false }), /causeCode/, false],
+      [Object.assign(new Error('must-not-leak'), { code: 'bad code must-not-leak' }), /causeCode/, true],
+    ] as const) {
+      await assert.rejects(withBackendImageCandidate({ ...sample.input, upload: async () => { throw failure; } }), error => {
+        const projected = developerError(error);
+        assert.match(projected.remediation, expectedHint);
+        assert.equal(projected.retryable, canRetry);
+        assert.equal(projected.details?.digest, sample.digest);
+        assert.equal(projected.details?.causeDetails, undefined);
+        assert.doesNotMatch(JSON.stringify(projected), /must-not-leak/);
+        return true;
+      });
+      assert.equal(sample.entries().length, 1);
+    }
   } finally { sample.cleanup(); }
 });
 

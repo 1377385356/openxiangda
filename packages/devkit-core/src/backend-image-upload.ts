@@ -3,6 +3,7 @@ import { open } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
+import { IMAGE_STORAGE_BUDGET_EXCEEDED } from './backend-image-upload-failure.js';
 
 export type BackendImageChunkEncoding = 'gzip';
 
@@ -44,6 +45,8 @@ function blobPath(directory: string, digest: string): string {
 async function retry<T>(operation: () => Promise<T>): Promise<T> {
   for (let attempt = 0; ; attempt++) {
     try { return await operation(); } catch (error) {
+      // An admission budget needs operator recovery; immediate retries cannot reclaim space.
+      if ((error as { code?: unknown })?.code === IMAGE_STORAGE_BUDGET_EXCEEDED) throw error;
       const status = Number((error as any)?.status || 0);
       const retryable = (error as any)?.retryable ?? (error as any)?.remote?.retryable;
       const transient = retryable === true || !status || [408, 429, 502, 503, 504].includes(status);
