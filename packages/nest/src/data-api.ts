@@ -21,6 +21,7 @@ import { SCHEMA_VERSIONS } from 'openxiangda-contracts';
 import { OpenXiangdaApplicationCredentials } from './application-credentials.js';
 import { assertOpenXiangdaRoleAssertions, requireOpenXiangdaBusinessActionContext } from './business-action-context.js';
 import { OpenXiangdaPlatformClient } from './platform-client.js';
+import { bindOpenXiangdaResources, type OpenXiangdaResourceTypes } from './typed-resources.js';
 import type {
   OpenXiangdaHttpRequest,
 } from './types.js';
@@ -69,6 +70,10 @@ function domainEventResult(
 
 @Injectable({ scope: Scope.REQUEST })
 export class OpenXiangdaDataApiService {
+  resources<M extends { [K in keyof M]: OpenXiangdaResourceTypes }>() {
+    return bindOpenXiangdaResources<M>(this);
+  }
+
   constructor(
     @Inject(REQUEST) private readonly request: OpenXiangdaHttpRequest,
     @Inject(OpenXiangdaPlatformClient)
@@ -272,6 +277,10 @@ export class OpenXiangdaDataApiService {
  */
 @Injectable({ scope: Scope.REQUEST })
 export class OpenXiangdaBusinessDataApiService {
+  resources<M extends { [K in keyof M]: OpenXiangdaResourceTypes }>() {
+    return bindOpenXiangdaResources<M>(this);
+  }
+
   constructor(
     @Inject(REQUEST) private readonly request: OpenXiangdaHttpRequest,
     @Inject(OpenXiangdaPlatformClient)
@@ -478,6 +487,10 @@ export class OpenXiangdaBusinessDataApiService {
 /** Data API facade for Worker/Scheduler and other work without an HTTP request. */
 @Injectable()
 export class OpenXiangdaApplicationDataApiService {
+  resources<M extends { [K in keyof M]: OpenXiangdaResourceTypes }>() {
+    return bindOpenXiangdaResources<M>(this);
+  }
+
   constructor(
     @Inject(OpenXiangdaPlatformClient)
     private readonly platform: OpenXiangdaPlatformClient,

@@ -41,6 +41,7 @@ export {
   assertValidTimeInterval,
   databaseNowAssertion,
   idempotentTransaction,
+  bindOpenXiangdaResources,
 } from 'openxiangda-nest';
 
 export type {
@@ -69,6 +70,11 @@ export type {
   MeetingReservationOperationInput,
   CourseSelectionOperationInput,
   VisitorReservationOperationInput,
+  OpenXiangdaResourceTypes,
+  OpenXiangdaReadableRecord,
+  OpenXiangdaResourceQuery,
+  OpenXiangdaResourceRecord,
+  OpenXiangdaBoundResource,
 } from 'openxiangda-nest';
 
 export {

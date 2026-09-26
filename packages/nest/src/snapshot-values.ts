@@ -38,8 +38,9 @@ export function resourceSnapshot(
 
 /**
  * 判定一个错误是否为平台幂等冲突：同一 idempotencyKey 携带了不同内容（典型
- * 场景是重试时乐观锁 revision 已前进）。捕获后应回读当前状态确认"已生效"并按
- * 幂等结果返回，而不是把冲突透传给调用方或生成新键重试。
+ * 场景是重试时改变了乐观锁 revision）。冲突本身不证明已成功：保留原键、原请求
+ * 和环境，查询原操作回执并核对业务结果；不能仅凭当前状态把冲突转成成功，也不能
+ * 生成新键或自动修改 revision 后重试。
  */
 export function isIdempotencyConflict(error: unknown): boolean {
   return (

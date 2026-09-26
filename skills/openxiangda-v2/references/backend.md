@@ -101,20 +101,27 @@ data: {
 
 ### 幂等冲突复核 {#idempotency-recovery}
 
-同一 `idempotencyKey` 要求内容指纹一致。update 事务携带 `expectedRevision`，重试时 revision 已前进会触发 409 `OPENXIANGDA_NATIVE_DATA_IDEMPOTENCY_CONFLICT`。捕获后回读当前状态确认效果已生效，按幂等结果返回；不要换新键重试：
+同一 `idempotencyKey` 要求内容指纹一致。冻结首次请求的 operations、guards、expectedRevision、主体、环境和版本上下文；重试不能重新计算这些值。平台原回执的 `replayed` 才是重放成功证据。业务记录已经变化，本身不会导致原请求的幂等内容冲突；重新读取 revision 并改变请求才会。
+
+`isIdempotencyConflict(error)` 只识别 409 `OPENXIANGDA_NATIVE_DATA_IDEMPOTENCY_CONFLICT`，不证明首次请求已成功。保留原操作并核对原回执；结果不明时显示“结果待确认”，不能把当前记录状态拼成伪造的成功回执，也不能换新键重试。部署 Head 改变时先恢复原上下文，不把同一键发送到另一版本当作原请求恢复。
+
+### 使用生成类型绑定资源 {#typed-resources}
+
+工具生成的共享契约导出 `ResourceTypes`；使用项目锁定版本的 `pnpm openxiangda check` 验证接入。三种 Nest 数据服务均保留原主体；当前用户业务优先用当前用户服务，具名业务动作使用业务服务。
 
 ```ts
-import { isIdempotencyConflict } from 'openxiangda/nest';
+import type { ResourceTypes } from '@app/contracts';
 
-try {
-  result = await this.data.transaction(idempotentTransaction(key, operations, guards));
-} catch (error) {
-  if (isIdempotencyConflict(error) && alreadyApplied(await this.data.get(...))) {
-    return { idempotencyKey: key, replayed: true, ...currentState };
-  }
-  throw error;
-}
+const resources = this.data.resources<ResourceTypes>();
+const requests = resources('repair-requests');
+const record = await requests.get(input.id);
+return requests.update(record.data.id, {
+  expectedRevision: record.data.revision,
+  data: { assignedTechnician: userSnapshot(input.technicianId) },
+});
 ```
+
+资源名、写入字段、引用形状和 query 的字段/排序键会在 TypeScript 检查时验证；示例字段须由自己的模型声明。get/create/update/delete 保留 `data` 信封，revision 位于 `record.data.revision`。query 返回分页的 `items`。字段权限可能隐藏业务字段，所以读取类型保留这些字段可缺失的事实；应用必须按权限和必需字段做有意义的提示。该包装不会自动重试、修改 revision 或提升权限。运行时仍由平台校验所有输入。
 
 事务守卫的 `errorCode` 必须匹配 `^OPENXIANGDA_[A-Z0-9_]{1,96}$`，例如 `OPENXIANGDA_REPAIR_REQUEST_NOT_PENDING`。
 

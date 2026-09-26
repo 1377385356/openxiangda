@@ -2451,6 +2451,12 @@ export function renderGeneratedContracts(
     }
     lines.push('}', '');
   }
+  lines.push('export interface ResourceTypes {');
+  for (const resource of sorted(config.data?.resources || [], item => item.code)) {
+    const name = pascal(resource.code);
+    lines.push(`  ${safeProperty(resource.code)}: { record: ${name}Record; create: ${name}CreateInput; update: ${name}UpdateInput };`);
+  }
+  lines.push('}', '');
   return `${lines.join('\n').trimEnd()}\n`;
 }
 

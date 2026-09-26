@@ -7,6 +7,7 @@ export * from './business-process.js';
 export * from './assignee-provider.js';
 export * from './application-credentials.js';
 export * from './data-api.js';
+export * from './typed-resources.js';
 export * from './event-context.js';
 export * from './event-handler.js';
 export * from './events.js';
