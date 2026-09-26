@@ -4855,3 +4855,26 @@ test('target diagnostics remove credentials, query and fragment from the configu
   const client = new OpenXiangdaControlPlaneClient({ baseUrl: 'https://private:secret@site.example/service/?token=secret#private' });
   assert.equal(client.diagnosticSite(), 'https://site.example/service');
 });
+
+test('successful target readiness preserves the exact closed platform response for protocol validation', async () => {
+  const { collectTargetReadiness } = await import('../src/target-readiness.js');
+  const { assertConfigurationValidationResult } = await import('../src/deployment.js');
+  const capabilities = platformCapabilitiesFixture();
+  const required = CURRENT_APPLICATION_CONTRACT;
+  const requiredCapabilities = [requiredCapability('application-native-2')];
+  capabilities.features['application-native-2'] = { contractVersion: requiredCapabilities[0]!.contractVersion, status: 'available' };
+  const source = { configurationDigest: 'a'.repeat(64), contractDigest: 'b'.repeat(64) };
+  const wire = {
+    schemaVersion: SCHEMA_VERSIONS.configurationValidationResult, compatible: true as const,
+    environmentKey: 'preproduction', clientContractVersion: OPENXIANGDA_CONTRACT_VERSION,
+    platformVersion: capabilities.platformVersion, capability: capabilities.configurationCompatibility.capability,
+    required, supported: [required], source, projectionDigest: 'c'.repeat(64), requiredPlatformCapabilities: requiredCapabilities,
+    counts: { resources: 1, perspectives: 0, capabilities: 1, eventProducers: 0, workflowDefinitions: 0 },
+  } as const;
+  const view = await collectTargetReadiness({ site: 'https://site.example', appCode: 'app', environmentKey: 'preproduction',
+    capabilities, required, requiredCapabilities, inspect: async () => wire as any });
+  assert.equal(view.result, wire);
+  assert.equal('target' in view.result, false);
+  assert.doesNotThrow(() => assertConfigurationValidationResult(capabilities, required, view.result, source, requiredCapabilities));
+  assert.equal(view.target.site, 'https://site.example');
+});

@@ -31,7 +31,7 @@ export async function collectTargetReadiness(input: {
     throw withTarget(first, target, { ...data, unavailable, issues,
       ...(configurationError instanceof ControlPlaneError && configurationError.remote?.requestId ? { configurationRequestId: configurationError.remote.requestId } : {}) });
   }
-  return { ...result!, target };
+  return { result: result!, target };
 }
 function objectData(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};

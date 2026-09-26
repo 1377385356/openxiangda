@@ -2735,7 +2735,7 @@ export class OpenXiangdaApplicationServices {
       compilerContractVersion: sources.config.value.compilerContractVersion,
     };
     const { assertConfigurationValidationResult } = await import('./deployment.js');
-    const result = await collectTargetReadiness({
+    const { result } = await collectTargetReadiness({
       site: client.diagnosticSite?.() || 'unknown', appCode: workspace.config.app.code,
       environmentKey, capabilities, required, requiredCapabilities: requiredPlatformCapabilities(workspace.config),
       inspect: () => client.validateConfigurationCompatibility(
