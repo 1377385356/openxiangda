@@ -4993,10 +4993,12 @@ function validateBackendOperations(
           value.every(item => typeof item === 'string' && item.trim().length >= 2 && item.length <= maxLength));
       const supportOperations = agent?.supportOperations;
       const inputLookups = agent?.inputLookups;
+      const resultCard = agent?.resultCard;
+      const cardFields = Array.isArray(object(resultCard).fields) ? object(resultCard).fields as unknown[] : [];
       const requestFields = object(object(operation.requestSchema).properties);
       const agentInvalid = agent !== undefined && (
         !['task', 'support'].includes(string(agent.visibility)) ||
-        agentKeys.some(key => !['visibility', 'examples', 'aliases', 'supportOperations', 'inputLookups'].includes(key)) ||
+        agentKeys.some(key => !['visibility', 'examples', 'aliases', 'supportOperations', 'inputLookups', 'resultCard'].includes(key)) ||
         !agentList(agent.examples, 12, 160) ||
         !agentList(agent.aliases, 20, 80) ||
         !agentList(supportOperations, 12, 80) ||
@@ -5007,7 +5009,22 @@ function validateBackendOperations(
           !Object.hasOwn(requestFields, field) ||
           !/^[a-z][a-z0-9]*(?:[-.][a-z0-9]+)*$/.test(String(operationCode))
         ) ||
-        (agent.visibility === 'support' && (supportOperations !== undefined || inputLookups !== undefined))
+        (agent.visibility === 'support' && (supportOperations !== undefined || inputLookups !== undefined || resultCard !== undefined)) ||
+        (resultCard !== undefined && (
+          agent.visibility !== 'task' ||
+          Object.keys(object(resultCard)).some(key => !['title', 'fields'].includes(key)) ||
+          typeof object(resultCard).title !== 'string' ||
+          !(object(resultCard).title as string).trim() ||
+          (object(resultCard).title as string).length > 80 ||
+          cardFields.length < 1 || cardFields.length > 8 ||
+          new Set(cardFields.map(field => object(field).path)).size !== cardFields.length ||
+          cardFields.some(field => {
+            const value = object(field);
+            return Object.keys(value).some(key => !['path', 'label'].includes(key)) ||
+              typeof value.path !== 'string' || !/^[A-Za-z][A-Za-z0-9_]{0,62}$/.test(value.path) ||
+              typeof value.label !== 'string' || !value.label.trim() || value.label.length > 40;
+          })
+        ))
       );
       if (
         !/^[a-z][a-z0-9]*(?:[-.][a-z0-9]+)*$/.test(code) ||

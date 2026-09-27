@@ -7235,6 +7235,19 @@ const appApiOperationDeclarationSchema = {
               propertyNames: dataFieldCode,
               additionalProperties: nativeStableCode,
             },
+            resultCard: {
+              type: "object", additionalProperties: false, required: ["title", "fields"],
+              properties: {
+                title: { type: "string", minLength: 1, maxLength: 80 },
+                fields: { type: "array", minItems: 1, maxItems: 8, items: {
+                  type: "object", additionalProperties: false, required: ["path", "label"],
+                  properties: {
+                    path: { type: "string", pattern: "^[A-Za-z][A-Za-z0-9_]{0,62}$" },
+                    label: { type: "string", minLength: 1, maxLength: 40 },
+                  },
+                } },
+              },
+            },
           },
         },
       },

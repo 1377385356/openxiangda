@@ -56,6 +56,7 @@ export interface AiCapability {
     aliases?: string[];
     supportCapabilities?: string[];
     inputLookups?: Record<string, string>;
+    resultCard?: { title: string; fields: { path: string; label: string }[] };
   };
   generatedFrom?: {
     resourceCode: string;
@@ -389,6 +390,17 @@ export function validateAiCapabilityCatalog(value: unknown): Diagnostic[] {
           new Set(value).size === value.length &&
           value.every(item => nonEmptyString(item) && item.length <= length));
       const lookups = isRecord(agent.inputLookups) ? agent.inputLookups : {};
+      const card = agent.resultCard;
+      const cardFields = isRecord(card) && Array.isArray(card.fields) ? card.fields : [];
+      const cardValid = card === undefined || (
+        agent.visibility === "task" && isRecord(card) &&
+        nonEmptyString(card.title) && card.title.length <= 80 &&
+        cardFields.length >= 1 && cardFields.length <= 8 &&
+        new Set(cardFields.map(field => isRecord(field) ? field.path : "")).size === cardFields.length &&
+        cardFields.every(field => isRecord(field) &&
+          typeof field.path === "string" && /^[A-Za-z][A-Za-z0-9_]{0,62}$/.test(field.path) &&
+          nonEmptyString(field.label) && field.label.length <= 40)
+      );
       if (
         raw.kind !== "customAction" ||
         !["task", "support"].includes(String(agent.visibility)) ||
@@ -399,6 +411,7 @@ export function validateAiCapabilityCatalog(value: unknown): Diagnostic[] {
         Object.entries(lookups).some(([field, code]) =>
           !/^[A-Za-z][A-Za-z0-9_]{0,62}$/.test(field) || !nonEmptyString(code)
         ) ||
+        !cardValid ||
         (agent.visibility === "support" &&
           (agent.supportCapabilities !== undefined || agent.inputLookups !== undefined))
       ) {
@@ -598,6 +611,16 @@ export const aiCapabilityCatalogSchema = {
               aliases: { type: "array", maxItems: 20, uniqueItems: true, items: { type: "string" } },
               supportCapabilities: { type: "array", maxItems: 12, uniqueItems: true, items: { type: "string" } },
               inputLookups: { type: "object", maxProperties: 32, additionalProperties: { type: "string" } },
+              resultCard: {
+                type: "object", additionalProperties: false, required: ["title", "fields"],
+                properties: {
+                  title: { type: "string", minLength: 1, maxLength: 80 },
+                  fields: { type: "array", minItems: 1, maxItems: 8, items: {
+                    type: "object", additionalProperties: false, required: ["path", "label"],
+                    properties: { path: { type: "string" }, label: { type: "string", minLength: 1, maxLength: 40 } },
+                  } },
+                },
+              },
             },
           },
           generatedFrom: {

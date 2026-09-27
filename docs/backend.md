@@ -275,7 +275,9 @@ const enroll = {
     type: 'object', required: ['location'],
     properties: { location: { type: 'string' } },
   },
-  responseSchema: { type: 'object' },
+  responseSchema: { type: 'object', properties: {
+    ticketNo: { type: 'string' }, locationName: { type: 'string' },
+  } },
   ai: {
     name: '发起访客预约', description: '校验访客信息、地点与时间后创建预约',
     risk: 'write', resources: ['reservations'], sideEffects: ['创建访客预约'],
@@ -285,6 +287,10 @@ const enroll = {
       aliases: ['发起邀约'],
       supportOperations: ['reservation.locations'],
       inputLookups: { location: 'reservation.locations' },
+      resultCard: { title: '预约已提交', fields: [
+        { path: 'ticketNo', label: '预约单号' },
+        { path: 'locationName', label: '地点' },
+      ] },
     },
   },
 };
@@ -292,7 +298,9 @@ const enroll = {
 
 两个 `capability` 必须在 `authz.capabilities` 中声明为 `kind: 'backend'`，再授予相应角色。`supportOperations` 和 `inputLookups` 引用同一应用中的操作 code；被引用操作必须声明 `visibility: 'support'`、`risk: 'read'` 且使用 GET。`inputLookups` 的键必须存在于任务的 `requestSchema.properties`。示例问法最多 12 条、别名最多 20 条、辅助操作最多 12 个、字段绑定最多 32 个；运行时辅助查询仍应分页、有界，并返回业务标签与稳定引用。
 
-业务规则必须在后端操作中验证；提示词、卡片预填和前端校验不能取代权限与业务校验。完整输入、缺失输入、同名地点、权限不足、重复提交和结果未知都应有应用测试与回执核对。任务声明随 AppVersion 的 AI Catalog 一起发布，不能另建手工目录。交互卡片与自动执行仅在平台 Agent Host 支持后启用；本声明本身不改变现有 MCP Facade 的写入确认协议。
+`resultCard` 是已完成任务的只读结果卡片：只允许引用 `responseSchema.properties` 中明确声明的顶层字符串、数字或布尔字段，最多 8 项；不渲染任意 HTML/JS。应用须确保这些字段可向当前用户显示。平台助手已支持按应用声明自动执行普通写任务；待补信息表单、自定义 React 卡片 Host 仍按平台批次实现。本声明不改变既有 MCP Facade 的写入确认协议。
+
+业务规则必须在后端操作中验证；提示词、卡片预填和前端校验不能取代权限与业务校验。完整输入、缺失输入、同名地点、权限不足、重复提交和结果未知都应有应用测试与回执核对。任务声明随 AppVersion 的 AI Catalog 一起发布，不能另建手工目录。
 
 宿主（平台 AI 网关）用该目录装配 MCP Facade，应用不自己实现协议：
 

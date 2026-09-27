@@ -387,6 +387,7 @@ function customCapability(
             )
           ),
         } : {}),
+        ...(operation.ai.agent.resultCard ? { resultCard: operation.ai.agent.resultCard } : {}),
       },
     } : {}),
     binding: {
@@ -450,6 +451,14 @@ export function compileAiCapabilityCatalog(
     for (const field of Object.keys(agent.inputLookups || {}))
       if (!(field in inputFields))
         throw new Error(`AI_AGENT_LOOKUP_FIELD_INVALID:${capability.code}:${field}`);
+    if (agent.resultCard) {
+      const outputFields = (capability.outputSchema.properties || {}) as Record<string, { type?: string }>;
+      for (const field of agent.resultCard.fields) {
+        const type = outputFields[field.path]?.type;
+        if (!['string', 'number', 'integer', 'boolean'].includes(String(type)))
+          throw new Error(`AI_AGENT_RESULT_FIELD_INVALID:${capability.code}:${field.path}`);
+      }
+    }
   }
   const catalog: AiCapabilityCatalog = {
     schemaVersion: SCHEMA_VERSIONS.aiCapabilityCatalog,

@@ -239,6 +239,8 @@ export interface AppApiOperationAiDeclaration {
     supportOperations?: string[];
     /** Maps a business input field to one declared support operation. */
     inputLookups?: Record<string, string>;
+    /** Safe, read-only presentation of fields from this operation's response Schema. */
+    resultCard?: { title: string; fields: { path: string; label: string }[] };
   };
 }
 

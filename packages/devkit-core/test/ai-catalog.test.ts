@@ -309,7 +309,7 @@ test("publishes an ordinary-user task with bounded read-only helpers", () => {
       required: ["location"],
       properties: { location: { type: "string" } },
     },
-    responseSchema: { type: "object" },
+    responseSchema: { type: "object", properties: { ticketNo: { type: "string" }, internalState: { type: "object" } } },
     ai: {
       name: "提交访客预约",
       description: "发起访客预约并执行业务规则",
@@ -322,6 +322,7 @@ test("publishes an ordinary-user task with bounded read-only helpers", () => {
         aliases: ["发起邀约"],
         supportOperations: ["reservation.locations"],
         inputLookups: { location: "reservation.locations" },
+        resultCard: { title: "访客预约已提交", fields: [{ path: "ticketNo", label: "预约单号" }] },
       },
     },
   };
@@ -351,6 +352,7 @@ test("publishes an ordinary-user task with bounded read-only helpers", () => {
       aliases: ["发起邀约"],
       supportCapabilities: ["visitor-app.custom.reservation.locations"],
       inputLookups: { location: "visitor-app.custom.reservation.locations" },
+      resultCard: { title: "访客预约已提交", fields: [{ path: "ticketNo", label: "预约单号" }] },
     }
   );
   assert.deepEqual(validateAppConfig(application), []);
@@ -368,4 +370,11 @@ test("publishes an ordinary-user task with bounded read-only helpers", () => {
       ai: { ...submit.ai, agent: { ...submit.ai.agent, inputLookups: { hiddenId: "reservation.locations" } } },
     }] },
   }), /AI_AGENT_LOOKUP_FIELD_INVALID/);
+  assert.throws(() => compileAiCapabilityCatalog({
+    ...application,
+    backend: { ...application.backend, operations: [lookup, {
+      ...submit,
+      ai: { ...submit.ai, agent: { ...submit.ai.agent, resultCard: { title: "泄漏", fields: [{ path: "internalState", label: "内部信息" }] } } },
+    }] },
+  }), /AI_AGENT_RESULT_FIELD_INVALID/);
 });
