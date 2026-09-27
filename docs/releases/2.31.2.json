@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.31.2",
+  "status": "reviewed",
+  "title": "OpenXiangda 2.31.2：普通业务任务可自动执行写入",
+  "summary": "应用可为普通业务写任务显式声明免通用二次确认。用户明确要求办理且信息完整时，平台 Agent 可直接执行并返回回执；权限、版本绑定与幂等仍由平台和应用校验。",
+  "newFeatures": [
+    "backend.operations[].ai.confirmation 支持普通 write 显式选择 none；省略时仍为 required。",
+    "编译器、Catalog 契约、应用开发指南及 Skill 同步说明确认策略。"
+  ],
+  "fixes": [],
+  "affectedUsers": [
+    "开发预约、报修等普通业务 Agent 写任务的 OpenXiangda 2.0 应用开发者。"
+  ],
+  "upgradeSteps": [
+    "升级到 openxiangda@2.31.2 并更新锁文件，在业务操作的 ai 声明中按需显式设置 confirmation: 'none'。",
+    "在预发验证完整输入、缺失输入、对象歧义、无权访问和同一幂等键重放，再发布应用版本并核对 Catalog 与环境 Head。",
+    "平台 Agent 执行层须支持受管直接执行；npm 包发布本身不更新平台。"
+  ],
+  "knownLimitations": [
+    "免确认仅适用于普通 write；destructive 和 external 继续要求确认，read 不确认。",
+    "独立 MCP Facade 的预览/确认协议未在本轮改变。",
+    "交互卡片资源与持久 Interaction 仍需后续批次交付。"
+  ],
+  "issues": [],
+  "compatibility": {
+    "node": ">=24",
+    "workspaceGenerations": "v2",
+    "platform": "需配套支持业务 Agent 受管直接执行的服务端版本。",
+    "v1": "独立 V1 引擎和工作区不受影响。"
+  }
+}
