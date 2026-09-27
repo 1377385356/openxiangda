@@ -1,5 +1,7 @@
 # OpenXiangda AI Capability Contract v1
 
+> 历史基线：下文描述早期 MCP 预览/确认协议。平台 Agent 的受管直执行业务任务及普通写能力的显式免二次确认，以 [业务 Agent 写能力确认策略](agent-write-confirmation-policy-v2.md) 和当前 `docs/backend.md` 为准。
+
 状态：P5-0 / P5-A 已完成，P5-B 已实现 AppPackage/active version Catalog 绑定与 Native 当前用户只读 Catalog/Query 入口；P5-C 正在补齐 Native 写入 Preview/Confirm/Execute 闭环。
 
 ## 1. 决策

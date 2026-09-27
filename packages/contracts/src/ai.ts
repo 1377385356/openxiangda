@@ -270,7 +270,9 @@ export function validateAiCapabilityCatalog(value: unknown): Diagnostic[] {
       ["none", "revision"].includes(concurrency) &&
       (risk === "read"
         ? confirmation === "none" && idempotency === "none" && concurrency === "none"
-        : confirmation === "required" && idempotency === "required");
+        : risk === "write"
+          ? idempotency === "required"
+          : confirmation === "required" && idempotency === "required");
     if (!validExecutionPolicy) {
       diagnostics.push(
         diagnostic(

@@ -54,6 +54,7 @@
 | 规则 | 正确片段 |
 | --- | --- |
 | 写操作的 `ai.sideEffects` 至少一条具体副作用 | `ai: { name: '受理派单', ..., risk: 'write', sideEffects: ['更新报修单状态为处理中', '写入一条派工记录'] }` |
+| 普通写任务允许按应用规则免二次确认；破坏性及外部动作仍须确认 | `ai: { ..., risk: 'write', confirmation: 'none' }`；省略时为 `required`，平台仍强制幂等和权限校验 |
 | GET 操作的 `ai.risk` 只能是 `read`；写操作不能是 `read` | `risk: 'read'` ↔ `method: 'GET'` |
 | 面向普通用户的 Agent 只发现显式声明的业务任务；底层 CRUD 不会自动成为任务 | `ai.agent: { visibility: 'task', examples: ['帮我发起报修'], aliases: ['提交报修'] }` |
 | 任务输入需要地点、人员等业务选择时，绑定同应用的只读辅助操作，用户不填内部编码 | `agent: { visibility: 'task', supportOperations: ['repair.locations'], inputLookups: { location: 'repair.locations' } }`；被引用的 GET 操作须有 `agent: { visibility: 'support' }`，`location` 须是请求 Schema 字段 |

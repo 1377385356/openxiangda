@@ -248,6 +248,7 @@ operations: [{
 `read` 等价于 `method: 'GET'`，DELETE 方法只能是 `destructive` 或 `external`；`resources`
 引用 1–16 个已声明资源；`sideEffects` 最多 20 条——只读必须为零，写操作至少一条具体副作用；
 `concurrency` 可选 `none | revision`，`timeoutMs` 限 100–30000。
+普通 `write` 操作可显式声明 `confirmation: 'none'`：用户明确要求办理、输入齐全且无歧义时，平台 Agent 可直接调用并返回真实回执，不生成统一预览。省略时仍为 `required`；`destructive` 和 `external` 必须为 `required`，只读必须为 `none`。免二次确认不取消当前用户授权、AppVersion 绑定、输入校验、幂等键及应用业务校验。需要用户补齐字段、消除歧义或应用业务规则要求确认时，Agent 仍应先询问。
 
 ### 面向普通用户的 Agent 任务
 

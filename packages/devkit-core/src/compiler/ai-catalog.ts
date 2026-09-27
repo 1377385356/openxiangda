@@ -365,7 +365,7 @@ function customCapability(
     outputSchema,
     authorization: { capabilities: [operation.capability] },
     risk: operation.ai.risk,
-    confirmation: read ? "none" : "required",
+    confirmation: operation.ai.confirmation ?? (read ? "none" : "required"),
     idempotency: read ? "none" : "required",
     concurrency: operation.ai.concurrency || "none",
     limits: { timeoutMs: operation.ai.timeoutMs || DEFAULT_TIMEOUT_MS },

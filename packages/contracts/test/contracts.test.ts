@@ -2042,6 +2042,17 @@ test('validates the AI capability catalog execution boundary', () => {
     ],
   } as const;
   assert.doesNotThrow(() => assertAiCapabilityCatalog(customCatalog));
+  assert.doesNotThrow(() => assertAiCapabilityCatalog({
+    ...customCatalog,
+    capabilities: [{ ...customCatalog.capabilities[0], confirmation: 'none' }],
+  }));
+  assert.equal(
+    validateAiCapabilityCatalog({
+      ...customCatalog,
+      capabilities: [{ ...customCatalog.capabilities[0], risk: 'destructive', confirmation: 'none' }],
+    }).some(item => item.code === 'AI_CAPABILITY_EXECUTION_POLICY_INVALID'),
+    true
+  );
   assert.equal(
     validateAiCapabilityCatalog({
       ...customCatalog,

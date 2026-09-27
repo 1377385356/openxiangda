@@ -252,6 +252,34 @@ test("publishes only explicitly declared backend AI actions", () => {
     ),
     false
   );
+  const automatic = compileAiCapabilityCatalog({
+    ...config,
+    backend: {
+      ...config.backend,
+      operations: [{
+        ...{
+          code: "reservation.enroll",
+          method: "POST" as const,
+          path: "/api/reservations/enroll",
+          capability: "app:visitor-app:reservation:enroll",
+          requestSchema: { type: "object" as const },
+          responseSchema: { type: "object" as const },
+        },
+        ai: {
+          name: "提交访客预约",
+          description: "按已确认的信息提交预约",
+          risk: "write" as const,
+          confirmation: "none" as const,
+          resources: ["reservations"],
+          sideEffects: ["创建访客预约"],
+        },
+      }],
+    },
+  });
+  assert.equal(
+    automatic.capabilities.find(item => item.operation === "custom")?.confirmation,
+    "none"
+  );
 });
 
 test("publishes an ordinary-user task with bounded read-only helpers", () => {

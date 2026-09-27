@@ -224,6 +224,8 @@ export interface AppApiOperationAiDeclaration {
   name: string;
   description: string;
   risk: 'read' | 'write' | 'destructive' | 'external';
+  /** Ordinary writes may execute directly for an explicitly requested Agent task. */
+  confirmation?: 'none' | 'required';
   resources: string[];
   sideEffects: string[];
   concurrency?: 'none' | 'revision';

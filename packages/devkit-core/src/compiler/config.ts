@@ -4976,6 +4976,7 @@ function validateBackendOperations(
         'name',
         'description',
         'risk',
+        'confirmation',
         'resources',
         'sideEffects',
         'concurrency',
@@ -5013,6 +5014,10 @@ function validateBackendOperations(
         !string(ai.name) ||
         !string(ai.description) ||
         !['read', 'write', 'destructive', 'external'].includes(risk) ||
+        (ai.confirmation !== undefined &&
+          (!['none', 'required'].includes(string(ai.confirmation)) ||
+            (risk !== 'write' &&
+              string(ai.confirmation) !== (risk === 'read' ? 'none' : 'required')))) ||
         (risk === 'read') !== (method === 'GET') ||
         (method === 'DELETE' && !['destructive', 'external'].includes(risk)) ||
         aiResources.length < 1 ||
@@ -5039,7 +5044,7 @@ function validateBackendOperations(
         diagnostics.push(
           diagnostic(
             'APP_CONFIG_BACKEND_OPERATION_AI_INVALID',
-            'AI 操作必须显式声明名称、说明、风险、现有资源、副作用和有界执行策略；GET 只能只读，写操作必须确认',
+            'AI 操作必须显式声明名称、说明、风险、现有资源、副作用和有界执行策略；普通写操作可选择免二次确认，但仍须幂等',
             `${path}.ai`,
             '写操作的 ai.sideEffects 至少列一条具体副作用，例如 sideEffects: [\'更新报修单状态为处理中\', \'写入一条派工记录\']；resources 必须引用已声明资源（1-16 个）'
           )

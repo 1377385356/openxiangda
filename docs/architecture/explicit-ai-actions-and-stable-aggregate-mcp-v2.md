@@ -1,5 +1,7 @@
 # OpenXiangda 2.0 explicit AI actions and stable aggregate MCP
 
+> Historical MCP preview boundary. Platform-owned Agent Runs may execute a declared ordinary write directly when the application explicitly sets `ai.confirmation: 'none'`; see [agent-write-confirmation-policy-v2.md](agent-write-confirmation-policy-v2.md). Destructive and external actions retain required confirmation.
+
 ## Problem evidence
 
 - The compiler currently exposes every backend operation as an AI action and
