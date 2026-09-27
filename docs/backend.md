@@ -249,6 +249,50 @@ operations: [{
 引用 1–16 个已声明资源；`sideEffects` 最多 20 条——只读必须为零，写操作至少一条具体副作用；
 `concurrency` 可选 `none | revision`，`timeoutMs` 限 100–30000。
 
+### 面向普通用户的 Agent 任务
+
+`ai` 使操作进入技术能力目录；只有显式声明 `ai.agent` 才把操作交给普通用户的业务 Agent 发现。`visibility: 'task'` 是可办理的任务，`visibility: 'support'` 是该任务需要的只读查询。平台仍按当前用户的应用权限过滤，声明本身不授予权限。生成的资源 CRUD、没有 `agent` 的操作和 `support` 操作都不是普通用户首页的独立任务。
+
+以下示例中，应用自己负责地点搜索与预约规则。给模型和用户的是“地点名称”，稳定地点引用只作为操作参数，用户无需填写地点编码。
+
+```ts
+const locations = {
+  code: 'reservation.locations', method: 'GET', path: '/api/reservations/locations',
+  capability: 'app:visitor-app:reservation:locations',
+  requestSchema: { type: 'object', properties: { keyword: { type: 'string' } } },
+  responseSchema: { type: 'object' },
+  ai: {
+    name: '查找可预约地点', description: '按名称搜索当前用户可选择的地点',
+    risk: 'read', resources: ['reservations'], sideEffects: [],
+    agent: { visibility: 'support' },
+  },
+};
+const enroll = {
+  code: 'reservation.enroll', method: 'POST', path: '/api/reservations/enroll',
+  capability: 'app:visitor-app:reservation:enroll',
+  requestSchema: {
+    type: 'object', required: ['location'],
+    properties: { location: { type: 'string' } },
+  },
+  responseSchema: { type: 'object' },
+  ai: {
+    name: '发起访客预约', description: '校验访客信息、地点与时间后创建预约',
+    risk: 'write', resources: ['reservations'], sideEffects: ['创建访客预约'],
+    agent: {
+      visibility: 'task',
+      examples: ['帮我预约访客', '明天下午邀请张老师来访'],
+      aliases: ['发起邀约'],
+      supportOperations: ['reservation.locations'],
+      inputLookups: { location: 'reservation.locations' },
+    },
+  },
+};
+```
+
+两个 `capability` 必须在 `authz.capabilities` 中声明为 `kind: 'backend'`，再授予相应角色。`supportOperations` 和 `inputLookups` 引用同一应用中的操作 code；被引用操作必须声明 `visibility: 'support'`、`risk: 'read'` 且使用 GET。`inputLookups` 的键必须存在于任务的 `requestSchema.properties`。示例问法最多 12 条、别名最多 20 条、辅助操作最多 12 个、字段绑定最多 32 个；运行时辅助查询仍应分页、有界，并返回业务标签与稳定引用。
+
+业务规则必须在后端操作中验证；提示词、卡片预填和前端校验不能取代权限与业务校验。完整输入、缺失输入、同名地点、权限不足、重复提交和结果未知都应有应用测试与回执核对。任务声明随 AppVersion 的 AI Catalog 一起发布，不能另建手工目录。交互卡片与自动执行仅在平台 Agent Host 支持后启用；本声明本身不改变现有 MCP Facade 的写入确认协议。
+
 宿主（平台 AI 网关）用该目录装配 MCP Facade，应用不自己实现协议：
 
 - **单应用 Facade**（`createApplicationAiMcpServer`）：每个能力一个工具，只读能力直接以

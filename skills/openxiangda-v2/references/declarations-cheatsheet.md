@@ -55,6 +55,8 @@
 | --- | --- |
 | 写操作的 `ai.sideEffects` 至少一条具体副作用 | `ai: { name: '受理派单', ..., risk: 'write', sideEffects: ['更新报修单状态为处理中', '写入一条派工记录'] }` |
 | GET 操作的 `ai.risk` 只能是 `read`；写操作不能是 `read` | `risk: 'read'` ↔ `method: 'GET'` |
+| 面向普通用户的 Agent 只发现显式声明的业务任务；底层 CRUD 不会自动成为任务 | `ai.agent: { visibility: 'task', examples: ['帮我发起报修'], aliases: ['提交报修'] }` |
+| 任务输入需要地点、人员等业务选择时，绑定同应用的只读辅助操作，用户不填内部编码 | `agent: { visibility: 'task', supportOperations: ['repair.locations'], inputLookups: { location: 'repair.locations' } }`；被引用的 GET 操作须有 `agent: { visibility: 'support' }`，`location` 须是请求 Schema 字段 |
 | controller 路由必须绑定 `@OpenXiangdaOperation(appOperations.<code>)`，普通 CRUD 不写 controller | check 门禁会拒绝未绑定路由 |
 | 事务守卫 `errorCode` 必须匹配 `^OPENXIANGDA_[A-Z0-9_]{1,96}$` | `errorCode: 'OPENXIANGDA_REPAIR_REQUEST_NOT_PENDING'` |
 

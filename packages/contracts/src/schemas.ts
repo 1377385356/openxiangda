@@ -7212,6 +7212,31 @@ const appApiOperationDeclarationSchema = {
         },
         concurrency: { enum: ["none", "revision"] },
         timeoutMs: { type: "integer", minimum: 100, maximum: 30000 },
+        agent: {
+          type: "object",
+          additionalProperties: false,
+          required: ["visibility"],
+          properties: {
+            visibility: { enum: ["task", "support"] },
+            examples: {
+              type: "array", maxItems: 12, uniqueItems: true,
+              items: { type: "string", minLength: 2, maxLength: 160 },
+            },
+            aliases: {
+              type: "array", maxItems: 20, uniqueItems: true,
+              items: { type: "string", minLength: 2, maxLength: 80 },
+            },
+            supportOperations: {
+              type: "array", maxItems: 12, uniqueItems: true,
+              items: nativeStableCode,
+            },
+            inputLookups: {
+              type: "object", maxProperties: 32,
+              propertyNames: dataFieldCode,
+              additionalProperties: nativeStableCode,
+            },
+          },
+        },
       },
     },
   },

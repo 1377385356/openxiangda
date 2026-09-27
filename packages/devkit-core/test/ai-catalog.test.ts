@@ -253,3 +253,91 @@ test("publishes only explicitly declared backend AI actions", () => {
     false
   );
 });
+
+test("publishes an ordinary-user task with bounded read-only helpers", () => {
+  const lookup = {
+    code: "reservation.locations",
+    method: "GET" as const,
+    path: "/api/reservations/locations",
+    capability: "app:visitor-app:reservation:locations",
+    requestSchema: { type: "object", properties: { keyword: { type: "string" } } },
+    responseSchema: { type: "object" },
+    ai: {
+      name: "查找可预约地点",
+      description: "按名称查找有权预约的地点",
+      risk: "read" as const,
+      resources: ["reservations"],
+      sideEffects: [],
+      agent: { visibility: "support" as const },
+    },
+  };
+  const submit = {
+    code: "reservation.enroll",
+    method: "POST" as const,
+    path: "/api/reservations/enroll",
+    capability: "app:visitor-app:reservation:enroll",
+    requestSchema: {
+      type: "object",
+      required: ["location"],
+      properties: { location: { type: "string" } },
+    },
+    responseSchema: { type: "object" },
+    ai: {
+      name: "提交访客预约",
+      description: "发起访客预约并执行业务规则",
+      risk: "write" as const,
+      resources: ["reservations"],
+      sideEffects: ["创建访客预约"],
+      agent: {
+        visibility: "task" as const,
+        examples: ["帮我预约访客"],
+        aliases: ["发起邀约"],
+        supportOperations: ["reservation.locations"],
+        inputLookups: { location: "reservation.locations" },
+      },
+    },
+  };
+  const application = {
+    ...config,
+    authz: {
+      ...config.authz,
+      capabilities: [
+        { code: "app:visitor-app:reservation:locations", kind: "backend", name: "查询预约地点" },
+        { code: "app:visitor-app:reservation:enroll", kind: "backend", name: "发起访客预约" },
+      ],
+    },
+    backend: {
+      root: "apps/server",
+      runtime: "node" as const,
+      framework: "nestjs" as const,
+      operations: [lookup, submit],
+    },
+  };
+  const catalog = compileAiCapabilityCatalog(application);
+  assert.equal(catalog.capabilities.filter(item => item.agent?.visibility === "task").length, 1);
+  assert.deepEqual(
+    catalog.capabilities.find(item => item.code === "visitor-app.custom.reservation.enroll")?.agent,
+    {
+      visibility: "task",
+      examples: ["帮我预约访客"],
+      aliases: ["发起邀约"],
+      supportCapabilities: ["visitor-app.custom.reservation.locations"],
+      inputLookups: { location: "visitor-app.custom.reservation.locations" },
+    }
+  );
+  assert.deepEqual(validateAppConfig(application), []);
+  assert.throws(() => compileAiCapabilityCatalog({
+    ...application,
+    backend: { ...application.backend, operations: [
+      { ...lookup, ai: { ...lookup.ai, risk: "write" as const, sideEffects: ["unsafe"] } },
+      submit,
+    ] },
+  }), /AI_AGENT_SUPPORT_INVALID/);
+  assert.throws(() => compileAiCapabilityCatalog({
+    ...application,
+    backend: { ...application.backend, operations: [lookup, {
+      ...submit,
+      ai: { ...submit.ai, agent: { ...submit.ai.agent, inputLookups: { hiddenId: "reservation.locations" } } },
+    }] },
+  }), /AI_AGENT_LOOKUP_FIELD_INVALID/);
+});

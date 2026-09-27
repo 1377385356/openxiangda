@@ -370,6 +370,25 @@ function customCapability(
     concurrency: operation.ai.concurrency || "none",
     limits: { timeoutMs: operation.ai.timeoutMs || DEFAULT_TIMEOUT_MS },
     sideEffects: operation.ai.sideEffects,
+    ...(operation.ai.agent ? {
+      agent: {
+        visibility: operation.ai.agent.visibility,
+        ...(operation.ai.agent.examples ? { examples: operation.ai.agent.examples } : {}),
+        ...(operation.ai.agent.aliases ? { aliases: operation.ai.agent.aliases } : {}),
+        ...(operation.ai.agent.supportOperations ? {
+          supportCapabilities: operation.ai.agent.supportOperations.map(
+            code => `${appCode}.custom.${code}`
+          ),
+        } : {}),
+        ...(operation.ai.agent.inputLookups ? {
+          inputLookups: Object.fromEntries(
+            Object.entries(operation.ai.agent.inputLookups).map(
+              ([field, code]) => [field, `${appCode}.custom.${code}`]
+            )
+          ),
+        } : {}),
+      },
+    } : {}),
     binding: {
       kind: "app-api",
       operationCode: operation.code,
@@ -414,6 +433,24 @@ export function compileAiCapabilityCatalog(
     .sort((left, right) =>
       left.code < right.code ? -1 : left.code > right.code ? 1 : 0
     );
+  const byCode = new Map(capabilities.map(capability => [capability.code, capability]));
+  for (const capability of capabilities) {
+    const agent = capability.agent;
+    if (!agent || agent.visibility !== "task") continue;
+    const referenced = new Set([
+      ...(agent.supportCapabilities || []),
+      ...Object.values(agent.inputLookups || {}),
+    ]);
+    for (const code of referenced) {
+      const support = byCode.get(code);
+      if (!support || support.agent?.visibility !== "support" || support.risk !== "read")
+        throw new Error(`AI_AGENT_SUPPORT_INVALID:${capability.code}:${code}`);
+    }
+    const inputFields = (capability.inputSchema.properties || {}) as Record<string, unknown>;
+    for (const field of Object.keys(agent.inputLookups || {}))
+      if (!(field in inputFields))
+        throw new Error(`AI_AGENT_LOOKUP_FIELD_INVALID:${capability.code}:${field}`);
+  }
   const catalog: AiCapabilityCatalog = {
     schemaVersion: SCHEMA_VERSIONS.aiCapabilityCatalog,
     appCode: config.app.code,

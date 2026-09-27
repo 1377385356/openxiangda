@@ -228,6 +228,16 @@ export interface AppApiOperationAiDeclaration {
   sideEffects: string[];
   concurrency?: 'none' | 'revision';
   timeoutMs?: number;
+  /** Explicit ordinary-user Agent exposure; omission keeps the operation out of Agent discovery. */
+  agent?: {
+    visibility: 'task' | 'support';
+    examples?: string[];
+    aliases?: string[];
+    /** Operation codes for read-only helpers used by this task. */
+    supportOperations?: string[];
+    /** Maps a business input field to one declared support operation. */
+    inputLookups?: Record<string, string>;
+  };
 }
 
 export type AppOperationDirectoryField =

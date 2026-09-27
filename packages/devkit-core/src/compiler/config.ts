@@ -4980,7 +4980,34 @@ function validateBackendOperations(
         'sideEffects',
         'concurrency',
         'timeoutMs',
+        'agent',
       ]);
+      const agent = ai.agent === undefined ? undefined : object(ai.agent);
+      const agentKeys = agent ? Object.keys(agent) : [];
+      const agentList = (value: unknown, max: number, maxLength: number) =>
+        value === undefined ||
+        (Array.isArray(value) &&
+          value.length <= max &&
+          new Set(value).size === value.length &&
+          value.every(item => typeof item === 'string' && item.trim().length >= 2 && item.length <= maxLength));
+      const supportOperations = agent?.supportOperations;
+      const inputLookups = agent?.inputLookups;
+      const requestFields = object(object(operation.requestSchema).properties);
+      const agentInvalid = agent !== undefined && (
+        !['task', 'support'].includes(string(agent.visibility)) ||
+        agentKeys.some(key => !['visibility', 'examples', 'aliases', 'supportOperations', 'inputLookups'].includes(key)) ||
+        !agentList(agent.examples, 12, 160) ||
+        !agentList(agent.aliases, 20, 80) ||
+        !agentList(supportOperations, 12, 80) ||
+        (supportOperations !== undefined && (!Array.isArray(supportOperations) || supportOperations.some(item => !/^[a-z][a-z0-9]*(?:[-.][a-z0-9]+)*$/.test(String(item))))) ||
+        (inputLookups !== undefined && (!inputLookups || typeof inputLookups !== 'object' || Array.isArray(inputLookups))) ||
+        Object.keys(object(inputLookups)).length > 32 ||
+        Object.entries(object(inputLookups)).some(([field, operationCode]) =>
+          !Object.hasOwn(requestFields, field) ||
+          !/^[a-z][a-z0-9]*(?:[-.][a-z0-9]+)*$/.test(String(operationCode))
+        ) ||
+        (agent.visibility === 'support' && (supportOperations !== undefined || inputLookups !== undefined))
+      );
       if (
         !/^[a-z][a-z0-9]*(?:[-.][a-z0-9]+)*$/.test(code) ||
         !string(ai.name) ||
@@ -5006,7 +5033,8 @@ function validateBackendOperations(
           (!Number.isSafeInteger(ai.timeoutMs) ||
             Number(ai.timeoutMs) < 100 ||
             Number(ai.timeoutMs) > 30000)) ||
-        aiKeys.some(key => !allowedAiKeys.has(key))
+        aiKeys.some(key => !allowedAiKeys.has(key)) ||
+        agentInvalid
       ) {
         diagnostics.push(
           diagnostic(

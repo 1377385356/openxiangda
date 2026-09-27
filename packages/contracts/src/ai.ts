@@ -50,6 +50,13 @@ export interface AiCapability {
   concurrency: AiConcurrencyPolicy;
   limits: AiCapabilityLimits;
   sideEffects: string[];
+  agent?: {
+    visibility: "task" | "support";
+    examples?: string[];
+    aliases?: string[];
+    supportCapabilities?: string[];
+    inputLookups?: Record<string, string>;
+  };
   generatedFrom?: {
     resourceCode: string;
     operation: Exclude<AiCapabilityOperation, "custom">;
@@ -371,6 +378,35 @@ export function validateAiCapabilityCatalog(value: unknown): Diagnostic[] {
         );
       }
     }
+    if (raw.agent !== undefined) {
+      const agent = isRecord(raw.agent) ? raw.agent : {};
+      const strings = (value: unknown, max: number, length: number) =>
+        value === undefined ||
+        (Array.isArray(value) &&
+          value.length <= max &&
+          new Set(value).size === value.length &&
+          value.every(item => nonEmptyString(item) && item.length <= length));
+      const lookups = isRecord(agent.inputLookups) ? agent.inputLookups : {};
+      if (
+        raw.kind !== "customAction" ||
+        !["task", "support"].includes(String(agent.visibility)) ||
+        !strings(agent.examples, 12, 160) ||
+        !strings(agent.aliases, 20, 80) ||
+        !strings(agent.supportCapabilities, 12, 255) ||
+        Object.keys(lookups).length > 32 ||
+        Object.entries(lookups).some(([field, code]) =>
+          !/^[A-Za-z][A-Za-z0-9_]{0,62}$/.test(field) || !nonEmptyString(code)
+        ) ||
+        (agent.visibility === "support" &&
+          (agent.supportCapabilities !== undefined || agent.inputLookups !== undefined))
+      ) {
+        diagnostics.push(diagnostic(
+          "AI_CAPABILITY_AGENT_DECLARATION_INVALID",
+          `${path}.agent 必须是受限的业务任务或辅助能力声明`,
+          `${path}.agent`
+        ));
+      }
+    }
   });
   return diagnostics;
 }
@@ -551,6 +587,17 @@ export const aiCapabilityCatalogSchema = {
             },
           },
           sideEffects: { type: "array", items: { type: "string" } },
+          agent: {
+            type: "object", additionalProperties: false,
+            required: ["visibility"],
+            properties: {
+              visibility: { enum: ["task", "support"] },
+              examples: { type: "array", maxItems: 12, uniqueItems: true, items: { type: "string" } },
+              aliases: { type: "array", maxItems: 20, uniqueItems: true, items: { type: "string" } },
+              supportCapabilities: { type: "array", maxItems: 12, uniqueItems: true, items: { type: "string" } },
+              inputLookups: { type: "object", maxProperties: 32, additionalProperties: { type: "string" } },
+            },
+          },
           generatedFrom: {
             type: "object",
             additionalProperties: false,
