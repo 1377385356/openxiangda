@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.31.1",
+  "status": "reviewed",
+  "title": "OpenXiangda 2.31.1：应用业务 Agent 任务声明",
+  "summary": "应用可以在现有 AI 操作上显式声明面向普通用户的业务任务、常见问法、只读辅助能力和输入字段查询绑定。编译器把这些信息并入同一个 AppVersion AI Catalog，平台按当前用户权限发现和执行。",
+  "newFeatures": [
+    "ai.agent.visibility 区分可独立办理的 task 与任务引用的只读 support；未声明的底层 CRUD 不自动成为普通用户任务。",
+    "任务可以声明 examples、aliases、supportOperations 和 inputLookups；编译器校验辅助操作只读、引用闭合和请求字段存在。",
+    "docs/backend.md、声明速查和 OpenXiangda 2.0 Skill 提供接入流程及访客预约示例。"
+  ],
+  "fixes": [],
+  "affectedUsers": [
+    "希望把业务操作接入平台助手或应用 Agent 的 OpenXiangda 2.0 应用开发者。"
+  ],
+  "upgradeSteps": [
+    "升级到 openxiangda@2.31.1 并更新锁文件，先实现完整业务操作、授权和只读辅助查询，再按 docs/backend.md 声明 ai.agent。",
+    "在测试环境运行 check 与完整输入、缺失输入、同名对象、权限不足和重复提交场景；发布应用版本后核对 AI Catalog 摘要与当前环境 Head。",
+    "平台服务端须部署支持显式业务任务发现的版本；npm 包发布本身不会升级平台或自动公开旧应用操作。"
+  ],
+  "knownLimitations": [
+    "本次包仅增加业务任务元数据与编译校验；交互卡片资源、持久 Interaction 和 MCP Apps Host 由后续平台与应用批次交付。",
+    "现有独立 MCP Facade 的写入预览与确认协议保持原样；平台自有 Agent 的自动写入由平台执行层和权限边界负责。",
+    "旧应用的底层 CRUD 不会自动转换为普通用户任务，需应用维护者完成业务语义与辅助能力接入。"
+  ],
+  "issues": [],
+  "compatibility": {
+    "node": ">=24",
+    "workspaceGenerations": "v2",
+    "platform": "平台业务 Agent 任务发现需配套部署支持 ai.agent 元数据的服务端版本。",
+    "v1": "独立 V1 引擎和工作区不受影响。"
+  }
+}
