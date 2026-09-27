@@ -7,16 +7,19 @@
   "newFeatures": [
     "ai.agent.visibility 区分可独立办理的 task 与任务引用的只读 support；未声明的底层 CRUD 不自动成为普通用户任务。",
     "任务可以声明 examples、aliases、supportOperations 和 inputLookups；编译器校验辅助操作只读、引用闭合和请求字段存在。",
-    "docs/backend.md、声明速查和 OpenXiangda 2.0 Skill 提供接入流程及访客预约示例。"
+    "docs/backend.md、声明速查和 OpenXiangda 2.0 Skill 提供接入流程及访客预约示例。",
+    "并发能力前端指南覆盖热点读取、申请、排队、预占确认与原结果恢复，并标明已提供 API 和待实现封装。"
   ],
   "fixes": [],
   "affectedUsers": [
-    "希望把业务操作接入平台助手或应用 Agent 的 OpenXiangda 2.0 应用开发者。"
+    "希望把业务操作接入平台助手或应用 Agent 的 OpenXiangda 2.0 应用开发者。",
+    "需要实现缓存、排队或限额场景前端的应用开发者。"
   ],
   "upgradeSteps": [
     "升级到 openxiangda@2.31.1 并更新锁文件，先实现完整业务操作、授权和只读辅助查询，再按 docs/backend.md 声明 ai.agent。",
     "在测试环境运行 check 与完整输入、缺失输入、同名对象、权限不足和重复提交场景；发布应用版本后核对 AI Catalog 摘要与当前环境 Head。",
-    "平台服务端须部署支持显式业务任务发现的版本；npm 包发布本身不会升级平台或自动公开旧应用操作。"
+    "平台服务端须部署支持显式业务任务发现的版本；npm 包发布本身不会升级平台或自动公开旧应用操作。",
+    "并发前端接入按 docs/managed-concurrency-frontend.md 选择模式，先核对已导出的 API 与目标平台能力。"
   ],
   "knownLimitations": [
     "本次包仅增加业务任务元数据与编译校验；交互卡片资源、持久 Interaction 和 MCP Apps Host 由后续平台与应用批次交付。",
