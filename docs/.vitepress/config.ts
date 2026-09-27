@@ -44,6 +44,7 @@ export default defineConfig({
         { text: '按需后端', link: '/backend' },
         { text: '精确金额占用', link: '/decimal-reservations' },
         { text: '缓存、排队与配额', link: '/managed-concurrency' },
+        { text: '并发能力的前端接入', link: '/managed-concurrency-frontend' },
         { text: '应用管理', link: '/administration' },
       ] },
       { text: '校验与交付', items: [

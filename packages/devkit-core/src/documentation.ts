@@ -21,6 +21,7 @@ export const DOCUMENTATION_TOPICS = [
   { id: 'backend', title: '按需后端与业务动作', file: 'backend.md' },
   { id: 'decimal-reservations', title: '主子记录精确金额占用', file: 'decimal-reservations.md' },
   { id: 'managed-concurrency', title: '缓存、排队与整数配额', file: 'managed-concurrency.md' },
+  { id: 'managed-concurrency-frontend', title: '并发能力的前端接入', file: 'managed-concurrency-frontend.md' },
   { id: 'administration', title: '应用管理与有效配置', file: 'administration.md' },
   { id: 'testing', title: '检查与真实业务验收', file: 'testing.md' },
   { id: 'delivery', title: '部署、生产晋级与恢复', file: 'delivery.md' },

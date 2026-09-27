@@ -2,6 +2,8 @@
 
 `data.concurrency` 是可选的平台声明，用于限量申领、抢票和预约。平台负责缓存回源、等待资格、持久受理、受控 Native 事务及整数配额；应用通过 `openxiangda/react` 或 `openxiangda/mobile` 调用。平台必须声明能力 `data.managed-concurrency@1.0.0`。旧平台会在编译/发布能力检查阶段拒绝此声明。
 
+页面开发参见[并发能力的前端接入](./managed-concurrency-frontend.md)：按热点详情、一键申请、填完再提交、短确认入口、预占确认和原结果恢复选择交互方式，并核对当前 API 与尚未提供的封装边界。
+
 ## 声明与权限
 
 完整且由双编译器测试验证的示例位于源码 `examples/managed-concurrency/declaration.ts`。调用 `defineOpenXiangdaApp(concurrencyExample())` 即可编译。把示例中的 `data.concurrency` 合入应用配置，并按实际业务配置模型和参与权限。
