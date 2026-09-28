@@ -17,6 +17,7 @@ import type {
   DataTransactionRequest,
   DataTransactionResult,
   CurrentInitiatorDirectorySnapshot,
+  SelectedUserDirectorySnapshot,
   AssignmentCandidatePage,
   AssignmentCandidateQuery,
   GatewayAssertionJwks,
@@ -149,6 +150,20 @@ export class OpenXiangdaPlatformClient {
         }),
       }
     );
+  }
+
+  async resolveSelectedUser(authorization: string, businessAction: OpenXiangdaBusinessActionContext, userId: string): Promise<SelectedUserDirectorySnapshot> {
+    if (typeof userId !== "string" || !userId.trim() || userId.length > 255 || userId !== userId.trim()) {
+      throw new OpenXiangdaPlatformError(400, "OPENXIANGDA_DIRECTORY_SELECTED_USER_INVALID", "请选择有效的组织人员");
+    }
+    const result = await this.request<SelectedUserDirectorySnapshot>(
+      `/openxiangda-api/v2/applications/${encodeURIComponent(this.options.appCode)}/directory/selected-user?environmentKey=${encodeURIComponent(this.options.environmentKey)}`,
+      { method: "POST", headers: this.identityHeaders(authorization, null, businessAction), body: JSON.stringify({schemaVersion:"openxiangda.selected-user-directory-request/v2",userId}) }
+    );
+    if (result?.schemaVersion !== "openxiangda.selected-user-directory-snapshot/v2" || result.userId !== userId || typeof result.snapshotRevision !== "string" || !/^[0-9a-f]{64}$/.test(result.snapshotRevision) || !Number.isFinite(Date.parse(result.resolvedAt))) {
+      throw new OpenXiangdaPlatformError(502, "OPENXIANGDA_DIRECTORY_SELECTED_USER_RESPONSE_INVALID", "平台人员解析返回无效");
+    }
+    return result;
   }
 
   async assignmentCandidates(

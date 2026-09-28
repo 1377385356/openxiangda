@@ -262,7 +262,7 @@ export interface AppOperationPlatformAccessDeclaration {
   /** 在业务事务内核对目标用户的已声明角色；不授予成员管理权限。 */
   roleAssertions?: { roleCodes: readonly string[] };
   directory?: {
-    mode: 'current-initiator';
+    mode: 'current-initiator' | 'selected-user';
     fields: readonly AppOperationDirectoryField[];
   };
   managedFiles?: ReadonlyArray<{

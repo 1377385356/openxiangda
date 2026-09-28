@@ -356,6 +356,10 @@ export interface CurrentInitiatorDirectorySnapshot {
   resolvedAt: IsoDateTime;
 }
 
+export interface SelectedUserDirectorySnapshot extends Omit<CurrentInitiatorDirectorySnapshot, "schemaVersion"> {
+  schemaVersion: "openxiangda.selected-user-directory-snapshot/v2";
+}
+
 /** Query hints only; revalidate the selected member in the committing transaction. */
 export interface AssignmentCandidateQuery {
   roleCode: string;

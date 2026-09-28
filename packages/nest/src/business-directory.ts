@@ -1,6 +1,6 @@
 import { Inject, Injectable, Scope, UnauthorizedException } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
-import type { AssignmentCandidateQuery, AssignmentCandidatePage, CurrentInitiatorDirectorySnapshot } from 'openxiangda-contracts';
+import type { AssignmentCandidateQuery, AssignmentCandidatePage, CurrentInitiatorDirectorySnapshot, SelectedUserDirectorySnapshot } from 'openxiangda-contracts';
 import { requireOpenXiangdaBusinessActionContext } from './business-action-context.js';
 import { OpenXiangdaPlatformClient } from './platform-client.js';
 import type { OpenXiangdaHttpRequest } from './types.js';
@@ -26,6 +26,14 @@ export class OpenXiangdaBusinessDirectoryService {
       throw new UnauthorizedException('OPENXIANGDA_DIRECTORY_ROLE_CANDIDATES_NOT_DECLARED');
     }
     return this.platform.assignmentCandidates(context.authorization, context.action, input);
+  }
+
+  async selectedUser(userId: string): Promise<SelectedUserDirectorySnapshot> {
+    const context = requireOpenXiangdaBusinessActionContext(this.request);
+    if (this.request.openxiangda?.operation?.platformAccess?.directory?.mode !== 'selected-user') {
+      throw new UnauthorizedException('OPENXIANGDA_DIRECTORY_OPERATION_ACCESS_REQUIRED');
+    }
+    return this.platform.resolveSelectedUser(context.authorization, context.action, userId);
   }
 
   async currentInitiator(): Promise<CurrentInitiatorDirectorySnapshot> {

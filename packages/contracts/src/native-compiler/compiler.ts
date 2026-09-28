@@ -2574,7 +2574,7 @@ function validateOperationPlatformAccess(
   if (access.directory !== undefined) {
     const directory = object(access.directory, `${pointer}/directory`);
     exactKeys(directory, ['mode', 'fields'], `${pointer}/directory`);
-    if (directory.mode !== 'current-initiator') {
+    if (!['current-initiator', 'selected-user'].includes(String(directory.mode))) {
       fail(
         'NATIVE_OPERATION_DIRECTORY_MODE_INVALID',
         `${pointer}/directory/mode`
@@ -2598,7 +2598,7 @@ function validateOperationPlatformAccess(
       );
     }
     result.directory = {
-      mode: 'current-initiator',
+      mode: String(directory.mode),
       fields: uniqueSorted(fields),
     };
   }

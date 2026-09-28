@@ -6996,7 +6996,7 @@ const appOperationPlatformAccessSchema = {
       additionalProperties: false,
       required: ["mode", "fields"],
       properties: {
-        mode: { const: "current-initiator" },
+        mode: { enum: ["current-initiator", "selected-user"] },
         fields: {
           type: "array",
           minItems: 1,
