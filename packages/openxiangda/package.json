@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.31.7",
+  "version": "2.31.8",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -71,13 +71,13 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.6.9",
-    "openxiangda-contracts": "2.32.0",
-    "openxiangda-devkit-core": "2.34.2",
+    "openxiangda-cli": "2.6.10",
+    "openxiangda-contracts": "2.33.0",
+    "openxiangda-devkit-core": "2.34.3",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.58",
-    "openxiangda-nest": "2.8.0",
-    "openxiangda-skill-kit": "2.3.33",
+    "openxiangda-mcp": "2.0.59",
+    "openxiangda-nest": "2.9.0",
+    "openxiangda-skill-kit": "2.3.34",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -143,31 +143,35 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.31.7",
+    "version": "2.31.8",
     "status": "reviewed",
-    "title": "OpenXiangda 2.31.7：后端受控核验所选组织人员",
-    "summary": "应用后端可在已声明的业务操作内核验所选人员，姓名、工号与部门由平台组织架构提供。",
+    "title": "OpenXiangda 2.31.8：富文本图片与原通知投递恢复",
+    "summary": "支持具名动作的富文本托管图片，并公开按原消息查询、恢复失败投递的用户态接口。",
     "newFeatures": [
-      "增加 selected-user 目录声明和 BusinessDirectoryService.selectedUser，按声明投影组织身份字段并返回核验快照。"
+      "NotificationService 增加 listMessages、listDeadLetters、replayDeadLetter，固定应用环境并保留平台管理权限。"
     ],
-    "fixes": [],
+    "fixes": [
+      "managedFiles 作者配置与 Native 编译支持精确 text.rich 字段，避免借用其他图片字段授权。"
+    ],
     "affectedUsers": [
-      "需要管理员代录、身份纠正或针对所选组织人员执行业务操作的 V2 应用。"
+      "使用具名动作编辑富文本或需要后台管理通知投递的 V2 应用。"
     ],
     "upgradeSteps": [
-      "升级应用工具链，并先部署支持 directory.selected-user 1.0.0 的平台；在具体后端操作声明所需字段和目录读取权限。"
+      "升级工具链；富文本插图依赖对应平台编译支持，开发态已有记录上传需平台开发态附件 RLS 修复。",
+      "通知死信 messageId 过滤和来源关联需对应平台版本；管理员分别授予 read、content:read、delivery:retry 权限。"
     ],
     "knownLimitations": [
-      "只支持同租户有效组织人员；未声明能力、无目录权限或人员不可用时明确拒绝。"
+      "投影阶段尚无消息时死信关联字段为空；已解决死信保持既有 not-found 响应，客户端应刷新状态。",
+      "SDK 和平台源码验证不代替目标应用实际图片上传、通知投递及权限验收。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
       "workspaceGenerations": "v2",
-      "platform": "新增能力需要支持 directory.selected-user 1.0.0 的平台；既有 current-initiator 行为不变。",
+      "platform": "新增富文本声明和通知来源过滤需同步支持本次变更的平台；不扩大普通用户发送权限。",
       "v1": "独立 V1 引擎不受影响。"
     },
-    "sha256": "8843f2ad58d915c2b9158821b6640bc4453a5e0e6f6066d918fda0e9dc168ccd",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.31.7"
+    "sha256": "e30dad108c478ee6cce5a1632cbd620cbf650999c9d2fd39973482c2edb01ad9",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.31.8"
   }
 }
