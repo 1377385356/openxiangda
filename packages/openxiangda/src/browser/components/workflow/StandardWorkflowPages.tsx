@@ -768,12 +768,14 @@ function OperationFields({
 }
 
 function OperationDialog({
+  error,
   operation,
   submitting,
   variant,
   onCancel,
   onSubmit,
 }: {
+  error?: string;
   operation: WorkflowOperationSurface | null;
   submitting: boolean;
   variant: PageVariant;
@@ -791,6 +793,7 @@ function OperationDialog({
   };
   const formNode = (
     <Form form={form} layout="vertical" onFinish={onSubmit}>
+      {error && <Alert role="alert" title="审批尚未完成" description={error} showIcon type="error" />}
       {ui.confirmation?.description && (
         <Alert
           className="oxa-workflow-operation-alert"
@@ -862,6 +865,7 @@ function WorkflowOperations({
     surface: WorkflowSurface;
   } | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [operationError, setOperationError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const operations = standardWorkflowOperations(surface);
   const selected = selectedState?.surface === surface
@@ -876,6 +880,7 @@ function WorkflowOperations({
     if (selectedState && !selected) setSelectedState(null);
   }, [selected, selectedState]);
   const selectOperation = (operation: WorkflowOperationSurface) => {
+    setOperationError('');
     setSelectedState({
       operation,
       operationSignature: workflowOperationSignature(operation),
@@ -884,6 +889,7 @@ function WorkflowOperations({
   };
   const submit = async (values: JsonObject) => {
     if (!selected || submitting) return;
+    setOperationError('');
     setSubmitting(true);
     try {
       if (selected.kind !== 'workflow_command') {
@@ -916,7 +922,11 @@ function WorkflowOperations({
         setSelectedState(null);
         message.warning('内容已更新，请刷新后重试');
       } else {
-        message.error(errorMessage(error, `${selected.label}失败`));
+        const failure = (error as { status?: number })?.status === 403
+          ? '当前审批资料或操作权限已变化，请刷新资料后重新确认。'
+          : errorMessage(error, `${selected.label}失败`);
+        setOperationError(failure);
+        message.error(failure);
       }
     } finally {
       setSubmitting(false);
@@ -978,6 +988,7 @@ function WorkflowOperations({
         )}
       </div>
       <OperationDialog
+        error={operationError}
         onCancel={() => setSelectedState(null)}
         onSubmit={(values) => void submit(values)}
         operation={selected}

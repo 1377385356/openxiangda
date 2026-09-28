@@ -416,6 +416,23 @@ function applicationAuthenticationBase() {
 }
 
 let applicationCsrfToken = '';
+// A workflow command is bound to the header used to issue its one-time surface.
+const workflowCommandCsrf = new Map<string, { csrf: string; expiresAt: number }>();
+function bindWorkflowCsrf(surface: WorkflowSurface, csrf: string): WorkflowSurface {
+  const now = Date.now();
+  for (const [key, value] of workflowCommandCsrf) if (value.expiresAt <= now) workflowCommandCsrf.delete(key);
+  const expiresAt = Date.parse(surface.commandTokenExpiresAt || '');
+  if (surface.commandToken && Number.isFinite(expiresAt) && expiresAt > now) {
+    if (!workflowCommandCsrf.has(surface.commandToken) && workflowCommandCsrf.size >= 512) workflowCommandCsrf.delete(workflowCommandCsrf.keys().next().value!);
+    workflowCommandCsrf.set(surface.commandToken, { csrf, expiresAt });
+  }
+  return surface;
+}
+async function commandBoundCsrf(commandToken?: string | null) {
+  const binding = commandToken ? workflowCommandCsrf.get(commandToken) : undefined;
+  return binding?.csrf || await workflowCsrfToken();
+}
+
 const platformSessionListeners = new Set<() => void>();
 let platformSessionChannel: BroadcastChannel | undefined;
 let platformSessionStorageListening = false;
@@ -455,6 +472,7 @@ function invalidatePlatformSession() {
   activeIdentity = undefined;
   runtimeAuthorizationLoad = undefined;
   applicationCsrfToken = '';
+  workflowCommandCsrf.clear();
   platformSessionListeners.forEach(listener => listener());
 }
 
@@ -781,6 +799,7 @@ export async function logoutCurrentUser() {
   activeIdentity = undefined;
   runtimeAuthorizationLoad = undefined;
   applicationCsrfToken = '';
+  workflowCommandCsrf.clear();
   publishPlatformLogout();
   return receipt;
 }
@@ -2212,7 +2231,8 @@ export async function loadWorkflowDataFilePreview(
 ) {
   const base = workflowFileBase(binding, fileId);
   const [path, query = ''] = base.split('?');
-  return await request<DataFilePreview>(`${path}/preview?${query}`);
+  const csrfToken = await workflowCsrfToken();
+  return await request<DataFilePreview>(`${path}/preview?${query}`, { headers: { 'x-openxiangda-csrf-token': csrfToken } });
 }
 
 export async function fetchWorkflowDataFileBlob(
@@ -2220,11 +2240,12 @@ export async function fetchWorkflowDataFileBlob(
   fileId: string,
   variant?: 'thumbnail',
 ) {
+  const csrfToken = await workflowCsrfToken();
   const response = await fetch(
     workflowDataFileContentUrl(binding, fileId, 'inline', variant),
     {
       credentials: 'include',
-      headers: new Headers({ accept: 'application/octet-stream,*/*' }),
+      headers: new Headers({ accept: 'application/octet-stream,*/*', 'x-openxiangda-csrf-token': csrfToken }),
     },
   );
   if (!response.ok) {
@@ -2461,7 +2482,7 @@ export async function loadWorkflowTaskSurface(taskId: string) {
     `${workflowBase()}/tasks/${encodeURIComponent(taskId)}/surface`,
     { headers: { 'x-openxiangda-csrf-token': csrfToken } },
   );
-  return normalizeWorkflowSurface(surface);
+  return bindWorkflowCsrf(normalizeWorkflowSurface(surface), csrfToken);
 }
 
 export async function loadWorkflowInstanceSurface(instanceId: string) {
@@ -2470,7 +2491,7 @@ export async function loadWorkflowInstanceSurface(instanceId: string) {
     `${workflowBase()}/instances/${encodeURIComponent(instanceId)}/surface`,
     { headers: { 'x-openxiangda-csrf-token': csrfToken } },
   );
-  return normalizeWorkflowSurface(surface);
+  return bindWorkflowCsrf(normalizeWorkflowSurface(surface), csrfToken);
 }
 
 export async function loadWorkflowTimeline(instanceId: string) {
@@ -2481,10 +2502,11 @@ export async function loadWorkflowTimeline(instanceId: string) {
 
 function normalizeWorkflowDetailSurface(
   detail: WorkflowDetailSurfaceV2,
+  csrfToken: string,
 ): WorkflowDetailSurfaceV2 {
   return {
     ...detail,
-    surface: normalizeWorkflowSurface(detail.surface),
+    surface: bindWorkflowCsrf(normalizeWorkflowSurface(detail.surface), csrfToken),
   };
 }
 
@@ -2494,7 +2516,7 @@ export async function loadWorkflowTaskDetail(taskId: string) {
     `${workflowBase()}/tasks/${encodeURIComponent(taskId)}/detail`,
     { headers: { 'x-openxiangda-csrf-token': csrfToken } },
   );
-  return normalizeWorkflowDetailSurface(detail);
+  return normalizeWorkflowDetailSurface(detail, csrfToken);
 }
 
 export async function loadWorkflowInstanceDetail(instanceId: string) {
@@ -2503,7 +2525,7 @@ export async function loadWorkflowInstanceDetail(instanceId: string) {
     `${workflowBase()}/instances/${encodeURIComponent(instanceId)}/detail`,
     { headers: { 'x-openxiangda-csrf-token': csrfToken } },
   );
-  return normalizeWorkflowDetailSurface(detail);
+  return normalizeWorkflowDetailSurface(detail, csrfToken);
 }
 
 export async function loadWorkflowRecordDetail(resourceCode: string, recordId: string) {
@@ -2513,7 +2535,7 @@ export async function loadWorkflowRecordDetail(resourceCode: string, recordId: s
     `${workflowBase()}/records/${encodeURIComponent(resourceCode)}/${encodeURIComponent(recordId)}/detail?${query}`,
     { headers: { 'x-openxiangda-csrf-token': csrfToken } },
   );
-  return normalizeWorkflowDetailSurface(detail);
+  return normalizeWorkflowDetailSurface(detail, csrfToken);
 }
 
 export async function loadWorkflowDataAudit(instanceId: string) {
@@ -2587,7 +2609,7 @@ export async function executeWorkflowTaskCommand(
   command: WorkflowCommand | string,
   input: WorkflowCommandInput,
 ): Promise<WorkflowCommandResult> {
-  const csrfToken = await workflowCsrfToken();
+  const csrfToken = await commandBoundCsrf(input.commandToken);
   return await request<WorkflowCommandResult>(
     `${workflowBase()}/tasks/${encodeURIComponent(
       taskId,
@@ -2605,7 +2627,7 @@ export async function executeWorkflowInstanceCommand(
   command: 'withdraw' | 'terminate',
   input: WorkflowCommandInput,
 ): Promise<WorkflowCommandResult> {
-  const csrfToken = await workflowCsrfToken();
+  const csrfToken = await commandBoundCsrf(input.commandToken);
   return await request<WorkflowCommandResult>(
     `${workflowBase()}/instances/${encodeURIComponent(
       instanceId,
@@ -2635,7 +2657,7 @@ export async function executeWorkflowOperation(
   if (!surface.commandToken) {
     throw new Error('OPENXIANGDA_WORKFLOW_COMMAND_TOKEN_REQUIRED');
   }
-  const csrfToken = await workflowCsrfToken();
+  const csrfToken = await commandBoundCsrf(surface.commandToken);
   const href = operation.execute.href.startsWith('/service/')
     ? operation.execute.href
     : `/service${operation.execute.href}`;
