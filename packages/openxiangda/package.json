@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.31.6",
+  "version": "2.31.7",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -71,13 +71,13 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.6.8",
-    "openxiangda-contracts": "2.31.1",
-    "openxiangda-devkit-core": "2.34.1",
+    "openxiangda-cli": "2.6.9",
+    "openxiangda-contracts": "2.32.0",
+    "openxiangda-devkit-core": "2.34.2",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.57",
-    "openxiangda-nest": "2.7.10",
-    "openxiangda-skill-kit": "2.3.32",
+    "openxiangda-mcp": "2.0.58",
+    "openxiangda-nest": "2.8.0",
+    "openxiangda-skill-kit": "2.3.33",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -143,31 +143,31 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.31.6",
+    "version": "2.31.7",
     "status": "reviewed",
-    "title": "OpenXiangda 2.31.6：补充 Agent 卡片浏览器构建规范",
-    "summary": "明确自定义 Agent 卡片的浏览器独立运行要求，防止脚本构建成功但在隔离 iframe 中无法显示。",
-    "newFeatures": [],
-    "fixes": [
-      "Vite 单文件 IIFE 示例明确替换 process.env.NODE_ENV，并要求在无同源 sandbox 与 CSP 下验证卡片握手和提交消息。"
+    "title": "OpenXiangda 2.31.7：后端受控核验所选组织人员",
+    "summary": "应用后端可在已声明的业务操作内核验所选人员，姓名、工号与部门由平台组织架构提供。",
+    "newFeatures": [
+      "增加 selected-user 目录声明和 BusinessDirectoryService.selectedUser，按声明投影组织身份字段并返回核验快照。"
     ],
+    "fixes": [],
     "affectedUsers": [
-      "开发应用 Agent 自定义卡片的 OpenXiangda 2.0 应用开发者。"
+      "需要管理员代录、身份纠正或针对所选组织人员执行业务操作的 V2 应用。"
     ],
     "upgradeSteps": [
-      "在卡片专用 Vite 配置中加入示例的生产环境替换，重新构建并在隔离浏览器 iframe 中验收。"
+      "升级应用工具链，并先部署支持 directory.selected-user 1.0.0 的平台；在具体后端操作声明所需字段和目录读取权限。"
     ],
     "knownLimitations": [
-      "本版只补充构建文档；卡片消息桥仍为平台限定协议。"
+      "只支持同租户有效组织人员；未声明能力、无目录权限或人员不可用时明确拒绝。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
       "workspaceGenerations": "v2",
-      "platform": "沿用已发布的 Agent Center 卡片资源解析服务和 iframe Host。",
-      "v1": "独立 V1 引擎和工作区不受影响。"
+      "platform": "新增能力需要支持 directory.selected-user 1.0.0 的平台；既有 current-initiator 行为不变。",
+      "v1": "独立 V1 引擎不受影响。"
     },
-    "sha256": "3e1ffae9d677ad5c0c5e70030f34067bdc76c5751afe7045a77b51d40f641cad",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.31.6"
+    "sha256": "8843f2ad58d915c2b9158821b6640bc4453a5e0e6f6066d918fda0e9dc168ccd",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.31.7"
   }
 }
