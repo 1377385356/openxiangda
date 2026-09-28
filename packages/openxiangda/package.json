@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.31.8",
+  "version": "2.31.9",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -71,7 +71,7 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.6.10",
+    "openxiangda-cli": "2.6.11",
     "openxiangda-contracts": "2.33.0",
     "openxiangda-devkit-core": "2.34.3",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
@@ -143,35 +143,35 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.31.8",
+    "version": "2.31.9",
     "status": "reviewed",
-    "title": "OpenXiangda 2.31.8：富文本图片与原通知投递恢复",
-    "summary": "支持具名动作的富文本托管图片，并公开按原消息查询、恢复失败投递的用户态接口。",
-    "newFeatures": [
-      "NotificationService 增加 listMessages、listDeadLetters、replayDeadLetter，固定应用环境并保留平台管理权限。"
-    ],
+    "title": "OpenXiangda 2.31.9：审批凭据绑定与附件预览修复",
+    "summary": "修复登录面刷新后既有审批凭据失配，以及流程附件预览遗漏 CSRF 请求头的问题。",
+    "newFeatures": [],
     "fixes": [
-      "managedFiles 作者配置与 Native 编译支持精确 text.rich 字段，避免借用其他图片字段授权。"
+      "工作流操作保留签发详情时的 CSRF 绑定，登录面刷新不会将已签发操作错误地改用新凭据。",
+      "流程附件元数据、封面缩略图与文件内容通过 SDK 携带所需请求头，保留实例和字段授权。",
+      "审批确认弹窗持续展示操作失败提示，便于用户了解未完成状态。"
     ],
     "affectedUsers": [
-      "使用具名动作编辑富文本或需要后台管理通知投递的 V2 应用。"
+      "使用任务或实例审批、流程附件预览的 V2 应用。"
     ],
     "upgradeSteps": [
-      "升级工具链；富文本插图依赖对应平台编译支持，开发态已有记录上传需平台开发态附件 RLS 修复。",
-      "通知死信 messageId 过滤和来源关联需对应平台版本；管理员分别授予 read、content:read、delivery:retry 权限。"
+      "升级 openxiangda 至 2.31.9 并重新构建应用，CLI 同批次更新模板依赖。",
+      "发布后核对真实审批提交、业务状态回读和封面预览；不需要修改角色权限或数据库。"
     ],
     "knownLimitations": [
-      "投影阶段尚无消息时死信关联字段为空；已解决死信保持既有 not-found 响应，客户端应刷新状态。",
-      "SDK 和平台源码验证不代替目标应用实际图片上传、通知投递及权限验收。"
+      "网络结果不明的写操作不会自动重试，应先查询原操作状态。",
+      "原始文件 URL 仍不代替带授权头的 SDK 文件预览，HTML 等附件的服务端隔离策略保持不变。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
       "workspaceGenerations": "v2",
-      "platform": "新增富文本声明和通知来源过滤需同步支持本次变更的平台；不扩大普通用户发送权限。",
+      "platform": "沿用既有工作流 Surface、一次性命令凭据与文件授权契约，无服务端放宽。",
       "v1": "独立 V1 引擎不受影响。"
     },
-    "sha256": "e30dad108c478ee6cce5a1632cbd620cbf650999c9d2fd39973482c2edb01ad9",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.31.8"
+    "sha256": "451b5b993046436de85f8f1aefd3acdad4677efe5754969d0adb5c6c8a9758b1",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.31.9"
   }
 }
