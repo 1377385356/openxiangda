@@ -3092,6 +3092,37 @@ test('compiles explicit operation and route contracts into one closed catalog', 
   assert.match(compiled.contracts.typescript, /appRoutes/);
 });
 
+test('operation managed files bind rich text images to the exact declared field', () => {
+  const declaration = {
+    ...sourceDeclaration,
+    authz: { ...sourceDeclaration.authz, capabilities: [...sourceDeclaration.authz!.capabilities, { code: 'app:reference-app:instrument:save', name: 'Save instrument', kind: 'backend' }] },
+    data: {
+      ...sourceDeclaration.data,
+      resources: sourceDeclaration.data!.resources.map(resource => resource.code === 'instruments'
+        ? { ...resource, fields: [...resource.fields, { code: 'descriptionRich', label: 'Details', type: 'text.rich' }] }
+        : resource),
+    },
+    backend: {
+      ...sourceDeclaration.backend,
+      operations: [{
+        code: 'instrument.save', method: 'POST', path: '/instruments/save',
+        capability: 'app:reference-app:instrument:save',
+        requestSchema: { type: 'object' }, responseSchema: { type: 'object' },
+        platformAccess: { managedFiles: [{ resourceCode: 'instruments', fieldCodes: ['descriptionRich'], intents: ['create', 'update'] }] },
+      }],
+    },
+  } as any;
+  const compiled = compileApplicationSources(defineOpenXiangdaApp(declaration));
+  assert.ok(compiled.contracts.digest);
+  for (const field of ['name', 'missingField']) {
+    const invalid = structuredClone(declaration);
+    invalid.backend.operations[0].platformAccess.managedFiles[0].fieldCodes = [field];
+    assert.throws(() => defineOpenXiangdaApp(invalid), (error: any) => error.diagnostics?.some(
+      (item: any) => item.code === 'APP_CONFIG_BACKEND_OPERATION_PLATFORM_ACCESS_INVALID'
+    ));
+  }
+});
+
 test('rejects unbounded or undeclared operation platform dependencies', () => {
   assert.throws(
     () =>

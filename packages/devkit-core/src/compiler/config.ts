@@ -4684,7 +4684,7 @@ function validateBackendOperations(
             new Set(fieldCodes).size !== fieldCodes.length ||
             fieldCodes.some(
               fieldCode =>
-                !['file', 'image', 'signature'].includes(
+                !['file', 'image', 'signature', 'text.rich'].includes(
                   string(resourceFields?.get(fieldCode))
                 )
             ) ||

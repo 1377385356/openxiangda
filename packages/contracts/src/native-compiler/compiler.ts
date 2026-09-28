@@ -2645,7 +2645,7 @@ function validateOperationPlatformAccess(
           !fieldCodes.length ||
           fieldCodes.some(
             fieldCode =>
-              !['file', 'image', 'signature'].includes(
+              !['file', 'image', 'signature', 'text.rich'].includes(
                 String(declaredResources.get(code)?.get(fieldCode) || '')
               )
           )
