@@ -7239,11 +7239,29 @@ const appApiOperationDeclarationSchema = {
               type: "object", additionalProperties: false, required: ["title", "fields"],
               properties: {
                 title: { type: "string", minLength: 1, maxLength: 80 },
+                resource: { type: "string", pattern: "^agent-cards/[A-Za-z0-9][A-Za-z0-9_/-]{0,94}\\.js$" },
                 fields: { type: "array", minItems: 1, maxItems: 8, items: {
                   type: "object", additionalProperties: false, required: ["path", "label"],
                   properties: {
                     path: { type: "string", pattern: "^[A-Za-z][A-Za-z0-9_]{0,62}$" },
                     label: { type: "string", minLength: 1, maxLength: 40 },
+                  },
+                } },
+              },
+            },
+            inputCard: {
+              type: "object", additionalProperties: false, required: ["title", "fields"],
+              properties: {
+                title: { type: "string", minLength: 1, maxLength: 80 },
+                submitLabel: { type: "string", minLength: 1, maxLength: 40 },
+                resource: { type: "string", pattern: "^agent-cards/[A-Za-z0-9][A-Za-z0-9_/-]{0,94}\\.js$" },
+                fields: { type: "array", minItems: 1, maxItems: 12, items: {
+                  type: "object", additionalProperties: false, required: ["path", "label", "control"],
+                  properties: {
+                    path: { type: "string", pattern: "^[A-Za-z][A-Za-z0-9_]{0,62}$" },
+                    label: { type: "string", minLength: 1, maxLength: 40 },
+                    control: { enum: ["text", "textarea", "select"] },
+                    help: { type: "string", minLength: 1, maxLength: 160 },
                   },
                 } },
               },

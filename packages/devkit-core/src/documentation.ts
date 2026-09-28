@@ -19,6 +19,7 @@ export const DOCUMENTATION_TOPICS = [
   { id: 'public-access', title: '无账号的匿名公开访问', file: 'public-access.md' },
   { id: 'workflow-events', title: '审批、事件与通知', file: 'workflow-events.md' },
   { id: 'backend', title: '按需后端与业务动作', file: 'backend.md' },
+  { id: 'agent-cards', title: '应用 Agent 自定义卡片', file: 'agent-cards.md' },
   { id: 'decimal-reservations', title: '主子记录精确金额占用', file: 'decimal-reservations.md' },
   { id: 'managed-concurrency', title: '缓存、排队与整数配额', file: 'managed-concurrency.md' },
   { id: 'managed-concurrency-frontend', title: '并发能力的前端接入', file: 'managed-concurrency-frontend.md' },

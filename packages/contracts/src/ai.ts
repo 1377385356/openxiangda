@@ -56,10 +56,11 @@ export interface AiCapability {
     aliases?: string[];
     supportCapabilities?: string[];
     inputLookups?: Record<string, string>;
-    resultCard?: { title: string; fields: { path: string; label: string }[] };
+    resultCard?: { title: string; fields: { path: string; label: string }[]; resource?: string };
     inputCard?: {
       title: string;
       submitLabel?: string;
+      resource?: string;
       fields: { path: string; label: string; control: "text" | "textarea" | "select"; help?: string }[];
     };
   };
@@ -116,6 +117,11 @@ function validResourceCode(value: unknown): value is string {
   return (
     nonEmptyString(value) && /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(value)
   );
+}
+
+function validAgentCardResource(value: unknown): boolean {
+  return typeof value === "string" && /^agent-cards\/[A-Za-z0-9][A-Za-z0-9_/-]{0,94}\.js$/.test(value) &&
+    !value.split("/").some(part => part === ".." || part === "." || part === "");
 }
 
 export function validateAiCapabilityCatalog(value: unknown): Diagnostic[] {
@@ -400,6 +406,7 @@ export function validateAiCapabilityCatalog(value: unknown): Diagnostic[] {
       const cardValid = card === undefined || (
         agent.visibility === "task" && isRecord(card) &&
         nonEmptyString(card.title) && card.title.length <= 80 &&
+        (card.resource === undefined || validAgentCardResource(card.resource)) &&
         cardFields.length >= 1 && cardFields.length <= 8 &&
         new Set(cardFields.map(field => isRecord(field) ? field.path : "")).size === cardFields.length &&
         cardFields.every(field => isRecord(field) &&
@@ -412,6 +419,7 @@ export function validateAiCapabilityCatalog(value: unknown): Diagnostic[] {
         agent.visibility === "task" && raw.risk === "write" && raw.confirmation === "none" && isRecord(inputCard) &&
         nonEmptyString(inputCard.title) && inputCard.title.length <= 80 &&
         (inputCard.submitLabel === undefined || (nonEmptyString(inputCard.submitLabel) && inputCard.submitLabel.length <= 40)) &&
+        (inputCard.resource === undefined || validAgentCardResource(inputCard.resource)) &&
         inputCardFields.length >= 1 && inputCardFields.length <= 12 &&
         new Set(inputCardFields.map(field => isRecord(field) ? field.path : "")).size === inputCardFields.length &&
         inputCardFields.every(field => isRecord(field) &&
@@ -634,6 +642,7 @@ export const aiCapabilityCatalogSchema = {
                 type: "object", additionalProperties: false, required: ["title", "fields"],
                 properties: {
                   title: { type: "string", minLength: 1, maxLength: 80 },
+                  resource: { type: "string", pattern: "^agent-cards/[A-Za-z0-9][A-Za-z0-9_/-]{0,94}\\.js$" },
                   fields: { type: "array", minItems: 1, maxItems: 8, items: {
                     type: "object", additionalProperties: false, required: ["path", "label"],
                     properties: { path: { type: "string" }, label: { type: "string", minLength: 1, maxLength: 40 } },
@@ -645,6 +654,7 @@ export const aiCapabilityCatalogSchema = {
                 properties: {
                   title: { type: "string", minLength: 1, maxLength: 80 },
                   submitLabel: { type: "string", minLength: 1, maxLength: 40 },
+                  resource: { type: "string", pattern: "^agent-cards/[A-Za-z0-9][A-Za-z0-9_/-]{0,94}\\.js$" },
                   fields: { type: "array", minItems: 1, maxItems: 12, items: {
                     type: "object", additionalProperties: false, required: ["path", "label", "control"],
                     properties: {

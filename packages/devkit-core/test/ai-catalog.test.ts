@@ -324,8 +324,8 @@ test("publishes an ordinary-user task with bounded read-only helpers", () => {
         aliases: ["发起邀约"],
         supportOperations: ["reservation.locations"],
         inputLookups: { location: "reservation.locations" },
-        resultCard: { title: "访客预约已提交", fields: [{ path: "ticketNo", label: "预约单号" }] },
-        inputCard: { title: "补全访客预约", fields: [
+        resultCard: { title: "访客预约已提交", resource: "agent-cards/reservation-result.js", fields: [{ path: "ticketNo", label: "预约单号" }] },
+        inputCard: { title: "补全访客预约", resource: "agent-cards/reservation-input.js", fields: [
           { path: "location", label: "地点", control: "select" as const },
           { path: "description", label: "来访说明", control: "textarea" as const },
         ] },
@@ -358,14 +358,22 @@ test("publishes an ordinary-user task with bounded read-only helpers", () => {
       aliases: ["发起邀约"],
       supportCapabilities: ["visitor-app.custom.reservation.locations"],
       inputLookups: { location: "visitor-app.custom.reservation.locations" },
-      resultCard: { title: "访客预约已提交", fields: [{ path: "ticketNo", label: "预约单号" }] },
-      inputCard: { title: "补全访客预约", fields: [
+      resultCard: { title: "访客预约已提交", resource: "agent-cards/reservation-result.js", fields: [{ path: "ticketNo", label: "预约单号" }] },
+      inputCard: { title: "补全访客预约", resource: "agent-cards/reservation-input.js", fields: [
         { path: "location", label: "地点", control: "select" },
         { path: "description", label: "来访说明", control: "textarea" },
       ] },
     }
   );
   assert.deepEqual(validateAppConfig(application), []);
+  assert.equal(validateAppConfig({
+    ...application,
+    backend: { ...application.backend, operations: [lookup, {
+      ...submit, ai: { ...submit.ai, agent: { ...submit.ai.agent,
+        inputCard: { ...submit.ai.agent.inputCard, resource: "https://evil.invalid/card.js" },
+      } },
+    }] },
+  }).some(item => item.code === "APP_CONFIG_BACKEND_OPERATION_AI_INVALID"), true);
   assert.throws(() => compileAiCapabilityCatalog({
     ...application,
     backend: { ...application.backend, operations: [

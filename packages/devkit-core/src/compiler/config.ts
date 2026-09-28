@@ -4997,6 +4997,9 @@ function validateBackendOperations(
       const cardFields = Array.isArray(object(resultCard).fields) ? object(resultCard).fields as unknown[] : [];
       const inputCard = agent?.inputCard;
       const inputCardFields = Array.isArray(object(inputCard).fields) ? object(inputCard).fields as unknown[] : [];
+      const validCardResource = (value: unknown) => value === undefined ||
+        (typeof value === 'string' && /^agent-cards\/[A-Za-z0-9][A-Za-z0-9_/-]{0,94}\.js$/.test(value) &&
+          !value.split('/').some(part => part === '..' || part === '.' || part === ''));
       const requestFields = object(object(operation.requestSchema).properties);
       const agentInvalid = agent !== undefined && (
         !['task', 'support'].includes(string(agent.visibility)) ||
@@ -5014,7 +5017,8 @@ function validateBackendOperations(
         (agent.visibility === 'support' && (supportOperations !== undefined || inputLookups !== undefined || resultCard !== undefined || inputCard !== undefined)) ||
         (resultCard !== undefined && (
           agent.visibility !== 'task' ||
-          Object.keys(object(resultCard)).some(key => !['title', 'fields'].includes(key)) ||
+          Object.keys(object(resultCard)).some(key => !['title', 'fields', 'resource'].includes(key)) ||
+          !validCardResource(object(resultCard).resource) ||
           typeof object(resultCard).title !== 'string' ||
           !(object(resultCard).title as string).trim() ||
           (object(resultCard).title as string).length > 80 ||
@@ -5029,7 +5033,8 @@ function validateBackendOperations(
         )) ||
         (inputCard !== undefined && (
           agent.visibility !== 'task' ||
-          Object.keys(object(inputCard)).some(key => !['title', 'submitLabel', 'fields'].includes(key)) ||
+          Object.keys(object(inputCard)).some(key => !['title', 'submitLabel', 'fields', 'resource'].includes(key)) ||
+          !validCardResource(object(inputCard).resource) ||
           typeof object(inputCard).title !== 'string' ||
           !(object(inputCard).title as string).trim() ||
           (object(inputCard).title as string).length > 80 ||

@@ -1802,6 +1802,22 @@ export class OpenXiangdaApplicationServices {
     const frontendContent = this.directoryBundle(
       join(workspace.root, workspace.config.frontend.root, "dist")
     );
+    const publishedFiles = new Set(
+      (JSON.parse(String(frontendContent)) as { files: { path: string }[] }).files.map(file => file.path)
+    );
+    const cardResources = sources.aiCatalog.value.capabilities.flatMap(capability => [
+      capability.agent?.inputCard?.resource,
+      capability.agent?.resultCard?.resource,
+    ]).filter((path): path is string => Boolean(path));
+    const missingCards = [...new Set(cardResources)].filter(path => !publishedFiles.has(path));
+    if (missingCards.length) {
+      return this.result<SealedApplication>("build", workspace.context.workspace, undefined, [
+        this.diagnostic("FRONTEND_AGENT_CARD_RESOURCE_MISSING",
+          `已声明的 Agent 卡片未进入前端制品：${missingCards.join(", ")}`,
+          "backend.operations[].ai.agent",
+          "将卡片打包为 dist/agent-cards/ 下的单文件 IIFE，再执行 deploy"),
+      ]);
+    }
     const frontendDigest = sha256Bytes(frontendContent);
     const backendContent = hasBackend
       ? canonicalJson({ image: backendImage })

@@ -26,6 +26,10 @@
       "types": "./dist/react.d.ts",
       "import": "./dist/react.js"
     },
+    "./agent-card": {
+      "types": "./dist/agent-card.d.ts",
+      "import": "./dist/agent-card.js"
+    },
     "./react/styles.css": "./dist/browser/styles.css",
     "./mobile": {
       "types": "./dist/mobile.d.ts",

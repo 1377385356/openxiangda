@@ -17,6 +17,7 @@
 - [无账号的匿名公开访问](./public-access.md)：主题 ID `public-access`
 - [审批、事件与通知](./workflow-events.md)：主题 ID `workflow-events`
 - [按需后端与业务动作](./backend.md)：主题 ID `backend`
+- [应用 Agent 自定义卡片](./agent-cards.md)：主题 ID `agent-cards`
 - [主子记录精确金额占用](./decimal-reservations.md)：主题 ID `decimal-reservations`
 - [缓存、排队与整数配额](./managed-concurrency.md)：主题 ID `managed-concurrency`
 - [并发能力的前端接入](./managed-concurrency-frontend.md)：主题 ID `managed-concurrency-frontend`

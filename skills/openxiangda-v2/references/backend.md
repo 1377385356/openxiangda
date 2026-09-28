@@ -308,7 +308,7 @@ const enroll = {
 
 `inputCard` 是平台标准填写卡片，只能用于 `customAction` 任务。字段必须是同一请求 Schema 的顶层字符串，所有必填字段必须包含在卡片中；首版控件为 `text`、`textarea`、`select`，最多 12 项。`select` 必须绑定 `inputLookups`，辅助 GET 操作接受可选 `keyword`，返回最多 20 项 `{items:[{value,label}],nextCursor:null|string}`。`label` 面向用户，`value` 是稳定引用，业务 handler 仍须校验该引用。模型只创建等待卡并预填已确定的值；刷新后从会话快照恢复，提交后平台以当前用户身份和固定任务创建后台 Run，不再次请求模型。提交检查权限、AppVersion/目录摘要、完整请求 Schema 和幂等键；旧卡、权限撤销、版本变化和未知结果均不能静默重放。
 
-`resultCard` 是已完成任务的只读结果卡片：只允许引用 `responseSchema.properties` 中明确声明的顶层字符串、数字或布尔字段，最多 8 项；不渲染任意 HTML/JS。应用须确保这些字段可向当前用户显示。自定义 React 卡片 Host/SDK 尚属独立后续单元。本声明不改变既有 MCP Facade 的写入确认协议。
+`resultCard` 是已完成任务的只读结果卡片：只允许引用 `responseSchema.properties` 中明确声明的顶层字符串、数字或布尔字段，最多 8 项。应用须确保这些字段可向当前用户显示。填写卡与结果卡可选声明 `resource: 'agent-cards/repair.js'` 使用隔离的应用自定义 UI；未声明或加载失败时保留标准卡片。资源必须是同一前端制品中的单文件 IIFE，`deploy` 会拒绝声明了却未打包的资源。开发 SDK、构建配置和 Host 消息边界见 [应用 Agent 卡片](agent-cards.md)。本声明不改变既有 MCP Facade 的写入确认协议。
 
 业务规则必须在后端操作中验证；提示词、卡片预填和前端校验不能取代权限与业务校验。完整输入、缺失输入、同名地点、权限不足、重复提交和结果未知都应有应用测试与回执核对。任务声明随 AppVersion 的 AI Catalog 一起发布，不能另建手工目录。
 

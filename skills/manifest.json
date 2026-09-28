@@ -4,7 +4,7 @@
     {
       "name": "openxiangda-v2",
       "description": "使用 OpenXiangda 2.0 从模糊业务想法、已有资料或具体变更出发，通过对话发现模块、完成详细产品设计，由当前 AI Agent 按需用 Image 2.5 等图片能力形成视觉参考，直接实现真实页面并在浏览器修正，再检查和交付应用；维护 1.x 应用时使用对应的 1.x 技能。",
-      "sha256": "871448e26196cbf1a121f67fbffe018afa216d15d88ee6c2d76663b0d16178ca"
+      "sha256": "b14e6360d8c7d040c97baddeb97b0a886dc70b29fa0990d922a539a4501e8c51"
     }
   ]
 }

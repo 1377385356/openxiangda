@@ -60,6 +60,7 @@
 | 任务输入需要地点、人员等业务选择时，绑定同应用的只读辅助操作，用户不填内部编码 | `agent: { visibility: 'task', supportOperations: ['repair.locations'], inputLookups: { location: 'repair.locations' } }`；被引用的 GET 操作须有 `agent: { visibility: 'support' }`，`location` 须是请求 Schema 字段 |
 | 缺少字段或选项歧义时在对话中续填 | `agent.inputCard: { title: '补全报修', fields: [{ path: 'location', label: '地点', control: 'select' }, { path: 'description', label: '故障描述', control: 'textarea' }] }`；包含全部请求必填字段，单选字段绑定只读 `inputLookups`，辅助操作响应须为有界 `items[{value,label}]` |
 | 任务完成后显示业务结果卡片 | `agent.resultCard: { title: '报修已提交', fields: [{ path: 'ticketNo', label: '单号' }] }`；`ticketNo` 必须是该操作响应 Schema 中的顶层标量字段，最多 8 项 |
+| 应用自定义卡片必须随同一版本发布 | `inputCard` / `resultCard` 可加 `resource: 'agent-cards/repair.js'`；将单文件 IIFE 放进前端 `dist/agent-cards/`，平台隔离加载、失败回退标准卡，详见 `docs agent-cards` |
 | controller 路由必须绑定 `@OpenXiangdaOperation(appOperations.<code>)`，普通 CRUD 不写 controller | check 门禁会拒绝未绑定路由 |
 | 事务守卫 `errorCode` 必须匹配 `^OPENXIANGDA_[A-Z0-9_]{1,96}$` | `errorCode: 'OPENXIANGDA_REPAIR_REQUEST_NOT_PENDING'` |
 

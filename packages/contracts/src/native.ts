@@ -240,11 +240,13 @@ export interface AppApiOperationAiDeclaration {
     /** Maps a business input field to one declared support operation. */
     inputLookups?: Record<string, string>;
     /** Safe, read-only presentation of fields from this operation's response Schema. */
-    resultCard?: { title: string; fields: { path: string; label: string }[] };
+    resultCard?: { title: string; fields: { path: string; label: string }[]; resource?: string };
     /** Platform standard form for missing business input; all required fields remain visible. */
     inputCard?: {
       title: string;
       submitLabel?: string;
+      /** Built JavaScript module within the same frontend artifact, never an external URL. */
+      resource?: string;
       fields: { path: string; label: string; control: 'text' | 'textarea' | 'select'; help?: string }[];
     };
   };
