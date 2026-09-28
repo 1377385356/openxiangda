@@ -191,6 +191,50 @@ export interface NotificationDeliveryV2 {
   updatedAt: IsoDateTime;
 }
 
+export interface NotificationMessageQueryV2 {
+  status?: NotificationMessageStateV2;
+  correlationId?: string;
+  recipientUserId?: string;
+  limit?: number;
+  offset?: number;
+}
+export interface NotificationManagementPageV2<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+export interface NotificationMessageListItemV2 extends Omit<NotificationMessageV2, 'navigationTarget'> {
+  navigationTarget: NotificationNavigationTargetV2 | null;
+  contentRedacted?: boolean;
+  recipientCount: number;
+  deliveryCount: number;
+  succeededDeliveries: number;
+}
+export interface NotificationDeadLetterQueryV2 {
+  messageId?: string;
+  limit?: number;
+  offset?: number;
+}
+export interface NotificationDeadLetterV2 {
+  id: string;
+  stage: string;
+  messageId: string | null;
+  deliveryId: string | null;
+  correlationId: string | null;
+  errorCode: string | null;
+  errorPreview: string | null;
+  replayCount: number;
+  resolvedAt: IsoDateTime | null;
+  createdAt: IsoDateTime;
+}
+export interface NotificationDeadLetterReplayV2 {
+  id: string;
+  replayCount: number;
+  replayed: boolean;
+  superseded: boolean;
+}
+
 export interface NotificationMessageDetailV2 extends Omit<NotificationMessageV2, 'navigationTarget'> {
   navigationTarget: NotificationNavigationTargetV2 | null;
   contentRedacted: boolean;

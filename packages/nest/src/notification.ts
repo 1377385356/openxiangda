@@ -9,6 +9,8 @@ import type {
   ApplicationNotificationSendV2,
   DingTalkWorkNoticeSendV2,
   DingTalkAdvancedCardSendV2,
+  NotificationMessageQueryV2,
+  NotificationDeadLetterQueryV2,
 } from "openxiangda-contracts";
 import { OpenXiangdaPlatformClient } from "./platform-client.js";
 import type {
@@ -66,6 +68,18 @@ export class OpenXiangdaNotificationService {
 
   async getMessage(messageId: string) {
     return this.platform.getNotificationMessage(this.context().authorization, messageId);
+  }
+
+  async listMessages(input: NotificationMessageQueryV2 = {}) {
+    return this.platform.listNotificationMessages(this.context().authorization, input);
+  }
+
+  async listDeadLetters(input: NotificationDeadLetterQueryV2 = {}) {
+    return this.platform.listNotificationDeadLetters(this.context().authorization, input);
+  }
+
+  async replayDeadLetter(deadLetterId: string) {
+    return this.platform.replayNotificationDeadLetter(this.context().authorization, deadLetterId);
   }
 
   async getDingTalkCardReadReceipt(messageId: string, deliveryId: string) {

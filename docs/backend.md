@@ -340,6 +340,12 @@ await bootstrapOpenXiangdaApplication(AppModule);
 
 ## 通知与事件 {#notifications}
 
+运营查询与恢复使用用户态 `OpenXiangdaNotificationService.listMessages({ correlationId, limit, offset })`、`listDeadLetters({ messageId, limit, offset })` 和 `replayDeadLetter(deadLetterId)`。应用保留原平台 messageId，按业务来源定位原通知；恢复只重试原投递，禁止重新 `send` 整个批次。平台保持 `app:notification2:read`、`app:notification2:content:read`、`app:notification2:delivery:retry` 分离授权，应用通常仅向管理员授予需要的管理权限。接口固定当前应用和环境，不接受应用服务身份代替用户。
+
+死信返回 messageId、deliveryId、correlationId；投影阶段尚无消息时为 null。若较新修订已投递，重放返回 `superseded: true` 而不再次发送。重复或未知结果应刷新原消息/死信状态，不能更换业务通知幂等键绕过。
+
+具名动作的 `platformAccess.managedFiles` 可精确声明 `file`、`image`、`signature` 和 `text.rich` 字段。富文本内嵌图片必须绑定实际富文本字段，不能借封面字段的权限。创建和更新意图分别声明；Connected Dev 同样逐请求验证开发会话，再对既有记录生成短时精确附件证明，不开放资源普通 CRUD。
+
 具名用户动作发送通知使用 `OpenXiangdaBusinessNotificationService.send()`，携带稳定 eventId、messageKey、sourceSequence 和 idempotencyKey。重放同一事件返回已有消息；同一 messageKey 的更高序列用于收敛状态。通知目标使用声明的 PC/移动路由代码及参数，不拼接环境域名或身份凭据。
 
 签名事件处理器使用 `sendFromEvent()`，在声明中指定事件 data 内的收件人与文案路径，由平台验证不可变事件后解析。普通业务动作不需要平台通知管理权限。需要高级钉钉卡片时才使用已授权的管理服务和已启用通道，不能把它设为普通审批的默认依赖。

@@ -33,6 +33,12 @@ import type {
   DingTalkWorkNoticeSendV2,
   NotificationMessageV2,
   NotificationMessageDetailV2,
+  NotificationMessageQueryV2,
+  NotificationMessageListItemV2,
+  NotificationManagementPageV2,
+  NotificationDeadLetterQueryV2,
+  NotificationDeadLetterV2,
+  NotificationDeadLetterReplayV2,
   NotificationReadReceiptV2,
   ApplicationTodoCenterPageV2,
   ApplicationTodoInteractionResultV2,
@@ -968,6 +974,37 @@ export class OpenXiangdaPlatformClient {
       `${this.notificationPath()}/management/messages/${encodeURIComponent(messageId)}?environmentKey=${encodeURIComponent(this.options.environmentKey)}`,
       { headers: this.identityHeaders(authorization) }
     );
+  }
+
+  async listNotificationMessages(authorization: string, input: NotificationMessageQueryV2 = {}): Promise<NotificationManagementPageV2<NotificationMessageListItemV2>> {
+    const query = new URLSearchParams({ environmentKey: this.options.environmentKey });
+    for (const key of ['status', 'correlationId', 'recipientUserId', 'limit', 'offset'] as const) {
+      if (input[key] !== undefined) query.set(key, String(input[key]));
+    }
+    return this.request(`${this.notificationPath()}/management/messages?${query}`, {
+      headers: this.identityHeaders(authorization),
+    });
+  }
+
+  async listNotificationDeadLetters(authorization: string, input: NotificationDeadLetterQueryV2 = {}): Promise<NotificationManagementPageV2<NotificationDeadLetterV2>> {
+    const query = new URLSearchParams({ environmentKey: this.options.environmentKey });
+    for (const key of ['messageId', 'limit', 'offset'] as const) {
+      if (input[key] !== undefined) query.set(key, String(input[key]));
+    }
+    const result = await this.request<NotificationManagementPageV2<NotificationDeadLetterV2>>(`${this.notificationPath()}/management/dead-letters?${query}`, {
+      headers: this.identityHeaders(authorization),
+    });
+    if (!Array.isArray(result.items) || (input.messageId && result.items.some(item => item.messageId !== input.messageId))) {
+      throw new OpenXiangdaPlatformError(502, 'OPENXIANGDA_NOTIFICATION_DEAD_LETTER_SCOPE_INVALID', '平台未返回所选消息的投递记录，请检查平台版本后重试');
+    }
+    return result;
+  }
+
+  async replayNotificationDeadLetter(authorization: string, deadLetterId: string): Promise<NotificationDeadLetterReplayV2> {
+    return this.request(`${this.notificationPath()}/management/dead-letters/${encodeURIComponent(deadLetterId)}/replay`, {
+      method: 'POST', headers: this.identityHeaders(authorization),
+      body: JSON.stringify({ environmentKey: this.options.environmentKey }),
+    });
   }
 
   async getDingTalkCardReadReceipt(authorization: string, messageId: string, deliveryId: string): Promise<NotificationReadReceiptV2> {

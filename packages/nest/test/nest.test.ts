@@ -2809,6 +2809,42 @@ test("notification read queries carry only platform identifiers and the current 
   for (const item of requests) assert.equal(new Headers(item.init?.headers).get('authorization'), 'Bearer current-user');
 });
 
+test('notification recovery is scoped to original messages and rejects service identities', async () => {
+  const requests: Array<{ url: string; init?: RequestInit }> = [];
+  const platform = new OpenXiangdaPlatformClient(options(async (input, init) => {
+    requests.push({ url: String(input), init });
+    return response({ items: [], total: 0, limit: 10, offset: 0 });
+  }));
+  const notifications = new OpenXiangdaNotificationService({ headers: {}, openxiangda: {
+    principal: roleUnionPrincipal, authorization: 'Bearer administrator', perspectiveCode: null,
+  } }, platform);
+  await notifications.listMessages({ correlationId: 'lottery:round/1', limit: 10, environmentKey: 'production' } as any);
+  await notifications.listDeadLetters({ messageId: 'message-one', limit: 10 });
+  await notifications.replayDeadLetter('dead/letter-one');
+  assert.equal(requests.length, 3);
+  assert.equal(new URL(requests[0]!.url).searchParams.get('environmentKey'), 'preproduction');
+  assert.equal(new URL(requests[0]!.url).searchParams.get('correlationId'), 'lottery:round/1');
+  assert.equal(new URL(requests[1]!.url).searchParams.get('messageId'), 'message-one');
+  assert.match(new URL(requests[2]!.url).pathname, /dead-letters\/dead%2Fletter-one\/replay$/);
+  assert.deepEqual(JSON.parse(String(requests[2]!.init?.body)), { environmentKey: 'preproduction' });
+  assert.equal(requests[2]!.init?.method, 'POST');
+  for (const item of requests) assert.equal(new Headers(item.init?.headers).get('authorization'), 'Bearer administrator');
+  for (const context of [undefined, { principal: applicationPrincipal, authorization: 'Bearer service', perspectiveCode: null }]) {
+    const denied = new OpenXiangdaNotificationService({ headers: {}, openxiangda: context }, platform);
+    await assert.rejects(() => denied.listMessages(), /CONTEXT/);
+    await assert.rejects(() => denied.listDeadLetters(), /CONTEXT/);
+    await assert.rejects(() => denied.replayDeadLetter('dead'), /CONTEXT/);
+  }
+  assert.equal(requests.length, 3);
+});
+
+test('dead-letter lookup rejects a platform response that ignored the original message filter', async () => {
+  const client = new OpenXiangdaPlatformClient(options(async () => response({
+    items: [{ id: 'other-dead-letter', messageId: 'another-message' }], total: 1, limit: 20, offset: 0,
+  })));
+  await assert.rejects(() => client.listNotificationDeadLetters('Bearer administrator', { messageId: 'wanted-message' }), /OPENXIANGDA_NOTIFICATION_DEAD_LETTER_SCOPE_INVALID|平台未返回/);
+});
+
 test("read receipt facade requires a verified user and never starts business polling", async () => {
   const platform = {
     getNotificationMessage: test.mock.fn(async () => ({ id: 'message' })),
