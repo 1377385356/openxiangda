@@ -4995,10 +4995,12 @@ function validateBackendOperations(
       const inputLookups = agent?.inputLookups;
       const resultCard = agent?.resultCard;
       const cardFields = Array.isArray(object(resultCard).fields) ? object(resultCard).fields as unknown[] : [];
+      const inputCard = agent?.inputCard;
+      const inputCardFields = Array.isArray(object(inputCard).fields) ? object(inputCard).fields as unknown[] : [];
       const requestFields = object(object(operation.requestSchema).properties);
       const agentInvalid = agent !== undefined && (
         !['task', 'support'].includes(string(agent.visibility)) ||
-        agentKeys.some(key => !['visibility', 'examples', 'aliases', 'supportOperations', 'inputLookups', 'resultCard'].includes(key)) ||
+        agentKeys.some(key => !['visibility', 'examples', 'aliases', 'supportOperations', 'inputLookups', 'resultCard', 'inputCard'].includes(key)) ||
         !agentList(agent.examples, 12, 160) ||
         !agentList(agent.aliases, 20, 80) ||
         !agentList(supportOperations, 12, 80) ||
@@ -5009,7 +5011,7 @@ function validateBackendOperations(
           !Object.hasOwn(requestFields, field) ||
           !/^[a-z][a-z0-9]*(?:[-.][a-z0-9]+)*$/.test(String(operationCode))
         ) ||
-        (agent.visibility === 'support' && (supportOperations !== undefined || inputLookups !== undefined || resultCard !== undefined)) ||
+        (agent.visibility === 'support' && (supportOperations !== undefined || inputLookups !== undefined || resultCard !== undefined || inputCard !== undefined)) ||
         (resultCard !== undefined && (
           agent.visibility !== 'task' ||
           Object.keys(object(resultCard)).some(key => !['title', 'fields'].includes(key)) ||
@@ -5023,6 +5025,25 @@ function validateBackendOperations(
             return Object.keys(value).some(key => !['path', 'label'].includes(key)) ||
               typeof value.path !== 'string' || !/^[A-Za-z][A-Za-z0-9_]{0,62}$/.test(value.path) ||
               typeof value.label !== 'string' || !value.label.trim() || value.label.length > 40;
+          })
+        )) ||
+        (inputCard !== undefined && (
+          agent.visibility !== 'task' ||
+          Object.keys(object(inputCard)).some(key => !['title', 'submitLabel', 'fields'].includes(key)) ||
+          typeof object(inputCard).title !== 'string' ||
+          !(object(inputCard).title as string).trim() ||
+          (object(inputCard).title as string).length > 80 ||
+          (object(inputCard).submitLabel !== undefined &&
+            (typeof object(inputCard).submitLabel !== 'string' || !(object(inputCard).submitLabel as string).trim() || (object(inputCard).submitLabel as string).length > 40)) ||
+          inputCardFields.length < 1 || inputCardFields.length > 12 ||
+          new Set(inputCardFields.map(field => object(field).path)).size !== inputCardFields.length ||
+          inputCardFields.some(field => {
+            const value = object(field);
+            return Object.keys(value).some(key => !['path', 'label', 'control', 'help'].includes(key)) ||
+              typeof value.path !== 'string' || !/^[A-Za-z][A-Za-z0-9_]{0,62}$/.test(value.path) ||
+              typeof value.label !== 'string' || !value.label.trim() || value.label.length > 40 ||
+              !['text', 'textarea', 'select'].includes(String(value.control)) ||
+              (value.help !== undefined && (typeof value.help !== 'string' || !value.help.trim() || value.help.length > 160));
           })
         ))
       );

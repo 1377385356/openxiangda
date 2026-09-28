@@ -388,6 +388,7 @@ function customCapability(
           ),
         } : {}),
         ...(operation.ai.agent.resultCard ? { resultCard: operation.ai.agent.resultCard } : {}),
+        ...(operation.ai.agent.inputCard ? { inputCard: operation.ai.agent.inputCard } : {}),
       },
     } : {}),
     binding: {
@@ -457,6 +458,33 @@ export function compileAiCapabilityCatalog(
         const type = outputFields[field.path]?.type;
         if (!['string', 'number', 'integer', 'boolean'].includes(String(type)))
           throw new Error(`AI_AGENT_RESULT_FIELD_INVALID:${capability.code}:${field.path}`);
+      }
+    }
+    if (agent.inputCard) {
+      if (capability.kind !== "customAction" || capability.risk !== "write" || capability.confirmation !== "none")
+        throw new Error(`AI_AGENT_INPUT_CARD_EXECUTION_INVALID:${capability.code}`);
+      const request = capability.inputSchema as { type?: string; additionalProperties?: boolean; properties?: Record<string, { type?: string }>; required?: string[] };
+      if (request.type !== "object" || request.additionalProperties !== false)
+        throw new Error(`AI_AGENT_INPUT_CARD_SCHEMA_INVALID:${capability.code}`);
+      const fields = new Map(agent.inputCard.fields.map(field => [field.path, field]));
+      if ((request.required || []).some(field => !fields.has(field)))
+        throw new Error(`AI_AGENT_INPUT_CARD_REQUIRED_MISSING:${capability.code}`);
+      for (const field of agent.inputCard.fields) {
+        if (request.properties?.[field.path]?.type !== "string" ||
+          (field.control === "select") !== Boolean(agent.inputLookups?.[field.path]))
+          throw new Error(`AI_AGENT_INPUT_CARD_FIELD_INVALID:${capability.code}:${field.path}`);
+        if (field.control === "select") {
+          const lookupCode = agent.inputLookups?.[field.path];
+          const support = lookupCode ? byCode.get(lookupCode) : undefined;
+          const query = support?.inputSchema as { properties?: Record<string, { type?: string }> } | undefined;
+          const output = support?.outputSchema as { properties?: Record<string, { type?: string; items?: { type?: string; properties?: Record<string, { type?: string }> } }> } | undefined;
+          if (query?.properties?.keyword?.type !== "string" ||
+            output?.properties?.items?.type !== "array" ||
+            output.properties.items.items?.type !== "object" ||
+            output.properties.items.items.properties?.value?.type !== "string" ||
+            output.properties.items.items.properties?.label?.type !== "string")
+            throw new Error(`AI_AGENT_INPUT_CARD_LOOKUP_INVALID:${capability.code}:${field.path}`);
+        }
       }
     }
   }

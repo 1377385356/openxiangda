@@ -289,7 +289,7 @@ test("publishes an ordinary-user task with bounded read-only helpers", () => {
     path: "/api/reservations/locations",
     capability: "app:visitor-app:reservation:locations",
     requestSchema: { type: "object", properties: { keyword: { type: "string" } } },
-    responseSchema: { type: "object" },
+    responseSchema: { type: "object", properties: { items: { type: "array", items: { type: "object", properties: { value: { type: "string" }, label: { type: "string" } } } } } },
     ai: {
       name: "查找可预约地点",
       description: "按名称查找有权预约的地点",
@@ -306,14 +306,16 @@ test("publishes an ordinary-user task with bounded read-only helpers", () => {
     capability: "app:visitor-app:reservation:enroll",
     requestSchema: {
       type: "object",
-      required: ["location"],
-      properties: { location: { type: "string" } },
+      additionalProperties: false,
+      required: ["location", "description"],
+      properties: { location: { type: "string" }, description: { type: "string", minLength: 3 } },
     },
     responseSchema: { type: "object", properties: { ticketNo: { type: "string" }, internalState: { type: "object" } } },
     ai: {
       name: "提交访客预约",
       description: "发起访客预约并执行业务规则",
       risk: "write" as const,
+      confirmation: "none" as const,
       resources: ["reservations"],
       sideEffects: ["创建访客预约"],
       agent: {
@@ -323,6 +325,10 @@ test("publishes an ordinary-user task with bounded read-only helpers", () => {
         supportOperations: ["reservation.locations"],
         inputLookups: { location: "reservation.locations" },
         resultCard: { title: "访客预约已提交", fields: [{ path: "ticketNo", label: "预约单号" }] },
+        inputCard: { title: "补全访客预约", fields: [
+          { path: "location", label: "地点", control: "select" as const },
+          { path: "description", label: "来访说明", control: "textarea" as const },
+        ] },
       },
     },
   };
@@ -353,6 +359,10 @@ test("publishes an ordinary-user task with bounded read-only helpers", () => {
       supportCapabilities: ["visitor-app.custom.reservation.locations"],
       inputLookups: { location: "visitor-app.custom.reservation.locations" },
       resultCard: { title: "访客预约已提交", fields: [{ path: "ticketNo", label: "预约单号" }] },
+      inputCard: { title: "补全访客预约", fields: [
+        { path: "location", label: "地点", control: "select" },
+        { path: "description", label: "来访说明", control: "textarea" },
+      ] },
     }
   );
   assert.deepEqual(validateAppConfig(application), []);
@@ -377,4 +387,28 @@ test("publishes an ordinary-user task with bounded read-only helpers", () => {
       ai: { ...submit.ai, agent: { ...submit.ai.agent, resultCard: { title: "泄漏", fields: [{ path: "internalState", label: "内部信息" }] } } },
     }] },
   }), /AI_AGENT_RESULT_FIELD_INVALID/);
+  assert.throws(() => compileAiCapabilityCatalog({
+    ...application,
+    backend: { ...application.backend, operations: [lookup, {
+      ...submit,
+      ai: { ...submit.ai, agent: { ...submit.ai.agent, inputCard: { title: "缺字段", fields: [{ path: "location", label: "地点", control: "select" as const }] } } },
+    }] },
+  }), /AI_AGENT_INPUT_CARD_REQUIRED_MISSING/);
+  assert.throws(() => compileAiCapabilityCatalog({
+    ...application,
+    backend: { ...application.backend, operations: [lookup, {
+      ...submit,
+      ai: { ...submit.ai, agent: { ...submit.ai.agent, inputCard: { title: "控件错", fields: [
+        { path: "location", label: "地点", control: "text" as const },
+        { path: "description", label: "说明", control: "textarea" as const },
+      ] } } },
+    }] },
+  }), /AI_AGENT_INPUT_CARD_FIELD_INVALID/);
+  assert.throws(() => compileAiCapabilityCatalog({
+    ...application,
+    backend: { ...application.backend, operations: [lookup, {
+      ...submit,
+      ai: { ...submit.ai, confirmation: "required" as const },
+    }] },
+  }), /AI_AGENT_INPUT_CARD_EXECUTION_INVALID/);
 });

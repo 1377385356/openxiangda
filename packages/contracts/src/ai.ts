@@ -57,6 +57,11 @@ export interface AiCapability {
     supportCapabilities?: string[];
     inputLookups?: Record<string, string>;
     resultCard?: { title: string; fields: { path: string; label: string }[] };
+    inputCard?: {
+      title: string;
+      submitLabel?: string;
+      fields: { path: string; label: string; control: "text" | "textarea" | "select"; help?: string }[];
+    };
   };
   generatedFrom?: {
     resourceCode: string;
@@ -401,6 +406,20 @@ export function validateAiCapabilityCatalog(value: unknown): Diagnostic[] {
           typeof field.path === "string" && /^[A-Za-z][A-Za-z0-9_]{0,62}$/.test(field.path) &&
           nonEmptyString(field.label) && field.label.length <= 40)
       );
+      const inputCard = agent.inputCard;
+      const inputCardFields = isRecord(inputCard) && Array.isArray(inputCard.fields) ? inputCard.fields : [];
+      const inputCardValid = inputCard === undefined || (
+        agent.visibility === "task" && raw.risk === "write" && raw.confirmation === "none" && isRecord(inputCard) &&
+        nonEmptyString(inputCard.title) && inputCard.title.length <= 80 &&
+        (inputCard.submitLabel === undefined || (nonEmptyString(inputCard.submitLabel) && inputCard.submitLabel.length <= 40)) &&
+        inputCardFields.length >= 1 && inputCardFields.length <= 12 &&
+        new Set(inputCardFields.map(field => isRecord(field) ? field.path : "")).size === inputCardFields.length &&
+        inputCardFields.every(field => isRecord(field) &&
+          typeof field.path === "string" && /^[A-Za-z][A-Za-z0-9_]{0,62}$/.test(field.path) &&
+          nonEmptyString(field.label) && field.label.length <= 40 &&
+          ["text", "textarea", "select"].includes(String(field.control)) &&
+          (field.help === undefined || (nonEmptyString(field.help) && field.help.length <= 160)))
+      );
       if (
         raw.kind !== "customAction" ||
         !["task", "support"].includes(String(agent.visibility)) ||
@@ -411,7 +430,7 @@ export function validateAiCapabilityCatalog(value: unknown): Diagnostic[] {
         Object.entries(lookups).some(([field, code]) =>
           !/^[A-Za-z][A-Za-z0-9_]{0,62}$/.test(field) || !nonEmptyString(code)
         ) ||
-        !cardValid ||
+        !cardValid || !inputCardValid ||
         (agent.visibility === "support" &&
           (agent.supportCapabilities !== undefined || agent.inputLookups !== undefined))
       ) {
@@ -618,6 +637,21 @@ export const aiCapabilityCatalogSchema = {
                   fields: { type: "array", minItems: 1, maxItems: 8, items: {
                     type: "object", additionalProperties: false, required: ["path", "label"],
                     properties: { path: { type: "string" }, label: { type: "string", minLength: 1, maxLength: 40 } },
+                  } },
+                },
+              },
+              inputCard: {
+                type: "object", additionalProperties: false, required: ["title", "fields"],
+                properties: {
+                  title: { type: "string", minLength: 1, maxLength: 80 },
+                  submitLabel: { type: "string", minLength: 1, maxLength: 40 },
+                  fields: { type: "array", minItems: 1, maxItems: 12, items: {
+                    type: "object", additionalProperties: false, required: ["path", "label", "control"],
+                    properties: {
+                      path: { type: "string" }, label: { type: "string", minLength: 1, maxLength: 40 },
+                      control: { enum: ["text", "textarea", "select"] },
+                      help: { type: "string", minLength: 1, maxLength: 160 },
+                    },
                   } },
                 },
               },

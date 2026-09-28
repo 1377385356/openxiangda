@@ -241,6 +241,12 @@ export interface AppApiOperationAiDeclaration {
     inputLookups?: Record<string, string>;
     /** Safe, read-only presentation of fields from this operation's response Schema. */
     resultCard?: { title: string; fields: { path: string; label: string }[] };
+    /** Platform standard form for missing business input; all required fields remain visible. */
+    inputCard?: {
+      title: string;
+      submitLabel?: string;
+      fields: { path: string; label: string; control: 'text' | 'textarea' | 'select'; help?: string }[];
+    };
   };
 }
 
