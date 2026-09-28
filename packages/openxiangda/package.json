@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.31.4",
+  "version": "2.31.5",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -71,13 +71,13 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.6.6",
-    "openxiangda-contracts": "2.31.0",
-    "openxiangda-devkit-core": "2.34.0",
+    "openxiangda-cli": "2.6.7",
+    "openxiangda-contracts": "2.31.1",
+    "openxiangda-devkit-core": "2.34.1",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.56",
-    "openxiangda-nest": "2.7.9",
-    "openxiangda-skill-kit": "2.3.30",
+    "openxiangda-mcp": "2.0.57",
+    "openxiangda-nest": "2.7.10",
+    "openxiangda-skill-kit": "2.3.31",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -143,35 +143,35 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.31.4",
+    "version": "2.31.5",
     "status": "reviewed",
-    "title": "OpenXiangda 2.31.4：业务 Agent 标准填写卡片声明",
-    "summary": "应用任务可以声明有界填写卡片；平台助手在缺少信息或业务选项有歧义时让用户续填，并将提交绑定到已发布的固定业务能力。",
+    "title": "OpenXiangda 2.31.5：应用 Agent 自定义卡片",
+    "summary": "应用可以把填写卡和结果卡的自定义脚本随同一发布版本交付，由平台在隔离卡片 Host 中展示。",
     "newFeatures": [
-      "backend.operations[].ai.agent.inputCard 支持短文本、多行文本和只读选项，编译器检查必填字段、控件类型、选项响应 Schema 和执行策略。",
-      "开发文档、声明速查表与 AI Skill 同步说明填写卡片、辅助查询和业务 handler 的接入规则。"
+      "ai.agent.inputCard 和 resultCard 可声明受限的 agent-cards/*.js 资源；发布时核验脚本进入同一前端制品。",
+      "openxiangda/agent-card SDK 提供状态接收、只读选项查询、固定任务提交和尺寸同步；中文开发资料与 Skill 给出构建和验收示例。"
     ],
     "fixes": [],
     "affectedUsers": [
-      "需要让普通用户在平台助手会话中补齐报修、预约等业务参数的 OpenXiangda 2.0 应用开发者。"
+      "需要在平台业务 Agent 中展示应用自有填写或结果布局的 OpenXiangda 2.0 应用开发者。"
     ],
     "upgradeSteps": [
-      "升级 openxiangda 并更新锁文件；先实现有权限和幂等保障的业务操作，再为同一操作声明包含全部必填字段的 agent.inputCard。",
-      "选择控件绑定同应用只读辅助操作，响应明确声明最多 20 项的 items[{value,label}]；在预发验证刷新续填、重复提交、权限拒绝和真实业务回读。",
-      "平台服务端、Worker、数据库迁移和会话前端需要配套发布后，填写卡片才会在对话中出现。"
+      "升级 openxiangda 并更新锁文件；保留标准 inputCard/resultCard 字段声明作为资源失败时的回退。",
+      "将使用 SDK 的卡片构建为单文件 IIFE 放入前端 dist/agent-cards/，配置对应 resource，然后运行 check 与预发 deploy。",
+      "确认平台已发布配套 Agent 卡片资源端点与隔离 Host；在预发验证歧义选择、刷新、重复提交、权限拒绝与业务回读。"
     ],
     "knownLimitations": [
-      "首版只有平台标准控件；应用自定义 React 卡片 Host/SDK 是后续独立单元。",
-      "填写卡片只适用于已显式开放、免通用二次确认的普通写任务；破坏性和外部动作仍需独立确认协议。"
+      "首版消息桥是平台限定协议，不宣称与官方 MCP Apps 线级兼容；卡片只支持已声明的选项查询和固定提交。",
+      "结果卡只收到已声明的标量字段；复杂列表、附件和额外工具调用仍需后续独立契约。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
       "workspaceGenerations": "v2",
-      "platform": "填写和续接需要配套 Agent Interaction 服务、Worker、SQL 迁移与 SSE 前端。",
+      "platform": "自定义卡片需要配套 Agent Center 资源解析服务和无同源 iframe Host。",
       "v1": "独立 V1 引擎和工作区不受影响。"
     },
-    "sha256": "d025a3b8411a27ab3259f1b3272ff551b3856c9d121f4cb3bdfda9a821760b83",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.31.4"
+    "sha256": "b674dd23dcb5fc9e00a7af758f01291295c78b8b6756b43d5f678ba79e4df345",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.31.5"
   }
 }
