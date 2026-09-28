@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.31.6",
+  "status": "reviewed",
+  "title": "OpenXiangda 2.31.6：补充 Agent 卡片浏览器构建规范",
+  "summary": "明确自定义 Agent 卡片的浏览器独立运行要求，防止脚本构建成功但在隔离 iframe 中无法显示。",
+  "newFeatures": [],
+  "fixes": [
+    "Vite 单文件 IIFE 示例明确替换 process.env.NODE_ENV，并要求在无同源 sandbox 与 CSP 下验证卡片握手和提交消息。"
+  ],
+  "affectedUsers": [
+    "开发应用 Agent 自定义卡片的 OpenXiangda 2.0 应用开发者。"
+  ],
+  "upgradeSteps": [
+    "在卡片专用 Vite 配置中加入示例的生产环境替换，重新构建并在隔离浏览器 iframe 中验收。"
+  ],
+  "knownLimitations": [
+    "本版只补充构建文档；卡片消息桥仍为平台限定协议。"
+  ],
+  "issues": [],
+  "compatibility": {
+    "node": ">=24",
+    "workspaceGenerations": "v2",
+    "platform": "沿用已发布的 Agent Center 卡片资源解析服务和 iframe Host。",
+    "v1": "独立 V1 引擎和工作区不受影响。"
+  }
+}

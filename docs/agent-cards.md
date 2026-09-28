@@ -39,13 +39,15 @@ await bridge.submit({ locationId: found.items[0].value, description: '空调不�
 // apps/web/vite.agent-card.config.ts
 import { defineConfig } from 'vite';
 export default defineConfig({
+  // lib 模式打包 React/Ant Design 时，确保浏览器沙箱内不残留 Node 的 process。
+  define: { 'process.env.NODE_ENV': JSON.stringify('production') },
   build: { outDir: 'dist', emptyOutDir: false, cssCodeSplit: false,
     lib: { entry: 'src/agent-card.tsx', name: 'OpenXiangdaRepairCard', formats: ['iife'], fileName: () => 'agent-cards/repair.js' },
   },
 });
 ```
 
-在普通前端构建之后运行 `vite build --config vite.agent-card.config.ts`。卡片样式可由脚本注入在自己的 iframe 内，不应依赖应用全局 CSS、路由、Cookie、登录或平台页面的 DOM。Host 使用无同源权限的 sandbox 和 CSP，只开放 `options` 与 `submit`；SDK 的请求先由 Host 检查卡片实例、声明字段、候选值，再由 Agent 服务端重验用户、应用权限、AppVersion、请求 Schema、Interaction revision 和幂等键。业务 handler 必须再次校验地点等稳定引用。结果卡只收到声明字段的只读投影。
+在普通前端构建之后运行 `vite build --config vite.agent-card.config.ts`。产物须小于 2 MiB；构建通过后还须在 `sandbox="allow-scripts"`、无同源权限和 Host CSP 的 iframe 中运行一次真实浏览器测试，确认没有 `process is not defined` 等异常，且能完成 `ready/state/options/submit` 消息往返。卡片样式可由脚本注入在自己的 iframe 内，不应依赖应用全局 CSS、路由、Cookie、登录或平台页面的 DOM。Host 使用无同源权限的 sandbox 和 CSP，只开放 `options` 与 `submit`；SDK 的请求先由 Host 检查卡片实例、声明字段、候选值，再由 Agent 服务端重验用户、应用权限、AppVersion、请求 Schema、Interaction revision 和幂等键。业务 handler 必须再次校验地点等稳定引用。结果卡只收到声明字段的只读投影。
 
 卡片在 8 秒内无法握手、资源缺失或版本变化时，平台显示标准卡片。卡片消息不会修改 Codex 原生 SSE 文本流。这个桥采用与 MCP Apps 相同的资源/宿主调用思路，但首版不是官方 MCP Apps 线级协议；不要在应用里自行实现新工具网关或把 UI 脚本注入平台主页面。
 
