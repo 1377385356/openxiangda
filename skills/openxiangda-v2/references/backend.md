@@ -386,3 +386,12 @@ if (output.status === 'pending') {
 这些方法适用于当前用户、具名业务动作和应用服务身份，沿用各自权限；业务记录绑定仍需正式数据事务。输出目前支持 OSS/MinIO，受字段上限与100MiB硬上限约束，上传凭据五分钟后过期，完成须在额外十分钟内进行。过期错误应由调用者建立新的处理意图，不能无限重试相同过期计划。下载最长五分钟，签发后到期前为短期委托，不能即时撤回。不要在日志、持久草稿或业务数据中保存签名地址、POST policy 或签名字段。
 
 主子记录共享精确金额额度、撤回修订和审批释放，请使用[精确金额占用](decimal-reservations.md)的受管提交及终态事务。
+
+
+## 解析管理员选定的组织人员
+
+管理员补录或身份订正应使用平台目录，不创建第二份人员主数据。具名动作声明
+`platformAccess: { directory: { mode: 'selected-user', fields: ['displayName', 'employeeNumber', 'primaryDepartment', 'departments'] } }`
+后，调用 `businessDirectory.selectedUser(userId)`。仅传标准人员选择器返回的确定 ID；姓名、工号和部门均由平台返回，不能相信表单传入快照。
+
+此动作的调用者还需要既有 `app:<appCode>:directory:read` 权限；平台复核当前租户、环境、目录范围和人员有效期，一次只解析一人。普通用户本人报名继续使用 `currentInitiator()`。身份快照不是永久授权凭据，后续业务事务仍需检查角色、状态与额度。平台能力为 `directory.selected-user` 1.0.0；失败时保留原操作，不回退姓名匹配或应用人员表。
