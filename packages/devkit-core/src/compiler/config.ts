@@ -4651,7 +4651,7 @@ function validateBackendOperations(
           'departments',
         ]);
         invalid ||=
-          directory.mode !== 'current-initiator' ||
+          !['current-initiator','selected-user'].includes(String(directory.mode)) ||
           fields.length === 0 ||
           fields.length > allowedFields.size ||
           new Set(fields).size !== fields.length ||

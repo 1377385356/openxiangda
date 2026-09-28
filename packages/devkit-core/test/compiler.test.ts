@@ -4852,3 +4852,11 @@ test('enforces event filter, capture-plan, schema, timer and date-trigger bounds
     'APP_CONFIG_DATE_TRIGGER_INVALID'
   );
 });
+
+test('selected-user directory adds a distinct platform requirement without widening current initiator', () => {
+  const declaration = defineOpenXiangdaApp({...sourceDeclaration, authz:{...source.authz!,capabilities:[{code:'app:reference-app:selection:verify',kind:'backend',name:'Verify selection'}]},backend:{...source.backend,enabled:true,operations:[{code:'selection.verify',method:'POST',path:'/api/selection',capability:'app:reference-app:selection:verify',requestSchema:{type:'object'},responseSchema:{type:'object'},platformAccess:{directory:{mode:'selected-user',fields:['displayName','employeeNumber']}}}]}});
+  const compiled=compileApplicationSources(declaration);
+  assert.equal(compiled.contracts.value.operations[0]?.platformAccess?.directory?.mode,'selected-user');
+  assert.equal(requiredPlatformCapabilities(declaration).find(item=>item.code==='directory.selected-user')?.contractVersion,'1.0.0');
+  assert.equal(requiredPlatformCapabilities(defineOpenXiangdaApp(sourceDeclaration)).some(item=>item.code==='directory.selected-user'),false);
+});

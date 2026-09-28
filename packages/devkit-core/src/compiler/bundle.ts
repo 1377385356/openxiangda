@@ -1942,6 +1942,7 @@ function runtimeProtocolCapabilities(config: OpenXiangdaAppConfig) {
     ...(config.events?.subscriptions?.some(item => item.execution) ? ['events.native-data-actions'] : []),
     ...(config.data?.resources.length ? ['data-api-v2'] : []),
     ...(usesDirectory ? ['directory-v2'] : []),
+    ...(operations.some(operation=>operation.platformAccess?.directory?.mode==='selected-user') ? ['directory.selected-user'] : []),
     ...(operations.some(
       operation =>
         operation.platformAccess?.managedFiles ||

@@ -228,6 +228,7 @@ export function requiredPlatformCapabilitiesFromConfiguration(
           declaration: unknown;
         }>)
       : []),
+    ...(operations.some(operation => operation.platformAccess?.directory?.mode === 'selected-user') ? [{ code: 'directory.selected-user' as const, declaration: operations.filter(operation => operation.platformAccess?.directory?.mode === 'selected-user').map(operation => ({code:operation.code,directory:operation.platformAccess!.directory})) }] : []),
     ...(usesManagedFiles
       ? ([
           {

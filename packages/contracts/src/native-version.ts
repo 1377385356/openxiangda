@@ -19,6 +19,7 @@ export const PLATFORM_CAPABILITY_CONTRACT_VERSIONS = {
   "data.managed-concurrency": "1.0.0",
   "workflow.named-input-sources": "1.0.0",
   "directory-v2": "1.0.0",
+  "directory.selected-user": "1.0.0",
   "events-v2": "1.0.0",
   "events.durable-receipts": "1.0.0",
   "events.capture-policy": "1.0.0",
