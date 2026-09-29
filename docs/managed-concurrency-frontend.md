@@ -168,17 +168,17 @@ export function ClaimAction({ offerId }: { offerId: string }) {
 
 默认恢复信息保存在 `sessionStorage`，按应用、环境、主体、命令和 `storageKey` 隔离。同标签页刷新可以恢复；`storageKey` 必须稳定，不能在每次渲染时随机生成。存储不可用时明确停止或处理，不能悄悄改用易丢失的内存继续提交。
 
-已知 `operationId` 或原 `requestKey` 时，可以用 `client.result` 查询原结果。已成功业务记录可通过本人权限下的普通数据查询展示。当前没有“列出我的所有进行中命令”的接口；关闭标签后找回、跨设备继续和完整处理中列表需要额外的受管操作索引，不能把浏览器存储当作全平台事实。
+已知 `operationId` 或原 `requestKey` 时，可以用 `client.result` 查询原结果。已成功业务记录可通过本人权限下的普通数据查询展示。durable 命令另有 client.mine 和 useDurableCommand 用于本人跨设备恢复，见下文；原 permit 等待票据仍依赖本地保存，不能把浏览器存储当作全平台事实。
 
 不要把超时解释为提交失败，也不要在结果未知时 `clear()`。重试、恢复与返回入口都应该指向原意图。配额永久去重与界面请求键是不同边界：清除一个已终结的界面状态不代表可以再次获得同一池名额。
 
 ## 当前组件与后续封装边界 {#available-components}
 
-当前可用：`createManagedConcurrencyClient`、`useManagedCommand`、`ManagedCommandStatus`、`ManagedCommandGate`，以及客户端的读取、结果、取消和分配状态方法。
+当前可用：`createManagedConcurrencyClient`、`useManagedCommand`、`useDurableCommand`、`ManagedCommandStatus`、`ManagedCommandGate`，以及客户端的读取、结果、取消和分配状态方法。
 
 `useManagedRead`、`ManagedCommandButton`、`ManagedCommandPanel`、`useManagedFormSubmission`、`useManagedAllocation`、`AllocationStatus` 是建议的后续封装名称，当前不是公开导出。不要照这些名称编写 import。应用现在可以使用已有 hook 与平台普通 UI 组件组合界面，后续标准封装仍应复用同一状态机和传输。
 
-复杂资料冻结、跨设备命令索引、独立页面准入及精确倒计时需要相应的平台契约，不能仅通过前端外观补齐。SDK 版本、平台部署和实际业务容量需要分别确认。
+复杂资料冻结、跨所有命令的全局索引、独立页面准入及精确倒计时需要相应的平台契约，不能仅通过前端外观补齐。SDK 版本、平台部署和实际业务容量需要分别确认。
 
 ## 接入验收 {#acceptance}
 
