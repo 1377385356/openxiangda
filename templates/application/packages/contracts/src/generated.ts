@@ -144,6 +144,11 @@ export const adminPages = [] as const;
 export const adminNavigation = [] as const;
 export const eventTypes = [] as const;
 export const eventSubscriptionCodes = [] as const;
+export const managedCommandHandlerManifest = {
+  "schemaVersion": "openxiangda.managed-command-handler-manifest/v1",
+  "appCode": "openxiangda-application",
+  "handlers": []
+} as const;
 export const eventHandlerManifest = {
   "schemaVersion": "openxiangda.event-handler-manifest/v2",
   "appCode": "openxiangda-application",
