@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.33.0",
+  "version": "2.34.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -71,13 +71,13 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.6.13",
-    "openxiangda-contracts": "2.33.0",
-    "openxiangda-devkit-core": "2.34.5",
+    "openxiangda-cli": "2.6.14",
+    "openxiangda-contracts": "2.34.0",
+    "openxiangda-devkit-core": "2.35.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.61",
-    "openxiangda-nest": "2.10.0",
-    "openxiangda-skill-kit": "2.3.36",
+    "openxiangda-mcp": "2.0.62",
+    "openxiangda-nest": "2.11.0",
+    "openxiangda-skill-kit": "2.3.37",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -143,35 +143,40 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.33.0",
+    "version": "2.34.0",
     "status": "reviewed",
-    "title": "OpenXiangda 2.33.0：事务构建与部署前置诊断",
-    "summary": "在提交前定位事务组合错误，在构建前发现平台依赖故障。",
+    "title": "OpenXiangda 2.34.0：持久排队业务计划与结果恢复",
+    "summary": "新增由平台持久受理并自动处理的业务命令，支持关闭页面后继续执行与本人跨设备恢复。",
     "newFeatures": [
-      "openxiangda/nest 提供 createDataTransaction、diagnoseDataTransaction 和结构化构建错误。"
+      "新增 durable 受管命令、独立能力门禁、有界参数及生成的 backend-plan handler 清单。",
+      "openxiangda/nest 提供受执行证明约束的只读计划 handler，平台负责最终原子提交。",
+      "openxiangda/react 与 mobile 提供 useDurableCommand，支持显式提交、原键恢复、本人结果和退避轮询。"
     ],
     "fixes": [
-      "支持平台实时前置检查，发现内核、源码托管及镜像仓故障时停止后续构建。"
+      "严格区分内置 permit 配额所有权与应用 durable 计划，普通业务模型无需迁移到命令独占所有权。",
+      "执行上下文拒绝普通 SDK 写入、事务、通知和 OAuth，读取响应验证标准记录结构。"
     ],
     "affectedUsers": [
-      "编写后端事务或向私有平台部署应用的 V2 开发者。"
+      "构建活动报名、预约、抢票及其他需要持久排队事务的 V2 应用开发者。"
     ],
     "upgradeSteps": [
-      "升级 openxiangda 到 2.33.0 并重新安装依赖。",
-      "平台部署对应后端后自动启用前置诊断；事务构建器按文档显式接入。"
+      "升级 openxiangda 到 2.34.0，重新安装依赖并生成应用契约。",
+      "先部署支持 data.managed-concurrency.durable@1.0.0 的平台，再声明 durable 命令、handler manifest 和前端恢复流程。",
+      "在隔离测试数据上验证关闭浏览器、原请求恢复、取消后重报和业务原子结果，再分级测量实际容量。"
     ],
     "knownLimitations": [
-      "只读预检不保证后续写入或容量；原有部署和权限检查继续执行。",
-      "事务构建不自动合并重复写入，不替代服务端权限和并发判断。"
+      "应用只返回受声明约束的事务计划，不能在 handler 内发送通知或调用普通写入接口。",
+      "受理成功不等于业务成功；队列位置为近似投影，不能推导精确等待时间或服务器容量。",
+      "旧 permit 模式保留，未升级平台会拒绝 durable 包；回滚前须停止新受理并核对已有请求。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
       "workspaceGenerations": "v2",
-      "platform": "前置检查按平台 capability 启用，旧站保持原部署流程。",
+      "platform": "durable 必须具备 data.managed-concurrency.durable@1.0.0，旧 permit 契约继续支持。",
       "v1": "V1 引擎与业务不变。"
     },
-    "sha256": "6738fcde83daed062691a30f4c4161d5f59b8024303ba2c4c7fd377c6886de70",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.33.0"
+    "sha256": "929abb0ea8cdbb32e38c39131540cd64a248c4e1a68dbde9ff187f35438f8da0",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.34.0"
   }
 }
