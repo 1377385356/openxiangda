@@ -96,12 +96,14 @@ interface PlatformEnvelope<T> {
   message?: string;
   errorCode?: string;
   requestId?: string;
+  retryable?: boolean;
   data: T;
 }
 
 export class OpenXiangdaPlatformRequestError extends Error {
   readonly code: string;
   readonly status: number;
+  readonly retryable?: boolean;
   readonly data: unknown;
   readonly request?: Readonly<PlatformRequestContext>;
 
@@ -109,6 +111,7 @@ export class OpenXiangdaPlatformRequestError extends Error {
     code: string;
     status: number;
     message: string;
+    retryable?: boolean;
     data?: unknown;
     request?: PlatformRequestContext;
   }) {
@@ -116,6 +119,7 @@ export class OpenXiangdaPlatformRequestError extends Error {
     this.name = 'OpenXiangdaPlatformRequestError';
     this.code = input.code;
     this.status = input.status;
+    this.retryable = input.retryable;
     this.data = input.data ?? null;
     this.request = input.request ? Object.freeze({ ...input.request }) : undefined;
   }
@@ -158,7 +162,10 @@ function responseRequestError(path: string, init: RequestInit | undefined, respo
   const context = requestContext(path, init, response, payload?.requestId);
   const code = String(payload?.errorCode || payload?.code || `HTTP_${response.status}`);
   return new OpenXiangdaPlatformRequestError({ code, status: response.status,
-    message: `${code}: ${payload?.message || fallback}${context.requestId ? ` (requestId: ${context.requestId})` : ''}`,
+    message: response.status >= 400 && response.status < 500 && typeof payload?.message === 'string' && payload.message.trim()
+      ? payload.message
+      : `${code}: ${payload?.message || fallback}${context.requestId ? ` (requestId: ${context.requestId})` : ''}`,
+    retryable: typeof payload?.retryable === 'boolean' ? payload.retryable : undefined,
     data: payload?.data ?? null, request: context });
 }
 

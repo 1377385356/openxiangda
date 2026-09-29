@@ -58,3 +58,21 @@ test('export errors and exhausted read retries retain the last request context',
   });
   assert.equal(reads, 4);
 }));
+
+test('business and permission refusals preserve display message separately from code and retryability', async () => fixture(async () => {
+  for (const status of [400, 403, 409, 422]) {
+    let calls = 0;
+    globalThis.fetch = async () => { calls++; return new Response(JSON.stringify({
+      code: 'BUSINESS_ALREADY_REGISTERED', message: '该人员已有有效报名，请先核对原报名。', retryable: false,
+    }), {status, headers:{'x-request-id':'business-refusal'}}); };
+    await assert.rejects(requestApplicationApi('/register', {method:'POST',body:'{}'}), error => {
+      assert.ok(error instanceof OpenXiangdaPlatformRequestError);
+      assert.equal(error.message, '该人员已有有效报名，请先核对原报名。');
+      assert.equal(error.code, 'BUSINESS_ALREADY_REGISTERED');
+      assert.equal(error.status, status); assert.equal(error.retryable, false);
+      assert.equal(platformRequestDiagnostic(error)!.requestId, 'business-refusal');
+      return true;
+    });
+    assert.equal(calls, 1);
+  }
+}));
