@@ -1222,9 +1222,10 @@ test('shows an explicit authorization error instead of an empty work center', as
   await page.goto('/workflow-experience.e2e.html?initial=/work-center', {
     waitUntil: 'domcontentloaded',
   });
-  await expect(page.getByRole('alert')).toContainText('403: forbidden', {
+  await expect(page.getByRole('alert')).toContainText('forbidden', {
     timeout: 30_000,
   });
+  await expect(page.getByRole('alert')).not.toContainText('403:');
   await expect(page.getByRole('button', { name: '采购申请审批' })).toHaveCount(0);
 });
 
