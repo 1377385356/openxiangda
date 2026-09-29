@@ -6,6 +6,8 @@ import {
   defineApplicationContributions,
   OpenXiangdaAdminPage,
   OpenXiangdaApplication,
+  type AdminShellProps,
+  type AdminShellModel,
 } from 'openxiangda/react';
 import type { DataFieldSurface, DataResourceSurface } from 'openxiangda/core';
 import 'openxiangda/react/styles.css';
@@ -300,6 +302,14 @@ const applicationContributions = defineApplicationContributions(
   },
 );
 
+function CustomAdminShell({ children, navigation, title, identity, navigate }: AdminShellProps) {
+  return <div data-testid="custom-admin-shell"><header><h1>{title}</h1><span>{identity.subjectProfile.displayName}</span></header>
+    <nav aria-label="自定义后台导航">{navigation.flatMap(group => group.items).map(item => <button key={item.code} onClick={() => navigate(item.path)}>{item.label}</button>)}</nav>
+    <main>{children}</main></div>;
+}
+function CustomAdminHeader({ title }: AdminShellModel) { return <header data-testid="custom-admin-header">{title}</header>; }
+const customShell = new URLSearchParams(location.search).get('shell');
+
 const timeZone = new URLSearchParams(location.search).get('timeZone') || undefined;
 if (location.pathname.endsWith('/resource-experience.e2e.html')) {
   history.replaceState({}, '', '/admin/resources/resource-01');
@@ -311,6 +321,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       appCode="openxiangda-application"
       appName="资源体验验收"
       timeZone={timeZone}
+      adminAccess={customShell ? { anyOf: ['app:openxiangda-application:operations:read'] } : undefined}
+      ui={{ admin: customShell === 'full' ? { shell: CustomAdminShell } : customShell === 'header' ? { header: CustomAdminHeader } : undefined }}
       adminNavigation={[
         {
           code: 'resources',

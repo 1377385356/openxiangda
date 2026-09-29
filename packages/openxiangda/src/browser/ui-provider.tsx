@@ -2,8 +2,10 @@ import { App, ConfigProvider, type ThemeConfig } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import { useCallback, useRef, type CSSProperties, type ReactNode } from 'react';
 import { PresentationTimeZoneContext, validatePresentationTimeZone } from './presentation-time';
+import { AdminShellOptionsContext, type AdminShellOptions } from './admin-shell';
 
 export interface OpenXiangdaUiOptions {
+  admin?: AdminShellOptions;
   theme?: ThemeConfig;
   className?: string;
   style?: CSSProperties & Record<`--${string}`, string | number>;
@@ -11,7 +13,7 @@ export interface OpenXiangdaUiOptions {
 const defaultTheme: ThemeConfig = {};
 
 /** Application-owned visual input; no global preferences or document mutation. */
-export function OpenXiangdaUiProvider({ children, timeZone, theme, className, style }: OpenXiangdaUiOptions & { children: ReactNode; timeZone?: string }) {
+export function OpenXiangdaUiProvider({ children, timeZone, theme, className, style, admin }: OpenXiangdaUiOptions & { children: ReactNode; timeZone?: string }) {
   const zone = validatePresentationTimeZone(timeZone);
   const surface = useRef<HTMLElement>(null);
   const getContainer = useCallback(() => surface.current || document.body, []);
@@ -19,7 +21,7 @@ export function OpenXiangdaUiProvider({ children, timeZone, theme, className, st
     <PresentationTimeZoneContext.Provider value={zone}>
       <ConfigProvider locale={zhCN} theme={theme ?? defaultTheme} getPopupContainer={getContainer}>
         <App ref={surface} className={['oxa-ui-root', className].filter(Boolean).join(' ')} style={style}
-          message={{ getContainer }} notification={{ getContainer }}>{children}</App>
+          message={{ getContainer }} notification={{ getContainer }}><AdminShellOptionsContext.Provider value={admin}>{children}</AdminShellOptionsContext.Provider></App>
       </ConfigProvider>
     </PresentationTimeZoneContext.Provider>
   );

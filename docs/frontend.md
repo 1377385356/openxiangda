@@ -20,7 +20,7 @@
 
 标准管理后台是每个业务应用的默认开发骨架，必须保留后台 Shell、显式菜单、资源表单、数据列表、详情/编辑、权限和流程入口。开发顺序先完成后台资源与契约，再实现用户端 PC/移动端；不能以用户端首页或设计原型替代后台。
 
-Agent 可以在标准后台内部优化布局、视觉和交互，但后台仍复用平台 Shell、导航、字段行为和权限。用户端 PC 与移动端按真实旅程分别设计，通过平台 runtime/Data API 使用后台数据。图片参考和原型不拥有业务事实；禁止用图片、单页 HTML、iframe 或自定义假后台替换标准后台，也不能把后台权限、导航状态复制到用户端。
+Agent 可以在标准后台内部优化布局、视觉和交互，后台通过默认 Shell 或 `ui.admin` 扩展复用平台导航、字段行为和权限。用户端 PC 与移动端按真实旅程分别设计，通过平台 runtime/Data API 使用后台数据。图片参考和原型不拥有业务事实；禁止用图片、单页 HTML、iframe 或自定义假后台替换标准后台，也不能把后台权限、导航状态复制到用户端。
 
 发布前分别验证后台入口、表单、数据列表、流程入口和用户端 PC/移动端入口；没有完成后台骨架的应用不得发布。
 
@@ -31,9 +31,9 @@ Agent 可以在标准后台内部优化布局、视觉和交互，但后台仍�
 | 独立门户、申请或用户任务 | 按实际旅程选择 `surface: 'user'`，拥有独立布局 |
 | 确有手机使用需求的用户任务 | 独立移动 user 页面，使用 `openxiangda/mobile` 和 Field Kit |
 
-“自定义页面”可以直接放在标准后台内。应用只编写内容，runtime 自动套用唯一 Shell；不要因为要画图表就复制顶栏、侧栏、Router 或改成 user 页面。模板 `/home` 是独立用户页占位，不能不经页面选型就当作业务默认入口。
+“自定义页面”可以直接放在标准后台内。应用编写业务内容，runtime 自动套用默认或应用提供的唯一 Shell；自定义布局使用 `ui.admin`，无需复制 Router 或改成 user 页面。模板 `/home` 是独立用户页占位，不能不经页面选型就当作业务默认入口。
 
-后台菜单的分组、名称、顺序、图标由 `frontend.admin.navigation` 配置；标准视图控制字段与操作，工具栏/行/详情有动作插槽，自定义 React 内容通过 contributions 接入。当前没有整套后台 Shell 的替换接口。用户需要独立产品布局时选择 user surface，普通后台报表无需更换外壳。
+后台菜单的分组、名称、顺序、图标由 `frontend.admin.navigation` 配置；标准视图控制字段与操作，工具栏/行/详情有动作插槽，自定义 React 内容通过 contributions 接入。通过 `ui.admin.shell` 可替换整个后台外观，也可用 `header`、`sidebar`、`footer` 插槽局部扩展。后台页面仍使用 admin surface，路由与权限由平台维护。
 
 应用根路径由生成的 `routeManifest.rootEntry` 分流；`/admin` 根据当前用户可访问的显式菜单选择后台首页。交付时分别核验平台应用列表入口、根路径、后台入口和业务深链接。无后台菜单不能解释为缺少模型；没有管理后台的用户应用也不需要为了消除空状态伪造 CRUD 页面。
 
@@ -445,3 +445,29 @@ pnpm --filter @app/web build
 ## 具名工作流私有草稿
 
 普通创建能力被应用关闭时，使用 `createWorkflowFormDraftClient('contracts', { workflowCode: 'contract-approval', operationCode: 'submit-contract-approval' })`（从 `openxiangda/react` 导入）。客户端提供 `list/save/remove`，保持当前用户、环境、工作流与具名操作范围；仅支持默认 create 表单，不包含 Native submit。保存 `values` 与已声明的 `state`；正式提交仍将既有 `formDraft:{resourceCode,id,expectedRevision,mode:'create'}` 交给业务操作的 BusinessProcess 原子消费。服务端从真实业务命令核验工作流/操作，不能传任意范围冒用草稿。需先部署支持该能力与新增草稿作用域列的平台版本；不得通过增加普通 NativeCreate 或本地存储绕过拒绝。
+
+
+## 应用自定义后台壳层
+
+`OpenXiangdaApplication` 的 `ui.admin` 允许应用定义完整后台布局，不需要隐藏平台 DOM。
+
+```tsx
+import type { AdminShellProps } from 'openxiangda/react';
+function ProductAdmin({ children, navigation, identity, title, navigate, logout, loggingOut }: AdminShellProps) {
+  return <div className="product-admin">
+    <header><strong>{title}</strong><span>{identity.subjectProfile.displayName}</span>
+      <button disabled={loggingOut} onClick={() => void logout()}>退出登录</button></header>
+    <aside>{navigation.map(group => <nav key={group.code} aria-label={group.label}>
+      {group.items.map(item => <button key={item.code} onClick={() => navigate(item.path)}>{item.label}</button>)}
+    </nav>)}</aside><main>{children}</main>
+  </div>;
+}
+// 在既有 OpenXiangdaApplication 上增加，其他契约 props 原样保留：
+// ui={{ theme, admin: { shell: ProductAdmin, centerNavigation: { workflow: false, messages: false } } }}
+```
+
+`navigation` 已按当前角色并集和读取视角过滤，`selectedPath`、`homePath`、`pathname`、`search` 来自平台 Router；请直接渲染，不保存另一份角色或菜单状态。`centers` 为可见的审批工作中心与消息中心入口；隐藏中心导航仅改变展示，不禁用能力或深链接。隐藏后应从业务页为审批人提供任务入口。
+
+可只提供 `header`、`sidebar` 或 `footer`（接收 `AdminShellModel`）。整体 `shell` 额外收到 `children` 与 `slots`，可复用默认部件或完全自行排版。自定义壳层接管后台资源列表、新增、详情、编辑、移动深链以及后台业务页面；标准字段、抽屉、未保存提示和授权继续由平台组件负责。登录页和用户页不受影响。组件在模块顶层声明，避免每次渲染重新创建组件类型导致表单重挂载。
+
+无 `ui.admin` 时沿用默认后台。扩展不能越过 `adminAccess`、页面能力或 Data API 记录权限；不能自行创建第二个 Router、认证会话或数据权限状态。验收应覆盖应用入口、刷新深链、无权角色、PC/移动、键盘和壳层异常恢复。

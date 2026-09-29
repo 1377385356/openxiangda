@@ -40,7 +40,7 @@ test('gates every admin route before the Shell or page content mounts', () => {
   assert.match(source, />\s*返回门户\s*<\/Button>/);
   assert.match(
     source,
-    /<AdminAccessBoundary access=\{props\.adminAccess\} portalRoot=\{props\.portalRoot\}>\s*\{variant === 'desktop' && props\.mode === 'list' \? <Shell>\{content\}<\/Shell> : content\}/,
+    /<AdminAccessBoundary access=\{props\.adminAccess\} portalRoot=\{props\.portalRoot\}>\s*\{customized \|\| \(variant === 'desktop' && props\.mode === 'list'\) \? <Shell>\{content\}<\/Shell> : content\}/,
   );
   assert.match(
     source,

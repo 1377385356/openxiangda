@@ -517,7 +517,7 @@ test('owns one router/runtime/shell composition for generated admin and user rou
   assert.match(source, /contribution\.route\.surface === 'admin'/);
   assert.match(
     source,
-    /variant === 'desktop' && props\.mode === 'list' \? <Shell>\{content\}<\/Shell> : content/,
+    /customized \|\| \(variant === 'desktop' && props\.mode === 'list'\) \? <Shell>\{content\}<\/Shell> : content/,
   );
   assert.match(source, /const mobilePath = `\/m\$\{page\.path\}`/);
   assert.match(source, /createStandardRouteManifestIndex/);

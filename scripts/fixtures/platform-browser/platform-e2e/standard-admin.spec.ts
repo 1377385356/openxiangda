@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { mockPlatform } from './resource-platform-mock';
+import { mockPlatform, runtimeAuthorization } from './resource-platform-mock';
 
 async function chooseOption(page: Page, control: Locator, name: string) {
   await control.click();
@@ -9,12 +9,12 @@ async function chooseOption(page: Page, control: Locator, name: string) {
   await page.locator(`[id="${listId}"]`).getByRole('option', { name, exact: true }).click();
 }
 
-async function editablePlatform(page: Page, fixtureMode = 'business') {
+async function editablePlatform(page: Page, fixtureMode = 'business', shell?: string) {
   const context = page.context();
   await mockPlatform(context, true, undefined, true);
   await context.route(/\/(?:admin|m\/admin)\/resources\//, async route => {
     if (route.request().resourceType() !== 'document') return route.fallback();
-    const url = new URL(route.request().url()); url.pathname = '/resource-experience.e2e.html'; url.search = `?primary=${fixtureMode}`;
+    const url = new URL(route.request().url()); url.pathname = '/resource-experience.e2e.html'; url.search = `?primary=${fixtureMode}${shell ? `&shell=${shell}` : ''}`;
     const response = await route.fetch({ url: url.href }); await route.fulfill({ response });
   });
   const records = Array.from({ length: 21 }, (_, index) => ({
@@ -525,4 +525,45 @@ test('edit uses current record without prompting for an existing saved draft', a
   await expect(page.getByRole('dialog', {name:'载入暂存数据'})).toHaveCount(0);
   await page.getByRole('button', {name:'草稿箱', exact:true}).click();
   await expect(page.getByRole('dialog', {name:/草稿箱/})).toContainText('旧草稿');
+});
+
+for (const width of [1440, 390]) {
+  test(`custom admin shell covers lists and deep-link forms at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await editablePlatform(page, 'business', 'full');
+    await page.goto('/admin/resources/resource-01?shell=full');
+    await expect(page.getByTestId('custom-admin-shell')).toBeVisible();
+    await expect(page.locator('.oxa-sider')).toHaveCount(0);
+    await expect(page.locator('.oxa-topbar')).toHaveCount(0);
+    await expect(page.getByRole('navigation', { name: '自定义后台导航' })).toContainText('内容栏目');
+    await page.goto('/admin/resources/resource-01/new?shell=full');
+    await expect(page.getByTestId('custom-admin-shell')).toBeVisible();
+    await expect(page.getByRole('textbox', { name: /栏目名称/ })).toBeVisible();
+    await page.reload();
+    await expect(page.getByTestId('custom-admin-shell')).toBeVisible();
+  });
+}
+test('admin header slot retains the platform sidebar and resource content', async ({ page }) => {
+  await editablePlatform(page, 'business', 'header');
+  await page.goto('/admin/resources/resource-01?shell=header');
+  await expect(page.getByTestId('custom-admin-header')).toBeVisible();
+  await expect(page.locator('.oxa-sider')).toBeVisible();
+  await expect(page.locator('.oxa-topbar')).toHaveCount(0);
+  await expect(page.getByRole('table')).toBeVisible();
+});
+
+
+test('custom admin shell receives only permitted navigation and cannot bypass admin access', async ({ page }) => {
+  await editablePlatform(page, 'business', 'full');
+  const auth = runtimeAuthorization(true);
+  auth.principal.capabilityCodes = ['app:openxiangda-application:operations:read', 'app:openxiangda-application:data:resource-01:read'];
+  await page.route('**/native/authz/current*', route => route.fulfill({json:{code:200,data:auth}}));
+  await page.goto('/admin/resources/resource-01?shell=full');
+  const navigation = page.getByRole('navigation', {name:'自定义后台导航'});
+  await expect(navigation).toContainText('内容栏目');
+  await expect(navigation).not.toContainText('内容文章');
+  auth.principal.capabilityCodes = [];
+  await page.reload();
+  await expect(page.getByTestId('custom-admin-shell')).toHaveCount(0);
+  await expect(page.getByText('无管理后台访问权限', { exact: true })).toBeVisible();
 });

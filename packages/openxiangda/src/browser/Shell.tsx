@@ -46,6 +46,7 @@ import {
 import { logoutCurrentUser, uploadCurrentUserAvatar } from './platform-client';
 import { useRuntime } from './runtime';
 import { applicationName } from './runtime-meta';
+import { AdminShellErrorBoundary, useAdminShellOptions, type AdminShellModel } from './admin-shell';
 
 const { Content, Header, Sider } = Layout;
 const MENU_SCROLL_STORAGE_KEY = 'openxiangda.admin.menu-scroll-top';
@@ -90,6 +91,7 @@ function storeMenuScrollTop(value: number) {
 }
 
 export function Shell({ children }: { children: ReactNode }) {
+  const options = useAdminShellOptions();
   const architecture = useAdminInformationArchitecture();
   const contributions = useAdminContributions();
   const {
@@ -121,6 +123,7 @@ export function Shell({ children }: { children: ReactNode }) {
     const route = entry.desktop;
     return (!route.capability || hasCapability(route.capability)) && (route.access?.allOf || []).every(hasCapability) && (!(route.access?.anyOf || []).length || route.access!.anyOf!.some(hasCapability));
   }).sort((left, right) => Number(left.kind !== 'workflow-work-center') - Number(right.kind !== 'workflow-work-center'));
+  const visibleCenters = centers.filter(entry => entry.kind === 'workflow-work-center' ? options?.centerNavigation?.workflow !== false : options?.centerNavigation?.messages !== false);
   const centerLabel = (kind: string) => kind === 'workflow-work-center' ? '待办中心' : '消息中心';
   const currentCenter = centers.find(entry => entry.desktop.path === location.pathname);
   const currentLabel = currentCenter ? centerLabel(currentCenter.kind) : currentNavigationItem?.label || currentPage?.label || '应用首页';
@@ -192,7 +195,7 @@ export function Shell({ children }: { children: ReactNode }) {
 
   const menuItems = useMemo<MenuProps['items']>(
     () =>
-      [...centers.map(entry => ({ key: entry.desktop.path, label: centerLabel(entry.kind), icon: entry.kind === 'workflow-work-center' ? <CheckSquareOutlined /> : <BellOutlined /> })), ...accessibleGroups.map(group => ({
+      [...visibleCenters.map(entry => ({ key: entry.desktop.path, label: centerLabel(entry.kind), icon: entry.kind === 'workflow-work-center' ? <CheckSquareOutlined /> : <BellOutlined /> })), ...accessibleGroups.map(group => ({
         key: group.code,
         icon: navigationIcon(group.icon),
         label: group.label,
@@ -205,7 +208,7 @@ export function Shell({ children }: { children: ReactNode }) {
           };
         }),
       }))],
-    [accessibleGroups, architecture.pagesByCode, centers],
+    [accessibleGroups, architecture.pagesByCode, visibleCenters],
   );
   const selectedPageCode = currentNavigationItem
     ? currentPage?.code
@@ -274,9 +277,17 @@ export function Shell({ children }: { children: ReactNode }) {
     },
   };
 
-  return (
-    <Layout className="oxa-app-layout">
-      <Sider
+  const model: AdminShellModel = {
+    applicationName: applicationName(), homePath, title: currentLabel,
+    pathname: location.pathname, search: location.search, selectedPath: selectedMenuPath,
+    navigation: accessibleGroups.map(group => ({ code: group.code, label: group.label, icon: group.icon,
+      items: group.items.map(item => { const page = architecture.pagesByCode.get(item.pageCode)!;
+        return { code: page.code, label: item.label || page.label, path: page.path, icon: item.icon }; }) })),
+    centers: visibleCenters.map(entry => ({ code: entry.code, label: centerLabel(entry.kind), path: entry.desktop.path })),
+    identity: { ...identity, subjectProfile: profile }, roleNames,
+    perspectives, perspective, setPerspective, navigate: navigateFromMenu, logout: handleLogout, loggingOut,
+  };
+  const defaultSidebar = <Sider
         className="oxa-sider"
         collapsed={collapsed}
         collapsedWidth={64}
@@ -337,9 +348,8 @@ export function Shell({ children }: { children: ReactNode }) {
             {!collapsed && '收起侧边栏'}
           </Button>
         </div>
-      </Sider>
-      <Layout className="oxa-workspace">
-        <Header className="oxa-topbar">
+      </Sider>;
+  const defaultHeader = <Header className="oxa-topbar">
           <Breadcrumb
             items={[
               { title: '首页', onClick: () => navigate(homePath) },
@@ -449,13 +459,22 @@ export function Shell({ children }: { children: ReactNode }) {
               <DownOutlined className="oxa-current-user-chevron" />
             </button>
           </Dropdown>
-        </Header>
-        <Content className="oxa-content">
-          <main className="oxa-main">{children}</main>
-        </Content>
-      </Layout>
-    </Layout>
-  );
+        </Header>;
+  const CustomShell = options?.shell;
+  const CustomHeader = options?.header;
+  const CustomSidebar = options?.sidebar;
+  const CustomFooter = options?.footer;
+  const slots = {
+    header: CustomHeader ? <CustomHeader {...model} /> : defaultHeader,
+    sidebar: CustomSidebar ? <CustomSidebar {...model} /> : defaultSidebar,
+    footer: CustomFooter ? <CustomFooter {...model} /> : null,
+  };
+  return <AdminShellErrorBoundary key={location.pathname} homePath={homePath} onHome={() => navigate(homePath)}>
+    {CustomShell ? <CustomShell {...model} slots={slots}>{children}</CustomShell> :
+      <Layout className="oxa-app-layout">{slots.sidebar}<Layout className="oxa-workspace">
+        {slots.header}<Content className="oxa-content"><main className="oxa-main">{children}</main></Content>{slots.footer}
+      </Layout></Layout>}
+  </AdminShellErrorBoundary>;
 }
 
 export function EmptyApplicationPage({

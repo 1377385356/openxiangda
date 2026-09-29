@@ -28,6 +28,7 @@ import {
   configureApplicationIdentity,
 } from './runtime-meta';
 import { EmptyApplicationPage, Shell } from './Shell';
+import { useAdminShellOptions } from './admin-shell';
 import {
   AdminContributionsProvider,
   isApplicationRouteAllowed,
@@ -245,6 +246,8 @@ function GeneratedResourceRoute(props: {
   devicePolicy: AppRouteManifestV3['devicePolicy'];
   mobileEnabled: boolean;
 }) {
+  const adminUi = useAdminShellOptions();
+  const customized = Boolean(adminUi?.shell || adminUi?.header || adminUi?.sidebar || adminUi?.footer);
   const device = useViewportDevice(props.devicePolicy);
   const variant = props.variant === 'mobile' || (props.mode !== 'list' && props.mobileEnabled && device === 'mobile') ? 'mobile' : 'desktop';
   const content = (
@@ -254,7 +257,7 @@ function GeneratedResourceRoute(props: {
   );
   return (
     <AdminAccessBoundary access={props.adminAccess} portalRoot={props.portalRoot}>
-      {variant === 'desktop' && props.mode === 'list' ? <Shell>{content}</Shell> : content}
+      {customized || (variant === 'desktop' && props.mode === 'list') ? <Shell>{content}</Shell> : content}
     </AdminAccessBoundary>
   );
 }

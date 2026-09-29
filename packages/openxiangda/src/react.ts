@@ -18,6 +18,7 @@ export * from './browser/route-manifest';
 export { useUnsavedChangesGuard, type UnsavedChangesGuardOptions } from './browser/navigation-guard';
 export * from './browser/standard-user-surfaces';
 export * from './browser/Shell';
+export * from './browser/admin-shell';
 export * from './browser/resource-definitions';
 export * from './browser/workflow-definitions';
 export * from './browser/workflow-launch';
