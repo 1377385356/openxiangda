@@ -1,5 +1,6 @@
 import type {
   AppApiOperationContract,
+  ManagedCommandHandlerManifest,
   AppEventHandlerContract,
   EventSchemaDefinition,
   GatewayInvocationPrincipal,
@@ -48,6 +49,7 @@ export interface OpenXiangdaModuleOptions {
   /** Base delay for receipt command retry backoff. Defaults to 150ms. */
   eventReceiptRetryDelayMs?: number;
   /** Generated immutable handlers accepted by this application build. */
+  managedCommandHandlerManifest?: ManagedCommandHandlerManifest;
   eventHandlerManifest?: {
     readonly schemaVersion: 'openxiangda.event-handler-manifest/v2';
     readonly appCode: string;

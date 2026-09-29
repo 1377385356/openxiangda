@@ -1,3 +1,4 @@
+import { OpenXiangdaManagedCommandController, OpenXiangdaManagedCommandRegistry } from './managed-command.js';
 import { DynamicModule, Global, Module } from '@nestjs/common';
 import { APP_GUARD, DiscoveryModule, Reflector } from '@nestjs/core';
 import {
@@ -56,6 +57,7 @@ const APPLICATION_OPTION_KEYS = new Set([
   'eventReceiptMaxAttempts',
   'eventReceiptRetryDelayMs',
   'eventHandlerManifest',
+  'managedCommandHandlerManifest',
   'eventSchemas',
   'workflowAssigneeProviderSecrets',
   'workflowAssigneeProviderMaxAgeSeconds',
@@ -96,6 +98,7 @@ export class OpenXiangdaModule {
         OpenXiangdaPlatformController,
         OpenXiangdaAssigneeProviderController,
         OpenXiangdaEventController,
+        OpenXiangdaManagedCommandController,
       ],
       providers: [
         { provide: OPENXIANGDA_MODULE_OPTIONS, useValue: Object.freeze(options) },
@@ -130,6 +133,7 @@ export class OpenXiangdaModule {
         OpenXiangdaEventReceiver,
         OpenXiangdaEventContext,
         OpenXiangdaEventRegistry,
+        OpenXiangdaManagedCommandRegistry,
         OpenXiangdaNotificationService,
         OpenXiangdaBusinessNotificationService,
         OpenXiangdaWorkflowService,

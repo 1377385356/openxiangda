@@ -15,7 +15,7 @@
 | `commands` | 当前用户的能力、按资源分队列、最长等待、处理截止、Native 守卫和原子写入 |
 | `quotas` | 容量来源、业务记录上的分配 ID、可选的预占到期时间 |
 
-参数限于 UUID、有限字符串枚举和有限整数范围；绑定只接受 `input`、可信 `actor`、字面量和平台生成的 `allocation`。每个命令最多 8 个操作、8 个记录守卫。首版不执行应用任意 JS/SQL，也不在锁内调用外部系统。通知和外部副作用接已有事务后事件。
+默认 permit 模式的参数限于 UUID、有限字符串枚举和有限整数范围；绑定只接受 `input`、可信 `actor`、字面量和平台生成的 `allocation`。permit 命令最多 8 个操作、8 个记录守卫。permit 模式不执行应用任意 JS/SQL，也不在锁内调用外部系统。通知和外部副作用接已有事务后事件。
 
 配额来源模型的容量字段必须是整数；分配记录模型的引用字段必须是必填 UUID，模型设置 `mutationOwner: 'queued-command'`。角色仍须具备来源读取、分配模型创建和命令能力。普通 CRUD、导入、应用凭据均不能绕过命令所有权。用户身份由 `actor` 绑定，不能使用用户填写的人员编号决定名额归属。
 
@@ -75,7 +75,7 @@ export function Claim({ offerId }: { offerId: string }) {
 
 立即分配用 `quota.action: 'allocate', mode: 'committed'`；需要预占时声明 `reservationSeconds` 并用 `mode: 'reserved'`。另声明 `confirm`、`release` 命令，绑定原 `allocation`，该命令的 `operations` 为空。只有原主体可确认/释放；到期与确认竞争使用数据库时间及固定锁顺序。
 
-原命令回执不可变。预占之后到期或释放，应调用 `client.allocation(allocationId)` 获取当前分配状态，不能用旧成功回执证明仍持有名额。首版同一池/主体保留永久去重事实，释放后不会自动重新报名；应用若需要新一轮，应使用新的权威资源/配额池，不能删除历史分配。
+原命令回执不可变。预占之后到期或释放，应调用 `client.allocation(allocationId)` 获取当前分配状态，不能用旧成功回执证明仍持有名额。内置 quota 模式同一池/主体保留永久去重事实，释放后不会自动重新报名；应用若需要新一轮，应使用新的权威资源/配额池，不能删除历史分配。
 
 容量减少不能低于已预占加已确认数量。存在配额历史时，禁止删除来源、改写分配引用或发布移除配额映射的版本。应用激活先排空所有非终态命令；不会让旧任务在新 Head 上执行。连接开发消费已激活测试版本的并发声明，未激活的本地模型覆盖层不能作为持久命令契约。
 
@@ -98,3 +98,54 @@ RabbitMQ 的消息只是唤醒提示；队列丢失或发布失败由数据库�
 暂停/恢复按同一个环境锁串行传播；Redis 不可用时控制接口明确报错。控制值是绝对值，可以使用相同 `paused` 重试并核对状态。数据库提交确认丢失时不猜测控制结果；受理始终复查数据库的暂停状态。
 
 验证应包括内容 SQL 与授权 SQL 占比、每秒完成数、P95/P99、最老等待、连接数、锁等待和恢复时间。仓库故障测试证明协议边界，不代表任何客户环境的生产吞吐。部署者仍需使用目标硬件、真实权限和活动规模做容量验收。
+
+
+## 持久排队的应用业务计划（durable）
+
+需要「受理后关闭浏览器仍继续」或取消后再次申请的业务，声明 `mode: 'durable'` 和 `execution.kind: 'backend-plan'`，额外要求 `data.managed-concurrency.durable@1.0.0`。默认省略 mode 仍走原 permit 协议，不能混用 wait/accept 和 enqueue。持久受理先提交数据库；MQ 只唤醒，Redis 只保存可重建的预算和位置投影。受理成功不是报名成功。
+
+```ts
+{
+  code: 'registration-enroll', mode: 'durable', capability: 'app:arts:registration:submit',
+  parameters: { activity: {type:'uuid'}, channel: {type:'uuid'},
+    agreed: {type:'boolean'}, phone: {type:'string',maxLength:32} },
+  resourceKey: {from:'input',key:'activity'}, deadlineSeconds:3600,
+  intake: {perSecond:100,burst:100,maxInFlight:50},
+  admission: {perSecond:2,burst:2,maxInFlight:2,maxQueue:5000,maxWaitSeconds:3600},
+  execution: {kind:'backend-plan',handlerCode:'registration-enroll',timeoutMs:10000,
+    resources:[{resourceCode:'registrations',readFields:['id','activityId','person'],
+      writeOperations:['create'],writeFields:['activityId','person']}],
+    directory:{mode:'current-initiator',fields:['displayName','employeeNumber','primaryDepartment','departments']}}
+}
+```
+
+这是声明片段，资源/字段、角色能力和应用总 admission 必须与实际模型一致。示例预算不是吞吐量承诺。durable 参数最多 8 个、编码最多 8 KiB；自由字符串 maxLength 最大 256，boolean 只允许 durable。intake 的 perSecond/burst/maxInFlight 各为 1..1000，独立限制新受理；admission 三项限制执行，不能超过应用共享预算。maxQueue 最大 10000，maxWaitSeconds 最大 3600，deadlineSeconds 为 10..3600，处理期限从最初数据库 acceptedAt 起算，重试不延长。
+
+resources 最多 32 个，每项 readFields/writeFields 各最多 64 字段，writeOperations 仅 create/update/increment；不声明即不可访问。directory 仅允许当前发起人及四种现有字段，不接受 userId。不得同时声明静态 operations/guards/quota。普通业务模型不必改为 queued-command 所有权；管理员取消等正常业务动作仍使用原权限。已有内置 quota 的独占分配模型不允许通过 backend-plan 改写。
+
+### 后端只读计划
+
+从应用 generated 导入 `managedCommandHandlerManifest`，传给 `OpenXiangdaModule.forApplication({managedCommandHandlerManifest})`。使用 `OpenXiangdaManagedCommandHandler({commandCode,handlerCode})` 注册实现 `plan(input, context)` 的 Nest provider。声明会启用后端；显式禁用 backend 会编译失败。SDK 生成固定 `POST /__platform/managed-commands/:handlerCode/plan`，不可自定义 URL。
+
+context 提供 commandId/commandCode/generation、actor.userId、acceptedAt/deadlineAt、data.get/query 和 directory.currentInitiator()。get 无记录抛 404；query 返回标准 DataPage。handler 强制 request scope，构造函数和依赖只在网关签名与在线执行证明核实之后解析。执行证明保存在 SDK 私有 ALS，普通 SDK 事务、写入、通知和 OAuth 调用在该上下文内拒绝。应用只返回：
+
+```ts
+return {
+  schemaVersion:'openxiangda.managed-command-plan/v1',
+  guards:[{kind:'record-match',resourceCode:'channels',id:channel.id,
+    lockKey:`channel:${channel.id}`,errorCode:'OPENXIANGDA_REGISTRATION_CLOSED',
+    assertions:[{kind:'command-accepted-at',field:'closesAt',operator:'gte'}]}],
+  operations:[{operation:'create',resourceCode:'registrations',data:{activityId,person:context.actor.userId}}],
+  result:{registrationId:{operationIndex:0,field:'id'}}
+};
+```
+
+对应读取和写入字段必须列入 declaration。guard 比较方向为「字段 operator acceptedAt」，不使用客户端时间，也不改变普通 database-now 含义。最多 99 操作、20 守卫、64 KiB 完整响应；仅 create/update/increment。result 中的 `{operationIndex,field:'id'}` 必须指向本计划的 create，由平台提交后替换真实 ID。禁止事务 key、任意副作用或调用回调。应用仍需实时容量、活动开关与活动周期去重守卫，不能把受理时间当作名额保证。
+
+平台在短事务中复核 generation/租约/head/期限/当前命令资格，执行 Native 计划并原子落终态。冲突重新运行只读 handler；网络重试不会重复业务效果。通知以业务事务中的待发送事实或已有事务事件触发，不能在 plan 中直接发送。
+
+### 本人结果与恢复
+
+`client.enqueue(code,input,requestKey)` 返回持久回执；`client.mine(code,{resourceKey,cursor?,limit})` 只查询当前主体，最多 20 条；`client.result` 延续原 ID/原 key。回执包含 resourceKey、updatedAt，可选 queue `{position:number|null,observedAt}`，位置是近似投影，缺失不代表请求丢失。结果终态只说明那次业务事务；管理员取消后仍应读当前业务记录，用户明确操作才发起新周期。
+
+浏览器使用 `useDurableCommand`，详见[前端接入](./managed-concurrency-frontend.md#durable)。部署先发布新 SDK/编译器并确认平台能力；回退前暂停新受理、排空或核对所有原命令，不让旧镜像消费未知执行模式。不能用 SDK 单测替代真实多用户并发、关闭浏览器、跨设备结果和原子事务验收。

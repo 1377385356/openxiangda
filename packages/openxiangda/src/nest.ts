@@ -34,6 +34,7 @@ export {
   OpenXiangdaStandardOperations,
   OpenXiangdaEventContext,
   OpenXiangdaEventHandler,
+  OpenXiangdaManagedCommandHandler,
   OpenXiangdaEventRegistry,
   OpenXiangdaEventRetryableError,
   OpenXiangdaEventDeterministicError,
@@ -69,6 +70,8 @@ export type {
   OpenXiangdaEventBusinessNotificationInput,
   OpenXiangdaRuntimeLeaseState,
   OpenXiangdaEventHandlerContext,
+  OpenXiangdaManagedCommandContext,
+  OpenXiangdaManagedCommandPlanner,
   OpenXiangdaEventHandlerDeclaration,
   OpenXiangdaEventConsumer,
   TimeInterval,
@@ -94,3 +97,5 @@ export {
   resourceSnapshot,
   isIdempotencyConflict,
 } from 'openxiangda-nest';
+
+export type {ManagedCommandPlan, ManagedCommandPlanGuard, ManagedCommandAssertion} from 'openxiangda-contracts';

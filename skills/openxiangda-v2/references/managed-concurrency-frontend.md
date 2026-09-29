@@ -1,6 +1,6 @@
 # 并发能力的前端接入
 
-适用于活动报名、限量申领、抢票和预约。本文使用 `openxiangda@2.31.0` 引入的公开 API；目标平台必须支持 `data.managed-concurrency@1.0.0`。先按[缓存、排队与整数配额](managed-concurrency.md)声明读取、命令、配额和权限，再选择页面接入形式。
+适用于活动报名、限量申领、抢票和预约。permit API 从 `openxiangda@2.31.0` 引入；目标平台必须支持 `data.managed-concurrency@1.0.0`。先按[缓存、排队与整数配额](managed-concurrency.md)声明读取、命令、配额和权限，再选择页面接入形式。
 
 推荐体验是正常浏览内容，在用户明确提交时按需等待，并持续核对同一次申请的结果。低负载时可以很快完成，不需要人为添加等待页。
 
@@ -8,6 +8,7 @@
 
 | 形式 | 适用场景 | 用户流程 | 当前接入方式 |
 | --- | --- | --- | --- |
+| 持久受理后可离开 | 后台自动完成、跨设备恢复 | 填写 → 明确提交 → 持久受理 → 查询结果 | `useDurableCommand`，需 durable 独立能力 |
 | 热点内容直接浏览 | 详情、场次、活动说明 | 浏览 → 按需刷新 | `client.read`，应用处理读取状态 |
 | 按钮发起、原地等待 | 一键报名、限量申领 | 点击 → 排队 → 处理 → 结果 | `useManagedCommand` + `ManagedCommandStatus` |
 | 先填写、再排队提交 | 有选项的预约和申请 | 填写校验 → 确认内容 → 排队提交 | 有界参数组合现有 hook；复杂资料需要额外冻结契约 |
@@ -194,3 +195,21 @@ export function ClaimAction({ offerId }: { offerId: string }) {
 | 键盘、屏幕阅读器、窄屏 | 状态可读，焦点可控，关闭与取消语义清楚 |
 
 这些检查与目标环境的吞吐、P95/P99、授权查询成本和故障恢复验证一起完成；页面演示和 SDK 单元测试不能代替真实业务验收。
+
+
+## 持久受理与跨设备恢复 {#durable}
+
+```tsx
+const client = useMemo(() => createManagedConcurrencyClient(), []);
+const command = useDurableCommand({client,command:'registration-enroll',resourceKey:activityId});
+// 仅真实点击提交；不是 useEffect 或页面 mount 回调。
+const submit = () => command.submit({activity:activityId,channel:channelId,agreed:true,phone});
+```
+
+hook 从 `openxiangda/react` 和 `openxiangda/mobile` 导出。state、initialized、isObserving、requestKey、receipt、errorCode 用于统一状态区；submit(input)、resume()、refresh()、stop() 分别为明确提交、用冻结 input 重试原请求、恢复查询和停止观察。挂载只查本地原 key 或服务端 mine，不自动 enqueue。未知应答保留原 key 与 input；用户恢复后先查原结果，不能换 key 重试。浏览器存储失败在提交前明确失败。未知应答后的恢复按钮调用 resume()，不传当前可能已经修改的表单。snapshot.input 可恢复本地冻结表单；跨设备只有回执时不展示推测的原输入。如果请求在网络中断前未被平台受理，挂载查询保持待核对，明确点击 resume() 才用原 key/input 再次 enqueue。
+
+默认每次至少间隔 5 秒，遵守更长的服务端 retryAfterMs，再加随机抖动；暂时失败指数退避，终态停止。一个业务区域只挂载一个观察者。离开或关闭页面不撤销已受理请求，平台自动继续；新设备通过 mine 找到本人的原请求。position 为空时显示「已受理，稍后可查看」，不要显示虚假的精确人数或预计秒数。
+
+不要在 mount 发现历史 succeeded 时自动跳成功页或永久禁用提交。它可能已经被管理员取消，需结合当前业务记录展示。只有用户明确再次点击 submit，且原请求已有终态，SDK 才创建新的 requestKey；活跃请求或未知应答始终恢复原 key。成功提示以 receipt.state==='succeeded' 和 receipt.result 为准，accepted/executing 只显示「已登记，处理中」。
+
+permit 的 ManagedCommandGate 仍只用于 admitted 短确认，不用于 durable。durable 不能套任意前端 onSubmit 冒充后台事务，真正业务必须由已声明的 backend-plan handler 返回受管计划。

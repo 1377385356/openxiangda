@@ -480,6 +480,7 @@ export function compileRequiredPlatformCapabilitiesV3(
       ? [{ code: 'data.unique-keys' as const, declaration: resources.filter(resource => resource.uniqueKeys?.length)
           .map(resource => ({ code: resource.code, uniqueKeys: resource.uniqueKeys })) }] : []),
     ...(config.data.concurrency ? [{ code: 'data.managed-concurrency' as const, declaration: config.data.concurrency }] : []),
+    ...(config.data.concurrency?.commands.some((command: any) => command.mode === 'durable') ? [{ code: 'data.managed-concurrency.durable' as const, declaration: config.data.concurrency }] : []),
     ...(resources.some(resource => resource.decimalReservationLifecycle)
       ? [{ code: 'data.decimal-reservation-lifecycle' as const,
           declaration: resources.filter(resource => resource.decimalReservationLifecycle)
@@ -1428,6 +1429,7 @@ function compileExpectedContract(
     if (error instanceof ManagedConcurrencyContractError) fail(error.code, error.pointer, { reason: error.reason });
     throw error;
   }
+  if(concurrency?.commands.some(command=>command.mode==='durable') && config.backend?.enabled===false) fail('NATIVE_MANAGED_CONCURRENCY_INVALID','/data/concurrency',{reason:'durable commands require backend runtime'});
   const subjectReadSurfaces = compileSubjectReadSurfaces(config, capabilities);
   const operations = compileOperations(config);
   try {

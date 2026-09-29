@@ -1970,6 +1970,7 @@ function runtimeProtocolCapabilities(config: OpenXiangdaAppConfig) {
       : []),
     ...(config.data?.resources.some(resource => resource.uniqueKeys?.length) ? ['data.unique-keys'] : []),
     ...(config.data?.concurrency ? ['data.managed-concurrency'] : []),
+    ...(config.data?.concurrency?.commands.some(command => command.mode === 'durable') ? ['data.managed-concurrency.durable'] : []),
     ...(config.data?.resources.some(resource => resource.decimalReservationLifecycle)
       ? ['data.decimal-reservation-lifecycle'] : []),
     ...(config.events?.subscriptions.length ||
@@ -2273,6 +2274,7 @@ export function renderGeneratedContracts(
       handler.code,
       handler,
     ] as const);
+  const managedCommandHandlerManifest = {schemaVersion: 'openxiangda.managed-command-handler-manifest/v1', appCode:config.app.code, handlers:(contract.concurrency?.commands || []).filter(c=>c.mode==='durable').map(c=>({commandCode:c.code,handlerCode:c.execution!.handlerCode,declarationDigest:sha256Digest(c),execution:c.execution!,endpointPath:`/__platform/managed-commands/${c.execution!.handlerCode}/plan`}))};
   const eventTypesForSubscription = contract.eventConsumers.length
     ? contract.eventConsumers
         .map(
@@ -2314,6 +2316,7 @@ export function renderGeneratedContracts(
     `export const adminNavigation = ${JSON.stringify(contract.adminNavigation, null, 2)} as const;`,
     `export const eventTypes = ${JSON.stringify(contract.eventTypes, null, 2)} as const;`,
     `export const eventSubscriptionCodes = ${JSON.stringify(eventSubscriptionCodes, null, 2)} as const;`,
+    `export const managedCommandHandlerManifest = ${JSON.stringify(managedCommandHandlerManifest, null, 2)} as const;`,
     `export const eventHandlerManifest = ${JSON.stringify(contract.eventHandlerManifest, null, 2)} as const;`,
     `export const eventHandlers = ${renderEntries(eventHandlerEntries)} as const;`,
     `export const eventSchemas = ${JSON.stringify(contract.eventSchemas, null, 2)} as const;`,

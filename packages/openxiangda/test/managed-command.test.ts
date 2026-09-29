@@ -12,7 +12,7 @@ const receipt=(state:CommandReceipt['state']='succeeded'):CommandReceipt=>({oper
 function storage() { const values=new Map<string,string>();return {getItem:(key:string)=>values.get(key)||null,setItem:(key:string,value:string)=>{values.set(key,value);},removeItem:(key:string)=>{values.delete(key);}}; }
 function client(overrides:Partial<ManagedConcurrencyClient>={}):ManagedConcurrencyClient {
   return {scope:'app/environment/user',read:async()=>({items:[],generatedAt:'',freshUntil:'',staleUntil:'',version:'1',freshness:'fresh'}),
-    join:async()=>waiting(),poll:async()=>waiting(),leave:async()=>({state:'cancelled',requestKey:'original'}),accept:async()=>receipt(),result:async()=>{throw missing();},
+    enqueue:async()=>receipt(),mine:async()=>({items:[]}),join:async()=>waiting(),poll:async()=>waiting(),leave:async()=>({state:'cancelled',requestKey:'original'}),accept:async()=>receipt(),result:async()=>{throw missing();},
     cancel:async()=>receipt('cancelled'),allocation:async()=>({id:'a',state:'committed',units:1,expiresAt:null}),...overrides};
 }
 const options=(api:ManagedConcurrencyClient, store=storage())=>({client:api,command:'claim',input:{id:'offer'},storageKey:'offer',storage:store,sleep:async()=>{},random:()=>0});

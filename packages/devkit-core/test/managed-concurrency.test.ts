@@ -66,3 +66,45 @@ test('both authoring paths reject cache permission bypass, quota bypass and unbo
     assert.throws(()=>platformCompile(compiled));
   }
 });
+
+function durableSource() {
+  const source=concurrencyExample();
+  source.data!.concurrency!.quotas=[];
+  const command=source.data!.concurrency!.commands[0]!;
+  delete command.operations;delete command.quota;delete command.guards;
+  command.mode='durable';command.deadlineSeconds=3600;
+  command.intake={perSecond:100,burst:200,maxInFlight:100};
+  command.admission.maxQueue=5000;delete command.admission.permitSeconds;
+  command.parameters.phone={type:'string',minLength:0,maxLength:32};command.parameters.agreed={type:'boolean'};
+  command.execution={kind:'backend-plan',handlerCode:'claim',timeoutMs:10000,resources:[{resourceCode:'claims',readFields:['id','revision','created_at','person','offerId'],writeOperations:['create'],writeFields:['offerId','person']}],directory:{mode:'current-initiator',fields:['displayName','employeeNumber']}};
+  delete source.data!.resources.find(r=>r.code==='claims')!.mutationOwner;
+  return source;
+}
+
+test('durable handler declarations opt into independent capability and preserve ordinary resource writes',()=>{
+  const config=defineOpenXiangdaApp(durableSource());
+  const compiled=compileApplicationSources(config),native=platformCompile(compiled);
+  const cap=requiredPlatformCapabilities(config).find(c=>c.code==='data.managed-concurrency.durable');
+  assert.ok(cap);assert.deepEqual(native.requiredPlatformCapabilities.find(c=>c.code===cap.code),cap);
+  const generated=compiled.contracts.typescript.match(/export const managedCommandHandlerManifest = ([\s\S]*?) as const;/);
+  assert.ok(generated);const manifest=JSON.parse(generated[1]!);
+  assert.equal(manifest.handlers[0].declarationDigest,sha256Digest(compiled.contracts.value.concurrency!.commands[0]));
+  assert.equal(manifest.handlers[0].endpointPath,'/__platform/managed-commands/claim/plan');
+  assert.deepEqual(manifest.handlers[0].execution,compiled.contracts.value.concurrency!.commands[0]!.execution);
+  assert.notEqual(compiled.config.value.data.resources.find(r=>r.code==='claims')?.surface?.mutationOwner,'queued-command');
+  assert.equal(requiredPlatformCapabilities(defineOpenXiangdaApp(concurrencyExample())).some(c=>c.code==='data.managed-concurrency.durable'),false);
+});
+
+test('durable compilation rejects unsafe scope, unbounded inputs and mixed permit execution in both compilers',()=>{
+  for(const mutate of [
+    (c:any)=>{c.execution.url='https://elsewhere.invalid';},(c:any)=>{c.execution.resources[0].writeOperations=['delete'];},
+    (c:any)=>{c.execution.resources[0].writeFields=['id'];},(c:any)=>{c.execution.resources[0].writeFields=['revision'];},(c:any)=>{c.parameters.phone.maxLength=257;},
+    (c:any)=>{c.execution.directory.mode='selected-user';},(c:any)=>{c.execution.directory.fields=['phone'];},
+    (c:any)=>{delete c.intake;},(c:any)=>{c.intake.maxInFlight=1001;},(c:any)=>{c.operations=[];},
+    (c:any)=>{c.execution.resources[0].readFields=['undeclared'];},(c:any)=>{c.mode='permit';},
+  ]) {
+    const source=durableSource();mutate(source.data!.concurrency!.commands[0]);assert.throws(()=>defineOpenXiangdaApp(source));
+    const compiled=compileApplicationSources(defineOpenXiangdaApp(durableSource()));mutate(compiled.config.value.data.concurrency!.commands[0]);assert.throws(()=>platformCompile(compiled));
+  }
+  const old=concurrencyExample();old.data!.concurrency!.commands[0]!.parameters.free={type:'boolean'};assert.throws(()=>defineOpenXiangdaApp(old));
+});

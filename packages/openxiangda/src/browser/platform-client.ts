@@ -878,6 +878,8 @@ export function createManagedConcurrencyClient(): ManagedConcurrencyClient {
   return {
     scope,
     read: (code, input, signal) => call(`reads/${encodeURIComponent(code)}`, { input }, signal),
+    enqueue: (command,input,requestKey,signal) => call(`commands/${encodeURIComponent(command)}/enqueue`,{input,requestKey},signal),
+    mine: (command,input,signal) => call(`commands/${encodeURIComponent(command)}/mine`,input,signal),
     join: (command, input, requestKey, signal) => call(`commands/${encodeURIComponent(command)}/wait`, { input, requestKey }, signal),
     poll: (ticket, signal) => call('waiting/status', { ticket }, signal),
     leave: (ticket, signal) => call('waiting/leave', { ticket }, signal),

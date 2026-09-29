@@ -1,7 +1,11 @@
+import type { DataTransactionGuard, DataTransactionOperation, DataTransactionRecordAssertion } from './types.js';
+
 /** Optional platform-owned concurrency. No application Redis, SQL or worker code. */
 export type ConcurrencyParameter =
   | { type: 'uuid' }
   | { type: 'string'; values: string[] }
+  | { type: 'string'; minLength?: number; maxLength: number }
+  | { type: 'boolean' }
   | { type: 'integer'; minimum: number; maximum: number };
 
 export type ConcurrencyBinding =
@@ -32,7 +36,7 @@ export interface AdmissionPolicy {
   maxInFlight: number;
   maxQueue: number;
   maxWaitSeconds: number;
-  permitSeconds: number;
+  permitSeconds?: number;
 }
 
 export interface IntegerQuotaDeclaration {
@@ -47,6 +51,9 @@ export interface IntegerQuotaDeclaration {
 
 export interface QueuedCommandDeclaration {
   code: string;
+  mode?: 'permit' | 'durable';
+  intake?: { perSecond: number; burst: number; maxInFlight: number };
+  execution?: ManagedCommandExecution;
   capability: string;
   parameters: Record<string, ConcurrencyParameter>;
   resourceKey: ConcurrencyBinding;
@@ -57,7 +64,7 @@ export interface QueuedCommandDeclaration {
     id: ConcurrencyBinding;
     conditions: Array<{ kind?: 'value'; field: string; operator: 'eq' | 'neq' | 'lt' | 'lte' | 'gt' | 'gte'; value: ConcurrencyBinding } | { kind: 'database-now'; field: string; operator: 'lt' | 'lte' | 'gt' | 'gte' }>;
   }>;
-  operations: Array<{
+  operations?: Array<{
     operation: 'create' | 'update';
     resourceCode: string;
     id?: ConcurrencyBinding;
@@ -99,7 +106,10 @@ export interface CommandReceipt {
   state: CommandState;
   acceptedAt: string;
   retryAfterMs: number;
-  result?: { items?: Array<{ id: string; revision?: number }>; allocation?: { id: string; state: string; units: number; expiresAt: string | null } };
+  resourceKey?: string;
+  updatedAt?: string;
+  queue?: { position: number | null; observedAt: string };
+  result?: { [key: string]: unknown; items?: Array<{ id: string; revision?: number }>; allocation?: { id: string; state: string; units: number; expiresAt: string | null } };
   errorCode?: string;
 }
 
@@ -111,4 +121,47 @@ export interface WaitingReceipt {
   position?: number;
   permit?: string;
   expiresAt: string;
+}
+
+
+export interface ManagedCommandExecution {
+  kind: 'backend-plan';
+  handlerCode: string;
+  timeoutMs: number;
+  resources: Array<{ resourceCode: string; readFields: string[]; writeOperations: Array<'create' | 'update' | 'increment'>; writeFields: string[] }>;
+  directory?: { mode: 'current-initiator'; fields: Array<'displayName' | 'employeeNumber' | 'primaryDepartment' | 'departments'> };
+}
+
+export type ManagedCommandAssertion = DataTransactionRecordAssertion | {
+  /** Queue only: compare the declared field to the original database acceptance time. */
+  kind: 'command-accepted-at'; field: string; operator: 'lt' | 'lte' | 'gt' | 'gte';
+};
+export type ManagedCommandPlanGuard = Exclude<DataTransactionGuard, { kind: 'record-assert' | 'record-match' | 'role-member' }> |
+  (Omit<Extract<DataTransactionGuard, { kind: 'record-assert' | 'record-match' }>, 'assertions'> & { assertions: ManagedCommandAssertion[] });
+export interface ManagedCommandPlan {
+  schemaVersion: 'openxiangda.managed-command-plan/v1';
+  guards: ManagedCommandPlanGuard[];
+  operations: Extract<DataTransactionOperation, { operation: 'create' | 'update' | 'increment' }>[];
+  /** Bounded JSON; {operationIndex,field:'id'} references a create in this plan. */
+  result: Record<string, unknown>;
+}
+export interface ManagedCommandMinePage { items: CommandReceipt[]; nextCursor?: string }
+export interface ManagedCommandExecutionVerification {
+  commandId: string; commandCode: string; handlerCode: string; generation: number;
+  actorId: string; acceptedAt: string; deadlineAt: string; input: Record<string, unknown>;
+  declarationDigest: string; inputDigest: string;
+  runtime: { tenantId: string; appCode: string; environmentKey: string; environmentId: string; versionId: string; deploymentId: string; headRevision: number; backendCode: string };
+}
+export type ReadonlyManagedCommandExecution = Omit<ManagedCommandExecution,'resources'|'directory'> & {
+  readonly resources: readonly {readonly resourceCode:string;readonly readFields:readonly string[];readonly writeOperations:readonly ('create'|'update'|'increment')[];readonly writeFields:readonly string[]}[];
+  readonly directory?: {readonly mode:'current-initiator';readonly fields:readonly ('displayName'|'employeeNumber'|'primaryDepartment'|'departments')[]};
+};
+export interface ManagedCommandHandlerManifest {
+  readonly schemaVersion: 'openxiangda.managed-command-handler-manifest/v1';
+  readonly appCode: string;
+  readonly handlers: readonly {
+    readonly commandCode: string; readonly handlerCode: string; readonly declarationDigest: string;
+    readonly endpointPath: string;
+    readonly execution: ReadonlyManagedCommandExecution;
+  }[];
 }

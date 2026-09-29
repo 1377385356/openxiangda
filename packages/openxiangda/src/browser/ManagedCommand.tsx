@@ -1,3 +1,5 @@
+import {DurableCommandController,type DurableCommandOptions} from './durable-command';
+export type {DurableCommandSnapshot} from './durable-command';
 import React, { useEffect, useMemo, useSyncExternalStore, type ReactNode } from 'react';
 import { ManagedCommandController, type ManagedCommandSnapshot, type ManagedConcurrencyClient } from './managed-command';
 
@@ -61,4 +63,14 @@ export function ManagedCommandGate({ snapshot, children, fallback }: {
   fallback?: ReactNode;
 }) {
   return snapshot.state === 'admitted' ? <>{children()}</> : <>{fallback ?? <ManagedCommandStatus snapshot={snapshot} />}</>;
+}
+
+
+export type UseDurableCommandOptions = Omit<DurableCommandOptions,'storage'|'sleep'|'random'> & {storage?:DurableCommandOptions['storage']};
+/** Current-actor discovery on mount; submit is an explicit new or original-key retry action. */
+export function useDurableCommand(options:UseDurableCommandOptions) {
+  const controller=useMemo(()=>new DurableCommandController({...options,storage:options.storage||browserStorage}),[options.client,options.command,options.resourceKey,options.storageKey,options.storage]);
+  const snapshot=useSyncExternalStore(controller.subscribe,controller.snapshot,controller.snapshot);
+  useEffect(()=>{void controller.refresh();return()=>controller.stop();},[controller]);
+  return {...snapshot,submit:(input:Record<string,unknown>)=>controller.submit(input),refresh:()=>controller.refresh(),resume:()=>controller.resume(),stop:()=>controller.stop()};
 }

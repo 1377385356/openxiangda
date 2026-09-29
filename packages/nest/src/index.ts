@@ -26,3 +26,6 @@ export * from './workflow.js';
 
 export * from './todo.js';
 export * from './logger.js';
+
+export { OpenXiangdaManagedCommandHandler } from './managed-command.js';
+export type { OpenXiangdaManagedCommandContext, OpenXiangdaManagedCommandPlanner } from './managed-command.js';

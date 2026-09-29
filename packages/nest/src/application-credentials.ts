@@ -1,3 +1,4 @@
+import { assertOutsideManagedExecution } from './managed-command-private.js';
 import { Inject, Injectable } from "@nestjs/common";
 import { OpenXiangdaPlatformError } from "./platform-client.js";
 import { OPENXIANGDA_MODULE_OPTIONS } from "./tokens.js";
@@ -71,6 +72,7 @@ export class OpenXiangdaApplicationCredentials {
   }
 
   private async token(): Promise<CachedApplicationToken> {
+    assertOutsideManagedExecution();
     if (this.cached && Date.now() < this.cached.refreshAt) return this.cached;
     if (this.inFlight) return await this.inFlight;
     const pending = this.exchange();

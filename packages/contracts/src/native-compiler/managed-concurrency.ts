@@ -1,3 +1,4 @@
+import { OPENXIANGDA_NATIVE_SYSTEM_FIELD_MAP_V2 } from './data-field.js';
 import type { ManagedConcurrencyDeclaration } from '../concurrency.js';
 
 export class ManagedConcurrencyContractError extends Error {
@@ -18,12 +19,14 @@ export function validateManagedConcurrency(value: unknown, resources: readonly a
   const list = (v: any, max: number, p: string) => { if (!Array.isArray(v) || v.length > max) fail(p, 'array exceeds bound'); return v as any[]; };
   const resource = (c: string, p: string) => { const r = resources.find(r => r.code === c); if (!r) fail(p, 'unknown resource'); return r; };
   const field = (r: any, f: string, p: string) => { const d = r.schema.fields.find((v: any) => v.code === f); if (!d && f !== 'id') fail(p, 'unknown field'); return d; };
-  const parameters = (v: any, p: string) => {
+  const parameters = (v: any, p: string, durable = false) => {
     obj(v, p, Object.keys(v || {}));
     if (Object.keys(v).length > 8) fail(p, 'at most eight parameters');
     for (const [k, d] of Object.entries(v) as any) {
-      code(k, p); obj(d, p, ['type', 'values', 'minimum', 'maximum']);
+      code(k, p); obj(d, p, ['type', 'values', 'minimum', 'maximum', 'minLength', 'maxLength']);
       if (d.type === 'uuid') { if (Object.keys(d).length !== 1) fail(p, 'uuid has no options'); }
+      else if (durable && d.type === 'boolean') { obj(d,p,['type']); }
+      else if (durable && d.type === 'string' && d.values === undefined) { obj(d,p,['type','minLength','maxLength']); integer(d.maxLength,1,256,p); if(d.minLength!==undefined) integer(d.minLength,0,d.maxLength,p); }
       else if (d.type === 'string') { obj(d,p,['type','values']); const vs = list(d.values, 100, p); if (!vs.length || vs.some(x => typeof x !== 'string' || x.length > 128) || new Set(vs).size !== vs.length) fail(p, 'finite string values required'); }
       else if (d.type === 'integer') { obj(d,p,['type','minimum','maximum']); integer(d.minimum, 0, 1000000, p); integer(d.maximum, d.minimum, d.minimum + 1000, p); }
       else fail(p, 'unsupported parameter type');
@@ -80,10 +83,34 @@ export function validateManagedConcurrency(value: unknown, resources: readonly a
   if (new Set(d.quotas.map((q:any)=>q.allocationResource)).size!==d.quotas.length) fail(root,'an allocation model has exactly one pool owner');
   for (const c of d.commands) {
     const p = `${root}/commands/${c.code}`;
-    obj(c,p,['code','capability','parameters','resourceKey','admission','deadlineSeconds','guards','operations','quota']); parameters(c.parameters,p); binding(c.resourceKey,c.parameters,p);
+    obj(c,p,['code','mode','intake','execution','capability','parameters','resourceKey','admission','deadlineSeconds','guards','operations','quota']);
+    if(c.mode!==undefined && !['permit','durable'].includes(c.mode)) fail(p,'unsupported mode');
+    const durable = c.mode==='durable'; parameters(c.parameters,p,durable); binding(c.resourceKey,c.parameters,p);
     if (!capabilities.some(v=>v.code===c.capability)) fail(p,'command capability must be declared');
     obj(c.admission,p,['perSecond','burst','maxInFlight','maxQueue','maxWaitSeconds','permitSeconds']);
-    integer(c.admission.perSecond,1,d.admission.perSecond,p); integer(c.admission.burst,1,d.admission.burst,p); integer(c.admission.maxInFlight,1,d.admission.maxInFlight,p); integer(c.admission.maxQueue,1,10000,p); integer(c.admission.maxWaitSeconds,1,3600,p); integer(c.admission.permitSeconds,5,60,p); integer(c.deadlineSeconds,10,3600,p);
+    integer(c.admission.perSecond,1,d.admission.perSecond,p); integer(c.admission.burst,1,d.admission.burst,p); integer(c.admission.maxInFlight,1,d.admission.maxInFlight,p); integer(c.admission.maxQueue,1,10000,p); integer(c.admission.maxWaitSeconds,1,3600,p); if(!durable || c.admission.permitSeconds!==undefined) integer(c.admission.permitSeconds,5,60,p); integer(c.deadlineSeconds,10,3600,p);
+    if (durable) {
+      if(c.operations!==undefined || c.guards!==undefined || c.quota!==undefined) fail(p,'backend-plan does not accept static operations, guards or quota');
+      obj(c.intake,p,['perSecond','burst','maxInFlight']);
+      for(const k of ['perSecond','burst','maxInFlight']) integer(c.intake[k],1,1000,p);
+      const e=obj(c.execution,p,['kind','handlerCode','timeoutMs','resources','directory']);
+      if(e.kind!=='backend-plan') fail(p,'durable requires backend-plan');
+      code(e.handlerCode,p); integer(e.timeoutMs,100,30000,p);
+      const rs=list(e.resources,32,p); if(!rs.length) fail(p,'execution resources required');
+      if(new Set(rs.map(x=>x.resourceCode)).size!==rs.length) fail(p,'duplicate execution resource');
+      for(const a of rs) {
+        obj(a,p,['resourceCode','readFields','writeOperations','writeFields']); const r=resource(a.resourceCode,p);
+        for(const k of ['readFields','writeFields']) { const fs=list(a[k],64,p); if(new Set(fs).size!==fs.length) fail(p,'duplicate field'); fs.forEach(f=>{if(k==='readFields' && OPENXIANGDA_NATIVE_SYSTEM_FIELD_MAP_V2.has(f)) return;field(r,f,p);}); }
+        const ops=list(a.writeOperations,3,p); if(new Set(ops).size!==ops.length || ops.some(o=>!['create','update','increment'].includes(o))) fail(p,'unsupported execution operation');
+        if(a.writeFields.some((f:string)=>['id','revision','created_by','updated_by','created_at','updated_at'].includes(f))) fail(p,'record metadata is platform owned');
+        if(!ops.length && a.writeFields.length) fail(p,'write fields require an operation');
+        if(ops.length && !a.writeFields.length) fail(p,'write operations require fields');
+        if(d.quotas.some((q:any)=>q.allocationResource===a.resourceCode) && ops.length) fail(p,'allocation references remain owned by their pool command');
+      }
+      if(e.directory!==undefined) { obj(e.directory,p,['mode','fields']); if(e.directory.mode!=='current-initiator') fail(p,'only current initiator allowed'); const fs=list(e.directory.fields,4,p); if(!fs.length || new Set(fs).size!==fs.length || fs.some(f=>!['displayName','employeeNumber','primaryDepartment','departments'].includes(f))) fail(p,'unsupported directory fields'); }
+      continue;
+    }
+    if(c.execution!==undefined || c.intake!==undefined) fail(p,'execution and intake require durable mode');
     for (const g of list(c.guards || [],8,p)) {
       obj(g,p,['resourceCode','id','conditions']); const r=resource(g.resourceCode,p); uuidBinding(g.id,c.parameters,p);
       for (const v of list(g.conditions,16,p)) { obj(v,p,['kind','field','operator','value']); const f=field(r,v.field,p); if(!['eq','neq','lt','lte','gt','gte'].includes(v.operator)) fail(p,'unsupported guard'); if(v.kind==='database-now') {if(f?.type!=='datetime'||!['lt','lte','gt','gte'].includes(v.operator)||v.value!==undefined) fail(p,'database-now requires datetime and an ordering operator');} else {if(v.kind!==undefined&&v.kind!=='value') fail(p,'unsupported condition kind'); binding(v.value,c.parameters,p);} }
@@ -110,5 +137,7 @@ export function validateManagedConcurrency(value: unknown, resources: readonly a
       else fail(p,'invalid quota action');
     } else if(!c.operations.length) fail(p,'operations required');
   }
+  const handlers=d.commands.filter((c:any)=>c.mode==='durable').map((c:any)=>c.execution.handlerCode);
+  if(new Set(handlers).size!==handlers.length) fail(root,'handler code must be unique');
   return JSON.parse(JSON.stringify(d));
 }

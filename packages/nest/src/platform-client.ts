@@ -1,3 +1,6 @@
+import { assertOutsideManagedExecution, managedExecution } from './managed-command-private.js';
+import type { ManagedCommandExecutionVerification } from 'openxiangda-contracts';
+const managedReadRequest = Symbol('managed-read');
 import { randomUUID } from 'node:crypto';
 import { HttpException, Inject, Injectable, Optional } from "@nestjs/common";
 import type {
@@ -65,7 +68,7 @@ import type {
   BusinessProcessRetry,
   ProcessCommandSurface,
 } from "openxiangda-contracts";
-import { normalizeWorkflowSurface, parseBusinessProcessResolution } from "openxiangda-contracts";
+import { SCHEMA_VERSIONS, normalizeWorkflowSurface, parseBusinessProcessResolution } from "openxiangda-contracts";
 import { OPENXIANGDA_MODULE_OPTIONS } from "./tokens.js";
 import { OpenXiangdaEventContext } from "./event-context.js";
 import type {
@@ -123,6 +126,30 @@ export class OpenXiangdaPlatformClient {
   ) {
     this.baseUrl = options.platformBaseUrl.replace(/\/+$/, "");
     this.fetch = options.fetch || globalThis.fetch.bind(globalThis);
+  }
+
+  async verifyManagedCommandExecution(authorization: string, assertion: string): Promise<ManagedCommandExecutionVerification> {
+    return this.request(this.managedExecutionPath('verify'), { method:'POST', headers:{Authorization:authorization,'X-OpenXiangda-Gateway-Assertion':assertion}, body:JSON.stringify({environmentKey:this.options.environmentKey}) });
+  }
+  async managedCommandGet<T extends Record<string,unknown>>(resourceCode: string, id: string): Promise<DataRecord<T>> {
+    const result=await this.managedRead<DataRecord<T>|null>('data/get', {resourceCode,id});
+    if(!result) throw new OpenXiangdaPlatformError(404,'OPENXIANGDA_MANAGED_RECORD_NOT_FOUND','记录不存在');
+    if(![SCHEMA_VERSIONS.dataRecord,'openxiangda.native-data-record/v2'].includes(result.schemaVersion)||result.resourceCode!==resourceCode||!result.data||typeof result.data!=='object'||Array.isArray(result.data)) throw new OpenXiangdaPlatformError(502,'OPENXIANGDA_MANAGED_DATA_RESPONSE_INVALID','平台读取结果无效');
+    return {...result,schemaVersion:SCHEMA_VERSIONS.dataRecord};
+  }
+  async managedCommandQuery<T extends Record<string,unknown>>(resourceCode: string, query: DataQuery): Promise<DataPage<T>> {
+    return this.managedRead('data/query', {resourceCode,query});
+  }
+  async managedCommandCurrentInitiator(): Promise<CurrentInitiatorDirectorySnapshot> {
+    return this.managedRead('current-initiator', {});
+  }
+  private managedExecutionPath(action: string) {
+    return `/openxiangda-api/v2/applications/${encodeURIComponent(this.options.appCode)}/native/concurrency/executions/${action}`;
+  }
+  private async managedRead<T>(action: string, body: Record<string,unknown>): Promise<T> {
+    const context=managedExecution();
+    if(!context) throw new Error('OPENXIANGDA_MANAGED_COMMAND_CONTEXT_REQUIRED');
+    return this.request(this.managedExecutionPath(action), {method:'POST',headers:{Authorization:context.authorization},body:JSON.stringify({...body,environmentKey:this.options.environmentKey})},managedReadRequest);
   }
 
   async capabilities(): Promise<PlatformCapabilities> {
@@ -1151,7 +1178,8 @@ export class OpenXiangdaPlatformClient {
     };
   }
 
-  private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  private async request<T>(path: string, init: RequestInit = {}, purpose?: symbol): Promise<T> {
+    if(purpose !== managedReadRequest) assertOutsideManagedExecution();
     const headers = new Headers(init.headers);
     const suppliedRequestId = headers.get('X-Request-ID');
     const requestId = suppliedRequestId && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(suppliedRequestId)

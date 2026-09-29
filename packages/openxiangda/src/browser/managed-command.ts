@@ -1,9 +1,11 @@
-import type { CommandReceipt, ManagedReadResult, WaitingReceipt } from 'openxiangda-contracts/browser';
+import type { CommandReceipt, ManagedReadResult, WaitingReceipt, ManagedCommandMinePage } from 'openxiangda-contracts/browser';
 
 export interface ManagedConcurrencyClient {
   /** Bound to the current application, environment and trusted user. */
   readonly scope: string;
   read<T = Record<string, unknown>>(code: string, input: Record<string, unknown>, signal?: AbortSignal): Promise<ManagedReadResult<T>>;
+  enqueue(command: string, input: Record<string,unknown>, requestKey: string, signal?: AbortSignal): Promise<CommandReceipt>;
+  mine(command: string, input: {resourceKey:string;cursor?:string;limit?:number}, signal?: AbortSignal): Promise<ManagedCommandMinePage>;
   join(command: string, input: Record<string, unknown>, requestKey: string, signal?: AbortSignal): Promise<WaitingReceipt>;
   poll(ticket: string, signal?: AbortSignal): Promise<WaitingReceipt>;
   leave(ticket: string, signal?: AbortSignal): Promise<{ state: 'cancelled' | 'accepted'; requestKey: string }>;

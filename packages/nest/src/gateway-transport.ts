@@ -1,3 +1,4 @@
+import { isManagedExecutionController } from './managed-command-private.js';
 import {
   CanActivate,
   ExecutionContext,
@@ -197,6 +198,9 @@ export class OpenXiangdaGatewayTransportGuard implements CanActivate {
     if (context.getType() !== "http") return true;
     const request = context.switchToHttp().getRequest<OpenXiangdaHttpRequest>();
     const path = requestFacts(request).path;
+    // Only the private SDK controller implements the dedicated proof protocol.
+    // It verifies both the signed request and live execution before resolving a handler.
+    if (isManagedExecutionController(context.getClass())) return true;
     if (gatewayExemptRequest(request, path)) return true;
     if (
       this.options.connectedDevelopment &&

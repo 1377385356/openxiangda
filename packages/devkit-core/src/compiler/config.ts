@@ -1096,7 +1096,8 @@ export function backendRuntimeRequired(config: OpenXiangdaAppConfig) {
           config.events?.subscriptions?.some(item => !item.execution) ||
           config.events?.timers?.length ||
           config.events?.dateTriggers?.length ||
-          config.workflows?.providers?.length
+          config.workflows?.providers?.length ||
+          config.data?.concurrency?.commands.some(command=>command.mode==='durable')
       ))
   );
 }
@@ -4243,6 +4244,7 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
   }
   try {
     const concurrencyConfig=value as OpenXiangdaAppConfig;
+    if(concurrencyConfig.backend.enabled===false && concurrencyConfig.data?.concurrency?.commands.some(command=>command.mode==='durable')) throw new Error('durable commands require backend runtime');
     validateManagedConcurrency(concurrencyConfig.data?.concurrency,concurrencyConfig.data?.resources||[],concurrencyConfig.authz?.capabilities||[]);
   } catch(error) {
     diagnostics.push(diagnostic('NATIVE_MANAGED_CONCURRENCY_INVALID',(error as Error).message,(error as any).pointer||'data.concurrency'));
@@ -7585,7 +7587,7 @@ export function defineOpenXiangdaApp(
         declaration.backend?.operations?.length || declaration.backend?.secrets?.length ||
         declaration.events?.subscriptions?.some(item => !item.execution) || declaration.events?.timers?.length ||
         declaration.events?.dateTriggers?.length ||
-        declaration.workflows?.providers?.length
+        declaration.workflows?.providers?.length || declaration.data?.concurrency?.commands.some(command=>command.mode==='durable')
       ),
       ...declaration.backend,
     },
