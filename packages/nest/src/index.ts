@@ -18,6 +18,7 @@ export * from './notification.js';
 export * from './platform-client.js';
 export * from './runtime.js';
 export * from './standard-operations.js';
+export * from './transaction-builder.js';
 export * from './snapshot-values.js';
 export * from './tokens.js';
 export * from './types.js';

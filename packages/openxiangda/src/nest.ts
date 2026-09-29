@@ -41,6 +41,9 @@ export {
   assertValidTimeInterval,
   databaseNowAssertion,
   idempotentTransaction,
+  createDataTransaction,
+  diagnoseDataTransaction,
+  DataTransactionBuildError,
   bindOpenXiangdaResources,
 } from 'openxiangda-nest';
 
