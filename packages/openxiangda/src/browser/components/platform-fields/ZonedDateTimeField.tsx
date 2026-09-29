@@ -4,7 +4,7 @@ import dayjsGenerateConfig from '@rc-component/picker/lib/generate/dayjs';
 import { useEffect, useMemo, useState } from 'react';
 import type { DataFieldSurface } from 'openxiangda-contracts/browser';
 import { rangeValueValidationMessage } from './field-form-codec';
-import { carrierWall, instantText, instantToWall, nowWall, validateDateTimeConstraints,
+import { carrierWall, disabledZonedTime, instantText, instantToWall, nowWall, validateDateTimeConstraints,
   wallCarrier, zonedInputResult, type DateTimeConstraints } from './zoned-date-time';
 
 export function ZonedDateTimeField({ field, value, onChange, disabled, mobile, filter,
@@ -59,6 +59,8 @@ export function ZonedDateTimeField({ field, value, onChange, disabled, mobile, f
     format,
     minDate: min ? toCarrier(min)! : undefined,
     maxDate: max ? toCarrier(max)! : undefined,
+    disabledTime: (date: Dayjs | null) => disabledZonedTime(
+      (date ? carrierWall(date) : nowWall(timeZone)).toPlainDate(), timeZone, constraints),
     showTime: { format: minuteStep === undefined ? 'HH:mm:ss' : 'HH:mm',
       minuteStep: minuteStep as 1 | undefined,
       showHour: true, showMinute: true, showSecond: minuteStep === undefined },
@@ -70,7 +72,15 @@ export function ZonedDateTimeField({ field, value, onChange, disabled, mobile, f
   };
   if (range && field.rangeBoundary !== 'closed' && field.rangeBoundary !== 'half-open')
     throw new Error('OPENXIANGDA_RANGE_BOUNDARY_INVALID');
-  return <div>
+  // Disabled picker columns reject typed values before onChange. Give the same
+  // business feedback without emitting or rewriting the controlled value.
+  const validateTyped = (target: EventTarget) => {
+    if (!(target instanceof HTMLInputElement) || !target.value) return;
+    const parsed = dayjs.utc(target.value, format, true);
+    if (parsed.isValid()) setError(zonedInputResult(carrierWall(parsed), timeZone, constraints).error);
+  };
+  return <div onKeyDownCapture={event => { if (event.key === 'Enter') validateTyped(event.target); }}
+    onBlurCapture={event => validateTyped(event.target)}>
     {range ? <Picker.RangePicker {...common} value={draft as [Dayjs | null, Dayjs | null] | null}
       onChange={emit} placeholder={[`开始${field.label}`, `结束${field.label}${field.rangeBoundary === 'closed' ? '（含）' : '（不含）'}`]} /> :
       <Picker {...common} value={draft as Dayjs | null} onChange={emit}

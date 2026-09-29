@@ -80,6 +80,34 @@ export function nowWall(timeZone: string, constraints: DateTimeConstraints = {})
     wall.round({ smallestUnit: 'minute', roundingIncrement: constraints.minuteStep, roundingMode: 'ceil' });
 }
 
+/** Picker columns share emit's instant/step/DST semantics. Computation is bounded
+ * to the displayed day and cached per requested minute for this render. */
+export function disabledZonedTime(day: Temporal.PlainDate, zone: string, constraints: DateTimeConstraints) {
+  const min = constraints.min ? Temporal.Instant.from(constraints.min).epochNanoseconds : undefined;
+  const max = constraints.max ? Temporal.Instant.from(constraints.max).epochNanoseconds : undefined;
+  const cache = new Map<number, [number, number]>();
+  const seconds = (hour: number, minute: number): [number, number] => {
+    const key = hour * 60 + minute;
+    const existing = cache.get(key);
+    if (existing) return existing;
+    let result: [number, number] = [1, 0];
+    if (constraints.minuteStep === undefined || minute % constraints.minuteStep === 0) {
+      try {
+        const at = wallToInstant(day.toPlainDateTime({ hour, minute }), zone).epochNanoseconds;
+        result = [Math.max(0, min === undefined ? -Infinity : Math.ceil(Number(min - at) / 1e9)), Math.min(constraints.minuteStep === undefined ? 59 : 0, max === undefined ? Infinity : Math.floor(Number(max - at) / 1e9))];
+      } catch { /* A DST gap or repeated minute is not selectable. */ }
+    }
+    cache.set(key, result);
+    return result;
+  };
+  const valid = (hour: number, minute: number) => { const [lo, hi] = seconds(hour, minute); return lo <= hi; };
+  return {
+    disabledHours: () => Array.from({ length: 24 }, (_, h) => h).filter(h => !Array.from({ length: 60 }, (_, m) => m).some(m => valid(h, m))),
+    disabledMinutes: (h: number) => Array.from({ length: 60 }, (_, m) => m).filter(m => !valid(h, m)),
+    disabledSeconds: (h: number, m: number) => { const [lo, hi] = seconds(h, m); return Array.from({ length: 60 }, (_, s) => s).filter(s => s < lo || s > hi); },
+  };
+}
+
 export function dateOptions(center: Temporal.PlainDateTime, zone: string, min?: string, max?: string) {
   const day = center.toPlainDate();
   let start = day.subtract({ days: 365 });

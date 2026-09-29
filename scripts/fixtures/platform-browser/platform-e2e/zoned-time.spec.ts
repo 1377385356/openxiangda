@@ -126,3 +126,16 @@ for (const wall of ['2026-03-08 02:15', '2026-11-01 01:15']) {
     await expect(page.getByTestId('canonical')).toHaveText('"2026-03-07T18:15:00.000Z"');
   });
 }
+
+
+test('PC disables invalid same-day hours and minutes in the actual picker', async ({ page }) => {
+  await page.goto('/zoned-time.e2e.html?min=2026-03-07T18%3A15%3A00Z&max=2026-03-07T18%3A45%3A00Z');
+  await page.getByTestId('edit').locator('input').click();
+  const columns = page.locator('.ant-picker-dropdown:visible .ant-picker-time-panel-column');
+  await expect(columns.nth(0).getByText('01', {exact:true}).locator('..')).toHaveClass(/disabled/);
+  await expect(columns.nth(0).getByText('03', {exact:true}).locator('..')).toHaveClass(/disabled/);
+  await expect(columns.nth(0).getByText('02', {exact:true}).locator('..')).not.toHaveClass(/disabled/);
+  await expect(columns.nth(1).getByText('00', {exact:true}).locator('..')).toHaveClass(/disabled/);
+  await expect(columns.nth(1).getByText('15', {exact:true}).locator('..')).not.toHaveClass(/disabled/);
+  await expect(columns.nth(1).getByText('45', {exact:true}).locator('..')).not.toHaveClass(/disabled/);
+});
