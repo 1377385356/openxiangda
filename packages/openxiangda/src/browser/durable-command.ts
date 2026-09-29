@@ -106,11 +106,12 @@ export class DurableCommandController {
             }
             if (!active())
                 return;
-            if (!receipt) {
+            // A historical local success cannot hide a newer pending cycle on another device.
+            if (!receipt || terminal(receipt)) {
                 const page = await this.options.client.mine(this.options.command, { resourceKey: this.options.resourceKey, limit: 20 }, abort.signal);
                 if (!active())
                     return;
-                receipt = page.items.find(r => !terminal(r)) || (!this.intent ? page.items[0] : undefined);
+                receipt = page.items.find(r => !terminal(r)) || receipt || (!this.intent ? page.items[0] : undefined);
             }
             if (receipt) {
                 this.accept(receipt);
@@ -146,6 +147,7 @@ export class DurableCommandController {
         const abort = new AbortController();
         this.abort = abort;
         const active = () => !abort.signal.aborted && generation === this.generation;
+        let enqueueAttempted = false;
         try {
             this.restore();
             const serialized = canonical(input);
@@ -172,17 +174,58 @@ export class DurableCommandController {
                 this.intent = { version: 1, input: JSON.parse(serialized), requestKey: crypto.randomUUID() };
             this.persist();
             this.update({ state: 'recovering', requestKey: this.intent.requestKey, input: Object.freeze({ ...this.intent.input! }), receipt: undefined, errorCode: undefined, initialized: true, isObserving: true });
-            const receipt = await this.options.client.enqueue(this.options.command, this.intent.input!, this.intent.requestKey, abort.signal);
+            enqueueAttempted = true;
+            const receipt = await this.enqueueWithRecovery(this.intent, abort, active);
+            if (!receipt) return;
             if (!active())
                 return;
             this.accept(receipt);
             this.observe(receipt, generation, abort);
         }
         catch (error) {
+            // The server guarantees these exact 400 errors occur before acceptance.
+            // Existing-key malformed input is 409, never one of these correction errors.
+            if (active() && enqueueAttempted && Number((error as {status?:number})?.status) === 400 && ['CONCURRENCY_REQUEST_KEY_REQUIRED','CONCURRENCY_INPUT_INVALID','CONCURRENCY_RESOURCE_KEY_INVALID','CONCURRENCY_DURABLE_COMMAND_REQUIRED'].includes(code(error))) {
+                this.options.storage.removeItem(this.storageKey);
+                this.intent = undefined;
+            }
             if (active())
                 this.update({ state: retryable(error) ? 'recovering' : 'error', errorCode: code(error), requestKey: this.intent?.requestKey, input: this.intent?.input ? Object.freeze({ ...this.intent.input }) : undefined, initialized: true, isObserving: false });
             throw error;
         }
+    }
+    private async enqueueWithRecovery(intent: Intent, abort: AbortController, active:()=>boolean): Promise<CommandReceipt|undefined> {
+        const deadline=Date.now()+120000;
+        let lastError:unknown, timedOut=false;
+        const timer=setTimeout(()=>{timedOut=true;abort.abort();},120000);
+        try {
+            for(let attempt=0; attempt<6 && active(); attempt++) {
+                try {
+                    if(attempt>0) {
+                        const suggested=Number((lastError as any)?.retryAfterMs ?? (lastError as any)?.data?.retryAfterMs)||0;
+                        const wait=Math.max(suggested,Math.min(30000,5000*2**(attempt-1)))*(1+(this.options.random||Math.random)()*.25);
+                        if(wait>=deadline-Date.now()) throw lastError;
+                        await (this.options.sleep||sleep)(wait,abort.signal);
+                        if(!active())return undefined;
+                        // A lost acknowledgement may already be committed; never re-enqueue before checking.
+                        try {return await this.options.client.result({command:this.options.command,requestKey:intent.requestKey},abort.signal);}
+                        catch(error) {if(!absent(error))throw error;}
+                    }
+                    return await this.options.client.enqueue(this.options.command,intent.input!,intent.requestKey,abort.signal);
+                } catch(error) {
+                    if(!active())break;
+                    if(!retryable(error))throw error;
+                    lastError=error;
+                    this.update({state:'recovering',receipt:undefined,errorCode:code(error),isObserving:true});
+                }
+            }
+            if(timedOut) {
+                if(this.abort===abort)this.update({state:'recovering',isObserving:false,errorCode:'CONCURRENCY_ACCEPTANCE_UNCONFIRMED'});
+                throw Object.assign(new Error('受理结果尚未确认，请恢复原申请'),{code:'CONCURRENCY_ACCEPTANCE_UNCONFIRMED',status:504});
+            }
+            if(!active())return undefined;
+            throw lastError;
+        } finally {clearTimeout(timer);}
     }
     private observe(receipt: CommandReceipt, generation: number, abort: AbortController) {
         if (terminal(receipt)) {

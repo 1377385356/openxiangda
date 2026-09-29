@@ -206,10 +206,10 @@ const command = useDurableCommand({client,command:'registration-enroll',resource
 const submit = () => command.submit({activity:activityId,channel:channelId,agreed:true,phone});
 ```
 
-hook 从 `openxiangda/react` 和 `openxiangda/mobile` 导出。state、initialized、isObserving、requestKey、receipt、errorCode 用于统一状态区；submit(input)、resume()、refresh()、stop() 分别为明确提交、用冻结 input 重试原请求、恢复查询和停止观察。挂载只查本地原 key 或服务端 mine，不自动 enqueue。未知应答保留原 key 与 input；用户恢复后先查原结果，不能换 key 重试。浏览器存储失败在提交前明确失败。未知应答后的恢复按钮调用 resume()，不传当前可能已经修改的表单。snapshot.input 可恢复本地冻结表单；跨设备只有回执时不展示推测的原输入。如果请求在网络中断前未被平台受理，挂载查询保持待核对，明确点击 resume() 才用原 key/input 再次 enqueue。
+hook 从 `openxiangda/react` 和 `openxiangda/mobile` 导出。state、initialized、isObserving、requestKey、receipt、errorCode 用于统一状态区；submit(input)、resume()、refresh()、stop() 分别为明确提交、用冻结 input 重试原请求、恢复查询和停止观察。挂载只查本地原 key 或服务端 mine，不自动 enqueue。未知应答保留原 key 与 input；用户恢复后先查原结果，不能换 key 重试。浏览器存储失败在提交前明确失败。未知应答后的恢复按钮调用 resume()，不传当前可能已经修改的表单。snapshot.input 可恢复本地冻结表单；跨设备只有回执时不展示推测的原输入。一次明确 submit/resume 期间，429、暂时5xx或网络错误会按原 key/input 自动退避恢复，先查原结果再重试 enqueue，最多6次、最长120秒，遵守更长的 Retry-After；尚无 receipt 时只能提示“正在确认受理”，不能承诺可关闭页面。用完预算保留原意图，明确点击 resume() 继续。如果刷新时原请求尚未被平台受理，挂载只查询，明确点击 resume() 才重新启动有界受理重试。
 
 默认每次至少间隔 5 秒，遵守更长的服务端 retryAfterMs，再加随机抖动；暂时失败指数退避，终态停止。一个业务区域只挂载一个观察者。离开或关闭页面不撤销已受理请求，平台自动继续；新设备通过 mine 找到本人的原请求。position 为空时显示「已受理，稍后可查看」，不要显示虚假的精确人数或预计秒数。
 
-不要在 mount 发现历史 succeeded 时自动跳成功页或永久禁用提交。它可能已经被管理员取消，需结合当前业务记录展示。只有用户明确再次点击 submit，且原请求已有终态，SDK 才创建新的 requestKey；活跃请求或未知应答始终恢复原 key。成功提示以 receipt.state==='succeeded' 和 receipt.result 为准，accepted/executing 只显示「已登记，处理中」。
+refresh 会优先恢复 mine 返回的新进行中周期，避免本地历史 succeeded 遮蔽另一个设备的新申请。不要在 mount 发现历史 succeeded 时自动跳成功页或永久禁用提交。它可能已经被管理员取消，需结合当前业务记录展示。只有用户明确再次点击 submit，且原请求已有终态，SDK 才创建新的 requestKey；活跃请求或未知应答始终恢复原 key。平台明确返回未受理的参数错误（400 + CONCURRENCY_INPUT_INVALID 等约定错误）时，SDK 才清除被拒输入，允许修正后再提交；未知 400、409、429、5xx 和网络错误仍保留原意图。成功提示以 receipt.state==='succeeded' 和 receipt.result 为准，accepted/executing 只显示「已登记，处理中」。
 
 permit 的 ManagedCommandGate 仍只用于 admitted 短确认，不用于 durable。durable 不能套任意前端 onSubmit 冒充后台事务，真正业务必须由已声明的 backend-plan handler 返回受管计划。

@@ -76,3 +76,8 @@ test('business and permission refusals preserve display message separately from 
     assert.equal(calls, 1);
   }
 }));
+
+test('throttled requests preserve Retry-After for bounded durable intake recovery',async()=>fixture(async()=>{
+  globalThis.fetch=async()=>new Response(JSON.stringify({code:429,errorCode:'CONCURRENCY_RATE_LIMITED'}),{status:429,headers:{'retry-after':'12'}});
+  await assert.rejects(requestApplicationApi('/enqueue',{method:'POST',body:'{}'}),(error:any)=>error instanceof OpenXiangdaPlatformRequestError&&error.retryAfterMs===12000);
+}));

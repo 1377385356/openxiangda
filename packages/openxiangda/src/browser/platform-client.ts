@@ -104,6 +104,7 @@ export class OpenXiangdaPlatformRequestError extends Error {
   readonly code: string;
   readonly status: number;
   readonly retryable?: boolean;
+  readonly retryAfterMs?: number;
   readonly data: unknown;
   readonly request?: Readonly<PlatformRequestContext>;
 
@@ -112,6 +113,7 @@ export class OpenXiangdaPlatformRequestError extends Error {
     status: number;
     message: string;
     retryable?: boolean;
+    retryAfterMs?: number;
     data?: unknown;
     request?: PlatformRequestContext;
   }) {
@@ -120,6 +122,7 @@ export class OpenXiangdaPlatformRequestError extends Error {
     this.code = input.code;
     this.status = input.status;
     this.retryable = input.retryable;
+    this.retryAfterMs = input.retryAfterMs;
     this.data = input.data ?? null;
     this.request = input.request ? Object.freeze({ ...input.request }) : undefined;
   }
@@ -161,7 +164,10 @@ export function platformRequestDiagnostic(error: unknown) {
 function responseRequestError(path: string, init: RequestInit | undefined, response: Response, payload: PlatformEnvelope<unknown> | null, fallback: string) {
   const context = requestContext(path, init, response, payload?.requestId);
   const code = String(payload?.errorCode || payload?.code || `HTTP_${response.status}`);
+  const retryAfter = response.headers.get('retry-after');
+  const retryAfterMs = retryAfter ? (/^\d+(?:\.\d+)?$/.test(retryAfter) ? Number(retryAfter)*1000 : Date.parse(retryAfter)-Date.now()) : undefined;
   return new OpenXiangdaPlatformRequestError({ code, status: response.status,
+    retryAfterMs: retryAfterMs!==undefined && Number.isFinite(retryAfterMs) && retryAfterMs>=0 ? retryAfterMs : undefined,
     message: response.status >= 400 && response.status < 500 && typeof payload?.message === 'string' && payload.message.trim()
       ? payload.message
       : `${code}: ${payload?.message || fallback}${context.requestId ? ` (requestId: ${context.requestId})` : ''}`,

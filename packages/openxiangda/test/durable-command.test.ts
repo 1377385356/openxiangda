@@ -8,7 +8,7 @@ const store=()=>{const m=new Map<string,string>();return{getItem:(k:string)=>m.g
 const receipt=(key='original',state:CommandReceipt['state']='succeeded'):CommandReceipt=>({operationId:'operation',command:'claim',resourceKey:'offer',requestKey:key,state,acceptedAt:new Date().toISOString(),updatedAt:new Date().toISOString(),retryAfterMs:6000});
 function fixture(overrides:Partial<ManagedConcurrencyClient>={},storage=store()){
   const client={scope:'app/env/user',mine:async()=>({items:[]}),result:async()=>{throw missing();},enqueue:async(_c:string,_i:unknown,key:string)=>receipt(key),...overrides} as ManagedConcurrencyClient;
-  return {client,storage,controller:new DurableCommandController({client,command:'claim',resourceKey:'offer',storage,random:()=>0})};
+  return {client,storage,controller:new DurableCommandController({client,command:'claim',resourceKey:'offer',storage,random:()=>0,sleep:async()=>{}})};
 }
 test('fresh mount is read-only and cross-device restoration never submits',async()=>{
   let writes=0;const f=fixture({mine:async()=>({items:[receipt()]}),enqueue:async()=>{writes++;return receipt();}});
@@ -19,9 +19,9 @@ test('unknown acknowledgement retains original key and input; a new mount cannot
   const f=fixture({enqueue:async(_c,_i,key)=>{keys.push(key);throw new TypeError('network');},result:async()=>{if(found)return receipt(keys[0]);throw missing();}});
   await assert.rejects(()=>f.controller.submit({id:'offer',agreed:true}));
   const fresh=fixture({enqueue:f.client.enqueue,result:f.client.result},f.storage);
-  await fresh.controller.refresh();assert.equal(keys.length,1);assert.equal(fresh.controller.snapshot().state,'recovering');
-  await assert.rejects(()=>fresh.controller.submit({id:'different'}),/ORIGINAL_REQUEST/);assert.equal(keys.length,1);
-  found=true;await fresh.controller.submit({id:'offer',agreed:true});assert.equal(keys.length,1);assert.equal(fresh.controller.snapshot().requestKey,keys[0]);
+  await fresh.controller.refresh();assert.equal(keys.length,6);assert.equal(fresh.controller.snapshot().state,'recovering');
+  await assert.rejects(()=>fresh.controller.submit({id:'different'}),/ORIGINAL_REQUEST/);assert.equal(keys.length,6);
+  found=true;await fresh.controller.submit({id:'offer',agreed:true});assert.equal(keys.length,6);assert.equal(fresh.controller.snapshot().requestKey,keys[0]);
 });
 test('known terminal is historical; explicit new submit uses new key for reapplication',async()=>{
   const keys:string[]=[];const f=fixture({enqueue:async(_c,_i,key)=>{keys.push(key);return receipt(key);}});
@@ -49,5 +49,29 @@ test('explicit resume retries frozen input with original key after a request nev
   const f=fixture({enqueue:async(_c,input,key)=>{keys.push(key);inputs.push(input);if(fail)throw new TypeError('offline');return receipt(key);}});
   await assert.rejects(()=>f.controller.submit({id:'original-channel',phone:'123'}));
   const fresh=fixture({enqueue:f.client.enqueue},f.storage);await fresh.controller.refresh();fail=false;
-  await fresh.controller.resume();assert.equal(keys.length,2);assert.equal(keys[0],keys[1]);assert.deepEqual(inputs[0],inputs[1]);assert.equal(fresh.controller.snapshot().input?.id,'original-channel');
+  await fresh.controller.resume();assert.equal(keys.length,7);assert.ok(keys.every(k=>k===keys[0]));assert.ok(inputs.every(i=>JSON.stringify(i)===JSON.stringify(inputs[0])));assert.equal(fresh.controller.snapshot().input?.id,'original-channel');
+});
+
+
+test('refresh prioritizes a newer cross-device pending cycle over local historical success',async()=>{
+  const storage=store();const first=fixture({},storage);await first.controller.submit({id:'offer'});
+  const historical=first.controller.snapshot().receipt!;
+  const second=fixture({result:async()=>historical,mine:async()=>({items:[receipt('new-device','accepted'),historical]})},storage);
+  await second.controller.refresh();assert.equal(second.controller.snapshot().requestKey,'new-device');assert.equal(second.controller.snapshot().state,'accepted');assert.equal(second.controller.snapshot().input,undefined);second.controller.stop();
+});
+test('a trusted not-accepted 400 allows corrected input; ambiguous errors never discard original intent',async()=>{
+  for(const error of [Object.assign(new Error('invalid'),{status:400,code:'CONCURRENCY_INPUT_INVALID'}),Object.assign(new Error('other'),{status:400,code:'UNRECOGNIZED'}),Object.assign(new Error('conflict'),{status:409,code:'CONCURRENCY_IDEMPOTENCY_CONFLICT'}),new TypeError('offline')]) {
+    let fail=true;const keys:string[]=[];const f=fixture({enqueue:async(_c,_i,key)=>{keys.push(key);if(fail)throw error;return receipt(key);}});
+    await assert.rejects(()=>f.controller.submit({phone:'invalid'}));fail=false;
+    if((error as any).code==='CONCURRENCY_INPUT_INVALID') {await f.controller.submit({phone:'correct'});assert.equal(keys.length,2);assert.notEqual(keys[0],keys[1]);assert.equal(f.controller.snapshot().state,'succeeded');}
+    else {const attempts=keys.length;await assert.rejects(()=>f.controller.submit({phone:'correct'}),/ORIGINAL_REQUEST/);assert.equal(keys.length,attempts);await f.controller.resume();assert.equal(keys.length,attempts+1);assert.ok(keys.every(k=>k===keys[0]));}
+  }
+});
+
+
+test('temporary intake throttling retries original key with server delay; lost ack resolves without extra enqueue',async()=>{
+  const delays:number[]=[],keys:string[]=[];let committed=false;
+  const f=fixture({enqueue:async(_c,_i,key)=>{keys.push(key);if(keys.length===1)throw Object.assign(new Error('busy'),{status:429,code:'CONCURRENCY_INTAKE_BUSY',retryAfterMs:12000});committed=true;throw new TypeError('lost ack');},result:async()=>{if(committed)return receipt(keys[0]);throw missing();}});
+  const c=new DurableCommandController({client:f.client,command:'claim',resourceKey:'offer',storage:f.storage,sleep:async(ms)=>{delays.push(ms);},random:()=>0});
+  await c.submit({id:'offer'});assert.equal(c.snapshot().state,'succeeded');assert.equal(keys.length,2);assert.equal(keys[0],keys[1]);assert.deepEqual(delays,[12000,10000]);
 });
