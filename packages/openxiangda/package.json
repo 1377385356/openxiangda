@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.32.0",
+  "version": "2.33.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -71,13 +71,13 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.6.12",
+    "openxiangda-cli": "2.6.13",
     "openxiangda-contracts": "2.33.0",
-    "openxiangda-devkit-core": "2.34.4",
+    "openxiangda-devkit-core": "2.34.5",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.60",
-    "openxiangda-nest": "2.9.0",
-    "openxiangda-skill-kit": "2.3.35",
+    "openxiangda-mcp": "2.0.61",
+    "openxiangda-nest": "2.10.0",
+    "openxiangda-skill-kit": "2.3.36",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -143,40 +143,35 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.32.0",
+    "version": "2.33.0",
     "status": "reviewed",
-    "title": "OpenXiangda 2.32.0：自定义后台壳层与精确时间交互",
-    "summary": "提供正式后台壳层扩展，改进时间禁选、业务错误与内网开发诊断。",
+    "title": "OpenXiangda 2.33.0：事务构建与部署前置诊断",
+    "summary": "在提交前定位事务组合错误，在构建前发现平台依赖故障。",
     "newFeatures": [
-      "应用可通过 ui.admin 提供完整后台壳层或顶栏、侧栏、页脚插槽，消费权限过滤后的导航与身份。",
-      "消息与待办导航可分别配置显示，资源深链接与移动端页面统一使用自定义壳层。"
+      "openxiangda/nest 提供 createDataTransaction、diagnoseDataTransaction 和结构化构建错误。"
     ],
     "fixes": [
-      "日期时间控件按时区精确禁用小时、分钟、秒，保留输入校验和受控值。",
-      "业务拒绝的中文 message 与错误码、requestId 分离，避免页面丢失实际提示。",
-      "开发连接故障区分 DNS、TCP、TLS 与超时并提供安全恢复提示。"
+      "支持平台实时前置检查，发现内核、源码托管及镜像仓故障时停止后续构建。"
     ],
     "affectedUsers": [
-      "使用自定义管理后台、精确日期范围或校内网络开发的 V2 应用。"
+      "编写后端事务或向私有平台部署应用的 V2 开发者。"
     ],
     "upgradeSteps": [
-      "升级 openxiangda 至 2.32.0，重新安装依赖并构建应用。CLI 模板随同版本化。",
-      "按公开 ui.admin 契约接入壳层；路由、登录与授权继续由平台负责。",
-      "基础记录字段默认读取及受管下载文件名需要配套平台后端升级；仅升级 npm 不会更改服务端。"
+      "升级 openxiangda 到 2.33.0 并重新安装依赖。",
+      "平台部署对应后端后自动启用前置诊断；事务构建器按文档显式接入。"
     ],
     "knownLimitations": [
-      "自定义壳层接入和业务页面设计仍由应用负责，升级 SDK 不自动替换现有 UI。",
-      "网络诊断不自动改变 VPN、系统代理、证书或重试未知结果写请求。",
-      "前端时间禁选不能替代应用服务端业务时间守卫。"
+      "只读预检不保证后续写入或容量；原有部署和权限检查继续执行。",
+      "事务构建不自动合并重复写入，不替代服务端权限和并发判断。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
       "workspaceGenerations": "v2",
-      "platform": "沿用现有认证、权限与路由协议；基础记录元数据的后端调整需对应站点发布。",
-      "v1": "V1 引擎与既有业务不受本次 SDK 改动影响。"
+      "platform": "前置检查按平台 capability 启用，旧站保持原部署流程。",
+      "v1": "V1 引擎与业务不变。"
     },
-    "sha256": "987351f0bde76980d80f2a1ea8741c7e4697ef7b659ca679f5bf9b2797c8e8b2",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.32.0"
+    "sha256": "6738fcde83daed062691a30f4c4161d5f59b8024303ba2c4c7fd377c6886de70",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.33.0"
   }
 }
