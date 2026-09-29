@@ -1,3 +1,4 @@
+import { assertDeploymentPrerequisites } from './deployment-prerequisites.js';
 import { collectTargetReadiness } from './target-readiness.js';
 import type { DeploymentStrategy } from 'openxiangda-contracts';
 import { cloneSourceGit, initializeSourceGit, installSourceCredential, pushSourceGit } from './source-git.js';
@@ -2003,6 +2004,12 @@ export class OpenXiangdaApplicationServices {
     const source = await operationStage('source', '核对远端主线与源码', () => publishedDeliverySource(workspace.root));
     const client = await this.client(workspace.root);
     const capabilities = await client.capabilities();
+    if (capabilities.features?.['application.deployment-prerequisites']?.status === 'available') {
+      await operationStage('prerequisites', '检查内核、源码托管与镜像仓库', async () => {
+        const backend = backendRuntimeRequired(workspace.config);
+        assertDeploymentPrerequisites(await client.deploymentPrerequisites(workspace.config.app.code, backend), workspace.config.app.code, backend);
+      });
+    }
     const sources = compileApplicationSources(
       workspace.config,
       this.toolchainVersion

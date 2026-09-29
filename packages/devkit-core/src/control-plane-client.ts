@@ -460,6 +460,12 @@ export class OpenXiangdaControlPlaneClient {
     return { platform: this.diagnosticSite(), tenantId, userId };
   }
 
+  async deploymentPrerequisites(appCode: string, backend: boolean) {
+    return this.json<unknown>(`/openxiangda-api/v2/applications/${encodeURIComponent(appCode)}/deployment-prerequisites?backend=${backend}`, {
+      signal: AbortSignal.timeout(25_000),
+    });
+  }
+
   async capabilities(signal?: AbortSignal): Promise<PlatformCapabilities> {
     const capabilities = await this.json<PlatformCapabilities>(
       "/openxiangda-api/v2/capabilities",
