@@ -506,6 +506,8 @@ export class OpenXiangdaDeveloperSession {
         failure.status,
         {
           ...prepared.diagnostic,
+          phase: failure.phase,
+          remediation: failure.remediation,
           ...(failure.causeCode ? { causeCode: failure.causeCode } : {}),
         }
       );

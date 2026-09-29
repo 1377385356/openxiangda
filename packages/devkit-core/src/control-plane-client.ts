@@ -2690,11 +2690,13 @@ export class OpenXiangdaControlPlaneClient {
         failure.message,
         {
           ...prepared.diagnostic,
+          phase: failure.phase,
+          remediation: failure.remediation,
           ...(failure.causeCode ? { causeCode: failure.causeCode } : {}),
         },
         {
           retryable: true,
-          remediation: "检查目标平台地址、VPN/网络路由和代理后重试",
+          remediation: failure.remediation,
           requestId: prepared.diagnostic.requestId,
           path: prepared.diagnostic.path,
         }

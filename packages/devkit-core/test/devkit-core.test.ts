@@ -913,6 +913,8 @@ test("classifies developer-session transport timeouts without leaking the platfo
         method: "GET",
         path: "/openxiangda-api/v2/auth/whoami",
         causeCode: "UND_ERR_CONNECT_TIMEOUT",
+        phase: "timeout",
+        remediation: "请求超时：检查 VPN、代理路由及平台健康；若写入结果未知，先查询结果再重试。",
       });
       assert.doesNotMatch(error.message, /secret-access-token|private-platform/);
       return true;
@@ -952,6 +954,8 @@ test("classifies control-plane transport failures with a redacted relative path"
         method: "GET",
         path: "/openxiangda-api/v2/applications/reference-app/environments",
         causeCode: "ECONNREFUSED",
+        phase: "tcp",
+        remediation: "连接失败或中断：检查平台服务、VPN 路由和代理分流；若写入结果未知，先查询结果再重试。",
       });
       assert.doesNotMatch(error.message, /secret-access-token|private-platform/);
       return true;
