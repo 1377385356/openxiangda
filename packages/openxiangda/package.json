@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.34.1",
+  "version": "2.34.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -71,7 +71,7 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.6.15",
+    "openxiangda-cli": "2.6.14",
     "openxiangda-contracts": "2.34.0",
     "openxiangda-devkit-core": "2.35.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
@@ -143,36 +143,40 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.34.1",
+    "version": "2.34.0",
     "status": "reviewed",
-    "title": "OpenXiangda 2.34.1：持久申请受理恢复预算",
-    "summary": "支持配置最长30分钟的自动受理恢复，并保留首次明确提交时间和原申请编号。",
+    "title": "OpenXiangda 2.34.0：持久排队业务计划与结果恢复",
+    "summary": "新增由平台持久受理并自动处理的业务命令，支持关闭页面后继续执行与本人跨设备恢复。",
     "newFeatures": [
-      "useDurableCommand 可用 acceptanceRecoveryMs 配置120秒至30分钟的受理恢复预算。"
+      "新增 durable 受管命令、独立能力门禁、有界参数及生成的 backend-plan handler 清单。",
+      "openxiangda/nest 提供受执行证明约束的只读计划 handler，平台负责最终原子提交。",
+      "openxiangda/react 与 mobile 提供 useDurableCommand，支持显式提交、原键恢复、本人结果和退避轮询。"
     ],
     "fixes": [
-      "刷新及恢复原申请不再重新计算受理重试预算；截止后保留查询和迟到结果恢复能力。"
+      "严格区分内置 permit 配额所有权与应用 durable 计划，普通业务模型无需迁移到命令独占所有权。",
+      "执行上下文拒绝普通 SDK 写入、事务、通知和 OAuth，读取响应验证标准记录结构。"
     ],
     "affectedUsers": [
-      "需要较长排队等待的活动报名、预约和抢票应用开发者。"
+      "构建活动报名、预约、抢票及其他需要持久排队事务的 V2 应用开发者。"
     ],
     "upgradeSteps": [
-      "升级 openxiangda 到2.34.1，在需要长时间恢复的业务明确配置 acceptanceRecoveryMs。",
-      "验证原键恢复、截止后查询、未知应答及目标环境的完整排队容量。"
+      "升级 openxiangda 到 2.34.0，重新安装依赖并生成应用契约。",
+      "先部署支持 data.managed-concurrency.durable@1.0.0 的平台，再声明 durable 命令、handler manifest 和前端恢复流程。",
+      "在隔离测试数据上验证关闭浏览器、原请求恢复、取消后重报和业务原子结果，再分级测量实际容量。"
     ],
     "knownLimitations": [
-      "默认受理恢复预算仍为120秒；配置值是客户端自动入队预算，不是服务端最终完成承诺。",
-      "旧意图没有首次时间时，只能从首次明确恢复计时，无法证明历史发起时间。",
-      "受理成功不等于报名成功；实际容量需使用独立用户在目标环境验证。"
+      "应用只返回受声明约束的事务计划，不能在 handler 内发送通知或调用普通写入接口。",
+      "受理成功不等于业务成功；队列位置为近似投影，不能推导精确等待时间或服务器容量。",
+      "旧 permit 模式保留，未升级平台会拒绝 durable 包；回滚前须停止新受理并核对已有请求。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
       "workspaceGenerations": "v2",
-      "platform": "沿用 data.managed-concurrency.durable@1.0.0；不改变平台事实和permit协议。",
-      "v1": "V1引擎及业务不变。"
+      "platform": "durable 必须具备 data.managed-concurrency.durable@1.0.0，旧 permit 契约继续支持。",
+      "v1": "V1 引擎与业务不变。"
     },
-    "sha256": "f7297f5c779f079b48aa95ef594c9b4d7c373207467e1410aacfda57ca361451",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.34.1"
+    "sha256": "929abb0ea8cdbb32e38c39131540cd64a248c4e1a68dbde9ff187f35438f8da0",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.34.0"
   }
 }
