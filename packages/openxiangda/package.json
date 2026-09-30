@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.34.1",
+  "version": "2.34.2",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -71,13 +71,13 @@
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
-    "openxiangda-cli": "2.6.15",
+    "openxiangda-cli": "2.6.16",
     "openxiangda-contracts": "2.34.0",
     "openxiangda-devkit-core": "2.35.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
     "openxiangda-mcp": "2.0.62",
     "openxiangda-nest": "2.11.0",
-    "openxiangda-skill-kit": "2.3.38",
+    "openxiangda-skill-kit": "2.3.39",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -143,36 +143,38 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.34.1",
+    "version": "2.34.2",
     "status": "reviewed",
-    "title": "OpenXiangda 2.34.1：持久申请受理恢复预算",
-    "summary": "支持配置最长30分钟的自动受理恢复，并保留首次明确提交时间和原申请编号。",
+    "title": "OpenXiangda 2.34.2：受管读取繁忙恢复与原申请观察期限",
+    "summary": "为受管只读查询提供有界退避，并使持久申请观察遵守原始三十分钟期限，真实依赖和权限故障立即显露。",
     "newFeatures": [
-      "useDurableCommand 可用 acceptanceRecoveryMs 配置120秒至30分钟的受理恢复预算。"
+      "受管详情、本人申请、命令结果和配额查询默认最多恢复120秒、12次请求，可通过budgetMs或AbortSignal收窄。"
     ],
     "fixes": [
-      "刷新及恢复原申请不再重新计算受理重试预算；截止后保留查询和迟到结果恢复能力。"
+      "读取恢复冻结原参数及身份，遵循服务端Retry-After，只重试明确的容量繁忙；写请求保持单次发送。",
+      "已受理申请以原首次提交时间观察，跨设备使用原acceptedAt；刷新不会延长期限，超期后保留原编号用于显式查询。",
+      "持久结果轮询不再吞掉真实网络、依赖和权限故障。"
     ],
     "affectedUsers": [
-      "需要较长排队等待的活动报名、预约和抢票应用开发者。"
+      "使用受管读取和持久排队能力的活动报名、预约及抢票应用开发者。"
     ],
     "upgradeSteps": [
-      "升级 openxiangda 到2.34.1，在需要长时间恢复的业务明确配置 acceptanceRecoveryMs。",
-      "验证原键恢复、截止后查询、未知应答及目标环境的完整排队容量。"
+      "将应用openxiangda精确依赖升级到2.34.2，刷新同版本资料后检查并部署测试环境。",
+      "验证繁忙恢复、故障提示、原键跨设备恢复及三十分钟期限；在目标硬件测量完整混合负载。"
     ],
     "knownLimitations": [
-      "默认受理恢复预算仍为120秒；配置值是客户端自动入队预算，不是服务端最终完成承诺。",
-      "旧意图没有首次时间时，只能从首次明确恢复计时，无法证明历史发起时间。",
-      "受理成功不等于报名成功；实际容量需使用独立用户在目标环境验证。"
+      "读取恢复仅覆盖明确只读方法；普通Data API和写入没有新增自动重试。",
+      "默认受理恢复预算仍为120秒，accepted观察最长三十分钟；客户端预算不承诺服务端完成时间。",
+      "自动观察停止后可能存在迟到结果，应查询原申请；容量仍需目标环境实测。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
       "workspaceGenerations": "v2",
-      "platform": "沿用 data.managed-concurrency.durable@1.0.0；不改变平台事实和permit协议。",
+      "platform": "沿用data.managed-concurrency.durable@1.0.0，兼容已知API_BUSY/RESULT_BUSY的旧503；新入口预算429需匹配平台版本。",
       "v1": "V1引擎及业务不变。"
     },
-    "sha256": "f7297f5c779f079b48aa95ef594c9b4d7c373207467e1410aacfda57ca361451",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.34.1"
+    "sha256": "93594d8cc407bef730868e32737ba3e78ca5df955e2d33bc0bb3f6eec8f1d1f9",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.34.2"
   }
 }
