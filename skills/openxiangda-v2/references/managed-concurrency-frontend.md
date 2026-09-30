@@ -49,6 +49,24 @@ export async function readOffer(
 
 将读取接入应用已有的异步查询状态：初次加载显示局部骨架，空数组显示无可展示内容，失败提供局部重试。组件卸载或资源变化时中止旧请求，迟到响应不能覆盖新资源。同页多个观察者可复用应用已有查询层，查询键包含 `client.scope`、读取 code 和规范化参数，身份变化时清除旧主体视图；当前没有内置的 `useManagedRead` hook。
 
+### 只读预算繁忙恢复
+
+`read`、`mine`、`result`、`allocation` 共用有界恢复：单次调用默认含 HTTP 和等待的总预算 120 秒，最多 12 次总请求。只重试 HTTP 429 的 `CONCURRENCY_API_BUSY`、`CONCURRENCY_RESULT_BUSY`、`CONCURRENCY_RATE_LIMITED`、`CONCURRENCY_SOURCE_BUSY`；兼容旧平台的 HTTP 503 仅限前两个已知预算错误。明确 `retryable: false`、未知 429、权限拒绝、Redis/数据库/授权依赖失败和网络失败直接返回，不用繁忙重试掩盖。
+
+第一次失败后的基础等待为 2 秒，之后指数增加到最多 30 秒；取其与有效服务端提示的较大值，再加 0% 至 25% 随机抖动。提示优先使用合法 `Retry-After`（秒或 HTTP 日期），缺失时使用 `data.retryAfterMs`。若等待达到剩余预算，不提前查询，直接返回最后一次繁忙错误；12 次用完也保留最后繁忙响应。正在进行的请求超过总预算则中止并返回 `CONCURRENCY_READ_RECOVERY_EXHAUSTED`，不以之前的繁忙响应掩盖悬挂请求。
+
+可以传入更短的剩余预算，不能扩展单次 120 秒上限：
+
+```ts
+// budgetMs 含本次请求和所有预算繁忙退避；服务端事实仍为最终依据。
+const receipt = await client.result({ operationId }, signal, {
+  budgetMs: Math.max(0, originalDeadline - Date.now()),
+});
+const offer = await client.read<Offer>('offer', { id: offerId }, signal, { budgetMs: 30_000 });
+```
+
+每次调用在第一次请求前冻结完整参数、环境、主体及权限视角；后续修改表单不会改变重试内容。身份或视角变化时停止旧调用并返回 `CONCURRENCY_IDENTITY_CHANGED`。`AbortSignal` 可以中止请求和等待；组件卸载应中止旧读取。`enqueue`、`accept`、`cancel` 等写方法不使用这层自动重试，持久申请的原键受理恢复由下述控制器单独管理。普通 Data API 也不自动获得此策略。
+
 `freshness: 'stale'` 表示返回的是允许使用的旧内容，并不证明后台刷新已经成功。保留内容并提示“当前展示最近一次可用信息”；按新鲜期和有界退避刷新，超过 `staleUntil` 后不能继续无限展示。手动刷新仍调用同一命名读取，不绕回普通 CRUD。
 
 详情与余量使用不同读取声明。页面倒计时本地显示，不能每秒重查活动；资格、开放时间和扣减仍由服务端决定。缓存余量不保证获票；允许补量或释放的业务，也不能因旧余量为零永久阻止新的有效申请。等待期间不要重复读取详情或表单。
@@ -190,7 +208,7 @@ export function ClaimAction({ offerId }: { offerId: string }) {
 | 关闭状态区后返回 | 继续查看原操作，不宣称已取消 |
 | 取消与受理/成功同时发生 | 显示服务端原结果；错误时保留待核实状态 |
 | 身份切换、存储被禁用 | 不串用旧主体资料，不静默丢弃恢复能力 |
-| 网络或依赖异常 | 退避观察，保留原键，不绕回数据库或快速换键重提 |
+| 网络或依赖异常 | 显示故障并保留原键；恢复后查询原结果，不绕回数据库或快速换键重提 |
 | 许可到期、预占到期 | 分别核实准入与分配，互不冒充 |
 | 键盘、屏幕阅读器、窄屏 | 状态可读，焦点可控，关闭与取消语义清楚 |
 
@@ -208,7 +226,9 @@ const submit = () => command.submit({activity:activityId,channel:channelId,agree
 
 hook 从 `openxiangda/react` 和 `openxiangda/mobile` 导出。state、initialized、isObserving、requestKey、receipt、errorCode 用于统一状态区；submit(input)、resume()、refresh()、stop() 分别为明确提交、用冻结 input 重试原请求、恢复查询和停止观察。挂载只查本地原 key 或服务端 mine，不自动 enqueue。未知应答保留原 key 与 input；用户恢复后先查原结果，不能换 key 重试。浏览器存储失败在提交前明确失败。未知应答后的恢复按钮调用 resume()，不传当前可能已经修改的表单。snapshot.input 可恢复本地冻结表单；跨设备只有回执时不展示推测的原输入。一次明确 submit/resume 期间，429、暂时5xx或网络错误会按原 key/input 自动退避恢复，先查原结果再重试 enqueue，默认最多6次、最长120秒；可用 acceptanceRecoveryMs 明确配置120000至1800000毫秒，更长预算最多120次，遵守更长的 Retry-After。预算从首次明确提交计时，刷新或 resume() 不重置；旧版意图没有时间时从首次明确恢复计时，无法证明更早的提交时间。尚无 receipt 时只能提示“正在确认受理”，不能承诺可关闭页面。用完预算保留原意图，停止自动入队，refresh() 仍可只读核对迟到结果；这不是报名失败。该预算只控制受理恢复，不是后端最终完成时限承诺。如果刷新时原请求尚未被平台受理，挂载只查询，明确点击 resume() 才重新启动有界受理重试。
 
-默认每次至少间隔 5 秒，遵守更长的服务端 retryAfterMs，再加随机抖动；暂时失败指数退避，终态停止。一个业务区域只挂载一个观察者。离开或关闭页面不撤销已受理请求，平台自动继续；新设备通过 mine 找到本人的原请求。position 为空时显示「已受理，稍后可查看」，不要显示虚假的精确人数或预计秒数。
+已受理申请的自动观察最多持续到首次明确提交后的 30 分钟，默认受理恢复仍为 120 秒，两者分别计算。每次结果读取同时受单次 120 秒和原提交剩余时间限制；刷新和 resume 不重新获得观察时间。跨设备没有本地首次时间时，用原回执 acceptedAt 计算观察窗口，不能以页面挂载时间重新计时。达到窗口后保留原意图，状态为 recovering、isObserving 为 false，提示稍后核对；明确 refresh 仍可查询迟到终态，但不重新启动已经到期的自动观察，也不自动提交。
+
+正常待处理结果每次至少间隔 5 秒，遵守更长的服务端 retryAfterMs，再加随机抖动。单次只读恢复耗尽且仍是已知预算繁忙时，外层可在原观察窗口内指数退避继续；权限、依赖、网络故障或悬挂请求超过读取预算时立即停止自动观察，显示 error 并保留原回执和请求键。终态停止。受理恢复中核对原结果同样只允许已知预算繁忙继续，读取依赖失败不能被外层重试隐藏。一个业务区域只挂载一个观察者。离开或关闭页面不撤销已受理请求，平台自动继续；新设备通过 mine 找到本人的原请求。position 为空时显示「已受理，稍后可查看」，不要显示虚假的精确人数或预计秒数。
 
 refresh 会优先恢复 mine 返回的新进行中周期，避免本地历史 succeeded 遮蔽另一个设备的新申请。不要在 mount 发现历史 succeeded 时自动跳成功页或永久禁用提交。它可能已经被管理员取消，需结合当前业务记录展示。只有用户明确再次点击 submit，且原请求已有终态，SDK 才创建新的 requestKey；活跃请求或未知应答始终恢复原 key。平台明确返回未受理的参数错误（400 + CONCURRENCY_INPUT_INVALID 等约定错误）时，SDK 才清除被拒输入，允许修正后再提交；未知 400、409、429、5xx 和网络错误仍保留原意图。成功提示以 receipt.state==='succeeded' 和 receipt.result 为准，accepted/executing 只显示「已登记，处理中」。
 

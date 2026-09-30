@@ -117,3 +117,84 @@ test('a new terminal cycle gets a new start while invalid recovery budgets fail 
   for(const value of [NaN,Infinity,119999,1800001])assert.throws(()=>new DurableCommandController({client:f.client,command:'claim',resourceKey:'offer',storage:f.storage,acceptanceRecoveryMs:value}),/BUDGET_INVALID/);
   assert.equal(writes,2);
 });
+
+test('accepted observation uses the original thirty-minute window and narrows each read',async t=>{
+  let now=5000000, reads=0; t.mock.method(Date,'now',()=>now);
+  const budgets:Array<number|undefined>=[],saved:Array<{firstSubmittedAt?:number}>=[];
+  const storage=store(),set=storage.setItem.bind(storage);
+  storage.setItem=(key,value)=>{saved.push(JSON.parse(value));set(key,value);};
+  const f=fixture({enqueue:async(_c,_i,key)=>receipt(key,'accepted'),result:async(_input,_signal,recovery)=>{
+    budgets.push(recovery?.budgetMs);reads++;
+    if(reads===1){now+=130000;return receipt(c.snapshot().requestKey,'executing');}
+    return receipt(c.snapshot().requestKey);
+  }},storage);
+  const c=new DurableCommandController({client:f.client,command:'claim',resourceKey:'offer',storage,random:()=>0,sleep:async ms=>{now+=ms;}});
+  await c.submit({id:'offer'});
+  while(c.snapshot().isObserving)await Promise.resolve();
+  assert.equal(c.snapshot().state,'succeeded');assert.equal(reads,2);
+  assert.deepEqual(budgets,[1794000,1658000]);
+  assert.ok(saved.every(intent=>intent.firstSubmittedAt===5000000));
+});
+
+test('busy result recovery remains bounded by the original deadline, without enqueue replay',async t=>{
+  let now=6000000,reads=0,writes=0; t.mock.method(Date,'now',()=>now);
+  const f=fixture({enqueue:async(_c,_i,key)=>{writes++;return receipt(key,'accepted');},result:async(_input,_signal,recovery)=>{
+    reads++;assert.equal(recovery?.budgetMs,1794000);now+=1794000;
+    throw Object.assign(new Error('busy'),{status:429,code:'CONCURRENCY_RESULT_BUSY'});
+  }});
+  const c=new DurableCommandController({client:f.client,command:'claim',resourceKey:'offer',storage:f.storage,acceptanceRecoveryMs:1800000,random:()=>0,sleep:async ms=>{now+=ms;}});
+  await c.submit({id:'offer'});while(c.snapshot().isObserving)await Promise.resolve();
+  assert.equal(reads,1);assert.equal(writes,1);assert.equal(c.snapshot().state,'recovering');
+  assert.equal(c.snapshot().errorCode,'CONCURRENCY_RESULT_OBSERVATION_EXHAUSTED');
+});
+
+test('real result dependency, permission and transport failures stop automatic observation',async()=>{
+  for(const error of [Object.assign(new Error('database'),{status:503,code:'CONCURRENCY_DATABASE_UNAVAILABLE'}),Object.assign(new Error('cache'),{status:503,code:'CONCURRENCY_CACHE_UNAVAILABLE'}),Object.assign(new Error('denied'),{status:403,code:'CONCURRENCY_CAPABILITY_REQUIRED'}),new TypeError('offline')]) {
+    let reads=0,writes=0;
+    const f=fixture({enqueue:async(_c,_i,key)=>{writes++;return receipt(key,'accepted');},result:async()=>{reads++;throw error;}});
+    await f.controller.submit({id:'offer'});while(f.controller.snapshot().isObserving)await Promise.resolve();
+    assert.equal(reads,1);assert.equal(writes,1);assert.equal(f.controller.snapshot().state,'error');
+    assert.equal(f.controller.snapshot().receipt?.state,'accepted');assert.ok(f.controller.snapshot().requestKey);
+  }
+});
+
+test('a read error during intake does not repeatedly hide a dependency fault',async()=>{
+  let writes=0,reads=0;
+  const error=Object.assign(new Error('cache unavailable'),{status:503,code:'CONCURRENCY_CACHE_UNAVAILABLE'});
+  const f=fixture({enqueue:async()=>{writes++;throw new TypeError('lost acknowledgement');},result:async()=>{reads++;throw error;}});
+  await assert.rejects(()=>f.controller.submit({id:'offer'}),{code:'CONCURRENCY_CACHE_UNAVAILABLE'});
+  assert.equal(reads,1);assert.equal(writes,1);assert.equal(f.controller.snapshot().isObserving,false);
+});
+
+test('an original-result read consuming intake time cannot start a write after expiry',async t=>{
+  let now=7000000,writes=0; t.mock.method(Date,'now',()=>now);
+  const f=fixture({enqueue:async()=>{writes++;throw new TypeError('lost acknowledgement');},result:async(_input,_signal,recovery)=>{
+    assert.equal(recovery?.budgetMs,115000);now+=115001;throw missing();
+  }});
+  const c=new DurableCommandController({client:f.client,command:'claim',resourceKey:'offer',storage:f.storage,random:()=>0,sleep:async ms=>{now+=ms;}});
+  await assert.rejects(()=>c.submit({id:'offer'}),{code:'CONCURRENCY_ACCEPTANCE_UNCONFIRMED'});
+  assert.equal(writes,1);assert.equal(c.snapshot().isObserving,false);
+});
+
+test('expired original observation allows explicit late facts without restarting polls or renewing time',async t=>{
+  let now=8000000,reads=0,late=false,savedStart:number|undefined; t.mock.method(Date,'now',()=>now);
+  const storage=store(),set=storage.setItem.bind(storage);
+  storage.setItem=(key,value)=>{savedStart=JSON.parse(value).firstSubmittedAt;set(key,value);};
+  const f=fixture({enqueue:async(_c,_i,key)=>receipt(key,'accepted'),result:async(_input,_signal,recovery)=>{
+    reads++;if(late)assert.equal(recovery,undefined);
+    return receipt(c.snapshot().requestKey,late?'succeeded':'accepted');
+  }},storage);
+  const c=new DurableCommandController({client:f.client,command:'claim',resourceKey:'offer',storage,random:()=>0,sleep:async()=>{now+=1800000;}});
+  await c.submit({id:'offer'});while(c.snapshot().isObserving)await Promise.resolve();
+  assert.equal(reads,0);assert.equal(c.snapshot().errorCode,'CONCURRENCY_RESULT_OBSERVATION_EXHAUSTED');
+  await c.refresh();assert.equal(reads,1);assert.equal(c.snapshot().isObserving,false);
+  late=true;await c.refresh();assert.equal(reads,2);assert.equal(c.snapshot().state,'succeeded');assert.equal(savedStart,8000000);
+});
+
+test('a cross-device pending receipt uses its original acceptance age, not page mount time',async t=>{
+  let now=9000000,reads=0; t.mock.method(Date,'now',()=>now);
+  const pending={...receipt('remote','accepted'),acceptedAt:new Date(now-1800001).toISOString()};
+  const f=fixture({mine:async()=>({items:[pending]}),result:async()=>{reads++;return pending;}});
+  await f.controller.refresh();assert.equal(reads,0);assert.equal(f.controller.snapshot().isObserving,false);
+  assert.equal(f.controller.snapshot().errorCode,'CONCURRENCY_RESULT_OBSERVATION_EXHAUSTED');
+});

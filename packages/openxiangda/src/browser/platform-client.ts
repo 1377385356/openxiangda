@@ -1,4 +1,6 @@
 import { parseBusinessProcessResolution, parseBusinessProcessCommitResult } from 'openxiangda-contracts/browser';
+import { recoverManagedRead } from './managed-read-recovery';
+import type { ManagedReadRecoveryOptions } from './managed-command';
 import {
   normalizeWorkflowSurface,
   SCHEMA_VERSIONS,
@@ -874,25 +876,43 @@ export function createManagedConcurrencyClient(): ManagedConcurrencyClient {
         activeIdentity?.userId !== identity.userId || activeIdentity?.environment.id !== identity.environment.id)
       throw new OpenXiangdaPlatformRequestError({ code: 'CONCURRENCY_IDENTITY_CHANGED', status: 401, message: '用户或应用环境已变化，请重新打开原操作' });
   };
-  const call = async <T>(path: string, body: Record<string, unknown>, signal?: AbortSignal): Promise<T> => {
+  const frozenCall = async <T>(path: string, body: string, signal?: AbortSignal): Promise<T> => {
     assertScope();
     const value = await request<T>(`${nativeBase()}/concurrency/${path}`, {
-      method: 'POST', body: JSON.stringify({ ...body, environmentKey }), signal,
+      method: 'POST', body, signal,
     });
     assertScope(); return value;
   };
+  const call = <T>(path: string, body: Record<string, unknown>, signal?: AbortSignal) =>
+    frozenCall<T>(path, JSON.stringify({ ...body, environmentKey }), signal);
+  const read = async <T>(path: string, body: Record<string, unknown>, signal?: AbortSignal, recovery?: ManagedReadRecoveryOptions) => {
+    assertScope();
+    const frozen = JSON.stringify({ ...body, environmentKey });
+    const perspective = currentPerspectiveCode(), identityScope = activeIdentity?.identityScope;
+    const assertReadScope = () => {
+      assertScope();
+      if (currentPerspectiveCode() !== perspective || activeIdentity?.identityScope !== identityScope)
+        throw new OpenXiangdaPlatformRequestError({ code: 'CONCURRENCY_IDENTITY_CHANGED', status: 401, message: '读取身份或权限视角已变化，请重新打开页面' });
+    };
+    return recoverManagedRead<T>(async signal => {
+      assertReadScope();
+      const value = await frozenCall<T>(path, frozen, signal);
+      assertReadScope();
+      return value;
+    }, signal, recovery);
+  };
   return {
     scope,
-    read: (code, input, signal) => call(`reads/${encodeURIComponent(code)}`, { input }, signal),
+    read: (code, input, signal, recovery) => read(`reads/${encodeURIComponent(code)}`, { input }, signal, recovery),
     enqueue: (command,input,requestKey,signal) => call(`commands/${encodeURIComponent(command)}/enqueue`,{input,requestKey},signal),
-    mine: (command,input,signal) => call(`commands/${encodeURIComponent(command)}/mine`,input,signal),
+    mine: (command,input,signal,recovery) => read(`commands/${encodeURIComponent(command)}/mine`,input,signal,recovery),
     join: (command, input, requestKey, signal) => call(`commands/${encodeURIComponent(command)}/wait`, { input, requestKey }, signal),
     poll: (ticket, signal) => call('waiting/status', { ticket }, signal),
     leave: (ticket, signal) => call('waiting/leave', { ticket }, signal),
     accept: (permit, signal) => call('commands/accept', { permit }, signal),
-    result: (input, signal) => call('commands/result', input, signal),
+    result: (input, signal, recovery) => read('commands/result', input, signal, recovery),
     cancel: (operationId, signal) => call('commands/cancel', { operationId }, signal),
-    allocation: (allocationId, signal) => call('allocations/status', { allocationId }, signal),
+    allocation: (allocationId, signal, recovery) => read('allocations/status', { allocationId }, signal, recovery),
   };
 }
 

@@ -1,18 +1,23 @@
 import type { CommandReceipt, ManagedReadResult, WaitingReceipt, ManagedCommandMinePage } from 'openxiangda-contracts/browser';
 
+export interface ManagedReadRecoveryOptions {
+  /** Total call budget, including busy waits. May narrow, never extend, the default 120 seconds. */
+  budgetMs?: number;
+}
+
 export interface ManagedConcurrencyClient {
   /** Bound to the current application, environment and trusted user. */
   readonly scope: string;
-  read<T = Record<string, unknown>>(code: string, input: Record<string, unknown>, signal?: AbortSignal): Promise<ManagedReadResult<T>>;
+  read<T = Record<string, unknown>>(code: string, input: Record<string, unknown>, signal?: AbortSignal, recovery?: ManagedReadRecoveryOptions): Promise<ManagedReadResult<T>>;
   enqueue(command: string, input: Record<string,unknown>, requestKey: string, signal?: AbortSignal): Promise<CommandReceipt>;
-  mine(command: string, input: {resourceKey:string;cursor?:string;limit?:number}, signal?: AbortSignal): Promise<ManagedCommandMinePage>;
+  mine(command: string, input: {resourceKey:string;cursor?:string;limit?:number}, signal?: AbortSignal, recovery?: ManagedReadRecoveryOptions): Promise<ManagedCommandMinePage>;
   join(command: string, input: Record<string, unknown>, requestKey: string, signal?: AbortSignal): Promise<WaitingReceipt>;
   poll(ticket: string, signal?: AbortSignal): Promise<WaitingReceipt>;
   leave(ticket: string, signal?: AbortSignal): Promise<{ state: 'cancelled' | 'accepted'; requestKey: string }>;
   accept(permit: string, signal?: AbortSignal): Promise<CommandReceipt>;
-  result(input: { operationId: string } | { command: string; requestKey: string }, signal?: AbortSignal): Promise<CommandReceipt>;
+  result(input: { operationId: string } | { command: string; requestKey: string }, signal?: AbortSignal, recovery?: ManagedReadRecoveryOptions): Promise<CommandReceipt>;
   cancel(operationId: string, signal?: AbortSignal): Promise<CommandReceipt>;
-  allocation(allocationId: string, signal?: AbortSignal): Promise<NonNullable<NonNullable<CommandReceipt['result']>['allocation']>>;
+  allocation(allocationId: string, signal?: AbortSignal, recovery?: ManagedReadRecoveryOptions): Promise<NonNullable<NonNullable<CommandReceipt['result']>['allocation']>>;
 }
 
 export interface ManagedCommandSnapshot {

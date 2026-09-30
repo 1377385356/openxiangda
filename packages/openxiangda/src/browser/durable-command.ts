@@ -1,5 +1,6 @@
 import type { CommandReceipt } from 'openxiangda-contracts/browser';
-import type { ManagedConcurrencyClient } from './managed-command';
+import type { ManagedConcurrencyClient, ManagedReadRecoveryOptions } from './managed-command';
+import { isManagedReadBusy } from './managed-read-recovery';
 type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 interface Intent {
     version: 1;
@@ -58,6 +59,24 @@ export class DurableCommandController {
     subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
     private update(next: Partial<DurableCommandSnapshot>) { this.value = Object.freeze({ ...this.value, ...next }); for (const listener of this.listeners)
         listener(); }
+    private remainingRecoveryMs() {
+        const started = this.intent?.firstSubmittedAt;
+        if (started === undefined) return undefined;
+        const now = Date.now();
+        return now < started ? 0 : Math.max(0, started + (this.options.acceptanceRecoveryMs ?? 120000) - now);
+    }
+    private remainingObservationMs() {
+        const started = this.intent?.firstSubmittedAt ?? Date.parse(this.intent?.receipt?.acceptedAt || '');
+        if (!Number.isFinite(started)) return 0;
+        const now = Date.now();
+        return now < started ? 0 : Math.max(0, started + 1800000 - now);
+    }
+    private readRecovery(allowLateQuery = false): ManagedReadRecoveryOptions | undefined {
+        const remaining = this.intent?.receipt ? this.remainingObservationMs() : this.remainingRecoveryMs();
+        // An explicit post-deadline query can find a late terminal receipt. It
+        // never renews the original intent or restarts automatic observation.
+        return remaining === undefined || (allowLateQuery && remaining === 0) ? undefined : { budgetMs: remaining };
+    }
     private persist() { this.options.storage.setItem(this.storageKey, JSON.stringify(this.intent)); }
     private restore() {
         if (this.intent)
@@ -104,7 +123,7 @@ export class DurableCommandController {
             let receipt: CommandReceipt | undefined;
             if (this.intent) {
                 try {
-                    receipt = await this.options.client.result({ command: this.options.command, requestKey: this.intent.requestKey }, abort.signal);
+                    receipt = await this.options.client.result({ command: this.options.command, requestKey: this.intent.requestKey }, abort.signal, this.readRecovery(true));
                 }
                 catch (error) {
                     if (!absent(error))
@@ -115,7 +134,7 @@ export class DurableCommandController {
                 return;
             // A historical local success cannot hide a newer pending cycle on another device.
             if (!receipt || terminal(receipt)) {
-                const page = await this.options.client.mine(this.options.command, { resourceKey: this.options.resourceKey, limit: 20 }, abort.signal);
+                const page = await this.options.client.mine(this.options.command, { resourceKey: this.options.resourceKey, limit: 20 }, abort.signal, this.readRecovery(true));
                 if (!active())
                     return;
                 receipt = page.items.find(r => !terminal(r)) || receipt || (!this.intent ? page.items[0] : undefined);
@@ -163,7 +182,7 @@ export class DurableCommandController {
             if (this.intent && !terminal(this.intent.receipt)) {
                 // Resolve original acceptance before retrying. Never replace an unknown key.
                 try {
-                    const found = await this.options.client.result({ command: this.options.command, requestKey: this.intent.requestKey }, abort.signal);
+                    const found = await this.options.client.result({ command: this.options.command, requestKey: this.intent.requestKey }, abort.signal, this.readRecovery(true));
                     if (!active())
                         return;
                     this.accept(found);
@@ -213,6 +232,7 @@ export class DurableCommandController {
         const timer=setTimeout(()=>{timedOut=true;abort.abort();},remaining);
         try {
             for(let attempt=0; attempt<(budget>120000?120:6) && active(); attempt++) {
+                let readingOriginal = false;
                 try {
                     if(Date.now()>=deadline || Date.now()<intent.firstSubmittedAt!)throw unconfirmed();
                     if(attempt>0) {
@@ -223,13 +243,19 @@ export class DurableCommandController {
                         if(!active())return undefined;
                         if(Date.now()>=deadline || Date.now()<intent.firstSubmittedAt!)throw unconfirmed();
                         // A lost acknowledgement may already be committed; never re-enqueue before checking.
-                        try {return await this.options.client.result({command:this.options.command,requestKey:intent.requestKey},abort.signal);}
+                        readingOriginal = true;
+                        try {return await this.options.client.result({command:this.options.command,requestKey:intent.requestKey},abort.signal,{budgetMs:deadline-Date.now()});}
                         catch(error) {if(!absent(error))throw error;}
+                        readingOriginal = false;
                     }
+                    if(Date.now()>=deadline || Date.now()<intent.firstSubmittedAt!)throw unconfirmed();
                     return await this.options.client.enqueue(this.options.command,intent.input!,intent.requestKey,abort.signal);
                 } catch(error) {
                     if(!active())break;
                     if(code(error)==='CONCURRENCY_ACCEPTANCE_UNCONFIRMED')throw error;
+                    // Read-only dependency failures cannot be hidden by another
+                    // intake attempt. Only a known exhausted busy response may wait.
+                    if(readingOriginal && !isManagedReadBusy(error))throw error;
                     if(!retryable(error))throw error;
                     lastError=error;
                     this.update({state:'recovering',receipt:undefined,errorCode:code(error),isObserving:true});
@@ -248,6 +274,10 @@ export class DurableCommandController {
             this.update({ isObserving: false });
             return;
         }
+        if (this.remainingObservationMs() === 0) {
+            this.update({ state: 'recovering', isObserving: false, errorCode: 'CONCURRENCY_RESULT_OBSERVATION_EXHAUSTED' });
+            return;
+        }
         this.update({ isObserving: true });
         void this.poll(receipt, generation, abort);
     }
@@ -258,10 +288,20 @@ export class DurableCommandController {
             try {
                 // Never poll faster than the server recommendation; default is deliberately >=5s.
                 const requested = Math.max(5000, Number(current.retryAfterMs) || 0, failures ? Math.min(120000, 5000 * 2 ** Math.min(failures, 5)) : 0);
-                await (this.options.sleep || sleep)(requested * (1 + (this.options.random || Math.random)() * .25), abort.signal);
+                const wait = requested * (1 + (this.options.random || Math.random)() * .25);
+                const remaining = this.remainingObservationMs();
+                if (wait >= remaining) {
+                    this.update({ state: 'recovering', isObserving: false, errorCode: 'CONCURRENCY_RESULT_OBSERVATION_EXHAUSTED' });
+                    return;
+                }
+                await (this.options.sleep || sleep)(wait, abort.signal);
                 if (!active())
                     return;
-                const next = await this.options.client.result({ operationId: current.operationId }, abort.signal);
+                if (this.remainingObservationMs() === 0) {
+                    this.update({ state: 'recovering', isObserving: false, errorCode: 'CONCURRENCY_RESULT_OBSERVATION_EXHAUSTED' });
+                    return;
+                }
+                const next = await this.options.client.result({ operationId: current.operationId }, abort.signal, this.readRecovery());
                 if (!active())
                     return;
                 this.accept(next);
@@ -275,7 +315,7 @@ export class DurableCommandController {
             catch (error) {
                 if (!active())
                     return;
-                if (!retryable(error)) {
+                if (!isManagedReadBusy(error)) {
                     this.update({ state: 'error', errorCode: code(error), isObserving: false });
                     return;
                 }
