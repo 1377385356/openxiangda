@@ -75,3 +75,45 @@ test('temporary intake throttling retries original key with server delay; lost a
   const c=new DurableCommandController({client:f.client,command:'claim',resourceKey:'offer',storage:f.storage,sleep:async(ms)=>{delays.push(ms);},random:()=>0});
   await c.submit({id:'offer'});assert.equal(c.snapshot().state,'succeeded');assert.equal(keys.length,2);assert.equal(keys[0],keys[1]);assert.deepEqual(delays,[12000,10000]);
 });
+
+test('configured intake recovery continues beyond six attempts and two minutes with the original key',async t=>{
+  let now=1000000; t.mock.method(Date,'now',()=>now);
+  const keys:string[]=[],delays:number[]=[];
+  const f=fixture({enqueue:async(_c,_i,key)=>{keys.push(key);if(keys.length<=8)throw Object.assign(new Error('busy'),{status:429,code:'CONCURRENCY_INTAKE_BUSY',retryAfterMs:30000});return receipt(key);}});
+  const c=new DurableCommandController({client:f.client,command:'claim',resourceKey:'offer',storage:f.storage,acceptanceRecoveryMs:1800000,random:()=>0,sleep:async ms=>{delays.push(ms);now+=ms;}});
+  await c.submit({id:'offer'});
+  assert.equal(c.snapshot().state,'succeeded');assert.equal(keys.length,9);
+  assert.equal(new Set(keys).size,1);assert.ok(delays.reduce((a,b)=>a+b,0)>120000);
+});
+
+test('original start survives refresh and resume; expiry stops enqueue but a late result remains readable',async t=>{
+  let now=2000000,writes=0,found=false; t.mock.method(Date,'now',()=>now);
+  const f=fixture({enqueue:async()=>{writes++;throw new TypeError('offline');},result:async()=>{if(found)return receipt(f.controller.snapshot().requestKey);throw missing();}});
+  await assert.rejects(()=>f.controller.submit({id:'offer'}));
+  const originalKey=f.controller.snapshot().requestKey;
+  now+=1800001;
+  const c=new DurableCommandController({client:f.client,command:'claim',resourceKey:'offer',storage:f.storage,acceptanceRecoveryMs:1800000});
+  await c.refresh();assert.equal(writes,6);assert.equal(c.snapshot().requestKey,originalKey);
+  await assert.rejects(()=>c.resume(),{code:'CONCURRENCY_ACCEPTANCE_UNCONFIRMED'});
+  assert.equal(writes,6);assert.equal(c.snapshot().isObserving,false);
+  found=true;await c.refresh();assert.equal(c.snapshot().state,'succeeded');assert.equal(writes,6);
+});
+
+test('longer server backoff never starts another enqueue beyond the original budget',async t=>{
+  let now=3000000,writes=0,sleeps=0; t.mock.method(Date,'now',()=>now);
+  const f=fixture({enqueue:async()=>{writes++;throw Object.assign(new Error('busy'),{status:429,retryAfterMs:1800000});}});
+  const c=new DurableCommandController({client:f.client,command:'claim',resourceKey:'offer',storage:f.storage,acceptanceRecoveryMs:1800000,sleep:async()=>{sleeps++;}});
+  await assert.rejects(()=>c.submit({id:'offer'}),{code:'CONCURRENCY_ACCEPTANCE_UNCONFIRMED'});
+  assert.equal(writes,1);assert.equal(sleeps,0);assert.ok(c.snapshot().requestKey);
+});
+
+test('a new terminal cycle gets a new start while invalid recovery budgets fail before requests',async t=>{
+  let now=4000000,writes=0; t.mock.method(Date,'now',()=>now);
+  const f=fixture({enqueue:async(_c,_i,key)=>{writes++;return receipt(key);}});
+  const c=new DurableCommandController({client:f.client,command:'claim',resourceKey:'offer',storage:f.storage,acceptanceRecoveryMs:1800000});
+  await c.submit({id:'offer'});const first=c.snapshot().requestKey;
+  now+=1800001;await c.submit({id:'offer'});
+  assert.equal(writes,2);assert.notEqual(c.snapshot().requestKey,first);assert.equal(c.snapshot().state,'succeeded');
+  for(const value of [NaN,Infinity,119999,1800001])assert.throws(()=>new DurableCommandController({client:f.client,command:'claim',resourceKey:'offer',storage:f.storage,acceptanceRecoveryMs:value}),/BUDGET_INVALID/);
+  assert.equal(writes,2);
+});

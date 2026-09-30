@@ -201,12 +201,12 @@ export function ClaimAction({ offerId }: { offerId: string }) {
 
 ```tsx
 const client = useMemo(() => createManagedConcurrencyClient(), []);
-const command = useDurableCommand({client,command:'registration-enroll',resourceKey:activityId});
+const command = useDurableCommand({client,command:'registration-enroll',resourceKey:activityId,acceptanceRecoveryMs:30*60*1000});
 // 仅真实点击提交；不是 useEffect 或页面 mount 回调。
 const submit = () => command.submit({activity:activityId,channel:channelId,agreed:true,phone});
 ```
 
-hook 从 `openxiangda/react` 和 `openxiangda/mobile` 导出。state、initialized、isObserving、requestKey、receipt、errorCode 用于统一状态区；submit(input)、resume()、refresh()、stop() 分别为明确提交、用冻结 input 重试原请求、恢复查询和停止观察。挂载只查本地原 key 或服务端 mine，不自动 enqueue。未知应答保留原 key 与 input；用户恢复后先查原结果，不能换 key 重试。浏览器存储失败在提交前明确失败。未知应答后的恢复按钮调用 resume()，不传当前可能已经修改的表单。snapshot.input 可恢复本地冻结表单；跨设备只有回执时不展示推测的原输入。一次明确 submit/resume 期间，429、暂时5xx或网络错误会按原 key/input 自动退避恢复，先查原结果再重试 enqueue，最多6次、最长120秒，遵守更长的 Retry-After；尚无 receipt 时只能提示“正在确认受理”，不能承诺可关闭页面。用完预算保留原意图，明确点击 resume() 继续。如果刷新时原请求尚未被平台受理，挂载只查询，明确点击 resume() 才重新启动有界受理重试。
+hook 从 `openxiangda/react` 和 `openxiangda/mobile` 导出。state、initialized、isObserving、requestKey、receipt、errorCode 用于统一状态区；submit(input)、resume()、refresh()、stop() 分别为明确提交、用冻结 input 重试原请求、恢复查询和停止观察。挂载只查本地原 key 或服务端 mine，不自动 enqueue。未知应答保留原 key 与 input；用户恢复后先查原结果，不能换 key 重试。浏览器存储失败在提交前明确失败。未知应答后的恢复按钮调用 resume()，不传当前可能已经修改的表单。snapshot.input 可恢复本地冻结表单；跨设备只有回执时不展示推测的原输入。一次明确 submit/resume 期间，429、暂时5xx或网络错误会按原 key/input 自动退避恢复，先查原结果再重试 enqueue，默认最多6次、最长120秒；可用 acceptanceRecoveryMs 明确配置120000至1800000毫秒，更长预算最多120次，遵守更长的 Retry-After。预算从首次明确提交计时，刷新或 resume() 不重置；旧版意图没有时间时从首次明确恢复计时，无法证明更早的提交时间。尚无 receipt 时只能提示“正在确认受理”，不能承诺可关闭页面。用完预算保留原意图，停止自动入队，refresh() 仍可只读核对迟到结果；这不是报名失败。该预算只控制受理恢复，不是后端最终完成时限承诺。如果刷新时原请求尚未被平台受理，挂载只查询，明确点击 resume() 才重新启动有界受理重试。
 
 默认每次至少间隔 5 秒，遵守更长的服务端 retryAfterMs，再加随机抖动；暂时失败指数退避，终态停止。一个业务区域只挂载一个观察者。离开或关闭页面不撤销已受理请求，平台自动继续；新设备通过 mine 找到本人的原请求。position 为空时显示「已受理，稍后可查看」，不要显示虚假的精确人数或预计秒数。
 
