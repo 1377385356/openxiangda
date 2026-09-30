@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.34.2",
+  "status": "reviewed",
+  "title": "OpenXiangda 2.34.2：受管读取繁忙恢复与原申请观察期限",
+  "summary": "为受管只读查询提供有界退避，并使持久申请观察遵守原始三十分钟期限，真实依赖和权限故障立即显露。",
+  "newFeatures": ["受管详情、本人申请、命令结果和配额查询默认最多恢复120秒、12次请求，可通过budgetMs或AbortSignal收窄。"],
+  "fixes": ["读取恢复冻结原参数及身份，遵循服务端Retry-After，只重试明确的容量繁忙；写请求保持单次发送。", "已受理申请以原首次提交时间观察，跨设备使用原acceptedAt；刷新不会延长期限，超期后保留原编号用于显式查询。", "持久结果轮询不再吞掉真实网络、依赖和权限故障。"],
+  "affectedUsers": ["使用受管读取和持久排队能力的活动报名、预约及抢票应用开发者。"],
+  "upgradeSteps": ["将应用openxiangda精确依赖升级到2.34.2，刷新同版本资料后检查并部署测试环境。", "验证繁忙恢复、故障提示、原键跨设备恢复及三十分钟期限；在目标硬件测量完整混合负载。"],
+  "knownLimitations": ["读取恢复仅覆盖明确只读方法；普通Data API和写入没有新增自动重试。", "默认受理恢复预算仍为120秒，accepted观察最长三十分钟；客户端预算不承诺服务端完成时间。", "自动观察停止后可能存在迟到结果，应查询原申请；容量仍需目标环境实测。"],
+  "issues": [],
+  "compatibility": {"node": ">=24", "workspaceGenerations": "v2", "platform": "沿用data.managed-concurrency.durable@1.0.0，兼容已知API_BUSY/RESULT_BUSY的旧503；新入口预算429需匹配平台版本。", "v1": "V1引擎及业务不变。"}
+}
