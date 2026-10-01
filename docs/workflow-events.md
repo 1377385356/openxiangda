@@ -104,6 +104,8 @@ events: {
 
 待办中心通过 Workflow 查询 `pending`、`handled`、`created`、`cc` 四种视图；消息中心默认向 Notification Hub 查询 `view=all`，沿用应用声明的渲染扩展。各入口按服务端 `detailNavigation` 打开详情，页面不自行拼接人员范围。
 
+标准任务和实例详情的“返回”由应用 Router 使用同一份 route manifest 中对应设备的流程中心路径；没有中心条目时返回已声明门户。普通用户无需管理后台权限。应用独立消费 `WorkflowTaskPage` 或 `WorkflowInstancePage` 时，可以传入本应用已声明的 `returnPath`，例如 `<WorkflowInstancePage variant="mobile" returnPath="/m/work-center" />`。抽屉的 `onDismiss` 仍负责关闭当前抽屉；返回导航不授予目标页面权限。
+
 抄送由动态 Surface 提供 `cc` 操作，使用 `user_select` 多选组件收集 1 至 20 位人员。任务 Surface 可以正式包含实例抄送命令；前端按 `operation.execute.href` 和该 Surface 的 token 提交，不另造任务命令或 token。公共事件为 `openxiangda.workflow.instance.cc_added.v2`。
 
 ## 钉钉卡片已读查询

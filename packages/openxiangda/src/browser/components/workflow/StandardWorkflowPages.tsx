@@ -1605,9 +1605,9 @@ export function useWorkflowDetail({ kind, id, resourceCode }: {
   };
 }
 
-function WorkflowDetailPage({ kind, variant, resourceCode, recordId, onDismiss, drawerState }: {
+function WorkflowDetailPage({ kind, variant, resourceCode, recordId, onDismiss, drawerState, returnPath }: {
   kind: 'task' | 'instance' | 'record'; variant: PageVariant; resourceCode?: string; recordId?: string;
-  onDismiss?: () => void; drawerState?: ResourceFormDrawerState;
+  onDismiss?: () => void; drawerState?: ResourceFormDrawerState; returnPath?: string;
 }) {
   const params = useParams();
   const id = recordId || String(kind === 'task' ? params.taskId || '' : kind === 'record' ? params.id || '' : params.instanceId || '');
@@ -1621,7 +1621,7 @@ function WorkflowDetailPage({ kind, variant, resourceCode, recordId, onDismiss, 
   const business = surface ? surfaceBusinessDetail(surface) : null;
   const detailPath = surface ? (variant === 'mobile' ? surface.detailNavigation.mobilePath : surface.detailNavigation.desktopPath) : '';
   const newPageHref = useHref(detailPath || '.');
-  const close = onDismiss || (() => navigate(detail ? variant === 'mobile' ? detail.navigationContext.mobileReturnPath : detail.navigationContext.desktopReturnPath : variant === 'mobile' ? '/m/work-center' : '/work-center'));
+  const close = onDismiss || (() => navigate(returnPath || (detail ? variant === 'mobile' ? detail.navigationContext.mobileReturnPath : detail.navigationContext.desktopReturnPath : variant === 'mobile' ? '/m/work-center' : '/work-center')));
   if (!surface || !detail || !instance) return <RecordDetailFrame variant={variant} title="申请详情" drawer={Boolean(onDismiss)} drawerState={drawerState} onClose={close}>
     {loading ? <Spin /> : <Result status="error" title="流程详情加载失败" subTitle={error || '流程不存在'} extra={<Button onClick={() => void refresh()}>重试</Button>} />}
   </RecordDetailFrame>;
@@ -1650,18 +1650,24 @@ export function WorkflowRecordDetailPage({ variant = 'desktop', ...props }: {
 
 export function WorkflowTaskPage({
   variant = 'desktop',
+  returnPath,
 }: {
   variant?: PageVariant;
+  /** Application Router's declared work-center path for this device. */
+  returnPath?: string;
 }) {
-  return <WorkflowDetailPage kind="task" variant={variant} />;
+  return <WorkflowDetailPage kind="task" variant={variant} returnPath={returnPath} />;
 }
 
 export function WorkflowInstancePage({
   variant = 'desktop',
+  returnPath,
 }: {
   variant?: PageVariant;
+  /** Application Router's declared work-center path for this device. */
+  returnPath?: string;
 }) {
-  return <WorkflowDetailPage kind="instance" variant={variant} />;
+  return <WorkflowDetailPage kind="instance" variant={variant} returnPath={returnPath} />;
 }
 
 const WORK_VIEWS = [

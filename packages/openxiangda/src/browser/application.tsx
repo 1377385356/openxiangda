@@ -664,6 +664,9 @@ export function OpenXiangdaApplication({
   const workflowInstanceRoute = routeManifestIndex.entries.get(
     'workflow:instance',
   );
+  const workflowWorkCenterRoute = routeManifestIndex.entries.get(
+    'workflow:work-center',
+  );
   const workflowRoutes = routeManifestIndex.manifest.routes.flatMap(entry => {
     if (entry.kind === 'resource-records' || entry.kind === 'resource-submit') {
       const resourceCode = entry.resourceCode!;
@@ -785,7 +788,7 @@ export function OpenXiangdaApplication({
               portalRoot={routeManifest.rootEntry}
               workflow
             >
-              <WorkflowTaskPage />
+              <WorkflowTaskPage returnPath={workflowWorkCenterRoute?.desktop.path || routeManifest.rootEntry.desktop} />
             </StandardUserRoute>
           }
         />,
@@ -799,7 +802,7 @@ export function OpenXiangdaApplication({
               portalRoot={routeManifest.rootEntry}
               workflow
             >
-              <WorkflowTaskPage variant="mobile" />
+              <WorkflowTaskPage variant="mobile" returnPath={workflowWorkCenterRoute?.mobile.path || routeManifest.rootEntry.mobile} />
             </StandardUserRoute>
           }
         />,
@@ -817,7 +820,7 @@ export function OpenXiangdaApplication({
               portalRoot={routeManifest.rootEntry}
               workflow
             >
-              <WorkflowInstancePage />
+              <WorkflowInstancePage returnPath={workflowWorkCenterRoute?.desktop.path || routeManifest.rootEntry.desktop} />
             </StandardUserRoute>
           }
         />,
@@ -831,7 +834,7 @@ export function OpenXiangdaApplication({
               portalRoot={routeManifest.rootEntry}
               workflow
             >
-              <WorkflowInstancePage variant="mobile" />
+              <WorkflowInstancePage variant="mobile" returnPath={workflowWorkCenterRoute?.mobile.path || routeManifest.rootEntry.mobile} />
             </StandardUserRoute>
           }
         />,
