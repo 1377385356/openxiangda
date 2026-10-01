@@ -16,6 +16,7 @@ import type {
 } from 'openxiangda-contracts';
 import {
   isApplicationUnauthenticatedError,
+  isRuntimeAuthorizationIdentityRejection,
   createAnonymousPublicClient,
   loadRuntimeAuthorization,
   loadApplicationLoginSurface,
@@ -63,7 +64,8 @@ export type RuntimeAuthorizationFailureKind =
 export function classifyRuntimeAuthorizationFailure(
   error: unknown,
 ): RuntimeAuthorizationFailureKind {
-  if (isApplicationUnauthenticatedError(error)) return 'unauthenticated';
+  if (isApplicationUnauthenticatedError(error) ||
+    (error instanceof OpenXiangdaPlatformRequestError && error.status === 401)) return 'unauthenticated';
   if (
     error instanceof OpenXiangdaPlatformRequestError &&
     error.status === 403
@@ -163,8 +165,10 @@ export function RuntimeBoundary({
   const [attempt, setAttempt] = useState(0);
   const [identityEpoch, setIdentityEpoch] = useState(0);
   const [sessionChecking, setSessionChecking] = useState(false);
+  const [sessionCheckError, setSessionCheckError] = useState<Error>();
   const [changedAuthorization, setChangedAuthorization] = useState<RuntimeAuthorization>();
   const recheckEpoch = useRef(0);
+  const invalidationEpoch = useRef(0);
   const [pendingRedirect, setPendingRedirect] = useState<string>();
   const location = useLocation();
   const navigate = useNavigate();
@@ -177,9 +181,12 @@ export function RuntimeBoundary({
 
   useEffect(() => {
     let active = true;
+    const epoch = invalidationEpoch.current;
+    const controller = new AbortController();
     if (publicPolicy) {
       setChangedAuthorization(undefined);
       setSessionChecking(false);
+      setSessionCheckError(undefined);
       setAuthorization(undefined);
       setError(undefined);
       setPublicReady(false);
@@ -205,29 +212,33 @@ export function RuntimeBoundary({
     setPublicError(undefined);
     setChangedAuthorization(undefined);
     setSessionChecking(false);
+    setSessionCheckError(undefined);
     setAuthorization(undefined);
     setError(undefined);
-    void loadRuntimeAuthorization({ refresh: attempt > 0 }).then(
+    void loadRuntimeAuthorization({ refresh: attempt > 0, signal: controller.signal }).then(
       value => {
-        if (!active) return;
+        if (!active || epoch !== invalidationEpoch.current) return;
         setAuthorization(value);
         setIdentityEpoch(epoch => epoch + 1);
       },
       reason =>
-        active &&
+        active && epoch === invalidationEpoch.current &&
         setError(reason instanceof Error ? reason : new Error(String(reason)))
     );
     return () => {
       active = false;
+      controller.abort();
     };
   }, [attempt, publicPolicy?.code, publicPolicy?.routeCode]);
 
   useEffect(
     () =>
       subscribePlatformSessionInvalidation(() => {
+        invalidationEpoch.current += 1;
         recheckEpoch.current += 1;
         setChangedAuthorization(undefined);
         setSessionChecking(false);
+        setSessionCheckError(undefined);
         setAuthorization(undefined);
         setError(
           new OpenXiangdaPlatformRequestError({
@@ -243,16 +254,20 @@ export function RuntimeBoundary({
   const currentScope = authorization?.identity?.identityScope;
   const currentUserId = authorization?.identity?.userId;
   const currentEnvironment = authorization?.identity?.environment.key;
+  const currentEnvironmentId = authorization?.identity?.environment.id;
   useEffect(() => {
     if (publicPolicy || !authorization || changedAuthorization || error) return;
     let active = true;
     let pending = false;
+    let controller: AbortController | undefined;
     const check = () => {
       if (!active || pending || document.visibilityState === 'hidden') return;
       pending = true;
+      controller = new AbortController();
       const epoch = ++recheckEpoch.current;
       setSessionChecking(true);
-      void loadRuntimeAuthorization({ refresh: true }).then(
+      setSessionCheckError(undefined);
+      void loadRuntimeAuthorization({ refresh: true, signal: controller.signal }).then(
         value => {
           if (!active || epoch !== recheckEpoch.current) return;
           pending = false;
@@ -260,6 +275,7 @@ export function RuntimeBoundary({
           if (
             value.identity?.userId === currentUserId &&
             value.identity?.environment.key === currentEnvironment &&
+            value.identity?.environment.id === currentEnvironmentId &&
             value.identity?.identityScope === currentScope
           ) {
             setAuthorization(value);
@@ -272,8 +288,13 @@ export function RuntimeBoundary({
           if (!active || epoch !== recheckEpoch.current) return;
           pending = false;
           setSessionChecking(false);
-          setAuthorization(undefined);
-          setError(reason instanceof Error ? reason : new Error(String(reason)));
+          const failure = reason instanceof Error ? reason : new Error(String(reason));
+          if (isRuntimeAuthorizationIdentityRejection(failure)) {
+            setAuthorization(undefined);
+            setError(failure);
+          } else {
+            setSessionCheckError(failure);
+          }
         },
       );
     };
@@ -285,10 +306,11 @@ export function RuntimeBoundary({
     return () => {
       active = false;
       recheckEpoch.current += 1;
+      controller?.abort();
       window.removeEventListener('focus', check);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [currentScope, currentUserId, currentEnvironment, Boolean(authorization), Boolean(changedAuthorization), Boolean(error), publicPolicy?.code]);
+  }, [currentScope, currentUserId, currentEnvironment, currentEnvironmentId, Boolean(authorization), Boolean(changedAuthorization), Boolean(error), publicPolicy?.code]);
 
   const identity = authorization?.identity || null;
   const production =
@@ -353,6 +375,12 @@ export function RuntimeBoundary({
       <Modal open={sessionChecking} closable={false} footer={null} maskClosable={false} keyboard={false} centered>
         <Spin description="正在核对当前登录身份与权限" />
       </Modal>
+      {sessionCheckError && authorization?.identity && <Alert
+        type="warning" showIcon
+        title="暂时无法核对登录状态"
+        description="网络或平台服务暂时不可用，已保留当前页面与原申请；请稍后重新检查。"
+        action={<Button onClick={() => window.dispatchEvent(new Event('focus'))}>重新检查</Button>}
+      />}
       {changedAuthorization ? (
         <Result
           status="warning"
@@ -431,7 +459,7 @@ export function RuntimeBoundary({
         )
       ) : (
         <div className="oxa-loading">
-          <Spin description="正在读取当前用户的角色并集与权限" />
+          <Spin description="正在连接应用，访问较多时将自动等待，请稍候" />
         </div>
       )}
     </>

@@ -1,5 +1,6 @@
 import { parseBusinessProcessResolution, parseBusinessProcessCommitResult } from 'openxiangda-contracts/browser';
 import { recoverManagedRead } from './managed-read-recovery';
+import { recoverRuntimeAuthorizationRead } from './runtime-authorization-recovery';
 import type { ManagedReadRecoveryOptions } from './managed-command';
 import {
   normalizeWorkflowSurface,
@@ -99,6 +100,7 @@ interface PlatformEnvelope<T> {
   errorCode?: string;
   requestId?: string;
   retryable?: boolean;
+  retryAfterMs?: number;
   data: T;
 }
 
@@ -167,9 +169,13 @@ function responseRequestError(path: string, init: RequestInit | undefined, respo
   const context = requestContext(path, init, response, payload?.requestId);
   const code = String(payload?.errorCode || payload?.code || `HTTP_${response.status}`);
   const retryAfter = response.headers.get('retry-after');
-  const retryAfterMs = retryAfter ? (/^\d+(?:\.\d+)?$/.test(retryAfter) ? Number(retryAfter)*1000 : Date.parse(retryAfter)-Date.now()) : undefined;
+  const headerDelay = retryAfter ? (/^\d+(?:\.\d+)?$/.test(retryAfter) ? Number(retryAfter)*1000 : Date.parse(retryAfter)-Date.now()) : undefined;
+  const dataDelay = payload?.data && typeof payload.data === 'object' && 'retryAfterMs' in payload.data
+    ? payload.data.retryAfterMs : undefined;
+  const delays = [headerDelay, payload?.retryAfterMs, dataDelay]
+    .filter((value): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0);
   return new OpenXiangdaPlatformRequestError({ code, status: response.status,
-    retryAfterMs: retryAfterMs!==undefined && Number.isFinite(retryAfterMs) && retryAfterMs>=0 ? retryAfterMs : undefined,
+    retryAfterMs: delays.length ? Math.max(...delays) : undefined,
     message: response.status >= 400 && response.status < 500 && typeof payload?.message === 'string' && payload.message.trim()
       ? payload.message
       : `${code}: ${payload?.message || fallback}${context.requestId ? ` (requestId: ${context.requestId})` : ''}`,
@@ -419,8 +425,25 @@ export interface RuntimeAuthorization {
 }
 
 let activeIdentity: RuntimeIdentity | undefined;
-let runtimeAuthorizationLoad: Promise<RuntimeAuthorization> | undefined;
+interface RuntimeAuthorizationLoad {
+  promise: Promise<RuntimeAuthorization>;
+  controller: AbortController;
+  key: string;
+  subscribers: number;
+  settled: boolean;
+}
+let runtimeAuthorizationLoad: RuntimeAuthorizationLoad | undefined;
+let runtimeAuthorizationKey: string | undefined;
 let runtimeAuthorizationGeneration = 0;
+
+function clearRuntimeAuthorization() {
+  const previous = runtimeAuthorizationLoad;
+  runtimeAuthorizationGeneration += 1;
+  activeIdentity = undefined;
+  runtimeAuthorizationLoad = undefined;
+  runtimeAuthorizationKey = undefined;
+  previous?.controller.abort(new DOMException('登录身份已变化', 'AbortError'));
+}
 
 function applicationServiceBase() {
   return `/service/openxiangda-api/v2/applications/${applicationCode()}`;
@@ -483,9 +506,7 @@ function isPlatformLogoutSignal(value: unknown): value is PlatformLogoutSignal {
 }
 
 function invalidatePlatformSession() {
-  runtimeAuthorizationGeneration += 1;
-  activeIdentity = undefined;
-  runtimeAuthorizationLoad = undefined;
+  clearRuntimeAuthorization();
   applicationCsrfToken = '';
   workflowCommandCsrf.clear();
   platformSessionListeners.forEach(listener => listener());
@@ -634,8 +655,7 @@ export async function passwordLoginApplication(input: {
       }),
     },
   );
-  activeIdentity = undefined;
-  runtimeAuthorizationLoad = undefined;
+  clearRuntimeAuthorization();
   return receipt;
 }
 
@@ -691,8 +711,7 @@ export async function completeApplicationDingTalkJsapi(input: {
       body: JSON.stringify({ code: input.code }),
     },
   );
-  activeIdentity = undefined;
-  runtimeAuthorizationLoad = undefined;
+  clearRuntimeAuthorization();
   return receipt;
 }
 
@@ -740,25 +759,35 @@ function validateRuntimeAuthorization(
 
 async function requestRuntimeAuthorization(
   generation: number,
+  signal: AbortSignal,
 ): Promise<RuntimeAuthorization> {
   const mount = runtimeMount();
+  const scope = runtimeAuthorizationScope();
+  const assertCurrent = () => {
+    if (signal.aborted) throw signal.reason;
+    if (generation !== runtimeAuthorizationGeneration || runtimeAuthorizationScope() !== scope) {
+      throw new Error('OPENXIANGDA_RUNTIME_AUTHORIZATION_SUPERSEDED');
+    }
+  };
+  const read = async <T>(path: string) => recoverRuntimeAuthorizationRead<T>(async signal => {
+    assertCurrent();
+    const value = await request<T>(path, { signal });
+    assertCurrent();
+    return value;
+  }, signal);
   if (mount) {
-    const context = await requestRead<RuntimeAuthorizationContext>(
+    const context = await read<RuntimeAuthorizationContext>(
       `${nativeBase()}/authz/current?environmentKey=${encodeURIComponent(
         mount.environmentKey,
       )}`,
     );
-    if (generation !== runtimeAuthorizationGeneration) {
-      throw new Error('OPENXIANGDA_RUNTIME_AUTHORIZATION_SUPERSEDED');
-    }
+    assertCurrent();
     return validateRuntimeAuthorization(context);
   }
-  const current = await requestRead<ConnectedCurrent>(
+  const current = await read<ConnectedCurrent>(
     `${applicationServiceBase()}/dev-sessions/current`,
   );
-  if (generation !== runtimeAuthorizationGeneration) {
-    throw new Error('OPENXIANGDA_RUNTIME_AUTHORIZATION_SUPERSEDED');
-  }
+  assertCurrent();
   activeIdentity = {
     ...current.principal,
     identityScope: `connected-dev:${applicationCode()}:${
@@ -771,28 +800,82 @@ async function requestRuntimeAuthorization(
   return { state: 'active', identity: activeIdentity };
 }
 
-export async function loadRuntimeAuthorization(
-  options: { refresh?: boolean } = {},
-): Promise<RuntimeAuthorization> {
-  if (options.refresh) {
-    runtimeAuthorizationGeneration += 1;
-    activeIdentity = undefined;
-    runtimeAuthorizationLoad = undefined;
-  }
-  if (runtimeAuthorizationLoad) return await runtimeAuthorizationLoad;
-  const generation = runtimeAuthorizationGeneration;
-  const pending = (async () => {
-    return await requestRuntimeAuthorization(generation);
-  })();
-  runtimeAuthorizationLoad = pending;
+function runtimeAuthorizationScope() {
+  const mount = runtimeMount();
+  return JSON.stringify([applicationCode(), mount?.environmentKey || null, mount?.runtimeBase || null]);
+}
+
+export function isRuntimeAuthorizationIdentityRejection(error: unknown) {
+  return error instanceof OpenXiangdaPlatformRequestError && [401, 403, 409].includes(error.status) ||
+    error instanceof Error && /^OPENXIANGDA_RUNTIME_AUTHORIZATION_(?:INVALID|INACTIVE_INVALID|ACTIVE_INVALID|SUPERSEDED)$/.test(error.message);
+}
+
+function clearRuntimeEntryWait() {
   try {
-    return await pending;
-  } catch (error) {
-    if (runtimeAuthorizationLoad === pending) {
-      runtimeAuthorizationLoad = undefined;
-    }
-    throw error;
+    if (typeof window !== 'undefined') window.sessionStorage?.removeItem(`oxa-entry-wait:${window.location.pathname}`);
+  } catch { /* Storage restrictions must not prevent a verified runtime from starting. */ }
+}
+
+function observeRuntimeAuthorization(owner: RuntimeAuthorizationLoad, signal?: AbortSignal) {
+  owner.subscribers++;
+  return new Promise<RuntimeAuthorization>((resolve, reject) => {
+    let finished = false;
+    const finish = () => {
+      if (finished) return false;
+      finished = true;
+      signal?.removeEventListener('abort', abort);
+      owner.subscribers--;
+      return true;
+    };
+    const abort = () => {
+      if (!finish()) return;
+      const reason = signal?.reason || new DOMException('读取已取消', 'AbortError');
+      if (!owner.settled && owner.subscribers === 0) {
+        if (runtimeAuthorizationLoad === owner) {
+          runtimeAuthorizationLoad = undefined;
+          runtimeAuthorizationGeneration++;
+        }
+        owner.controller.abort(reason);
+      }
+      reject(reason);
+    };
+    if (signal?.aborted) abort();
+    else signal?.addEventListener('abort', abort, { once: true });
+    owner.promise.then(value => { if (finish()) resolve(value); }, reason => { if (finish()) reject(reason); });
+  });
+}
+
+export async function loadRuntimeAuthorization(
+  options: { refresh?: boolean; signal?: AbortSignal } = {},
+): Promise<RuntimeAuthorization> {
+  if (options.signal?.aborted) throw options.signal.reason || new DOMException('读取已取消', 'AbortError');
+  const key = runtimeAuthorizationScope();
+  if (runtimeAuthorizationKey && runtimeAuthorizationKey !== key) clearRuntimeAuthorization();
+  let owner = runtimeAuthorizationLoad;
+  if (!owner || (options.refresh && owner.settled)) {
+    const generation = ++runtimeAuthorizationGeneration;
+    owner = { controller: new AbortController(), key, subscribers: 0, settled: false,
+      promise: undefined as unknown as Promise<RuntimeAuthorization> };
+    runtimeAuthorizationLoad = owner;
+    runtimeAuthorizationKey = key;
+    const currentOwner = owner;
+    currentOwner.promise = requestRuntimeAuthorization(generation, currentOwner.controller.signal).then(value => {
+      currentOwner.settled = true;
+      if (runtimeAuthorizationLoad === currentOwner && !currentOwner.controller.signal.aborted) clearRuntimeEntryWait();
+      return value;
+    }, error => {
+      currentOwner.settled = true;
+      if (runtimeAuthorizationLoad === currentOwner) {
+        runtimeAuthorizationLoad = undefined;
+        if (isRuntimeAuthorizationIdentityRejection(error)) {
+          activeIdentity = undefined;
+          workflowCommandCsrf.clear();
+        }
+      }
+      throw error;
+    });
   }
+  return await observeRuntimeAuthorization(owner, options.signal);
 }
 
 export async function logoutCurrentUser() {
@@ -810,9 +893,7 @@ export async function logoutCurrentUser() {
     headers: { 'x-openxiangda-csrf-token': applicationCsrfToken },
     body: JSON.stringify({ environmentKey: runtimeEnvironmentKey(), device }),
   });
-  runtimeAuthorizationGeneration += 1;
-  activeIdentity = undefined;
-  runtimeAuthorizationLoad = undefined;
+  clearRuntimeAuthorization();
   applicationCsrfToken = '';
   workflowCommandCsrf.clear();
   publishPlatformLogout();
@@ -873,7 +954,8 @@ export function createManagedConcurrencyClient(): ManagedConcurrencyClient {
   const scope = JSON.stringify([appCode, identity.environment.id, identity.userId]);
   const assertScope = () => {
     if (applicationCode() !== appCode || currentEnvironmentKey() !== environmentKey ||
-        activeIdentity?.userId !== identity.userId || activeIdentity?.environment.id !== identity.environment.id)
+        activeIdentity?.userId !== identity.userId || activeIdentity?.environment.id !== identity.environment.id ||
+        activeIdentity?.identityScope !== identity.identityScope)
       throw new OpenXiangdaPlatformRequestError({ code: 'CONCURRENCY_IDENTITY_CHANGED', status: 401, message: '用户或应用环境已变化，请重新打开原操作' });
   };
   const frozenCall = async <T>(path: string, body: string, signal?: AbortSignal): Promise<T> => {

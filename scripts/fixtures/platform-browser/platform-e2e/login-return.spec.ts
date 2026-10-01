@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { mockPlatform } from './resource-platform-mock';
+import { mockPlatform, runtimeAuthorization } from './resource-platform-mock';
 for (const device of ['desktop', 'mobile']) {
   test(`已恢复登录 ${device} 经平台校验返回原路径与 query/hash，不先跳首页`, async ({ page }) => {
     await mockPlatform(page, false, undefined, true);
@@ -34,5 +34,28 @@ test('原目标被平台拒绝时停留可重试，不静默跳首页或外站',
   // Ant Design inserts spacing between a two-character Chinese button label.
   await page.getByRole('button', { name: /^重\s*试$/ }).click();
   await expect.poll(() => reads).toBe(2);
+  await expect(page.getByTestId('current-route')).toContainText('/m/login?');
+});
+
+test('退出通知优先于仍在初始化的身份请求，保留登录入口', async ({ page }) => {
+  let release!: () => void;
+  await page.route('**/native/authz/current?*', async route => {
+    await new Promise<void>(resolve => { release = resolve; });
+    await route.fulfill({ json: { code: 200, data: runtimeAuthorization(true, true) } });
+  });
+  await page.route('**/auth/surface?*', route => route.fulfill({ json: { code: 200,
+    data: { returnTo: '/m/recuperation?section=routes#details', csrfToken: 'test-csrf', methods: [] },
+  } }));
+  await page.goto('/login-return.e2e.html?device=mobile&application=1');
+  await expect.poll(() => Boolean(release)).toBe(true);
+  await page.evaluate(() => {
+    const channel = new BroadcastChannel('auth-session-v2');
+    channel.postMessage({ type: 'logout', payload: { version: 2, ownerId: 'other-tab', reason: 'logout', at: Date.now() } });
+    channel.close();
+  });
+  await expect(page.getByText('应用登录表单', { exact: true })).toBeVisible();
+  release();
+  await expect(page.getByText('应用登录表单', { exact: true })).toBeVisible();
+  await expect(page.getByText('原业务页面', { exact: true })).toHaveCount(0);
   await expect(page.getByTestId('current-route')).toContainText('/m/login?');
 });
