@@ -57,6 +57,7 @@ export * from './browser/components/workflow/WorkflowDiagram';
 export * from './browser/components/workflow/WorkflowNodeConfigurationEditor';
 export * from './browser/components/workflow/WorkflowAssignmentRoutingEditor';
 export * from './browser/components/workflow/WorkflowAssignmentRoutingManager';
+export * from './browser/components/administration/RoleMembershipManager';
 export * from './browser/components/PlatformAvatar';
 export * from './browser/components/todo/ApplicationTodoCenterPage';
 export type * from './browser/components/resource/generated-resource-definition';

@@ -1998,6 +1998,10 @@ export async function loadRoleManagementCatalog() {
   );
 }
 
+export async function listRoleManagementScopeValues(dimensionCode: string, input: { keyword?: string; limit?: number; offset?: number } = {}) {
+  return request<import('openxiangda-contracts/browser').NativeRoleManagementScopeValuePage>(`${roleManagementBase()}/scope-values?${roleManagementQuery({ ...input, dimensionCode })}`);
+}
+
 export async function listRoleMemberships(
   input: {
     status?: 'active' | 'revoked' | 'expired';
@@ -2028,6 +2032,12 @@ export async function executeRoleMembershipBatch(input: Pick<NativeRoleMembershi
     method: 'POST', body: JSON.stringify({ ...input,
       schemaVersion: 'openxiangda.native-role-membership-batch-request/v2', environmentKey: currentEnvironmentKey() }),
   });
+}
+
+/** Potential versioned nodes, authorized by the existing workflow management reader. */
+export async function loadWorkflowRoleReferences(roleCode: string, input: { keyword?: string; limit?: number; offset?: number } = {}) {
+  const query = roleManagementQuery({ ...input, roleCode });
+  return request<import('openxiangda-contracts/browser').WorkflowRoleReferencePage>(`${applicationServiceBase()}/workflow/management/role-references?${query}`);
 }
 
 export async function searchRoleManagementUsers(input: {

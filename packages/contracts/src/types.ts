@@ -51,6 +51,8 @@ export const SCHEMA_VERSIONS = {
   nativeRoleMembershipPage: "openxiangda.native-role-membership-page/v2",
   nativeRoleMembershipBatchRequest: "openxiangda.native-role-membership-batch-request/v2",
   nativeRoleMembershipBatchResult: "openxiangda.native-role-membership-batch-result/v2",
+  workflowRoleReferencePage: "openxiangda.workflow-role-reference-page/v2",
+  nativeRoleManagementScopeValuePage: "openxiangda.native-role-management-scope-value-page/v2",
   nativeAuthorizationManagementCatalog:
     "openxiangda.native-authorization-catalog/v2",
   nativeRoleManagementGrantPage:
@@ -488,6 +490,18 @@ export interface NativeAuthorizationManagementCatalog {
   roles: NativeAuthorizationManagementRole[];
   roleManagement: NativeRoleManagementAuthority;
   scopeDimensions: NativeAuthorizationManagementScopeDimension[];
+}
+
+export interface NativeRoleManagementScopeValuePage {
+  schemaVersion: typeof SCHEMA_VERSIONS.nativeRoleManagementScopeValuePage;
+  environment: {
+    id: string; key: DeploymentEnvironment; headRevision: number;
+    authzRevisionId: string; scopeDataVersion: string;
+  };
+  dimensionCode: string;
+  items: Array<{ id: string; label: string }>;
+  limit: number;
+  offset: number;
 }
 
 export interface NativeRoleMembership {
@@ -2390,6 +2404,34 @@ export interface WorkflowAssignmentRoutingReceipt {
   updatedAt: IsoDateTime;
   effect: 'future_node_entries_keep_existing_tasks';
   replayed: boolean;
+}
+
+export interface WorkflowRoleReference {
+  workflowCode: string;
+  workflowTitle: string;
+  nodeId: string;
+  nodeTitle: string;
+  roleCode: string;
+  definitionVersion: number;
+  bindingVersion: number;
+  definitionDigest: Sha256Digest;
+  bindingDigest: Sha256Digest;
+  configurationRevision: number;
+  contexts: Array<'active' | 'in_flight'>;
+  source: 'default_binding' | 'node_override' | 'routing_source';
+  provider: 'app_role' | 'app_role_in_scope';
+  routingSourceCode?: string;
+  scopeDimensionCode?: string;
+}
+
+export interface WorkflowRoleReferencePage {
+  schemaVersion: typeof SCHEMA_VERSIONS.workflowRoleReferencePage;
+  roleCode: string;
+  items: WorkflowRoleReference[];
+  total: number;
+  limit: number;
+  offset: number;
+  meaning: 'potential_nodes_keep_existing_tasks';
 }
 
 export interface WorkflowAssignmentRoutingCatalog {

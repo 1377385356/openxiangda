@@ -1230,6 +1230,46 @@ export const nativeRoleMembershipBatchResultSchema = {
   }, else: { properties: { items: { items: { properties: { status: { enum: ['committed', 'replayed', 'failed', 'unconfirmed'] } } } } } } }],
 } as const;
 
+export const nativeRoleManagementScopeValuePageSchema = {
+  $id: SCHEMA_VERSIONS.nativeRoleManagementScopeValuePage, type: 'object', additionalProperties: false,
+  required: ['schemaVersion', 'environment', 'dimensionCode', 'items', 'limit', 'offset'],
+  properties: {
+    schemaVersion: { const: SCHEMA_VERSIONS.nativeRoleManagementScopeValuePage }, dimensionCode: nativeStableCode,
+    environment: { type: 'object', additionalProperties: false, required: ['id', 'key', 'headRevision', 'authzRevisionId', 'scopeDataVersion'], properties: {
+      id: nonEmptyString, key: { enum: ['preproduction', 'production'] }, headRevision: { type: 'integer', minimum: 0 }, authzRevisionId: nonEmptyString, scopeDataVersion: nonEmptyString,
+    } },
+    items: { type: 'array', maxItems: 100, items: { type: 'object', additionalProperties: false, required: ['id', 'label'], properties: { id: nonEmptyString, label: nonEmptyString } } },
+    limit: { type: 'integer', minimum: 1, maximum: 100 }, offset: { type: 'integer', minimum: 0 },
+  },
+} as const;
+
+export const workflowRoleReferencePageSchema = {
+  $id: SCHEMA_VERSIONS.workflowRoleReferencePage,
+  type: 'object', additionalProperties: false,
+  required: ['schemaVersion', 'roleCode', 'items', 'total', 'limit', 'offset', 'meaning'],
+  properties: {
+    schemaVersion: { const: SCHEMA_VERSIONS.workflowRoleReferencePage }, roleCode: nativeStableCode,
+    total: { type: 'integer', minimum: 0, maximum: 10000 }, limit: { type: 'integer', minimum: 1, maximum: 100 }, offset: { type: 'integer', minimum: 0 },
+    meaning: { const: 'potential_nodes_keep_existing_tasks' },
+    items: { type: 'array', maxItems: 100, items: {
+      type: 'object', additionalProperties: false,
+      required: ['workflowCode', 'workflowTitle', 'nodeId', 'nodeTitle', 'roleCode', 'definitionVersion', 'bindingVersion', 'definitionDigest', 'bindingDigest', 'configurationRevision', 'contexts', 'source', 'provider'],
+      properties: {
+        workflowCode: nativeStableCode, workflowTitle: nonEmptyString, nodeId: nonEmptyString, nodeTitle: nonEmptyString, roleCode: nativeStableCode,
+        definitionVersion: { type: 'integer', minimum: 1 }, bindingVersion: { type: 'integer', minimum: 1 }, configurationRevision: { type: 'integer', minimum: 0 },
+        definitionDigest: digest, bindingDigest: digest,
+        contexts: { type: 'array', minItems: 1, maxItems: 2, uniqueItems: true, items: { enum: ['active', 'in_flight'] } },
+        source: { enum: ['default_binding', 'node_override', 'routing_source'] }, provider: { enum: ['app_role', 'app_role_in_scope'] },
+        routingSourceCode: nativeStableCode, scopeDimensionCode: nativeStableCode,
+      },
+      allOf: [
+        { if: { properties: { source: { const: 'routing_source' } } }, then: { required: ['routingSourceCode'] }, else: { not: { required: ['routingSourceCode'] } } },
+        { if: { properties: { provider: { const: 'app_role_in_scope' } } }, then: { required: ['scopeDimensionCode'] }, else: { not: { required: ['scopeDimensionCode'] } } },
+      ],
+    } },
+  },
+} as const;
+
 const membershipBatchRequestItem = (operation: 'create' | 'update' | 'revoke') => ({
   type: 'object', additionalProperties: false,
   required: ['operation', 'operationId', 'reason', ...(operation === 'create' ? ['userId', 'roleCode'] : ['membershipId', 'expectedRevision'])],
@@ -8746,6 +8786,8 @@ export const contractSchemas = {
   nativeRoleMembershipPage: nativeRoleMembershipPageSchema,
   nativeRoleMembershipBatchRequest: nativeRoleMembershipBatchRequestSchema,
   nativeRoleMembershipBatchResult: nativeRoleMembershipBatchResultSchema,
+  workflowRoleReferencePage: workflowRoleReferencePageSchema,
+  nativeRoleManagementScopeValuePage: nativeRoleManagementScopeValuePageSchema,
   nativeRoleManagementGrantPage: nativeRoleManagementGrantPageSchema,
   nativeAuthorizationMutationReceipt:
     nativeAuthorizationMutationReceiptSchema,

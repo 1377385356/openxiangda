@@ -3006,3 +3006,43 @@
   .oxa-workflow-config-footer > span { display: none; }
   .oxa-workflow-config-footer { justify-content: flex-end; }
 }
+
+/* Shared role administration: the application theme remains the visual owner. */
+.oxa-member-management { min-width: 0; color: var(--ant-color-text, #262b34); }
+.oxa-member-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 24px; margin-top: 16px; }
+.oxa-member-roles { border-right: 1px solid var(--ant-color-border-secondary, #e8ebf0); padding-right: 20px; min-width: 0; }
+.oxa-member-role-title { font-size: 13px; font-weight: 600; margin: 0 0 12px; color: var(--ant-color-text-secondary, #687080); }
+.oxa-member-role-buttons { display: grid; gap: 4px; max-height: 60vh; overflow: auto; }
+.oxa-member-role-buttons button { font: inherit; text-align: left; border: 0; border-radius: 6px; background: transparent; padding: 10px 12px; color: inherit; cursor: pointer; overflow-wrap: anywhere; }
+.oxa-member-role-buttons button.active { background: var(--ant-color-primary-bg, #edf4ff); color: var(--ant-color-primary, #1677ff); }
+.oxa-member-role-buttons button:hover { background: var(--ant-color-fill-tertiary, #f4f6f9); }
+.oxa-member-role-buttons button:focus-visible { outline: 2px solid var(--ant-color-primary, #1677ff); outline-offset: -2px; }
+.oxa-member-role-buttons small { display: block; font-size: 12px; margin-top: 4px; font-weight: 400; color: var(--ant-color-text-secondary, #687080); }
+.oxa-member-role-select { display: none; }
+.oxa-member-main { min-width: 0; }
+.oxa-member-toolbar, .oxa-member-selection, .oxa-member-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.oxa-member-toolbar h3 { margin: 0 0 4px; font-size: 16px; }
+.oxa-member-help { font-size: 13px; color: var(--ant-color-text-secondary, #687080); line-height: 1.6; overflow-wrap: anywhere; }
+.oxa-member-toolbar p { margin: 0; }
+.oxa-member-filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 12px; }
+.oxa-member-filters > * { min-width: 150px; flex: 1 1 150px; max-width: 260px; }
+.oxa-member-filters > .ant-btn { flex: 0 0 auto; min-width: auto; }
+.oxa-member-selection { padding: 10px 0; font-size: 13px; color: var(--ant-color-text-secondary, #687080); }
+.oxa-member-sub { display: block; font-size: 12px; line-height: 1.6; color: var(--ant-color-text-secondary, #687080); overflow-wrap: anywhere; }
+.oxa-member-picker .ant-select { width: 100%; }
+.oxa-member-operation-id { display: block; font: 11px/1.6 ui-monospace, monospace; color: var(--ant-color-text-secondary, #687080); overflow-wrap: anywhere; user-select: all; }
+.oxa-member-time-grid, .oxa-member-diff { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.oxa-member-diff section { min-width: 0; overflow-wrap: anywhere; }
+.oxa-member-diff h4 { margin: 0 0 12px; font-size: 13px; }
+.oxa-member-draft-summary { border-left: 3px solid var(--ant-color-primary, #1677ff); padding: 4px 0 4px 16px; margin: 0 0 20px; overflow-wrap: anywhere; }
+.oxa-member-draft-summary p { margin: 6px 0; }
+.oxa-member-draft-summary span, .oxa-member-footer > span { font-size: 12px; color: var(--ant-color-text-secondary, #687080); }
+@media (max-width: 700px) {
+  .oxa-member-layout { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .oxa-member-roles { border: 0; padding: 0; }
+  .oxa-member-role-buttons { display: none; }
+  .oxa-member-role-select { display: block; width: 100%; }
+  .oxa-member-filters > * { min-width: 0; max-width: none; flex: 1 1 140px; }
+  .oxa-member-time-grid, .oxa-member-diff { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .oxa-member-footer .ant-space { width: 100%; }
+}

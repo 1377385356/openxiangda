@@ -65,6 +65,8 @@ capability、应用角色和数据策略。前端只根据当前登录用户完�
 `roleManagement` 投影显示，但前端显示不能替代服务端复核。不要在应用中复制角色表、
 权限表或通过 NestJS 转发开发者凭据。
 
+通用职责成员维护可直接嵌入 `openxiangda/react` 的 `RoleMembershipManager`，复用角色/范围筛选、批量差异核对、逐项回执及原操作恢复。页面保持原路由和入口权限，组件按当前用户目录显示动作，服务端逐项复核；详见[共享成员维护](./administration.md#共享成员维护组件)。
+
 列表查询必须使用服务端过滤、排序和分页；新增、读取、更新、删除和文件上传都经过
 可替换 Data API adapter。不要调用自定义 Nest CRUD、Function 或 Workflow 来绕过
 Data API。只有真正需要事务或外部系统的动作才使用同源 `/api`。

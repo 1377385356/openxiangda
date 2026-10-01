@@ -61,6 +61,30 @@ if (items.length) {
 
 成员维护影响后续授权和分派；已有任务保持进入时参与快照，实际办理资格仍实时核验。批量维护不隐式改派当前待办。
 
+### 共享成员维护组件
+
+标准管理入口与应用自定义工具页可复用 `RoleMembershipManager`，保留所在页面的 Shell 和入口授权：
+
+```tsx
+import { RoleMembershipManager } from 'openxiangda/react';
+
+export function ResponsibilityMembers() {
+  return <RoleMembershipManager initialRoleCode="college_reviewer" />;
+}
+```
+
+`initialRoleCode` 只是初始筛选，必须来自本应用的角色声明，不授予管理权限。可选 `refreshKey` 变化时重新读取目录与成员。组件使用当前用户、当前挂载环境，按角色、人员关键词、状态和业务范围分页；同步投影及系统认证来源只读。
+
+选择最多 50 位成员后调整某个范围维度或有效期，组件显式保留每位成员未修改的范围、操作上限和时间。预览逐项展示修改前后；提交后区分成功、拒绝及未知结果。冲突后保留输入，显式载入最新基准并重新核对；未知操作只能核对原回执或重试相同编号及请求。已核对成功项不会再次提交。组件支持窄屏布局、表格内部横滚、未保存关闭提示及保存中离开保护。
+
+### 角色关联的潜在流程节点
+
+`loadWorkflowRoleReferences(roleCode, { keyword, limit, offset })` 查询当前激活及在途固定版本中可能使用此角色的节点；平台自动提供 `workflow.role-references@1.0.0`。返回定义/绑定版本与摘要、配置修订、激活/在途上下文，并区分代码默认角色、节点配置覆盖和代码许可路由来源。许可来源不表示规则已经命中；这里的条数不是受影响待办数，也不会改派旧任务。
+
+读取沿用原流程管理权限。仅获成员管理委托的用户可能可以维护角色，同时没有权限读取关联流程；组件单独呈现该拒绝。返回不含成员、实例标识或业务事实，每页最多 100 条；最多 1000 个版本组合、32 MiB 源 JSON、10000 节点/引用，超限明确拒绝。
+
+管理范围检索使用 `listRoleManagementScopeValues(dimensionCode, { keyword, limit, offset })`，返回 `NativeRoleManagementScopeValuePage` 的 `id/label` 与 `limit/offset`。它使用 `openxiangda.native-role-management-scope-value-page/v2`，与 Data 字段选择器的 `value/label/cursor` 协议分开。权限仍要求对成员的分配或更新能力；只读权限不因此扩张。
+
 ## 可读流程图与实例路径 {#workflow-graph}
 
 管理员在流程目录检索全部定义，查看指定版本的分支顺序、默认路径、变量类型/单位及来源。拓扑和条件由开发者发布；图和列表只用于查看。当前有效配置只叠加在匹配的激活定义上；历史实例使用固定定义和节点进入时的人员/配置，尚未执行的节点不计入执行路径。

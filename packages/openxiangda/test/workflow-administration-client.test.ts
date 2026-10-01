@@ -9,6 +9,8 @@ import {
   loadWorkflowAssignmentRoutingConfiguration,
   loadWorkflowAssignmentRoutingHistory,
   saveWorkflowAssignmentRoutingConfiguration,
+  loadWorkflowRoleReferences,
+  listRoleManagementScopeValues,
 } from '../src/core';
 
 test('node configuration SDK consumes the existing admin controller and mounted environment', async () => {
@@ -98,17 +100,21 @@ test('routing SDK pins its mounted environment, preserves CAS errors and recover
     assert.equal(query.get('offset'), '20');
     assert.equal(requests[1]!.url, `${base}/teaching-review?environmentKey=preproduction`);
     assert.equal(requests[2]!.url, `${base}/teaching-review/history?environmentKey=preproduction&limit=10&offset=10`);
+    await loadWorkflowRoleReferences('reviewer', { keyword: '合成', limit: 20, offset: 20 });
+    await listRoleManagementScopeValues('college', { keyword: '设计', limit: 20, offset: 40 });
+    assert.equal(requests[3]!.url, '/service/openxiangda-api/v2/applications/workflow-administration-test/workflow/management/role-references?environmentKey=preproduction&keyword=%E5%90%88%E6%88%90&limit=20&offset=20&roleCode=reviewer');
+    assert.equal(requests[4]!.url, '/service/openxiangda-api/v2/applications/workflow-administration-test/native/authz/management/scope-values?environmentKey=preproduction&keyword=%E8%AE%BE%E8%AE%A1&limit=20&offset=40&dimensionCode=college');
     const input = { environmentKey: 'production' as const, expectedHeadRevision: 5, expectedRevision: 1, operationId: 'original-routing-operation', reason: '合成规则调整', rules: [] };
     failureMode = 'conflict';
     await assert.rejects(saveWorkflowAssignmentRoutingConfiguration('teaching-review', input), error => (error as Error & { code: string; status: number }).code === 'WORKFLOW_V2_ROUTING_REVISION_CONFLICT' && (error as { status: number }).status === 409);
-    assert.equal(requests.length, 4, 'CAS conflict does not retry a write');
-    assert.deepEqual(JSON.parse(String(requests[3]!.init!.body)), { ...input, environmentKey: 'preproduction' });
+    assert.equal(requests.length, 6, 'CAS conflict does not retry a write');
+    assert.deepEqual(JSON.parse(String(requests[5]!.init!.body)), { ...input, environmentKey: 'preproduction' });
     failureMode = 'unknown';
     await assert.rejects(saveWorkflowAssignmentRoutingConfiguration('teaching-review', input));
-    assert.equal(requests.length, 5, 'an unknown write result is not replayed automatically');
+    assert.equal(requests.length, 7, 'an unknown write result is not replayed automatically');
     failureMode = undefined;
     await saveWorkflowAssignmentRoutingConfiguration('teaching-review', input);
-    assert.equal(requests[5]!.init!.body, requests[4]!.init!.body);
+    assert.equal(requests[7]!.init!.body, requests[6]!.init!.body);
     assert.ok(requests.every(item => item.init?.credentials === 'include'));
     failureMode = 'forbidden';
     await assert.rejects(loadWorkflowAssignmentRoutingConfiguration('teaching-review'), error => (error as { status: number }).status === 403);
