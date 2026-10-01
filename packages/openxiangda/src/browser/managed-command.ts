@@ -1,7 +1,11 @@
 import type { CommandReceipt, ManagedReadResult, WaitingReceipt, ManagedCommandMinePage } from 'openxiangda-contracts/browser';
 
 export interface ManagedReadRecoveryOptions {
-  /** Total call budget, including busy waits. May narrow, never extend, the default 120 seconds. */
+  /**
+   * 含请求与繁忙退避的本调用总预算，默认 120 秒 / 12 次请求。
+   * 显式超过 120 秒时最多 30 分钟 / 120 次请求，超过上限按 30 分钟处理。
+   * 仅恢复已知只读繁忙；不会延长已提交申请的受理或观察期限。
+   */
   budgetMs?: number;
 }
 

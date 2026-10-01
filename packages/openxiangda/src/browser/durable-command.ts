@@ -75,7 +75,9 @@ export class DurableCommandController {
         const remaining = this.intent?.receipt ? this.remainingObservationMs() : this.remainingRecoveryMs();
         // An explicit post-deadline query can find a late terminal receipt. It
         // never renews the original intent or restarts automatic observation.
-        return remaining === undefined || (allowLateQuery && remaining === 0) ? undefined : { budgetMs: remaining };
+        // The controller owns its original outer window. An inner read retains
+        // its existing two-minute budget, even when that outer window is longer.
+        return remaining === undefined || (allowLateQuery && remaining === 0) ? undefined : { budgetMs: Math.min(120000, remaining) };
     }
     private persist() { this.options.storage.setItem(this.storageKey, JSON.stringify(this.intent)); }
     private restore() {
@@ -244,7 +246,7 @@ export class DurableCommandController {
                         if(Date.now()>=deadline || Date.now()<intent.firstSubmittedAt!)throw unconfirmed();
                         // A lost acknowledgement may already be committed; never re-enqueue before checking.
                         readingOriginal = true;
-                        try {return await this.options.client.result({command:this.options.command,requestKey:intent.requestKey},abort.signal,{budgetMs:deadline-Date.now()});}
+                        try {return await this.options.client.result({command:this.options.command,requestKey:intent.requestKey},abort.signal,{budgetMs:Math.min(120000,deadline-Date.now())});}
                         catch(error) {if(!absent(error))throw error;}
                         readingOriginal = false;
                     }

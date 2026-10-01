@@ -3,6 +3,7 @@ import test from 'node:test';
 import { SCHEMA_VERSIONS } from 'openxiangda-contracts/browser';
 import { createManagedConcurrencyClient, loadRuntimeAuthorization } from '../src/browser/platform-client';
 import type { ManagedConcurrencyClient } from '../src/browser/managed-command';
+import { currentPerspectiveCode, setActivePerspectiveCode } from '../src/browser/runtime-meta';
 
 async function withClient(run: (client: ManagedConcurrencyClient, configure: (handler: (path: string, init: RequestInit) => Promise<Response>) => void,
   switchScope: (scope: string) => Promise<void>) => Promise<void>) {
@@ -59,7 +60,7 @@ test('managed commands use the platform transport, preserve unknown writes and r
     failWrite=true;
     await assert.rejects(()=>api.accept('signed-permit'),(error:any)=>error.code==='PLATFORM_TRANSPORT_UNAVAILABLE'&&error.status===503);
     assert.equal(calls,2,'an unknown write response must not be automatically replayed');
-    const pending=api.read('offer',{id:'offer'});
+    const pending=api.read('offer',{id:'offer'},undefined,{budgetMs:1800000});
     while(!releaseRead)await Promise.resolve();
     actor='second';await loadRuntimeAuthorization({refresh:true});
     releaseRead(response({items:[]}));
@@ -101,11 +102,51 @@ test('a changed authorization scope stops a read retry before another fetch', as
   t.mock.timers.enable({ apis: ['setTimeout'] });
   await withClient(async (api, configure, switchScope) => {
     let calls = 0; configure(async () => { calls++; return reply(429, 'CONCURRENCY_API_BUSY'); });
-    const rejected = assert.rejects(api.read('offer', { id: 'original' }), { code: 'CONCURRENCY_IDENTITY_CHANGED' });
+    const rejected = assert.rejects(api.read('offer', { id: 'original' }, undefined, {budgetMs:1800000}), { code: 'CONCURRENCY_IDENTITY_CHANGED' });
     await settle(); assert.equal(calls, 1);
     await switchScope('changed-role-union'); t.mock.timers.tick(2500);
     await rejected; assert.equal(calls, 1);
   });
+});
+
+test('explicit long recovery reaches every read method and freezes its original input and budget', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  let elapsed = 0; t.mock.method(performance, 'now', () => elapsed);
+  await withClient(async (api, configure) => {
+    const calls: Array<{ path: string; body: any }> = [], perPath = new Map<string, number>();
+    configure(async (path, init) => {
+      calls.push({path, body:JSON.parse(String(init.body))});
+      perPath.set(path, (perPath.get(path)||0)+1);
+      return perPath.get(path)! <= 13 ? reply(429, 'CONCURRENCY_API_BUSY') : reply(200);
+    });
+    const input={id:'original'}, mine={resourceKey:'original',limit:1}, result={command:'claim',requestKey:'original'};
+    const recovery={budgetMs:1800000};
+    const pending=Promise.all([api.read('offer',input,undefined,recovery),api.mine('claim',mine,undefined,recovery),
+      api.result(result,undefined,recovery),api.allocation('original',undefined,recovery)]);
+    await settle();assert.equal(calls.length,4);
+    input.id='edited';mine.resourceKey='edited';result.requestKey='edited';recovery.budgetMs=0;
+    for(let retry=0;retry<13;retry++){elapsed+=40000;t.mock.timers.tick(40000);await settle();}
+    await pending;assert.equal(calls.length,56);assert.ok(elapsed>120000);
+    for(const path of perPath.keys()){
+      const samePath=calls.filter(call=>call.path===path);assert.equal(samePath.length,14);
+      assert.ok(samePath.every(call=>JSON.stringify(call.body)===JSON.stringify(samePath[0].body)));
+    }
+  });
+});
+
+test('a changed perspective stops long recovery before another fetch', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const previous=currentPerspectiveCode();
+  try {
+    setActivePerspectiveCode('original');
+    await withClient(async(api,configure)=>{
+      let calls=0;configure(async()=>{calls++;return reply(429,'CONCURRENCY_API_BUSY');});
+      const rejected=assert.rejects(api.read('offer',{},undefined,{budgetMs:1800000}),{code:'CONCURRENCY_IDENTITY_CHANGED'});
+      await settle();assert.equal(calls,1);
+      setActivePerspectiveCode('changed');t.mock.timers.tick(2500);
+      await rejected;assert.equal(calls,1);
+    });
+  } finally {setActivePerspectiveCode(previous);}
 });
 
 test('write methods and dependency or permission failures are never automatically replayed', async () => {
@@ -116,8 +157,19 @@ test('write methods and dependency or permission failures are never automaticall
     assert.equal(calls, 3);
     for (const [status, code] of [[503, 'CONCURRENCY_CACHE_UNAVAILABLE'], [503, 'OPENXIANGDA_AUTHORIZATION_PROJECTION_NOT_READY'], [403, 'CONCURRENCY_CAPABILITY_REQUIRED']] as const) {
       const before = calls; configure(async () => { calls++; return reply(status, code); });
-      await assert.rejects(() => api.read('offer', {}), { code }); assert.equal(calls, before + 1);
+      await assert.rejects(() => api.read('offer', {}, undefined, {budgetMs:1800000}), { code }); assert.equal(calls, before + 1);
     }
+  });
+});
+
+test('caller cancellation aborts a pending long read without starting another fetch', async () => {
+  await withClient(async(api,configure)=>{
+    let calls=0,signal:AbortSignal|null|undefined;
+    const controller=new AbortController(),reason=new Error('page changed');
+    configure(async(_path,init)=>{calls++;signal=init.signal;return new Promise(()=>{});});
+    const rejected=assert.rejects(api.read('offer',{},controller.signal,{budgetMs:1800000}),received=>received===reason);
+    await settle();controller.abort(reason);await rejected;
+    assert.equal(calls,1);assert.equal(signal?.aborted,true);
   });
 });
 

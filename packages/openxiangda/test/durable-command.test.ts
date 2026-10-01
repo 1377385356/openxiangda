@@ -125,26 +125,39 @@ test('accepted observation uses the original thirty-minute window and narrows ea
   storage.setItem=(key,value)=>{saved.push(JSON.parse(value));set(key,value);};
   const f=fixture({enqueue:async(_c,_i,key)=>receipt(key,'accepted'),result:async(_input,_signal,recovery)=>{
     budgets.push(recovery?.budgetMs);reads++;
-    if(reads===1){now+=130000;return receipt(c.snapshot().requestKey,'executing');}
+    if(reads===1){now+=110000;return receipt(c.snapshot().requestKey,'executing');}
     return receipt(c.snapshot().requestKey);
   }},storage);
   const c=new DurableCommandController({client:f.client,command:'claim',resourceKey:'offer',storage,random:()=>0,sleep:async ms=>{now+=ms;}});
   await c.submit({id:'offer'});
   while(c.snapshot().isObserving)await Promise.resolve();
   assert.equal(c.snapshot().state,'succeeded');assert.equal(reads,2);
-  assert.deepEqual(budgets,[1794000,1658000]);
+  assert.deepEqual(budgets,[120000,120000]);
   assert.ok(saved.every(intent=>intent.firstSubmittedAt===5000000));
+});
+
+test('cross-device observation narrows the inner read to the original remaining window',async t=>{
+  const now=5500000;
+  let elapsed=0,reads=0;
+  const pending={...receipt('remote','accepted'),acceptedAt:new Date(now-1780000).toISOString()};
+  t.mock.method(Date,'now',()=>now+elapsed);
+  const f=fixture({mine:async()=>({items:[pending]}),result:async(_input,_signal,recovery)=>{
+    reads++;assert.equal(recovery?.budgetMs,14000);return {...pending,state:'succeeded'};
+  }});
+  const c=new DurableCommandController({client:f.client,command:'claim',resourceKey:'offer',storage:f.storage,random:()=>0,sleep:async ms=>{elapsed+=ms;}});
+  await c.refresh();while(c.snapshot().isObserving)await Promise.resolve();
+  assert.equal(reads,1);assert.equal(c.snapshot().state,'succeeded');
 });
 
 test('busy result recovery remains bounded by the original deadline, without enqueue replay',async t=>{
   let now=6000000,reads=0,writes=0; t.mock.method(Date,'now',()=>now);
   const f=fixture({enqueue:async(_c,_i,key)=>{writes++;return receipt(key,'accepted');},result:async(_input,_signal,recovery)=>{
-    reads++;assert.equal(recovery?.budgetMs,1794000);now+=1794000;
+    reads++;assert.ok(recovery&&recovery.budgetMs!>0&&recovery.budgetMs!<=120000);now+=recovery.budgetMs!;
     throw Object.assign(new Error('busy'),{status:429,code:'CONCURRENCY_RESULT_BUSY'});
   }});
   const c=new DurableCommandController({client:f.client,command:'claim',resourceKey:'offer',storage:f.storage,acceptanceRecoveryMs:1800000,random:()=>0,sleep:async ms=>{now+=ms;}});
   await c.submit({id:'offer'});while(c.snapshot().isObserving)await Promise.resolve();
-  assert.equal(reads,1);assert.equal(writes,1);assert.equal(c.snapshot().state,'recovering');
+  assert.ok(reads>1);assert.ok(now<=7800000);assert.equal(writes,1);assert.equal(c.snapshot().state,'recovering');
   assert.equal(c.snapshot().errorCode,'CONCURRENCY_RESULT_OBSERVATION_EXHAUSTED');
 });
 

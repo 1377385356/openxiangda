@@ -51,11 +51,11 @@ export async function readOffer(
 
 ### 只读预算繁忙恢复
 
-`read`、`mine`、`result`、`allocation` 共用有界恢复：单次调用默认含 HTTP 和等待的总预算 120 秒，最多 12 次总请求。只重试 HTTP 429 的 `CONCURRENCY_API_BUSY`、`CONCURRENCY_RESULT_BUSY`、`CONCURRENCY_RATE_LIMITED`、`CONCURRENCY_SOURCE_BUSY`；兼容旧平台的 HTTP 503 仅限前两个已知预算错误。明确 `retryable: false`、未知 429、权限拒绝、Redis/数据库/授权依赖失败和网络失败直接返回，不用繁忙重试掩盖。
+`read`、`mine`、`result`、`allocation` 共用有界恢复：单次调用默认含 HTTP 和等待的总预算 120 秒，最多 12 次总请求。应用可以通过 `budgetMs` 显式延长；超过 120 秒时最多 120 次总请求，预算上限为 30 分钟，超出上限按 30 分钟处理。只重试 HTTP 429 的 `CONCURRENCY_API_BUSY`、`CONCURRENCY_RESULT_BUSY`、`CONCURRENCY_RATE_LIMITED`、`CONCURRENCY_SOURCE_BUSY`；兼容旧平台的 HTTP 503 仅限前两个已知预算错误。明确 `retryable: false`、未知 429、权限拒绝、Redis/数据库/授权依赖失败和网络失败直接返回，不用繁忙重试掩盖。
 
-第一次失败后的基础等待为 2 秒，之后指数增加到最多 30 秒；取其与有效服务端提示的较大值，再加 0% 至 25% 随机抖动。提示优先使用合法 `Retry-After`（秒或 HTTP 日期），缺失时使用 `data.retryAfterMs`。若等待达到剩余预算，不提前查询，直接返回最后一次繁忙错误；12 次用完也保留最后繁忙响应。正在进行的请求超过总预算则中止并返回 `CONCURRENCY_READ_RECOVERY_EXHAUSTED`，不以之前的繁忙响应掩盖悬挂请求。
+第一次失败后的基础等待为 2 秒，之后指数增加到最多 30 秒；取其与有效服务端提示的较大值，再加 0% 至 25% 随机抖动。提示优先使用合法 `Retry-After`（秒或 HTTP 日期），缺失时使用 `data.retryAfterMs`。若等待达到剩余预算，不提前查询，直接返回最后一次繁忙错误；请求次数用完也保留最后繁忙响应。正在进行的请求超过总预算则中止并返回 `CONCURRENCY_READ_RECOVERY_EXHAUSTED`，不以之前的繁忙响应掩盖悬挂请求。
 
-可以传入更短的剩余预算，不能扩展单次 120 秒上限：
+可以传入更短的剩余预算，或为高流量详情入口显式选择较长的等待窗口：
 
 ```ts
 // budgetMs 含本次请求和所有预算繁忙退避；服务端事实仍为最终依据。
@@ -63,7 +63,12 @@ const receipt = await client.result({ operationId }, signal, {
   budgetMs: Math.max(0, originalDeadline - Date.now()),
 });
 const offer = await client.read<Offer>('offer', { id: offerId }, signal, { budgetMs: 30_000 });
+const detail = await client.read<Offer>('offer', { id: offerId }, signal, {
+  budgetMs: 30 * 60 * 1000,
+});
 ```
+
+预算在本次调用启动时固定，繁忙重试不重新计时。页面应保留同一资源、身份和视角的整体截止时间，并在重新查询时传入剩余量；刷新不能无限续期。长期读取等待只表示尚未取得页面信息，不能显示为已报名或已进入业务队列。持久申请控制器继续保留每次读取最多 120 秒和原有受理、观察期限，显式延长详情读取不会更改已提交申请的首次期限。
 
 每次调用在第一次请求前冻结完整参数、环境、主体及权限视角；后续修改表单不会改变重试内容。身份或视角变化时停止旧调用并返回 `CONCURRENCY_IDENTITY_CHANGED`。`AbortSignal` 可以中止请求和等待；组件卸载应中止旧读取。`enqueue`、`accept`、`cancel` 等写方法不使用这层自动重试，持久申请的原键受理恢复由下述控制器单独管理。普通 Data API 也不自动获得此策略。
 

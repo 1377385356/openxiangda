@@ -1,7 +1,9 @@
 import type { ManagedReadRecoveryOptions } from './managed-command';
 
-const MAX_BUDGET_MS = 120_000;
-const MAX_ATTEMPTS = 12;
+const DEFAULT_BUDGET_MS = 120_000;
+const DEFAULT_ATTEMPTS = 12;
+const MAX_BUDGET_MS = 1_800_000;
+const MAX_ATTEMPTS = 120;
 const BUSY_CODES = new Set([
   'CONCURRENCY_API_BUSY',
   'CONCURRENCY_RESULT_BUSY',
@@ -38,7 +40,8 @@ export async function recoverManagedRead<T>(
   if (options.budgetMs !== undefined && (!Number.isFinite(options.budgetMs) || options.budgetMs < 0))
     throw Object.assign(new Error('读取恢复时间设置无效'), { code: 'CONCURRENCY_READ_RECOVERY_BUDGET_INVALID', status: 400 });
   if (signal?.aborted) throw abortReason(signal);
-  const budget = Math.min(MAX_BUDGET_MS, options.budgetMs ?? MAX_BUDGET_MS);
+  const budget = Math.min(MAX_BUDGET_MS, options.budgetMs ?? DEFAULT_BUDGET_MS);
+  const attempts = budget > DEFAULT_BUDGET_MS ? MAX_ATTEMPTS : DEFAULT_ATTEMPTS;
   if (budget < 1) throw exhausted();
   const deadline = dependencies.now() + budget;
   const controller = new AbortController();
@@ -54,7 +57,7 @@ export async function recoverManagedRead<T>(
     controller.signal.addEventListener('abort', onAbort, { once: true });
   });
   try {
-    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    for (let attempt = 0; attempt < attempts; attempt++) {
       if (controller.signal.aborted) throw abortReason(controller.signal);
       if (dependencies.now() >= deadline) throw lastBusy || exhausted();
       try {
@@ -66,7 +69,7 @@ export async function recoverManagedRead<T>(
         if (controller.signal.aborted) throw abortReason(controller.signal);
         if (!isManagedReadBusy(error)) throw error;
         lastBusy = error;
-        if (attempt + 1 >= MAX_ATTEMPTS) throw error;
+        if (attempt + 1 >= attempts) throw error;
         const hint = Number((error as any).retryAfterMs ?? (error as any).data?.retryAfterMs);
         const suggested = Number.isFinite(hint) && hint >= 0 ? hint : 0;
         const jitter = Math.min(1, Math.max(0, dependencies.random()));
