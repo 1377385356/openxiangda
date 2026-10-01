@@ -771,6 +771,12 @@ async function requestRuntimeAuthorization(
       throw new Error('OPENXIANGDA_RUNTIME_AUTHORIZATION_SUPERSEDED');
     }
   };
+  const assertObservedCurrent = () => {
+    assertCurrent();
+    if (runtimeAuthorizationLoad?.controller.signal !== signal || runtimeAuthorizationLoad.subscribers === 0) {
+      throw new DOMException('读取已取消', 'AbortError');
+    }
+  };
   const read = async <T>(path: string) => recoverRuntimeAuthorizationRead<T>(async signal => {
     assertCurrent();
     const value = await request<T>(path, { signal });
@@ -783,13 +789,13 @@ async function requestRuntimeAuthorization(
         mount.environmentKey,
       )}`,
     );
-    assertCurrent();
+    assertObservedCurrent();
     return validateRuntimeAuthorization(context);
   }
   const current = await read<ConnectedCurrent>(
     `${applicationServiceBase()}/dev-sessions/current`,
   );
-  assertCurrent();
+  assertObservedCurrent();
   activeIdentity = {
     ...current.principal,
     identityScope: `connected-dev:${applicationCode()}:${
@@ -833,11 +839,16 @@ function observeRuntimeAuthorization(owner: RuntimeAuthorizationLoad, signal?: A
       if (!finish()) return;
       const reason = signal?.reason || new DOMException('读取已取消', 'AbortError');
       if (!owner.settled && owner.subscribers === 0) {
-        if (runtimeAuthorizationLoad === owner) {
-          runtimeAuthorizationLoad = undefined;
-          runtimeAuthorizationGeneration++;
-        }
-        owner.controller.abort(reason);
+        // StrictMode can resubscribe in this commit. A real departure still
+        // retires the owner in the next microtask, without extending its budget.
+        queueMicrotask(() => {
+          if (owner.settled || owner.subscribers > 0) return;
+          if (runtimeAuthorizationLoad === owner) {
+            runtimeAuthorizationLoad = undefined;
+            runtimeAuthorizationGeneration++;
+          }
+          owner.controller.abort(reason);
+        });
       }
       reject(reason);
     };

@@ -57,6 +57,38 @@ test('last observer cancellation aborts the owner and a late response cannot rep
   });
 });
 
+test('synchronous cleanup and remount retain one pending owner and its original transport', async () => {
+  await withRuntime(async configure => {
+    let reads = 0, release!: (response: Response) => void, transportSignal: AbortSignal | null | undefined;
+    configure(async (_path, init) => { reads++; transportSignal = init.signal; return new Promise(resolve => { release = resolve; }); });
+    const first = new AbortController(), next = new AbortController(), reason = new Error('temporary effect cleanup');
+    const cancelled = assert.rejects(loadRuntimeAuthorization({ signal: first.signal }), received => received === reason);
+    first.abort(reason);
+    const pending = loadRuntimeAuthorization({ signal: next.signal });
+    await cancelled; await settle();
+    assert.equal(reads, 1); assert.equal(transportSignal?.aborted, false);
+    release(reply(auth()));
+    const verified = await pending;
+    assert.equal(verified.identity?.userId, 'user');
+    assert.equal(await loadRuntimeAuthorization(), verified); assert.equal(reads, 1);
+  });
+});
+
+test('a cancelled completed refresh never installs an unobserved identity over the last verified identity', async () => {
+  await withRuntime(async configure => {
+    await loadRuntimeAuthorization(); const api = createManagedConcurrencyClient();
+    let release!: (response: Response) => void, transportSignal: AbortSignal | null | undefined;
+    configure(async (_path, init) => { transportSignal = init.signal; return new Promise(resolve => { release = resolve; }); });
+    const controller = new AbortController();
+    const cancelled = assert.rejects(loadRuntimeAuthorization({ refresh: true, signal: controller.signal }), { name: 'AbortError' });
+    await settle(); release(reply(auth('unobserved', 'unobserved-scope'))); controller.abort();
+    await cancelled; await settle(); assert.equal(transportSignal?.aborted, true);
+    configure(async () => reply({ state: 'accepted', requestKey: 'original-key' }));
+    await api.result({ command: 'claim', requestKey: 'original-key' });
+    assert.doesNotThrow(() => createManagedConcurrencyClient());
+  });
+});
+
 test('same identity refresh keeps managed original-key recovery live and merges concurrent current checks', async () => {
   await withRuntime(async configure => {
     await loadRuntimeAuthorization(); const api = createManagedConcurrencyClient();
