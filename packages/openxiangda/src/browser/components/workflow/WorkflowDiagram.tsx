@@ -17,6 +17,7 @@ export interface WorkflowDiagramProps {
 /** Fixed topology renderer, shared by platform administration and application SDK pages. */
 export function WorkflowDiagram({ graph, selectedNodeId, onSelectNode, titles = {}, visits = [] }: WorkflowDiagramProps) {
   const canvas = useRef<HTMLDivElement>(null);
+  const list = useRef<HTMLOListElement>(null);
   const nodeButtons = useRef(new Map<string, HTMLButtonElement>());
   const marker = useId().replace(/:/g, '');
   const [scale, setScale] = useState(1);
@@ -69,16 +70,26 @@ export function WorkflowDiagram({ graph, selectedNodeId, onSelectNode, titles = 
     for (const [depth, ids] of levels) ids.forEach((id, index) => positions.set(id, { x: width / 2 - ids.length * 290 / 2 + index * 290 + 20, y: 64 + depth * 220 }));
     return { width, height: 210 + Math.max(0, ...levels.keys()) * 220, positions, order: [...levels].sort(([a], [b]) => a - b).flatMap(([, ids]) => ids) };
   }, [graph]);
+  useEffect(() => {
+    const width = canvas.current?.clientWidth;
+    if (width) setScale(Math.max(.3, Math.min(1, (width - 32) / layout.width)));
+  }, [layout.width]);
   const locate = (id: string) => {
     onSelectNode(id);
-    nodeButtons.current.get(`${effectiveView}:${id}`)?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+    const container = effectiveView === 'graph' ? canvas.current : list.current;
+    const button = nodeButtons.current.get(`${effectiveView}:${id}`);
+    if (!container || !button) return;
+    const bounds = container.getBoundingClientRect(), target = button.getBoundingClientRect();
+    // Scroll this diagram only; keep the surrounding title, tools and detail panel in place.
+    container.scrollTo({ top: Math.max(0, container.scrollTop + target.top - bounds.top - 20),
+      left: Math.max(0, container.scrollLeft + target.left - bounds.left - 20), behavior: 'smooth' });
   };
   const keyboard = (id: string, key: string) => {
     const direction = ['ArrowDown', 'ArrowRight'].includes(key) ? 1 : ['ArrowUp', 'ArrowLeft'].includes(key) ? -1 : 0;
     if (!direction) return false;
     const order = layout.order.filter(nodeId => shown.has(nodeId));
     const next = order[(order.indexOf(id) + direction + order.length) % order.length];
-    if (next) { locate(next); nodeButtons.current.get(`${effectiveView}:${next}`)?.focus(); }
+    if (next) { locate(next); nodeButtons.current.get(`${effectiveView}:${next}`)?.focus({ preventScroll: true }); }
     return true;
   };
   const options = graph.nodes.filter(node => `${title(node.id)} ${node.id}`.toLowerCase().includes(keyword.toLowerCase())).map(node => ({ value: node.id, label: `${title(node.id)} · ${node.id}` }));
@@ -116,7 +127,7 @@ export function WorkflowDiagram({ graph, selectedNodeId, onSelectNode, titles = 
             </g>; })}</svg>{shownNodes.map(node => nodeButton(node, 'graph'))}
       </div></div>}
     </div>
-    <ol className={`oxa-workflow-node-list ${effectiveView === 'graph' ? 'hidden' : ''}`} aria-label="流程节点列表">{layout.order.filter(id => shown.has(id)).map(id => {
+    <ol ref={list} className={`oxa-workflow-node-list ${effectiveView === 'graph' ? 'hidden' : ''}`} aria-label="流程节点列表">{layout.order.filter(id => shown.has(id)).map(id => {
       const node = graph.nodes.find(item => item.id === id)!;
       return <li key={id}>{nodeButton(node, 'list')}<ul>{edges.filter(edge => edge.from === id).map(edge => <li key={edge.id}><button type="button" onClick={() => locate(edge.to)}>
         {edge.priority ? `顺序 ${edge.priority} · ` : ''}{edge.label}{edge.expression ? `：${formatWorkflowExpression(edge.expression, graph.variables)}` : ''} → {title(edge.to)}</button></li>)}</ul></li>;

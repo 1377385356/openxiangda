@@ -2929,7 +2929,7 @@
 .oxa-workflow-diagram { min-width: 0; background: var(--ant-color-bg-container, #fff); }
 .oxa-workflow-diagram-tools { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; padding: 16px; border-bottom: 1px solid var(--ant-color-border-secondary, #eee); }
 .oxa-workflow-graph-help { padding: 12px 16px; color: var(--ant-color-text-secondary, #666); font-size: 12px; line-height: 1.8; }
-.oxa-workflow-canvas { overflow: auto; max-height: 780px; min-height: 420px; padding: 16px; background: var(--ant-color-fill-quaternary, #fafafa); }
+.oxa-workflow-canvas { overflow: auto; max-height: min(780px, 65vh); min-height: min(420px, 50vh); padding: 16px; background: var(--ant-color-fill-quaternary, #fafafa); }
 .oxa-workflow-canvas.hidden, .oxa-workflow-node-list.hidden { display: none; }
 .oxa-workflow-edges { position: absolute; inset: 0; color: var(--ant-color-text-tertiary, #999); }
 .oxa-workflow-edges .selected { color: var(--ant-color-primary, #1677ff); }
@@ -2941,7 +2941,7 @@
 .oxa-workflow-node.visited { border-left: 4px solid var(--ant-color-success, #389e0d); }
 .oxa-workflow-node.selected { outline: 2px solid var(--ant-color-primary, #1677ff); outline-offset: 1px; }
 .oxa-workflow-node:focus-visible { outline: 3px solid var(--ant-color-primary, #1677ff); outline-offset: 3px; }
-.oxa-workflow-node-list { margin: 0; padding: 16px 16px 16px 38px; max-height: 780px; overflow: auto; }
+.oxa-workflow-node-list { margin: 0; padding: 16px 16px 16px 38px; max-height: min(780px, 65vh); overflow: auto; }
 .oxa-workflow-node-list > li { padding: 8px 0; }
 .oxa-workflow-node-list .oxa-workflow-node { position: static; width: 100%; }
 .oxa-workflow-node-list ul { padding: 8px 0 8px 16px; font-size: 12px; line-height: 1.8; }
