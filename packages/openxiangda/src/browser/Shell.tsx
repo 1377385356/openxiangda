@@ -290,6 +290,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const defaultSidebar = <Sider
         className="oxa-sider"
         collapsed={collapsed}
+        breakpoint="lg"
         collapsedWidth={64}
         collapsible
         onBreakpoint={setCollapsed}

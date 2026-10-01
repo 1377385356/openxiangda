@@ -423,7 +423,13 @@ export function RoleMembershipManager({
                 emptyText: (
                   <Empty
                     image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description="当前筛选下没有角色成员"
+                    description={
+                      members.error
+                        ? '本次成员未读取成功，请重试'
+                        : members.loading
+                        ? '正在读取角色成员'
+                        : '当前筛选下没有角色成员'
+                    }
                   />
                 ),
               }}
@@ -1069,6 +1075,7 @@ function MembershipBatchEditor({
               <Button
                 type="primary"
                 loading={busy}
+                disabled={busy}
                 onClick={() => void preview()}
               >
                 预览变更
@@ -1100,6 +1107,7 @@ function MembershipBatchEditor({
                     <Button
                       type="primary"
                       loading={busy}
+                      disabled={busy}
                       onClick={() => void execute(unconfirmed)}
                     >
                       重试相同操作 · {unconfirmed.length} 项
@@ -1111,6 +1119,7 @@ function MembershipBatchEditor({
                       type="primary"
                       danger={edit.operation === 'revoke'}
                       loading={busy}
+                      disabled={busy}
                       onClick={() => void execute(ready)}
                     >
                       提交可执行的 {ready.length} 项
