@@ -715,15 +715,19 @@ function MemberChoices({
     options: Array<{ value: string; label: string; disabled: boolean }>;
   }>({ key: search, options: [] });
   const options = pages.key === search ? pages.options : [];
+  const searchReady =
+    search.length <= 64 &&
+    (search.length >= 2 || /^\p{Script=Han}$/u.test(search));
   useEffect(() => {
     const timer = setTimeout(() => {
-      setSearch(term);
+      setSearch(term.trim());
       setCursor(undefined);
     }, 250);
     return () => clearTimeout(timer);
   }, [term]);
-  const result = useRead(JSON.stringify([search, cursor]), () =>
-    searchRoleManagementUsers({ keyword: search, cursor, limit: 20 })
+  const result = useRead(
+    searchReady ? JSON.stringify([search, cursor]) : undefined,
+    () => searchRoleManagementUsers({ keyword: search, cursor, limit: 20 })
   );
   useEffect(() => {
     if (result.data) {
@@ -769,8 +773,14 @@ function MemberChoices({
         loading={result.loading}
         showSearch={{ filterOption: false, onSearch: setTerm }}
         placeholder="搜索并选择成员，最多 50 位"
+        notFoundContent={searchReady ? undefined : '请输入姓名或账号搜索'}
         options={[...choices.values()]}
       />
+      {!searchReady && (
+        <p className="oxa-member-help">
+          输入姓名或账号搜索，至少 2 个字符或 1 个汉字，最多 64 个字符。
+        </p>
+      )}
       {result.error && (
         <p className="oxa-member-help" role="alert">
           {result.error}{' '}
