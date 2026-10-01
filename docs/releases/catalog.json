@@ -3,6 +3,37 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.37.2",
+      "status": "reviewed",
+      "title": "OpenXiangda 2.37.2：分配成员初始目录查询修复",
+      "summary": "共享成员维护组件在输入有效姓名或账号后查询分页目录，初次打开、清空或短词不再发出无效请求，已选人员标签保留。",
+      "newFeatures": [],
+      "fixes": [
+        "修复分配成员初始目录查询触发OPENXIANGDA_DIRECTORY_KEYWORD_INVALID的问题；搜索词至少2个字符或1个汉字、最多64个字符，保持分页、人员资格与当前用户授权。"
+      ],
+      "affectedUsers": [
+        "使用RoleMembershipManager分配角色成员的管理员和V2应用开发者。"
+      ],
+      "upgradeSteps": [
+        "升级机器生成的同批openxiangda 2.37.2和CLI组合，更新冻结锁文件。",
+        "核验初次打开成员选择、搜索人员和清空搜索；本地实验室可使用同批tgz。"
+      ],
+      "knownLimitations": [
+        "目录搜索和成员维护仍受平台当前用户授权及有界分页约束。",
+        "本批本地修复不代表npm发布或学校生产迁移；字段行为由页面代码维护。"
+      ],
+      "issues": [],
+      "compatibility": {
+        "node": ">=24",
+        "workspaceGenerations": "v2",
+        "platform": "沿用原角色和目录协议。",
+        "v1": "沿用原V1分发。"
+      },
+      "sha256": "cc915a0f12f322ef20bb1455e587a40558e2add3779f651155f990f0cbd2ad2c",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.37.2"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.37.1",
       "status": "reviewed",
       "title": "OpenXiangda 2.37.1：成员维护窄屏和提交状态修复",
