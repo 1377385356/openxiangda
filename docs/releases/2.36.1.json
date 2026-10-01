@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.36.1",
+  "status": "reviewed",
+  "title": "OpenXiangda 2.36.1：审批人路由草稿核对与窄屏修复",
+  "summary": "路由草稿按内容核对，打开表单后原样加入不产生多余修改；窄屏搜索与刷新工具栏可以换行。",
+  "newFeatures": [],
+  "fixes": [
+    "路由规则草稿及变更核对忽略 JSON 对象键的插入顺序，保留所有字段值和数组顺序，避免表单往返被误算为修改。",
+    "审批人路由工具栏允许换行并约束搜索框宽度，防止窄屏后台产生外层横向溢出。"
+  ],
+  "affectedUsers": [
+    "使用 WorkflowAssignmentRoutingManager 或 WorkflowAssignmentRoutingEditor 维护审批规则的平台管理员及 V2 应用开发者。"
+  ],
+  "upgradeSteps": [
+    "精确升级 openxiangda 2.36.1 和 CLI 2.6.23 并更新锁文件；其余同批依赖保持 2.36.0 路由组合。",
+    "在标准页或 SDK 工具页打开已有规则后原样加入，确认没有多余核对项；在窄屏验证搜索、刷新和表格内部滚动。"
+  ],
+  "knownLimitations": [
+    "修订冲突后载入最新基准会保留完整草稿，不自动合并其他管理员的修改，保存前仍需逐项核对。",
+    "本次仅修复共享管理界面，不改变人员解析、权限、规则生效范围或当前待办快照；字段行为仍由页面代码维护。",
+    "本地实验室包验证与 npm 发布分开记录，本轮不代表完整 M2 或学校业务迁移完成。"
+  ],
+  "issues": [],
+  "compatibility": {
+    "node": ">=24",
+    "workspaceGenerations": "v2",
+    "platform": "继续使用 workflow.assignment-routing@1.0.0 与 2.36.0 路由平台合同。",
+    "v1": "V1 分发引擎及业务不变。"
+  }
+}
