@@ -1,6 +1,7 @@
 ---
 "openxiangda-contracts": minor
 "openxiangda": minor
+"openxiangda-cli": patch
 ---
 
 新增共享角色成员维护组件和分页潜在流程引用SDK，支持角色/scope筛选、批量差异核对、逐项回执、CAS草稿与未知原键恢复；标准与应用页面共用原生权限和成员所有者。潜在引用沿用流程管理权限，区分激活/在途版本及默认/覆盖/路由许可来源，不改派已有任务。
