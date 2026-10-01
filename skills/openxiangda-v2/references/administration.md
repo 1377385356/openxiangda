@@ -58,3 +58,29 @@ export function ReadableWorkflow({ workflowCode, version }: {
 ```
 
 组件运行在平台应用作用域内，SDK 使用当前用户，凭据及环境继续由平台管理。`loadWorkflowInstanceGraph(instanceId)` 返回固定版本、序列及持久访问记录，传入组件 `visits` 即可查看实际路径。两种管理读取都受服务端授权；不能给普通申请页暴露整个管理读面。
+
+## 有界节点配置与 SDK {#node-administration}
+
+开发者在审批节点的 `administration` 声明可维护的模式、人员来源和任务按钮。未声明这些项的节点保留名称、说明及原人员来源维护；拓扑、分支、范围计算仍由代码控制。使用新声明的应用需要平台 `workflow.node-administration@1.0.0`，编译与激活均检查该能力。
+
+模式为 `single/any/all/sequence` 的允许子集；来源限 `fixed_users/app_role/app_role_in_scope`，范围角色必须已有代码声明的 scope。按钮 code 保持同意、拒绝、退回、转交、委托、加签的稳定语义；同意和拒绝不能关闭。只有同意/拒绝支持意见规则，拒绝或代码已有必填意见不能放宽。字段显隐、填写与必填行为由应用页面和代码维护，不提供流程节点的字段管理覆盖。可编译声明见 `examples/workflow-administration/declaration.ts`。
+
+应用自定义管理页可使用 `WorkflowNodeConfigurationEditor`（`openxiangda/react`），输入同一读面中的节点、principals 和 context.headRevision，放在平台 App/UI 作用域内。它复用下列当前用户 SDK：
+
+```ts
+import { loadApplicationAdministrationContext, loadWorkflowNodeConfigurations,
+  saveWorkflowNodeConfiguration } from 'openxiangda/core';
+
+const context = await loadApplicationAdministrationContext();
+const configuration = await loadWorkflowNodeConfigurations('requests');
+const node = configuration.nodes.find(item => item.nodeId === 'review')!;
+const operationId = crypto.randomUUID();
+await saveWorkflowNodeConfiguration('requests', node.nodeId, {
+  expectedHeadRevision: context.headRevision!, expectedRevision: node.configuration.revision,
+  operationId, reason: '更新复审方式', patch: { mode: 'all' },
+});
+```
+
+只有已声明允许 all 的节点可保存此例。输入最多 32KiB，人员 200、按钮文字 40 字。用 `patch: null` 恢复默认，也产生审计修订。结果未知时保留相同 operationId 和完整请求，查询后重试相同操作；确认的修订/Head 冲突先重新读取，不能覆盖别人。共享编辑器按审批人、审批按钮、名称与说明分组，显示配置来源、修订与生效范围；切组保留草稿，校验失败定位到相应分组。在冲突时保留草稿，加载最新基准后再次显式保存。
+
+新配置影响以后进入的节点，当前待办保留进入时模式、人员、按钮和必填意见；实时人员资格仍复核。含新增配置或快照的环境不能直接回退到忽略策略的旧服务器。

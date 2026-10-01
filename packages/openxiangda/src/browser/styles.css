@@ -2951,3 +2951,28 @@
   .oxa-workflow-node-list.hidden { display: block; }
   .oxa-workflow-diagram-tools .ant-segmented { display: none; }
 }
+
+.oxa-workflow-config .ant-drawer-body { padding: 20px 24px; }
+.oxa-workflow-config-context { margin-bottom: 16px; }
+.oxa-workflow-config-context h4 { margin: 0 0 8px; }
+.oxa-workflow-config-help { color: var(--ant-color-text-secondary, #748092); font-size: 13px; line-height: 1.7; margin: 0 0 20px; }
+.oxa-workflow-config .ant-tabs-nav { margin-bottom: 20px; }
+.oxa-workflow-provider-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: 100%; }
+.oxa-workflow-provider-options .ant-radio-wrapper, .oxa-workflow-mode-options .ant-radio-wrapper { border: 1px solid var(--ant-color-border-secondary, #e0e6ed); border-radius: 6px; padding: 12px; margin: 0; align-items: start; }
+.oxa-workflow-provider-options .ant-radio-wrapper-checked, .oxa-workflow-mode-options .ant-radio-wrapper-checked { border-color: var(--ant-color-primary, #1677ff); background: var(--ant-color-primary-bg, #eef6ff); }
+.oxa-workflow-mode-options { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.oxa-workflow-mode-options b { display: block; font-weight: 500; }
+.oxa-workflow-mode-options small { display: block; margin-top: 2px; color: var(--ant-color-text-secondary, #748092); }
+.oxa-workflow-config-scope { border-left: 2px solid var(--ant-color-border, #d6dde6); padding-left: 12px; margin: 0 0 24px; line-height: 1.7; font-size: 13px; }
+.oxa-workflow-operation-row { padding: 16px 0; border-bottom: 1px solid var(--ant-color-border-secondary, #e0e6ed); }
+.oxa-workflow-operation-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.oxa-workflow-operation-row .ant-form-item { margin-bottom: 12px; }
+.oxa-workflow-operation-row small { color: var(--ant-color-text-secondary, #748092); }
+.oxa-workflow-config-reason { border-top: 1px solid var(--ant-color-border-secondary, #e0e6ed); margin-top: 24px; padding-top: 20px; }
+.oxa-workflow-config-footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.oxa-workflow-config-footer > span { font-size: 12px; color: var(--ant-color-text-secondary, #748092); }
+@media (max-width: 700px) {
+  .oxa-workflow-config .ant-drawer-body { padding: 16px; }
+  .oxa-workflow-config-footer > span { display: none; }
+  .oxa-workflow-config-footer { justify-content: flex-end; }
+}

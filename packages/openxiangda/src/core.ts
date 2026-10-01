@@ -73,6 +73,8 @@ export type {
 export * from './browser/platform-client';
 export { formatWorkflowExpression, projectWorkflowGraph } from 'openxiangda-contracts/browser';
 export type { WorkflowReadability, WorkflowGraphProjection, WorkflowGraphVariable, WorkflowGraphEdge, WorkflowGraphVisit, WorkflowGraphReadResult, WorkflowInstanceGraphReadResult } from 'openxiangda-contracts/browser';
+export { WORKFLOW_CONFIGURABLE_OPERATIONS, WORKFLOW_CONFIGURABLE_PROVIDERS, validateWorkflowNodeConfigurationPatch, projectWorkflowNodePolicy } from 'openxiangda-contracts/browser';
+export type { ApplicationAdministrationContext, WorkflowApprovalAdministration, WorkflowApprovalMode, WorkflowConfigurableOperation, WorkflowFieldPolicy, WorkflowNodeOperationPolicy, WorkflowNodeConfigurations, WorkflowNodeConfigurationPatch, WorkflowNodeConfigurationMutation, WorkflowNodeConfigurationReceipt } from 'openxiangda-contracts/browser';
 export * from './browser/runtime-meta';
 export * from './browser/components/platform-fields/resource-query';
 export type * from './browser/components/resource/generated-resource-definition';

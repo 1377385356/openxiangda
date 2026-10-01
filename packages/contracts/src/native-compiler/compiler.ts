@@ -7,6 +7,7 @@ import { projectNativeDataResourceViewV2 } from './data-surface.js';
 import { hasDataAuditReadPolicy, isDataAuditMetadataField } from './data-audit-access.js';
 import { validateWorkflowInstanceCommandPolicies } from './workflow-instance-policy.js';
 import { validateWorkflowReadability, type WorkflowGraphDefinitionSource } from './workflow-graph.js';
+import { validateWorkflowAdministration, type WorkflowAdministrationNodeSource } from './workflow-node-administration.js';
 import * as crypto from 'crypto';
 import {
   OPENXIANGDA_COMPILER_CONTRACT_VERSION as OPENXIANGDA_V2_COMPILER_CONTRACT_VERSION,
@@ -631,6 +632,9 @@ export function compileRequiredPlatformCapabilitiesV3(
           code: 'workflow.instance-cancellation-policy' as const,
           declaration: config.workflows.definitions.filter((item: JsonObject) => item.definition.instanceCommands !== undefined),
         }]
+      : []),
+    ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.administration !== undefined || node.operationPolicy !== undefined))
+      ? [{ code: 'workflow.node-administration' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.administration !== undefined || node.operationPolicy !== undefined)) }]
       : []),
     ...(usesBusinessProcess
       ? [
@@ -6537,6 +6541,8 @@ function validateWorkflowReferences(config: JsonObject) {
     }
     const definition = definitionValues.get(definitionKey)!;
     const binding = bindingValues.get(bindingKey)!;
+    const administrationErrors = validateWorkflowAdministration(definition as unknown as { nodes: Record<string, WorkflowAdministrationNodeSource> }, binding as any);
+    if (administrationErrors.length) fail(administrationErrors[0]!, pointer);
     if (
       !['finish-pinned', 'cancel-on-deactivate'].includes(
         activation.acceptedCommandDeactivationPolicy
@@ -6838,6 +6844,8 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
   const startAt = requiredString(definition.startAt, `${pointer}/startAt`, 128);
   const readabilityErrors = validateWorkflowReadability(definition as unknown as WorkflowGraphDefinitionSource);
   if (readabilityErrors.length) fail(readabilityErrors[0]!, `${pointer}/readability`);
+  const administrationErrors = validateWorkflowAdministration(definition as unknown as { nodes: Record<string, WorkflowAdministrationNodeSource> });
+  if (administrationErrors.length) fail(administrationErrors[0]!, `${pointer}/nodes`);
   if (!nodes[startAt])
     fail('NATIVE_WORKFLOW_START_NODE_MISSING', `${pointer}/startAt`);
   const edges = new Map<string, string[]>();

@@ -2552,6 +2552,26 @@ export async function loadWorkflowInstanceGraph(instanceId: string) {
   return result;
 }
 
+export async function loadApplicationAdministrationContext() {
+  return requestRead<import('openxiangda-contracts/browser').ApplicationAdministrationContext>(
+    `${applicationServiceBase()}/administration/context?${new URLSearchParams({ environmentKey: currentEnvironmentKey() })}`,
+  );
+}
+
+export async function loadWorkflowNodeConfigurations(workflowCode: string) {
+  return requestRead<import('openxiangda-contracts/browser').WorkflowNodeConfigurations>(
+    `${applicationServiceBase()}/administration/workflows/${encodeURIComponent(workflowCode)}/node-configurations?${new URLSearchParams({ environmentKey: currentEnvironmentKey() })}`,
+  );
+}
+
+/** Retain the same operationId and exact input while the write result is unknown. */
+export async function saveWorkflowNodeConfiguration(workflowCode: string, nodeId: string, input: import('openxiangda-contracts/browser').WorkflowNodeConfigurationMutation) {
+  return request<import('openxiangda-contracts/browser').WorkflowNodeConfigurationReceipt>(
+    `${applicationServiceBase()}/administration/workflows/${encodeURIComponent(workflowCode)}/node-configurations/${encodeURIComponent(nodeId)}`,
+    { method: 'POST', body: JSON.stringify({ ...input, environmentKey: currentEnvironmentKey() }) },
+  );
+}
+
 function normalizeWorkflowDetailSurface(
   detail: WorkflowDetailSurfaceV2,
   csrfToken: string,

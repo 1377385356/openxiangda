@@ -4,6 +4,7 @@ import {
   sha256Digest,
   validateWorkflowInstanceCommandPolicies,
   validateWorkflowReadability,
+  validateWorkflowAdministration,
   type WorkflowApprovalMode,
   type WorkflowBinding,
   type WorkflowDelegation,
@@ -110,7 +111,7 @@ export function compileWorkflow(
 }
 
 export function validateWorkflowDefinition(definition: WorkflowDefinition) {
-  const diagnostics = [...validateWorkflowInstanceCommandPolicies(definition), ...validateWorkflowReadability(definition)];
+  const diagnostics = [...validateWorkflowInstanceCommandPolicies(definition), ...validateWorkflowReadability(definition), ...validateWorkflowAdministration(definition)];
   if (definition?.schemaVersion !== SCHEMA_VERSIONS.workflowDefinition) {
     diagnostics.push('WORKFLOW_DEFINITION_SCHEMA_INVALID');
   }
@@ -201,7 +202,7 @@ export function validateWorkflowBinding(
   definition: WorkflowDefinition,
   binding: WorkflowBinding
 ) {
-  const diagnostics: string[] = [];
+  const diagnostics: string[] = [...validateWorkflowAdministration(definition, binding)];
   if (binding?.schemaVersion !== SCHEMA_VERSIONS.workflowBinding) {
     diagnostics.push('WORKFLOW_BINDING_SCHEMA_INVALID');
   }

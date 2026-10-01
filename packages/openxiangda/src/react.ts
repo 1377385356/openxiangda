@@ -54,6 +54,7 @@ export * from './browser/components/resource/ResourceBatchActions';
 export * from './browser/components/resource/StandardResourcePages';
 export * from './browser/components/workflow/StandardWorkflowPages';
 export * from './browser/components/workflow/WorkflowDiagram';
+export * from './browser/components/workflow/WorkflowNodeConfigurationEditor';
 export * from './browser/components/PlatformAvatar';
 export * from './browser/components/todo/ApplicationTodoCenterPage';
 export type * from './browser/components/resource/generated-resource-definition';

@@ -1984,6 +1984,8 @@ function runtimeProtocolCapabilities(config: OpenXiangdaAppConfig) {
     ...((config.workflows?.definitions || []).some(item => item.definition.instanceCommands !== undefined)
       ? ['workflow.instance-cancellation-policy']
       : []),
+    ...((config.workflows?.definitions || []).some(item => Object.values(item.definition.nodes).some(node => node.kind === 'approval' && (node.administration !== undefined || node.operationPolicy !== undefined)))
+      ? ['workflow.node-administration'] : []),
     ...(config.frontend.authentication
       ? ['authentication.application-login-surface']
       : []),

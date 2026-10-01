@@ -12,6 +12,7 @@ export * from './compiler.js';
 export * from './data-policy-expression.js';
 export * from './workflow-instance-policy.js';
 export * from './workflow-graph.js';
+export * from './workflow-node-administration.js';
 export type { WorkflowInstanceCommandPolicies } from '../types.js';
 export type { RequiredPlatformCapabilityContract, PlatformCapabilityCode } from '../types.js';
 

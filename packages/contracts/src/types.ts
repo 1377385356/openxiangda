@@ -2201,10 +2201,27 @@ export interface WorkflowApprovalNode {
   onReject: string;
   allowedOperations?: WorkflowCommand[];
   returnTargets?: string[];
+  /** Code-owned defaults; labels never change the stable command semantics. */
+  operationPolicy?: Partial<Record<WorkflowConfigurableOperation, WorkflowNodeOperationPolicy>>;
+  /** Explicit upper bound for administrator changes. Topology remains immutable. */
+  administration?: WorkflowApprovalAdministration;
   fieldPolicy?: {
     default?: WorkflowFieldPolicy;
     fields?: Record<string, WorkflowFieldPolicy>;
   };
+}
+
+export type WorkflowConfigurableOperation = 'approve' | 'reject' | 'return' | 'transfer' | 'delegate' | 'add_assignee';
+export type WorkflowConfigurableAssigneeProvider = 'fixed_users' | 'app_role' | 'app_role_in_scope';
+export interface WorkflowNodeOperationPolicy {
+  label?: string;
+  /** Only approve/reject have comments; existing required reasons stay required. */
+  commentRequired?: boolean;
+}
+export interface WorkflowApprovalAdministration {
+  modes?: WorkflowApprovalMode[];
+  assigneeProviders?: WorkflowConfigurableAssigneeProvider[];
+  operations?: WorkflowConfigurableOperation[];
 }
 
 export interface WorkflowConditionNode {
@@ -2323,6 +2340,8 @@ export interface WorkflowBinding {
 export interface WorkflowNodeConfigurationPatch {
   title?: string;
   description?: string;
+  mode?: WorkflowApprovalMode;
+  operations?: Partial<Record<WorkflowConfigurableOperation, WorkflowNodeOperationPolicy & { enabled?: boolean }>>;
   assignee?:
     | { provider: "fixed_users"; users: string[] }
     | { provider: "app_role" | "app_role_in_scope"; roleCode: string };
@@ -2344,7 +2363,15 @@ export interface WorkflowNodeConfigurations {
   nodes: Array<{
     nodeId: string;
     kind: WorkflowNode["kind"];
-    defaults: { title: string; binding?: WorkflowBindingEntry };
+    defaults: {
+      title: string;
+      binding?: WorkflowBindingEntry;
+      mode?: WorkflowApprovalMode;
+      allowedOperations?: WorkflowCommand[];
+      operationPolicy?: Partial<Record<WorkflowConfigurableOperation, WorkflowNodeOperationPolicy>>;
+      fieldPolicy?: WorkflowApprovalNode['fieldPolicy'];
+    };
+    administration?: WorkflowApprovalAdministration;
     configuration: WorkflowNodeConfigurationState;
     effective: {
       revision: number;
@@ -2352,6 +2379,10 @@ export interface WorkflowNodeConfigurations {
       description?: string;
       binding?: WorkflowBindingEntry;
       bindingDigest?: string;
+      mode?: WorkflowApprovalMode;
+      allowedOperations?: WorkflowCommand[];
+      operationPolicy?: Partial<Record<WorkflowConfigurableOperation, WorkflowNodeOperationPolicy>>;
+      fieldPolicy?: WorkflowApprovalNode['fieldPolicy'];
     };
   }>;
   principals: {
@@ -2368,6 +2399,20 @@ export interface WorkflowNodeConfigurations {
     after: WorkflowNodeConfigurationState & { workflowCode: string; nodeId: string; effect: "future_node_entries_keep_existing_tasks" };
     createdAt: IsoDateTime;
   }>;
+}
+
+export interface WorkflowNodeConfigurationMutation {
+  expectedHeadRevision: number;
+  expectedRevision: number;
+  operationId: string;
+  reason: string;
+  patch: WorkflowNodeConfigurationPatch | null;
+}
+export interface WorkflowNodeConfigurationReceipt extends WorkflowNodeConfigurationState {
+  workflowCode: string;
+  nodeId: string;
+  effect: 'future_node_entries_keep_existing_tasks';
+  replayed: boolean;
 }
 
 export type ApplicationAdministrationPage = "overview" | "data" | "workflows" | "instances" | "automation" | "roles" | "versions" | "runtime" | "audit";
