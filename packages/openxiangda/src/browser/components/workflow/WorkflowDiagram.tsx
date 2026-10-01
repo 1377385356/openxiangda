@@ -1,29 +1,66 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { Component, lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { formatWorkflowExpression, type WorkflowGraphProjection, type WorkflowGraphVisit } from 'openxiangda-contracts/browser';
-import { Button, Empty, Input, Segmented, Select, Space, Switch, Tag } from 'antd';
+import { Alert, Button, Empty, Input, Segmented, Select, Skeleton, Space, Switch, Tooltip } from 'antd';
+import { AimOutlined, BorderOutlined, LockOutlined, MinusOutlined, PlusOutlined } from '@ant-design/icons';
+import { WorkflowNodeCard } from './WorkflowNodeCard';
+import type { WorkflowFlowCanvasController } from './WorkflowFlowCanvas';
 
-const kinds: Record<string, string> = { approval: '审批', condition: '条件分支', end: '结束', cc: '抄送', action: '业务步骤' };
-const modes: Record<string, string> = { single: '单人审批', any: '任一人同意', all: '所有人同意', sequence: '按顺序审批' };
+const FlowCanvas = lazy(() => import('./WorkflowFlowCanvas'));
+const emptyVisits: readonly WorkflowGraphVisit[] = [];
+const emptyTitles: Record<string, string> = {};
+
+function displayNodeOrder(graph: WorkflowGraphProjection) {
+  const incoming = new Map(graph.nodes.map(node => [node.id, 0]));
+  for (const edge of graph.edges) incoming.set(edge.to, (incoming.get(edge.to) || 0) + 1);
+  const ready = graph.nodes.filter(node => incoming.get(node.id) === 0);
+  ready.sort((left, right) => Number(right.id === graph.startAt) - Number(left.id === graph.startAt));
+  const ordered: WorkflowGraphProjection['nodes'] = [];
+  while (ready.length) {
+    const node = ready.shift()!;
+    ordered.push(node);
+    for (const edge of graph.edges.filter(item => item.from === node.id)) {
+      incoming.set(edge.to, incoming.get(edge.to)! - 1);
+      if (incoming.get(edge.to) === 0) {
+        const target = graph.nodes.find(item => item.id === edge.to);
+        if (target) ready.push(target);
+      }
+    }
+  }
+  return ordered.length === graph.nodes.length ? ordered : graph.nodes;
+}
 
 export interface WorkflowDiagramProps {
   graph: WorkflowGraphProjection;
   selectedNodeId: string;
   onSelectNode: (nodeId: string) => void;
-  /** Titles may be overlaid from the matching effective configuration or frozen visit. */
+  /** Only overlay titles from the matching effective configuration or frozen visit. */
   titles?: Record<string, string>;
+  /** Optional matching-version summaries, e.g. the effective approval mode. */
+  summaries?: Record<string, string>;
   visits?: readonly WorkflowGraphVisit[];
+  selectedEdgeId?: string;
+  onSelectEdge?: (edgeId: string) => void;
 }
 
-/** Fixed topology renderer, shared by platform administration and application SDK pages. */
-export function WorkflowDiagram({ graph, selectedNodeId, onSelectNode, titles = {}, visits = [] }: WorkflowDiagramProps) {
-  const canvas = useRef<HTMLDivElement>(null);
+class CanvasBoundary extends Component<{ children: ReactNode; onList: () => void }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  render() {
+    return this.state.failed ? <Alert type="error" showIcon title="流程画布未能加载" description="请使用节点列表查看同一版本的完整结构。" action={<Button onClick={this.props.onList}>查看节点列表</Button>} /> : this.props.children;
+  }
+}
+
+/** Read-only graph and accessible list share the platform's immutable projection. */
+export function WorkflowDiagram({ graph, selectedNodeId, onSelectNode, titles = emptyTitles, summaries, visits = emptyVisits, selectedEdgeId, onSelectEdge }: WorkflowDiagramProps) {
+  const controller = useRef<WorkflowFlowCanvasController | null>(null);
   const list = useRef<HTMLOListElement>(null);
-  const nodeButtons = useRef(new Map<string, HTMLButtonElement>());
-  const marker = useId().replace(/:/g, '');
-  const [scale, setScale] = useState(1);
+  const listButtons = useRef(new Map<string, HTMLButtonElement>());
+  const [zoom, setZoom] = useState(1);
   const [keyword, setKeyword] = useState('');
   const [view, setView] = useState<'graph' | 'list'>('graph');
   const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 700px)').matches);
+  const [actualOnly, setActualOnly] = useState(false);
+  const [localEdge, setLocalEdge] = useState<string>();
   useEffect(() => {
     const query = window.matchMedia('(max-width: 700px)');
     const changed = () => setNarrow(query.matches);
@@ -32,101 +69,64 @@ export function WorkflowDiagram({ graph, selectedNodeId, onSelectNode, titles = 
     return () => query.removeEventListener('change', changed);
   }, []);
   const effectiveView = narrow ? 'list' : view;
-  const [actualOnly, setActualOnly] = useState(false);
-  const visited = new Set(visits.map(visit => visit.nodeId));
-  const executedEdges = new Set(visits.flatMap(visit => {
+  const visited = useMemo(() => new Set(visits.map(visit => visit.nodeId)), [visits]);
+  const executedEdges = useMemo(() => new Set(visits.flatMap(visit => {
     if (visit.matchedBranch !== undefined) return [`${visit.nodeId}:${visit.matchedBranch < 0 ? 'default' : `branch:${visit.matchedBranch}`}`];
     return visit.transition ? [`${visit.nodeId}:${visit.transition}`] : [];
-  }));
-  const shownNodes = actualOnly ? graph.nodes.filter(node => visited.has(node.id)) : graph.nodes;
-  const shown = new Set(shownNodes.map(node => node.id));
-  const edges = graph.edges.filter(edge => shown.has(edge.from) && shown.has(edge.to));
+  })), [visits]);
+  const shownGraph = useMemo(() => {
+    if (!actualOnly) return graph;
+    const nodes = graph.nodes.filter(node => visited.has(node.id));
+    const ids = new Set(nodes.map(node => node.id));
+    return { ...graph, nodes, edges: graph.edges.filter(edge => ids.has(edge.from) && ids.has(edge.to) && executedEdges.has(edge.id)) };
+  }, [graph, actualOnly, visited, executedEdges]);
+  const orderedNodes = useMemo(() => displayNodeOrder(shownGraph), [shownGraph]);
   const title = (id: string) => titles[id] || graph.nodes.find(node => node.id === id)?.title || id;
-  const layout = useMemo(() => {
-    const indegree = new Map(graph.nodes.map(node => [node.id, 0]));
-    const outgoing = new Map<string, typeof graph.edges>();
-    for (const edge of graph.edges) {
-      indegree.set(edge.to, (indegree.get(edge.to) || 0) + 1);
-      outgoing.set(edge.from, [...outgoing.get(edge.from) || [], edge]);
+  const options = orderedNodes.filter(node => `${title(node.id)} ${node.id}`.toLowerCase().includes(keyword.toLowerCase())).map(node => ({ value: node.id, label: title(node.id) }));
+  const locate = (id: string, focus = false) => {
+    onSelectNode(id); setLocalEdge(undefined);
+    if (effectiveView === 'graph') controller.current?.locate(id, focus);
+    else {
+      const container = list.current, button = listButtons.current.get(id);
+      if (!container || !button) return;
+      const bounds = container.getBoundingClientRect(), target = button.getBoundingClientRect();
+      container.scrollTo({ top: container.scrollTop + target.top - bounds.top - 12, behavior: focus ? 'instant' : 'smooth' });
+      if (focus) button.focus({ preventScroll: true });
     }
-    const queue = [...indegree].filter(([, count]) => !count).map(([id]) => id);
-    const depths = new Map(queue.map(id => [id, 0]));
-    for (let index = 0; index < queue.length; index++) for (const edge of outgoing.get(queue[index]!) || []) {
-      depths.set(edge.to, Math.max(depths.get(edge.to) || 0, (depths.get(edge.from) || 0) + 1));
-      indegree.set(edge.to, indegree.get(edge.to)! - 1);
-      if (!indegree.get(edge.to)) queue.push(edge.to);
-    }
-    const levels = new Map<number, string[]>();
-    graph.nodes.forEach((node, index) => {
-      const depth = depths.get(node.id) ?? index;
-      levels.set(depth, [...levels.get(depth) || [], node.id]);
-    });
-    const width = Math.max(620, ...[...levels.values()].map(ids => ids.length * 290 + 40));
-    const positions = new Map<string, { x: number; y: number }>();
-    for (const [depth, ids] of levels) ids.forEach((id, index) => positions.set(id, { x: width / 2 - ids.length * 290 / 2 + index * 290 + 20, y: 64 + depth * 220 }));
-    return { width, height: 210 + Math.max(0, ...levels.keys()) * 220, positions, order: [...levels].sort(([a], [b]) => a - b).flatMap(([, ids]) => ids) };
-  }, [graph]);
-  useEffect(() => {
-    const width = canvas.current?.clientWidth;
-    if (width) setScale(Math.max(.3, Math.min(1, (width - 32) / layout.width)));
-  }, [layout.width]);
-  const locate = (id: string) => {
-    onSelectNode(id);
-    const container = effectiveView === 'graph' ? canvas.current : list.current;
-    const button = nodeButtons.current.get(`${effectiveView}:${id}`);
-    if (!container || !button) return;
-    const bounds = container.getBoundingClientRect(), target = button.getBoundingClientRect();
-    // Scroll this diagram only; keep the surrounding title, tools and detail panel in place.
-    container.scrollTo({ top: Math.max(0, container.scrollTop + target.top - bounds.top - 20),
-      left: Math.max(0, container.scrollLeft + target.left - bounds.left - 20), behavior: 'smooth' });
   };
-  const keyboard = (id: string, key: string) => {
-    const direction = ['ArrowDown', 'ArrowRight'].includes(key) ? 1 : ['ArrowUp', 'ArrowLeft'].includes(key) ? -1 : 0;
-    if (!direction) return false;
-    const order = layout.order.filter(nodeId => shown.has(nodeId));
-    const next = order[(order.indexOf(id) + direction + order.length) % order.length];
-    if (next) { locate(next); nodeButtons.current.get(`${effectiveView}:${next}`)?.focus({ preventScroll: true }); }
-    return true;
+  const navigate = (id: string, key: string) => {
+    const delta = ['ArrowDown', 'ArrowRight'].includes(key) ? 1 : ['ArrowUp', 'ArrowLeft'].includes(key) ? -1 : 0;
+    const order = orderedNodes.map(node => node.id);
+    const target = key === 'Home' ? order[0] : key === 'End' ? order.at(-1) : delta ? order[(order.indexOf(id) + delta + order.length) % order.length] : undefined;
+    if (target) locate(target, true);
+    return !!target;
   };
-  const options = graph.nodes.filter(node => `${title(node.id)} ${node.id}`.toLowerCase().includes(keyword.toLowerCase())).map(node => ({ value: node.id, label: `${title(node.id)} · ${node.id}` }));
-  const nodeButton = (node: WorkflowGraphProjection['nodes'][number], kind: 'graph' | 'list') => {
-    const point = layout.positions.get(node.id)!;
-    const latest = [...visits].reverse().find(visit => visit.nodeId === node.id);
-    return <button key={node.id} type="button" ref={element => { if (element) nodeButtons.current.set(`${kind}:${node.id}`, element); else nodeButtons.current.delete(`${kind}:${node.id}`); }}
-      className={`oxa-workflow-node ${selectedNodeId === node.id ? 'selected' : ''} ${visited.has(node.id) ? 'visited' : ''}`}
-      style={kind === 'graph' ? { left: point.x, top: point.y, width: 250 } : undefined}
-      aria-pressed={selectedNodeId === node.id} aria-label={`${title(node.id)}，${kinds[node.kind] || node.kind}${latest ? '，已执行' : ''}`}
-      onClick={() => onSelectNode(node.id)} onKeyDown={event => { if (keyboard(node.id, event.key)) event.preventDefault(); }}>
-      <span className="oxa-workflow-node-kind">{node.id === graph.startAt ? '起点 · ' : ''}{kinds[node.kind] || node.kind}{latest ? ` · ${latest.status}` : ''}</span>
-      <strong>{title(node.id)}</strong><small>{node.mode ? modes[node.mode] || node.mode : node.kind === 'condition' ? '按顺序首次命中' : node.outcome || node.id}</small>
-    </button>;
+  const selectEdge = (id: string) => {
+    const edge = graph.edges.find(item => item.id === id);
+    if (edge) onSelectNode(edge.from);
+    setLocalEdge(id); onSelectEdge?.(id);
   };
+  if (graph.nodes.length > 200) return <Alert type="error" title="流程图超出 200 节点的显示上限" />;
   return <section className="oxa-workflow-diagram" aria-label="固定流程结构">
-    <div className="oxa-workflow-diagram-tools"><Space wrap><Tag>固定结构</Tag><Segmented aria-label="流程查看方式" value={effectiveView} disabled={narrow} onChange={value => setView(value as typeof view)} options={[{ value: 'graph', label: '流程图' }, { value: 'list', label: '节点列表' }]} /></Space>
-      <Space wrap><Input.Search aria-label="搜索流程节点" placeholder="搜索节点名称或代码" value={keyword} allowClear onChange={event => setKeyword(event.target.value)} onSearch={() => options[0] && locate(options[0].value)} style={{ width: 210 }} />
-        <Select aria-label="定位流程节点" value={selectedNodeId} options={options} onChange={locate} style={{ width: 200 }} notFoundContent="没有匹配的节点" /></Space>
-      <Space wrap><Button aria-label="缩小流程图" disabled={scale <= .3} onClick={() => setScale(value => Math.max(.3, value - .1))}>−</Button><span>{Math.round(scale * 100)}%</span><Button aria-label="放大流程图" disabled={scale >= 1.5} onClick={() => setScale(value => Math.min(1.5, value + .1))}>＋</Button>
-        <Button onClick={() => { const width = canvas.current?.clientWidth || layout.width; setScale(Math.max(.15, Math.min(1, (width - 32) / layout.width))); }}>适配宽度</Button>
-        {visits.length > 0 && <Space><Switch checked={actualOnly} onChange={setActualOnly} aria-label="只看已执行节点" /><span>已执行路径</span></Space>}</Space>
+    <div className="oxa-workflow-diagram-tools">
+      <Segmented aria-label="流程查看方式" value={effectiveView} disabled={narrow} onChange={value => setView(value as typeof view)} options={[{ value: 'graph', label: '流程图' }, { value: 'list', label: '节点列表' }]} />
+      <div className="oxa-workflow-node-search"><Input.Search aria-label="搜索流程节点" placeholder="搜索节点" value={keyword} allowClear onChange={event => setKeyword(event.target.value)} onSearch={() => options[0] && locate(options[0].value)} />
+        <Select aria-label="定位流程节点" value={shownGraph.nodes.some(node => node.id === selectedNodeId) ? selectedNodeId : undefined} options={options} onChange={id => locate(id)} notFoundContent="没有匹配的节点" popupMatchSelectWidth={300} /></div>
+      {visits.length > 0 && <Space size="small"><Switch size="small" checked={actualOnly} onChange={setActualOnly} aria-label="只看已执行节点" /><span>已执行路径</span></Space>}
+      <span className="oxa-workflow-readonly"><LockOutlined /> 结构只读</span>
     </div>
-    <div className="oxa-workflow-graph-help">条件按展示顺序判断，第一条满足即进入对应分支；均不满足时走默认分支。方向键可逐个定位节点。</div>
-    <div ref={canvas} className={`oxa-workflow-canvas ${effectiveView === 'list' ? 'hidden' : ''}`}>
-      {!shownNodes.length ? <Empty description="尚无已执行节点" /> : <div style={{ width: layout.width * scale, height: layout.height * scale }}><div style={{ width: layout.width, height: layout.height, position: 'relative', transform: `scale(${scale})`, transformOrigin: 'top left' }}>
-        <svg width={layout.width} height={layout.height} className="oxa-workflow-edges" role="img" aria-label="固定节点连线"><defs><marker id={marker} markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7" fill="currentColor" /></marker></defs>
-          {edges.map(edge => { const from = layout.positions.get(edge.from)!, to = layout.positions.get(edge.to)!;
-            const outgoing = edges.filter(item => item.from === edge.from); const ordinal = outgoing.indexOf(edge);
-            const mid = from.y + 112 + ordinal * 23, startX = from.x + 125, endX = to.x + 125;
-            const actual = executedEdges.has(edge.id);
-            return <g key={edge.id} className={actual ? 'executed' : edge.from === selectedNodeId ? 'selected' : ''}>
-              <path d={`M${startX} ${from.y + 95} L${startX} ${mid} L${endX} ${mid} L${endX} ${to.y - 5}`} fill="none" stroke="currentColor" strokeWidth={actual ? 2.5 : 1.5} markerEnd={`url(#${marker})`} />
-              <text x={startX + 10} y={mid - 5} fontSize="11">{edge.priority ? `${edge.priority}. ` : ''}{edge.label.length > 28 ? `${edge.label.slice(0, 27)}…` : edge.label}<title>{edge.label}{edge.expression ? `：${formatWorkflowExpression(edge.expression, graph.variables)}` : ''}</title></text>
-            </g>; })}</svg>{shownNodes.map(node => nodeButton(node, 'graph'))}
-      </div></div>}
-    </div>
-    <ol ref={list} className={`oxa-workflow-node-list ${effectiveView === 'graph' ? 'hidden' : ''}`} aria-label="流程节点列表">{layout.order.filter(id => shown.has(id)).map(id => {
-      const node = graph.nodes.find(item => item.id === id)!;
-      return <li key={id}>{nodeButton(node, 'list')}<ul>{edges.filter(edge => edge.from === id).map(edge => <li key={edge.id}><button type="button" onClick={() => locate(edge.to)}>
-        {edge.priority ? `顺序 ${edge.priority} · ` : ''}{edge.label}{edge.expression ? `：${formatWorkflowExpression(edge.expression, graph.variables)}` : ''} → {title(edge.to)}</button></li>)}</ul></li>;
-    })}</ol>
+    {effectiveView === 'graph' ? <div className="oxa-workflow-canvas">
+      {!shownGraph.nodes.length ? <Empty description="尚无已执行节点" /> : <CanvasBoundary onList={() => setView('list')}><Suspense fallback={<div className="oxa-workflow-canvas-loading"><Skeleton active title paragraph={{ rows: 4 }} /></div>}>
+        <FlowCanvas graph={shownGraph} selectedNodeId={selectedNodeId} selectedEdgeId={selectedEdgeId || localEdge} onSelectNode={onSelectNode} onSelectEdge={selectEdge} titles={titles} summaries={summaries} visits={visits} executedEdges={executedEdges} onNavigate={navigate} onReady={value => { controller.current = value; }} onZoom={setZoom} />
+      </Suspense></CanvasBoundary>}
+      <div className="oxa-workflow-viewport-tools" aria-label="画布导航"><Tooltip title="缩小"><Button aria-label="缩小流程图" icon={<MinusOutlined />} disabled={zoom <= .025} onClick={() => controller.current?.zoomBy(-1)} /></Tooltip><span>{Math.round(zoom * 100)}%</span><Tooltip title="放大"><Button aria-label="放大流程图" icon={<PlusOutlined />} disabled={zoom >= 1.6} onClick={() => controller.current?.zoomBy(1)} /></Tooltip>
+        <Tooltip title="适应全图"><Button aria-label="适应全图" icon={<BorderOutlined />} onClick={() => controller.current?.fit()} /></Tooltip><Tooltip title="聚焦选中节点"><Button aria-label="聚焦选中节点" icon={<AimOutlined />} onClick={() => locate(selectedNodeId)} /></Tooltip></div>
+      <div className="oxa-workflow-graph-help">拖动画布平移 · 滚轮缩放 · 方向键切换节点</div>
+    </div> : <ol ref={list} className="oxa-workflow-node-list" aria-label="流程节点列表">
+      {orderedNodes.map(node => <li key={node.id}><WorkflowNodeCard node={node} title={title(node.id)} summary={summaries?.[node.id]} selected={selectedNodeId === node.id} start={node.id === graph.startAt} visit={[...visits].reverse().find(visit => visit.nodeId === node.id)} onClick={() => onSelectNode(node.id)} onNavigate={navigate} buttonRef={element => { if (element) listButtons.current.set(node.id, element); else listButtons.current.delete(node.id); }} />
+        <ul>{shownGraph.edges.filter(edge => edge.from === node.id).map(edge => <li key={edge.id}><button type="button" onClick={() => selectEdge(edge.id)}>
+          {edge.priority ? `顺序 ${edge.priority} · ` : ''}{edge.label}{edge.expression ? `：${formatWorkflowExpression(edge.expression, graph.variables)}` : ''} → {title(edge.to)}</button><Button size="small" type="text" onClick={() => locate(edge.to)} aria-label={`定位${title(edge.to)}`}>定位</Button></li>)}</ul></li>)}
+      {!shownGraph.nodes.length && <li><Empty description="尚无已执行节点" /></li>}
+    </ol>}
   </section>;
 }

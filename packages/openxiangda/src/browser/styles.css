@@ -2926,32 +2926,56 @@
 .oxa-form-full .oxa-actions > button:first-child { margin-right: auto; }
 .oxa-form-scroll > .ant-alert { margin: 12px 16px; }
 .oxa-form-overlay .oxa-settings-actions { padding: 12px; }
-.oxa-workflow-diagram { min-width: 0; background: var(--ant-color-bg-container, #fff); }
-.oxa-workflow-diagram-tools { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; padding: 16px; border-bottom: 1px solid var(--ant-color-border-secondary, #eee); }
-.oxa-workflow-graph-help { padding: 12px 16px; color: var(--ant-color-text-secondary, #666); font-size: 12px; line-height: 1.8; }
-.oxa-workflow-canvas { overflow: auto; max-height: min(780px, 65vh); min-height: min(420px, 50vh); padding: 16px; background: var(--ant-color-fill-quaternary, #fafafa); }
-.oxa-workflow-canvas.hidden, .oxa-workflow-node-list.hidden { display: none; }
-.oxa-workflow-edges { position: absolute; inset: 0; color: var(--ant-color-text-tertiary, #999); }
-.oxa-workflow-edges .selected { color: var(--ant-color-primary, #1677ff); }
-.oxa-workflow-edges .executed { color: var(--ant-color-success, #389e0d); }
-.oxa-workflow-node { position: absolute; min-height: 95px; padding: 12px 16px; text-align: left; background: var(--ant-color-bg-container, #fff); color: var(--ant-color-text, #262626); border: 1px solid var(--ant-color-border, #d9d9d9); border-radius: 6px; cursor: pointer; line-height: 1.6; }
-.oxa-workflow-node strong, .oxa-workflow-node small { display: block; overflow-wrap: anywhere; }
-.oxa-workflow-node strong { font-size: 14px; margin: 4px 0; }
-.oxa-workflow-node small, .oxa-workflow-node-kind { font-size: 11px; color: var(--ant-color-text-secondary, #666); }
-.oxa-workflow-node.visited { border-left: 4px solid var(--ant-color-success, #389e0d); }
-.oxa-workflow-node.selected { outline: 2px solid var(--ant-color-primary, #1677ff); outline-offset: 1px; }
-.oxa-workflow-node:focus-visible { outline: 3px solid var(--ant-color-primary, #1677ff); outline-offset: 3px; }
-.oxa-workflow-node-list { margin: 0; padding: 16px 16px 16px 38px; max-height: min(780px, 65vh); overflow: auto; }
+.oxa-workflow-diagram { min-width: 0; min-height: 0; display: flex; flex-direction: column; height: 100%; background: var(--ant-color-bg-container, #fff); }
+.oxa-workflow-diagram-tools { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--ant-color-border-secondary, #e8edf2); font-size: 12px; }
+.oxa-workflow-node-search { display: flex; gap: 8px; min-width: 0; flex: 1; max-width: 460px; }
+.oxa-workflow-node-search > .ant-input-search { width: 190px; }
+.oxa-workflow-node-search > .ant-select { flex: 1; min-width: 130px; }
+.oxa-workflow-readonly { margin-left: auto; color: var(--ant-color-text-secondary, #748092); white-space: nowrap; display: flex; align-items: center; gap: 5px; }
+.oxa-workflow-canvas { position: relative; flex: 1; min-height: 440px; height: clamp(440px, 64dvh, 850px); background: #f5f7fa; }
+.oxa-workflow-reactflow { width: 100%; height: 100%; }
+.oxa-workflow-canvas-loading { max-width: 340px; margin: 90px auto; padding: 24px; }
+.oxa-workflow-diagram .react-flow__node { border: 0; padding: 0; }
+.oxa-workflow-diagram .react-flow__handle { width: 6px; height: 6px; background: #aab4c1; border: 2px solid #fff; pointer-events: none; }
+.oxa-workflow-node { position: relative; box-sizing: border-box; display: flex; align-items: center; gap: 12px; width: 100%; height: 100%; min-height: 92px; padding: 16px 20px; text-align: left; background: var(--ant-color-bg-container, #fff); color: var(--ant-color-text, #263446); border: 1px solid #d6dde6; border-radius: 10px; cursor: pointer; line-height: 1.6; box-shadow: 0 2px 5px rgba(31, 54, 80, .045); transition: border-color 160ms, box-shadow 160ms, background 160ms; font-family: inherit; }
+.oxa-workflow-node:hover { border-color: #aab9c9; box-shadow: 0 4px 12px rgba(31, 54, 80, .08); }
+.oxa-workflow-node.selected { border-color: var(--ant-color-primary, #1677ff); background: var(--ant-color-primary-bg, #eef6ff); box-shadow: 0 0 0 2px var(--ant-color-primary-border, #c4dfff); }
+.oxa-workflow-node:focus-visible { outline: 3px solid var(--ant-color-primary, #1677ff); outline-offset: 4px; }
+.oxa-workflow-node-icon { flex: 0 0 32px; width: 32px; height: 32px; display: grid; place-items: center; background: #f1f4f8; color: #65758b; border-radius: 8px; font-size: 17px; }
+.oxa-workflow-node.selected .oxa-workflow-node-icon { background: var(--ant-color-primary-bg-hover, #dcecff); color: var(--ant-color-primary, #1677ff); }
+.oxa-workflow-node-copy { min-width: 0; flex: 1; }
+.oxa-workflow-node strong { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; font-size: 14px; font-weight: 600; margin: 2px 0 3px; line-height: 1.5; }
+.oxa-workflow-node small, .oxa-workflow-node-kind { display: block; font-size: 11px; color: var(--ant-color-text-secondary, #748092); }
+.oxa-workflow-node small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.oxa-workflow-node.visited { border-left: 3px solid var(--ant-color-success, #389e0d); }
+.oxa-workflow-node-status { position: absolute; top: -10px; right: 12px; font-size: 10px; padding: 1px 6px; color: #3f6b42; background: #f0f8f0; border: 1px solid #d4e7d3; border-radius: 4px; }
+.oxa-workflow-node-status.status-error { color: #a33731; background: #fff1f0; border-color: #eccdca; }
+.oxa-workflow-edge-label { position: absolute; pointer-events: all; max-width: 226px; border: 1px solid #e0e6ed; border-radius: 5px; padding: 4px 8px; background: #fdfefe; color: #66758a; font-family: inherit; font-size: 11px; text-align: left; cursor: pointer; box-shadow: 0 1px 3px rgba(31, 54, 80, .025); }
+.oxa-workflow-edge-label.branch { width: 226px; }
+.oxa-workflow-edge-label > span { display: flex; align-items: center; gap: 6px; }
+.oxa-workflow-edge-label span b { font-size: 10px; background: #eef2f6; padding: 0 4px; border-radius: 3px; font-variant-numeric: tabular-nums; }
+.oxa-workflow-edge-label span small { color: #3f6b42; margin-left: auto; font-size: 10px; }
+.oxa-workflow-edge-label strong { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 12px; font-weight: 500; color: var(--ant-color-text, #334155); margin-top: 2px; }
+.oxa-workflow-edge-label.selected { border-color: var(--ant-color-primary-border, #91caff); }
+.oxa-workflow-edge-label.executed { border-color: #aad19e; }
+.oxa-workflow-edge-label:focus-visible { outline: 2px solid var(--ant-color-primary, #1677ff); outline-offset: 2px; }
+.oxa-workflow-viewport-tools { position: absolute; left: 16px; bottom: 42px; display: flex; align-items: center; gap: 2px; background: #fff; border: 1px solid #e0e6ed; border-radius: 8px; padding: 3px; box-shadow: 0 3px 12px rgba(31, 54, 80, .07); }
+.oxa-workflow-viewport-tools > span { min-width: 44px; text-align: center; font-size: 12px; color: #66758a; font-variant-numeric: tabular-nums; }
+.oxa-workflow-viewport-tools .ant-btn { border: 0; box-shadow: none; }
+.oxa-workflow-graph-help { position: absolute; left: 16px; bottom: 13px; color: #748092; font-size: 11px; pointer-events: none; }
+.oxa-workflow-diagram .react-flow__minimap { background: rgba(255,255,255,.9); border: 1px solid #e0e6ed; border-radius: 8px; overflow: hidden; box-shadow: none; }
+.oxa-workflow-node-list { margin: 0; padding: 12px 16px 12px 38px; max-height: min(780px, 65dvh); overflow: auto; color: #748092; scrollbar-width: thin; }
 .oxa-workflow-node-list > li { padding: 8px 0; }
-.oxa-workflow-node-list .oxa-workflow-node { position: static; width: 100%; }
-.oxa-workflow-node-list ul { padding: 8px 0 8px 16px; font-size: 12px; line-height: 1.8; }
-.oxa-workflow-node-list ul button { border: 0; background: transparent; color: var(--ant-color-primary, #1677ff); text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+.oxa-workflow-node-list .oxa-workflow-node { min-height: 106px; }
+.oxa-workflow-node-list ul { padding: 8px 0 8px 12px; font-size: 12px; line-height: 1.8; }
+.oxa-workflow-node-list ul button:not(.ant-btn) { border: 0; background: transparent; color: var(--ant-color-primary, #1677ff); text-align: left; cursor: pointer; overflow-wrap: anywhere; }
 @media (max-width: 700px) {
-  .oxa-workflow-canvas { display: none; }
-  .oxa-workflow-node-list.hidden { display: block; }
+  .oxa-workflow-diagram-tools { padding: 12px; gap: 10px; }
   .oxa-workflow-diagram-tools .ant-segmented { display: none; }
+  .oxa-workflow-node-search { width: 100%; max-width: none; flex-basis: 100%; }
+  .oxa-workflow-node-search > .ant-input-search { width: 45%; }
+  .oxa-workflow-readonly { font-size: 11px; }
 }
-
 .oxa-workflow-config .ant-drawer-body { padding: 20px 24px; }
 .oxa-workflow-config-context { margin-bottom: 16px; }
 .oxa-workflow-config-context h4 { margin: 0 0 8px; }
