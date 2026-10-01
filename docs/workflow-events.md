@@ -378,3 +378,25 @@ Surface 上执行。
 ## 验证
 
 至少验证：完整标准详情投影、父子表边界、流程附件读取、桌面/移动独立渲染、全部标准操作、多人模式、重复/并发命令、stale revision、重启 replay、乱序事件、重复回调、消息终态全量更新、详情跳转、错用户/错租户/过期动作、渠道超时/unknown、死信重放和 1.x 零触碰。
+
+## 流程说明与变量来源 {#workflow-readability}
+
+`definition.readability` 是可选说明，随不可变定义及其摘要发布。变量来源从实际 `inputSchema` 和 `subject.factProjection` 推导；不另行声明一个可编辑的条件图。例如，条件路径 `amountCents` 对应业务字段 `amountCents`，单选条件通常读取 `reason.value`：
+
+```ts
+readability: {
+  variables: {
+    amountCents: { label: '申请金额', unit: '分', description: '提交记录中的非负整数金额' },
+    'reason.value': { label: '休学原因值' },
+  },
+  logic: [{
+    code: 'submission-validation', title: '核验申请',
+    description: '提交时校验已声明字段；金额由表单直接提供',
+    phase: 'submission', inputPaths: ['amountCents'],
+  }],
+}
+```
+
+说明的执行位置只能是 submission、某节点的 node_input 或 completion。它是对已有逻辑的注释，不会自动执行计算或产生新流程节点。没有实际计算步骤时，不应写成“系统已计算总金额”。条件的变量必须存在于输入 Schema；对旧未标注定义，读取投影会明确给出未知来源诊断。
+
+可选 `source: { path, symbol?, digest }` 只返回源码位置和 SHA256，不返回源码内容。path 指向工作区 apps/packages/platform 下的代码文件，digest 为 `sha256:<原始文件字节摘要>`。工作区加载时核对文件存在、无符号链接、大小和摘要；源码变化后以 WORKFLOW_LOGIC_DESCRIPTION_STALE 阻止封装，开发者应核实说明并更新引用。32 个文件、单文件 2MiB、总量 8MiB 为上限。元数据不能验证任意 TypeScript 的业务含义，业务说明及验收仍由开发者维护。

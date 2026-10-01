@@ -6,6 +6,7 @@ import { compileNativeEventAction } from './event-action.js';
 import { projectNativeDataResourceViewV2 } from './data-surface.js';
 import { hasDataAuditReadPolicy, isDataAuditMetadataField } from './data-audit-access.js';
 import { validateWorkflowInstanceCommandPolicies } from './workflow-instance-policy.js';
+import { validateWorkflowReadability, type WorkflowGraphDefinitionSource } from './workflow-graph.js';
 import * as crypto from 'crypto';
 import {
   OPENXIANGDA_COMPILER_CONTRACT_VERSION as OPENXIANGDA_V2_COMPILER_CONTRACT_VERSION,
@@ -6810,7 +6811,7 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
       'nodes',
     ],
     pointer,
-    ['organizationContext', 'instanceCommands']
+    ['organizationContext', 'instanceCommands', 'readability']
   );
   equal(
     definition.schemaVersion,
@@ -6835,6 +6836,8 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
     fail('NATIVE_WORKFLOW_NODE_COUNT_INVALID', `${pointer}/nodes`);
   }
   const startAt = requiredString(definition.startAt, `${pointer}/startAt`, 128);
+  const readabilityErrors = validateWorkflowReadability(definition as unknown as WorkflowGraphDefinitionSource);
+  if (readabilityErrors.length) fail(readabilityErrors[0]!, `${pointer}/readability`);
   if (!nodes[startAt])
     fail('NATIVE_WORKFLOW_START_NODE_MISSING', `${pointer}/startAt`);
   const edges = new Map<string, string[]>();

@@ -2926,3 +2926,28 @@
 .oxa-form-full .oxa-actions > button:first-child { margin-right: auto; }
 .oxa-form-scroll > .ant-alert { margin: 12px 16px; }
 .oxa-form-overlay .oxa-settings-actions { padding: 12px; }
+.oxa-workflow-diagram { min-width: 0; background: var(--ant-color-bg-container, #fff); }
+.oxa-workflow-diagram-tools { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; padding: 16px; border-bottom: 1px solid var(--ant-color-border-secondary, #eee); }
+.oxa-workflow-graph-help { padding: 12px 16px; color: var(--ant-color-text-secondary, #666); font-size: 12px; line-height: 1.8; }
+.oxa-workflow-canvas { overflow: auto; max-height: 780px; min-height: 420px; padding: 16px; background: var(--ant-color-fill-quaternary, #fafafa); }
+.oxa-workflow-canvas.hidden, .oxa-workflow-node-list.hidden { display: none; }
+.oxa-workflow-edges { position: absolute; inset: 0; color: var(--ant-color-text-tertiary, #999); }
+.oxa-workflow-edges .selected { color: var(--ant-color-primary, #1677ff); }
+.oxa-workflow-edges .executed { color: var(--ant-color-success, #389e0d); }
+.oxa-workflow-node { position: absolute; min-height: 95px; padding: 12px 16px; text-align: left; background: var(--ant-color-bg-container, #fff); color: var(--ant-color-text, #262626); border: 1px solid var(--ant-color-border, #d9d9d9); border-radius: 6px; cursor: pointer; line-height: 1.6; }
+.oxa-workflow-node strong, .oxa-workflow-node small { display: block; overflow-wrap: anywhere; }
+.oxa-workflow-node strong { font-size: 14px; margin: 4px 0; }
+.oxa-workflow-node small, .oxa-workflow-node-kind { font-size: 11px; color: var(--ant-color-text-secondary, #666); }
+.oxa-workflow-node.visited { border-left: 4px solid var(--ant-color-success, #389e0d); }
+.oxa-workflow-node.selected { outline: 2px solid var(--ant-color-primary, #1677ff); outline-offset: 1px; }
+.oxa-workflow-node:focus-visible { outline: 3px solid var(--ant-color-primary, #1677ff); outline-offset: 3px; }
+.oxa-workflow-node-list { margin: 0; padding: 16px 16px 16px 38px; max-height: 780px; overflow: auto; }
+.oxa-workflow-node-list > li { padding: 8px 0; }
+.oxa-workflow-node-list .oxa-workflow-node { position: static; width: 100%; }
+.oxa-workflow-node-list ul { padding: 8px 0 8px 16px; font-size: 12px; line-height: 1.8; }
+.oxa-workflow-node-list ul button { border: 0; background: transparent; color: var(--ant-color-primary, #1677ff); text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+@media (max-width: 700px) {
+  .oxa-workflow-canvas { display: none; }
+  .oxa-workflow-node-list.hidden { display: block; }
+  .oxa-workflow-diagram-tools .ant-segmented { display: none; }
+}

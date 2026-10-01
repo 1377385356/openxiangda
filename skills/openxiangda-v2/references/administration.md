@@ -25,3 +25,36 @@ MCP 对应 `workflow_node_configurations`。workflowCode 来自当前应用声�
 确有业务需要时，使用 `openxiangda/core` 的角色管理 SDK。目录提供可管理角色、动作与授权范围；业务角色只能维护管理员已委托的范围。进一步委托要求 management.delegate，并受已有目标角色及动作子集限制。
 
 成员和委托修改带 UUID operationId、原因，更新/撤销带最新 expectedRevision；冲突后重新读取。应用不另建授权表、选择 actor 或自行保存权限快照。SDK 和当前用户数据边界见[权限](data-authz.md)。
+
+## 可读流程图与实例路径 {#workflow-graph}
+
+管理员在流程目录检索全部定义，查看指定版本的分支顺序、默认路径、变量类型/单位及来源。拓扑和条件由开发者发布；图和列表只用于查看。当前有效配置只叠加在匹配的激活定义上；历史实例使用固定定义和节点进入时的人员/配置，尚未执行的节点不计入执行路径。
+
+应用自定义管理页面可复用当前用户客户端和共享图组件：
+
+```tsx
+import { useEffect, useState } from 'react';
+import { WorkflowDiagram } from 'openxiangda/react';
+import { loadWorkflowDefinitionGraph, type WorkflowGraphReadResult } from 'openxiangda/core';
+
+export function ReadableWorkflow({ workflowCode, version }: {
+  workflowCode: string; version: number;
+}) {
+  const [result, setResult] = useState<WorkflowGraphReadResult>();
+  const [selected, setSelected] = useState('');
+  const [error, setError] = useState('');
+  useEffect(() => {
+    let cancelled = false;
+    setResult(undefined); setError('');
+    loadWorkflowDefinitionGraph(workflowCode, version).then(value => {
+      if (!cancelled) { setResult(value); setSelected(value.graph.startAt); }
+    }).catch(error => { if (!cancelled) setError(error.message); });
+    return () => { cancelled = true; };
+  }, [workflowCode, version]);
+  if (error) return <p role="alert">{error}</p>;
+  if (!result) return <p>正在读取流程</p>;
+  return <WorkflowDiagram graph={result.graph} selectedNodeId={selected} onSelectNode={setSelected} />;
+}
+```
+
+组件运行在平台应用作用域内，SDK 使用当前用户，凭据及环境继续由平台管理。`loadWorkflowInstanceGraph(instanceId)` 返回固定版本、序列及持久访问记录，传入组件 `visits` 即可查看实际路径。两种管理读取都受服务端授权；不能给普通申请页暴露整个管理读面。

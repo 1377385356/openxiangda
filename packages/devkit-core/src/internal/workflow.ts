@@ -3,6 +3,7 @@ import {
   WORKFLOW_SUMMARY_MAX_FIELDS,
   sha256Digest,
   validateWorkflowInstanceCommandPolicies,
+  validateWorkflowReadability,
   type WorkflowApprovalMode,
   type WorkflowBinding,
   type WorkflowDelegation,
@@ -109,7 +110,7 @@ export function compileWorkflow(
 }
 
 export function validateWorkflowDefinition(definition: WorkflowDefinition) {
-  const diagnostics = validateWorkflowInstanceCommandPolicies(definition);
+  const diagnostics = [...validateWorkflowInstanceCommandPolicies(definition), ...validateWorkflowReadability(definition)];
   if (definition?.schemaVersion !== SCHEMA_VERSIONS.workflowDefinition) {
     diagnostics.push('WORKFLOW_DEFINITION_SCHEMA_INVALID');
   }

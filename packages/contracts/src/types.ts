@@ -2263,6 +2263,8 @@ export interface WorkflowDefinition {
     };
   };
   nodes: Record<string, WorkflowNode>;
+  /** Read-only explanations versioned with the executing definition. */
+  readability?: import('./native-compiler/workflow-graph.js').WorkflowReadability;
 }
 
 export interface WorkflowInstanceCommandPolicies {

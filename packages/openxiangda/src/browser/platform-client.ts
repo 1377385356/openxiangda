@@ -2535,6 +2535,23 @@ export async function loadWorkflowTimeline(instanceId: string) {
   );
 }
 
+/** Requires the same workflow management authority as the platform console. */
+export async function loadWorkflowDefinitionGraph(workflowCode: string, version: number) {
+  const result = await requestRead<import('openxiangda-contracts/browser').WorkflowGraphReadResult>(
+    `${workflowBase()}/management/definitions/${encodeURIComponent(workflowCode)}/versions/${version}`,
+  );
+  if (!result.graph || result.graph.definitionDigest !== result.definitionDigest) throw new Error('WORKFLOW_V2_GRAPH_DIGEST_MISMATCH');
+  return result;
+}
+
+export async function loadWorkflowInstanceGraph(instanceId: string) {
+  const result = await requestRead<import('openxiangda-contracts/browser').WorkflowInstanceGraphReadResult>(
+    `${workflowBase()}/management/instances/${encodeURIComponent(instanceId)}/graph`,
+  );
+  if (!result.graph || result.graph.definitionDigest !== result.definitionDigest) throw new Error('WORKFLOW_V2_GRAPH_DIGEST_MISMATCH');
+  return result;
+}
+
 function normalizeWorkflowDetailSurface(
   detail: WorkflowDetailSurfaceV2,
   csrfToken: string,

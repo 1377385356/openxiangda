@@ -71,6 +71,8 @@ export type {
   WorkflowWorkCenterItem,
 } from 'openxiangda-contracts/browser';
 export * from './browser/platform-client';
+export { formatWorkflowExpression, projectWorkflowGraph } from 'openxiangda-contracts/browser';
+export type { WorkflowReadability, WorkflowGraphProjection, WorkflowGraphVariable, WorkflowGraphEdge, WorkflowGraphVisit, WorkflowGraphReadResult, WorkflowInstanceGraphReadResult } from 'openxiangda-contracts/browser';
 export * from './browser/runtime-meta';
 export * from './browser/components/platform-fields/resource-query';
 export type * from './browser/components/resource/generated-resource-definition';

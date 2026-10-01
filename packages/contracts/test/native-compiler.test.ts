@@ -95,3 +95,19 @@ test('rejects workflow identifiers that runtime normalization cannot accept', ()
       error.code === 'NATIVE_WORKFLOW_CODE_INVALID',
   );
 });
+
+test('native ESM and server CJS enforce the same annotated variable sources', () => {
+  const config = JSON.parse(corpus.configuration.canonical);
+  const definition = config.workflows.definitions[0].definition;
+  definition.readability = { variables: { missing: { label: '没有来源的变量' } } };
+  const invalid = input(config);
+  const contract = JSON.parse(invalid.contractBytes);
+  contract.configDigest = invalid.expectedConfigDigest;
+  invalid.contractBytes = canonicalJson(contract);
+  invalid.expectedContractDigest = sha256Digest(contract);
+  for (const implementation of [esm, cjs]) assert.throws(
+    () => implementation.compileNativeApplicationConfiguration(invalid),
+    error => error instanceof implementation.NativeConfigurationCompilerError &&
+      error.code === 'WORKFLOW_VARIABLE_SOURCE_UNKNOWN:missing' && error.pointer.endsWith('/readability'),
+  );
+});
