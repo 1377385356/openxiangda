@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.36.0",
+  "status": "reviewed",
+  "title": "OpenXiangda 2.36.0：代码限定的审批人路由维护",
+  "summary": "审批绑定可声明路由策略，管理员按代码开放的维度和人员来源维护通用及专项规则；标准页与应用 SDK 复用同一维护组件。",
+  "newFeatures": [
+    "审批绑定支持最多 8 个事实维度和 16 个应用角色或范围角色来源，规则支持通用/专项追加、唯一最高优先级替换及时间窗。",
+    "公开路由配置、目录、分页历史及带 Head/规则修订和 operationId 的 CAS 保存合同。",
+    "公开 WorkflowAssignmentRoutingManager 与 WorkflowAssignmentRoutingEditor，支持规则草稿、差异核对、冲突后保留草稿、未知结果原请求恢复和关闭保护。"
+  ],
+  "fixes": [
+    "审批人路由能力进入应用打包及目标预检的使用摘要，保持与共享 Native compiler 的严格能力闭包一致。"
+  ],
+  "affectedUsers": [
+    "需要由管理员维护审批人追加/替换规则的平台维护者和 V2 应用开发者。"
+  ],
+  "upgradeSteps": [
+    "精确升级 openxiangda 2.36.0、contracts 2.36.0、devkit-core 2.37.0 和 CLI 2.6.22 的同批包并更新锁文件；本地测试可消费该批文件制品。",
+    "目标平台必须支持 workflow.assignment-routing@1.0.0；匹配平台随 V2 内核提供该能力，应用无需手填能力清单或额外开启开关。",
+    "在绑定代码中声明 routing，并在现有管理后台嵌入共享维护组件；按实际角色验证规则、CAS、旧任务冻结、拒绝及恢复后再交付业务。"
+  ],
+  "knownLimitations": [
+    "首版来源只开放 app_role 和 app_role_in_scope；身份与成员仍由平台 AuthZ 维护，路由维护只允许应用超级管理员。",
+    "规则最多 256 条/256 KiB，最多 64 条匹配、200 个候选；最高优先级替换冲突明确阻塞。",
+    "保存影响未来节点进入，已有任务保持快照；字段行为、条件计算和拓扑仍由应用代码维护。",
+    "本批不代表完整账号资格、代理、学校业务等价或生产迁移完成。"
+  ],
+  "issues": [],
+  "compatibility": {
+    "node": ">=24",
+    "workspaceGenerations": "v2",
+    "platform": "workflow.assignment-routing@1.0.0；共享配置校验及平台路由接口须采用同批合同。",
+    "v1": "V1 分发引擎及业务不变。"
+  }
+}

@@ -93,6 +93,8 @@ await saveWorkflowNodeConfiguration('requests', node.nodeId, {
 
 在 binding entry 的 `routing` 声明稳定策略代码、匹配维度及其事实路径，以及具名应用角色/范围角色来源。声明例子见 `examples/workflow-administration/routing.ts`。平台 `workflow.assignment-routing@1.0.0` 随 V2 内核提供，编译及目标平台检查自动校验；无路由声明时沿用原人员解析。成员继续在原生角色管理维护，无需再建审批人员表。字段行为、分支和范围计算由应用代码维护。
 
+打包和目标预检自动将含 `routing` 的 binding 纳入该能力的使用摘要，与平台编译结果严格对齐；无需应用手工填写能力清单或额外开启开关。
+
 标准管理页的“流程定义 / 审批人路由”提供策略检索、规则维护和分页历史。应用工具页可直接嵌入 `WorkflowAssignmentRoutingManager`（`openxiangda/react`）；单策略编辑可使用 `WorkflowAssignmentRoutingEditor`。放在现有 App/UI 作用域内，保留后台路由和入口权限。读写都使用当前用户及当前挂载环境，首版与节点配置一样要求应用 superAdmin，角色维护委派不授予路由管理权。
 
 ```tsx

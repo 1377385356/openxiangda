@@ -168,6 +168,8 @@ export function requiredPlatformCapabilitiesFromConfiguration(
     ...(namedInputSourceDefinitions.length ? [{ code: 'workflow.named-input-sources' as const, declaration: namedInputSourceDefinitions }] : []),
     ...(config.workflows.definitions.some(item => Object.values(item.definition.nodes).some(node => node.kind === 'approval' && (node.administration !== undefined || node.operationPolicy !== undefined)))
       ? [{ code: 'workflow.node-administration' as const, declaration: config.workflows.definitions.filter(item => Object.values(item.definition.nodes).some(node => node.kind === 'approval' && (node.administration !== undefined || node.operationPolicy !== undefined))) }] : []),
+    ...(config.workflows.bindings.some(item => Object.values(item.binding.bindings).some(entry => entry.routing !== undefined))
+      ? [{ code: 'workflow.assignment-routing' as const, declaration: config.workflows.bindings.filter(item => Object.values(item.binding.bindings).some(entry => entry.routing !== undefined)) }] : []),
     { code: 'application-native-2', declaration: runtimeUsage },
     { code: 'authz.native-batch-explain', declaration: authzUsage },
     { code: 'authz.native-management', declaration: authzUsage },

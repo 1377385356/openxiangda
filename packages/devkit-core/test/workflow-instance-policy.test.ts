@@ -147,6 +147,36 @@ test('official application and platform compilers preserve policies and identica
   assert.equal(validate(published), true, JSON.stringify(validate.errors));
 });
 
+test('routing declarations seal the same complete capability closure in package and target compilers', () => {
+  const source = fixture();
+  const binding = source.workflows!.bindings[0]!.binding.bindings.reviewer!;
+  const withoutRouting = requiredPlatformCapabilitiesFromConfiguration(
+    compileApplicationSources(defineOpenXiangdaApp(source)).config.value
+  );
+  assert.equal(withoutRouting.some(item => item.code === 'workflow.assignment-routing'), false);
+  binding.routing = {
+    policyCode: 'reviewer-routing', title: 'Reviewer routing', strategy: 'replace_then_append',
+    dimensions: { starts_at: { title: 'Starts at', valueFrom: 'startsAt' } },
+    sources: { extra: { title: 'Additional reviewer', provider: 'app_role', roleCode: 'reviewer' } },
+  };
+  const compile = () => {
+    const output = compileApplicationSources(defineOpenXiangdaApp(source));
+    const platform = compileNativeApplicationConfiguration({
+      appCode: source.app.code, configBytes: output.config.content,
+      expectedConfigDigest: output.config.digest, contractBytes: output.contracts.content,
+      expectedContractDigest: output.contracts.digest,
+    });
+    const required = requiredPlatformCapabilitiesFromConfiguration(output.config.value);
+    assert.deepEqual(required, platform.requiredPlatformCapabilities);
+    return required.find(item => item.code === 'workflow.assignment-routing')!;
+  };
+  const original = compile();
+  assert.equal(original.contractVersion, '1.0.0');
+  assert.match(original.usageDigest, /^sha256:[0-9a-f]{64}$/);
+  binding.routing.strategy = 'replace_only';
+  assert.notEqual(compile().usageDigest, original.usageDigest);
+});
+
 test('both compilers reject bypass declarations before sealing or activation', () => {
   for (const mutate of [
     (source: ReturnType<typeof fixture>) => {
