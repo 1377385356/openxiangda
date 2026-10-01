@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.35.0",
+  "version": "2.35.1",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -73,7 +73,7 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.18",
+    "openxiangda-cli": "2.6.19",
     "openxiangda-contracts": "2.35.0",
     "openxiangda-devkit-core": "2.36.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
@@ -145,9 +145,9 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.35.0",
+    "version": "2.35.1",
     "status": "reviewed",
-    "title": "OpenXiangda 2.35.0：运行时繁忙恢复与可读流程图",
+    "title": "OpenXiangda 2.35.1：运行时繁忙恢复与可读流程图",
     "summary": "应用进入时可有界等待平台明确的繁忙响应，同身份刷新保留页面和原申请；流程图使用与不可变执行定义同源的投影展示说明、变量来源与实例路径。",
     "newFeatures": [
       "现有运行时 current 读取在明确的入口繁忙时按服务端提示和抖动退避，最长等待五分钟、最多一百二十次读取，并支持离页取消。",
@@ -158,14 +158,15 @@
     "fixes": [
       "启动、焦点和可见性检查合并挂起身份读取；同身份刷新保留已验证页面和草稿，临时服务故障可重新检查，真实身份、环境、权限作用域变化或拒绝使旧受管客户端失效。",
       "退出通知优先于仍在加载的身份请求，旧响应和取消回调不会恢复旧身份或覆盖登录入口。验证 current 成功后仅清除当前路径的入口等待截止。",
-      "安全只读传输故障最多三次总尝试；权限投影等待保留原十秒限制，普通应用请求和写入不会因本次修改自动重放。"
+      "安全只读传输故障最多三次总尝试；权限投影等待保留原十秒限制，普通应用请求和写入不会因本次修改自动重放。",
+      "管理员流程节点配置使用平台已有的 admin controller，修正上下文、配置读取和保存地址，保留环境、CAS、幂等操作标识与权限拒绝。"
     ],
     "affectedUsers": [
       "使用 V2 运行时及持久排队能力的活动报名、预约、抢票应用开发者。",
       "需要展示不可变流程定义、说明及实例执行路径，或启用有界审批节点配置的平台维护者和应用开发者。"
     ],
     "upgradeSteps": [
-      "将应用 openxiangda 精确升级到 2.35.0；平台流程图消费者将 openxiangda-contracts 精确升级到 2.35.0，同批工具链使用 openxiangda-devkit-core 2.36.0，更新锁文件。",
+      "将应用 openxiangda 精确升级到 2.35.1；平台流程图消费者将 openxiangda-contracts 精确升级到 2.35.0，同批工具链使用 openxiangda-devkit-core 2.36.0 和 openxiangda-cli 2.6.19，更新锁文件。",
       "统一验证运行时繁忙恢复、同身份刷新、退出与真实身份切换，以及流程图说明与持久执行路径后发布同一冻结候选；启用管理员节点配置时确认平台支持 workflow.node-administration。",
       "在目标服务器另外测量完整页面进入、提交、自然结果查询及最终处理时间；客户端恢复测试不作为硬件并发容量证据。"
     ],
@@ -182,7 +183,7 @@
       "platform": "入口繁忙恢复需要平台提供 CONCURRENCY_BOOTSTRAP_BUSY 或 CONCURRENCY_API_BUSY 契约；可读流程图需要匹配的只读平台接口，管理员节点配置需要 workflow.node-administration 能力。持久排队沿用 data.managed-concurrency.durable@1.0.0。",
       "v1": "V1 分发引擎及业务不变。"
     },
-    "sha256": "4151d5e02c0b8a93c0bbf12bb23bf3cf5cd71387976b1e07f8033e2113603a3a",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.35.0"
+    "sha256": "80a635d3f30fc35010e13483dba6bf01245d2db6db80f6ee4ddc5e4f9b00efe0",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.35.1"
   }
 }
