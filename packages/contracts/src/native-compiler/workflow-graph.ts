@@ -85,6 +85,8 @@ export interface WorkflowGraphVisit {
   leftAt: string | null;
   matchedBranch?: number;
   target?: string;
+  /** Recorded terminal decision; chronological adjacency alone is not execution evidence. */
+  transition?: 'approve' | 'reject';
   configuration?: Record<string, unknown>;
   people?: Array<{ userId: string | null; displayName: string; status?: string }>;
 }

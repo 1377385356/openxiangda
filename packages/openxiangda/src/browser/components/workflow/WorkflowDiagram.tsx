@@ -34,13 +34,9 @@ export function WorkflowDiagram({ graph, selectedNodeId, onSelectNode, titles = 
   const effectiveView = narrow ? 'list' : view;
   const [actualOnly, setActualOnly] = useState(false);
   const visited = new Set(visits.map(visit => visit.nodeId));
-  const executedEdges = new Set(visits.flatMap((visit, index) => {
+  const executedEdges = new Set(visits.flatMap(visit => {
     if (visit.matchedBranch !== undefined) return [`${visit.nodeId}:${visit.matchedBranch < 0 ? 'default' : `branch:${visit.matchedBranch}`}`];
-    const next = visits[index + 1];
-    // Only an unambiguous static edge can be inferred from adjacent visits.
-    // Approval/rejection ending at the same node needs a recorded decision.
-    const candidates = next ? graph.edges.filter(edge => edge.from === visit.nodeId && edge.to === next.nodeId) : [];
-    return candidates.length === 1 ? [candidates[0]!.id] : [];
+    return visit.transition ? [`${visit.nodeId}:${visit.transition}`] : [];
   }));
   const shownNodes = actualOnly ? graph.nodes.filter(node => visited.has(node.id)) : graph.nodes;
   const shown = new Set(shownNodes.map(node => node.id));
