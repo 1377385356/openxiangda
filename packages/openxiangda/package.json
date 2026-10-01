@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.37.0",
+  "version": "2.37.1",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -73,7 +73,7 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.24",
+    "openxiangda-cli": "2.6.25",
     "openxiangda-contracts": "2.37.0",
     "openxiangda-devkit-core": "2.37.1",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
@@ -145,41 +145,35 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.37.0",
+    "version": "2.37.1",
     "status": "reviewed",
-    "title": "OpenXiangda 2.37.0：共享角色成员维护与逐项回执",
-    "summary": "标准管理入口与应用工具页共享成员维护组件，支持有界批量差异核对、原操作恢复及版本化潜在流程引用。",
-    "newFeatures": [
-      "RoleMembershipManager 提供角色、人员、状态及业务范围筛选，支持最多 50 项的新增、完整范围/有效期调整和撤销。",
-      "预览通过真实原生授权内核验证后回滚全部写入；执行按项独立事务，复用 CAS、权限、不可变回执与授权缓存所有者。",
-      "潜在流程引用按激活及在途固定版本列出代码默认、节点覆盖及代码许可路由来源，服务端限定版本、字节、节点和分页预算。",
-      "冲突后显式载入最新基准并保留输入；未知结果保留原编号及请求，以原回执核对或显式重试。"
-    ],
+    "title": "OpenXiangda 2.37.1：成员维护窄屏和提交状态修复",
+    "summary": "修复实际成员维护验收发现的默认侧边栏折叠、读取失败提示与保存期间按钮状态。",
+    "newFeatures": [],
     "fixes": [
-      "既有管理 scope-values 读面使用独立 id/label/offset 合同，避免与数据字段选择器 value/label/cursor 的协议混用。"
+      "默认应用 Shell 补齐响应式断点，小屏自动折叠侧边栏，为共享成员维护组件保留内容宽度。",
+      "成员读取失败和加载状态各自显示对应提示，避免把尚未读到的数据解释为空成员。",
+      "预览、提交和原编号重试期间显式禁用操作按钮，与关闭和草稿锁保持一致。"
     ],
     "affectedUsers": [
-      "维护应用职责成员的平台管理员、受托角色管理员及嵌入通用管理工具的 V2 应用开发者。"
+      "使用默认应用 Shell 或共享 RoleMembershipManager 的 V2 应用开发者和成员维护人员。"
     ],
     "upgradeSteps": [
-      "精确升级 openxiangda 2.37.0、contracts 2.37.0 与机器生成的同批 CLI/SDK 依赖并更新锁文件；本地实验室可消费同批 tgz。",
-      "平台需要 authz.native-membership-batch@1.0.0 和 workflow.role-references@1.0.0，随更新后的 V2 平台自动启用。",
-      "在既有授权后台页面嵌入 RoleMembershipManager，检查当前用户目录、预览差异、部分失败、CAS 和原回执恢复。"
+      "使用机器生成的同批 openxiangda 2.37.1、CLI 与依赖组合，更新冻结锁文件；本地可消费同批 tgz。",
+      "在窄屏和桌面核验角色筛选、成员核对、保存锁与未知结果恢复。"
     ],
     "knownLimitations": [
-      "成员管理委托按角色和动作，不新增按部门委派权限；仅成员维护权不授予关联流程管理读取权。",
-      "修改成员影响后续授权和分派，已有待办保留参与快照，办理仍实时复核资格；潜在引用数量不是受影响待办数。",
-      "批量执行允许部分成功；未知结果和回执 404 不能当作未提交，必须保留原请求。",
-      "字段行为继续由页面代码维护。本地包与实验室部署验收单独记录，此说明不代表 npm 发布、完整 M2 或学校迁移完成。"
+      "自定义 Shell 仍由宿主负责可收缩内容宽度。",
+      "本次本地包修复不代表 npm 发布、M2 整体验收或学校生产迁移；字段行为由页面代码维护。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
       "workspaceGenerations": "v2",
-      "platform": "NativeAuthZ 与 Workflow 原所有者，新增自动能力合同和只读引用；稳定生产管理端保留已发布组合。",
-      "v1": "V1 分发引擎及业务不变。"
+      "platform": "沿用原成员、代理和流程管理授权合同。",
+      "v1": "沿用原 V1 分发。"
     },
-    "sha256": "ac4502b6860e55e973a8bfd7bb5741cc0a82da306087ffef8e1e1138f7fa04ca",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.37.0"
+    "sha256": "be42c40f20a7311a0074bfba7f3202a76cd668ec350c73940d0d0958ff0994bb",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.37.1"
   }
 }
