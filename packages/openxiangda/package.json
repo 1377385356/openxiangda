@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.35.2",
+  "version": "2.35.3",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -73,7 +73,7 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.20",
+    "openxiangda-cli": "2.6.21",
     "openxiangda-contracts": "2.35.0",
     "openxiangda-devkit-core": "2.36.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
@@ -145,9 +145,9 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.35.2",
+    "version": "2.35.3",
     "status": "reviewed",
-    "title": "OpenXiangda 2.35.2：运行时繁忙恢复与可读流程图",
+    "title": "OpenXiangda 2.35.3：运行时繁忙恢复与可读流程图",
     "summary": "应用进入时可有界等待平台明确的繁忙响应，同身份刷新保留页面和原申请；流程图使用与不可变执行定义同源的投影展示说明、变量来源与实例路径。",
     "newFeatures": [
       "现有运行时 current 读取在明确的入口繁忙时按服务端提示和抖动退避，最长等待五分钟、最多一百二十次读取，并支持离页取消。",
@@ -161,14 +161,15 @@
       "安全只读传输故障最多三次总尝试；权限投影等待保留原十秒限制，普通应用请求和写入不会因本次修改自动重放。",
       "管理员流程节点配置使用平台已有的 admin controller，修正上下文、配置读取和保存地址，保留环境、CAS、幂等操作标识与权限拒绝。",
       "管理员流程节点配置保留平台返回的具体冲突错误码，页面可准确提示配置修订和幂等冲突。",
-      "StrictMode 同一提交的清理、重挂载接管原 current owner，避免重复初始化读取；观察取消立即生效，无人接管时释放共享请求，安装身份必须仍有活跃观察者，原读取预算与退出优先级保留。"
+      "StrictMode 同一提交的清理、重挂载接管原 current owner，避免重复初始化读取；观察取消立即生效，无人接管时释放共享请求，安装身份必须仍有活跃观察者，原读取预算与退出优先级保留。",
+      "标准任务和实例详情按应用声明返回对应设备的用户流程中心，避免普通申请人被带入管理后台；独立详情组件可显式指定返回路径，抽屉关闭和页面授权保持原行为。"
     ],
     "affectedUsers": [
       "使用 V2 运行时及持久排队能力的活动报名、预约、抢票应用开发者。",
       "需要展示不可变流程定义、说明及实例执行路径，或启用有界审批节点配置的平台维护者和应用开发者。"
     ],
     "upgradeSteps": [
-      "将应用 openxiangda 精确升级到 2.35.2；平台流程图消费者将 openxiangda-contracts 精确升级到 2.35.0，同批工具链使用 openxiangda-devkit-core 2.36.0 和 openxiangda-cli 2.6.20，更新锁文件。",
+      "将应用 openxiangda 精确升级到 2.35.3；平台流程图消费者将 openxiangda-contracts 精确升级到 2.35.0，同批工具链使用 openxiangda-devkit-core 2.36.0 和 openxiangda-cli 2.6.21，更新锁文件。",
       "统一验证运行时繁忙恢复、同身份刷新、退出与真实身份切换，以及流程图说明与持久执行路径后发布同一冻结候选；启用管理员节点配置时确认平台支持 workflow.node-administration。",
       "在目标服务器另外测量完整页面进入、提交、自然结果查询及最终处理时间；客户端恢复测试不作为硬件并发容量证据。"
     ],
@@ -185,7 +186,7 @@
       "platform": "入口繁忙恢复需要平台提供 CONCURRENCY_BOOTSTRAP_BUSY 或 CONCURRENCY_API_BUSY 契约；可读流程图需要匹配的只读平台接口，管理员节点配置需要 workflow.node-administration 能力。持久排队沿用 data.managed-concurrency.durable@1.0.0。",
       "v1": "V1 分发引擎及业务不变。"
     },
-    "sha256": "40f817d86f1533912f177d5b129f9eb4d224a08af0d150366dc53111fc323615",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.35.2"
+    "sha256": "31ce7268d3e443bf8fd5d26f0be82be6b1a24ff22f25d0735c7abf4a83fe92dd",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.35.3"
   }
 }
