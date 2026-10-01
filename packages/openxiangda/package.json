@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.36.1",
+  "version": "2.37.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -73,13 +73,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.23",
-    "openxiangda-contracts": "2.36.0",
-    "openxiangda-devkit-core": "2.37.0",
+    "openxiangda-cli": "2.6.24",
+    "openxiangda-contracts": "2.37.0",
+    "openxiangda-devkit-core": "2.37.1",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.64",
-    "openxiangda-nest": "2.11.2",
-    "openxiangda-skill-kit": "2.3.42",
+    "openxiangda-mcp": "2.0.65",
+    "openxiangda-nest": "2.11.3",
+    "openxiangda-skill-kit": "2.3.43",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -145,35 +145,41 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.36.1",
+    "version": "2.37.0",
     "status": "reviewed",
-    "title": "OpenXiangda 2.36.1：审批人路由草稿核对与窄屏修复",
-    "summary": "路由草稿按内容核对，打开表单后原样加入不产生多余修改；窄屏搜索与刷新工具栏可以换行。",
-    "newFeatures": [],
+    "title": "OpenXiangda 2.37.0：共享角色成员维护与逐项回执",
+    "summary": "标准管理入口与应用工具页共享成员维护组件，支持有界批量差异核对、原操作恢复及版本化潜在流程引用。",
+    "newFeatures": [
+      "RoleMembershipManager 提供角色、人员、状态及业务范围筛选，支持最多 50 项的新增、完整范围/有效期调整和撤销。",
+      "预览通过真实原生授权内核验证后回滚全部写入；执行按项独立事务，复用 CAS、权限、不可变回执与授权缓存所有者。",
+      "潜在流程引用按激活及在途固定版本列出代码默认、节点覆盖及代码许可路由来源，服务端限定版本、字节、节点和分页预算。",
+      "冲突后显式载入最新基准并保留输入；未知结果保留原编号及请求，以原回执核对或显式重试。"
+    ],
     "fixes": [
-      "路由规则草稿及变更核对忽略 JSON 对象键的插入顺序，保留所有字段值和数组顺序，避免表单往返被误算为修改。",
-      "审批人路由工具栏允许换行并约束搜索框宽度，防止窄屏后台产生外层横向溢出。"
+      "既有管理 scope-values 读面使用独立 id/label/offset 合同，避免与数据字段选择器 value/label/cursor 的协议混用。"
     ],
     "affectedUsers": [
-      "使用 WorkflowAssignmentRoutingManager 或 WorkflowAssignmentRoutingEditor 维护审批规则的平台管理员及 V2 应用开发者。"
+      "维护应用职责成员的平台管理员、受托角色管理员及嵌入通用管理工具的 V2 应用开发者。"
     ],
     "upgradeSteps": [
-      "精确升级 openxiangda 2.36.1 和 CLI 2.6.23 并更新锁文件；其余同批依赖保持 2.36.0 路由组合。",
-      "在标准页或 SDK 工具页打开已有规则后原样加入，确认没有多余核对项；在窄屏验证搜索、刷新和表格内部滚动。"
+      "精确升级 openxiangda 2.37.0、contracts 2.37.0 与机器生成的同批 CLI/SDK 依赖并更新锁文件；本地实验室可消费同批 tgz。",
+      "平台需要 authz.native-membership-batch@1.0.0 和 workflow.role-references@1.0.0，随更新后的 V2 平台自动启用。",
+      "在既有授权后台页面嵌入 RoleMembershipManager，检查当前用户目录、预览差异、部分失败、CAS 和原回执恢复。"
     ],
     "knownLimitations": [
-      "修订冲突后载入最新基准会保留完整草稿，不自动合并其他管理员的修改，保存前仍需逐项核对。",
-      "本次仅修复共享管理界面，不改变人员解析、权限、规则生效范围或当前待办快照；字段行为仍由页面代码维护。",
-      "本地实验室包验证与 npm 发布分开记录，本轮不代表完整 M2 或学校业务迁移完成。"
+      "成员管理委托按角色和动作，不新增按部门委派权限；仅成员维护权不授予关联流程管理读取权。",
+      "修改成员影响后续授权和分派，已有待办保留参与快照，办理仍实时复核资格；潜在引用数量不是受影响待办数。",
+      "批量执行允许部分成功；未知结果和回执 404 不能当作未提交，必须保留原请求。",
+      "字段行为继续由页面代码维护。本地包与实验室部署验收单独记录，此说明不代表 npm 发布、完整 M2 或学校迁移完成。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
       "workspaceGenerations": "v2",
-      "platform": "继续使用 workflow.assignment-routing@1.0.0 与 2.36.0 路由平台合同。",
+      "platform": "NativeAuthZ 与 Workflow 原所有者，新增自动能力合同和只读引用；稳定生产管理端保留已发布组合。",
       "v1": "V1 分发引擎及业务不变。"
     },
-    "sha256": "011777999c79368eef6c5df4200d74455ca3eb3298bcad693967a5c6af526b73",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.36.1"
+    "sha256": "ac4502b6860e55e973a8bfd7bb5741cc0a82da306087ffef8e1e1138f7fa04ca",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.37.0"
   }
 }
