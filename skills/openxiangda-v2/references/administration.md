@@ -97,6 +97,8 @@ await saveWorkflowNodeConfiguration('requests', node.nodeId, {
 
 标准管理页的“流程定义 / 审批人路由”提供策略检索、规则维护和分页历史。应用工具页可直接嵌入 `WorkflowAssignmentRoutingManager`（`openxiangda/react`）；单策略编辑可使用 `WorkflowAssignmentRoutingEditor`。放在现有 App/UI 作用域内，保留后台路由和入口权限。读写都使用当前用户及当前挂载环境，首版与节点配置一样要求应用 superAdmin，角色维护委派不授予路由管理权。
 
+规则核对只计算内容变化，打开规则表单后原样加入草稿不会产生多余修改。发生修订冲突时载入最新基准并保留整组草稿，再逐项核对；这个操作不会自动合并其他管理员的修改。窄屏工具栏允许换行，表格在内部滚动，规则表单按单列显示。
+
 ```tsx
 import { WorkflowAssignmentRoutingManager } from 'openxiangda/react';
 export function RoutingPage() { return <WorkflowAssignmentRoutingManager />; }

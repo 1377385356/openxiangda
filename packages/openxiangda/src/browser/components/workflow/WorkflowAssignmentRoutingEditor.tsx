@@ -4,6 +4,7 @@ import dayjs from 'dayjs';
 import { validateWorkflowAssignmentRoutingRules } from 'openxiangda-contracts/browser';
 import type { WorkflowAssignmentRoutingConfiguration, WorkflowAssignmentRoutingMutation, WorkflowAssignmentRoutingReceipt, WorkflowAssignmentRoutingRule } from 'openxiangda-contracts/browser';
 import { loadWorkflowAssignmentRoutingConfiguration, saveWorkflowAssignmentRoutingConfiguration } from '../../platform-client';
+import { routingDraftJson } from './workflow-routing-draft';
 
 type RuleValues = Omit<WorkflowAssignmentRoutingRule, 'validFrom' | 'validTo'> & { lifetime?: [dayjs.Dayjs | null, dayjs.Dayjs | null] };
 const errorText = (failure: unknown) => failure instanceof Error ? failure.message : '请求失败，请重试';
@@ -19,7 +20,7 @@ export function WorkflowAssignmentRoutingEditor({ configuration: initial, onClos
   const [busy, setBusy] = useState(false), [uncertain, setUncertain] = useState(false), [conflict, setConflict] = useState(false), [reviewing, setReviewing] = useState(false);
   const [editing, setEditing] = useState<{ rule?: WorkflowAssignmentRoutingRule }>();
   const frozen = useRef<WorkflowAssignmentRoutingMutation | null>(null);
-  const dirty = JSON.stringify(rules) !== JSON.stringify(configuration.rules) || reason.trim().length > 0;
+  const dirty = routingDraftJson(rules) !== routingDraftJson(configuration.rules) || reason.trim().length > 0;
   const blocked = busy || uncertain || reviewing;
   const policy = configuration.policy;
   const close = () => {
@@ -48,7 +49,7 @@ export function WorkflowAssignmentRoutingEditor({ configuration: initial, onClos
     const previous = new Map(configuration.rules.map(rule => [rule.ruleCode, rule]));
     const changes = rules.flatMap(rule => {
       const before = previous.get(rule.ruleCode); previous.delete(rule.ruleCode);
-      return JSON.stringify(before) === JSON.stringify(rule) ? [] : [{ key: rule.ruleCode, action: before ? '修改' : '新增', before: before ? describe(before, configuration) : '—', after: describe(rule, configuration) }];
+      return before && routingDraftJson(before) === routingDraftJson(rule) ? [] : [{ key: rule.ruleCode, action: before ? '修改' : '新增', before: before ? describe(before, configuration) : '—', after: describe(rule, configuration) }];
     });
     changes.push(...[...previous.values()].map(rule => ({ key: rule.ruleCode, action: '删除', before: describe(rule, configuration), after: '—' })));
     if (!changes.length) { setError('规则没有变化。'); return; }

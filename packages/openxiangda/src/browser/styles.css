@@ -2994,7 +2994,7 @@
 .oxa-workflow-operation-row small { color: var(--ant-color-text-secondary, #748092); }
 .oxa-workflow-config-reason { border-top: 1px solid var(--ant-color-border-secondary, #e0e6ed); margin-top: 24px; padding-top: 20px; }
 .oxa-workflow-config-footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-.oxa-workflow-routing-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 20px 0 12px; }
+.oxa-workflow-routing-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin: 20px 0 12px; }
 .oxa-workflow-routing-toolbar > span { color: var(--ant-color-text-secondary, #748092); font-size: 13px; }
 .oxa-workflow-routing-form-row { display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px; }
 .oxa-workflow-routing-definition { margin-top: 20px; padding: 12px 0; border-top: 1px solid var(--ant-color-border-secondary, #e0e6ed); font-size: 13px; }

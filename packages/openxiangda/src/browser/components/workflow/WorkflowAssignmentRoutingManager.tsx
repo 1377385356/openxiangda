@@ -27,7 +27,7 @@ export function WorkflowAssignmentRoutingManager() {
   };
   const blocked = Boolean(editing || opening);
   return <div className="oxa-workflow-routing-manager">
-    <div className="oxa-workflow-routing-toolbar"><Input.Search aria-label="搜索审批人路由策略" placeholder="搜索策略名称或代码" value={keyword} disabled={blocked} allowClear style={{ maxWidth: 340 }}
+    <div className="oxa-workflow-routing-toolbar"><Input.Search aria-label="搜索审批人路由策略" placeholder="搜索策略名称或代码" value={keyword} disabled={blocked} allowClear style={{ maxWidth: 'min(340px, 100%)', minWidth: 0, flex: '1 1 240px' }}
       onChange={event => setKeyword(event.target.value)} onSearch={value => { setSearch(value.trim()); setPage(1); }} />
       <Button disabled={blocked} onClick={() => setAttempt(value => value + 1)}>刷新策略</Button></div>
     <p className="oxa-workflow-config-help">流程代码开放匹配维度与角色来源，在这里维护通用和专项规则。人员成员通过角色管理维护。</p>
