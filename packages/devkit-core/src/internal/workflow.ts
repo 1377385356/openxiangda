@@ -5,6 +5,7 @@ import {
   validateWorkflowInstanceCommandPolicies,
   validateWorkflowReadability,
   validateWorkflowAdministration,
+  validateWorkflowAssignmentRoutingBindings,
   type WorkflowApprovalMode,
   type WorkflowBinding,
   type WorkflowDelegation,
@@ -202,7 +203,7 @@ export function validateWorkflowBinding(
   definition: WorkflowDefinition,
   binding: WorkflowBinding
 ) {
-  const diagnostics: string[] = [...validateWorkflowAdministration(definition, binding)];
+  const diagnostics: string[] = [...validateWorkflowAdministration(definition, binding), ...validateWorkflowAssignmentRoutingBindings([binding])];
   if (binding?.schemaVersion !== SCHEMA_VERSIONS.workflowBinding) {
     diagnostics.push('WORKFLOW_BINDING_SCHEMA_INVALID');
   }

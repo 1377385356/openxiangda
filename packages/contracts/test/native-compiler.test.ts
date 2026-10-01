@@ -14,6 +14,25 @@ function input(config = JSON.parse(corpus.configuration.canonical)) {
   };
 }
 
+test('routing declarations automatically require the platform capability and invalid policies fail in both compiler distributions', () => {
+  const configuration = JSON.parse(corpus.configuration.canonical);
+  const binding = configuration.workflows.bindings[0].binding.bindings.reviewer;
+  binding.routing = { policyCode: 'record-review', title: '记录审核规则', strategy: 'replace_then_append',
+    dimensions: { name: { title: '记录名称', valueFrom: 'name' } },
+    sources: { extra: { title: '补充审核角色', provider: 'app_role', roleCode: 'reviewer' } } };
+  const routingInput = (config: typeof configuration) => {
+    const contract = { ...JSON.parse(corpus.contract.canonical), configDigest: sha256Digest(config) };
+    return { ...input(config), contractBytes: canonicalJson(contract), expectedContractDigest: sha256Digest(contract) };
+  };
+  for (const implementation of [esm, cjs]) {
+    const result = implementation.compileNativeApplicationConfiguration(routingInput(configuration));
+    assert.ok(result.requiredPlatformCapabilities.some(item => item.code === 'workflow.assignment-routing' && item.contractVersion === '1.0.0'));
+    const invalid = structuredClone(configuration);
+    invalid.workflows.bindings[0].binding.bindings.reviewer.routing.dimensions.name.valueFrom = '__proto__.name';
+    assert.throws(() => implementation.compileNativeApplicationConfiguration(routingInput(invalid)), /ROUTING/);
+  }
+});
+
 test('conditional text invariant accepts only declared option values and text fields', () => {
   const fields = [
     { code: 'status', type: 'option.single', options: [{ label: '生效', value: 'effective' }] },

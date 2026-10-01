@@ -2328,6 +2328,82 @@ export interface WorkflowBindingEntry {
   max?: number;
   /** Long-term delegation is enabled by default for eligible role-bound providers. */
   delegatable?: boolean;
+  /** Code-owned dimensions and native sources; administrators only maintain bounded rules. */
+  routing?: WorkflowAssignmentRoutingPolicy;
+}
+
+export interface WorkflowAssignmentRoutingPolicy {
+  policyCode: string;
+  title: string;
+  strategy: 'replace_then_append' | 'replace_only';
+  dimensions: Record<string, { title: string; valueFrom: string }>;
+  sources: Record<string, {
+    title: string;
+    provider: 'app_role' | 'app_role_in_scope';
+    roleCode: string;
+    scope?: { dimension: string; valueFrom?: string; value?: string };
+  }>;
+}
+
+export interface WorkflowAssignmentRoutingRule {
+  ruleCode: string;
+  title: string;
+  enabled: boolean;
+  workflowCode?: string;
+  nodeId?: string;
+  matches: Record<string, string[]>;
+  sourceCode: string;
+  effect: 'append' | 'replace';
+  priority: number;
+  validFrom?: IsoDateTime;
+  validTo?: IsoDateTime;
+}
+
+export interface WorkflowAssignmentRoutingConfiguration {
+  schemaVersion: 'openxiangda.workflow-assignment-routing/v2';
+  policy: WorkflowAssignmentRoutingPolicy;
+  revision: number;
+  rules: WorkflowAssignmentRoutingRule[];
+  updatedBy: string | null;
+  updatedAt: IsoDateTime | null;
+  headRevision: number;
+  effect: 'future_node_entries_keep_existing_tasks';
+  references: Array<{ workflowCode: string; nodeId: string; pinned: boolean }>;
+}
+
+export interface WorkflowAssignmentRoutingMutation {
+  environmentKey?: DeploymentEnvironment;
+  expectedHeadRevision: number;
+  expectedRevision: number;
+  operationId: string;
+  reason: string;
+  rules: WorkflowAssignmentRoutingRule[];
+}
+
+export interface WorkflowAssignmentRoutingReceipt {
+  policyCode: string;
+  revision: number;
+  rules: WorkflowAssignmentRoutingRule[];
+  updatedBy: string;
+  updatedAt: IsoDateTime;
+  effect: 'future_node_entries_keep_existing_tasks';
+  replayed: boolean;
+}
+
+export interface WorkflowAssignmentRoutingCatalog {
+  items: Array<{ policyCode: string; title: string; revision: number; ruleCount: number; referenceCount: number }>;
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface WorkflowAssignmentRoutingHistory {
+  items: Array<{ id: string; revision: number; actorUserId: string; reason: string;
+    before: { revision: number; rules: WorkflowAssignmentRoutingRule[] };
+    after: WorkflowAssignmentRoutingReceipt; createdAt: IsoDateTime }>;
+  total: number;
+  limit: number;
+  offset: number;
 }
 
 export interface WorkflowBinding {

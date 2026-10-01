@@ -1,4 +1,5 @@
 import { nativeUniqueKeysJsonSchema } from './native-compiler/unique-keys.js';
+import { workflowAssignmentRoutingPolicySchema } from './native-compiler/workflow-assignment-routing.js';
 import { DATA_AUDIT_METADATA_FIELDS } from './native-compiler/data-audit-access.js';
 import {
   CONFIGURATION_COMPATIBILITY_CAPABILITY,
@@ -5406,6 +5407,7 @@ export const workflowBindingSchema = {
           min: { type: "integer", minimum: 1, maximum: 200 },
           max: { type: "integer", minimum: 1, maximum: 200 },
           delegatable: { type: "boolean" },
+          routing: workflowAssignmentRoutingPolicySchema,
         },
       },
     },

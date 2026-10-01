@@ -28,6 +28,7 @@ export const PLATFORM_CAPABILITY_CONTRACT_VERSIONS = {
   "workflow-kernel-v2": "1.0.0",
   "workflow.instance-cancellation-policy": "1.0.0",
   "workflow.node-administration": "1.0.0",
+  "workflow.assignment-routing": "1.0.0",
   "business-process.durable-command": "1.1.0",
   "workflow.fresh-command-token": "1.0.0",
   "notification-hub-v2": "1.0.0",

@@ -2667,6 +2667,27 @@ export async function saveWorkflowNodeConfiguration(workflowCode: string, nodeId
   );
 }
 
+export async function loadWorkflowAssignmentRoutingCatalog(input: { keyword?: string; limit?: number; offset?: number } = {}) {
+  const query = new URLSearchParams({ environmentKey: currentEnvironmentKey(), keyword: input.keyword || '', limit: String(input.limit ?? 20), offset: String(input.offset ?? 0) });
+  return request<import('openxiangda-contracts/browser').WorkflowAssignmentRoutingCatalog>(`${applicationServiceBase()}/admin/workflow-assignment-routing?${query}`);
+}
+
+export async function loadWorkflowAssignmentRoutingConfiguration(policyCode: string) {
+  return request<import('openxiangda-contracts/browser').WorkflowAssignmentRoutingConfiguration>(`${applicationServiceBase()}/admin/workflow-assignment-routing/${encodeURIComponent(policyCode)}?environmentKey=${encodeURIComponent(currentEnvironmentKey())}`);
+}
+
+export async function loadWorkflowAssignmentRoutingHistory(policyCode: string, input: { limit?: number; offset?: number } = {}) {
+  const query = new URLSearchParams({ environmentKey: currentEnvironmentKey(), limit: String(input.limit ?? 20), offset: String(input.offset ?? 0) });
+  return request<import('openxiangda-contracts/browser').WorkflowAssignmentRoutingHistory>(`${applicationServiceBase()}/admin/workflow-assignment-routing/${encodeURIComponent(policyCode)}/history?${query}`);
+}
+
+/** Keep the exact mutation and operationId to recover an unknown write result. */
+export async function saveWorkflowAssignmentRoutingConfiguration(policyCode: string, input: import('openxiangda-contracts/browser').WorkflowAssignmentRoutingMutation) {
+  return request<import('openxiangda-contracts/browser').WorkflowAssignmentRoutingReceipt>(`${applicationServiceBase()}/admin/workflow-assignment-routing/${encodeURIComponent(policyCode)}`, {
+    method: 'POST', body: JSON.stringify({ ...input, environmentKey: currentEnvironmentKey() }),
+  });
+}
+
 function normalizeWorkflowDetailSurface(
   detail: WorkflowDetailSurfaceV2,
   csrfToken: string,

@@ -16,6 +16,7 @@ import {
   nativePlatformCapabilityCatalog,
   validateDataResource,
   validateWorkflowInstanceCommandPolicies,
+  validateWorkflowAssignmentRoutingBindings,
   WORKFLOW_SUMMARY_MAX_FIELDS,
   WORKFLOW_SUMMARY_TEXT_LONG_MAX_BYTES,
   isWorkflowSummaryFieldType,
@@ -4103,6 +4104,7 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
       bindingByKey.set(key, binding);
     });
     const activationWorkflowCodes = new Set<string>();
+    const activeRoutingBindings: import('openxiangda-contracts').WorkflowBinding[] = [];
     activations.forEach((item, index) => {
       const activation = object(item);
       const path = `workflows.activations[${index}]`;
@@ -4176,6 +4178,7 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
           diagnostic('APP_CONFIG_WORKFLOW_BINDING_INVALID', error, path)
         );
       }
+      activeRoutingBindings.push(binding);
       for (const entry of Object.values(binding.bindings || {})) {
         if (
           entry.provider === 'application_provider' &&
@@ -4193,6 +4196,7 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
         }
       }
     });
+    for (const error of validateWorkflowAssignmentRoutingBindings(activeRoutingBindings)) diagnostics.push(diagnostic('APP_CONFIG_WORKFLOW_ROUTING_INVALID', error, 'workflows.activations'));
     editableParameters.forEach((item, index) => {
       const parameter = object(item);
       const workflowCode = string(parameter.workflowCode);

@@ -8,6 +8,7 @@ import { hasDataAuditReadPolicy, isDataAuditMetadataField } from './data-audit-a
 import { validateWorkflowInstanceCommandPolicies } from './workflow-instance-policy.js';
 import { validateWorkflowReadability, type WorkflowGraphDefinitionSource } from './workflow-graph.js';
 import { validateWorkflowAdministration, type WorkflowAdministrationNodeSource } from './workflow-node-administration.js';
+import { validateWorkflowAssignmentRoutingBindings, validateWorkflowAssignmentRoutingPolicy } from './workflow-assignment-routing.js';
 import * as crypto from 'crypto';
 import {
   OPENXIANGDA_COMPILER_CONTRACT_VERSION as OPENXIANGDA_V2_COMPILER_CONTRACT_VERSION,
@@ -635,6 +636,9 @@ export function compileRequiredPlatformCapabilitiesV3(
       : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.administration !== undefined || node.operationPolicy !== undefined))
       ? [{ code: 'workflow.node-administration' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.administration !== undefined || node.operationPolicy !== undefined)) }]
+      : []),
+    ...(config.workflows.bindings.some((item: JsonObject) => Object.values(item.binding.bindings).some((entry: any) => entry.routing !== undefined))
+      ? [{ code: 'workflow.assignment-routing' as const, declaration: config.workflows.bindings.filter((item: JsonObject) => Object.values(item.binding.bindings).some((entry: any) => entry.routing !== undefined)) }]
       : []),
     ...(usesBusinessProcess
       ? [
@@ -6563,6 +6567,8 @@ function validateWorkflowReferences(config: JsonObject) {
     activeBindings.set(code, binding);
   }
 
+  const routingErrors = validateWorkflowAssignmentRoutingBindings([...activeBindings.values()] as any);
+  if (routingErrors.length) fail(routingErrors[0]!, '/config/workflows/activations');
   const providerCodes = new Set<string>();
   config.workflows.providers.forEach((raw: any, index: number) => {
     const pointer = `/config/workflows/providers/${index}`;
@@ -7054,6 +7060,10 @@ function validateWorkflowBinding(binding: JsonObject, pointer: string) {
         entry.providerCode,
         `${pointer}/bindings/${code}/providerCode`
       );
+    }
+    if (entry.routing !== undefined) {
+      const errors = validateWorkflowAssignmentRoutingPolicy(entry.routing);
+      if (errors.length) fail(errors[0]!, `${pointer}/bindings/${code}/routing`);
     }
   }
 }

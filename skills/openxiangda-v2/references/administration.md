@@ -88,3 +88,33 @@ await saveWorkflowNodeConfiguration('requests', node.nodeId, {
 只有已声明允许 all 的节点可保存此例。输入最多 32KiB，人员 200、按钮文字 40 字。用 `patch: null` 恢复默认，也产生审计修订。结果未知时保留相同 operationId 和完整请求，查询后重试相同操作；确认的修订/Head 冲突先重新读取，不能覆盖别人。共享编辑器按审批人、审批按钮、名称与说明分组，显示配置来源、修订与生效范围；切组保留草稿，校验失败定位到相应分组。在冲突时保留草稿，加载最新基准后再次显式保存。
 
 新配置影响以后进入的节点，当前待办保留进入时模式、人员、按钮和必填意见；实时人员资格仍复核。含新增配置或快照的环境不能直接回退到忽略策略的旧服务器。
+
+## 审批人通用与专项路由 {#assignment-routing}
+
+在 binding entry 的 `routing` 声明稳定策略代码、匹配维度及其事实路径，以及具名应用角色/范围角色来源。声明例子见 `examples/workflow-administration/routing.ts`。平台 `workflow.assignment-routing@1.0.0` 随 V2 内核提供，编译及目标平台检查自动校验；无路由声明时沿用原人员解析。成员继续在原生角色管理维护，无需再建审批人员表。字段行为、分支和范围计算由应用代码维护。
+
+标准管理页的“流程定义 / 审批人路由”提供策略检索、规则维护和分页历史。应用工具页可直接嵌入 `WorkflowAssignmentRoutingManager`（`openxiangda/react`）；单策略编辑可使用 `WorkflowAssignmentRoutingEditor`。放在现有 App/UI 作用域内，保留后台路由和入口权限。读写都使用当前用户及当前挂载环境，首版与节点配置一样要求应用 superAdmin，角色维护委派不授予路由管理权。
+
+```tsx
+import { WorkflowAssignmentRoutingManager } from 'openxiangda/react';
+export function RoutingPage() { return <WorkflowAssignmentRoutingManager />; }
+```
+
+```ts
+import { loadWorkflowAssignmentRoutingConfiguration, saveWorkflowAssignmentRoutingConfiguration,
+  loadWorkflowAssignmentRoutingCatalog, loadWorkflowAssignmentRoutingHistory } from 'openxiangda/core';
+
+const catalog = await loadWorkflowAssignmentRoutingCatalog({ keyword: '学院', limit: 20, offset: 0 });
+const current = await loadWorkflowAssignmentRoutingConfiguration('college-review');
+await saveWorkflowAssignmentRoutingConfiguration(current.policy.policyCode, {
+  expectedHeadRevision: current.headRevision, expectedRevision: current.revision,
+  operationId: crypto.randomUUID(), reason: '增加学院补充审批职责',
+  rules: [{ ruleCode: 'art-extra', title: '艺术学院补充', enabled: true,
+    matches: { college: ['art'] }, sourceCode: 'extra', effect: 'append', priority: 0 }],
+});
+const history = await loadWorkflowAssignmentRoutingHistory('college-review', { limit: 10, offset: 0 });
+```
+
+保存的是整组规则，最多 256 条/256 KiB；最多 8 个维度、16 个来源，每维度 64 个匹配值。维度间同时满足、值内任意匹配，空 matches 为通用。可限定流程和审批节点，节点须带流程代码。时间为 `[validFrom,validTo)`。唯一最高优先级替换优先，`replace_then_append` 随后追加，`replace_only` 命中替换时忽略追加；没有替换时均采用默认来源再追加。追加按优先级降序、通用先专项、稳定代码排序，同来源同次只解析一次。
+
+64 条以上规则同时命中、最高替换同级冲突、缺少事实、替换无人或候选越界都会明确阻塞，不自动通过或隐式兜底。预览和执行复用同一解析器；任务冻结规则修订和分派，管理员调整只影响未来进入。修改与发布使用同一环境锁，CAS 冲突重新读取基准、保留草稿并核对前后差异；未知结果保留完整原请求及 operationId 后显式重试。清空 rules 也产生修订和审计。发布不得改变在途同名策略语义，即便尚无补充规则；非空规则引用的来源和节点必须保留。
