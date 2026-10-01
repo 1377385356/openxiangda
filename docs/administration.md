@@ -26,6 +26,41 @@ MCP 对应 `workflow_node_configurations`。workflowCode 来自当前应用声�
 
 成员和委托修改带 UUID operationId、原因，更新/撤销带最新 expectedRevision；冲突后重新读取。应用不另建授权表、选择 actor 或自行保存权限快照。SDK 和当前用户数据边界见[权限](./data-authz.md)。
 
+### 批量核对与逐项回执
+
+`listRoleMemberships` 支持 `dimensionCode` 与 `scopeValue` 成对精确筛选，和角色、人员、状态、关键词一起在服务端分页前过滤。管理授权仍按角色和动作委派；筛选某个学院不会额外授予该学院的维护权限。同步投影成员和系统认证成员继续只读。
+
+平台 `authz.native-membership-batch@1.0.0` 自动提供批量能力。`previewRoleMembershipBatch` 与 `executeRoleMembershipBatch` 使用当前用户、当前挂载环境；一次 1–50 项，最多 128 KiB，整批只支持同一种新增、更新或撤销。每项保留自己的 UUID operationId 和原因；更新/撤销带读取时的 expectedRevision。同一批不能重复人员+角色、成员 ID 或 operationId。
+
+```ts
+import { listRoleMemberships, previewRoleMembershipBatch,
+  executeRoleMembershipBatch, type NativeRoleMembershipBatchItem } from 'openxiangda/core';
+
+const page = await listRoleMemberships({ roleCode: 'college_reviewer',
+  dimensionCode: 'college', scopeValue: 'art', status: 'active', limit: 20, offset: 0 });
+const items: NativeRoleMembershipBatchItem[] = page.items.filter(row => row.maintainable).map(row => ({
+  operation: 'update', operationId: crypto.randomUUID(), membershipId: row.id,
+  expectedRevision: row.revision, reason: '调整艺术学院审批职责有效期',
+  scopeGrants: row.scopeGrants, validFrom: row.validFrom, validTo: '2027-01-01T00:00:00.000Z',
+}));
+if (items.length) {
+  const proposal = await previewRoleMembershipBatch({ items });
+  // 页面向管理员展示 before/after；核对后显式提交完全相同的 items。
+  if (proposal.failed === 0 && proposal.unconfirmed === 0) {
+    const result = await executeRoleMembershipBatch({ items });
+    // 逐项读取 result.items，不把 HTTP 成功当成整批成功。
+  }
+}
+```
+
+示例角色和范围必须已在本应用声明；页面将预览与执行放在两次明确操作中。更新是完整替换 scope 与有效期；省略 scope 会清空范围，省略时间会解除相应限制，因此只修改时间时也带回保留的 scope 与另一端时间。
+
+预览在原授权内核验证后回滚所有 SQL，不保存成员、版本或回执，不失效授权缓存；单项差异超过 16 KiB 被拒绝。预览不是预留，执行时会重新检查人员、权限和 CAS。预览 `ready/already_committed` 只返回 before/after 的业务投影，没有临时成员 ID 或虚构回执。
+
+执行每项独立事务、按顺序处理，允许部分成功。`committed/replayed` 返回原不可变回执；`failed` 是已确认拒绝；`unconfirmed` 表示结果未知，包括提交后缓存失效异常，不能认为没有提交。失败只返回脱敏的 code/status/pointer/retryable。保存原请求，使用 `loadAuthorizationMutationReceipt(operationId)` 核对，必要时显式重放相同 operationId 和 payload；修正已确认失败项的内容后使用新 operationId，不重发已成功项。网络中断也按未知结果处理。
+
+成员维护影响后续授权和分派；已有任务保持进入时参与快照，实际办理资格仍实时核验。批量维护不隐式改派当前待办。
+
 ## 可读流程图与实例路径 {#workflow-graph}
 
 管理员在流程目录检索全部定义，查看指定版本的分支顺序、默认路径、变量类型/单位及来源。拓扑和条件由开发者发布；图和列表只用于查看。当前有效配置只叠加在匹配的激活定义上；历史实例使用固定定义和节点进入时的人员/配置，尚未执行的节点不计入执行路径。

@@ -49,6 +49,8 @@ export const SCHEMA_VERSIONS = {
   roleSubjectPage: "openxiangda.role-subject-page/v2",
   runtimeAuthorization: "openxiangda.runtime-authorization/v2",
   nativeRoleMembershipPage: "openxiangda.native-role-membership-page/v2",
+  nativeRoleMembershipBatchRequest: "openxiangda.native-role-membership-batch-request/v2",
+  nativeRoleMembershipBatchResult: "openxiangda.native-role-membership-batch-result/v2",
   nativeAuthorizationManagementCatalog:
     "openxiangda.native-authorization-catalog/v2",
   nativeRoleManagementGrantPage:

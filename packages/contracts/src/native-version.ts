@@ -5,6 +5,7 @@ export const PLATFORM_CAPABILITY_CONTRACT_VERSIONS = {
   "application-native-2": "1.0.0",
   "authz.native-batch-explain": "1.0.0",
   "authz.native-management": "1.0.0",
+  "authz.native-membership-batch": "1.0.0",
   "deployment.durable-runs": "1.0.0",
   "deployment.platform-executor": "1.0.0",
   "environment.on-demand-production": "1.0.0",

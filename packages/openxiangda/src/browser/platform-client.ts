@@ -78,6 +78,8 @@ import {
   type NativeRoleManagementGrantPage,
   type NativeRoleMembershipMutationResult,
   type NativeRoleMembershipPage,
+  type NativeRoleMembershipBatchInput,
+  type NativeRoleMembershipBatchResult,
   type NativeScopeGrant,
 } from 'openxiangda-contracts/browser';
 import { useSyncExternalStore } from 'react';
@@ -2002,6 +2004,8 @@ export async function listRoleMemberships(
     userId?: string;
     roleCode?: string;
     keyword?: string;
+    dimensionCode?: string;
+    scopeValue?: string;
     limit?: number;
     offset?: number;
   } = {},
@@ -2009,6 +2013,21 @@ export async function listRoleMemberships(
   return await request<NativeRoleMembershipPage>(
     `${roleManagementBase()}/memberships?${roleManagementQuery(input)}`,
   );
+}
+
+/** Each item is independent; retain its operationId when recovering an unknown result. */
+export async function previewRoleMembershipBatch(input: Pick<NativeRoleMembershipBatchInput, 'items'>) {
+  return request<NativeRoleMembershipBatchResult>(`${roleManagementBase()}/memberships/batch/preview`, {
+    method: 'POST', body: JSON.stringify({ ...input,
+      schemaVersion: 'openxiangda.native-role-membership-batch-request/v2', environmentKey: currentEnvironmentKey() }),
+  });
+}
+
+export async function executeRoleMembershipBatch(input: Pick<NativeRoleMembershipBatchInput, 'items'>) {
+  return request<NativeRoleMembershipBatchResult>(`${roleManagementBase()}/memberships/batch/execute`, {
+    method: 'POST', body: JSON.stringify({ ...input,
+      schemaVersion: 'openxiangda.native-role-membership-batch-request/v2', environmentKey: currentEnvironmentKey() }),
+  });
 }
 
 export async function searchRoleManagementUsers(input: {

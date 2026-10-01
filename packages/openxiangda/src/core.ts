@@ -77,6 +77,7 @@ export { WORKFLOW_CONFIGURABLE_OPERATIONS, WORKFLOW_CONFIGURABLE_PROVIDERS, vali
 export type { ApplicationAdministrationContext, WorkflowApprovalAdministration, WorkflowApprovalMode, WorkflowConfigurableOperation, WorkflowFieldPolicy, WorkflowNodeOperationPolicy, WorkflowNodeConfigurations, WorkflowNodeConfigurationPatch, WorkflowNodeConfigurationMutation, WorkflowNodeConfigurationReceipt } from 'openxiangda-contracts/browser';
 export { validateWorkflowAssignmentRoutingRules } from 'openxiangda-contracts/browser';
 export type { WorkflowAssignmentRoutingPolicy, WorkflowAssignmentRoutingRule, WorkflowAssignmentRoutingConfiguration, WorkflowAssignmentRoutingMutation, WorkflowAssignmentRoutingReceipt, WorkflowAssignmentRoutingCatalog, WorkflowAssignmentRoutingHistory } from 'openxiangda-contracts/browser';
+export type { NativeRoleMembershipBatchInput, NativeRoleMembershipBatchItem, NativeRoleMembershipBatchResult, NativeRoleMembershipBatchItemResult, NativeRoleMembershipChange } from 'openxiangda-contracts/browser';
 export * from './browser/runtime-meta';
 export * from './browser/components/platform-fields/resource-query';
 export type * from './browser/components/resource/generated-resource-definition';

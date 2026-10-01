@@ -1177,6 +1177,85 @@ export const nativeAuthorizationManagementCatalogSchema = {
   },
 } as const;
 
+const membershipBatchItemIdentity = {
+  index: { type: 'integer', minimum: 0, maximum: 49 },
+  operationId: nonEmptyString,
+  operation: { enum: ['create', 'update', 'revoke'] },
+} as const;
+const membershipChangeSchema = {
+  type: 'object', additionalProperties: false,
+  required: ['userId', 'roleCode', 'roleSource', 'sourceCode', 'scopeGrants', 'status', 'validFrom', 'validTo'],
+  properties: Object.fromEntries(['userId', 'roleCode', 'roleSource', 'sourceCode', 'scopeGrants', 'status', 'validFrom', 'validTo']
+    .map(key => [key, nativeRoleMembershipSchema.properties[key as keyof typeof nativeRoleMembershipSchema.properties]])),
+} as const;
+const membershipMutationResultSchema = {
+  type: 'object', additionalProperties: false,
+  required: ['membership', 'roleSubjectSetVersion', 'receipt'],
+  properties: {
+    membership: nativeRoleMembershipSchema, roleSubjectSetVersion: nonEmptyString,
+    receipt: { type: 'object', additionalProperties: false,
+      required: nativeAuthorizationMutationReceiptSchema.required, properties: nativeAuthorizationMutationReceiptSchema.properties },
+    revokedRelationshipCount: { type: 'integer', minimum: 0 },
+    revokedSessionCount: { type: 'integer', minimum: 0 },
+  },
+} as const;
+export const nativeRoleMembershipBatchResultSchema = {
+  $id: SCHEMA_VERSIONS.nativeRoleMembershipBatchResult,
+  type: 'object', additionalProperties: false,
+  required: ['schemaVersion', 'mode', 'requestDigest', 'items', 'succeeded', 'failed', 'unconfirmed', 'effect'],
+  properties: {
+    schemaVersion: { const: SCHEMA_VERSIONS.nativeRoleMembershipBatchResult },
+    mode: { enum: ['preview', 'execute'] }, requestDigest: digest,
+    succeeded: { type: 'integer', minimum: 0, maximum: 50 }, failed: { type: 'integer', minimum: 0, maximum: 50 },
+    unconfirmed: { type: 'integer', minimum: 0, maximum: 50 },
+    effect: { const: 'future_assignment_keep_existing_tasks' },
+    items: { type: 'array', minItems: 1, maxItems: 50, items: { oneOf: [
+      { type: 'object', additionalProperties: false,
+        required: ['index', 'operationId', 'operation', 'status', 'before', 'after'],
+        properties: { ...membershipBatchItemIdentity, status: { enum: ['ready', 'already_committed'] },
+          before: { anyOf: [membershipChangeSchema, { type: 'null' }] }, after: membershipChangeSchema } },
+      { type: 'object', additionalProperties: false,
+        required: ['index', 'operationId', 'operation', 'status', 'result'],
+        properties: { ...membershipBatchItemIdentity, status: { enum: ['committed', 'replayed'] }, result: membershipMutationResultSchema } },
+      { type: 'object', additionalProperties: false,
+        required: ['index', 'operationId', 'operation', 'status', 'error'],
+        properties: { ...membershipBatchItemIdentity, status: { enum: ['failed', 'unconfirmed'] }, error: {
+          type: 'object', additionalProperties: false, required: ['code', 'status', 'pointer', 'retryable'],
+          properties: { code: nonEmptyString, status: { type: 'integer', minimum: 400, maximum: 599 }, pointer: { type: 'string' }, retryable: { type: 'boolean' } },
+        } } },
+    ] } },
+  },
+  allOf: [{ if: { properties: { mode: { const: 'preview' } } }, then: {
+    properties: { items: { items: { properties: { status: { enum: ['ready', 'already_committed', 'failed', 'unconfirmed'] } } } } },
+  }, else: { properties: { items: { items: { properties: { status: { enum: ['committed', 'replayed', 'failed', 'unconfirmed'] } } } } } } }],
+} as const;
+
+const membershipBatchRequestItem = (operation: 'create' | 'update' | 'revoke') => ({
+  type: 'object', additionalProperties: false,
+  required: ['operation', 'operationId', 'reason', ...(operation === 'create' ? ['userId', 'roleCode'] : ['membershipId', 'expectedRevision'])],
+  properties: {
+    operation: { const: operation }, operationId: { type: 'string', format: 'uuid' }, reason: { type: 'string', minLength: 1, maxLength: 1000 },
+    ...(operation === 'create' ? { userId: { type: 'string', minLength: 1, maxLength: 255 }, roleCode: nativeStableCode }
+      : { membershipId: { type: 'string', format: 'uuid' }, expectedRevision: { type: 'integer', minimum: 1 } }),
+    ...(operation === 'revoke' ? {} : {
+      scopeGrants: { type: 'array', maxItems: 100, items: { ...nativeScopeGrantSchema, required: ['dimensionCode', 'values'] } },
+      validFrom: { anyOf: [dateTime, { type: 'null' }] }, validTo: { anyOf: [dateTime, { type: 'null' }] },
+    }),
+  },
+});
+export const nativeRoleMembershipBatchRequestSchema = {
+  $id: SCHEMA_VERSIONS.nativeRoleMembershipBatchRequest,
+  type: 'object', additionalProperties: false, required: ['schemaVersion', 'items'],
+  properties: {
+    schemaVersion: { const: SCHEMA_VERSIONS.nativeRoleMembershipBatchRequest },
+    environmentKey: { enum: ['preproduction', 'production'] },
+    items: { type: 'array', minItems: 1, maxItems: 50 },
+  },
+  oneOf: ['create', 'update', 'revoke'].map(operation => ({ properties: {
+    items: { items: membershipBatchRequestItem(operation as 'create' | 'update' | 'revoke') },
+  } })),
+} as const;
+
 const nativeSuperAdminGrantSchema = {
   type: "object",
   additionalProperties: false,
@@ -8665,6 +8744,8 @@ export const contractSchemas = {
   nativeAuthorizationManagementCatalog:
     nativeAuthorizationManagementCatalogSchema,
   nativeRoleMembershipPage: nativeRoleMembershipPageSchema,
+  nativeRoleMembershipBatchRequest: nativeRoleMembershipBatchRequestSchema,
+  nativeRoleMembershipBatchResult: nativeRoleMembershipBatchResultSchema,
   nativeRoleManagementGrantPage: nativeRoleManagementGrantPageSchema,
   nativeAuthorizationMutationReceipt:
     nativeAuthorizationMutationReceiptSchema,

@@ -22,3 +22,4 @@ export * from './process-resolution.js';
 export * from './application-diagnostics.js';
 
 export * from './native-compiler/unique-keys.js';
+export * from './native-compiler/role-membership-batch.js';

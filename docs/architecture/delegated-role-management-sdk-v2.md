@@ -28,6 +28,28 @@ role-management-grant and receipt operations. Every mutation takes a UUID
 `operationId`, a human-readable `reason`, and `expectedRevision` when changing
 or revoking an existing row.
 
+### Bounded membership batches (W09.1)
+
+The same owner exposes preview and execute for 1–50 items of one mutation kind,
+with a 128 KiB request limit and an independent operationId/revision/reason per
+item. Preview invokes the real kernel in a transaction that always rolls back;
+it requires membership.read as well as the mutation authority, projects only
+business before/after data and rejects a delta larger than 16 KiB. It does not
+reserve a future result or issue a durable receipt.
+
+Execution is sequential with independent SERIALIZABLE transactions and bounded
+lock/statement waits. Partial success is explicit. Committed/replayed items keep
+the original receipt; failed is a confirmed rejection, while unconfirmed cannot
+claim rollback because a cache failure may occur after commit. Recover by reading
+the receipt or explicitly replaying the identical payload with the original key.
+Changing a confirmed failed item's payload needs a new key. Updates replace the
+complete scope and validity; projected/system memberships stay immutable.
+
+dimensionCode/scopeValue filter membership rows before pagination without
+changing delegated authority. Existing management delegation remains role/action
+based, not a new department-scoped grant. Potential workflow references and the
+shared standard/SDK management page are a separate W09.2 delivery.
+
 ## Failure and lifecycle
 
 The platform rechecks the current user on every request. Unauthorized target

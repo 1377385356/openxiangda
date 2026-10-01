@@ -24,3 +24,4 @@ export const NATIVE_CONFIGURATION_VALIDATOR_DIGEST: string = "__OPENXIANGDA_NATI
 export * from './event-action.js';
 
 export * from './unique-keys.js';
+export * from './role-membership-batch.js';

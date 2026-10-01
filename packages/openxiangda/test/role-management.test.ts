@@ -6,6 +6,9 @@ import {
   createRoleManagementGrant,
   createRoleMembership,
   listRoleManagementGrants,
+  listRoleMemberships,
+  previewRoleMembershipBatch,
+  executeRoleMembershipBatch,
 } from '../src/core';
 
 const source = readFileSync(
@@ -115,6 +118,19 @@ test('sends current-user role management requests through the mounted applicatio
       actions: ['membership.read', 'membership.assign'],
       environmentKey: 'preproduction',
     });
+    await listRoleMemberships({ dimensionCode: 'college', scopeValue: 'college-a', offset: 20 });
+    assert.equal(requests[3]?.url, `${base}/memberships?environmentKey=preproduction&dimensionCode=college&scopeValue=college-a&offset=20`);
+    const items = [{ operation: 'create' as const, operationId: '37c1157c-a921-4485-865a-b0c53fcc3083',
+      reason: '合成角色批量维护', userId: 'member-a', roleCode: 'venue-manager' }];
+    await previewRoleMembershipBatch({ items });
+    await executeRoleMembershipBatch({ items });
+    for (const [index, action] of [[4, 'preview'], [5, 'execute']] as const) {
+      assert.equal(requests[index]?.url, `${base}/memberships/batch/${action}`);
+      assert.deepEqual(JSON.parse(String(requests[index]?.init?.body)), {
+        items, schemaVersion: 'openxiangda.native-role-membership-batch-request/v2', environmentKey: 'preproduction',
+      });
+      assert.equal(requests[index]?.init?.credentials, 'include');
+    }
   } finally {
     globalThis.fetch = originalFetch;
     if (originalDocument === undefined) {
