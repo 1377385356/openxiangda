@@ -1,6 +1,6 @@
 {
   "name": "openxiangda-cli",
-  "version": "2.6.17",
+  "version": "2.6.18",
   "description": "OpenXiangda 2.0 应用生命周期命令、创建器与模板。",
   "type": "module",
   "main": "./dist/index.js",
@@ -28,10 +28,10 @@
   },
   "dependencies": {
     "@oclif/core": "4.13.3",
-    "openxiangda-contracts": "2.34.0",
-    "openxiangda-devkit-core": "2.35.0",
-    "openxiangda-mcp": "2.0.62",
-    "openxiangda-skill-kit": "2.3.40"
+    "openxiangda-contracts": "2.35.0",
+    "openxiangda-devkit-core": "2.36.0",
+    "openxiangda-mcp": "2.0.63",
+    "openxiangda-skill-kit": "2.3.41"
   },
   "devDependencies": {
     "tsx": "4.23.12",
