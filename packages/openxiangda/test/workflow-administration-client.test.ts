@@ -24,13 +24,15 @@ test('node configuration SDK consumes the existing admin controller and mounted 
       return name && metadata[name] ? { content: metadata[name] } : null;
     } },
   });
-  let rejected = false;
+  let failureMode: 'forbidden' | 'conflict' | undefined;
   globalThis.fetch = async (url, init) => {
     requests.push({ url: String(url), init });
-    return new Response(JSON.stringify(rejected
-      ? { code: 403, errorCode: 'OPENXIANGDA_ADMINISTRATION_FORBIDDEN', message: '无管理权限' }
+    return new Response(JSON.stringify(failureMode
+      ? failureMode === 'conflict'
+        ? { code: 409, data: { errorCode: 'WORKFLOW_V2_NODE_CONFIGURATION_REVISION_CONFLICT' }, message: '配置已被其他管理员修改' }
+        : { code: 403, data: { errorCode: 'OPENXIANGDA_ADMINISTRATION_FORBIDDEN' }, message: '无管理权限' }
       : { code: 200, data: { revision: 4, replayed: false } }), {
-      status: rejected ? 403 : 200, headers: { 'content-type': 'application/json' },
+      status: failureMode === 'conflict' ? 409 : failureMode === 'forbidden' ? 403 : 200, headers: { 'content-type': 'application/json' },
     });
   };
   try {
@@ -48,7 +50,13 @@ test('node configuration SDK consumes the existing admin controller and mounted 
     assert.equal(requests[2].url, `${base}/workflows/requests/node-configurations/review`);
     assert.ok(requests.every(item => item.init?.credentials === 'include'));
     assert.deepEqual(JSON.parse(String(requests[2].init?.body)), { ...mutation, environmentKey: 'preproduction' });
-    rejected = true;
+    failureMode = 'conflict';
+    await assert.rejects(saveWorkflowNodeConfiguration('requests', 'review', mutation), error => {
+      const failure = error as Error & { status?: number; code?: string };
+      return failure.status === 409 && failure.code === 'WORKFLOW_V2_NODE_CONFIGURATION_REVISION_CONFLICT';
+    });
+    assert.equal(requests.length, 4, 'Writes must not retry after an explicit CAS conflict');
+    failureMode = 'forbidden';
     await assert.rejects(loadWorkflowNodeConfigurations('requests'), error => {
       const failure = error as Error & { status?: number; code?: string };
       return failure.status === 403 && failure.code === 'OPENXIANGDA_ADMINISTRATION_FORBIDDEN';

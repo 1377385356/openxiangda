@@ -167,7 +167,9 @@ export function platformRequestDiagnostic(error: unknown) {
 
 function responseRequestError(path: string, init: RequestInit | undefined, response: Response, payload: PlatformEnvelope<unknown> | null, fallback: string) {
   const context = requestContext(path, init, response, payload?.requestId);
-  const code = String(payload?.errorCode || payload?.code || `HTTP_${response.status}`);
+  const dataCode = payload?.data && typeof payload.data === 'object' && 'errorCode' in payload.data
+    && typeof payload.data.errorCode === 'string' ? payload.data.errorCode : undefined;
+  const code = String(payload?.errorCode || dataCode || payload?.code || `HTTP_${response.status}`);
   const retryAfter = response.headers.get('retry-after');
   const headerDelay = retryAfter ? (/^\d+(?:\.\d+)?$/.test(retryAfter) ? Number(retryAfter)*1000 : Date.parse(retryAfter)-Date.now()) : undefined;
   const dataDelay = payload?.data && typeof payload.data === 'object' && 'retryAfterMs' in payload.data
