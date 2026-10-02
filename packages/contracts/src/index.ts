@@ -19,6 +19,7 @@ export * from './native-compiler/workflow-delegation-administration.js';
 export * from './native-compiler/workflow-graph.js';
 export * from './native-compiler/workflow-node-administration.js';
 export * from './native-compiler/workflow-automatic-cc.js';
+export * from './native-compiler/workflow-business-step.js';
 export * from './native-compiler/workflow-assignment-routing.js';
 export * from './validation.js';
 export * from './workflow-correction.js';
@@ -30,3 +31,5 @@ export * from './application-diagnostics.js';
 
 export * from './native-compiler/unique-keys.js';
 export * from './native-compiler/role-membership-batch.js';
+
+export * from './native-compiler/workflow-business-step-identity.js';

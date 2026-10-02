@@ -17,6 +17,7 @@ import type {
 import type { DataFieldResourceSource } from "./references.js";
 import type { WorkflowBusinessData } from "./workflow-summary.js";
 import type { WorkflowBusinessDetail } from "./workflow-detail.js";
+import type { WorkflowBusinessStepNode, WorkflowBusinessStepResult } from './native-compiler/workflow-business-step.js';
 import type {
   AppWorkflowLaunchContextDeclaration,
   AppWorkflowLaunchInputBindingDeclaration,
@@ -1841,6 +1842,10 @@ export const DATA_EVENT_TYPES_V2 = [
 export type DataEventTypeV2 = (typeof DATA_EVENT_TYPES_V2)[number];
 
 export const WORKFLOW_EVENT_TYPES_V2 = [
+  "openxiangda.workflow.step.requested.v2",
+  "openxiangda.workflow.step.result_received.v2",
+  "openxiangda.workflow.step.completed.v2",
+  "openxiangda.workflow.step.continuation_failed.v2",
   "openxiangda.workflow.instance.started.v2",
   "openxiangda.workflow.instance.completed.v2",
   "openxiangda.workflow.instance.rejected.v2",
@@ -2034,6 +2039,8 @@ export type EventFilterCondition =
   | { not: EventFilterCondition };
 
 export interface EventSubscriptionFilter {
+  /** Fixed versioned handler; only valid for workflow step request events. */
+  workflowStep?: { handlerCode: string };
   resourceCodes?: string[];
   subject?: EventSubjectFilter;
   changedFields?: EventChangedFieldsFilter;
@@ -2120,6 +2127,7 @@ export interface EventReceiptCommand {
   eventId: string;
   deliveryId: string;
   claimToken?: string;
+  workflowStepResult?: WorkflowBusinessStepResult;
 }
 
 export interface EventReceiptResult {
@@ -2283,7 +2291,8 @@ export type WorkflowNode =
   | WorkflowApprovalNode
   | WorkflowConditionNode
   | WorkflowEndNode
-  | WorkflowCcNode;
+  | WorkflowCcNode
+  | WorkflowBusinessStepNode;
 
 export interface WorkflowDefinition {
   schemaVersion: typeof SCHEMA_VERSIONS.workflowDefinition;

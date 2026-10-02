@@ -17,6 +17,14 @@ import {
   WORKFLOW_EVENT_TYPES_V2,
   eventDeliverySignatureContentV2,
   sha256Digest,
+  WORKFLOW_BUSINESS_STEP_EVENT,
+  workflowBusinessStepHandlerDigest,
+  workflowBusinessStepReceiptSignatureSuffix,
+  workflowBusinessStepValueMatches,
+  validateWorkflowBusinessStepResult,
+  validateWorkflowBusinessStepRequest,
+  type WorkflowBusinessStepRequest,
+  type WorkflowBusinessStepResult,
   type AppEventHandlerContract,
   type CloudEvent,
   type EventDeliveryAck,
@@ -103,7 +111,8 @@ export class InMemoryOpenXiangdaEventReceiptStore implements OpenXiangdaEventRec
     return 'claimed';
   }
 
-  async complete(receipt: OpenXiangdaEventReceiptContext): Promise<void> {
+  async complete(receipt: OpenXiangdaEventReceiptContext, result?: WorkflowBusinessStepResult): Promise<void> {
+    if (result) throw new ServiceUnavailableException('业务步骤必须使用平台持久回执');
     this.receipts.set(this.key(receipt), 'succeeded');
   }
 
@@ -158,8 +167,8 @@ export class PlatformOpenXiangdaEventReceiptStore
     );
   }
 
-  async complete(receipt: OpenXiangdaEventReceiptContext): Promise<void> {
-    await this.finish(receipt, 'complete');
+  async complete(receipt: OpenXiangdaEventReceiptContext, result?: WorkflowBusinessStepResult): Promise<void> {
+    await this.finish(receipt, 'complete', result);
     this.claimTokens.delete(this.key(receipt));
   }
 
@@ -173,7 +182,8 @@ export class PlatformOpenXiangdaEventReceiptStore
 
   private async finish(
     receipt: OpenXiangdaEventReceiptContext,
-    action: 'complete' | 'release'
+    action: 'complete' | 'release',
+    result?: WorkflowBusinessStepResult
   ) {
     const key = this.key(receipt);
     const claimToken = this.claimTokens.get(key);
@@ -190,12 +200,12 @@ export class PlatformOpenXiangdaEventReceiptStore
     );
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
-        const result = await this.execute(receipt, action, claimToken);
+        const response = await this.execute(receipt, action, claimToken, result);
         const expectedOutcome =
           action === 'complete' ? 'completed' : 'released';
         if (
-          result.outcome !== expectedOutcome &&
-          !(action === 'release' && result.outcome === 'completed')
+          response.outcome !== expectedOutcome &&
+          !(action === 'release' && response.outcome === 'completed')
         ) {
           throw new ServiceUnavailableException(
             `平台事件回执 ${action} 返回状态不一致`
@@ -222,7 +232,8 @@ export class PlatformOpenXiangdaEventReceiptStore
   private async execute(
     receipt: OpenXiangdaEventReceiptContext,
     action: EventReceiptCommand['action'],
-    claimToken?: string
+    claimToken?: string,
+    workflowStepResult?: WorkflowBusinessStepResult
   ): Promise<EventReceiptResult> {
     const secret = this.signingSecrets(receipt.subscriptionCode)[0];
     if (!secret) {
@@ -233,6 +244,7 @@ export class PlatformOpenXiangdaEventReceiptStore
       action,
       ...receipt,
       ...(claimToken ? { claimToken } : {}),
+      ...(workflowStepResult ? { workflowStepResult } : {}),
     };
     const timestamp = String(Math.floor(Date.now() / 1000));
     const signature = createHmac('sha256', secret)
@@ -318,7 +330,7 @@ export class PlatformOpenXiangdaEventReceiptStore
       command.eventId,
       command.deliveryId,
       command.claimToken || '',
-    ].join('\n');
+    ].join('\n') + workflowBusinessStepReceiptSignatureSuffix(command.workflowStepResult);
   }
 
   private receiptUrl() {
@@ -429,7 +441,7 @@ export class OpenXiangdaEventReceiver {
     if (!/^[1-9]\d*$/.test(signingKeyVersion)) {
       throw new UnauthorizedException('事件签名 key version 无效');
     }
-    if (handlerManifestDigest !== this.manifestDigest()) {
+    if (handlerManifestDigest !== this.manifestDigest(contract.code)) {
       throw new UnauthorizedException('事件 handler manifest 与运行版本不一致');
     }
     this.assertTimestamp(timestamp);
@@ -450,6 +462,7 @@ export class OpenXiangdaEventReceiver {
       throw new UnauthorizedException('事件 environment 与当前环境不一致');
     }
     this.assertEventSchema(contract, event);
+    const step = this.assertWorkflowStep(contract, event);
     const receipt: OpenXiangdaEventReceiptContext = {
       tenantId: event.tenantid,
       appCode: event.appcode,
@@ -469,13 +482,23 @@ export class OpenXiangdaEventReceiver {
         425
       );
     }
+    let workflowStepResult: WorkflowBusinessStepResult | undefined;
     try {
-      await this.eventContext.run(
+      const output = await this.eventContext.run(
         event,
         deliveryId,
         subscriptionCode,
         async context => await handler(event, context)
       );
+      if (step && contract.workflowStep) {
+        if (!output || typeof output !== 'object' || Array.isArray(output) || Object.keys(output).some(key => !['output', 'receipt'].includes(key)))
+          throw new OpenXiangdaEventDeterministicError('WORKFLOW_STEP_OUTPUT_INVALID');
+        workflowStepResult = { executionId: step.executionId, handlerVersion: step.handlerVersion,
+          inputDigest: step.inputDigest, expectedFactRevision: step.expectedFactRevision,
+          ...(output as { output: Record<string, unknown>; receipt?: Record<string, unknown> }) };
+        if (!validateWorkflowBusinessStepResult(workflowStepResult) || !workflowBusinessStepValueMatches(contract.workflowStep.outputSchema, workflowStepResult.output))
+          throw new OpenXiangdaEventDeterministicError('WORKFLOW_STEP_OUTPUT_SCHEMA_INVALID');
+      }
     } catch (handlerError) {
       try {
         await this.receipts.release(receipt);
@@ -500,7 +523,7 @@ export class OpenXiangdaEventReceiver {
     // The handler has already committed its side effects. Completion is
     // idempotent and retried by the receipt store; never release here, or a
     // transient acknowledgement failure would invite immediate re-execution.
-    await this.receipts.complete(receipt);
+    await this.receipts.complete(receipt, workflowStepResult);
     return this.ack(event.id, deliveryId, false);
   }
 
@@ -625,7 +648,20 @@ export class OpenXiangdaEventReceiver {
     }
   }
 
-  private manifestDigest() {
+  private assertWorkflowStep(contract: AppEventHandlerContract, event: CloudEvent): WorkflowBusinessStepRequest | undefined {
+    if (!contract.workflowStep) {
+      if (event.type === WORKFLOW_BUSINESS_STEP_EVENT) throw new BadRequestException('业务步骤缺少固定处理器合同');
+      return undefined;
+    }
+    const step = (event.data as { step?: WorkflowBusinessStepRequest })?.step;
+    if (event.type !== WORKFLOW_BUSINESS_STEP_EVENT || !validateWorkflowBusinessStepRequest(step) || step.handlerCode !== contract.code ||
+        step.handlerVersion !== contract.workflowStep.version || step.mode !== contract.workflowStep.mode ||
+        sha256Digest(step.input) !== step.inputDigest || !workflowBusinessStepValueMatches(contract.workflowStep.inputSchema, step.input))
+      throw new BadRequestException('业务步骤请求与固定处理器合同不一致');
+    return step;
+  }
+
+  private manifestDigest(code: string) {
     const manifest = this.options.eventHandlerManifest;
     if (
       !manifest ||
@@ -634,7 +670,7 @@ export class OpenXiangdaEventReceiver {
     ) {
       throw new ServiceUnavailableException('运行版本缺少事件 handler manifest');
     }
-    return sha256Digest(manifest);
+    return workflowBusinessStepHandlerDigest(manifest, code);
   }
 
   private schemaKey(eventType: string, dataSchemaVersion: string) {

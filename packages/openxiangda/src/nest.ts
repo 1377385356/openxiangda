@@ -74,6 +74,7 @@ export type {
   OpenXiangdaManagedCommandPlanner,
   OpenXiangdaEventHandlerDeclaration,
   OpenXiangdaEventConsumer,
+  OpenXiangdaWorkflowEffectConsumer,
   TimeInterval,
   MeetingReservationOperationInput,
   CourseSelectionOperationInput,
@@ -98,4 +99,4 @@ export {
   isIdempotencyConflict,
 } from 'openxiangda-nest';
 
-export type {ManagedCommandPlan, ManagedCommandPlanGuard, ManagedCommandAssertion} from 'openxiangda-contracts';
+export type {ManagedCommandPlan, ManagedCommandPlanGuard, ManagedCommandAssertion, WorkflowBusinessStepOutput, WorkflowBusinessStepRequest} from 'openxiangda-contracts';

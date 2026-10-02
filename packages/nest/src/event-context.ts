@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { Injectable } from '@nestjs/common';
-import type { CloudEvent } from 'openxiangda-contracts';
+import { WORKFLOW_BUSINESS_STEP_EVENT, type CloudEvent, type WorkflowBusinessStepRequest } from 'openxiangda-contracts';
 
 export interface OpenXiangdaEventHandlerContext {
   eventId: string;
@@ -9,6 +9,7 @@ export interface OpenXiangdaEventHandlerContext {
   traceId: string;
   idempotencyKey: string;
   causationDepth: number;
+  workflowStep?: WorkflowBusinessStepRequest;
 }
 
 @Injectable()
@@ -25,12 +26,14 @@ export class OpenXiangdaEventContext {
     const inputDepth = Number(
       (event.data as { cause?: { depth?: unknown } })?.cause?.depth ?? 0
     );
+    const step = event.type === WORKFLOW_BUSINESS_STEP_EVENT ? (event.data as { step?: WorkflowBusinessStepRequest }).step : undefined;
     const context: OpenXiangdaEventHandlerContext = Object.freeze({
       eventId: event.id,
       deliveryId,
       subscriptionCode,
       traceId: String(event.traceid || event.id),
-      idempotencyKey: event.id,
+      idempotencyKey: step?.executionId || event.id,
+      ...(step ? { workflowStep: step } : {}),
       causationDepth:
         Number.isSafeInteger(inputDepth) && inputDepth >= 0
           ? inputDepth + 1

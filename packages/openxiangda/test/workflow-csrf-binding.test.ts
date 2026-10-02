@@ -64,3 +64,24 @@ test('logout clears a previous surface binding and does not retry a rejected com
   assert.equal(writes,1,'old approval must not be automatically retried after session change');
  }finally{globalThis.fetch=oldFetch;if(oldDocument===undefined)delete(globalThis as any).document;else globalThis.document=oldDocument;}
 });
+
+test('administrator step recovery retains its preview CSRF and original request across an unknown result',async()=>{
+ const {previewWorkflowBusinessStepRecovery,executeWorkflowBusinessStepRecovery}=await import('../src/browser/platform-client');
+ const oldFetch=globalThis.fetch,oldDocument=globalThis.document;
+ const meta:Record<string,string>={'openxiangda-runtime-base':'/dev/step-recovery','openxiangda-app-code':'step-recovery','openxiangda-environment':'preproduction'};
+ globalThis.document={querySelector:(s:string)=>({content:meta[s.match(/name="([^"]+)"/)?.[1]||'']||''})} as any;
+ let csrf='preview-csrf',previewCsrf='',writes=0;const bodies:string[]=[];
+ globalThis.fetch=async(url,init)=>{
+  const path=String(url),ok=(data:unknown)=>Response.json({code:200,data});
+  if(path.includes('/auth/surface'))return ok({csrfToken:csrf});
+  if(path.endsWith('/preview')){previewCsrf=new Headers(init?.headers).get('x-openxiangda-csrf-token')!;assert.deepEqual(JSON.parse(String(init?.body)),{environmentKey:'preproduction',action:'admin_retry_step'});return ok({action:'admin_retry_step',canCommit:true,commandToken:'step-preview',expiresAt:new Date(Date.now()+60000).toISOString(),target:{nodeId:'calculate'}});}
+  if(path.includes('/commands/admin_retry_step')){writes++;assert.equal(new Headers(init?.headers).get('x-openxiangda-csrf-token'),previewCsrf);bodies.push(String(init?.body));if(writes===1)throw new TypeError('response lost');return ok({advanced:true});}
+  throw new Error(`unexpected path: ${path}`);
+ };
+ try{
+  await loadApplicationLoginSurface({device:'desktop',returnTo:'/'});const preview=await previewWorkflowBusinessStepRecovery('instance');csrf='later-login-csrf';await loadApplicationLoginSurface({device:'desktop',returnTo:'/'});
+  const input={commandToken:preview.commandToken!,idempotencyKey:'original-recovery-key',input:{reason:'修复后续人员'}};
+  await assert.rejects(()=>executeWorkflowBusinessStepRecovery('instance',input),/未取得确定响应/);
+  assert.equal(writes,1,'SDK must not blindly repeat an uncertain write');await executeWorkflowBusinessStepRecovery('instance',input);assert.equal(bodies[0],bodies[1]);
+ }finally{globalThis.fetch=oldFetch;if(oldDocument===undefined)delete(globalThis as any).document;else globalThis.document=oldDocument;}
+});

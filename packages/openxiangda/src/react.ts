@@ -64,3 +64,5 @@ export * from './browser/components/administration/RoleMembershipManager';
 export * from './browser/components/PlatformAvatar';
 export * from './browser/components/todo/ApplicationTodoCenterPage';
 export type * from './browser/components/resource/generated-resource-definition';
+
+export * from "./browser/components/workflow/WorkflowBusinessStepRecoveryPanel";

@@ -14,6 +14,7 @@ export * from './workflow-instance-policy.js';
 export * from './workflow-graph.js';
 export * from './workflow-node-administration.js';
 export * from './workflow-automatic-cc.js';
+export * from './workflow-business-step.js';
 export * from './workflow-assignment-routing.js';
 export type { WorkflowAssignmentRoutingPolicy, WorkflowAssignmentRoutingRule } from '../types.js';
 export type { WorkflowInstanceCommandPolicies } from '../types.js';
@@ -27,3 +28,5 @@ export * from './event-action.js';
 export * from './unique-keys.js';
 export * from './role-membership-batch.js';
 export { workflowDelegationMutationRequestSchema } from './workflow-delegation-administration.js';
+
+export * from './workflow-business-step-identity.js';

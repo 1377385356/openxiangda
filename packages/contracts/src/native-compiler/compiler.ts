@@ -9,6 +9,7 @@ import { validateWorkflowInstanceCommandPolicies } from './workflow-instance-pol
 import { validateWorkflowReadability, type WorkflowGraphDefinitionSource } from './workflow-graph.js';
 import { validateWorkflowAdministration, type WorkflowAdministrationNodeSource } from './workflow-node-administration.js';
 import { validateWorkflowAutomaticCc } from './workflow-automatic-cc.js';
+import { validateWorkflowBusinessSteps, compileWorkflowBusinessStepHandlers, validateWorkflowBusinessStepSubscriptions, WORKFLOW_BUSINESS_STEP_EVENT, WORKFLOW_BUSINESS_STEP_EVENTS } from './workflow-business-step.js';
 import { validateWorkflowAssignmentRoutingBindings, validateWorkflowAssignmentRoutingPolicy } from './workflow-assignment-routing.js';
 import * as crypto from 'crypto';
 import {
@@ -147,6 +148,10 @@ export const DATA_EVENT_TYPES_V2 = [
   'openxiangda.data.record.deleted.v2',
 ] as const;
 export const WORKFLOW_EVENT_TYPES_V2 = [
+  WORKFLOW_BUSINESS_STEP_EVENT,
+  'openxiangda.workflow.step.result_received.v2',
+  'openxiangda.workflow.step.completed.v2',
+  'openxiangda.workflow.step.continuation_failed.v2',
   'openxiangda.workflow.instance.started.v2',
   'openxiangda.workflow.instance.cc_added.v2',
   'openxiangda.workflow.instance.completed.v2',
@@ -652,6 +657,9 @@ export function compileRequiredPlatformCapabilitiesV3(
       : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'cc'))
       ? [{ code: 'workflow.automatic-cc' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'cc')) }]
+      : []),
+    ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action'))
+      ? [{ code: 'workflow.durable-business-step' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action')) }]
       : []),
     ...(config.workflows.bindings.some((item: JsonObject) => Object.values(item.binding.bindings).some((entry: any) => entry.routing !== undefined))
       ? [{ code: 'workflow.assignment-routing' as const, declaration: config.workflows.bindings.filter((item: JsonObject) => Object.values(item.binding.bindings).some((entry: any) => entry.routing !== undefined)) }]
@@ -1433,7 +1441,7 @@ function compileExpectedContract(
         field: trigger.field,
       })),
       ...(config.workflows.activations.length
-        ? WORKFLOW_EVENT_TYPES_V2.map(eventType => ({
+        ? WORKFLOW_EVENT_TYPES_V2.filter(eventType => !WORKFLOW_BUSINESS_STEP_EVENTS.includes(eventType as any) || config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action'))).map(eventType => ({
             code: `workflow:${eventType}`,
             source: 'workflow',
             eventType,
@@ -1457,6 +1465,10 @@ function compileExpectedContract(
   if(concurrency?.commands.some(command=>command.mode==='durable') && config.backend?.enabled===false) fail('NATIVE_MANAGED_CONCURRENCY_INVALID','/data/concurrency',{reason:'durable commands require backend runtime'});
   const subjectReadSurfaces = compileSubjectReadSurfaces(config, capabilities);
   const operations = compileOperations(config);
+  const stepDefinitions = config.workflows.definitions.map((item: JsonObject) => item.definition);
+  const stepHandlers = compileWorkflowBusinessStepHandlers(stepDefinitions);
+  const stepSubscriptionErrors = validateWorkflowBusinessStepSubscriptions(stepDefinitions, eventConsumers, true);
+  if (stepSubscriptionErrors.length) fail(stepSubscriptionErrors[0]!, '/config/events/subscriptions');
   try {
     validateDecimalReservationLifecycles(config.data.resources, operations);
   } catch (error) {
@@ -1494,6 +1506,7 @@ function compileExpectedContract(
         ),
         maxBodyBytes: 65536,
         receiptProtocolVersion: 2,
+        ...(stepHandlers[consumer.code] ? { workflowStep: stepHandlers[consumer.code] } : {}),
       })),
     },
     eventTypes,
@@ -6870,6 +6883,8 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
   if (administrationErrors.length) fail(administrationErrors[0]!, `${pointer}/nodes`);
   const ccErrors = validateWorkflowAutomaticCc(definition as any);
   if (ccErrors.length) fail(ccErrors[0]!, `${pointer}/nodes`);
+  const stepErrors = validateWorkflowBusinessSteps(definition);
+  if (stepErrors.length) fail(stepErrors[0]!, `${pointer}/nodes`);
   if (!nodes[startAt])
     fail('NATIVE_WORKFLOW_START_NODE_MISSING', `${pointer}/startAt`);
   const edges = new Map<string, string[]>();
@@ -6877,7 +6892,7 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
     const nodePointer = `${pointer}/nodes/${nodeId}`;
     const node = object(rawNode, nodePointer);
     equal(node.id, nodeId, `${nodePointer}/id`);
-    if (!['approval', 'condition', 'end', 'cc'].includes(node.kind)) {
+    if (!['approval', 'condition', 'end', 'cc', 'action'].includes(node.kind)) {
       fail('NATIVE_WORKFLOW_NODE_KIND_INVALID', `${nodePointer}/kind`);
     }
     const targets: string[] = [];
@@ -6915,6 +6930,8 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
           );
         }
       }
+    } else if (node.kind === 'action') {
+      targets.push(requiredString(node.next, `${nodePointer}/next`, 128));
     } else if (node.kind === 'cc') {
       requiredString(node.title, `${nodePointer}/title`, 255);
       workflowBindingCode(node.binding, `${nodePointer}/binding`);
@@ -6983,7 +7000,7 @@ function validateWorkflowExpression(
   if (op === 'literal') return;
   if (op === 'path') {
     const path = requiredString(expression.path, `${pointer}/path`, 255);
-    if (!/^[A-Za-z][A-Za-z0-9_.]{0,254}$/.test(path)) {
+    if (!/^[A-Za-z][A-Za-z0-9_.-]{0,254}$/.test(path) || path.split('.').some(part => ['__proto__', 'constructor', 'prototype'].includes(part))) {
       fail('NATIVE_WORKFLOW_EXPRESSION_PATH_INVALID', `${pointer}/path`);
     }
     return;
@@ -7099,6 +7116,8 @@ function validateWorkflowDefinitionBinding(
   const entries = object(binding.bindings, `${pointer}/bindings`);
   const ccErrors = validateWorkflowAutomaticCc(definition as any, binding as any);
   if (ccErrors.length) fail(ccErrors[0]!, pointer);
+  const stepErrors = validateWorkflowBusinessSteps(definition, binding);
+  if (stepErrors.length) fail(stepErrors[0]!, pointer);
   for (const [nodeId, rawNode] of Object.entries(
     object(definition.nodes, `${pointer}/nodes`)
   )) {

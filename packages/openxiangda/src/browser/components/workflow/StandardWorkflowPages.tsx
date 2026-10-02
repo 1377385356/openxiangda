@@ -595,6 +595,7 @@ export function WorkflowTimelineSection({
           {entries.map((item) => {
             const operations = item.operations || [];
             const visiblePeople = visibleWorkflowTimelinePeople(item, operations);
+            const businessStep = item.nodeKind === 'action' ? item.result.businessStep as import('openxiangda-contracts/browser').WorkflowBusinessStepSummary | undefined : undefined;
             return (
             <div className={timelineTone(item.status)} key={item.key}>
               <span className="oxa-workflow-timeline-dot">
@@ -603,8 +604,9 @@ export function WorkflowTimelineSection({
               <div>
                 <div className="oxa-workflow-timeline-title">
                   <strong>{item.title}</strong>
-                  <StatusTag status={item.status} />
+                  {businessStep?.status === 'waiting' ? <Tag color="processing">等待业务结果</Tag> : businessStep?.status === 'result_ready' ? <Tag color="warning">推进受阻</Tag> : <StatusTag status={item.status} />}
                 </div>
+                {businessStep?.status === 'result_ready' && <Typography.Text type="secondary">计算结果已收到，后续流转等待修复。</Typography.Text>}
                 {visiblePeople.length > 0 && (
                   <div className="oxa-workflow-timeline-assignees">
                     {visiblePeople.map((person, index) => (

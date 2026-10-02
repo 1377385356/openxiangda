@@ -15,6 +15,7 @@ export * from './native-compiler/workflow-delegation-administration.js';
 export * from './native-compiler/workflow-graph.js';
 export * from './native-compiler/workflow-node-administration.js';
 export * from './native-compiler/workflow-automatic-cc.js';
+export * from './native-compiler/workflow-business-step.js';
 export * from './native-compiler/workflow-assignment-routing.js';
 export * from './validation.js';
 export * from './workflow-correction.js';

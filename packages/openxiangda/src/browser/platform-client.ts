@@ -463,14 +463,17 @@ let applicationCsrfToken = '';
 // A workflow command is bound to the header used to issue its one-time surface.
 const workflowCommandCsrf = new Map<string, { csrf: string; expiresAt: number }>();
 function bindWorkflowCsrf(surface: WorkflowSurface, csrf: string): WorkflowSurface {
+  bindWorkflowCommandCsrf(surface.commandToken, surface.commandTokenExpiresAt, csrf);
+  return surface;
+}
+function bindWorkflowCommandCsrf(commandToken: string | null | undefined, expiration: string | null | undefined, csrf: string) {
   const now = Date.now();
   for (const [key, value] of workflowCommandCsrf) if (value.expiresAt <= now) workflowCommandCsrf.delete(key);
-  const expiresAt = Date.parse(surface.commandTokenExpiresAt || '');
-  if (surface.commandToken && Number.isFinite(expiresAt) && expiresAt > now) {
-    if (!workflowCommandCsrf.has(surface.commandToken) && workflowCommandCsrf.size >= 512) workflowCommandCsrf.delete(workflowCommandCsrf.keys().next().value!);
-    workflowCommandCsrf.set(surface.commandToken, { csrf, expiresAt });
+  const expiresAt = Date.parse(expiration || '');
+  if (commandToken && Number.isFinite(expiresAt) && expiresAt > now) {
+    if (!workflowCommandCsrf.has(commandToken) && workflowCommandCsrf.size >= 512) workflowCommandCsrf.delete(workflowCommandCsrf.keys().next().value!);
+    workflowCommandCsrf.set(commandToken, { csrf, expiresAt });
   }
-  return surface;
 }
 async function commandBoundCsrf(commandToken?: string | null) {
   const binding = commandToken ? workflowCommandCsrf.get(commandToken) : undefined;
@@ -2715,6 +2718,32 @@ export async function loadApplicationAdministrationContext() {
   return requestRead<import('openxiangda-contracts/browser').ApplicationAdministrationContext>(
     `${applicationServiceBase()}/admin/context?${new URLSearchParams({ environmentKey: currentEnvironmentKey() })}`,
   );
+}
+
+/** Same administrator authority as the console; does not grant ordinary users repair access. */
+export async function loadWorkflowBusinessStepRecovery(instanceId: string) {
+  return requestRead<import('openxiangda-contracts/browser').WorkflowBusinessStepRecoveryOptions>(
+    `${applicationServiceBase()}/admin/workflow-instances/${encodeURIComponent(instanceId)}/options?${new URLSearchParams({ environmentKey: currentEnvironmentKey() })}`,
+  );
+}
+
+export async function previewWorkflowBusinessStepRecovery(instanceId: string) {
+  const csrf = await workflowCsrfToken();
+  const preview = await request<import('openxiangda-contracts/browser').WorkflowBusinessStepRecoveryPreview>(
+    `${applicationServiceBase()}/admin/workflow-instances/${encodeURIComponent(instanceId)}/preview`, {
+      method: 'POST', headers: { 'x-openxiangda-csrf-token': csrf },
+      body: JSON.stringify({ environmentKey: currentEnvironmentKey(), action: 'admin_retry_step' }),
+    },
+  );
+  bindWorkflowCommandCsrf(preview.commandToken, preview.expiresAt, csrf);
+  return preview;
+}
+
+/** Keep this exact token/input/key until the outcome is known. Never executes the external handler. */
+export async function executeWorkflowBusinessStepRecovery(instanceId: string, input: { commandToken: string; idempotencyKey: string; input: { reason: string } }) {
+  return request<WorkflowCommandResult>(`${applicationServiceBase()}/admin/workflow-instances/${encodeURIComponent(instanceId)}/commands/admin_retry_step`, {
+    method: 'POST', headers: { 'x-openxiangda-csrf-token': await commandBoundCsrf(input.commandToken) }, body: JSON.stringify(input),
+  });
 }
 
 export async function loadWorkflowNodeConfigurations(workflowCode: string) {

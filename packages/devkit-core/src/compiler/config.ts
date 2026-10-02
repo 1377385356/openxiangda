@@ -3014,7 +3014,7 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
         if (
           filterKeys.some(
             key =>
-              !['resourceCodes', 'subject', 'changedFields', 'changes', 'where'].includes(
+              !['resourceCodes', 'subject', 'changedFields', 'changes', 'where', 'workflowStep'].includes(
                 key
               )
           ) ||

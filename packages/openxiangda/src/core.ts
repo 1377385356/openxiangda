@@ -74,6 +74,7 @@ export type {
   WorkflowWorkCenterItem,
 } from 'openxiangda-contracts/browser';
 export * from './browser/platform-client';
+export type { WorkflowBusinessStepSummary, WorkflowBusinessStepRecoveryOptions, WorkflowBusinessStepRecoveryPreview } from 'openxiangda-contracts/browser';
 export { formatWorkflowExpression, projectWorkflowGraph } from 'openxiangda-contracts/browser';
 export type { WorkflowReadability, WorkflowGraphProjection, WorkflowGraphVariable, WorkflowGraphEdge, WorkflowGraphVisit, WorkflowGraphReadResult, WorkflowInstanceGraphReadResult } from 'openxiangda-contracts/browser';
 export { WORKFLOW_CONFIGURABLE_OPERATIONS, WORKFLOW_CONFIGURABLE_PROVIDERS, validateWorkflowNodeConfigurationPatch, projectWorkflowNodePolicy } from 'openxiangda-contracts/browser';

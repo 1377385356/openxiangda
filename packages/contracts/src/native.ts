@@ -16,6 +16,7 @@ import {
   OPENXIANGDA_COMPILER_CONTRACT_VERSION,
   SCHEMA_VERSIONS,
 } from './types.js';
+import type { WorkflowBusinessStepHandlerContract } from './native-compiler/workflow-business-step.js';
 
 export type OpenXiangdaJsonSchema = Record<string, unknown>;
 export type AppCapabilityKind = 'platform' | 'backend' | 'ui' | 'data';
@@ -1152,6 +1153,7 @@ export interface AppEventHandlerContract {
   dataSchemaVersions: string[];
   maxBodyBytes: number;
   receiptProtocolVersion: 2;
+  workflowStep?: WorkflowBusinessStepHandlerContract;
 }
 
 export interface EventHandlerManifest {

@@ -7,6 +7,7 @@ import type {
   NativePrincipal,
   Principal,
   SubjectProfile,
+  WorkflowBusinessStepResult,
 } from "openxiangda-contracts";
 
 export type OpenXiangdaFetch = (
@@ -109,7 +110,7 @@ export interface OpenXiangdaEventReceiptStore {
   claim(
     receipt: OpenXiangdaEventReceiptContext
   ): Promise<"claimed" | "duplicate" | "busy">;
-  complete(receipt: OpenXiangdaEventReceiptContext): Promise<void>;
+  complete(receipt: OpenXiangdaEventReceiptContext, result?: WorkflowBusinessStepResult): Promise<void>;
   release(receipt: OpenXiangdaEventReceiptContext): Promise<void>;
 }
 

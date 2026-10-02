@@ -4696,6 +4696,10 @@ const eventSubscriptionFilterSchema = {
   type: "object",
   additionalProperties: false,
   properties: {
+    workflowStep: {
+      type: 'object', additionalProperties: false, required: ['handlerCode'],
+      properties: { handlerCode: { type: 'string', pattern: '^[a-z][a-z0-9-]{0,100}$' } },
+    },
     resourceCodes: {
       type: "array",
       maxItems: 20,
@@ -4972,6 +4976,26 @@ export const eventDeliverySchema = {
   },
 } as const;
 
+export const workflowBusinessStepResultSchema = {
+  type: 'object', additionalProperties: false,
+  required: ['executionId', 'handlerVersion', 'inputDigest', 'expectedFactRevision', 'output'],
+  properties: {
+    executionId: { type: 'string', format: 'uuid' },
+    handlerVersion: { type: 'integer', minimum: 1, maximum: 1_000_000 },
+    inputDigest: { type: 'string', pattern: '^[a-f0-9]{64}$' },
+    expectedFactRevision: { type: 'integer', minimum: 0 },
+    output: { type: 'object', maxProperties: 32 }, receipt: { type: 'object', maxProperties: 32 },
+  },
+} as const;
+
+export const workflowBusinessStepHandlerSchema = {
+  type: 'object', additionalProperties: false, required: ['version', 'mode', 'inputSchema', 'outputSchema'],
+  properties: {
+    version: { type: 'integer', minimum: 1, maximum: 1_000_000 }, mode: { enum: ['pure', 'reconciled-effect'] },
+    inputSchema: { type: 'object' }, outputSchema: { type: 'object' },
+  },
+} as const;
+
 export const eventReceiptCommandSchema = {
   $id: SCHEMA_VERSIONS.eventReceiptCommand,
   type: "object",
@@ -5005,6 +5029,7 @@ export const eventReceiptCommandSchema = {
       type: "string",
       format: "uuid",
     },
+    workflowStepResult: workflowBusinessStepResultSchema,
   },
 } as const;
 
@@ -5194,6 +5219,7 @@ export const eventHandlerManifestSchema = {
           },
           maxBodyBytes: { type: "integer", const: 65536 },
           receiptProtocolVersion: { const: 2 },
+          workflowStep: workflowBusinessStepHandlerSchema,
         },
       },
     },
@@ -5265,6 +5291,25 @@ const workflowCcNodeSchema = {
         assigneeProviders: { type: 'array', minItems: 1, maxItems: 3, uniqueItems: true, items: { enum: ['fixed_users', 'app_role', 'app_role_in_scope'] } },
       },
     },
+  },
+} as const;
+
+export const workflowBusinessStepNodeSchema = {
+  type: 'object', additionalProperties: false,
+  required: ['id', 'kind', 'title', 'next', 'handler', 'inputSchema', 'outputSchema', 'inputs'],
+  properties: {
+    id: nonEmptyString, kind: { const: 'action' }, title: nonEmptyString, next: nonEmptyString,
+    handler: {
+      type: 'object', additionalProperties: false, required: ['code', 'version', 'mode'],
+      properties: { code: { type: 'string', pattern: '^[a-z][a-z0-9-]{0,100}$' }, version: { type: 'integer', minimum: 1, maximum: 1_000_000 }, mode: { enum: ['pure', 'reconciled-effect'] } },
+    },
+    inputSchema: { type: 'object' }, outputSchema: { type: 'object' },
+    inputs: { type: 'object', maxProperties: 32, additionalProperties: {
+      oneOf: [
+        { type: 'object', additionalProperties: false, required: ['source', 'path'], properties: { source: { const: 'fact' }, path: { type: 'string', minLength: 1, maxLength: 256 } } },
+        { type: 'object', additionalProperties: false, required: ['source', 'value'], properties: { source: { const: 'literal' }, value: {} } },
+      ],
+    } },
   },
 } as const;
 
@@ -5366,6 +5411,7 @@ const workflowNodeSchema = {
       },
     },
     workflowCcNodeSchema,
+    workflowBusinessStepNodeSchema,
   ],
 } as const;
 

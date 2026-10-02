@@ -17,11 +17,14 @@ import {
   SCHEMA_VERSIONS,
   applicationEventHandlerPathV2,
   sha256Digest,
+  WORKFLOW_BUSINESS_STEP_EVENT,
+  validateWorkflowBusinessStepHandlerContract,
+  type WorkflowBusinessStepOutput,
   type AppEventHandlerContract,
   type CloudEvent,
 } from 'openxiangda-contracts';
 import type { OpenXiangdaEventHandlerContext } from './event-context.js';
-import { OpenXiangdaEventReceiver } from './events.js';
+import { OpenXiangdaEventReceiver, OpenXiangdaEventDeterministicError } from './events.js';
 import { OpenXiangdaInfrastructureController } from './infrastructure-controller.js';
 import { OPENXIANGDA_MODULE_OPTIONS } from './tokens.js';
 import type { OpenXiangdaModuleOptions } from './types.js';
@@ -41,6 +44,22 @@ export interface OpenXiangdaEventConsumer<TEvent extends CloudEvent = CloudEvent
     event: TEvent,
     context: OpenXiangdaEventHandlerContext
   ): Promise<unknown> | unknown;
+}
+
+/** Every effect attempt reconciles the stable context.idempotencyKey first. */
+export interface OpenXiangdaWorkflowEffectConsumer extends OpenXiangdaEventConsumer {
+  reconcile(event: CloudEvent, context: OpenXiangdaEventHandlerContext): Promise<
+    { status: 'succeeded'; result: WorkflowBusinessStepOutput } | { status: 'not-executed' } | { status: 'unknown' }
+  >;
+}
+
+export async function executeWorkflowEventConsumer(consumer: OpenXiangdaEventConsumer, contract: AppEventHandlerContract, event: CloudEvent, context: OpenXiangdaEventHandlerContext) {
+  if (contract.workflowStep?.mode === 'reconciled-effect') {
+    const result = await (consumer as OpenXiangdaWorkflowEffectConsumer).reconcile(event, context);
+    if (result?.status === 'succeeded') return result.result;
+    if (result?.status !== 'not-executed') throw new OpenXiangdaEventDeterministicError('WORKFLOW_STEP_EFFECT_OUTCOME_UNKNOWN', '原执行结果未知，需要核对后重放原请求');
+  }
+  return await consumer.handle(event, context);
 }
 
 export function OpenXiangdaEventHandler(
@@ -93,7 +112,7 @@ export class OpenXiangdaEventRegistry implements OnModuleInit {
         throw new Error(`事件 handler ${contract.code} 缺少所属模块`);
       }
       if (wrapper.isDependencyTreeStatic() && !wrapper.isTransient) {
-        assertConsumer(wrapper.instance, contract.code);
+        assertConsumer(wrapper.instance, contract);
       }
       this.handlers.set(contract.code, {
         contract: expected,
@@ -104,7 +123,7 @@ export class OpenXiangdaEventRegistry implements OnModuleInit {
           const consumer = await moduleRef.resolve<OpenXiangdaEventConsumer>(
             wrapper.token, contextId, { strict: true }
           );
-          assertConsumer(consumer, contract.code);
+          assertConsumer(consumer, contract);
           return consumer;
         },
       });
@@ -175,7 +194,7 @@ export class OpenXiangdaEventController {
       request.rawBody,
       async (event, context) => {
         const consumer = await registered.resolveConsumer();
-        return await consumer.handle(event, context);
+        return await executeWorkflowEventConsumer(consumer, registered.contract, event, context);
       }
     );
   }
@@ -183,11 +202,13 @@ export class OpenXiangdaEventController {
 
 function assertConsumer(
   consumer: unknown,
-  code: string
+  contract: AppEventHandlerContract
 ): asserts consumer is OpenXiangdaEventConsumer {
   if (!consumer || typeof (consumer as OpenXiangdaEventConsumer).handle !== 'function') {
-    throw new Error(`事件 handler ${code} 缺少 handle()`);
+    throw new Error(`事件 handler ${contract.code} 缺少 handle()`);
   }
+  if (contract.workflowStep?.mode === 'reconciled-effect' && typeof (consumer as OpenXiangdaWorkflowEffectConsumer).reconcile !== 'function')
+    throw new Error(`业务步骤 ${contract.code} 缺少 reconcile()`);
 }
 
 function normalizeHandlerDeclaration(
@@ -213,6 +234,10 @@ function normalizeHandlerDeclaration(
   ) {
     throw new Error(`事件 handler contract 不合法: ${code}`);
   }
+  const step = input.workflowStep;
+  if (step && (!validateWorkflowBusinessStepHandlerContract(step) || !code.endsWith(`-v${step.version}`) ||
+      eventTypes.length !== 1 || eventTypes[0] !== WORKFLOW_BUSINESS_STEP_EVENT || dataSchemaVersions.length !== 1 || dataSchemaVersions[0] !== '2.0.0')) throw new Error(`业务步骤合同不合法: ${code}`);
+  if (!step && eventTypes.includes(WORKFLOW_BUSINESS_STEP_EVENT)) throw new Error(`业务步骤合同缺失: ${code}`);
   return {
     code,
     endpointPath,
@@ -220,6 +245,7 @@ function normalizeHandlerDeclaration(
     dataSchemaVersions,
     maxBodyBytes: 65_536,
     receiptProtocolVersion: 2,
+    ...(step ? { workflowStep: step } : {}),
   };
 }
 

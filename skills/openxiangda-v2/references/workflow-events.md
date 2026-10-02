@@ -444,3 +444,59 @@ readability: {
 说明的执行位置只能是 submission、某节点的 node_input 或 completion。它是对已有逻辑的注释，不会自动执行计算或产生新流程节点。没有实际计算步骤时，不应写成“系统已计算总金额”。条件的变量必须存在于输入 Schema；对旧未标注定义，读取投影会明确给出未知来源诊断。
 
 可选 `source: { path, symbol?, digest }` 只返回源码位置和 SHA256，不返回源码内容。path 指向工作区 apps/packages/platform 下的代码文件，digest 为 `sha256:<原始文件字节摘要>`。工作区加载时核对文件存在、无符号链接、大小和摘要；源码变化后以 WORKFLOW_LOGIC_DESCRIPTION_STALE 阻止封装，开发者应核实说明并更新引用。32 个文件、单文件 2MiB、总量 8MiB 为上限。元数据不能验证任意 TypeScript 的业务含义，业务说明及验收仍由开发者维护。
+
+## 持久业务步骤
+
+必须收到业务计算或外部操作结果后才继续的流程，用固定 `action` 节点。平台自动
+提供 `workflow.durable-business-step@1.0.0`；应用包含动作时自动声明能力需求并
+按需引导标准 Nest 后端，普通无动作应用保持原合同。字段显隐/编辑/必填继续由
+页面代码负责；动作版本、Schema、条件和连线只由开发者发布。
+
+```ts
+const amountSchema = { type: 'object', additionalProperties: false,
+  required: ['amountCents'], properties: { amountCents: { type: 'integer', minimum: 0 } } };
+// 放入已声明流程的 nodes；amount-route 必须是同一固定定义中的真实目标。
+const calculate = {
+  id: 'calculate', kind: 'action', title: '核算金额', next: 'amount-route',
+  handler: { code: 'calculate-v1', version: 1, mode: 'pure' },
+  inputSchema: amountSchema, outputSchema: amountSchema,
+  inputs: { amountCents: { source: 'fact', path: 'amountCents' } },
+};
+// 放入 events.subscriptions；应用 backend.enabled=true，消费 generated manifest。
+const subscription = {
+  code: 'calculate-v1', eventTypes: ['openxiangda.workflow.step.requested.v2'],
+  filter: { workflowStep: { handlerCode: 'calculate-v1' } },
+  payload: { includeChanges: false, fields: [] },
+};
+```
+
+成功输出写入 `steps.calculate.amountCents`。后续条件或动作只能读取每条路径上
+已经完成的生产者；前向/自引用、非法路径和输入类型不兼容会拒绝编译。步骤后
+需要 HTTP provider 或发起人选人的组合暂不支持，先在动作中产生有 Schema 的
+人员数据，再使用原生人员字段/角色分派。示例见
+`examples/workflow-administration/business-step.ts`。
+
+Nest 使用 `@OpenXiangdaEventHandler(generatedContract)` 注册实现，`handle` 返回
+`{ output, receipt? }`；上下文 `workflowStep` 包含验证过的固定请求，
+`idempotencyKey` 是稳定 executionId。不得通过返回值任意指定下一节点或调用
+Workflow 跳转。使用标准 `PlatformOpenXiangdaEventReceiptStore`；内存 receipt
+不能完成业务步骤。
+
+`pure` 用于无外部效果的计算；`reconciled-effect` 必须实现 `reconcile(event,
+context)`：成功返回 `{ status:'succeeded', result:{output,receipt?} }`，确定未执行
+返回 `{status:'not-executed'}`，无法确定返回 `{status:'unknown'}`。每次尝试先
+核对原执行键，未知结果需要人工核对后重放原事件。增加v2时保留v1合同及代码；
+旧具名版本合同不可变，缺失实现明确失败，不自动改用最新版本。
+
+输入输出各16KiB、回执2KiB，最多32映射、200节点；Schema闭合且有界，无远端
+引用或正则执行。平台先持久保存合法结果，再尝试流转；下游缺人等失败保留
+`result_ready`，恢复仅推进，不再次执行处理器。自动恢复最多5次，每批20；
+outbox容量等事务故障会回滚，处理器按原键核对后重交，不承诺跨服务绝对一次。
+撤回后的未领取步骤拒绝执行，已开始的外部操作仍需原键核对。
+
+管理员在标准实例管理页或 `WorkflowBusinessStepRecoveryPanel` 查看并继续受阻
+步骤；公开客户端为 `loadWorkflowBusinessStepRecovery`、
+`previewWorkflowBusinessStepRecovery`、`executeWorkflowBusinessStepRecovery`。
+复用原管理权限/token/CAS/CSRF/审计，提交失败保留相同token/input/idempotencyKey。
+等待处理器的失败从原事件管理受控重放，保留原执行键。普通详情只显示安全状态
+摘要；原输入、输出和外部回执不放入普通时间线。

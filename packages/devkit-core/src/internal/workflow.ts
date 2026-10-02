@@ -6,6 +6,7 @@ import {
   validateWorkflowReadability,
   validateWorkflowAdministration,
   validateWorkflowAutomaticCc,
+  validateWorkflowBusinessSteps,
   validateWorkflowAssignmentRoutingBindings,
   type WorkflowApprovalMode,
   type WorkflowBinding,
@@ -113,7 +114,7 @@ export function compileWorkflow(
 }
 
 export function validateWorkflowDefinition(definition: WorkflowDefinition) {
-  const diagnostics = [...validateWorkflowInstanceCommandPolicies(definition), ...validateWorkflowReadability(definition), ...validateWorkflowAdministration(definition), ...validateWorkflowAutomaticCc(definition)];
+  const diagnostics = [...validateWorkflowInstanceCommandPolicies(definition), ...validateWorkflowReadability(definition), ...validateWorkflowAdministration(definition), ...validateWorkflowAutomaticCc(definition), ...validateWorkflowBusinessSteps(definition)];
   if (definition?.schemaVersion !== SCHEMA_VERSIONS.workflowDefinition) {
     diagnostics.push('WORKFLOW_DEFINITION_SCHEMA_INVALID');
   }
@@ -169,7 +170,7 @@ export function validateWorkflowDefinition(definition: WorkflowDefinition) {
   if (!nodes[definition?.startAt]) diagnostics.push('WORKFLOW_START_NODE_NOT_FOUND');
   for (const [id, node] of Object.entries(nodes)) {
     if (node.id !== id) diagnostics.push(`WORKFLOW_NODE_ID_MISMATCH:${id}`);
-    if (!['approval', 'condition', 'end', 'cc'].includes(node.kind)) {
+    if (!['approval', 'condition', 'end', 'cc', 'action'].includes(node.kind)) {
       diagnostics.push(`WORKFLOW_NODE_KIND_INVALID:${id}`);
       continue;
     }
@@ -204,7 +205,7 @@ export function validateWorkflowBinding(
   definition: WorkflowDefinition,
   binding: WorkflowBinding
 ) {
-  const diagnostics: string[] = [...validateWorkflowAdministration(definition, binding), ...validateWorkflowAssignmentRoutingBindings([binding]), ...validateWorkflowAutomaticCc(definition, binding)];
+  const diagnostics: string[] = [...validateWorkflowAdministration(definition, binding), ...validateWorkflowAssignmentRoutingBindings([binding]), ...validateWorkflowAutomaticCc(definition, binding), ...validateWorkflowBusinessSteps(definition, binding)];
   if (binding?.schemaVersion !== SCHEMA_VERSIONS.workflowBinding) {
     diagnostics.push('WORKFLOW_BINDING_SCHEMA_INVALID');
   }
@@ -264,6 +265,7 @@ export interface WorkflowPlan {
     result?: Record<string, unknown>;
   }>;
   activeNode?: Extract<WorkflowNode, { kind: 'approval' }>;
+  activeStep?: Extract<WorkflowNode, { kind: 'action' }>;
   outcome?: string;
 }
 
@@ -282,6 +284,10 @@ export function planWorkflow(
     if (node.kind === 'approval') {
       steps.push({ nodeId, kind: node.kind });
       return { steps, activeNode: node };
+    }
+    if (node.kind === 'action') {
+      steps.push({ nodeId, kind: node.kind });
+      return { steps, activeStep: node };
     }
     if (node.kind === 'end') {
       steps.push({ nodeId, kind: node.kind, result: { outcome: node.outcome } });
@@ -523,7 +529,7 @@ function readPath(facts: Record<string, unknown>, path: string) {
 
 function targets(node: WorkflowNode) {
   if (node.kind === 'approval') return [node.onApprove, node.onReject];
-  if (node.kind === 'cc') return [node.next];
+  if (node.kind === 'cc' || node.kind === 'action') return [node.next];
   if (node.kind === 'condition') {
     return [...node.branches.map(branch => branch.target), node.otherwise];
   }

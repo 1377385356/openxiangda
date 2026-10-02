@@ -1,4 +1,5 @@
 import { compileNativeEventAction } from 'openxiangda-contracts/native-compiler';
+import { compileWorkflowBusinessStepHandlers, validateWorkflowBusinessStepSubscriptions, WORKFLOW_BUSINESS_STEP_EVENTS } from 'openxiangda-contracts/native-compiler';
 import { parseNativeUniqueKeys, parseDecimalReservationLifecycle } from 'openxiangda-contracts/native-compiler';
 import { DATA_AUDIT_METADATA_FIELDS, isDataAuditMetadataField, projectDataResourceView } from 'openxiangda-contracts';
 import { nativeFieldRequiresCreateInputV2 } from 'openxiangda-contracts/native-compiler';
@@ -883,7 +884,7 @@ function compileContractBundleFromNormalized(
     }))
   ) || [];
   const workflowEventProducers = config.workflows?.activations.length
-    ? WORKFLOW_EVENT_TYPES_V2.map(eventType => ({
+    ? WORKFLOW_EVENT_TYPES_V2.filter(eventType => !WORKFLOW_BUSINESS_STEP_EVENTS.includes(eventType as any) || config.workflows?.definitions.some(item => Object.values(item.definition.nodes).some(node => node.kind === 'action'))).map(eventType => ({
         code: `workflow:${eventType}`,
         source: 'workflow' as const,
         eventType,
@@ -924,6 +925,10 @@ function compileContractBundleFromNormalized(
     ...eventProducers.map(item => item.eventType),
   ]);
   const workflows = compileWorkflows(config);
+  const stepDefinitions = normalizedConfiguration.workflows.definitions.map(item => item.definition);
+  const stepHandlers = compileWorkflowBusinessStepHandlers(stepDefinitions);
+  const stepSubscriptionErrors = validateWorkflowBusinessStepSubscriptions(stepDefinitions, eventConsumers, config.backend?.enabled !== false);
+  if (stepSubscriptionErrors.length) throw new Error(stepSubscriptionErrors.join('; '));
   const adminPages = compileAdminPages(config);
   return {
     schemaVersion: CONTRACT_BUNDLE_SCHEMA,
@@ -961,6 +966,7 @@ function compileContractBundleFromNormalized(
         ),
         maxBodyBytes: 65_536,
         receiptProtocolVersion: 2 as const,
+        ...(stepHandlers[consumer.code] ? { workflowStep: stepHandlers[consumer.code] } : {}),
       })),
     },
     eventTypes,

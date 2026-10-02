@@ -1,4 +1,5 @@
 /** Pure read projection. It never evaluates expressions, executes code or edits topology. */
+import { workflowBusinessStepFactSchema, type WorkflowBusinessStepInput } from './workflow-business-step.js';
 export interface WorkflowReadability {
   variables?: Record<string, { label: string; unit?: string; description?: string }>;
   logic?: Array<{
@@ -41,6 +42,9 @@ export interface WorkflowGraphDefinitionSource {
     emptyPolicy?: 'block' | 'skip';
     notify?: boolean;
     outcome?: string;
+    handler?: { code: string; version: number; mode: 'pure' | 'reconciled-effect' };
+    inputs?: Record<string, WorkflowBusinessStepInput>;
+    outputSchema?: Record<string, unknown>;
   }>;
 }
 
@@ -51,7 +55,7 @@ export interface WorkflowGraphVariable {
   unit?: string;
   description?: string;
   required: boolean;
-  source: { kind: 'subject_field'; resourceCode: string; fieldPath: string } | { kind: 'input' | 'unknown' };
+  source: { kind: 'subject_field'; resourceCode: string; fieldPath: string } | { kind: 'step_output'; nodeId: string; handlerCode: string; handlerVersion: number } | { kind: 'input' | 'unknown' };
   usedBy: string[];
 }
 
@@ -73,7 +77,8 @@ export interface WorkflowGraphProjection {
   startAt: string;
   fixedTopology: true;
   branchStrategy: 'first_match';
-  nodes: Array<{ id: string; kind: string; title: string; binding?: string; mode?: string; outcome?: string; emptyPolicy?: 'block' | 'skip'; notify?: boolean }>;
+  nodes: Array<{ id: string; kind: string; title: string; binding?: string; mode?: string; outcome?: string; emptyPolicy?: 'block' | 'skip'; notify?: boolean;
+    businessStep?: { handler: NonNullable<WorkflowGraphDefinitionSource['nodes'][string]['handler']>; inputs: Record<string, WorkflowBusinessStepInput>; outputPaths: string[] } }>;
   edges: WorkflowGraphEdge[];
   variables: WorkflowGraphVariable[];
   logic: NonNullable<WorkflowReadability['logic']>;
@@ -93,6 +98,7 @@ export interface WorkflowGraphVisit {
   skipped?: boolean;
   notificationRequested?: boolean;
   configuration?: Record<string, unknown>;
+  businessStep?: import('./workflow-business-step.js').WorkflowBusinessStepSummary;
   people?: Array<{ userId: string | null; displayName: string; status?: string }>;
 }
 
@@ -116,7 +122,7 @@ export interface WorkflowInstanceGraphReadResult extends WorkflowGraphReadResult
 const record = (value: unknown): Record<string, unknown> =>
   value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
 const text = (value: unknown, max: number) => typeof value === 'string' && Boolean(value.trim()) && value.length <= max;
-const pathPattern = /^[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*){0,15}$/;
+const pathPattern = /^[A-Za-z][A-Za-z0-9_-]*(?:\.[A-Za-z][A-Za-z0-9_-]*){0,15}$/;
 const safePath = (path: unknown): path is string => typeof path === 'string' && path.length <= 256 && pathPattern.test(path) &&
   !path.split('.').some(part => ['__proto__', 'prototype', 'constructor'].includes(part));
 
@@ -159,6 +165,7 @@ export function workflowExpressionPaths(expression: unknown) {
 export function validateWorkflowReadability(definition: WorkflowGraphDefinitionSource): string[] {
   if (definition?.readability === undefined) return [];
   const errors: string[] = [];
+  const factsSchema = workflowBusinessStepFactSchema(definition);
   const info = record(definition.readability);
   if (Object.keys(info).some(key => !['variables', 'logic'].includes(key)) || !Object.keys(info).length) errors.push('WORKFLOW_READABILITY_INVALID');
   const variables = record(info.variables);
@@ -166,7 +173,7 @@ export function validateWorkflowReadability(definition: WorkflowGraphDefinitionS
   if (Object.keys(variables).length > 128) errors.push('WORKFLOW_VARIABLE_LIMIT_EXCEEDED');
   for (const [path, value] of Object.entries(variables)) {
     const variable = record(value);
-    if (!safePath(path) || !schemaPath(definition.inputSchema, path)) errors.push(`WORKFLOW_VARIABLE_SOURCE_UNKNOWN:${path}`);
+    if (!safePath(path) || !schemaPath(factsSchema, path)) errors.push(`WORKFLOW_VARIABLE_SOURCE_UNKNOWN:${path}`);
     if (!text(variable.label, 160) || Object.keys(variable).some(key => !['label', 'unit', 'description'].includes(key)) ||
       variable.unit !== undefined && !text(variable.unit, 32) || variable.description !== undefined && !text(variable.description, 2000)) errors.push(`WORKFLOW_VARIABLE_METADATA_INVALID:${path}`);
   }
@@ -184,7 +191,7 @@ export function validateWorkflowReadability(definition: WorkflowGraphDefinitionS
       const values = item[key];
       if (key === 'outputPaths' && values === undefined) continue;
       if (!Array.isArray(values) || values.length > 32 || new Set(values).size !== values.length) errors.push(`WORKFLOW_LOGIC_PATHS_INVALID:${code}:${key}`);
-      else for (const path of values) if (!safePath(path) || !schemaPath(definition.inputSchema, path)) errors.push(`WORKFLOW_LOGIC_SOURCE_UNKNOWN:${code}:${String(path)}`);
+      else for (const path of values) if (!safePath(path) || !schemaPath(factsSchema, path)) errors.push(`WORKFLOW_LOGIC_SOURCE_UNKNOWN:${code}:${String(path)}`);
     }
     if (item.source !== undefined) {
       const source = record(item.source);
@@ -199,13 +206,14 @@ export function validateWorkflowReadability(definition: WorkflowGraphDefinitionS
     for (const branch of branches as NonNullable<WorkflowGraphDefinitionSource['nodes'][string]['branches']>) {
     const expression = workflowExpressionPaths(branch.when);
     errors.push(...expression.errors.map(error => `${error}:${node.id}`));
-    for (const path of expression.paths) if (!schemaPath(definition.inputSchema, path)) errors.push(`WORKFLOW_VARIABLE_SOURCE_UNKNOWN:${node.id}:${path}`);
+    for (const path of expression.paths) if (!schemaPath(factsSchema, path)) errors.push(`WORKFLOW_VARIABLE_SOURCE_UNKNOWN:${node.id}:${path}`);
     }
   }
   return [...new Set(errors)];
 }
 
 export function projectWorkflowGraph(definition: WorkflowGraphDefinitionSource, definitionDigest: string): WorkflowGraphProjection {
+  const factsSchema = workflowBusinessStepFactSchema(definition);
   const edges: WorkflowGraphEdge[] = [];
   const used = new Map<string, Set<string>>();
   const diagnostics: WorkflowGraphProjection['diagnostics'] = [];
@@ -215,6 +223,11 @@ export function projectWorkflowGraph(definition: WorkflowGraphDefinitionSource, 
         if (target) edges.push({ id: `${node.id}:${kind}`, from: node.id, to: target, kind, label, variablePaths: [] });
     }
     if (node.kind === 'cc' && node.next) edges.push({ id: `${node.id}:next`, from: node.id, to: node.next, kind: 'next', label: '抄送后继续', variablePaths: [] });
+    if (node.kind === 'action' && node.next) {
+      const paths = Object.values(node.inputs || {}).flatMap(input => input.source === 'fact' ? [input.path] : []);
+      for (const path of paths) { if (!used.has(path)) used.set(path, new Set()); used.get(path)!.add(node.id); }
+      edges.push({ id: `${node.id}:next`, from: node.id, to: node.next, kind: 'next', label: '成功回执后继续', variablePaths: paths });
+    }
     if (node.kind === 'condition') {
       for (const [index, branch] of (node.branches || []).entries()) {
         const expression = workflowExpressionPaths(branch.when);
@@ -227,17 +240,19 @@ export function projectWorkflowGraph(definition: WorkflowGraphDefinitionSource, 
   }
   const variablePaths = new Set([...used.keys(), ...Object.keys(definition.readability?.variables || {}), ...(definition.readability?.logic || []).flatMap(item => [...item.inputPaths, ...item.outputPaths || []])]);
   const variables = [...variablePaths].slice(0, 128).map(path => {
-    const resolved = schemaPath(definition.inputSchema, path), metadata = definition.readability?.variables?.[path];
+    const resolved = schemaPath(factsSchema, path), metadata = definition.readability?.variables?.[path];
     const segments = path.split('.'), field = definition.subject?.factProjection[segments[0]!];
+    const producer = segments[0] === 'steps' ? definition.nodes[segments[1]!] : undefined;
     if (!resolved) diagnostics.push({ code: 'WORKFLOW_VARIABLE_SOURCE_UNKNOWN', path });
     return { path, label: metadata?.label || String(resolved?.schema.title || path), type: String(resolved?.schema.type || 'unknown'),
       ...metadata, required: resolved?.required || false, usedBy: [...used.get(path) || []],
-      source: resolved && field && definition.subject ? { kind: 'subject_field' as const, resourceCode: definition.subject.resourceCode, fieldPath: [field, ...segments.slice(1)].join('.') } : { kind: resolved ? 'input' as const : 'unknown' as const } };
+      source: resolved && producer?.handler ? { kind: 'step_output' as const, nodeId: producer.id, handlerCode: producer.handler.code, handlerVersion: producer.handler.version } : resolved && field && definition.subject ? { kind: 'subject_field' as const, resourceCode: definition.subject.resourceCode, fieldPath: [field, ...segments.slice(1)].join('.') } : { kind: resolved ? 'input' as const : 'unknown' as const } };
   });
   return { schemaVersion: 'openxiangda.workflow-graph/v2', workflowCode: definition.code, definitionDigest, startAt: definition.startAt,
     fixedTopology: true, branchStrategy: 'first_match', nodes: Object.values(definition.nodes).map(node => ({ id: node.id, kind: node.kind, title: node.title || node.id,
       ...(node.binding ? { binding: node.binding } : {}), ...(node.mode ? { mode: node.mode } : {}), ...(node.outcome ? { outcome: node.outcome } : {}),
-      ...(node.kind === 'cc' ? { emptyPolicy: node.emptyPolicy, notify: node.notify !== false } : {}) })), edges, variables,
+      ...(node.kind === 'cc' ? { emptyPolicy: node.emptyPolicy, notify: node.notify !== false } : {}),
+      ...(node.kind === 'action' && node.handler ? { businessStep: { handler: node.handler, inputs: node.inputs || {}, outputPaths: Object.keys(record(node.outputSchema).properties || {}).map(key => `steps.${node.id}.${key}`) } } : {}) })), edges, variables,
     logic: definition.readability?.logic || [], diagnostics };
 }
 
