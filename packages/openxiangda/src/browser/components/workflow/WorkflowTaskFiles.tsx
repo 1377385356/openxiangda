@@ -63,7 +63,11 @@ export function useWorkflowTaskFiles({ taskId, controller, onBusyChange }: {
     const ready = completed.current.get(file); if (ready) return ready;
     if (intent.current) throw new Error('请先确认原文件上传结果，再选择下一个文件。');
     const current = controller.form.getFieldValue(field.key);
-    if (Array.isArray(current) && current.length >= (field.maxCount ?? 1)) throw new Error(`最多 ${field.maxCount ?? 1} 个文件，请先移除已有引用。`);
+    if (Array.isArray(current) && current.length >= (field.maxCount ?? 1)) {
+      const text = `最多 ${field.maxCount ?? 1} 个文件，请先移除已有引用。`;
+      setFailure(text);
+      throw new Error(text);
+    }
     const wire: WorkflowTaskFileUploadIntent = { taskId, file, phase: 'initiate', input: {
       id: crypto.randomUUID(), fieldCode: field.key, fileName: file.name, fileSize: file.size, contentType: file.type,
     } };

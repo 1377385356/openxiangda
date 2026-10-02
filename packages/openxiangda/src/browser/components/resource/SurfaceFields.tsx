@@ -986,7 +986,7 @@ function ManagedFileField({
   }
   const uploadProps = {
     accept: Array.isArray(accept) ? accept.join(',') : accept,
-    disabled,
+    disabled: Boolean(disabled || uploading || (workflowBinding?.taskId && refs.length >= maxCount)),
     maxCount,
     multiple: multiple && !workflowBinding?.taskId,
     customRequest: async (options: {
@@ -997,8 +997,10 @@ function ManagedFileField({
     }) => {
       setUploading(true);
       setUploadError('');
+      let validationPassed = false;
       try {
         assertSize(options.file as File);
+        validationPassed = true;
         options.onProgress?.({ percent: 15 });
         const uploaded = await onUpload(field, options.file as File, recordId);
         options.onProgress?.({ percent: 100 });
@@ -1008,7 +1010,9 @@ function ManagedFileField({
         options.onSuccess?.(uploaded);
       } catch (error) {
         const failure = error instanceof Error ? error : new Error(String(error));
-        setUploadError(failure.message);
+        // Task uploads have one recovery owner; local preflight validation is
+        // still reported here because the task hook has not received a File.
+        setUploadError(workflowBinding?.taskId && validationPassed ? '' : failure.message);
         options.onError?.(failure);
       } finally {
         setUploading(false);
@@ -1018,7 +1022,7 @@ function ManagedFileField({
   };
   return (
     <div className="oxa-file-field">
-      <Upload.Dragger {...uploadProps} className="oxa-file-dropzone oxa-file-dropzone-compact" openFileDialogOnClick pastable>
+      <Upload.Dragger {...uploadProps} aria-disabled={uploadProps.disabled} className="oxa-file-dropzone oxa-file-dropzone-compact" openFileDialogOnClick pastable>
         <span className="oxa-file-upload-button">{field.type === 'image' ? <PictureOutlined /> : <UploadOutlined />}{uploading ? '上传中…' : field.type === 'image' ? '图片上传' : '上传文件'}</span>
         <span className="oxa-file-upload-hint">拖拽或点击后粘贴{field.type === 'image' ? '图片' : '文件'}</span>
       </Upload.Dragger>
