@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.47.3",
+  "version": "2.47.4",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -73,7 +73,7 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.47",
+    "openxiangda-cli": "2.6.48",
     "openxiangda-contracts": "2.46.0",
     "openxiangda-devkit-core": "2.41.5",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
@@ -145,31 +145,31 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.47.3",
+    "version": "2.47.4",
     "status": "reviewed",
-    "title": "任务条件材料首次显示的空值修复",
-    "summary": "任务根字段及子表首次显示未填写的附件或图片时，使用标准空数组完成保存和私有草稿编码。",
+    "title": "办理页面过期后的操作刷新",
+    "summary": "任务操作凭证过期时保留禁用的服务器可见命令，提供保留输入的只读刷新入口。",
     "newFeatures": [],
     "fixes": [
-      "任务附件和图片控件未填写时统一编码为空数组，避免条件字段首次显示后因null违反Native值合同。",
-      "根字段和owned子行共用编码规则，保留子行身份、只读和隐藏字段提交边界。"
+      "PC与手机长时间停留后不再无提示地丢失操作按钮，凭证到期及时显示刷新操作提示。",
+      "刷新沿原Surface读取保留未保存表单，并继续遵守上传、草稿和未知命令恢复锁。"
     ],
     "affectedUsers": [
-      "使用标准流程任务表单、条件附件或图片字段及任务私有草稿的OpenXiangda 2.0应用。"
+      "使用标准或可嵌入任务操作面板，且办理页面停留超过操作凭证有效期的OpenXiangda 2.0用户。"
     ],
     "upgradeSteps": [
-      "按精确版本升级SDK及同批CLI；首次条件激活还需要平台Server配套省略本次空材料写入。本批仅供本地验证，不执行npm发布。"
+      "按精确版本升级SDK和同批CLI，无数据库迁移；本批仅本地验证，不执行npm发布。"
     ],
     "knownLimitations": [
-      "上传及非空材料引用仍按已经保存的页面条件校验，需要先保存使字段生效。",
-      "不调整源流程子表容量，不代表学校完整业务迁移验收。"
+      "刷新重新读取当前权限，不能恢复已经被撤销的资格，也不会自动重发未决命令。",
+      "完整业务流程及源容量验证仍单独实施。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=22.12.0",
       "platform": "OpenXiangda 2.0；不改变1.x运行时"
     },
-    "sha256": "508dede83d96b9a52a29535ce76d7f7cd1bfbfb95e48d04eb84015fe09d7b586",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.47.3"
+    "sha256": "bc6f8e6a404a8dac770842abb7da4560837734e5840698bf103e0c6a3fbe62b9",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.47.4"
   }
 }
