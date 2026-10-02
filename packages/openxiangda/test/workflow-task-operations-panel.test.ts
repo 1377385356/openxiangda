@@ -152,16 +152,20 @@ test('ignores an injected Surface for another task before the first frame', () =
 
 test('layout keeps loading and refusal content separate from current task decisions', () => {
   for (const taskId of ['task-1', 'task-2', '']) {
+    let actualSurface: unknown;
     const markup = renderToStaticMarkup(createElement(App, null,
       createElement(WorkflowTaskOperationsPanel, { taskId, surface: workflowSurface as any,
-        renderLayout: ({ content, actions }) => createElement('article', null,
-          createElement('main', null, content), createElement('footer', null, actions)) })));
+        renderLayout: ({ content, actions, surface }) => {
+          actualSurface = surface;
+          return createElement('article', null,
+            createElement('main', null, content), createElement('footer', null, actions));
+        } })));
     const body = markup.slice(markup.indexOf('<main>'), markup.indexOf('</main>'));
     const footer = markup.slice(markup.indexOf('<footer>'), markup.indexOf('</footer>'));
     assert.doesNotMatch(body, /oxa-workflow-actions-mobile|oxa-workflow-actions-desktop/);
     assert.doesNotMatch(footer, /正在加载审批操作|WORKFLOW_TASK_ID_REQUIRED/);
-    if (taskId === 'task-1') { assert.equal(body, '<main>'); assert.match(footer, /通\s*过/); }
-    else { assert.equal(footer, '<footer>'); assert.match(body, taskId ? /正在加载审批操作/ : /WORKFLOW_TASK_ID_REQUIRED/); }
+    if (taskId === 'task-1') { assert.equal(actualSurface, workflowSurface); assert.equal(body, '<main>'); assert.match(footer, /通\s*过/); }
+    else { assert.equal(actualSurface, undefined); assert.equal(footer, '<footer>'); assert.match(body, taskId ? /正在加载审批操作/ : /WORKFLOW_TASK_ID_REQUIRED/); }
   }
 });
 

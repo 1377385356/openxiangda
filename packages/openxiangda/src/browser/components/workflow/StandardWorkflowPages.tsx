@@ -903,7 +903,7 @@ function WorkflowOperations({
   const [moreOpen, setMoreOpen] = useState(false);
   const [operationError, setOperationError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [refreshError, setRefreshError] = useState('');
+  const [refreshFailure, setRefreshFailure] = useState<{ outcome: 'succeeded' | 'rejected'; message: string } | null>(null);
   const [unknown, setUnknown] = useState(false);
   const request = useRef<{ surface: WorkflowSurface; operation: WorkflowOperationSurface; input: JsonObject; key: string } | null>(null);
   const mounted = useRef(false);
@@ -938,7 +938,7 @@ function WorkflowOperations({
     });
   };
   const submit = async (values: JsonObject) => {
-    if (!selected || busyRef.current || pendingLocator || unknown || refreshError || confirmedReadPending) return;
+    if (!selected || busyRef.current || pendingLocator || unknown || refreshFailure || confirmedReadPending) return;
     setOperationError('');
     setSubmitting(true);
     busyRef.current = true;
@@ -1001,11 +1001,17 @@ function WorkflowOperations({
     } catch (error) {
       if (!mounted.current) return;
       const rejected = !recovering && workflowTaskCommandWasRejected(error);
-      if (rejected) { clearLocator(wire.key); request.current = null; }
+      if (rejected) { clearLocator(wire.key); request.current = null; setSelectedState(null); }
       else { setUnknown(true); setSelectedState(null); }
       const failure = errorMessage(error, '任务操作尚未完成');
       setOperationError(failure);
-      if (rejected) message.error(failure);
+      if (rejected) {
+        message.error(failure);
+        // A definitive refusal permits a read, never an automatic new write.
+        // Keep this controller mounted so dirty inputs survive the fresh CAS.
+        try { await onRefresh(); if (mounted.current) setRefreshFailure(null); }
+        catch (reason) { if (mounted.current) setRefreshFailure({ outcome: 'rejected', message: errorMessage(reason, '最新资料读取失败') }); }
+      }
       setSubmitting(false);
       busyRef.current = false;
       onBusyChange(false);
@@ -1021,7 +1027,7 @@ function WorkflowOperations({
     message.success(`${wire.operation.label}已提交`);
     // The write has succeeded. A callback or read failure can only affect refresh.
     try { await onCommandSuccess(result); }
-    catch (error) { if (mounted.current) setRefreshError(errorMessage(error, '页面刷新失败')); }
+    catch (error) { if (mounted.current) setRefreshFailure({ outcome: 'succeeded', message: errorMessage(error, '页面刷新失败') }); }
     finally {
       if (mounted.current) { setSubmitting(false); busyRef.current = false; onBusyChange(false); }
     }
@@ -1029,12 +1035,12 @@ function WorkflowOperations({
   const refreshConfirmed = async () => {
     if (busyRef.current) return;
     setSubmitting(true); busyRef.current = true; onBusyChange(true);
-    try { await onRefresh(); if (mounted.current) setRefreshError(''); }
-    catch (error) { if (mounted.current) setRefreshError(errorMessage(error, '页面刷新失败')); }
+    try { await onRefresh(); if (mounted.current) setRefreshFailure(null); }
+    catch (error) { if (mounted.current) setRefreshFailure(current => ({ outcome: current?.outcome || 'rejected', message: errorMessage(error, '页面刷新失败') })); }
     finally { if (mounted.current) { setSubmitting(false); busyRef.current = false; onBusyChange(false); } }
   };
-  const locked = submitting || unknown || Boolean(pendingLocator) || Boolean(refreshError) || confirmedReadPending;
-  if (!operations.length && !surface.taskForm && !unknown && !refreshError) return renderLayout({ content: null, actions: null });
+  const locked = submitting || unknown || Boolean(pendingLocator) || Boolean(refreshFailure) || confirmedReadPending;
+  if (!operations.length && !surface.taskForm && !unknown && !refreshFailure) return renderLayout({ content: null, actions: null });
   const primary = operations
     .filter((operation) => operation.placement === 'primary')
     .sort((left, right) => {
@@ -1045,14 +1051,15 @@ function WorkflowOperations({
   const secondary = operations.filter(
     (operation) => operation.placement !== 'primary',
   );
-  const content = surface.taskForm || ((submitting || unknown) && !pendingLocator) || unknown || refreshError ? (
+  const content = surface.taskForm || ((submitting || unknown) && !pendingLocator) || unknown || refreshFailure ? (
     <>
       {surface.taskForm && <WorkflowTaskForm controller={taskForm} disabled={locked} variant={variant}
         resourceCode={surface.presentation.businessDetail.resourceCode || undefined} recordId={surface.presentation.businessDetail.recordId || undefined} />}
       {(submitting || unknown) && !pendingLocator && <WorkflowPendingCommandGuard />}
       {unknown && <Alert type="warning" showIcon title="保留了原提交请求" description={operationError || '提交结果待确认，请重试原请求或查询原结果。'}
         action={<Button disabled={submitting} loading={submitting} onClick={() => void sendRequest(true)}>重试原请求</Button>} />}
-      {refreshError && <Alert type="warning" showIcon title="任务操作已成功，但资料刷新失败" description={refreshError}
+      {refreshFailure && <Alert type="warning" showIcon title={refreshFailure.outcome === 'succeeded'
+        ? '任务操作已成功，但资料刷新失败' : '本次未提交，最新资料读取失败'} description={refreshFailure.message}
         action={<Button disabled={submitting} onClick={() => void refreshConfirmed()}>刷新资料</Button>} />}
     </>
   ) : null;
@@ -1062,7 +1069,7 @@ function WorkflowOperations({
         {primary.map((operation) => (
           <Button
             danger={operation.emphasis === 'danger'}
-            disabled={locked || !operation.enabled}
+            disabled={locked || taskForm.stale || !operation.enabled}
             key={operation.key}
             onClick={() => selectOperation(operation)}
             title={operation.disabledReason}
@@ -1074,7 +1081,7 @@ function WorkflowOperations({
         {secondary.length > 0 && (
           <Button
             className="oxa-workflow-more-trigger"
-            disabled={locked}
+            disabled={locked || taskForm.stale}
             icon={<EllipsisOutlined />}
             onClick={() => setMoreOpen((value) => !value)}
           >
@@ -1085,7 +1092,7 @@ function WorkflowOperations({
           <div className="oxa-workflow-more-actions">
             {secondary.map((operation) => (
               <Button
-                disabled={locked || !operation.enabled}
+                disabled={locked || taskForm.stale || !operation.enabled}
                 key={operation.key}
                 onClick={() => {
                   setMoreOpen(false);
@@ -1135,7 +1142,7 @@ interface WorkflowOperationsPanelProps {
   surfaceMismatchMessage: string;
   loadingLabel: string;
   loadErrorFallback: string;
-  renderLayout?: (parts: { content: ReactNode; actions: ReactNode }) => ReactNode;
+  renderLayout?: (parts: { content: ReactNode; actions: ReactNode; surface?: WorkflowSurface }) => ReactNode;
 }
 
 /**
@@ -1457,7 +1464,7 @@ function WorkflowOperationsPanel({
   const confirmedWarning = confirmedReadFailure && <Alert showIcon type="warning" title="任务操作已成功，但页面刷新失败"
     description={confirmedReadFailure.message} action={<Button onClick={() => void completed(confirmedReadFailure.result)}>刷新资料</Button>} />;
   const layout = (parts: { content: ReactNode; actions: ReactNode }) => renderLayout
-    ? renderLayout(parts) : <>{parts.content}{parts.actions}</>;
+    ? renderLayout({ ...parts, surface: renderSurface || undefined }) : <>{parts.content}{parts.actions}</>;
 
   if (renderLoading) {
     return layout({ actions: null, content: (
@@ -1526,8 +1533,8 @@ export interface WorkflowTaskOperationsPanelProps {
   onCommandCompleted?: (
     result: WorkflowCommandResult,
   ) => void | Promise<void>;
-  /** Places the form/recovery content and action bar without duplicating their controller. */
-  renderLayout?: (parts: { content: ReactNode; actions: ReactNode }) => ReactNode;
+  /** Places content/actions and reads the actual current Surface without another controller. */
+  renderLayout?: (parts: { content: ReactNode; actions: ReactNode; surface?: WorkflowSurface }) => ReactNode;
 }
 
 /** Public, embeddable Workflow task operation surface. */
@@ -1809,13 +1816,13 @@ function WorkflowDetailPage({ kind, variant, resourceCode, recordId, onDismiss, 
     {loading ? <Spin /> : <Result status="error" title="流程详情加载失败" subTitle={error || '流程不存在'} extra={<Button onClick={() => void refresh()}>重试</Button>} />}
   </RecordDetailFrame>;
   if (surface.detailNavigation.custom) return <Navigate replace to={detailPath} />;
-  const renderDetail = (operations: ReactNode, taskContent?: ReactNode) => <StandardWorkflowDetailRenderer surface={surface} timeline={timeline} warning={error} operations={operations} taskContent={taskContent}
+  const renderDetail = (operations: ReactNode, taskContent?: ReactNode, currentSurface = surface) => <StandardWorkflowDetailRenderer surface={currentSurface} timeline={timeline} warning={error} operations={operations} taskContent={taskContent}
     variant={variant} drawer={Boolean(onDismiss)} drawerState={drawerState} newPageHref={newPageHref} onClose={editing ? () => { if (!editBusy) setEditing(false); } : close} busy={editBusy}
     editing={editing && business?.resourceCode && business.recordId ? <WorkflowRecordEditor resourceCode={business.resourceCode} recordId={business.recordId}
       variant={variant} presentation="embedded" onBusyChange={setEditBusy} onDismiss={() => setEditing(false)} onSaved={() => { setEditing(false); void refresh(); }} /> : undefined}
     onEdit={workflowHasEnded(instance) && identity.isAppSuperAdmin && (business?.status === 'ready' || business?.status === 'stale') ? () => setEditing(true) : undefined} />;
   return task ? <WorkflowTaskOperationsPanel key={task.id} onCommandCompleted={onCommandCompleted} surface={surface} taskId={task.id} variant={variant}
-    renderLayout={({ content, actions }) => renderDetail(actions, content)} />
+    renderLayout={({ content, actions, surface: currentSurface }) => renderDetail(actions, content, currentSurface)} />
     : renderDetail(<WorkflowInstanceOperationsPanel instanceId={instance.id} onCommandCompleted={onCommandCompleted} surface={surface} variant={variant} />);
 }
 

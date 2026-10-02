@@ -20,6 +20,13 @@ export function workflowTaskFormPatch(source: WorkflowTaskFormSurface, values: R
   return { expectedRevision: source.expectedRevision, values: patch };
 }
 
+/** A conflict comparison obeys the fresh page's visibility, not the old input's keys. */
+export function workflowTaskFormReviewFields(source: WorkflowTaskFormSurface, latest: WorkflowTaskFormSurface, current: Record<string, unknown>) {
+  return workflowTaskPageFieldState(latest.page, latest.values).filter(field => field.visible && !field.readonly &&
+    (!workflowLaunchContractJsonEqual(source.values[field.code], latest.values[field.code]) ||
+      !workflowLaunchContractJsonEqual(current[field.code], latest.values[field.code])));
+}
+
 const formValues = (source: WorkflowTaskFormSurface) => Object.fromEntries(source.page.fields.map(field =>
   [field.code, fieldValueForForm(source.fields[field.code], source.values[field.code])]));
 
@@ -73,7 +80,7 @@ export function useWorkflowTaskForm(latest?: WorkflowTaskFormSurface) {
     setSource({ ...source, expectedRevision: revision || source.expectedRevision, values });
     form.setFieldsValue(formValues({ ...source, values }));
   };
-  return { form, source, current, dirty, stale, build, reviewLatest, committed };
+  return { form, source, latest, current, dirty, stale, build, reviewLatest, committed };
 }
 
 export function WorkflowTaskForm({ controller, disabled, variant, resourceCode, recordId }: {
@@ -84,7 +91,7 @@ export function WorkflowTaskForm({ controller, disabled, variant, resourceCode, 
   recordId?: string;
 }) {
   const { modal } = App.useApp();
-  const { form, source, current, dirty, stale } = controller;
+  const { form, source, latest, current, dirty, stale } = controller;
   useUnsavedChangesGuard({ when: dirty, preventNavigation: disabled,
     message: disabled ? '补填资料正在提交，请先确认原操作结果。' : '补填资料尚未提交，离开后将丢失。' });
   useEffect(() => {
@@ -101,11 +108,19 @@ export function WorkflowTaskForm({ controller, disabled, variant, resourceCode, 
   return <section className={`oxa-workflow-task-form oxa-workflow-task-form-${variant}`} aria-label={source.page.title}>
     <Typography.Title level={4}>{source.page.title}</Typography.Title>
     <Typography.Paragraph type="secondary">保存补填后，任务仍由你继续办理。同意或重新提交时会一起提交资料。</Typography.Paragraph>
-    {stale && <Alert showIcon type="warning" title="业务资料已更新，当前输入已保留" description="请核对最新资料后再提交。" action={<Space wrap>
+    {stale && <Alert showIcon type="warning" title="业务资料已更新，当前输入已保留" description={<>
+      <p>请核对最新资料后再提交。</p>
+      {latest && workflowTaskFormReviewFields(source, latest, current)
+        .map(field => <div className="oxa-workflow-task-value-review" key={field.code}>
+          <strong>{latest.fields[field.code]?.label || field.code}</strong>
+          <div><span>最新已保存</span><SurfaceFieldValue field={{ ...latest.fields[field.code]!, key: field.code }} value={latest.values[field.code]} resourceCode={resourceCode} mobile={variant === 'mobile'} /></div>
+          <div><span>我的输入</span><SurfaceFieldValue field={{ ...latest.fields[field.code]!, key: field.code }} value={current[field.code]} resourceCode={resourceCode} mobile={variant === 'mobile'} /></div>
+        </div>)}
+    </>} action={<Space wrap>
       <Button disabled={disabled} onClick={() => review(true)}>保留输入并核对</Button>
       <Button disabled={disabled} onClick={() => review(false)}>采用最新资料</Button>
     </Space>} />}
-    <Form form={form} layout="vertical" initialValues={formValues(source)} disabled={disabled}>
+    <Form form={form} layout="vertical" initialValues={formValues(source)} disabled={disabled || stale}>
       {workflowTaskPageFieldState(source.page, current).filter(state => state.visible).map(state => {
         const field = { ...source.fields[state.code]!, key: state.code, requiredHint: false };
         return state.readonly
@@ -113,7 +128,7 @@ export function WorkflowTaskForm({ controller, disabled, variant, resourceCode, 
               <SurfaceFieldValue field={field} value={source.values[state.code]} resourceCode={resourceCode} mobile={variant === 'mobile'} />
             </div></div>
           : <div key={state.code} className={state.required ? 'oxa-workflow-task-required' : undefined}>
-              <Control field={field} disabled={disabled} operation="update" resourceCode={resourceCode} recordId={recordId} />
+              <Control field={field} disabled={disabled || stale} operation="update" resourceCode={resourceCode} recordId={recordId} />
               {state.required && <Typography.Text className="oxa-workflow-task-required-hint" type="secondary">完成任务前必填</Typography.Text>}
             </div>;
       })}

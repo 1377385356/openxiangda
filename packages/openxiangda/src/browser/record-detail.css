@@ -112,6 +112,10 @@
 .oxa-workflow-task-content { min-width: 0; background: var(--ant-color-bg-container); border: 1px solid var(--ant-color-border-secondary); border-radius: 8px; padding: 20px 22px; margin-top: 20px; }
 .oxa-workflow-task-content .oxa-workflow-task-form { margin: 0; padding: 0; border-top: 0; }
 .oxa-workflow-task-content > .ant-alert { margin-bottom: 16px; }
+.oxa-workflow-task-value-review { margin-block: 12px; }
+.oxa-workflow-task-value-review > strong { display: block; margin-bottom: 6px; }
+.oxa-workflow-task-value-review > div { display: flex; flex-wrap: wrap; gap: 8px 16px; overflow-wrap: anywhere; }
+.oxa-workflow-task-value-review > div > span:first-child { color: var(--ant-color-text-secondary); min-width: 80px; }
 .oxa-record-detail-mobile .oxa-workflow-task-content { padding: 18px 16px; }
 .oxa-record-detail .oxa-workflow-current-node.is-success { color: var(--ant-color-success-text); background: var(--ant-color-success-bg); }
 .oxa-record-detail .oxa-workflow-current-node.is-error { color: var(--ant-color-error-text); background: var(--ant-color-error-bg); }

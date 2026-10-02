@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import dayjs from 'dayjs';
-import { workflowTaskFormPatch } from '../src/browser/components/workflow/WorkflowTaskForm';
+import { workflowTaskFormPatch, workflowTaskFormReviewFields } from '../src/browser/components/workflow/WorkflowTaskForm';
 import { clearPendingWorkflowTaskCommand, readPendingWorkflowTaskCommand, workflowCommandTokenDigest, workflowTaskCommandScope,
   workflowTaskCommandWasRejected, writePendingWorkflowTaskCommand } from '../src/browser/workflow-task-command-recovery';
 
@@ -19,6 +19,12 @@ test('task patch keeps CAS and omits readonly, hidden and unchanged fields', () 
 test('date edits use the same canonical codec as Native resource forms', () => {
   assert.deepEqual(workflowTaskFormPatch(source, { ...source.values, date: dayjs('2026-10-03') }),
     { expectedRevision: 3, values: { date: '2026-10-03' } });
+});
+test('conflict comparison exposes only fresh-page visible editable values, including other participants changes', () => {
+  const latest = { ...source, expectedRevision: 4, values: { ...source.values, title: '最新只读标题', amount: 222, needsReason: false, reason: '最新隐藏说明' } };
+  const fields = workflowTaskFormReviewFields(source, latest, { ...source.values, amount: 111, unknown: '未声明输入' });
+  assert.deepEqual(fields.map(field => field.code), ['amount', 'needsReason']);
+  assert.deepEqual(workflowTaskFormReviewFields(source, { ...source, expectedRevision: 4 }, source.values), []);
 });
 test('reloaded task recovery stores only a locator and cannot clear a newer command', async () => {
   const data = new Map<string, string>();
