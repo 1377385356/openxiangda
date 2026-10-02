@@ -3,6 +3,35 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.47.3",
+      "status": "reviewed",
+      "title": "任务条件材料首次显示的空值修复",
+      "summary": "任务根字段及子表首次显示未填写的附件或图片时，使用标准空数组完成保存和私有草稿编码。",
+      "newFeatures": [],
+      "fixes": [
+        "任务附件和图片控件未填写时统一编码为空数组，避免条件字段首次显示后因null违反Native值合同。",
+        "根字段和owned子行共用编码规则，保留子行身份、只读和隐藏字段提交边界。"
+      ],
+      "affectedUsers": [
+        "使用标准流程任务表单、条件附件或图片字段及任务私有草稿的OpenXiangda 2.0应用。"
+      ],
+      "upgradeSteps": [
+        "按精确版本升级SDK及同批CLI；首次条件激活还需要平台Server配套省略本次空材料写入。本批仅供本地验证，不执行npm发布。"
+      ],
+      "knownLimitations": [
+        "上传及非空材料引用仍按已经保存的页面条件校验，需要先保存使字段生效。",
+        "不调整源流程子表容量，不代表学校完整业务迁移验收。"
+      ],
+      "issues": [],
+      "compatibility": {
+        "node": ">=22.12.0",
+        "platform": "OpenXiangda 2.0；不改变1.x运行时"
+      },
+      "sha256": "508dede83d96b9a52a29535ce76d7f7cd1bfbfb95e48d04eb84015fe09d7b586",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.47.3"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.47.2",
       "status": "reviewed",
       "title": "任务主要操作与附件可访问性",
