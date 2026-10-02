@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.40.0",
+  "version": "2.40.1",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -73,13 +73,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.30",
+    "openxiangda-cli": "2.6.31",
     "openxiangda-contracts": "2.40.0",
-    "openxiangda-devkit-core": "2.40.0",
+    "openxiangda-devkit-core": "2.40.1",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.69",
+    "openxiangda-mcp": "2.0.70",
     "openxiangda-nest": "2.13.0",
-    "openxiangda-skill-kit": "2.3.47",
+    "openxiangda-skill-kit": "2.3.48",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -145,40 +145,32 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.40.0",
+    "version": "2.40.1",
     "status": "reviewed",
-    "title": "OpenXiangda 2.40.0：持久业务步骤与原结果恢复",
-    "summary": "固定版本的计算和有回执的外部业务步骤成功后再推进流程；已收结果受阻时保留原执行键并恢复后续流转。",
-    "newFeatures": [
-      "Workflow action 声明、闭合输入输出、步骤事实来源和可读图。",
-      "Nest 处理器使用平台持久回执；副作用每次先核对原执行键。",
-      "标准管理端与公开 SDK 共用受阻步骤恢复组件。"
-    ],
+    "title": "OpenXiangda 2.40.1：业务步骤订阅与恢复保护",
+    "summary": "保留固定处理器过滤条件，并保护未知恢复结果的原请求与宿主导航。",
+    "newFeatures": [],
     "fixes": [
-      "浏览器步骤合同与 Node 签名、摘要计算分离。"
+      "应用规范化保留 workflowStep 过滤条件，两端编译器生成相同固定版本处理器合同与能力闭包。",
+      "共享步骤恢复组件保留未知请求，向原导航 owner 报告 dirty/busy/unknown，明确拒绝可重新预览。"
     ],
     "affectedUsers": [
-      "需要计算后分支、审批间业务步骤或有回执的集成操作的 V2 应用开发者。"
+      "声明持久业务步骤的 V2 应用开发者。"
     ],
     "upgradeSteps": [
-      "使用机器确定的同批包并冻结锁文件；本批仅本地 tgz 测试，不发布 npm。",
-      "平台内核及正式 SQL 同批更新，自动提供 workflow.durable-business-step@1.0.0。",
-      "为每个固定版本保留处理器实现、订阅和闭合 Schema；应用通过统一 openxiangda 入口使用。"
+      "升级同批本地包、冻结锁文件后重新检查；本批不发布 npm。"
     ],
     "knownLimitations": [
-      "字段权限继续由页面代码维护，流程连线、代码和条件只读。",
-      "步骤后不支持未预备的 HTTP provider 或发起人选人；先产生有 Schema 的人员结果再使用原生解析器。",
-      "输入输出各 16KiB、回执 2KiB、200 节点；自动推进恢复最多 5 次、每批 20。",
-      "学校迁移和生产发布需要独立验收；此更新说明不代表实际运行验收完成。"
+      "沿用 2.40.0 的步骤 Schema、容量、恢复与固定拓扑边界，真实运行验收单独记录。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
       "workspaceGenerations": "v2",
-      "platform": "配套 Workflow 内核、252 SQL 迁移及 workflow.durable-business-step@1.0.0；无新增默认关闭开关。",
-      "v1": "原 V1 分发与运行时保持。"
+      "platform": "配套 workflow.durable-business-step@1.0.0 与正式 SQL；不新增默认关闭开关。",
+      "v1": "原 V1 引擎保持。"
     },
-    "sha256": "eceec21f4aab91f4a4858c11f4c205e1467881349a4d60038e2f8d52424fdeb2",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.40.0"
+    "sha256": "6298bde670c7877e61b5439c10d4e66d696615587b1d802ff2749443c2bb570c",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.40.1"
   }
 }
