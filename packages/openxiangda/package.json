@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.38.0",
+  "version": "2.39.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -73,13 +73,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.27",
-    "openxiangda-contracts": "2.38.0",
-    "openxiangda-devkit-core": "2.38.0",
+    "openxiangda-cli": "2.6.28",
+    "openxiangda-contracts": "2.39.0",
+    "openxiangda-devkit-core": "2.39.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.66",
-    "openxiangda-nest": "2.12.0",
-    "openxiangda-skill-kit": "2.3.44",
+    "openxiangda-mcp": "2.0.67",
+    "openxiangda-nest": "2.12.1",
+    "openxiangda-skill-kit": "2.3.45",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -145,42 +145,39 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.38.0",
+    "version": "2.39.0",
     "status": "reviewed",
-    "title": "OpenXiangda 2.38.0：限时审批代理维护与回执恢复",
-    "summary": "标准后台、应用工具与个人页面共享限时审批代理维护，支持合法候选分页、变更核对、修订冲突和原操作回执恢复。",
+    "title": "OpenXiangda 2.39.0：声明式自动抄送与同源管理",
+    "summary": "固定流程增加自动抄送节点，共享图与配置编辑器表达接收来源、空名单策略和通知语义。",
     "newFeatures": [
-      "WorkflowDelegationManager 及浏览器、Devkit、Nest SDK 提供本人职责代理创建、相关规则查询和授权撤销。",
-      "预览复用真实代理写路径并完整回滚；执行原子保存规则及回执，同键重放返回原结果。",
-      "管理视图区分生效中、尚未开始、已过期、已撤销和资格失效，显示双方姓名、冻结职责修订及当前资格诊断。",
-      "现有导航保护增加 preventNavigation，提交中及结果未知时保留原请求，普通未提交草稿可明确放弃。"
+      "cc 节点使用七种事务内原生人员来源，按用户去重，单次最多20人。",
+      "共享编译器、SDK图和配置组件支持自动抄送的固定next与有界接收来源维护。"
     ],
     "fixes": [
-      "代理任务显示实际代理人的姓名，创建及办理复核原生账号、职责修订、范围和时间；拒绝重叠的链式或环形代理。",
-      "浏览器及 Nest 代理读取、写入严格绑定当前应用环境，拒绝夹带其他环境。"
+      "合同与Devkit公开导出自动抄送校验；CLI模板依赖随同批包升级。"
     ],
     "affectedUsers": [
-      "需要临时委托本人审批职责的用户、查看及撤销代理的应用超级管理员、嵌入通用流程维护工具的 V2 开发者。"
+      "需要在固定流程中自动抄送及嵌入通用维护页面的V2开发者和管理员。"
     ],
     "upgradeSteps": [
-      "升级机器生成的同批 openxiangda 2.38.0、contracts、CLI 及 SDK 组合并更新冻结锁文件；实验室可使用同批本地 tgz。",
-      "先执行平台正式 SQL 迁移及升级；workflow.delegation-management@1.0.0 随 Native2 自动提供，无额外开关。",
-      "将共享组件草稿回调接入原导航所有者，验证本人创建、管理员撤销、资格变化、旧任务冻结和未知结果恢复。"
+      "升级机器生成的同批包并冻结锁文件；本地实验室使用同批tgz，未发布npm。",
+      "先升级平台并执行WorkflowAutomaticCc正式SQL；workflow.automatic-cc@1.0.0自动提供，无额外开关。",
+      "页面代码在crud.detail和subject.factProjection选择允许的详情及事实字段，验证普通抄送身份的读取和拒绝。"
     ],
     "knownLimitations": [
-      "第一版代理限于本人有效职责和同角色、覆盖范围的成员；超管只有全应用查看和撤销权，不能替他人代建或委托超管身份。",
-      "创建和撤销只影响后续分派，已有待办保留原快照；办理仍复核资格及冻结时间窗口。",
-      "回执保存提交时结果，当前状态以重新读取的规则为准；回执 404 不代表未提交。",
-      "字段权限由页面逻辑负责。本批本地包、实验室执行和浏览器验收分别记录，不代表 npm 发布、完整流程能力计划或学校生产迁移完成。"
+      "自动抄送不支持HTTP应用provider、申请人交互选人或审批代理；角色来源超过200条有效成员行明确拒绝。",
+      "空名单block回滚触发动作，skip仅跳过真实空名单；非法账号、配置与超限均失败。",
+      "管理员不编辑连线、空人策略、通知或字段权限；历史接收人与配置保持冻结。",
+      "当前交付为本地测试组合，普通账号页面与真实持久通知仍按W11独立验收；不代表学校迁移、生产镜像或npm发布完成。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
       "workspaceGenerations": "v2",
-      "platform": "原 Native Users/AuthZ 与 Workflow owner；新增正式代理修订和回执迁移，稳定生产管理端保留已发布 SDK 组合。",
-      "v1": "沿用原 V1 分发与运行时。"
+      "platform": "需要支持workflow.automatic-cc@1.0.0的Workflow/Notification Hub和正式向前SQL；运行过cc的固定版本不能回退到旧内核。",
+      "v1": "沿用原V1分发与运行时。"
     },
-    "sha256": "f5a79262cbe33463570a146da5dc56bbe79424e265fbab8cc37221c6389a91b4",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.38.0"
+    "sha256": "96cd4c08946dee2ce5884719b36447d42ecacad26e224eebaab912b7c3ce6256",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.39.0"
   }
 }

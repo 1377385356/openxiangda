@@ -3,6 +3,43 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.39.0",
+      "status": "reviewed",
+      "title": "OpenXiangda 2.39.0：声明式自动抄送与同源管理",
+      "summary": "固定流程增加自动抄送节点，共享图与配置编辑器表达接收来源、空名单策略和通知语义。",
+      "newFeatures": [
+        "cc 节点使用七种事务内原生人员来源，按用户去重，单次最多20人。",
+        "共享编译器、SDK图和配置组件支持自动抄送的固定next与有界接收来源维护。"
+      ],
+      "fixes": [
+        "合同与Devkit公开导出自动抄送校验；CLI模板依赖随同批包升级。"
+      ],
+      "affectedUsers": [
+        "需要在固定流程中自动抄送及嵌入通用维护页面的V2开发者和管理员。"
+      ],
+      "upgradeSteps": [
+        "升级机器生成的同批包并冻结锁文件；本地实验室使用同批tgz，未发布npm。",
+        "先升级平台并执行WorkflowAutomaticCc正式SQL；workflow.automatic-cc@1.0.0自动提供，无额外开关。",
+        "页面代码在crud.detail和subject.factProjection选择允许的详情及事实字段，验证普通抄送身份的读取和拒绝。"
+      ],
+      "knownLimitations": [
+        "自动抄送不支持HTTP应用provider、申请人交互选人或审批代理；角色来源超过200条有效成员行明确拒绝。",
+        "空名单block回滚触发动作，skip仅跳过真实空名单；非法账号、配置与超限均失败。",
+        "管理员不编辑连线、空人策略、通知或字段权限；历史接收人与配置保持冻结。",
+        "当前交付为本地测试组合，普通账号页面与真实持久通知仍按W11独立验收；不代表学校迁移、生产镜像或npm发布完成。"
+      ],
+      "issues": [],
+      "compatibility": {
+        "node": ">=24",
+        "workspaceGenerations": "v2",
+        "platform": "需要支持workflow.automatic-cc@1.0.0的Workflow/Notification Hub和正式向前SQL；运行过cc的固定版本不能回退到旧内核。",
+        "v1": "沿用原V1分发与运行时。"
+      },
+      "sha256": "96cd4c08946dee2ce5884719b36447d42ecacad26e224eebaab912b7c3ce6256",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.39.0"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.38.0",
       "status": "reviewed",
       "title": "OpenXiangda 2.38.0：限时审批代理维护与回执恢复",
