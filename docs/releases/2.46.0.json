@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.46.0",
+  "status": "reviewed",
+  "title": "OpenXiangda 2.46.0：任务普通子表办理",
+  "summary": "固定任务页面支持普通子行字段和受控增删排序，主子数据与原审批命令统一提交。",
+  "newFeatures": [
+    "通过 taskPages 子表字段声明子字段与 create/delete/reorder；编译器自动要求 workflow.task-owned-subtables@1.0.0。",
+    "本人草稿保存完整子行意图及原版本；PC和手机复用共享子表组件与字段值协议。"
+  ],
+  "fixes": [
+    "普通子行修改导致版本冲突时保留输入；明确核对可保留本人差量和其他处理人的变化。",
+    "完成前子行必填错误给出行序号与字段；私有暂存和保存补填仍允许未填完整。"
+  ],
+  "affectedUsers": ["需要在流程任务中维护普通子行的办理人、应用开发者与平台维护者。"],
+  "upgradeSteps": ["使用同批SDK、contracts和CLI；服务端运行新增任务owned子表正式SQL迁移并支持能力后重建应用，无新增配置开关。"],
+  "knownLimitations": [
+    "本切片仅单层普通子行；子行附件、图片、签名和富文本编辑保留后续，编译器明确拒绝。",
+    "任务核验主版本、全体观察子行版本和行集合；普通child并发新增尚无通用父集合锁，不承诺跨所有child写入的全局行数串行约束。",
+    "字段权限由页面代码维护。本轮只准备本地测试包，未发布npm或迁移学校生产数据。"
+  ],
+  "issues": [],
+  "compatibility": {"node": ">=24", "workspaceGenerations": "v2", "platform": "workflow.task-owned-subtables@1.0.0 + workflow.task-pages@1.0.0", "v1": "1.x 引擎保持独立。"}
+}
