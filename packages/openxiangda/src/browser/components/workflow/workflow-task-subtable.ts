@@ -1,6 +1,7 @@
 import type { WorkflowTaskFormSurface, WorkflowTaskSubtableRow } from 'openxiangda-contracts/browser';
 import type { SubtableDraftRow } from '../platform-fields/subtable-value';
-import { fieldValueForData, fieldValueForForm } from '../platform-fields/field-form-codec';
+import { fieldValueForForm } from '../platform-fields/field-form-codec';
+import { workflowTaskFieldValueForData } from './workflow-task-field-codec';
 import { workflowLaunchContractJsonEqual } from '../../workflow-launch';
 import { workflowTaskPageFieldState } from 'openxiangda-contracts/browser';
 
@@ -19,7 +20,7 @@ export function workflowTaskSubtableDataRows(source: WorkflowTaskFormSurface, co
   const surface = source.subtables?.[code];
   if (!metadata || !surface || !Array.isArray(value)) return [];
   return (value as SubtableDraftRow[]).map(row => {
-    const values = Object.fromEntries(Object.entries(row.data).map(([code, entry]) => [code, fieldValueForData(surface.fields[code], entry) ?? null]));
+    const values = Object.fromEntries(Object.entries(row.data).map(([code, entry]) => [code, workflowTaskFieldValueForData(surface.fields[code], entry)]));
     const editable = workflowTaskPageFieldState({ title: code, fields: metadata.fields }, { ...row.snapshot, ...values }).filter(field => field.visible && !field.readonly);
     return {
     key: row.key, state: row.state, ...(row.id ? { id: row.id, revision: row.revision } : {}),

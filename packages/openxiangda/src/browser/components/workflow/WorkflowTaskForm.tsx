@@ -4,7 +4,8 @@ import type { WorkflowTaskDraft, WorkflowTaskFormInput, WorkflowTaskFormSurface 
 import { applyWorkflowTaskPageValues, applyWorkflowTaskSubtableRows, workflowTaskPageFieldState } from 'openxiangda-contracts/browser';
 import { useUnsavedChangesGuard } from '../../navigation-guard';
 import { workflowLaunchContractJsonEqual } from '../../workflow-launch';
-import { fieldValueForData, fieldValueForForm } from '../platform-fields/field-form-codec';
+import { fieldValueForForm } from '../platform-fields/field-form-codec';
+import { workflowTaskFieldValueForData } from './workflow-task-field-codec';
 import { MobileSurfaceFieldControl, SurfaceFieldControl, SurfaceFieldValue } from '../resource/SurfaceFields';
 import type { WorkflowFileBinding } from '../../platform-client';
 import { useWorkflowTaskFiles, WorkflowTaskFileRecovery } from './WorkflowTaskFiles';
@@ -14,7 +15,7 @@ import { rebaseWorkflowTaskSubtable, workflowTaskSubtableDataRows, workflowTaskS
 
 export function workflowTaskFormValues(source: WorkflowTaskFormSurface, values: Record<string, unknown>) {
   return Object.fromEntries(source.page.fields.map(field => [field.code,
-    field.readonly ? source.values[field.code] : field.subtable ? workflowTaskSubtableDataRows(source, field.code, values[field.code]) : fieldValueForData(source.fields[field.code], values[field.code]) ?? null]));
+    field.readonly ? source.values[field.code] : field.subtable ? workflowTaskSubtableDataRows(source, field.code, values[field.code]) : workflowTaskFieldValueForData(source.fields[field.code], values[field.code])]));
 }
 
 export function workflowTaskFormPatch(source: WorkflowTaskFormSurface, values: Record<string, unknown>): WorkflowTaskFormInput {

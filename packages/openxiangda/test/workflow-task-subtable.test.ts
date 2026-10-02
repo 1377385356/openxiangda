@@ -17,6 +17,18 @@ test('task subtable uses native codecs and omits readonly and currently hidden f
   assert.deepEqual(result[0]!.values, { name: '原事项', quantity: 0, date: '2026-10-02', needsReason: false });
   assert.equal(rows[0]!.snapshot?.locked, '只读');
 });
+test('a row condition becoming visible preserves row identity and emits an empty file array for draft and save', () => {
+  const material = structuredClone(source);
+  material.page.fields[0].subtable.fields.push({ code: 'proof', visibleWhen: { op: 'path', path: 'values.needsReason' } });
+  material.subtables.items.fields.proof = { type: 'file' };
+  const rows = workflowTaskSubtableFormRows(material, 'items', material.values.items);
+  rows[0]!.data.needsReason = true; rows[0]!.data.proof = undefined;
+  const result = workflowTaskSubtableDataRows(material, 'items', rows)[0]!;
+  assert.equal(result.id, id); assert.equal(result.revision, 2);
+  assert.deepEqual(result.values.proof, []);
+  rows[0]!.data.needsReason = false;
+  assert.equal(Object.hasOwn(workflowTaskSubtableDataRows(material, 'items', rows)[0]!.values, 'proof'), false);
+});
 
 test('explicit keep preserves actor edits and other people changes with fresh row versions', () => {
   const latest = { ...source, values: { items: [{ ...source.values.items[0], revision: 3, values: { ...source.values.items[0].values, name: '别人改名称' } }, { key: extra, id: extra, revision: 1, state: 'persisted', values: { name: '别人新增' } }] } };

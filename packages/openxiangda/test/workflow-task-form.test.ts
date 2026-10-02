@@ -21,6 +21,14 @@ test('date edits use the same canonical codec as Native resource forms', () => {
   assert.deepEqual(workflowTaskFormPatch(source, { ...source.values, date: dayjs('2026-10-03') }),
     { expectedRevision: 3, values: { date: '2026-10-03' } });
 });
+test('newly visible file controls submit canonical empty arrays without changing signature values', () => {
+  const conditional: any = { ...source, page: { ...source.page, fields: [...source.page.fields,
+    { code: 'file', visibleWhen: { op: 'path', path: 'values.needsReason' } }, { code: 'image' }, { code: 'signature' }] },
+    fields: { ...source.fields, file: { type: 'file' }, image: { type: 'image' }, signature: { type: 'signature' } },
+    values: { ...source.values, needsReason: false } };
+  assert.deepEqual(workflowTaskFormPatch(conditional, { ...conditional.values, needsReason: true, file: undefined, image: null, signature: undefined }).values,
+    { needsReason: true, file: [], image: [], signature: null });
+});
 test('conflict comparison exposes only fresh-page visible editable values, including other participants changes', () => {
   const latest = { ...source, expectedRevision: 4, values: { ...source.values, title: '最新只读标题', amount: 222, needsReason: false, reason: '最新隐藏说明' } };
   const fields = workflowTaskFormReviewFields(source, latest, { ...source.values, amount: 111, unknown: '未声明输入' });
