@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { buildResourceFormOperations } from '../src/browser/components/resource/resource-form-operations';
 import test from 'node:test';
 import type { DataResourceSurface } from 'openxiangda-contracts/browser';
 import {
@@ -18,6 +19,17 @@ const childSurface: DataResourceSurface = {
     },
   },
 };
+
+test('seven full 50-row replacements form one 701-operation parent CAS transaction', () => {
+  const fields = Array.from({ length: 7 }, (_, i) => ({ key: `items${i}`, subtable: { resourceCode: `children-${i}`, foreignKey: 'parent_id', orderField: 'display_order', maxRows: 50 } }));
+  const values = Object.fromEntries(fields.map(f => [f.key, [...Array.from({ length: 50 }, (_, i) => ({ key: `${f.key}-${i}`, state: 'deleted', id: `${f.key}-${i}`, revision: 2, data: {} })), ...Array.from({ length: 50 }, (_, i) => ({ key: `new-${i}`, state: 'created', data: { description: `new ${i}` } }))]]));
+  const definitions = Object.fromEntries(fields.map(f => [f.subtable.resourceCode, { code: f.subtable.resourceCode, surface: childSurface }]));
+  const operations = buildResourceFormOperations({ mode: 'edit', resourceCode: 'requests', record: { id: 'parent-1', revision: 4 }, data: {}, values, subtableFields: fields as any, definitions: definitions as any, canWrite: () => true, canDelete: () => true });
+  assert.equal(operations.length, 701);
+  assert.equal(operations.filter(value => value.operation === 'delete').length, 350);
+  assert.equal(operations.filter(value => value.operation === 'create').length, 350);
+  assert.deepEqual(operations[0], { operation: 'update', resourceCode: 'requests', id: 'parent-1', expectedRevision: 4, data: {} });
+});
 
 test('plans parent references, updates, deletes and deterministic reorder', () => {
   const rows: SubtableDraftRow[] = [

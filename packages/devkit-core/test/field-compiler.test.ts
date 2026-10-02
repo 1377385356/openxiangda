@@ -553,15 +553,15 @@ test('rejects a subtable order field that is not a writable required integer', (
 
 test('rejects aggregate subtable capacity above one atomic transaction', () => {
   const declaration = allFieldDeclaration();
-  declaration.data!.resources[0]!.fields.push({
-    code: 'secondary_children',
+  for (let index = 0; index < 4; index++) declaration.data!.resources[0]!.fields.push({
+    code: `secondary_children_${index}`,
     type: 'subtable',
     label: 'Secondary children',
     subtable: {
       resourceCode: 'child-records',
       foreignKey: 'parent_id',
       orderField: 'display_order',
-      maxRows: 30,
+      maxRows: 100,
     },
   });
   assert.throws(

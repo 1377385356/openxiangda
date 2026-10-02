@@ -1,4 +1,5 @@
 import type { DataFieldDefinition, DataFieldType } from './types.js';
+import { DATA_SUBTABLE_MAX_ROWS } from './native-compiler/data-capacity.js';
 
 type JsonSchema = Record<string, unknown>;
 
@@ -230,7 +231,7 @@ export const FIELD_VALUE_SCHEMAS = {
   'serial-number': { type: 'string', minLength: 1, maxLength: 255 },
   subtable: {
     type: 'array',
-    maxItems: 49,
+    maxItems: DATA_SUBTABLE_MAX_ROWS,
     items: { type: 'object', additionalProperties: true },
   },
 } as const satisfies Record<DataFieldType, JsonSchema>;

@@ -1,4 +1,4 @@
-import { parseNativeUniqueKeys } from 'openxiangda-contracts';
+import { parseNativeUniqueKeys, DATA_SUBTABLE_MAX_TOTAL_ROWS } from 'openxiangda-contracts';
 import type { ManagedConcurrencyDeclaration } from 'openxiangda-contracts';
 import { validateManagedConcurrency } from 'openxiangda-contracts/native-compiler';
 import { normalizeDecimalReservationEventDeclaration, decimalReservationEventContext } from 'openxiangda-contracts';
@@ -7521,11 +7521,11 @@ export function validateAppDeclaration(value: unknown): Diagnostic[] {
       const configured = Number(object(field.subtable).maxRows);
       return total + (Number.isSafeInteger(configured) ? configured : 20);
     }, 0);
-    if (aggregateMaxRows > 49) {
+    if (aggregateMaxRows > DATA_SUBTABLE_MAX_TOTAL_ROWS) {
       diagnostics.push(
         diagnostic(
           'APP_CONFIG_DATA_SUBTABLE_AGGREGATE_MAX_ROWS_EXCEEDED',
-          '同一父资源的所有子表 maxRows 总和不能超过 49',
+          `同一父资源的所有子表 maxRows 总和不能超过 ${DATA_SUBTABLE_MAX_TOTAL_ROWS}`,
           `data.resources[${declaration.resourceIndex}].fields`
         )
       );

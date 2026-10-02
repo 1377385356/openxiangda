@@ -1,9 +1,12 @@
 import type { DataFileUploadPlan, WorkflowExpression } from '../types.js';
 import type { DataFieldSurface } from '../surface.js';
+import { DATA_SUBTABLE_MAX_ROWS, DATA_SUBTABLE_MAX_TOTAL_ROWS } from './data-capacity.js';
 
 export const WORKFLOW_TASK_PAGE_MAX_FIELDS = 64;
-export const WORKFLOW_TASK_PAGE_MAX_BYTES = 65_536;
-export const WORKFLOW_TASK_SUBTABLE_MAX_ROWS = 49;
+export const WORKFLOW_TASK_PAGE_MAX_BYTES = 1024 * 1024;
+export const WORKFLOW_TASK_PAGE_DEFINITION_MAX_BYTES = 65_536;
+export const WORKFLOW_TASK_SUBTABLE_MAX_ROWS = DATA_SUBTABLE_MAX_ROWS;
+export const WORKFLOW_TASK_SUBTABLE_MAX_TOTAL_ROWS = DATA_SUBTABLE_MAX_TOTAL_ROWS;
 
 export interface WorkflowTaskSubtablePage {
   fields: WorkflowTaskPageField[];
@@ -185,7 +188,7 @@ type TaskResourceField = { type: string; system?: boolean; hidden?: boolean; wid
 export function validateWorkflowTaskPages(definition: Definition, resourceFields?: ReadonlyMap<string, TaskResourceField>, children?: ReadonlyMap<string, ReadonlyMap<string, TaskResourceField>>): string[] {
   const diagnostics: string[] = [];
   const pages = definition.taskPages;
-  if (pages !== undefined && (!object(pages) || Object.keys(pages).length === 0 || Object.keys(pages).length > 16 || bytes(pages) > WORKFLOW_TASK_PAGE_MAX_BYTES)) return ['WORKFLOW_TASK_PAGES_INVALID'];
+  if (pages !== undefined && (!object(pages) || Object.keys(pages).length === 0 || Object.keys(pages).length > 16 || bytes(pages) > WORKFLOW_TASK_PAGE_DEFINITION_MAX_BYTES)) return ['WORKFLOW_TASK_PAGES_INVALID'];
   for (const [code, page] of Object.entries(pages || {})) {
     const pointer = `taskPages.${code}`;
     if (!codePattern.test(code) || forbidden.has(code) || !exact(page, ['title', 'fields']) || typeof page.title !== 'string' || !page.title.trim() || page.title.length > 160 || !Array.isArray(page.fields) || !page.fields.length || page.fields.length > WORKFLOW_TASK_PAGE_MAX_FIELDS) {
@@ -206,7 +209,7 @@ export function validateWorkflowTaskPages(definition: Definition, resourceFields
         if (field.subtable && resource?.subtable) {
           const relation = resource.subtable;
           rowBudget += relation.maxRows ?? 20;
-          if (childResources.has(relation.resourceCode) || !Number.isSafeInteger(relation.maxRows ?? 20) || (relation.maxRows ?? 20) < 1 || !fieldPattern.test(relation.foreignKey) || !fieldPattern.test(relation.orderField) || relation.foreignKey === relation.orderField) diagnostics.push(`WORKFLOW_TASK_SUBTABLE_RELATION_INVALID:${pointer}.${field.code}`);
+          if (childResources.has(relation.resourceCode) || !Number.isSafeInteger(relation.maxRows ?? 20) || (relation.maxRows ?? 20) < 1 || (relation.maxRows ?? 20) > WORKFLOW_TASK_SUBTABLE_MAX_ROWS || !fieldPattern.test(relation.foreignKey) || !fieldPattern.test(relation.orderField) || relation.foreignKey === relation.orderField) diagnostics.push(`WORKFLOW_TASK_SUBTABLE_RELATION_INVALID:${pointer}.${field.code}`);
           childResources.add(relation.resourceCode);
           const child = children?.get(relation.resourceCode);
           if (children && (!child || !['uuid', 'resource-ref.single'].includes(child.get(relation.foreignKey)?.type || '') || child.get(relation.orderField)?.type !== 'number.integer')) diagnostics.push(`WORKFLOW_TASK_SUBTABLE_RELATION_INVALID:${pointer}.${field.code}`);
@@ -222,7 +225,7 @@ export function validateWorkflowTaskPages(definition: Definition, resourceFields
         else diagnostics.push(...validateWorkflowTaskPages({ taskPages: { child: { title: '子行', fields: field.subtable.fields } } }, children?.get(resourceFields?.get(field.code)?.subtable?.resourceCode || '')).map(error => `${error}:${pointer}.${field.code}`));
       }
     }
-    if (rowBudget > WORKFLOW_TASK_SUBTABLE_MAX_ROWS || rowBudget < 0 || !Number.isSafeInteger(rowBudget)) diagnostics.push(`WORKFLOW_TASK_SUBTABLE_BUDGET_EXCEEDED:${pointer}`);
+    if (rowBudget > WORKFLOW_TASK_SUBTABLE_MAX_TOTAL_ROWS || rowBudget < 0 || !Number.isSafeInteger(rowBudget)) diagnostics.push(`WORKFLOW_TASK_SUBTABLE_BUDGET_EXCEEDED:${pointer}`);
   }
   for (const [id, node] of Object.entries(definition.nodes || {})) if (object(node) && node.taskPageCode !== undefined) {
     if (node.kind !== 'approval' || typeof node.taskPageCode !== 'string' || !object(pages) || !Object.hasOwn(pages, node.taskPageCode)) diagnostics.push(`WORKFLOW_TASK_PAGE_NOT_FOUND:${id}`);
@@ -255,7 +258,7 @@ export function workflowTaskSubtableRows(page: WorkflowTaskSubtablePage, records
 export function applyWorkflowTaskSubtableRows(field: WorkflowTaskPageField, maximum: number, current: Array<Record<string, unknown>>, input: unknown, required: boolean, checkRevisions = true): WorkflowTaskSubtableRow[] {
   const page = field.subtable;
   const fail = (code: string): never => { throw new WorkflowTaskPageError(code, field.code); };
-  if (!page || !Number.isSafeInteger(maximum) || maximum < 1 || maximum > WORKFLOW_TASK_SUBTABLE_MAX_ROWS || !Array.isArray(input) || input.length > WORKFLOW_TASK_SUBTABLE_MAX_ROWS || bytes(input) > WORKFLOW_TASK_PAGE_MAX_BYTES || !boundedValues(input)) return fail('WORKFLOW_TASK_SUBTABLE_VALUES_INVALID');
+  if (!page || !Number.isSafeInteger(maximum) || maximum < 1 || maximum > WORKFLOW_TASK_SUBTABLE_MAX_ROWS || !Array.isArray(input) || input.length > 2 * maximum || bytes(input) > WORKFLOW_TASK_PAGE_MAX_BYTES || !boundedValues(input)) return fail('WORKFLOW_TASK_SUBTABLE_VALUES_INVALID');
   const records = new Map(current.map(record => [String(record.id), record]));
   const keys = new Set<string>();
   const ids = new Set<string>();
@@ -295,7 +298,7 @@ export function applyWorkflowTaskSubtableRows(field: WorkflowTaskPageField, maxi
 }
 
 function boundedValues(value: unknown, budget = { members: 0 }, depth = 0): boolean {
-  if (++budget.members > 5000 || depth > 12) return false;
+  if (++budget.members > 50000 || depth > 12) return false;
   if (value === null || typeof value === 'boolean') return true;
   if (typeof value === 'string') return value.length <= WORKFLOW_TASK_PAGE_MAX_BYTES;
   if (typeof value === 'number') return Number.isFinite(value);

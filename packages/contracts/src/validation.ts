@@ -1,3 +1,4 @@
+import { DATA_TRANSACTION_MAX_BYTES, DATA_TRANSACTION_MAX_OPERATIONS, serializedDataBytes } from './native-compiler/data-capacity.js';
 import {
   validateDataResourceDraftStates,
   validateDataResourceViews,
@@ -848,6 +849,9 @@ export function validateDataTransactionRequest(
       ),
     ];
   }
+  if (serializedDataBytes(value) > DATA_TRANSACTION_MAX_BYTES) {
+    return [diagnostic('DATA_TRANSACTION_TOO_LARGE', '事务内容不能超过 2 MiB', '$')];
+  }
   if (value.schemaVersion !== SCHEMA_VERSIONS.dataTransactionRequest) {
     diagnostics.push(
       diagnostic(
@@ -894,7 +898,7 @@ export function validateDataTransactionRequest(
       if (Object.keys(guard).length !== allowed.length ||
         Object.keys(guard).some(key => !allowed.includes(key)) ||
         !Number.isSafeInteger(guard.operationIndex) || Number(guard.operationIndex) < 0 ||
-        Number(guard.operationIndex) > 99 || !Number.isSafeInteger(guard.offsetMilliseconds) ||
+        Number(guard.operationIndex) >= DATA_TRANSACTION_MAX_OPERATIONS || !Number.isSafeInteger(guard.offsetMilliseconds) ||
         Math.abs(Number(guard.offsetMilliseconds)) > 31622400000 ||
         typeof guard.field !== 'string' || !/^[A-Za-z][A-Za-z0-9_]{0,62}$/.test(guard.field) ||
         !DATA_TRANSACTION_FIELD_OPERATORS.has(String(guard.operator)) ||
@@ -1128,11 +1132,11 @@ export function validateDataTransactionRequest(
         '额度终态必须保留原轮次和迁移键，并选中该资源唯一的 update；模式由平台授权确定', 'decimalReservation'));
     }
   }
-  if (operations.length === 0 || operations.length > 100) {
+  if (operations.length === 0 || operations.length > DATA_TRANSACTION_MAX_OPERATIONS) {
     diagnostics.push(
       diagnostic(
         'DATA_TRANSACTION_OPERATIONS_INVALID',
-        'operations 必须包含 1 到 100 个操作',
+        `operations 必须包含 1 到 ${DATA_TRANSACTION_MAX_OPERATIONS} 个操作`,
         'operations'
       )
     );

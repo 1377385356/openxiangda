@@ -517,7 +517,7 @@ outbox容量等事务故障会回滚，处理器按原键核对后重交，不�
 `examples/workflow-administration/task-page.ts`。
 
 页面表达式只读取本页 `values.*`，平台以合并后的业务值强制显隐和必填。
-最多16页、每页64字段、单次值64KiB，表达式8层/64节点。
+最多16页、每页64字段、单次值1MiB，表达式8层/64节点。
 系统、流水号和隐藏字段不可作为补填入口。根附件、图片复用平台托管文件；
 签名和富文本同样保留 Native 字段协议；普通 owned 子行以固定页面白名单和行 CAS 提交。
 
@@ -535,8 +535,13 @@ outbox容量等事务故障会回滚，处理器按原键核对后重交，不�
 
 关系沿用模型的 `resourceCode/foreignKey/orderField/maxRows`，不接受任务调用者自报。
 子字段可声明同样的只读、可见和条件必填规则；这些属于页面代码，管理员不能覆盖。
-`create/delete/reorder` 省略时关闭。仅一层，每页所有可编辑子表的 maxRows 合计最多49，
-整个 form/私有草稿仍限64KiB。系统、隐藏、关系键和顺序字段不进入子字段白名单。
+`create/delete/reorder` 省略时关闭。仅一层，每表 maxRows 最多100，父资源及任务页
+声明总量最多400；默认仍20。完整意图最多为每表 maxRows 的两倍，可在一次提交中
+删除满表旧行并新增同等数量，仍按有效行数校验上限。整个 form/任务私有草稿值限1MiB，
+页面定义仍64KiB/64根字段；系统、隐藏、关系键和顺序字段不进入子字段白名单。
+标准主子表提交复用同一个 Native 原子事务，最多1000操作/2MiB（400行全量替换加主表为801操作），
+任一行失败全单回滚，不静默截断或分批提交。普通表单草稿values最多2MiB，含原值与当前值；
+状态字段的独立配额不变。附件上传数量/字节与详情读取预算仍独立执行，行数容量不豁免文件配额。
 子行支持 file/image/signature/text.rich，使用同一个任务上传入口并绑定准确行；普通
 子行字段和已授权只读展示不降为 JSON 编辑框。例子见 `examples/workflow-administration/task-owned-subtable.ts`。
 
@@ -608,7 +613,7 @@ approve/resubmit 携带 `form: { expectedRevision, values }` 时，Native 业务
 身份、环境、业务记录和固定页面由平台派生，不传actor/resource/page作为授权。
 可编译例子见 `examples/workflow-administration/task-draft.ts`。
 
-最多20份/90天与同用户、应用、环境、资源的其他表单草稿共享，单份最多64字段/64KiB。
+最多20份/90天与同用户、应用、环境、资源的其他表单草稿共享，单份最多64根字段/1MiB。
 字段支持根附件、图片、完整业务签名和富文本，暂不包含 owned 子表。读到不兼容草稿时只返回安全标识与诊断，
 不静默丢弃或泄露旧值。失去任务、角色或代理资格后不能继续读/用。
 
@@ -672,7 +677,7 @@ const readyFile = await completeWorkflowTaskFileUpload(taskId, input.id);
 业务签名保留完整 Native 值：`file: { id, name, size, contentType }`、可选 `signer`、
 `signedAt`、可选 `points` 和 `hash`，清空为 `null`。PNG、时间、笔迹与 SHA-256 在上传前
 固定，未知结果恢复只采用原文件，不重新签署。任务控件最多采样512个笔迹点并保留首尾；
-原 PNG 字节不改，仍受任务值64KiB限制。这些是业务采集信息，不代表平台认证的签署人、
+原 PNG 字节不改，仍受任务值1MiB限制。这些是业务采集信息，不代表平台认证的签署人、
 可信时间或法律电子签章。
 
 富文本保存清洗后的 HTML 和 Native 稳定托管图片地址，支持最多20图、单图10MiB、100MP。

@@ -1,3 +1,4 @@
+import { DATA_SUBTABLE_MAX_ROWS } from 'openxiangda-contracts/browser';
 import type {
   DataFieldSurface,
   DataResourceSurface,
@@ -43,7 +44,7 @@ export function buildSubtableOperations(
 ): DataTransactionOperation[] {
   const visibleRows = input.rows.filter(row => row.state !== 'deleted');
   const maximum = input.maxRows ?? 20;
-  if (visibleRows.length > maximum || maximum < 1 || maximum > 49) {
+  if (visibleRows.length > maximum || !Number.isSafeInteger(maximum) || maximum < 1 || maximum > DATA_SUBTABLE_MAX_ROWS || input.rows.length > 2 * maximum) {
     throw new Error('OPENXIANGDA_SUBTABLE_MAX_ROWS_EXCEEDED');
   }
   const operations: DataTransactionOperation[] = [];

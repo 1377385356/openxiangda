@@ -1,3 +1,5 @@
+import { DATA_SUBTABLE_MAX_ROWS, DATA_SUBTABLE_MAX_TOTAL_ROWS } from './data-capacity.js';
+
 const FIELD_CODE_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,62}$/;
 const RESOURCE_CODE_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 
@@ -329,7 +331,7 @@ export function validateNativeDataResourceReferencesV2(
     const aggregateMaxRows = declaration.fields
       .filter(field => field.type === 'subtable')
       .reduce((total, field) => total + (field.subtable?.maxRows ?? 20), 0);
-    if (aggregateMaxRows > 49) {
+    if (aggregateMaxRows > DATA_SUBTABLE_MAX_TOTAL_ROWS) {
       issue(
         'NATIVE_DATA_FIELD_SUBTABLE_AGGREGATE_MAX_ROWS_EXCEEDED',
         `${declaration.pointer}/schema/fields`
@@ -978,7 +980,7 @@ function parseSubtable(
     subtable.maxRows,
     `${pointer}/maxRows`,
     1,
-    49
+    DATA_SUBTABLE_MAX_ROWS
   );
   return {
     resourceCode,

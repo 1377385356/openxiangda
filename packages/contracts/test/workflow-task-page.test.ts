@@ -71,7 +71,7 @@ test('unknown readonly hidden and prototype fields cannot be submitted', () => {
 });
 
 test('form payload rejects excessive structure invalid numbers and non-JSON objects', () => {
-  for (const input of [{ reason: 'x'.repeat(65536) }, { amountCents: Infinity }, { amountCents: NaN }, { amountCents: new Date() }, { reason: new Array(1001).fill('x') }]) {
+  for (const input of [{ reason: 'x'.repeat(1024 * 1024) }, { amountCents: Infinity }, { amountCents: NaN }, { amountCents: new Date() }, { reason: new Array(1001).fill('x') }]) {
     assert.throws(() => applyWorkflowTaskPageValues(page, {}, input, false), /VALUES_INVALID/);
   }
 });

@@ -1,3 +1,4 @@
+import { DATA_SUBTABLE_MAX_ROWS, DATA_TRANSACTION_MAX_OPERATIONS, DATA_TRANSACTION_MAX_BYTES } from './native-compiler/data-capacity.js';
 import { nativeUniqueKeysJsonSchema } from './native-compiler/unique-keys.js';
 import { workflowAssignmentRoutingPolicySchema } from './native-compiler/workflow-assignment-routing.js';
 import { DATA_AUDIT_METADATA_FIELDS } from './native-compiler/data-audit-access.js';
@@ -2311,7 +2312,7 @@ const dataFieldSurfaceSchema = {
         resourceCode: dataResourceCode,
         foreignKey: dataFieldCode,
         orderField: dataFieldCode,
-        maxRows: { type: "integer", minimum: 1, maximum: 49 },
+        maxRows: { type: "integer", minimum: 1, maximum: DATA_SUBTABLE_MAX_ROWS },
       },
     },
   },
@@ -2635,7 +2636,7 @@ export const dataResourceSchema = {
                   resourceCode: dataResourceCode,
                   foreignKey: dataFieldCode,
                   orderField: dataFieldCode,
-                  maxRows: { type: "integer", minimum: 1, maximum: 49 },
+                  maxRows: { type: "integer", minimum: 1, maximum: DATA_SUBTABLE_MAX_ROWS },
                 },
               },
             },
@@ -3412,7 +3413,7 @@ const dataTransactionOperationReference = {
   additionalProperties: false,
   required: ["operationIndex", "field"],
   properties: {
-    operationIndex: { type: "integer", minimum: 0, maximum: 99 },
+    operationIndex: { type: "integer", minimum: 0, maximum: DATA_TRANSACTION_MAX_OPERATIONS - 1 },
     field: { const: "id" },
   },
 } as const;
@@ -3513,7 +3514,7 @@ const dataTransactionGuard = {
       required: ["kind", "operationIndex", "field", "operator", "offsetMilliseconds", "errorCode"],
       properties: {
         kind: { const: "operation-time" },
-        operationIndex: { type: "integer", minimum: 0, maximum: 99 },
+        operationIndex: { type: "integer", minimum: 0, maximum: DATA_TRANSACTION_MAX_OPERATIONS - 1 },
         field: dataFieldCode,
         operator: { enum: ["eq", "neq", "gt", "gte", "lt", "lte"] },
         offsetMilliseconds: { type: "integer", minimum: -31622400000, maximum: 31622400000 },
@@ -3717,6 +3718,7 @@ const dataTransactionGuard = {
 
 export const dataTransactionRequestSchema = {
   $id: SCHEMA_VERSIONS.dataTransactionRequest,
+  "x-openxiangda-max-bytes": DATA_TRANSACTION_MAX_BYTES,
   $defs: { dataWhere: dataWhereSchema },
   type: "object",
   additionalProperties: false,
@@ -3730,7 +3732,7 @@ export const dataTransactionRequestSchema = {
       properties: {
         reservationKey: { type: "string", minLength: 1, maxLength: 128 },
         transitionKey: { type: "string", minLength: 1, maxLength: 128 },
-        childOperationIndex: { type: "integer", minimum: 0, maximum: 99 },
+        childOperationIndex: { type: "integer", minimum: 0, maximum: DATA_TRANSACTION_MAX_OPERATIONS - 1 },
       },
     },
     guards: {
@@ -3741,7 +3743,7 @@ export const dataTransactionRequestSchema = {
     operations: {
       type: "array",
       minItems: 1,
-      maxItems: 100,
+      maxItems: DATA_TRANSACTION_MAX_OPERATIONS,
       items: dataTransactionOperation,
     },
   },
@@ -3759,7 +3761,7 @@ export const dataTransactionResultSchema = {
     replayed: { type: "boolean" },
     items: {
       type: "array",
-      maxItems: 100,
+      maxItems: DATA_TRANSACTION_MAX_OPERATIONS,
       items: {
         oneOf: [
           {

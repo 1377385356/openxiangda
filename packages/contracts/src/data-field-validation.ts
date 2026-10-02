@@ -1,3 +1,4 @@
+import { DATA_SUBTABLE_MAX_ROWS } from './native-compiler/data-capacity.js';
 import {
   DATA_FIELD_TYPES,
   type Diagnostic,
@@ -791,12 +792,12 @@ function validateSubtableConfig(
     subtable.maxRows !== undefined &&
     (!Number.isInteger(subtable.maxRows) ||
       Number(subtable.maxRows) < 1 ||
-      Number(subtable.maxRows) > 49)
+      Number(subtable.maxRows) > DATA_SUBTABLE_MAX_ROWS)
   ) {
     diagnostics.push(
       diagnostic(
         'DATA_RESOURCE_FIELD_SUBTABLE_MAX_ROWS_INVALID',
-        `${path}.subtable.maxRows 必须为 1 到 49`,
+        `${path}.subtable.maxRows 必须为 1 到 ${DATA_SUBTABLE_MAX_ROWS}`,
         `${path}.subtable.maxRows`
       )
     );

@@ -34,7 +34,7 @@ test('defines location as exact DingTalk/browser coordinates', () => {
 
 test('bounds subtable snapshots to the atomic transaction capacity', () => {
   const schema = FIELD_VALUE_SCHEMAS.subtable as { maxItems: number };
-  assert.equal(schema.maxItems, 49);
+  assert.equal(schema.maxItems, 100);
 });
 
 test('requires platform-derived dimensions and protected variants for images', () => {
