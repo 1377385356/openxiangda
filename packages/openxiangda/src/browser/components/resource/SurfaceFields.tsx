@@ -34,7 +34,7 @@ import type {
   StableSignatureValue,
   UserReferenceValue,
 } from 'openxiangda-contracts/browser';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   AuthoritativeSelector,
   ResolvedValueText,
@@ -297,6 +297,7 @@ function StaticOptionField({
   onChange?: (value: LabeledValue | LabeledValue[] | undefined) => void;
   disabled?: boolean;
 }) {
+  const radioName = useId();
   const multiple = field.type === 'option.multiple';
   const ids = snapshotIds(value);
   const emit = (next: string | string[] | undefined) => {
@@ -309,6 +310,7 @@ function StaticOptionField({
   if (field.widget === 'radio') {
     return (
       <Radio.Group
+        name={radioName}
         disabled={disabled}
         onChange={event => emit(event.target.value)}
         options={field.options}
@@ -343,8 +345,9 @@ function DesktopBooleanField({ field, disabled, checked, id, onChange }: {
   field: SurfaceField; disabled?: boolean; checked?: boolean; id?: string;
   onChange?: (value: boolean) => void;
 }) {
+  const radioName = useId();
   return <Space>
-    <Radio.Group id={id} aria-label={field.label} disabled={disabled}
+    <Radio.Group id={id} name={radioName} aria-label={field.label} disabled={disabled}
       value={typeof checked === 'boolean' ? checked : undefined}
       options={[{ label: '是', value: true }, { label: '否', value: false }]}
       onChange={event => onChange?.(event.target.value)} />
