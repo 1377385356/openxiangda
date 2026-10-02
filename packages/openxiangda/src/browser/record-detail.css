@@ -63,7 +63,7 @@
 .oxa-subtable-inline .oxa-subtable-scroll { overflow: auto; border: 1px solid var(--ant-color-border); border-radius: 6px; }
 .oxa-subtable-inline table { width: 100%; border-collapse: collapse; text-align: left; }
 .oxa-subtable-inline th { color: var(--ant-color-text-secondary); background: var(--ant-color-fill-alter); font-weight: 600; }
-.oxa-subtable-inline td, .oxa-subtable-inline th { padding: 10px 12px; border-bottom: 1px solid var(--ant-color-border-secondary); min-width: 170px; }
+.oxa-subtable-inline td, .oxa-subtable-inline th { padding: 10px 12px; border-bottom: 1px solid var(--ant-color-border-secondary); min-width: 170px; vertical-align: top; }
 .oxa-subtable-inline tbody tr:last-child td { border-bottom: 0; }
 .oxa-subtable-inline .oxa-subtable-number { text-align: center; width: 48px; min-width: 48px; padding: 8px; }
 .oxa-subtable-inline .ant-form-item { margin: 0; }

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.47.1",
+  "status": "reviewed",
+  "title": "OpenXiangda 2.47.1：子行材料控件与预览修复",
+  "summary": "修复子表多行控件重叠和富文本暂存后内图预览失效。",
+  "newFeatures": [],
+  "fixes": ["子行表单显式采用纵向布局，附件、签名和富文本按真实内容撑开行高。", "富文本水合只管理自己创建的预览URL，避免重用编辑器已经释放的临时URL。"],
+  "affectedUsers": ["使用子表材料、根或子行富文本图片和私有草稿的V2应用。"],
+  "upgradeSteps": ["消费同批SDK与CLI后重新构建应用；现有记录、文件、草稿和固定任务定义无需转换。"],
+  "knownLimitations": ["当前为本地测试候选，浏览器验收证据单独记录，不代表已发布npm。", "沿用2.47.0的任务子行文件合同、49行/64KiB预算与条件附件先保存约束。"],
+  "issues": [],
+  "compatibility": {"node": ">=24", "workspaceGenerations": "v2", "platform": "不增加平台合同或默认开关。", "v1": "1.x引擎保持独立。"}
+}

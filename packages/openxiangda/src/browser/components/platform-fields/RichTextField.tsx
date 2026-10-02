@@ -95,9 +95,8 @@ function useHydratedManagedImages(
       if (!fileId) continue;
       const current = image.getAttribute('src') || '';
       if (current.startsWith('blob:')) {
-        if (!objectUrls.current.has(source)) {
-          objectUrls.current.set(source, current);
-        }
+        // The editor owns freshly inserted previews and revokes them when the
+        // value is normalized. Never cache or reclaim another owner's URL.
         continue;
       }
       const known = objectUrls.current.get(source);
