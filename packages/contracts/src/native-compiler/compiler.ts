@@ -660,7 +660,7 @@ export function compileRequiredPlatformCapabilitiesV3(
       ? [{ code: 'workflow.automatic-cc' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'cc')) }]
       : []),
     ...(config.workflows.definitions.some((item: JsonObject) => item.definition.taskPages !== undefined)
-      ? [{ code: 'workflow.task-page-submit' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => item.definition.taskPages !== undefined) }]
+      ? ['workflow.task-page-submit' as const, 'workflow.task-private-drafts' as const].map(code => ({ code, declaration: config.workflows.definitions.filter((item: JsonObject) => item.definition.taskPages !== undefined) }))
       : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action'))
       ? [{ code: 'workflow.durable-business-step' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action')) }]

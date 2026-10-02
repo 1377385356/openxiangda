@@ -543,3 +543,32 @@ approve/resubmit 携带 `form: { expectedRevision, values }` 时，Native 业务
 审批路径确定重经生产者时允许；resume_current 或后置补填跳过重算会返回
 `WORKFLOW_TASK_FORM_RECOMPUTATION_REQUIRED` 并回滚，历史结果与签名保持。
 自动能力为 `workflow.task-page-submit@1.0.0`，平台初始化无需额外开关。
+
+### 任务私有草稿
+
+标准PC/手机任务页和嵌入面板提供“保存私有草稿”“我的草稿”。暂存仅本人可见，
+不会更新业务资料、事实、待办或推进任务；可以保存尚未完成必填的标量输入。
+页面的显隐/只读规则和Native类型仍强制，管理员没有字段覆盖或读取他人草稿的入口。
+
+自定义页面从 `openxiangda/core` 或 `openxiangda/react` 调用
+`loadWorkflowTaskDrafts(taskId)`、`saveWorkflowTaskDraft(taskId, input)` 和
+`removeWorkflowTaskDraft(taskId, { id, expectedRevision })`。
+保存输入为 `{ id, expectedRevision, recordRevision, values }`：首写前固定UUID及
+`expectedRevision: 0`；recordRevision来自当前taskForm.expectedRevision。
+身份、环境、业务记录和固定页面由平台派生，不传actor/resource/page作为授权。
+可编译例子见 `examples/workflow-administration/task-draft.ts`。
+
+最多20份/90天与同用户、应用、环境、资源的其他表单草稿共享，单份最多64字段/64KiB。
+字段暂不包含附件、图片、签名、富文本或子表。读到不兼容草稿时只返回安全标识与诊断，
+不静默丢弃或泄露旧值。失去任务、角色或代理资格后不能继续读/用。
+
+读取不会自动覆盖输入；采用前确认，业务基线变化先核对并再次保存。相同输入暂存成功后
+可安全离开，后续新编辑恢复导航保护；浏览器持久存储不保存字段值。
+结果未知保留原id/CAS/values，仅核对同id或重试原保存；同一次最后保存确认不新增修订，
+其他CAS冲突保留输入。新id必须是用户明确另存，不能用自动另存掩盖未知结果。
+
+正式 `form: { expectedRevision, values, draft: { id, expectedRevision } }` 可以包含暂存之后的新编辑。
+平台锁住本人草稿及业务基线，再沿原save_form/approve/resubmit命令同事务更新业务并消费，
+失败全部回滚。原成功命令重试先返回唯一Workflow回执，不因草稿已消费重复写入。
+任务真正关闭才过期未消费草稿，all/sequence任务仍可办理时保留其他人的有效草稿。
+能力 `workflow.task-private-drafts@1.0.0` 自动提供，无额外配置开关。

@@ -21,6 +21,36 @@ export interface WorkflowTaskPage {
 export interface WorkflowTaskFormInput {
   expectedRevision: number;
   values: Record<string, unknown>;
+  /** Consume this actor's selected private draft in the original command transaction. */
+  draft?: WorkflowTaskDraftReference;
+}
+
+export interface WorkflowTaskDraftReference {
+  id: string;
+  expectedRevision: number;
+}
+
+export interface WorkflowTaskDraftSave extends WorkflowTaskDraftReference {
+  recordRevision: number;
+  values: Record<string, unknown>;
+}
+
+export interface WorkflowTaskDraft {
+  id: string;
+  revision: number;
+  recordRevision: number;
+  taskId: string;
+  pageCode: string;
+  values: Record<string, unknown>;
+  updatedAt: string;
+  expiresAt: string;
+}
+
+export interface WorkflowTaskDraftList {
+  items: WorkflowTaskDraft[];
+  incompatibleItems: Array<{ id: string; revision: number; errorCode: string }>;
+  limit: number;
+  retentionDays: number;
 }
 
 export interface WorkflowTaskFormSurface {

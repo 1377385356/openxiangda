@@ -3051,6 +3051,11 @@
 .oxa-workflow-task-form { margin: 16px 0 24px; padding: 20px 0; border-top: 1px solid var(--ant-color-border-secondary, #e0e6ed); min-width: 0; }
 .oxa-workflow-task-form .ant-form { max-width: 680px; margin-top: 20px; }
 .oxa-workflow-task-form .ant-alert { margin: 16px 0; }
+.oxa-workflow-task-drafts { padding: 12px 16px; background: var(--ant-color-fill-quaternary, #f7f9fc); border-radius: 8px; }
+.oxa-workflow-task-drafts > .ant-typography:last-child { margin-top: 10px; margin-bottom: 0; }
+.oxa-workflow-draft-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 16px 0; border-bottom: 1px solid var(--ant-color-border-secondary, #e0e6ed); }
+.oxa-workflow-draft-row .ant-typography { margin-bottom: 0; }
+.oxa-workflow-draft-review { max-height: 55dvh; overflow: auto; }
 .oxa-workflow-task-readonly { margin-bottom: 20px; line-height: 1.7; overflow-wrap: anywhere; }
 .oxa-workflow-task-readonly > div { margin-top: 4px; }
 .oxa-workflow-task-required { margin-bottom: 20px; }

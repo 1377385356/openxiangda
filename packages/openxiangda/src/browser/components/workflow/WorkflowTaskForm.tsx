@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, App, Button, Form, Space, Typography } from 'antd';
-import type { WorkflowTaskFormInput, WorkflowTaskFormSurface } from 'openxiangda-contracts/browser';
+import type { WorkflowTaskDraft, WorkflowTaskFormInput, WorkflowTaskFormSurface } from 'openxiangda-contracts/browser';
 import { applyWorkflowTaskPageValues, workflowTaskPageFieldState } from 'openxiangda-contracts/browser';
 import { useUnsavedChangesGuard } from '../../navigation-guard';
 import { workflowLaunchContractJsonEqual } from '../../workflow-launch';
 import { fieldValueForData, fieldValueForForm } from '../platform-fields/field-form-codec';
 import { MobileSurfaceFieldControl, SurfaceFieldControl, SurfaceFieldValue } from '../resource/SurfaceFields';
+import { WorkflowTaskDraftPanel } from './WorkflowTaskDraftPanel';
 
 export function workflowTaskFormValues(source: WorkflowTaskFormSurface, values: Record<string, unknown>) {
   return Object.fromEntries(source.page.fields.map(field => [field.code,
@@ -34,6 +35,7 @@ const formValues = (source: WorkflowTaskFormSurface) => Object.fromEntries(sourc
 export function useWorkflowTaskForm(latest?: WorkflowTaskFormSurface) {
   const [form] = Form.useForm<Record<string, unknown>>();
   const [source, setSource] = useState(latest);
+  const [draft, setDraft] = useState<WorkflowTaskDraft | undefined>();
   const initialSource = useRef(latest);
   const acceptedLatest = useRef(latest);
   const watched = Form.useWatch([], { form, preserve: true }) as Record<string, unknown> | undefined;
@@ -41,6 +43,10 @@ export function useWorkflowTaskForm(latest?: WorkflowTaskFormSurface) {
   const dirty = Boolean(source && source.page.fields.some(field => !field.readonly &&
     !workflowLaunchContractJsonEqual(source.values[field.code] ?? null, current[field.code] ?? null)));
   const stale = Boolean(source && latest && (source.pageCode !== latest.pageCode || source.expectedRevision !== latest.expectedRevision));
+  const draftNeedsSave = Boolean(draft && source && (draft.recordRevision !== source.expectedRevision || draft.pageCode !== source.pageCode));
+  const safelyDrafted = Boolean(draft && source && !stale && !draftNeedsSave &&
+    workflowLaunchContractJsonEqual(draft.values, workflowTaskFormPatch(source, { ...formValues(source), ...(watched || form.getFieldsValue(true)) }).values));
+  const unsaved = dirty && !safelyDrafted;
   useEffect(() => {
     if (!latest || dirty || latest === acceptedLatest.current) return;
     acceptedLatest.current = latest;
@@ -63,7 +69,7 @@ export function useWorkflowTaskForm(latest?: WorkflowTaskFormSurface) {
       if (field) form.setFields([{ name: field, errors: [`请填写或选择${label || field}`] }]);
       throw new Error(label ? `请填写或选择${label}` : '请核对补填资料');
     }
-    return input;
+    return { ...input, ...(draft ? { draft: { id: draft.id, expectedRevision: draft.revision } } : {}) };
   };
   const reviewLatest = (keep: boolean) => {
     if (!latest || !source) return;
@@ -77,29 +83,48 @@ export function useWorkflowTaskForm(latest?: WorkflowTaskFormSurface) {
   const committed = (input?: WorkflowTaskFormInput, revision?: number) => {
     if (!source || !input) return;
     const values = { ...source.values, ...input.values };
+    setDraft(undefined);
     setSource({ ...source, expectedRevision: revision || source.expectedRevision, values });
     form.setFieldsValue(formValues({ ...source, values }));
   };
-  return { form, source, latest, current, dirty, stale, build, reviewLatest, committed };
+  const adoptDraft = (saved: WorkflowTaskDraft) => {
+    if (!latest) return;
+    const values = applyWorkflowTaskPageValues(latest.page, latest.values, saved.values, false);
+    acceptedLatest.current = latest;
+    setSource(latest);
+    form.setFieldsValue(formValues({ ...latest, values }));
+    setDraft(saved);
+  };
+  const savedDraft = (saved: WorkflowTaskDraft) => {
+    if (!source) return;
+    form.setFieldsValue(formValues({ ...source, values: { ...source.values, ...saved.values } }));
+    setDraft(saved);
+  };
+  const removedDraft = (id: string) => setDraft(currentDraft => currentDraft?.id === id ? undefined : currentDraft);
+  return { form, source, latest, current, dirty, unsaved, stale, draft, draftNeedsSave, build, reviewLatest, committed, adoptDraft, savedDraft, removedDraft };
 }
 
-export function WorkflowTaskForm({ controller, disabled, variant, resourceCode, recordId }: {
+export function WorkflowTaskForm({ controller, disabled, draftDisabled = disabled, taskId, onDraftBusyChange, onRefresh, variant, resourceCode, recordId }: {
   controller: ReturnType<typeof useWorkflowTaskForm>;
   disabled: boolean;
+  draftDisabled?: boolean;
+  taskId?: string;
+  onDraftBusyChange?: (busy: boolean) => void;
+  onRefresh?: () => Promise<void>;
   variant: 'desktop' | 'mobile';
   resourceCode?: string;
   recordId?: string;
 }) {
   const { modal } = App.useApp();
-  const { form, source, latest, current, dirty, stale } = controller;
-  useUnsavedChangesGuard({ when: dirty, preventNavigation: disabled,
-    message: disabled ? '补填资料正在提交，请先确认原操作结果。' : '补填资料尚未提交，离开后将丢失。' });
+  const { form, source, latest, current, unsaved, stale } = controller;
+  useUnsavedChangesGuard({ when: unsaved || disabled, preventNavigation: disabled,
+    message: disabled ? '资料操作结果尚待确认，请先确认原操作结果。' : '当前输入尚未提交或保存私有草稿，离开后将丢失。' });
   useEffect(() => {
-    if (!dirty) return;
+    if (!unsaved && !disabled) return;
     const handler = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [dirty]);
+  }, [unsaved, disabled]);
   if (!source) return null;
   const Control = variant === 'mobile' ? MobileSurfaceFieldControl : SurfaceFieldControl;
   const review = (keep: boolean) => modal.confirm({ title: keep ? '核对最新资料后保留输入？' : '采用最新资料？',
@@ -108,6 +133,8 @@ export function WorkflowTaskForm({ controller, disabled, variant, resourceCode, 
   return <section className={`oxa-workflow-task-form oxa-workflow-task-form-${variant}`} aria-label={source.page.title}>
     <Typography.Title level={4}>{source.page.title}</Typography.Title>
     <Typography.Paragraph type="secondary">保存补填后，任务仍由你继续办理。同意或重新提交时会一起提交资料。</Typography.Paragraph>
+    {taskId && <WorkflowTaskDraftPanel controller={controller} taskId={taskId} disabled={draftDisabled}
+      variant={variant} resourceCode={resourceCode} onBusyChange={onDraftBusyChange} onRefresh={onRefresh} />}
     {stale && <Alert showIcon type="warning" title="业务资料已更新，当前输入已保留" description={<>
       <p>请核对最新资料后再提交。</p>
       {latest && workflowTaskFormReviewFields(source, latest, current)

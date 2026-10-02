@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import dayjs from 'dayjs';
 import { workflowTaskFormPatch, workflowTaskFormReviewFields } from '../src/browser/components/workflow/WorkflowTaskForm';
+import { workflowTaskDraftConfirmsSave, workflowTaskDraftWasRejected } from '../src/browser/components/workflow/WorkflowTaskDraftPanel';
 import { clearPendingWorkflowTaskCommand, readPendingWorkflowTaskCommand, workflowCommandTokenDigest, workflowTaskCommandScope,
   workflowTaskCommandWasRejected, writePendingWorkflowTaskCommand } from '../src/browser/workflow-task-command-recovery';
 
@@ -48,4 +49,16 @@ test('malformed locators and a transport failure do not authorize a fresh submis
   assert.equal(workflowTaskCommandWasRejected({ status: 503, code: 'PLATFORM_TRANSPORT_UNAVAILABLE' }), false);
   assert.equal(workflowTaskCommandWasRejected({ status: 409, code: 'WORKFLOW_TASK_FORM_REVISION_CONFLICT' }), true);
   assert.equal(workflowTaskCommandWasRejected({ status: 409, code: 'GATEWAY_UNAVAILABLE' }), false);
+});
+
+test('private draft recovery confirms only the original id, revision, baseline and values', () => {
+  const input = { id: 'draft-1', expectedRevision: 2, recordRevision: 4, values: { amount: 222, needsReason: false } };
+  const saved: any = { id: 'draft-1', revision: 3, recordRevision: 4, values: { needsReason: false, amount: 222 } };
+  assert.equal(workflowTaskDraftConfirmsSave(saved, input), true);
+  for (const patch of [{ id: 'draft-2' }, { revision: 4 }, { recordRevision: 5 }, { values: { amount: 333 } }])
+    assert.equal(workflowTaskDraftConfirmsSave({ ...saved, ...patch }, input), false);
+  assert.equal(workflowTaskDraftWasRejected({ status: 409, code: 'OPENXIANGDA_TASK_DRAFT_REVISION_CONFLICT' }), true);
+  assert.equal(workflowTaskDraftWasRejected({ status: 503, code: 'OPENXIANGDA_TASK_DRAFT_REVISION_CONFLICT' }), false);
+  assert.equal(workflowTaskDraftWasRejected({ status: 409, code: 'GATEWAY_UNAVAILABLE' }), false);
+  assert.equal(workflowTaskDraftWasRejected({ status: 429, code: 'OPENXIANGDA_NATIVE_RATE_LIMIT' }), false);
 });

@@ -903,6 +903,7 @@ function WorkflowOperations({
   const [moreOpen, setMoreOpen] = useState(false);
   const [operationError, setOperationError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [draftLocked, setDraftLocked] = useState(false);
   const [refreshFailure, setRefreshFailure] = useState<{ outcome: 'succeeded' | 'rejected'; message: string } | null>(null);
   const [unknown, setUnknown] = useState(false);
   const request = useRef<{ surface: WorkflowSurface; operation: WorkflowOperationSurface; input: JsonObject; key: string } | null>(null);
@@ -938,7 +939,7 @@ function WorkflowOperations({
     });
   };
   const submit = async (values: JsonObject) => {
-    if (!selected || busyRef.current || pendingLocator || unknown || refreshFailure || confirmedReadPending) return;
+    if (!selected || busyRef.current || draftLocked || taskForm.draftNeedsSave || pendingLocator || unknown || refreshFailure || confirmedReadPending) return;
     setOperationError('');
     setSubmitting(true);
     busyRef.current = true;
@@ -1039,7 +1040,8 @@ function WorkflowOperations({
     catch (error) { if (mounted.current) setRefreshFailure(current => ({ outcome: current?.outcome || 'rejected', message: errorMessage(error, '页面刷新失败') })); }
     finally { if (mounted.current) { setSubmitting(false); busyRef.current = false; onBusyChange(false); } }
   };
-  const locked = submitting || unknown || Boolean(pendingLocator) || Boolean(refreshFailure) || confirmedReadPending;
+  const commandLocked = submitting || unknown || Boolean(pendingLocator) || Boolean(refreshFailure) || confirmedReadPending;
+  const locked = commandLocked || draftLocked;
   if (!operations.length && !surface.taskForm && !unknown && !refreshFailure) return renderLayout({ content: null, actions: null });
   const primary = operations
     .filter((operation) => operation.placement === 'primary')
@@ -1054,6 +1056,8 @@ function WorkflowOperations({
   const content = surface.taskForm || ((submitting || unknown) && !pendingLocator) || unknown || refreshFailure ? (
     <>
       {surface.taskForm && <WorkflowTaskForm controller={taskForm} disabled={locked} variant={variant}
+        taskId={surface.task?.id ? String(surface.task.id) : undefined} draftDisabled={commandLocked} onRefresh={onRefresh}
+        onDraftBusyChange={busy => { setDraftLocked(busy); onBusyChange(busy || busyRef.current); }}
         resourceCode={surface.presentation.businessDetail.resourceCode || undefined} recordId={surface.presentation.businessDetail.recordId || undefined} />}
       {(submitting || unknown) && !pendingLocator && <WorkflowPendingCommandGuard />}
       {unknown && <Alert type="warning" showIcon title="保留了原提交请求" description={operationError || '提交结果待确认，请重试原请求或查询原结果。'}
@@ -1069,7 +1073,7 @@ function WorkflowOperations({
         {primary.map((operation) => (
           <Button
             danger={operation.emphasis === 'danger'}
-            disabled={locked || taskForm.stale || !operation.enabled}
+            disabled={locked || taskForm.stale || taskForm.draftNeedsSave || !operation.enabled}
             key={operation.key}
             onClick={() => selectOperation(operation)}
             title={operation.disabledReason}
@@ -1081,7 +1085,7 @@ function WorkflowOperations({
         {secondary.length > 0 && (
           <Button
             className="oxa-workflow-more-trigger"
-            disabled={locked || taskForm.stale}
+            disabled={locked || taskForm.stale || taskForm.draftNeedsSave}
             icon={<EllipsisOutlined />}
             onClick={() => setMoreOpen((value) => !value)}
           >
@@ -1092,7 +1096,7 @@ function WorkflowOperations({
           <div className="oxa-workflow-more-actions">
             {secondary.map((operation) => (
               <Button
-                disabled={locked || taskForm.stale || !operation.enabled}
+                disabled={locked || taskForm.stale || taskForm.draftNeedsSave || !operation.enabled}
                 key={operation.key}
                 onClick={() => {
                   setMoreOpen(false);

@@ -29,6 +29,9 @@ export {
   resolveBusinessProcessOriginal,
   createResourceFormDraftClient,
   createWorkflowFormDraftClient,
+  loadWorkflowTaskDrafts,
+  saveWorkflowTaskDraft,
+  removeWorkflowTaskDraft,
   type ResourceFormDraftWorkflowScope,
   type ResourceFormDraft,
   createAnonymousPublicClient,
@@ -48,6 +51,10 @@ export type {
   ApplicationOperationSurfaceCatalogV2,
   ApplicationOperationSurfaceV2,
   WorkflowCommandResult,
+  WorkflowTaskDraft,
+  WorkflowTaskDraftSave,
+  WorkflowTaskDraftReference,
+  WorkflowTaskDraftList,
 } from 'openxiangda-contracts/browser';
 export * from './browser/components/resource/GeneratedResourceCrud';
 export * from './browser/components/resource/ResourceBatchActions';

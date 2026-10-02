@@ -2682,6 +2682,23 @@ export async function loadWorkflowTaskSurface(taskId: string) {
   return bindWorkflowCsrf(normalizeWorkflowSurface(surface), csrfToken);
 }
 
+/** Private values remain scoped to the current user and fixed actionable task. */
+export async function loadWorkflowTaskDrafts(taskId: string): Promise<import('openxiangda-contracts/browser').WorkflowTaskDraftList> {
+  return requestRead(`${workflowBase()}/tasks/${encodeURIComponent(taskId)}/form-drafts`);
+}
+
+export async function saveWorkflowTaskDraft(taskId: string, input: import('openxiangda-contracts/browser').WorkflowTaskDraftSave): Promise<import('openxiangda-contracts/browser').WorkflowTaskDraft> {
+  return request(`${workflowBase()}/tasks/${encodeURIComponent(taskId)}/form-drafts`, {
+    method: 'POST', headers: { 'x-openxiangda-csrf-token': await workflowCsrfToken() }, body: JSON.stringify(input),
+  });
+}
+
+export async function removeWorkflowTaskDraft(taskId: string, input: import('openxiangda-contracts/browser').WorkflowTaskDraftReference): Promise<{ deleted: true }> {
+  return request(`${workflowBase()}/tasks/${encodeURIComponent(taskId)}/form-drafts/delete`, {
+    method: 'POST', headers: { 'x-openxiangda-csrf-token': await workflowCsrfToken() }, body: JSON.stringify(input),
+  });
+}
+
 export async function loadWorkflowInstanceSurface(instanceId: string) {
   const csrfToken = await workflowCsrfToken();
   const surface = await requestRead<WorkflowSurface>(

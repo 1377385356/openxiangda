@@ -70,6 +70,10 @@ export type {
   WorkflowInstance,
   WorkflowSurface,
   WorkflowTask,
+  WorkflowTaskDraft,
+  WorkflowTaskDraftSave,
+  WorkflowTaskDraftReference,
+  WorkflowTaskDraftList,
   WorkflowTimeline,
   WorkflowWorkCenterItem,
 } from 'openxiangda-contracts/browser';

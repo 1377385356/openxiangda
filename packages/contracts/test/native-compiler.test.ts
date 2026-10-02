@@ -14,6 +14,20 @@ function input(config = JSON.parse(corpus.configuration.canonical)) {
   };
 }
 
+test('fixed task pages automatically require submission and private drafts in ESM and CJS', () => {
+  const config = JSON.parse(corpus.configuration.canonical);
+  const definition = config.workflows.definitions[0].definition;
+  definition.taskPages = { fill: { title: '补填', fields: [{ code: 'name' }, { code: 'status' }] } };
+  definition.nodes.review.taskPageCode = 'fill';
+  const contract = { ...JSON.parse(corpus.contract.canonical), configDigest: sha256Digest(config) };
+  const value = { ...input(config), contractBytes: canonicalJson(contract), expectedContractDigest: sha256Digest(contract) };
+  for (const implementation of [esm, cjs]) {
+    const capabilities = implementation.compileNativeApplicationConfiguration(value).requiredPlatformCapabilities;
+    for (const code of ['workflow.task-page-submit', 'workflow.task-private-drafts'])
+      assert.equal(capabilities.find(item => item.code === code)?.contractVersion, '1.0.0');
+  }
+});
+
 test('automatic cc capability is derived from declarations in both shared compiler distributions', () => {
   const config = JSON.parse(corpus.configuration.canonical);
   const definition = config.workflows.definitions[0].definition;
