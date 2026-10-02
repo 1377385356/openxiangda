@@ -71,7 +71,8 @@ export function useWorkflowTaskForm(latest?: WorkflowTaskFormSurface) {
       for (const state of workflowTaskPageFieldState(source.page, current).filter(field => field.visible && !field.readonly)) {
         const field = source.page.fields.find(field => field.code === state.code)!;
         const child = source.subtables?.[state.code];
-        if (field.subtable && child) applyWorkflowTaskSubtableRows(field, child.maxRows, child.rows, input.values[state.code], complete);
+        if (field.subtable && child) applyWorkflowTaskSubtableRows(field, child.maxRows, child.rows,
+          Object.hasOwn(input.values, state.code) ? input.values[state.code] : source.values[state.code], complete);
       }
     }
     catch (error) {
