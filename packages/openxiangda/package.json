@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.46.2",
+  "version": "2.46.3",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -73,7 +73,7 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.42",
+    "openxiangda-cli": "2.6.43",
     "openxiangda-contracts": "2.45.0",
     "openxiangda-devkit-core": "2.41.4",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
@@ -145,16 +145,17 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.46.2",
+    "version": "2.46.3",
     "status": "reviewed",
-    "title": "OpenXiangda 2.46.2：重复字段的单选控件隔离",
-    "summary": "子表各行和同页面多个表单的单选状态保持独立。",
+    "title": "OpenXiangda 2.46.3：任务子表提交期间保留当前值",
+    "summary": "提交及结果未知时继续显示用户刚填写的子行内容。",
     "newFeatures": [],
     "fixes": [
-      "布尔和静态单选控件使用每个挂载实例独立的 HTML radio 分组，避免同名字段互相取消选中标记。"
+      "任务子表禁用后优先展示当前输入，避免旧快照掩盖修改、清空、零值和布尔值。",
+      "草稿及核对摘要将待删除行单独计数。"
     ],
     "affectedUsers": [
-      "编辑子表或在同一页面使用多个表单的用户。"
+      "使用任务子表补填、私有草稿及命令恢复的用户。"
     ],
     "upgradeSteps": [
       "应用消费同批 SDK 和 CLI 后重建前端；服务端与数据合同无需变化。"
@@ -169,7 +170,7 @@
       "platform": "沿现有任务子表能力，无新增开关或SQL。",
       "v1": "1.x 引擎保持独立。"
     },
-    "sha256": "6ee49472da46e727062fbf57adcc59574f142d90e6fa8853ca5a746ddbac4710",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.46.2"
+    "sha256": "b089a51a1139fb26c989d529688eb9f21e0a0dd96b057f57d96bfa8b7bffbbb3",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.46.3"
   }
 }
