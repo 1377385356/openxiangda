@@ -56,7 +56,9 @@
 .oxa-file-field .oxa-file-dropzone-compact .ant-upload-drag { min-height: 0; width: auto; border-radius: 6px; background: var(--ant-color-bg-container); }
 .oxa-file-field .oxa-file-dropzone-compact .ant-upload-btn { padding: 4px !important; }
 .oxa-file-field .oxa-file-dropzone-compact .ant-upload-drag-container { display: flex; align-items: center; gap: 12px; padding-right: 12px; }
-.oxa-file-upload-button { display: inline-flex; gap: 8px; align-items: center; white-space: nowrap; padding: 6px 14px; min-height: 32px; border: 1px solid var(--ant-color-border); border-radius: 6px; background: var(--ant-color-bg-container); box-sizing: border-box; }
+.oxa-file-upload-button { display: inline-flex; gap: 8px; align-items: center; white-space: nowrap; padding: 6px 14px; min-height: 32px; border: 1px solid var(--ant-color-border); border-radius: 6px; background: var(--ant-color-bg-container); color: inherit; font: inherit; cursor: pointer; box-sizing: border-box; }
+.oxa-file-upload-button:focus-visible { outline: 2px solid var(--ant-color-primary); outline-offset: 2px; }
+.oxa-file-upload-button:disabled { color: var(--ant-color-text-disabled); background: var(--ant-color-fill-tertiary); cursor: not-allowed; }
 .oxa-file-upload-hint, .oxa-file-limits { color: var(--ant-color-text-tertiary); font-size: 13px; }
 .oxa-file-field .oxa-file-limits { margin-top: -4px; }
 .oxa-subtable-inline { min-width: 0; }

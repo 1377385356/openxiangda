@@ -1036,8 +1036,14 @@ function ManagedFileField({
   };
   return (
     <div className="oxa-file-field">
-      <Upload.Dragger {...uploadProps} aria-disabled={uploadProps.disabled} className="oxa-file-dropzone oxa-file-dropzone-compact" openFileDialogOnClick pastable>
-        <span className="oxa-file-upload-button">{field.type === 'image' ? <PictureOutlined /> : <UploadOutlined />}{uploading ? '上传中…' : field.type === 'image' ? '图片上传' : '上传文件'}</span>
+      <Upload.Dragger {...uploadProps} hasControlInside className="oxa-file-dropzone oxa-file-dropzone-compact" openFileDialogOnClick pastable>
+        <button type="button" className="oxa-file-upload-button" disabled={uploadProps.disabled}
+          onKeyDown={event => {
+            // Native button activation owns Enter/Space; the upload wrapper also handles Enter.
+            if (event.key === 'Enter' || event.key === ' ') event.stopPropagation();
+          }}>
+          {field.type === 'image' ? <PictureOutlined /> : <UploadOutlined />}{uploading ? '上传中…' : field.type === 'image' ? '图片上传' : '上传文件'}
+        </button>
         <span className="oxa-file-upload-hint">拖拽或点击后粘贴{field.type === 'image' ? '图片' : '文件'}</span>
       </Upload.Dragger>
       <small className="oxa-file-limits">{multiple ? `最多 ${maxCount} 个，` : ''}单个不超过 {maxSizeMb}MB</small>

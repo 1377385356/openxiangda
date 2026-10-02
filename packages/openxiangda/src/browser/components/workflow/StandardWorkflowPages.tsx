@@ -1048,7 +1048,7 @@ function WorkflowOperations({
     .filter((operation) => operation.placement === 'primary')
     .sort((left, right) => {
       if (variant !== 'mobile') return 0;
-      const order: Record<string, number> = { reject: 0, approve: 1 };
+      const order: Record<string, number> = { reject: 0, approve: 1, resubmit: 1 };
       return (order[left.key] ?? 10) - (order[right.key] ?? 10);
     });
   const secondary = operations.filter(
