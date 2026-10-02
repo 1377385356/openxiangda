@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.46.3",
+  "status": "reviewed",
+  "title": "OpenXiangda 2.46.3：任务子表提交期间保留当前值",
+  "summary": "提交及结果未知时继续显示用户刚填写的子行内容。",
+  "newFeatures": [],
+  "fixes": ["任务子表禁用后优先展示当前输入，避免旧快照掩盖修改、清空、零值和布尔值。", "草稿及核对摘要将待删除行单独计数。"],
+  "affectedUsers": ["使用任务子表补填、私有草稿及命令恢复的用户。"],
+  "upgradeSteps": ["应用消费同批 SDK 和 CLI 后重建前端；服务端与数据合同无需变化。"],
+  "knownLimitations": ["普通子表办理仍不包含子行附件、签名和富文本编辑；当前仅本地测试包。"],
+  "issues": [],
+  "compatibility": {"node": ">=24", "workspaceGenerations": "v2", "platform": "沿现有任务子表能力，无新增开关或SQL。", "v1": "1.x 引擎保持独立。"}
+}

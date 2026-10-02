@@ -252,7 +252,7 @@ export function SubtableField({
         const rowOperation = row.state === 'persisted' ? 'update' : 'create';
         const writable = row.state === 'persisted' ? canUpdate : canCreate;
         return <DesktopSubtableRow key={row.key} row={row} index={index} fields={fields.map(child => task ? { ...child, requiredHint: false } : child)} operation={rowOperation}
-          resourceCode={definition.code} disabled={disabled}
+          resourceCode={definition.code} disabled={disabled} taskMode={Boolean(task)}
           canRead={child => canReadField(child, row)}
           canWrite={child => writable && canWriteField(child, rowOperation, row)}
           onChange={data => emit(rows.map(current => current.key === row.key ? { ...current, data } : current))}
@@ -282,12 +282,20 @@ export function SubtableField({
   </div>;
 }
 
-function DesktopSubtableRow({ row, index, fields, operation, resourceCode, disabled, canRead, canWrite, onChange, upload, actions, workflowFileBinding, hint }: {
+function rowDisplayValue(row: SubtableDraftRow, field: SurfaceField, taskMode?: boolean) {
+  if (taskMode && Object.prototype.hasOwnProperty.call(row.data, field.key)) {
+    return fieldValueForData(field, row.data[field.key]);
+  }
+  return row.snapshot?.[field.key] ?? row.data[field.key];
+}
+
+function DesktopSubtableRow({ row, index, fields, operation, resourceCode, disabled, canRead, canWrite, onChange, upload, actions, workflowFileBinding, taskMode, hint }: {
   row: SubtableDraftRow; index: number; fields: SurfaceField[]; operation: 'create' | 'update'; resourceCode: string; disabled?: boolean;
   canRead: (field: SurfaceField) => boolean; canWrite: (field: SurfaceField) => boolean;
   onChange: (data: Record<string, unknown>) => void; upload: (field: SurfaceField, file: File, recordId?: string) => Promise<import('openxiangda-contracts/browser').DataFileRef>;
   actions: import('react').ReactNode;
   workflowFileBinding?: WorkflowFileBinding;
+  taskMode?: boolean;
   hint?: (field: SurfaceField) => import('react').ReactNode;
 }) {
   const [form] = Form.useForm();
@@ -300,7 +308,7 @@ function DesktopSubtableRow({ row, index, fields, operation, resourceCode, disab
   return <Form component={false} name={`subtable-${row.key}`} form={form} initialValues={row.data} onValuesChange={(_changed, all) => onChange(all)}>
     <tr><td className="oxa-subtable-number">{index + 1}</td>{fields.map(field => <td key={field.key}>
       {canWrite(field) ? <><SurfaceFieldControl field={field} disabled={Boolean(disabled)} operation={operation} recordId={row.id} resourceCode={resourceCode} renderers={{ upload }} />{hint?.(field)}</>
-        : canRead(field) ? <SurfaceFieldValue field={field} resourceCode={resourceCode} workflowFileBinding={workflowFileBinding && { ...workflowFileBinding, fieldCode: field.key }} value={row.snapshot?.[field.key] ?? row.data[field.key]} /> : '—'}
+        : canRead(field) ? <SurfaceFieldValue field={field} resourceCode={resourceCode} workflowFileBinding={workflowFileBinding && { ...workflowFileBinding, fieldCode: field.key }} value={rowDisplayValue(row, field, taskMode)} /> : '—'}
     </td>)}{!disabled && <td>{actions}</td>}</tr>
   </Form>;
 }
@@ -445,7 +453,7 @@ function MobileSubtableRow({ row, index, fields, operation, resourceCode, canWri
       <Form component={false} name={`subtable-${row.key}`} form={form} initialValues={row.data} onValuesChange={(_changed, all) => onChange(all)}>
         {fields.map(field => canWrite(field) || !taskMode
           ? <div key={field.key}><MobileSurfaceFieldControl field={field} disabled={!canWrite(field)} operation={operation} recordId={row.id} resourceCode={resourceCode} renderers={{ upload }} />{hint?.(field)}</div>
-          : <div key={field.key}><Typography.Text type="secondary">{field.label}</Typography.Text><SurfaceFieldValue field={field} resourceCode={resourceCode} workflowFileBinding={workflowFileBinding && { ...workflowFileBinding, fieldCode: field.key }} mobile value={row.snapshot?.[field.key] ?? row.data[field.key]} /></div>)}
+          : <div key={field.key}><Typography.Text type="secondary">{field.label}</Typography.Text><SurfaceFieldValue field={field} resourceCode={resourceCode} workflowFileBinding={workflowFileBinding && { ...workflowFileBinding, fieldCode: field.key }} mobile value={rowDisplayValue(row, field, taskMode)} /></div>)}
       </Form>
     </div>
   </div>;

@@ -820,7 +820,11 @@ export function SurfaceFieldValue({
     );
   }
   if (field.type === 'subtable') {
-    return <>{Array.isArray(value) ? `${value.length} 行子表` : '-'}</>;
+    if (!Array.isArray(value)) return <>-</>;
+    const deleted = value.filter(row => row && typeof row === 'object'
+      && typeof row.key === 'string' && row.state === 'deleted'
+      && (row.values || row.data)).length;
+    return <>{value.length - deleted} 行子表{deleted > 0 ? ` · 待删除 ${deleted} 行` : ''}</>;
   }
   if (field.type === 'cascade.single' || field.type === 'cascade.multiple') {
     return (
