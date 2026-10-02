@@ -80,16 +80,23 @@ export interface WorkflowTaskDraftList {
   retentionDays: number;
 }
 
+/** An owned row is addressed by the declared parent field and stable row UUID. */
+export interface WorkflowTaskFileRow {
+  subtableFieldCode: string;
+  rowKey: string;
+}
+
 /** Stable upload intent for a fixed task; no arbitrary resource or record target. */
 export interface WorkflowTaskFileUpload {
   id: string;
+  row?: WorkflowTaskFileRow;
   fieldCode: string;
   fileName: string;
   fileSize: number;
   contentType?: string;
 }
 
-export type WorkflowTaskFileUploadPlan = DataFileUploadPlan & { state: 'pending' | 'ready' };
+export type WorkflowTaskFileUploadPlan = DataFileUploadPlan & { state: 'pending' | 'ready'; row?: WorkflowTaskFileRow };
 
 export interface WorkflowTaskFormSurface {
   pageCode: string;
@@ -206,7 +213,7 @@ export function validateWorkflowTaskPages(definition: Definition, resourceFields
           for (const nested of Array.isArray(field.subtable.fields) ? field.subtable.fields : []) {
             if (!nested || typeof nested.code !== 'string') continue;
             const metadata = child?.get(nested.code);
-            if (nested.code === relation.foreignKey || nested.code === relation.orderField || (child && (!metadata || metadata.system || metadata.hidden || metadata.type === 'subtable' || (!nested.readonly && (metadata.widget === 'readonly' || ['serial-number', 'file', 'image', 'signature', 'text.rich'].includes(metadata.type)))))) diagnostics.push(`WORKFLOW_TASK_SUBTABLE_FIELD_UNSUPPORTED:${pointer}.${field.code}.${nested.code}`);
+            if (nested.code === relation.foreignKey || nested.code === relation.orderField || (child && (!metadata || metadata.system || metadata.hidden || metadata.type === 'subtable' || (!nested.readonly && (metadata.widget === 'readonly' || metadata.type === 'serial-number'))))) diagnostics.push(`WORKFLOW_TASK_SUBTABLE_FIELD_UNSUPPORTED:${pointer}.${field.code}.${nested.code}`);
           }
         } else if (field.subtable && resourceFields) diagnostics.push(`WORKFLOW_TASK_SUBTABLE_RELATION_INVALID:${pointer}.${field.code}`);
       }

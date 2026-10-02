@@ -445,16 +445,20 @@ export function compileRequiredPlatformCapabilitiesV3(
     config.events.subscriptions.some(
       (subscription: JsonObject) => subscription.platformAccess?.notification
     );
-  const taskManagedFileDefinitions = config.workflows.definitions.filter((item: JsonObject) => {
+  const hasTaskFile = (item: JsonObject, types: string[], nestedOnly = false) => {
     const fields = resources.find(resource => resource.code === item.definition.subject?.resourceCode)?.schema.fields || [];
-    return Object.values(item.definition.taskPages || {}).some((page: any) => page.fields.some((field: any) =>
-      !field.readonly && fields.some((metadata: JsonObject) => metadata.code === field.code && ['file', 'image', 'signature', 'text.rich'].includes(metadata.type))));
-  });
-  const taskRichFieldDefinitions = taskManagedFileDefinitions.filter((item: JsonObject) => {
-    const fields = resources.find(resource => resource.code === item.definition.subject?.resourceCode)?.schema.fields || [];
-    return Object.values(item.definition.taskPages || {}).some((page: any) => page.fields.some((field: any) =>
-      !field.readonly && fields.some((metadata: JsonObject) => metadata.code === field.code && ['signature', 'text.rich'].includes(metadata.type))));
-  });
+    return Object.values(item.definition.taskPages || {}).some((page: any) => page.fields.some((field: any) => {
+      if (field.readonly) return false;
+      const metadata = fields.find((value: JsonObject) => value.code === field.code);
+      if (!nestedOnly && metadata && types.includes(metadata.type)) return true;
+      if (!field.subtable || !metadata?.subtable) return false;
+      const children = resources.find(resource => resource.code === metadata.subtable.resourceCode)?.schema.fields || [];
+      return field.subtable.fields.some((child: any) => !child.readonly && children.some((value: JsonObject) => value.code === child.code && types.includes(value.type)));
+    }));
+  };
+  const taskManagedFileDefinitions = config.workflows.definitions.filter((item: JsonObject) => hasTaskFile(item, ['file', 'image', 'signature', 'text.rich']));
+  const taskRichFieldDefinitions = config.workflows.definitions.filter((item: JsonObject) => hasTaskFile(item, ['signature', 'text.rich']));
+  const taskOwnedFileDefinitions = config.workflows.definitions.filter((item: JsonObject) => hasTaskFile(item, ['file', 'image', 'signature', 'text.rich'], true));
   const standardProcessDefinitions = config.workflows.definitions.filter(
     (declaration: JsonObject) =>
       declaration.launch.mode === 'standalone' ||
@@ -674,6 +678,8 @@ export function compileRequiredPlatformCapabilitiesV3(
       : []),
     ...(taskManagedFileDefinitions.length
       ? [{ code: 'workflow.task-managed-files' as const, declaration: taskManagedFileDefinitions }] : []),
+    ...(taskOwnedFileDefinitions.length
+      ? [{ code: 'workflow.task-owned-files' as const, declaration: taskOwnedFileDefinitions }] : []),
     ...(taskRichFieldDefinitions.length
       ? [{ code: 'workflow.task-rich-fields' as const, declaration: taskRichFieldDefinitions }] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.taskPages || {}).some((page: any) => page.fields.some((field: any) => field.subtable)))

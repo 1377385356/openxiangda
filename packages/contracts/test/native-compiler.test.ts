@@ -63,6 +63,24 @@ test('editable rich task fields require their capability; readonly fields do not
   }
 });
 
+test('editable owned files require the complete upload capability closure in both distributions', () => {
+  for (const type of ['file', 'image', 'signature', 'text.rich']) for (const readonly of ['none', 'parent', 'child']) {
+    const config = JSON.parse(corpus.configuration.canonical);
+    const definition = config.workflows.definitions[0].definition;
+    const resource = config.data.resources.find((item: any) => item.code === definition.subject.resourceCode);
+    resource.schema.fields.push({ code: 'items', type: 'subtable', subtable: { resourceCode: 'items' } });
+    config.data.resources.push({ code: 'items', schema: { fields: [{ code: 'proof', type }] } });
+    definition.taskPages = { fill: { title: '材料', fields: [{ code: 'items', readonly: readonly === 'parent',
+      subtable: { fields: [{ code: 'proof', readonly: readonly === 'child' }] } }] } };
+    for (const implementation of [esm, cjs]) {
+      const codes = implementation.compileRequiredPlatformCapabilitiesV3(config).map(item => item.code);
+      assert.equal(codes.includes('workflow.task-owned-files'), readonly === 'none');
+      assert.equal(codes.includes('workflow.task-managed-files'), readonly === 'none');
+      assert.equal(codes.includes('workflow.task-rich-fields'), readonly === 'none' && ['signature', 'text.rich'].includes(type));
+    }
+  }
+});
+
 test('routing declarations automatically require the platform capability and invalid policies fail in both compiler distributions', () => {
   const configuration = JSON.parse(corpus.configuration.canonical);
   const binding = configuration.workflows.bindings[0].binding.bindings.reviewer;

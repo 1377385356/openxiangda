@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, App, Button, Space } from 'antd';
-import type { DataFileRef } from 'openxiangda-contracts/browser';
+import type { DataFileRef, WorkflowTaskFileUpload } from 'openxiangda-contracts/browser';
 import { completeWorkflowTaskFileUpload, initiateWorkflowTaskFileUpload, loadWorkflowTaskFileUploadPlan } from '../../platform-client';
 import { assertWorkflowTaskFileUploadPlan, runWorkflowTaskFileUpload, type WorkflowTaskFileUploadIntent, type WorkflowTaskFileUploadTransport } from '../../workflow-task-file-upload';
 import type { SurfaceField } from '../resource/SurfaceFields';
@@ -24,7 +24,7 @@ export function useWorkflowTaskFiles({ taskId, controller, onBusyChange }: {
   const { message } = App.useApp();
   type FieldUploadIntent = WorkflowTaskFileUploadIntent & { onRecovered?: (file: DataFileRef) => void };
   const intent = useRef<FieldUploadIntent | null>(null);
-  const completed = useRef(new WeakMap<File, DataFileRef>());
+  const completed = useRef(new WeakMap<File, Map<string, DataFileRef>>());
   const inFlight = useRef<FieldUploadIntent | null>(null);
   const active = useRef(true);
   const currentTask = useRef(taskId); currentTask.current = taskId;
@@ -38,17 +38,29 @@ export function useWorkflowTaskFiles({ taskId, controller, onBusyChange }: {
     intent.current = null; completed.current = new WeakMap(); inFlight.current = null;
     setPending(null); setBusy(false); setFailure('');
   }, [taskId]);
+  const address = (fieldCode: string, row?: WorkflowTaskFileUpload['row']) => JSON.stringify([row?.subtableFieldCode, row?.rowKey, fieldCode]);
+  const currentValue = (fieldCode: string, row?: WorkflowTaskFileUpload['row']) => row
+    ? (controller.form.getFieldValue(row.subtableFieldCode) as Array<{ key: string; data: Record<string, unknown> }> | undefined)?.find(value => value.key === row.rowKey)?.data[fieldCode]
+    : controller.form.getFieldValue(fieldCode);
   const settle = (wire: FieldUploadIntent, file: DataFileRef, adopt: boolean) => {
     if (!active.current || currentTask.current !== wire.taskId || intent.current !== wire) return false;
     if (adopt) {
       if (wire.onRecovered) wire.onRecovered(file);
       else {
         const code = wire.input.fieldCode;
-        const refs = controller.form.getFieldValue(code);
-        controller.form.setFieldValue(code, [...(Array.isArray(refs) ? refs.filter((ref: DataFileRef) => ref.id !== file.id) : []), file]);
+        const row = wire.input.row;
+        const refs = currentValue(code, row);
+        const next = [...(Array.isArray(refs) ? refs.filter((ref: DataFileRef) => ref.id !== file.id) : []), file];
+        if (row) {
+          const rows = controller.form.getFieldValue(row.subtableFieldCode) as Array<{ key: string; state: string; data: Record<string, unknown> }>;
+          if (!rows?.some(value => value.key === row.rowKey && value.state !== 'deleted')) throw new Error('原上传所在明细已移除，请核对原结果。');
+          controller.form.setFieldValue(row.subtableFieldCode, rows.map(value => value.key === row.rowKey ? { ...value, data: { ...value.data, [code]: next } } : value));
+        } else controller.form.setFieldValue(code, next);
       }
     }
-    completed.current.set(wire.file, file);
+    const cached = completed.current.get(wire.file) || new Map<string, DataFileRef>();
+    cached.set(address(wire.input.fieldCode, wire.input.row), file);
+    completed.current.set(wire.file, cached);
     intent.current = null; setPending(null); setFailure('');
     return true;
   };
@@ -70,19 +82,19 @@ export function useWorkflowTaskFiles({ taskId, controller, onBusyChange }: {
       if (inFlight.current === wire) { inFlight.current = null; if (active.current && currentTask.current === wire.taskId) setBusy(false); }
     }
   };
-  const upload = async (field: SurfaceField, file: File, _recordId?: string, onRecovered?: (file: DataFileRef) => void): Promise<DataFileRef> => {
+  const upload = async (field: SurfaceField, file: File, _recordId?: string, onRecovered?: (file: DataFileRef) => void, row?: WorkflowTaskFileUpload['row']): Promise<DataFileRef> => {
     if (!taskId) throw new Error('当前任务尚未就绪。');
-    const ready = completed.current.get(file); if (ready) return ready;
+    const ready = completed.current.get(file)?.get(address(field.key, row)); if (ready) return ready;
     if (intent.current) throw new Error('请先确认原文件上传结果，再选择下一个文件。');
     if (!['file', 'image'].includes(field.type) && !onRecovered) throw new Error('该字段需要保留完整值的上传恢复回调。');
-    const current = controller.form.getFieldValue(field.key);
+    const current = currentValue(field.key, row);
     if (['file', 'image'].includes(field.type) && Array.isArray(current) && current.length >= (field.maxCount ?? 1)) {
       const text = `最多 ${field.maxCount ?? 1} 个文件，请先移除已有引用。`;
       setFailure(text);
       throw new Error(text);
     }
     const wire: FieldUploadIntent = { taskId, file, phase: 'initiate', onRecovered, input: {
-      id: crypto.randomUUID(), fieldCode: field.key, fileName: file.name, fileSize: file.size, contentType: file.type,
+      ...(row ? { row } : {}), id: crypto.randomUUID(), fieldCode: field.key, fileName: file.name, fileSize: file.size, contentType: file.type,
     } };
     intent.current = wire; setPending(wire);
     return run(wire, false);

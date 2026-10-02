@@ -18,6 +18,7 @@ export interface WorkflowTaskFileUploadTransport {
 export function assertWorkflowTaskFileUploadPlan(intent: WorkflowTaskFileUploadIntent, plan: WorkflowTaskFileUploadPlan) {
   const { input } = intent;
   if (plan.file.id !== input.id || plan.fieldCode !== input.fieldCode ||
+    plan.row?.subtableFieldCode !== input.row?.subtableFieldCode || plan.row?.rowKey !== input.row?.rowKey ||
     plan.file.name !== input.fileName || plan.file.size !== input.fileSize ||
     plan.file.contentType !== (input.contentType || '') || !['pending', 'ready'].includes(plan.state))
     throw new Error('WORKFLOW_TASK_FILE_UPLOAD_RESPONSE_INVALID');

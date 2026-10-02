@@ -533,7 +533,7 @@ outbox容量等事务故障会回滚，处理器按原键核对后重交，不�
 子字段可声明同样的只读、可见和条件必填规则；这些属于页面代码，管理员不能覆盖。
 `create/delete/reorder` 省略时关闭。仅一层，每页所有可编辑子表的 maxRows 合计最多49，
 整个 form/私有草稿仍限64KiB。系统、隐藏、关系键和顺序字段不进入子字段白名单。
-目前子行 file/image/signature/text.rich 的编辑明确拒绝，需后续行绑定上传协议；普通
+子行支持 file/image/signature/text.rich，使用同一个任务上传入口并绑定准确行；普通
 子行字段和已授权只读展示不降为 JSON 编辑框。例子见 `examples/workflow-administration/task-owned-subtable.ts`。
 
 标准 PC/手机控件自动消费 `surface.taskForm.subtables`，不会调用普通 child CRUD。
@@ -549,6 +549,19 @@ values只能写白名单的当前可编辑字段，关系键与顺序由服务�
 正在编辑的行被别人删除时不会静默丢弃或复活。未知命令沿原请求/原回执恢复。
 能力 `workflow.task-owned-subtables@1.0.0` 从声明自动推导，正式 SQL
 `AuthorizeWorkflowTaskOwnedSubtablesV2` 随初始化迁移自动生效，无新增默认关闭开关。
+
+子行上传时在原 `WorkflowTaskFileUpload` 上增加
+`row: { subtableFieldCode: 'items', rowKey }`，`fieldCode` 是该行中的材料字段。
+rowKey 是新建或已持久化行的稳定小写 UUID；新行上传不会提前写入业务记录，排序也不会
+改变文件归属。不能自行指定子资源或父记录，也不能把任务私有文件交给普通 child CRUD。
+草稿递归保留有效行文件，删除意图不保留文件；原流程命令统一提交数据、引用和草稿消费。
+
+条件文件的上传资格依据已保存业务值。若本地编辑才使字段可见，标准页面提示先保存补填，
+再上传；私有草稿不会改变已经生效的业务事实。无条件材料可直接在尚未保存的新行上传。
+上传未知时保留原行地址、ID、规格和字节，核对 ready 回执只读恢复，不再 PUT；处理中
+禁用行修改、删除、排序和提交。标准 PC/手机控件自动处理四类值和准确行恢复。
+声明可写子行材料自动要求 `workflow.task-owned-files@1.0.0` 及适用的 managed/rich 能力；
+平台正式迁移 `AddWorkflowTaskOwnedFilesV2` 自动扩展绑定列，无需另开功能开关。
 
 标准 PC/手机任务页和 `WorkflowTaskOperationsPanel` 自动显示当前参与人的
 `surface.taskForm`。`save_form` 表示“提交补填，继续办理”，不是私有草稿。

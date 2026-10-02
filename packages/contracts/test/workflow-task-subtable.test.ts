@@ -14,7 +14,8 @@ test('owned subtable requires code whitelist and authoritative one-level relatio
   const root = new Map([['items', { type: 'subtable', subtable: { resourceCode: 'items', foreignKey: 'parentId', orderField: 'position', maxRows: 20 } }]]);
   const child = new Map([['parentId', { type: 'resource-ref.single' }], ['position', { type: 'number.integer' }], ['name', { type: 'text.short' }], ['quantity', { type: 'number.integer' }], ['internal', { type: 'text.short' }]]);
   assert.deepEqual(validateWorkflowTaskPages(definition, root, new Map([['items', child]])), []);
-  for (const type of ['file', 'image', 'signature', 'text.rich', 'subtable']) assert.match(validateWorkflowTaskPages(definition, root, new Map([['items', new Map([...child, ['name', { type }]])]])).join(','), /UNSUPPORTED/);
+  for (const type of ['file', 'image', 'signature', 'text.rich']) assert.deepEqual(validateWorkflowTaskPages(definition, root, new Map([['items', new Map([...child, ['name', { type }]])]])), []);
+  for (const type of ['subtable', 'serial-number']) assert.match(validateWorkflowTaskPages(definition, root, new Map([['items', new Map([...child, ['name', { type }]])]])).join(','), /UNSUPPORTED/);
   for (const fields of [null, {}, [null], [{ code: 'name', subtable: { fields: [] } }]]) assert.ok(validateWorkflowTaskPages({ taskPages: { fill: { title: '办理', fields: [{ ...field, subtable: { fields } as any }] } } }, root).length);
   assert.match(validateWorkflowTaskPages(definition, new Map([['items', { ...root.get('items')!, subtable: { ...root.get('items')!.subtable, maxRows: 50 } }]]), new Map([['items', child]])).join(','), /BUDGET/);
   assert.match(validateWorkflowTaskPages(definition, root, new Map()).join(','), /RELATION/);

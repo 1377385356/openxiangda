@@ -185,7 +185,11 @@ export function WorkflowTaskForm({ controller, disabled, draftDisabled = disable
                   renderSubtable: source.subtables?.[state.code] ? context => {
                     const child = source.subtables![state.code]!;
                     return <SubtableField field={context.field} disabled={context.disabled} mobile={variant === 'mobile'} operation="update" parentRecordId={recordId}
-                      task={{ page: source.page.fields.find(field => field.code === state.code)!.subtable!, binding: binding(state.code), surface: { fields: child.fields, form: { fieldOrder: Object.keys(child.fields) } } }} />;
+                      task={{ page: source.page.fields.find(field => field.code === state.code)!.subtable!, binding: binding(state.code),
+                        rows: child.rows,
+                        uploadEnabled: workflowTaskPageFieldState((latest || source).page, (latest || source).values).some(saved => saved.code === state.code && saved.visible && !saved.readonly),
+                        upload: (rowKey, childField, file, childRecordId, onRecovered) => files.upload(childField, file, childRecordId, onRecovered, { subtableFieldCode: state.code, rowKey }),
+                        surface: { fields: child.fields, form: { fieldOrder: Object.keys(child.fields) } } }} />;
                   } : undefined }} />
               {state.required && <Typography.Text className="oxa-workflow-task-required-hint" type="secondary">完成任务前必填</Typography.Text>}
             </div>;

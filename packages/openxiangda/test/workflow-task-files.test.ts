@@ -70,3 +70,17 @@ test('a receipt for another field, file or declared size cannot release the uplo
     assert.deepEqual(f.calls, []);
   }
 });
+
+test('owned recovery accepts only the original subtable and stable row, without rewriting ready bytes', async () => {
+  const row = { subtableFieldCode: 'items', rowKey: 'row-a' };
+  for (const actual of [row, undefined, { ...row, rowKey: 'row-b' }, { ...row, subtableFieldCode: 'other' }]) {
+    const f = fixture(); f.intent.input.row = row;
+    f.transport.read = async () => { f.calls.push('read'); return { ...f.plan, state: 'ready', row: actual }; };
+    if (actual === row) assert.deepEqual(await runWorkflowTaskFileUpload(f.intent, f.transport, true), f.ref);
+    else await assert.rejects(runWorkflowTaskFileUpload(f.intent, f.transport, true), /RESPONSE_INVALID/);
+    assert.deepEqual(f.calls, ['read']);
+  }
+  const root = fixture();
+  root.transport.read = async () => ({ ...root.plan, state: 'ready', row });
+  await assert.rejects(runWorkflowTaskFileUpload(root.intent, root.transport, true), /RESPONSE_INVALID/);
+});

@@ -39,6 +39,7 @@ import {
   SurfaceFieldControl,
   SurfaceFieldValue,
   type SurfaceField,
+  type SurfaceFieldRenderers,
 } from '../resource/SurfaceFields';
 import {
   fieldValueForData,
@@ -70,7 +71,10 @@ export interface SubtableFieldProps {
   onChange?: (value: SubtableDraftRow[]) => void;
   view?: 'form' | 'detail';
   /** Already qualified task projection. Never use ordinary child CRUD here. */
-  task?: { surface: DataResourceSurface; page: WorkflowTaskSubtablePage; binding?: WorkflowFileBinding };
+  task?: { surface: DataResourceSurface; page: WorkflowTaskSubtablePage; binding?: WorkflowFileBinding;
+    rows?: Array<Record<string, unknown>>; uploadEnabled?: boolean;
+    upload?: (rowKey: string, ...args: Parameters<NonNullable<SurfaceFieldRenderers['upload']>>) => Promise<import('openxiangda-contracts/browser').DataFileRef>;
+    signer?: SurfaceFieldRenderers['signer']; };
 }
 
 export function SubtableField({
@@ -136,9 +140,13 @@ export function SubtableField({
   const canWriteField = (child: SurfaceField, operation: 'create' | 'update', row?: SubtableDraftRow) => task
     ? (!row ? task.page.fields.some(item => item.code === child.key && !item.readonly) : Boolean(taskState(child, row)?.visible && !taskState(child, row)?.readonly))
     : fieldWritable(child, operation, hasCapability, identity.isAppSuperAdmin);
-  const upload = (current: SurfaceField, file: File, recordId?: string) => task
-    ? Promise.reject(new Error('当前任务暂不支持子行附件上传')) : createNativeResourceClient(definition!.code, definition!.surface).upload(current.key, file, recordId);
-  const rowBinding = (row: SubtableDraftRow) => task?.binding && row.id ? { ...task.binding, resourceCode: config!.resourceCode, recordId: row.id } : undefined;
+  const uploadFor = (row: SubtableDraftRow): NonNullable<SurfaceFieldRenderers['upload']> => (current, file, recordId, onRecovered) => task
+    ? task.upload ? task.upload(row.key, current, file, recordId, onRecovered) : Promise.reject(new Error('当前任务未提供子行上传能力'))
+    : createNativeResourceClient(definition!.code, definition!.surface).upload(current.key, file, recordId);
+  const rowBinding = (row: SubtableDraftRow) => task?.binding ? { ...task.binding, resourceCode: config!.resourceCode, recordId: row.key } : undefined;
+  const uploadBlocked = (child: SurfaceField, row: SubtableDraftRow) => Boolean(task && ['file', 'image', 'signature', 'text.rich'].includes(child.type) &&
+    (task.uploadEnabled === false || !workflowTaskPageFieldState({ title: field.label, fields: task.page.fields }, task.rows?.find(value => String(value.id) === row.key) || {})
+      .some(state => state.code === child.key && state.visible && !state.readonly)));
   const rowFields = (row: SubtableDraftRow) => childFields.map(child => task ? { ...child, requiredHint: false } : child);
   const requiredHint = (child: SurfaceField, row: SubtableDraftRow) => taskState(child, row)?.required
     ? <Typography.Text type="secondary">完成任务前必填</Typography.Text> : undefined;
@@ -217,14 +225,14 @@ export function SubtableField({
     {loadError && <div role="alert">{loadError}<MobileButton onClick={() => { loadedKey.current = ''; setLoadAttempt(attempt => attempt + 1); }}>重试</MobileButton></div>}
     {loading ? <span role="status">加载中…</span> : visibleRows.map((row, index) => {
       const rowOperation = row.state === 'persisted' ? 'update' : 'create';
-      const writable = row.state === 'persisted' ? canUpdate : canCreate;
+      const writable = task ? row.state === 'persisted' || task.page.create === true : row.state === 'persisted' ? canUpdate : canCreate;
       const fields = rowFields(row).filter(child => canReadField(child, row) || (writable && canWriteField(child, rowOperation, row)));
-      return <MobileSubtableRow key={row.key} row={row} index={index} fields={fields}
+      return <MobileSubtableRow key={row.key} row={row} index={index} fields={fields} disabled={disabled}
         resourceCode={definition.code} operation={rowOperation}
         canWrite={child => writable && canWriteField(child, rowOperation, row)}
         canDelete={row.state === 'persisted' ? canDelete : canCreate} onRemove={() => removeRow(row)}
         onChange={data => emit(rows.map(current => current.key === row.key ? { ...current, data, snapshot: { ...current.snapshot, ...Object.fromEntries(Object.entries(data).map(([key, item]) => [key, fieldValueForData(definition.surface.fields[key], item)])) } } : current))}
-        workflowFileBinding={rowBinding(row)} upload={upload} taskMode={Boolean(task)} hint={child => requiredHint(child, row)}
+        workflowFileBinding={rowBinding(row)} upload={uploadFor(row)} signer={task?.signer} uploadBlocked={child => uploadBlocked(child, row)} taskMode={Boolean(task)} hint={child => requiredHint(child, row)}
         actions={task?.page.reorder && <Space><MobileButton fill="none" disabled={disabled || index === 0} aria-label={`上移第${index + 1}项`} onClick={() => moveRow(index, -1)}>上移</MobileButton><MobileButton fill="none" disabled={disabled || index === visibleRows.length - 1} aria-label={`下移第${index + 1}项`} onClick={() => moveRow(index, 1)}>下移</MobileButton></Space>} />;
     })}
     {!disabled && <MobileButton block fill="none" color="primary" disabled={!canCreate || visibleRows.length >= maxRows}
@@ -250,16 +258,16 @@ export function SubtableField({
         {fields.map(child => <th key={child.key}>{child.label}</th>)}{!disabled && <th>操作</th>}</tr></thead>
       <tbody>{loading ? <tr><td colSpan={fields.length + 2}><Spin /></td></tr> : visibleRows.map((row, index) => {
         const rowOperation = row.state === 'persisted' ? 'update' : 'create';
-        const writable = row.state === 'persisted' ? canUpdate : canCreate;
+        const writable = task ? row.state === 'persisted' || task.page.create === true : row.state === 'persisted' ? canUpdate : canCreate;
         return <DesktopSubtableRow key={row.key} row={row} index={index} fields={fields.map(child => task ? { ...child, requiredHint: false } : child)} operation={rowOperation}
           resourceCode={definition.code} disabled={disabled} taskMode={Boolean(task)}
           canRead={child => canReadField(child, row)}
           canWrite={child => writable && canWriteField(child, rowOperation, row)}
           onChange={data => emit(rows.map(current => current.key === row.key ? { ...current, data } : current))}
-          workflowFileBinding={rowBinding(row)} upload={upload} hint={child => requiredHint(child, row)}
+          workflowFileBinding={rowBinding(row)} upload={uploadFor(row)} signer={task?.signer} uploadBlocked={child => uploadBlocked(child, row)} hint={child => requiredHint(child, row)}
           actions={<Space size={0}>
-            <Button type="text" aria-label={`上移第${index + 1}项`} disabled={index === 0 || !writable || Boolean(task && !task.page.reorder)} icon={<UpOutlined />} onClick={() => moveRow(index, -1)} />
-            <Button type="text" aria-label={`下移第${index + 1}项`} disabled={index === visibleRows.length - 1 || !writable || Boolean(task && !task.page.reorder)} icon={<DownOutlined />} onClick={() => moveRow(index, 1)} />
+            <Button type="text" aria-label={`上移第${index + 1}项`} disabled={disabled || index === 0 || !writable || Boolean(task && !task.page.reorder)} icon={<UpOutlined />} onClick={() => moveRow(index, -1)} />
+            <Button type="text" aria-label={`下移第${index + 1}项`} disabled={disabled || index === visibleRows.length - 1 || !writable || Boolean(task && !task.page.reorder)} icon={<DownOutlined />} onClick={() => moveRow(index, 1)} />
             <Button type="link" danger disabled={row.state === 'persisted' ? !canDelete : !canCreate} onClick={() => removeRow(row)}>删除</Button>
           </Space>} />;
       })}{!loading && !visibleRows.length && <tr><td colSpan={fields.length + 2}><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无明细" /></td></tr>}</tbody>
@@ -289,10 +297,11 @@ function rowDisplayValue(row: SubtableDraftRow, field: SurfaceField, taskMode?: 
   return row.snapshot?.[field.key] ?? row.data[field.key];
 }
 
-function DesktopSubtableRow({ row, index, fields, operation, resourceCode, disabled, canRead, canWrite, onChange, upload, actions, workflowFileBinding, taskMode, hint }: {
+function DesktopSubtableRow({ row, index, fields, operation, resourceCode, disabled, canRead, canWrite, onChange, upload, actions, workflowFileBinding, taskMode, hint, signer, uploadBlocked }: {
   row: SubtableDraftRow; index: number; fields: SurfaceField[]; operation: 'create' | 'update'; resourceCode: string; disabled?: boolean;
   canRead: (field: SurfaceField) => boolean; canWrite: (field: SurfaceField) => boolean;
-  onChange: (data: Record<string, unknown>) => void; upload: (field: SurfaceField, file: File, recordId?: string) => Promise<import('openxiangda-contracts/browser').DataFileRef>;
+  onChange: (data: Record<string, unknown>) => void; upload: NonNullable<SurfaceFieldRenderers['upload']>;
+  signer?: SurfaceFieldRenderers['signer']; uploadBlocked?: (field: SurfaceField) => boolean;
   actions: import('react').ReactNode;
   workflowFileBinding?: WorkflowFileBinding;
   taskMode?: boolean;
@@ -307,7 +316,7 @@ function DesktopSubtableRow({ row, index, fields, operation, resourceCode, disab
   useEffect(() => { form.setFieldsValue(row.data); }, [form, row.data]);
   return <Form component={false} name={`subtable-${row.key}`} form={form} initialValues={row.data} onValuesChange={(_changed, all) => onChange(all)}>
     <tr><td className="oxa-subtable-number">{index + 1}</td>{fields.map(field => <td key={field.key}>
-      {canWrite(field) ? <><SurfaceFieldControl field={field} disabled={Boolean(disabled)} operation={operation} recordId={row.id} resourceCode={resourceCode} renderers={{ upload }} />{hint?.(field)}</>
+      {canWrite(field) ? <><SurfaceFieldControl field={field} disabled={Boolean(disabled || uploadBlocked?.(field))} operation={operation} recordId={row.id} resourceCode={resourceCode} workflowFileBinding={workflowFileBinding && { ...workflowFileBinding, fieldCode: field.key }} renderers={{ upload, signer }} />{uploadBlocked?.(field) && <Typography.Text type="secondary">请先保存补填，让该附件字段生效，再上传文件。</Typography.Text>}{hint?.(field)}</>
         : canRead(field) ? <SurfaceFieldValue field={field} resourceCode={resourceCode} workflowFileBinding={workflowFileBinding && { ...workflowFileBinding, fieldCode: field.key }} value={rowDisplayValue(row, field, taskMode)} /> : '—'}
     </td>)}{!disabled && <td>{actions}</td>}</tr>
   </Form>;
@@ -429,12 +438,13 @@ function draftFromRecord(
   };
 }
 
-function MobileSubtableRow({ row, index, fields, operation, resourceCode, canWrite, canDelete, onRemove, onChange, upload, actions, workflowFileBinding, taskMode, hint }: {
+function MobileSubtableRow({ row, index, fields, operation, resourceCode, canWrite, canDelete, onRemove, onChange, upload, actions, workflowFileBinding, taskMode, hint, signer, uploadBlocked, disabled }: {
   row: SubtableDraftRow; index: number; fields: SurfaceField[]; operation: 'create' | 'update'; resourceCode: string;
-  canWrite: (field: SurfaceField) => boolean; canDelete: boolean; onRemove: () => void;
+  disabled?: boolean; canWrite: (field: SurfaceField) => boolean; canDelete: boolean; onRemove: () => void;
   actions?: import('react').ReactNode; workflowFileBinding?: WorkflowFileBinding;
   taskMode?: boolean; hint?: (field: SurfaceField) => import('react').ReactNode;
-  onChange: (data: Record<string, unknown>) => void; upload: (field: SurfaceField, file: File, recordId?: string) => Promise<import('openxiangda-contracts/browser').DataFileRef>;
+  onChange: (data: Record<string, unknown>) => void; upload: NonNullable<SurfaceFieldRenderers['upload']>;
+  signer?: SurfaceFieldRenderers['signer']; uploadBlocked?: (field: SurfaceField) => boolean;
 }) {
   const [form] = Form.useForm();
   const [expanded, setExpanded] = useState(true);
@@ -452,7 +462,7 @@ function MobileSubtableRow({ row, index, fields, operation, resourceCode, canWri
     <div hidden={!expanded} style={!expanded ? { display: 'none' } : undefined}>
       <Form component={false} name={`subtable-${row.key}`} form={form} initialValues={row.data} onValuesChange={(_changed, all) => onChange(all)}>
         {fields.map(field => canWrite(field) || !taskMode
-          ? <div key={field.key}><MobileSurfaceFieldControl field={field} disabled={!canWrite(field)} operation={operation} recordId={row.id} resourceCode={resourceCode} renderers={{ upload }} />{hint?.(field)}</div>
+          ? <div key={field.key}><MobileSurfaceFieldControl field={field} disabled={Boolean(disabled || !canWrite(field) || uploadBlocked?.(field))} operation={operation} recordId={row.id} resourceCode={resourceCode} workflowFileBinding={workflowFileBinding && { ...workflowFileBinding, fieldCode: field.key }} renderers={{ upload, signer }} />{uploadBlocked?.(field) && <Typography.Text type="secondary">请先保存补填，让该附件字段生效，再上传文件。</Typography.Text>}{hint?.(field)}</div>
           : <div key={field.key}><Typography.Text type="secondary">{field.label}</Typography.Text><SurfaceFieldValue field={field} resourceCode={resourceCode} workflowFileBinding={workflowFileBinding && { ...workflowFileBinding, fieldCode: field.key }} mobile value={rowDisplayValue(row, field, taskMode)} /></div>)}
       </Form>
     </div>
