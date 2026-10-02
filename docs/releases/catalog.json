@@ -3,6 +3,42 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.44.0",
+      "status": "reviewed",
+      "title": "OpenXiangda 2.44.0：当前任务的托管附件与图片",
+      "summary": "代码任务页面支持根附件与图片，普通审批人通过固定任务上传和预览，草稿保留和正式流程提交复用平台文件生命周期。",
+      "newFeatures": [
+        "任务文件 SDK 支持固定 ID 的原计划与完成恢复，标准 PC/手机上传及预览自动接入。",
+        "编译器按可编辑任务文件申请 workflow.task-managed-files 自动能力，无额外默认关闭开关。"
+      ],
+      "fixes": [
+        "上传结果未知时保留原文件与请求并锁住新流程动作和草稿写入；ready 结果不再次 PUT。",
+        "任务表单和本人草稿比较使用任务文件范围，避免依赖通用 CRUD 预览资格。"
+      ],
+      "affectedUsers": [
+        "声明 file/image 任务补填页面的 V2 应用开发者、办理人和平台维护者。"
+      ],
+      "upgradeSteps": [
+        "消费同批本地 SDK/contracts 与匹配平台 Server，应用迁移 AddWorkflowTaskManagedFilesV2，刷新资料并重启。",
+        "局部修改才显示附件字段时先保存补填，再上传；自定义页面固定上传 UUID，并保留原请求处理未知结果。"
+      ],
+      "knownLimitations": [
+        "本轮交付根 file/image，签名、富文本和 owned 子表仍按后续任务页面切片验证。",
+        "上传资格依据已保存资料的页面状态；管理员不能配置字段权限。",
+        "本轮是本地迁移实验，npm 发布与学校生产迁移分别另行执行。"
+      ],
+      "issues": [],
+      "compatibility": {
+        "node": ">=24",
+        "workspaceGenerations": "v2",
+        "platform": "workflow.task-managed-files@1.0.0 与 AddWorkflowTaskManagedFilesV2",
+        "v1": "1.x 引擎独立，本轮不改变其上传入口。"
+      },
+      "sha256": "b4d4027b81772f5c63ef0638b7ffa9c73374799a398bd17c8828ed126410e4da",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.44.0"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.43.0",
       "status": "reviewed",
       "title": "OpenXiangda 2.43.0：持久命令的有界发现与原申请恢复",
