@@ -125,6 +125,7 @@ function normalizeEventFilter(
 ): EventSubscriptionFilter {
   if (!filter) return {};
   return {
+    ...(filter.workflowStep ? { workflowStep: { ...filter.workflowStep } } : {}),
     ...(filter.resourceCodes
       ? { resourceCodes: uniqueSorted(filter.resourceCodes) }
       : {}),

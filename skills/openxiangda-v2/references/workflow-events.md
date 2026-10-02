@@ -498,5 +498,8 @@ outbox容量等事务故障会回滚，处理器按原键核对后重交，不�
 步骤；公开客户端为 `loadWorkflowBusinessStepRecovery`、
 `previewWorkflowBusinessStepRecovery`、`executeWorkflowBusinessStepRecovery`。
 复用原管理权限/token/CAS/CSRF/审计，提交失败保留相同token/input/idempotencyKey。
+组件通过 `onDraftStateChange` 报告 dirty/busy/unknown；宿主将其接入已有导航保护，
+提交中或结果未知时保留组件和实例。未知结果只允许显式重试原恢复请求；首次明确
+的4xx拒绝可保留原因并重新预览。宿主刷新失败不改变已经确认的提交结果。
 等待处理器的失败从原事件管理受控重放，保留原执行键。普通详情只显示安全状态
 摘要；原输入、输出和外部回执不放入普通时间线。
