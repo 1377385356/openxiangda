@@ -16,7 +16,7 @@ function envelope(data: unknown, code = 200) {
   return { code, message: code === 200 ? 'success' : 'forbidden', data };
 }
 
-function detailNavigation(custom = false) {
+function detailNavigation(custom = false, instanceView = false) {
   return custom
     ? {
         custom: true,
@@ -25,8 +25,8 @@ function detailNavigation(custom = false) {
       }
     : {
         custom: false,
-        desktopPath: `/tasks/${taskId}`,
-        mobilePath: `/m/tasks/${taskId}`,
+        desktopPath: instanceView ? `/workflows/${instanceId}` : `/tasks/${taskId}`,
+        mobilePath: instanceView ? `/m/workflows/${instanceId}` : `/m/tasks/${taskId}`,
       };
 }
 
@@ -76,7 +76,7 @@ function surface(completed = false, customDetail = false) {
     commandToken: 'A'.repeat(43),
     commandTokenExpiresAt: '2099-08-29T09:05:00.000Z',
     instanceSequence: completed ? 4 : 3,
-    detailNavigation: detailNavigation(customDetail),
+    detailNavigation: detailNavigation(customDetail, completed),
     navigationTarget: {
       kind: 'resource_record',
       appCode,
@@ -582,14 +582,18 @@ async function mockWorkflow(
   page: Page,
   options: {
     commandConflict?: boolean;
+    unstructuredConflict?: boolean;
     forbidden?: boolean;
     customDetail?: boolean;
   } = {}
 ) {
   let completed = false;
+  let conflictRejected = false;
+  const requests: { method: string; path: string }[] = [];
   await page.route('**/service/**', async route => {
     const url = new URL(route.request().url());
     const path = url.pathname;
+    requests.push({ method: route.request().method(), path });
     if (path.endsWith('/auth/surface')) {
       return route.fulfill({
         contentType: 'application/json',
@@ -739,7 +743,7 @@ async function mockWorkflow(
       return route.fulfill({
         contentType: 'application/json',
         body: JSON.stringify(
-          envelope(surface(completed, options.customDetail))
+          envelope(conflictRejected ? { ...surface(false, options.customDetail), surfaceRevision: 'c'.repeat(64), commandToken: 'B'.repeat(43) } : surface(completed, options.customDetail))
         ),
       });
     }
@@ -785,19 +789,27 @@ async function mockWorkflow(
       expect(route.request().postDataJSON()).not.toHaveProperty(
         'expectedInstanceVersion'
       );
-      if (options.commandConflict) {
+      if (options.commandConflict || options.unstructuredConflict) {
+        conflictRejected = !options.unstructuredConflict;
         return route.fulfill({
           status: 409,
           contentType: 'application/json',
-          body: JSON.stringify(
-            envelope({ freshSurface: surface(false, options.customDetail) }, 409)
-          ),
+          body: JSON.stringify(options.unstructuredConflict
+            ? envelope({ freshSurface: surface(false, options.customDetail) }, 409)
+            : {
+                code: 409, errorCode: 'WORKFLOW_V2_COMMAND_TOKEN_EXPIRED',
+                message: 'WORKFLOW_V2_COMMAND_TOKEN_EXPIRED',
+                data: { retryable: false, freshSurface: {
+                  method: 'GET',
+                  href: `/openxiangda-api/v2/applications/${appCode}/workflow/tasks/${taskId}/surface`,
+                } },
+              }),
         });
       }
       completed = true;
       return route.fulfill({
         contentType: 'application/json',
-        body: JSON.stringify(envelope({ status: 'completed' })),
+        body: JSON.stringify(envelope({ taskId, instanceId, status: 'approved', outcome: 'approved', nextNodeId: null, advanced: true })),
       });
     }
     return route.fulfill({
@@ -806,6 +818,7 @@ async function mockWorkflow(
       body: JSON.stringify(envelope(null, 404)),
     });
   });
+  return { requests };
 }
 
 test('PC 与移动待办和消息页只使用应用提供的用户框架', async ({ page }) => {
@@ -925,9 +938,25 @@ test(`${mobile ? 'mobile' : 'desktop'} ${multiple ? 'CC' : 'transfer'} uses the 
   await expect(footer).toBeVisible();
   await expect(footer.getByRole('button', { name: /关\s*闭|编\s*辑/ })).toHaveCount(0);
   if (mobile) {
-    const boxes = await footer.locator('.oxa-workflow-actions > button').evaluateAll(elements => elements.map(element => element.getBoundingClientRect().y));
+    const boxes = await footer.locator('.oxa-workflow-actions > button').evaluateAll(elements => elements.map(element => {
+      const { x, y, width, height, right, bottom } = element.getBoundingClientRect();
+      return { x, y, width, height, right, bottom };
+    }));
     expect(boxes).toHaveLength(3);
-    expect(Math.max(...boxes) - Math.min(...boxes)).toBeLessThan(2);
+    const viewport = page.viewportSize()!;
+    for (const box of boxes) {
+      expect(box.width).toBeGreaterThanOrEqual(44);
+      expect(box.height).toBeGreaterThanOrEqual(44);
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.y).toBeGreaterThanOrEqual(0);
+      expect(box.right).toBeLessThanOrEqual(viewport.width);
+      expect(box.bottom).toBeLessThanOrEqual(viewport.height);
+    }
+    for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
+      const horizontalOverlap = Math.min(boxes[i].right, boxes[j].right) - Math.max(boxes[i].x, boxes[j].x);
+      const verticalOverlap = Math.min(boxes[i].bottom, boxes[j].bottom) - Math.max(boxes[i].y, boxes[j].y);
+      expect(horizontalOverlap <= 0 || verticalOverlap <= 0).toBe(true);
+    }
   }
   await page.getByRole('button', { name: '更多操作' }).click();
   await page.getByRole('button', { name: label, exact: true }).click();
@@ -1184,22 +1213,43 @@ test('renders a standalone desktop detail on the canonical user URL', async ({
   await expect(page.getByRole('button', { name: /拒\s*绝/ })).toBeVisible();
 });
 
-test('shows a friendly refresh prompt only after a real command conflict', async ({
+test('refreshes the task after definitive command-token expiry without a second write', async ({
   page,
 }) => {
-  await mockWorkflow(page, { commandConflict: true });
+  const mock = await mockWorkflow(page, { commandConflict: true });
   await page.goto(workflowFixtureUrl(`/tasks/${taskId}`));
   await expect(page.getByText('业务数据已变化')).toHaveCount(0);
   await page.getByRole('button', { name: /同\s*意/ }).click();
   await page.getByLabel('审批意见').fill('同意采购');
   await page.getByRole('button', { name: '确认同意' }).click();
-  await expect(page.getByText('内容已更新，请刷新后重试')).toBeVisible();
+  // Current server message is technical; this local test verifies refusal safety,
+  // not satisfaction of the separate friendly-message requirement.
+  await expect(page.getByText('WORKFLOW_V2_COMMAND_TOKEN_EXPIRED', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: /同\s*意/ })).toBeEnabled();
+  expect(mock.requests.filter(request => request.method === 'POST' && request.path.endsWith('/commands/approve'))).toHaveLength(1);
+  expect(mock.requests.filter(request => request.method === 'GET' && request.path.endsWith(`/workflow/tasks/${taskId}/surface`))).toHaveLength(1);
+  expect(await page.evaluate(() => Object.keys(sessionStorage).filter(key => key.startsWith('openxiangda:pending-task-command:v1:')).length)).toBe(0);
+  await expect(page.getByText('保留了原提交请求')).toHaveCount(0);
+  await expect(page.getByText('任务提交结果待确认')).toHaveCount(0);
+});
+
+test('unstructured command failure preserves the original locator and blocks new approval', async ({ page }) => {
+  const mock = await mockWorkflow(page, { unstructuredConflict: true });
+  await page.goto(workflowFixtureUrl(`/tasks/${taskId}`));
+  await page.getByRole('button', { name: /同\s*意/ }).click();
+  await page.getByLabel('审批意见').fill('同意采购');
+  await page.getByRole('button', { name: '确认同意' }).click();
+  await expect(page.getByText('保留了原提交请求')).toBeVisible();
+  await expect(page.getByRole('button', { name: /同\s*意/ })).toBeDisabled();
+  expect(mock.requests.filter(request => request.method === 'POST' && request.path.endsWith('/commands/approve'))).toHaveLength(1);
+  expect(mock.requests.filter(request => request.path.endsWith(`/workflow/tasks/${taskId}/surface`))).toHaveLength(0);
+  expect(await page.evaluate(() => Object.keys(sessionStorage).filter(key => key.startsWith('openxiangda:pending-task-command:v1:')).length)).toBe(1);
 });
 
 test('renders the independent mobile task and executes only a Surface operation', async ({
   page,
 }) => {
-  await mockWorkflow(page);
+  const mock = await mockWorkflow(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/workflow-experience.e2e.html?initial=/m/tasks/${taskId}`);
   await expect(page.locator('.oxa-record-detail-mobile')).toBeVisible();
@@ -1211,7 +1261,13 @@ test('renders the independent mobile task and executes only a Surface operation'
   await page.getByLabel('审批意见').fill('同意采购');
   await page.getByRole('button', { name: '确认同意' }).click();
   await expect(page.getByText('同意已提交')).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`/m/workflows/${instanceId}$`));
+  await expect(page.locator('.oxa-record-detail-hero .ant-tag')).toHaveText('已同意');
   await expect(page.getByRole('button', { name: /同\s*意/ })).toHaveCount(0);
+  await expect(page.locator('.ant-alert')).toHaveCount(0);
+  expect(mock.requests.filter(request => request.method === 'POST' && request.path.endsWith('/commands/approve'))).toHaveLength(1);
+  expect(mock.requests.filter(request => request.path.endsWith(`/workflow/tasks/${taskId}/surface`))).toHaveLength(0);
+  expect(mock.requests.some(request => request.method === 'GET' && request.path.endsWith(`/workflow/instances/${instanceId}/detail`))).toBe(true);
 });
 
 test('shows an explicit authorization error instead of an empty work center', async ({
