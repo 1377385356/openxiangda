@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.47.4",
+  "version": "2.47.5",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -73,7 +73,7 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.48",
+    "openxiangda-cli": "2.6.49",
     "openxiangda-contracts": "2.46.0",
     "openxiangda-devkit-core": "2.41.5",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
@@ -145,31 +145,31 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.47.4",
+    "version": "2.47.5",
     "status": "reviewed",
-    "title": "办理页面过期后的操作刷新",
-    "summary": "任务操作凭证过期时保留禁用的服务器可见命令，提供保留输入的只读刷新入口。",
+    "title": "固定流程图的可读摘要与定位",
+    "summary": "条件卡和步骤卡直接呈现声明的判断变量与产出，长图首次打开保持可读比例，选中来源时定位目标。",
     "newFeatures": [],
     "fixes": [
-      "PC与手机长时间停留后不再无提示地丢失操作按钮，凭证到期及时显示刷新操作提示。",
-      "刷新沿原Surface读取保留未保存表单，并继续遵守上传、草稿和未知命令恢复锁。"
+      "长图按实际缩放判断初始视口，避免节点较少但布局很长时文字过小。",
+      "节点摘要取自同版本条件路径与业务步骤输出，列表和画布均跟随外部选择，保留正交连线和固定拓扑。"
     ],
     "affectedUsers": [
-      "使用标准或可嵌入任务操作面板，且办理页面停留超过操作凭证有效期的OpenXiangda 2.0用户。"
+      "使用共享WorkflowDiagram的OpenXiangda 2.0应用和流程管理后台。"
     ],
     "upgradeSteps": [
-      "按精确版本升级SDK和同批CLI，无数据库迁移；本批仅本地验证，不执行npm发布。"
+      "升级精确SDK和同批CLI；重新构建消费该SDK的流程管理前端，无数据库迁移。本批仅本地制品验证，不执行npm发布。"
     ],
     "knownLimitations": [
-      "刷新重新读取当前权限，不能恢复已经被撤销的资格，也不会自动重发未决命令。",
-      "完整业务流程及源容量验证仍单独实施。"
+      "说明由已发布readability元数据提供，界面不推断或执行计算代码；缺失说明需开发者随新定义补充。",
+      "完整业务流程和容量边界需按应用单独验收。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=22.12.0",
-      "platform": "OpenXiangda 2.0；不改变1.x运行时"
+      "platform": "OpenXiangda 2.0同版本graph projection；不改变1.x运行时"
     },
-    "sha256": "bc6f8e6a404a8dac770842abb7da4560837734e5840698bf103e0c6a3fbe62b9",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.47.4"
+    "sha256": "7b144e22517c27499eb4763d106f65874675090d1b990703ab10dd4fd52fdfa0",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.47.5"
   }
 }
