@@ -296,13 +296,6 @@ function workflowOperationSignature(operation: WorkflowOperationSurface) {
 const WORKFLOW_APP_ACTION_DISABLED_REASON = '应用动作由应用页面负责';
 
 function standardWorkflowOperations(surface: WorkflowSurface) {
-  if (
-    !surface.commandToken ||
-    !surface.commandTokenExpiresAt ||
-    new Date(surface.commandTokenExpiresAt).getTime() <= Date.now()
-  ) {
-    return [];
-  }
   return surface.operations
     .filter((operation) => operation.visible)
     .map((operation) => {
@@ -920,7 +913,22 @@ function WorkflowOperations({
     setSelectedState(null);
   }, [settlement]);
   const operations = standardWorkflowOperations(surface);
-  const selected = selectedState?.surface === surface
+  const [, setCommandClock] = useState(0);
+  const commandExpiresAt = Date.parse(surface.commandTokenExpiresAt || '');
+  const commandNeedsRefresh = operations.some(operation => operation.kind === 'workflow_command') &&
+    (!surface.commandToken || !Number.isFinite(commandExpiresAt) || commandExpiresAt <= Date.now());
+  useEffect(() => {
+    if (!surface.commandToken || !Number.isFinite(commandExpiresAt) || commandExpiresAt <= Date.now()) return;
+    let timer: ReturnType<typeof setTimeout>;
+    const tick = () => {
+      setCommandClock(value => value + 1);
+      const remaining = commandExpiresAt - Date.now();
+      if (remaining > 0) timer = setTimeout(tick, Math.min(remaining, 2_147_483_647));
+    };
+    timer = setTimeout(tick, Math.min(commandExpiresAt - Date.now(), 2_147_483_647));
+    return () => clearTimeout(timer);
+  }, [surface.commandToken, commandExpiresAt]);
+  const selected = !commandNeedsRefresh && selectedState?.surface === surface
     ? operations.find(
         (operation) =>
           operation.key === selectedState.operation.key &&
@@ -954,9 +962,9 @@ function WorkflowOperations({
         await onRefresh();
         throw new Error('WORKFLOW_FRESH_COMMAND_TOKEN_REQUIRED');
       }
-      if (new Date(surface.commandTokenExpiresAt).getTime() <= Date.now()) {
+      if (!Number.isFinite(commandExpiresAt) || commandExpiresAt <= Date.now()) {
         await onRefresh();
-        throw new Error('WORKFLOW_COMMAND_SURFACE_EXPIRED');
+        throw new Error('操作已刷新，请保留当前输入并重新确认。');
       }
       const input = { ...values };
       if (surface.taskForm && ['save_form', 'approve', 'resubmit'].includes(selected.key)) {
@@ -1054,8 +1062,11 @@ function WorkflowOperations({
   const secondary = operations.filter(
     (operation) => operation.placement !== 'primary',
   );
-  const content = surface.taskForm || ((submitting || unknown) && !pendingLocator) || unknown || refreshFailure ? (
+  const content = surface.taskForm || commandNeedsRefresh || ((submitting || unknown) && !pendingLocator) || unknown || refreshFailure ? (
     <>
+      {commandNeedsRefresh && !unknown && !pendingLocator && !refreshFailure && <Alert type="info" showIcon
+        title="请刷新操作后继续办理" description="页面停留较久，需重新确认当前办理权限。刷新会保留尚未保存的输入。"
+        action={<Button disabled={locked} loading={submitting} onClick={() => void refreshConfirmed()}>刷新操作</Button>} />}
       {surface.taskForm && <WorkflowTaskForm controller={taskForm} disabled={locked} variant={variant}
         taskId={surface.task?.id ? String(surface.task.id) : undefined} draftDisabled={commandLocked} onRefresh={onRefresh}
         onDraftBusyChange={busy => { setDraftLocked(busy); onBusyChange(busy || fileLocked || busyRef.current); }}
@@ -1075,7 +1086,7 @@ function WorkflowOperations({
         {primary.map((operation) => (
           <Button
             danger={operation.emphasis === 'danger'}
-            disabled={locked || taskForm.stale || taskForm.draftNeedsSave || !operation.enabled}
+            disabled={locked || commandNeedsRefresh || taskForm.stale || taskForm.draftNeedsSave || !operation.enabled}
             key={operation.key}
             onClick={() => selectOperation(operation)}
             title={operation.disabledReason}
@@ -1087,7 +1098,7 @@ function WorkflowOperations({
         {secondary.length > 0 && (
           <Button
             className="oxa-workflow-more-trigger"
-            disabled={locked || taskForm.stale || taskForm.draftNeedsSave}
+            disabled={locked || commandNeedsRefresh || taskForm.stale || taskForm.draftNeedsSave}
             icon={<EllipsisOutlined />}
             onClick={() => setMoreOpen((value) => !value)}
           >
@@ -1098,7 +1109,7 @@ function WorkflowOperations({
           <div className="oxa-workflow-more-actions">
             {secondary.map((operation) => (
               <Button
-                disabled={locked || taskForm.stale || taskForm.draftNeedsSave || !operation.enabled}
+                disabled={locked || commandNeedsRefresh || taskForm.stale || taskForm.draftNeedsSave || !operation.enabled}
                 key={operation.key}
                 onClick={() => {
                   setMoreOpen(false);

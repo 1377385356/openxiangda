@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.47.4",
+  "status": "reviewed",
+  "title": "办理页面过期后的操作刷新",
+  "summary": "任务操作凭证过期时保留禁用的服务器可见命令，提供保留输入的只读刷新入口。",
+  "newFeatures": [],
+  "fixes": ["PC与手机长时间停留后不再无提示地丢失操作按钮，凭证到期及时显示刷新操作提示。", "刷新沿原Surface读取保留未保存表单，并继续遵守上传、草稿和未知命令恢复锁。"],
+  "affectedUsers": ["使用标准或可嵌入任务操作面板，且办理页面停留超过操作凭证有效期的OpenXiangda 2.0用户。"],
+  "upgradeSteps": ["按精确版本升级SDK和同批CLI，无数据库迁移；本批仅本地验证，不执行npm发布。"],
+  "knownLimitations": ["刷新重新读取当前权限，不能恢复已经被撤销的资格，也不会自动重发未决命令。", "完整业务流程及源容量验证仍单独实施。"],
+  "issues": [],
+  "compatibility": { "node": ">=22.12.0", "platform": "OpenXiangda 2.0；不改变1.x运行时" }
+}

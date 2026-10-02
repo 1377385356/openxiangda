@@ -150,6 +150,32 @@ test('ignores an injected Surface for another task before the first frame', () =
   assert.doesNotMatch(markup, /转交/);
 });
 
+test('expired or invalid credentials retain disabled server-visible commands and offer a read refresh on both devices', () => {
+  for (const variant of ['desktop', 'mobile'] as const) {
+    for (const credentials of [
+      { commandTokenExpiresAt: '2000-01-01T00:00:00.000Z' },
+      { commandTokenExpiresAt: 'invalid' },
+      { commandToken: null },
+    ]) {
+      const markup = renderToStaticMarkup(createElement(App, null, createElement(WorkflowTaskOperationsPanel, {
+        taskId: 'task-1', variant, surface: { ...workflowSurface, ...credentials } as any,
+      })));
+      assert.match(markup, /刷新操作/);
+      assert.match(markup, /保留尚未保存的输入/);
+      const command = markup.match(/<button\b[^>]*>.*?通\s*过.*?<\/button>/g)?.at(-1);
+      assert.ok(command); assert.match(command, /disabled=""/);
+      assert.doesNotMatch(markup, /拒绝/);
+    }
+  }
+});
+
+test('a read-only Surface does not invent command refresh or approval controls', () => {
+  const markup = renderToStaticMarkup(createElement(App, null, createElement(WorkflowTaskOperationsPanel, {
+    taskId: 'task-1', surface: { ...workflowSurface, commandToken: null, operations: [] } as any,
+  })));
+  assert.doesNotMatch(markup, /刷新操作|通\s*过/);
+});
+
 test('layout keeps loading and refusal content separate from current task decisions', () => {
   for (const taskId of ['task-1', 'task-2', '']) {
     let actualSurface: unknown;
