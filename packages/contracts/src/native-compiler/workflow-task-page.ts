@@ -3,6 +3,32 @@ import type { DataFieldSurface } from '../surface.js';
 
 export const WORKFLOW_TASK_PAGE_MAX_FIELDS = 64;
 export const WORKFLOW_TASK_PAGE_MAX_BYTES = 65_536;
+export const WORKFLOW_TASK_SUBTABLE_MAX_ROWS = 49;
+
+export interface WorkflowTaskSubtablePage {
+  fields: WorkflowTaskPageField[];
+  create?: boolean;
+  delete?: boolean;
+  reorder?: boolean;
+}
+
+/** Complete owned-row intent. Omission never means deletion. */
+export interface WorkflowTaskSubtableRow {
+  key: string;
+  state: 'created' | 'persisted' | 'deleted';
+  id?: string;
+  revision?: number;
+  values: Record<string, unknown>;
+}
+
+export interface WorkflowTaskSubtableSurface {
+  resourceCode: string;
+  foreignKey: string;
+  orderField: string;
+  maxRows: number;
+  fields: Record<string, DataFieldSurface>;
+  rows: Array<Record<string, unknown>>;
+}
 
 /** Application page code owns these rules. They are never administrator overrides. */
 export interface WorkflowTaskPageField {
@@ -11,6 +37,7 @@ export interface WorkflowTaskPageField {
   required?: boolean;
   visibleWhen?: WorkflowExpression;
   requiredWhen?: WorkflowExpression;
+  subtable?: WorkflowTaskSubtablePage;
 }
 
 export interface WorkflowTaskPage {
@@ -70,6 +97,7 @@ export interface WorkflowTaskFormSurface {
   expectedRevision: number;
   fields: Record<string, DataFieldSurface>;
   values: Record<string, unknown>;
+  subtables?: Record<string, WorkflowTaskSubtableSurface>;
 }
 
 export type WorkflowTaskCommandReceipt =
@@ -87,6 +115,7 @@ type Definition = {
 const forbidden = new Set(['__proto__', 'prototype', 'constructor']);
 const codePattern = /^[A-Za-z][A-Za-z0-9_-]{0,63}$/;
 const fieldPattern = /^[A-Za-z][A-Za-z0-9_]{0,62}$/;
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const object = (value: unknown): value is Record<string, any> => Boolean(value) && typeof value === 'object' && !Array.isArray(value) && [null, Object.prototype].includes(Object.getPrototypeOf(value));
 const exact = (value: unknown, keys: string[]): value is Record<string, any> => object(value) && Object.keys(value).every(key => keys.includes(key) && !forbidden.has(key));
 const bytes = (value: unknown) => { try { return new TextEncoder().encode(JSON.stringify(value)).length; } catch { return Infinity; } };
@@ -145,7 +174,8 @@ function validExpression(value: unknown, fields: Set<string>, depth = 0, budget 
 }
 
 /** Optional resource metadata lets the compiler and server reject unsupported controls. */
-export function validateWorkflowTaskPages(definition: Definition, resourceFields?: ReadonlyMap<string, { type: string; system?: boolean; hidden?: boolean; widget?: string }>): string[] {
+type TaskResourceField = { type: string; system?: boolean; hidden?: boolean; widget?: string; subtable?: DataFieldSurface['subtable'] };
+export function validateWorkflowTaskPages(definition: Definition, resourceFields?: ReadonlyMap<string, TaskResourceField>, children?: ReadonlyMap<string, ReadonlyMap<string, TaskResourceField>>): string[] {
   const diagnostics: string[] = [];
   const pages = definition.taskPages;
   if (pages !== undefined && (!object(pages) || Object.keys(pages).length === 0 || Object.keys(pages).length > 16 || bytes(pages) > WORKFLOW_TASK_PAGE_MAX_BYTES)) return ['WORKFLOW_TASK_PAGES_INVALID'];
@@ -156,16 +186,36 @@ export function validateWorkflowTaskPages(definition: Definition, resourceFields
     }
     const fields = new Set(page.fields.map(field => field?.code));
     if (fields.size !== page.fields.length) diagnostics.push(`WORKFLOW_TASK_PAGE_DUPLICATE_FIELD:${pointer}`);
+    let rowBudget = 0;
+    const childResources = new Set<string>();
     for (const field of page.fields) {
-      if (!exact(field, ['code', 'readonly', 'required', 'visibleWhen', 'requiredWhen']) || !fieldPattern.test(field.code) || forbidden.has(field.code) || (['readonly', 'required'] as const).some(key => field[key] !== undefined && typeof field[key] !== 'boolean') || (field.readonly && (field.required || field.requiredWhen))) {
+      if (!exact(field, ['code', 'readonly', 'required', 'visibleWhen', 'requiredWhen', 'subtable']) || !fieldPattern.test(field.code) || forbidden.has(field.code) || (['readonly', 'required'] as const).some(key => field[key] !== undefined && typeof field[key] !== 'boolean') || (field.readonly && (field.required || field.requiredWhen))) {
         diagnostics.push(`WORKFLOW_TASK_PAGE_FIELD_INVALID:${pointer}`); continue;
       }
       for (const key of ['visibleWhen', 'requiredWhen'] as const) if (field[key] !== undefined && !validExpression(field[key], fields)) diagnostics.push(`WORKFLOW_TASK_PAGE_EXPRESSION_INVALID:${pointer}.${field.code}.${key}`);
       if (resourceFields) {
         const resource = resourceFields.get(field.code);
-        if (!resource || resource.system || resource.hidden || resource.type === 'serial-number' || (!field.readonly && (resource.widget === 'readonly' || resource.type === 'subtable'))) diagnostics.push(`WORKFLOW_TASK_PAGE_RESOURCE_FIELD_INVALID:${pointer}.${field.code}`);
+        if (!resource || resource.system || resource.hidden || resource.type === 'serial-number' || (!field.readonly && resource.widget === 'readonly') || (!field.readonly && resource.type === 'subtable' && !field.subtable) || (field.subtable && resource.type !== 'subtable')) diagnostics.push(`WORKFLOW_TASK_PAGE_RESOURCE_FIELD_INVALID:${pointer}.${field.code}`);
+        if (field.subtable && resource?.subtable) {
+          const relation = resource.subtable;
+          rowBudget += relation.maxRows ?? 20;
+          if (childResources.has(relation.resourceCode) || !Number.isSafeInteger(relation.maxRows ?? 20) || (relation.maxRows ?? 20) < 1 || !fieldPattern.test(relation.foreignKey) || !fieldPattern.test(relation.orderField) || relation.foreignKey === relation.orderField) diagnostics.push(`WORKFLOW_TASK_SUBTABLE_RELATION_INVALID:${pointer}.${field.code}`);
+          childResources.add(relation.resourceCode);
+          const child = children?.get(relation.resourceCode);
+          if (children && (!child || !['uuid', 'resource-ref.single'].includes(child.get(relation.foreignKey)?.type || '') || child.get(relation.orderField)?.type !== 'number.integer')) diagnostics.push(`WORKFLOW_TASK_SUBTABLE_RELATION_INVALID:${pointer}.${field.code}`);
+          for (const nested of Array.isArray(field.subtable.fields) ? field.subtable.fields : []) {
+            if (!nested || typeof nested.code !== 'string') continue;
+            const metadata = child?.get(nested.code);
+            if (nested.code === relation.foreignKey || nested.code === relation.orderField || (child && (!metadata || metadata.system || metadata.hidden || metadata.type === 'subtable' || (!nested.readonly && (metadata.widget === 'readonly' || ['serial-number', 'file', 'image', 'signature', 'text.rich'].includes(metadata.type)))))) diagnostics.push(`WORKFLOW_TASK_SUBTABLE_FIELD_UNSUPPORTED:${pointer}.${field.code}.${nested.code}`);
+          }
+        } else if (field.subtable && resourceFields) diagnostics.push(`WORKFLOW_TASK_SUBTABLE_RELATION_INVALID:${pointer}.${field.code}`);
+      }
+      if (field.subtable) {
+        if (field.readonly || !exact(field.subtable, ['fields', 'create', 'delete', 'reorder']) || (['create', 'delete', 'reorder'] as const).some(key => field.subtable?.[key] !== undefined && typeof field.subtable[key] !== 'boolean') || !Array.isArray(field.subtable.fields) || field.subtable.fields.some(child => child?.subtable)) diagnostics.push(`WORKFLOW_TASK_SUBTABLE_PAGE_INVALID:${pointer}.${field.code}`);
+        else diagnostics.push(...validateWorkflowTaskPages({ taskPages: { child: { title: '子行', fields: field.subtable.fields } } }, children?.get(resourceFields?.get(field.code)?.subtable?.resourceCode || '')).map(error => `${error}:${pointer}.${field.code}`));
       }
     }
+    if (rowBudget > WORKFLOW_TASK_SUBTABLE_MAX_ROWS || rowBudget < 0 || !Number.isSafeInteger(rowBudget)) diagnostics.push(`WORKFLOW_TASK_SUBTABLE_BUDGET_EXCEEDED:${pointer}`);
   }
   for (const [id, node] of Object.entries(definition.nodes || {})) if (object(node) && node.taskPageCode !== undefined) {
     if (node.kind !== 'approval' || typeof node.taskPageCode !== 'string' || !object(pages) || !Object.hasOwn(pages, node.taskPageCode)) diagnostics.push(`WORKFLOW_TASK_PAGE_NOT_FOUND:${id}`);
@@ -184,7 +234,57 @@ export function workflowTaskPageFieldState(page: WorkflowTaskPage, values: Recor
 }
 
 export class WorkflowTaskPageError extends Error {
+  rowIndex?: number;
+  childField?: string;
   constructor(readonly code: string, readonly field?: string) { super(code); }
+}
+
+export function workflowTaskSubtableRows(page: WorkflowTaskSubtablePage, records: Array<Record<string, unknown>>): WorkflowTaskSubtableRow[] {
+  return records.map(record => ({ key: String(record.id), id: String(record.id), revision: Number(record.revision), state: 'persisted',
+    values: Object.fromEntries(workflowTaskPageFieldState({ title: '子行', fields: page.fields }, record).filter(field => field.visible && !field.readonly).map(field => [field.code, record[field.code] ?? null])) }));
+}
+
+/** Shared intent validation; Native still owns semantic field values and physical CAS. */
+export function applyWorkflowTaskSubtableRows(field: WorkflowTaskPageField, maximum: number, current: Array<Record<string, unknown>>, input: unknown, required: boolean, checkRevisions = true): WorkflowTaskSubtableRow[] {
+  const page = field.subtable;
+  const fail = (code: string): never => { throw new WorkflowTaskPageError(code, field.code); };
+  if (!page || !Number.isSafeInteger(maximum) || maximum < 1 || maximum > WORKFLOW_TASK_SUBTABLE_MAX_ROWS || !Array.isArray(input) || input.length > WORKFLOW_TASK_SUBTABLE_MAX_ROWS || bytes(input) > WORKFLOW_TASK_PAGE_MAX_BYTES || !boundedValues(input)) return fail('WORKFLOW_TASK_SUBTABLE_VALUES_INVALID');
+  const records = new Map(current.map(record => [String(record.id), record]));
+  const keys = new Set<string>();
+  const ids = new Set<string>();
+  const visible: WorkflowTaskSubtableRow[] = [];
+  for (const row of input) {
+    if (!exact(row, ['key', 'state', 'id', 'revision', 'values']) || typeof row.key !== 'string' || !uuidPattern.test(row.key) || keys.has(row.key) || !['created', 'persisted', 'deleted'].includes(row.state) || !object(row.values)) return fail('WORKFLOW_TASK_SUBTABLE_ROW_INVALID');
+    keys.add(row.key);
+    if (row.state === 'created') {
+      if (!page.create || row.id !== undefined || row.revision !== undefined || records.has(row.key)) return fail('WORKFLOW_TASK_SUBTABLE_CREATE_FORBIDDEN');
+    } else {
+      if (typeof row.id !== 'string' || row.id !== row.key || !uuidPattern.test(row.id) || ids.has(row.id) || !Number.isSafeInteger(row.revision) || row.revision < 1 || !records.has(row.id)) return fail('WORKFLOW_TASK_SUBTABLE_SCOPE_CONFLICT');
+      ids.add(row.id);
+      if (checkRevisions && Number(records.get(row.id)!.revision) !== row.revision) return fail('WORKFLOW_TASK_SUBTABLE_REVISION_CONFLICT');
+    }
+    if (row.state === 'deleted') {
+      if (!page.delete || Object.keys(row.values).length) return fail('WORKFLOW_TASK_SUBTABLE_DELETE_FORBIDDEN');
+      continue;
+    }
+    try { applyWorkflowTaskPageValues({ title: field.code, fields: page.fields }, row.id ? records.get(row.id)! : {}, row.values, required); }
+    catch (cause) {
+      if (!(cause instanceof WorkflowTaskPageError)) throw cause;
+      const error = new WorkflowTaskPageError(cause.code, field.code);
+      error.rowIndex = visible.length;
+      if (cause.field !== undefined) error.childField = cause.field;
+      throw error;
+    }
+    visible.push(row as WorkflowTaskSubtableRow);
+  }
+  if (ids.size !== records.size) return fail('WORKFLOW_TASK_SUBTABLE_SCOPE_CONFLICT');
+  if (visible.length > maximum) return fail('WORKFLOW_TASK_SUBTABLE_MAX_ROWS_EXCEEDED');
+  if (!page.reorder) {
+    const retained = current.filter(record => visible.some(row => row.id === String(record.id))).map(record => String(record.id));
+    const submitted = visible.filter(row => row.state === 'persisted').map(row => row.id!);
+    if (!jsonEqual(retained, submitted) || visible.some((row, index) => row.state === 'created' && visible.slice(index + 1).some(later => later.state === 'persisted'))) return fail('WORKFLOW_TASK_SUBTABLE_REORDER_FORBIDDEN');
+  }
+  return input as WorkflowTaskSubtableRow[];
 }
 
 function boundedValues(value: unknown, budget = { members: 0 }, depth = 0): boolean {
@@ -204,7 +304,12 @@ export function applyWorkflowTaskPageValues(page: WorkflowTaskPage, current: Rec
     const field = states.get(code);
     if (!field || field.readonly || !field.visible) throw new WorkflowTaskPageError('WORKFLOW_TASK_FORM_FIELD_NOT_EDITABLE', code);
   }
-  if (requireRequired) for (const field of states.values()) if (field.visible && !field.readonly && field.required && empty(merged[field.code])) throw new WorkflowTaskPageError('WORKFLOW_TASK_FORM_REQUIRED', field.code);
+  if (requireRequired) for (const field of states.values()) {
+    const value = merged[field.code];
+    const absent = page.fields.find(item => item.code === field.code)?.subtable && Array.isArray(value)
+      ? value.every(row => object(row) && row.state === 'deleted') : empty(value);
+    if (field.visible && !field.readonly && field.required && absent) throw new WorkflowTaskPageError('WORKFLOW_TASK_FORM_REQUIRED', field.code);
+  }
   return merged;
 }
 

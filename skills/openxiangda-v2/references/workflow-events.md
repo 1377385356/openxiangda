@@ -515,7 +515,40 @@ outbox容量等事务故障会回滚，处理器按原键核对后重交，不�
 页面表达式只读取本页 `values.*`，平台以合并后的业务值强制显隐和必填。
 最多16页、每页64字段、单次值64KiB，表达式8层/64节点。
 系统、流水号和隐藏字段不可作为补填入口。根附件、图片复用平台托管文件；
-签名和富文本同样保留 Native 字段协议；owned 子表仍需后续任务页面支持，不将它降为任意 JSON。
+签名和富文本同样保留 Native 字段协议；普通 owned 子行以固定页面白名单和行 CAS 提交。
+
+### 任务 owned 子表
+
+在主模型的 subtable 字段上声明 `subtable: { fields, create, delete, reorder }`，例如：
+
+```ts
+{ code: 'items', required: true, subtable: {
+  create: true, delete: true, reorder: true,
+  fields: [{ code: 'name', required: true }, { code: 'quantity', required: true },
+    { code: 'originalNote', readonly: true }],
+} }
+```
+
+关系沿用模型的 `resourceCode/foreignKey/orderField/maxRows`，不接受任务调用者自报。
+子字段可声明同样的只读、可见和条件必填规则；这些属于页面代码，管理员不能覆盖。
+`create/delete/reorder` 省略时关闭。仅一层，每页所有可编辑子表的 maxRows 合计最多49，
+整个 form/私有草稿仍限64KiB。系统、隐藏、关系键和顺序字段不进入子字段白名单。
+目前子行 file/image/signature/text.rich 的编辑明确拒绝，需后续行绑定上传协议；普通
+子行字段和已授权只读展示不降为 JSON 编辑框。例子见 `examples/workflow-administration/task-owned-subtable.ts`。
+
+标准 PC/手机控件自动消费 `surface.taskForm.subtables`，不会调用普通 child CRUD。
+自定义客户端提交 `values.items` 的完整行意图数组：
+`{key,state,values,id?,revision?}`；state为created/persisted/deleted，key为小写UUID，
+持久行key等于id。删除显式列出原id/revision与空values，遗漏不代表删除。
+所有观察到的行版本都核对，包括未修改行；新行key作为其业务行ID。
+values只能写白名单的当前可编辑字段，关系键与顺序由服务器维护。
+
+原save_form/approve/resubmit同时提交主子数据、事实与决定，失败全部回滚。
+子表提交推进主版本；普通child操作仍各自拥有行版本，不能仅用主版本判断子表并发。
+私有草稿保存相同行意图，不改业务。CAS拒绝保留输入，核对后明确保留编辑或采用最新资料；
+正在编辑的行被别人删除时不会静默丢弃或复活。未知命令沿原请求/原回执恢复。
+能力 `workflow.task-owned-subtables@1.0.0` 从声明自动推导，正式 SQL
+`AuthorizeWorkflowTaskOwnedSubtablesV2` 随初始化迁移自动生效，无新增默认关闭开关。
 
 标准 PC/手机任务页和 `WorkflowTaskOperationsPanel` 自动显示当前参与人的
 `surface.taskForm`。`save_form` 表示“提交补填，继续办理”，不是私有草稿。

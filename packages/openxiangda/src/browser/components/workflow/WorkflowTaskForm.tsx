@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, App, Button, Form, Space, Typography } from 'antd';
 import type { WorkflowTaskDraft, WorkflowTaskFormInput, WorkflowTaskFormSurface } from 'openxiangda-contracts/browser';
-import { applyWorkflowTaskPageValues, workflowTaskPageFieldState } from 'openxiangda-contracts/browser';
+import { applyWorkflowTaskPageValues, applyWorkflowTaskSubtableRows, workflowTaskPageFieldState } from 'openxiangda-contracts/browser';
 import { useUnsavedChangesGuard } from '../../navigation-guard';
 import { workflowLaunchContractJsonEqual } from '../../workflow-launch';
 import { fieldValueForData, fieldValueForForm } from '../platform-fields/field-form-codec';
@@ -9,10 +9,12 @@ import { MobileSurfaceFieldControl, SurfaceFieldControl, SurfaceFieldValue } fro
 import type { WorkflowFileBinding } from '../../platform-client';
 import { useWorkflowTaskFiles, WorkflowTaskFileRecovery } from './WorkflowTaskFiles';
 import { WorkflowTaskDraftPanel } from './WorkflowTaskDraftPanel';
+import { SubtableField } from '../platform-fields/SubtableField';
+import { rebaseWorkflowTaskSubtable, workflowTaskSubtableDataRows, workflowTaskSubtableFormRows } from './workflow-task-subtable';
 
 export function workflowTaskFormValues(source: WorkflowTaskFormSurface, values: Record<string, unknown>) {
   return Object.fromEntries(source.page.fields.map(field => [field.code,
-    field.readonly ? source.values[field.code] : fieldValueForData(source.fields[field.code], values[field.code]) ?? null]));
+    field.readonly ? source.values[field.code] : field.subtable ? workflowTaskSubtableDataRows(source, field.code, values[field.code]) : fieldValueForData(source.fields[field.code], values[field.code]) ?? null]));
 }
 
 export function workflowTaskFormPatch(source: WorkflowTaskFormSurface, values: Record<string, unknown>): WorkflowTaskFormInput {
@@ -31,7 +33,7 @@ export function workflowTaskFormReviewFields(source: WorkflowTaskFormSurface, la
 }
 
 const formValues = (source: WorkflowTaskFormSurface) => Object.fromEntries(source.page.fields.map(field =>
-  [field.code, fieldValueForForm(source.fields[field.code], source.values[field.code])]));
+  [field.code, field.subtable ? workflowTaskSubtableFormRows(source, field.code, source.values[field.code]) : fieldValueForForm(source.fields[field.code], source.values[field.code])]));
 
 /** Page state stays local; the Workflow command is its only submission owner. */
 export function useWorkflowTaskForm(latest?: WorkflowTaskFormSurface) {
@@ -44,7 +46,7 @@ export function useWorkflowTaskForm(latest?: WorkflowTaskFormSurface) {
   const current = source ? workflowTaskFormValues(source, { ...formValues(source), ...(watched || form.getFieldsValue(true)) }) : {};
   const dirty = Boolean(source && source.page.fields.some(field => !field.readonly &&
     !workflowLaunchContractJsonEqual(source.values[field.code] ?? null, current[field.code] ?? null)));
-  const stale = Boolean(source && latest && (source.pageCode !== latest.pageCode || source.expectedRevision !== latest.expectedRevision));
+  const stale = Boolean(source && latest && (source.pageCode !== latest.pageCode || source.expectedRevision !== latest.expectedRevision || !workflowLaunchContractJsonEqual(source.subtables, latest.subtables)));
   const draftNeedsSave = Boolean(draft && source && (draft.recordRevision !== source.expectedRevision || draft.pageCode !== source.pageCode));
   const safelyDrafted = Boolean(draft && source && !stale && !draftNeedsSave &&
     workflowLaunchContractJsonEqual(draft.values, workflowTaskFormPatch(source, { ...formValues(source), ...(watched || form.getFieldsValue(true)) }).values));
@@ -64,23 +66,35 @@ export function useWorkflowTaskForm(latest?: WorkflowTaskFormSurface) {
     await form.validateFields(workflowTaskPageFieldState(source.page, current)
       .filter(field => field.visible && !field.readonly).map(field => field.code));
     const input = workflowTaskFormPatch(source, form.getFieldsValue(true));
-    try { applyWorkflowTaskPageValues(source.page, source.values, input.values, complete); }
+    try {
+      applyWorkflowTaskPageValues(source.page, source.values, input.values, complete);
+      for (const state of workflowTaskPageFieldState(source.page, current).filter(field => field.visible && !field.readonly)) {
+        const field = source.page.fields.find(field => field.code === state.code)!;
+        const child = source.subtables?.[state.code];
+        if (field.subtable && child) applyWorkflowTaskSubtableRows(field, child.maxRows, child.rows, input.values[state.code], complete);
+      }
+    }
     catch (error) {
-      const field = (error as { field?: string }).field;
+      const { field, rowIndex, childField } = error as { field?: string; rowIndex?: number; childField?: string };
       const label = field && source.fields[field]?.label;
-      if (field) form.setFields([{ name: field, errors: [`请填写或选择${label || field}`] }]);
-      throw new Error(label ? `请填写或选择${label}` : '请核对补填资料');
+      const childLabel = field && childField && source.subtables?.[field]?.fields[childField]?.label;
+      const text = rowIndex !== undefined ? `${label || field}第${rowIndex + 1}项：请填写或选择${childLabel || childField}` : label ? `请填写或选择${label}` : '请核对补填资料';
+      if (field) { form.setFields([{ name: field, errors: [text] }]); form.scrollToField(field); }
+      throw new Error(text);
     }
     return { ...input, ...(draft ? { draft: { id: draft.id, expectedRevision: draft.revision } } : {}) };
   };
   const reviewLatest = (keep: boolean) => {
     if (!latest || !source) return;
     const patch = keep ? workflowTaskFormPatch(source, form.getFieldsValue(true)).values : {};
+    if (keep) for (const field of source.page.fields.filter(value => value.subtable && Object.hasOwn(patch, value.code))) {
+      patch[field.code] = rebaseWorkflowTaskSubtable(source, latest, field.code, patch[field.code] as import('openxiangda-contracts/browser').WorkflowTaskSubtableRow[]);
+    }
     acceptedLatest.current = latest;
     setSource({ ...latest, values: latest.values });
     form.setFieldsValue({ ...formValues(latest), ...Object.fromEntries(Object.entries(patch)
       .filter(([code]) => latest.page.fields.some(field => field.code === code && !field.readonly))
-      .map(([code, value]) => [code, fieldValueForForm(latest.fields[code], value)])) });
+      .map(([code, value]) => [code, latest.subtables?.[code] ? workflowTaskSubtableFormRows(latest, code, value) : fieldValueForForm(latest.fields[code], value)])) });
   };
   const committed = (input?: WorkflowTaskFormInput, revision?: number) => {
     if (!source || !input) return;
@@ -118,7 +132,7 @@ export function WorkflowTaskForm({ controller, disabled, draftDisabled = disable
   resourceCode?: string;
   recordId?: string;
 }) {
-  const { modal } = App.useApp();
+  const { modal, message } = App.useApp();
   const files = useWorkflowTaskFiles({ taskId, controller, onBusyChange: onFileBusyChange });
   const binding = (fieldCode: string): WorkflowFileBinding | undefined => taskId && resourceCode && recordId
     ? { taskId, resourceCode, recordId, fieldCode } : undefined;
@@ -135,7 +149,7 @@ export function WorkflowTaskForm({ controller, disabled, draftDisabled = disable
   const Control = variant === 'mobile' ? MobileSurfaceFieldControl : SurfaceFieldControl;
   const review = (keep: boolean) => modal.confirm({ title: keep ? '核对最新资料后保留输入？' : '采用最新资料？',
     content: keep ? '其他处理人的最新值已读取。保留当前填写的字段后，请逐项核对再提交。' : '当前尚未提交的输入将被最新资料替换。',
-    okText: keep ? '保留并核对' : '采用最新资料', cancelText: '继续查看', onOk: () => controller.reviewLatest(keep) });
+    okText: keep ? '保留并核对' : '采用最新资料', cancelText: '继续查看', onOk: () => { try { controller.reviewLatest(keep); } catch (error) { message.error(error instanceof Error ? error.message : '请先核对子表'); return Promise.reject(error); } } });
   return <section className={`oxa-workflow-task-form oxa-workflow-task-form-${variant}`} aria-label={source.page.title}>
     <Typography.Title level={4}>{source.page.title}</Typography.Title>
     <Typography.Paragraph type="secondary">保存补填后，任务仍由你继续办理。同意或重新提交时会一起提交资料。</Typography.Paragraph>
@@ -166,7 +180,12 @@ export function WorkflowTaskForm({ controller, disabled, draftDisabled = disable
           : <div key={state.code} className={state.required ? 'oxa-workflow-task-required' : undefined}>
               {uploadNeedsSave && <Alert type="info" showIcon title="请先保存补填，让该附件字段生效，再上传文件。" />}
               <Control field={field} disabled={disabled || stale || uploadNeedsSave} operation="update" resourceCode={resourceCode} recordId={recordId}
-                workflowFileBinding={binding(state.code)} renderers={{ upload: files.upload }} />
+                workflowFileBinding={binding(state.code)} renderers={{ upload: files.upload,
+                  renderSubtable: source.subtables?.[state.code] ? context => {
+                    const child = source.subtables![state.code]!;
+                    return <SubtableField field={context.field} disabled={context.disabled} mobile={variant === 'mobile'} operation="update" parentRecordId={recordId}
+                      task={{ page: source.page.fields.find(field => field.code === state.code)!.subtable!, binding: binding(state.code), surface: { fields: child.fields, form: { fieldOrder: Object.keys(child.fields) } } }} />;
+                  } : undefined }} />
               {state.required && <Typography.Text className="oxa-workflow-task-required-hint" type="secondary">完成任务前必填</Typography.Text>}
             </div>;
       })}

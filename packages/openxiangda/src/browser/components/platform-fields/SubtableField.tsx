@@ -26,10 +26,12 @@ import {
 import type {
   DataFieldSurface,
   DataResourceSurface,
+  WorkflowTaskSubtablePage,
 } from 'openxiangda-contracts/browser';
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { MobileSubtableValidationContext } from './MobileSubtableValidation';
-import { createNativeResourceClient } from '../../platform-client';
+import { createNativeResourceClient, type WorkflowFileBinding } from '../../platform-client';
+import { workflowTaskPageFieldState } from 'openxiangda-contracts/browser';
 import { useRuntime } from '../../runtime';
 import { useResourceDefinitions } from '../../resource-definitions';
 import {
@@ -67,6 +69,8 @@ export interface SubtableFieldProps {
   value?: SubtableDraftRow[];
   onChange?: (value: SubtableDraftRow[]) => void;
   view?: 'form' | 'detail';
+  /** Already qualified task projection. Never use ordinary child CRUD here. */
+  task?: { surface: DataResourceSurface; page: WorkflowTaskSubtablePage; binding?: WorkflowFileBinding };
 }
 
 export function SubtableField({
@@ -78,13 +82,14 @@ export function SubtableField({
   value,
   onChange,
   view = 'form',
+  task,
 }: SubtableFieldProps) {
   const definitions = useResourceDefinitions() as Record<
     string,
     GeneratedDefinition
   >;
   const config = field.subtable;
-  const definition = config ? definitions[config.resourceCode] : undefined;
+  const definition = config ? task ? { code: config.resourceCode, name: field.label, capabilities: { read: '', create: '', update: '', delete: '' }, surface: task.surface } : definitions[config.resourceCode] : undefined;
   const { hasCapability, hasReadCapability, identity } = useRuntime();
   const [internalRows, setInternalRows] = useState<SubtableDraftRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -102,30 +107,44 @@ export function SubtableField({
     [config?.foreignKey, config?.orderField, definition?.surface, view]
   );
   const readableFields = childFields.filter(child =>
-    fieldReadable(child, hasReadCapability, identity.isAppSuperAdmin)
+    task || fieldReadable(child, hasReadCapability, identity.isAppSuperAdmin)
   );
   const canCreate = Boolean(
     definition &&
       !disabled &&
-      (identity.isAppSuperAdmin || hasCapability(definition.capabilities.create))
+      (task ? task.page.create === true : identity.isAppSuperAdmin || hasCapability(definition.capabilities.create))
   );
   const canUpdate = Boolean(
     definition &&
       !disabled &&
-      (identity.isAppSuperAdmin || hasCapability(definition.capabilities.update))
+      (task ? true : identity.isAppSuperAdmin || hasCapability(definition.capabilities.update))
   );
   const canDelete = Boolean(
     definition &&
       !disabled &&
-      (identity.isAppSuperAdmin || hasCapability(definition.capabilities.delete))
+      (task ? task.page.delete === true : identity.isAppSuperAdmin || hasCapability(definition.capabilities.delete))
   );
 
   const emit = (next: SubtableDraftRow[]) => {
     setInternalRows(next);
     onChange?.(next);
   };
+  const taskState = (child: SurfaceField, row: SubtableDraftRow) => task && workflowTaskPageFieldState({ title: field.label, fields: task.page.fields }, {
+    ...row.snapshot, ...Object.fromEntries(Object.entries(row.data).map(([code, value]) => [code, fieldValueForData(task.surface.fields[code], value)])),
+  }).find(state => state.code === child.key);
+  const canReadField = (child: SurfaceField, row?: SubtableDraftRow) => task ? !row || taskState(child, row)?.visible === true : fieldReadable(child, hasReadCapability, identity.isAppSuperAdmin);
+  const canWriteField = (child: SurfaceField, operation: 'create' | 'update', row?: SubtableDraftRow) => task
+    ? (!row ? task.page.fields.some(item => item.code === child.key && !item.readonly) : Boolean(taskState(child, row)?.visible && !taskState(child, row)?.readonly))
+    : fieldWritable(child, operation, hasCapability, identity.isAppSuperAdmin);
+  const upload = (current: SurfaceField, file: File, recordId?: string) => task
+    ? Promise.reject(new Error('当前任务暂不支持子行附件上传')) : createNativeResourceClient(definition!.code, definition!.surface).upload(current.key, file, recordId);
+  const rowBinding = (row: SubtableDraftRow) => task?.binding && row.id ? { ...task.binding, resourceCode: config!.resourceCode, recordId: row.id } : undefined;
+  const rowFields = (row: SubtableDraftRow) => childFields.map(child => task ? { ...child, requiredHint: false } : child);
+  const requiredHint = (child: SurfaceField, row: SubtableDraftRow) => taskState(child, row)?.required
+    ? <Typography.Text type="secondary">完成任务前必填</Typography.Text> : undefined;
 
   useEffect(() => {
+    if (task) return;
     if (!parentRecordId || !definition || !config) {
       if (operation === 'create' && value === undefined && internalRows.length === 0) {
         onChange?.([]);
@@ -189,7 +208,7 @@ export function SubtableField({
   };
   const moveRow = (index: number, direction: -1 | 1) => {
     const target = index + direction;
-    if (target < 0 || target >= visibleRows.length) return;
+    if (target < 0 || target >= visibleRows.length || disabled || (task && !task.page.reorder)) return;
     const reordered = [...visibleRows];
     [reordered[index], reordered[target]] = [reordered[target]!, reordered[index]!];
     emit([...reordered, ...rows.filter(row => row.state === 'deleted')]);
@@ -199,22 +218,21 @@ export function SubtableField({
     {loading ? <span role="status">加载中…</span> : visibleRows.map((row, index) => {
       const rowOperation = row.state === 'persisted' ? 'update' : 'create';
       const writable = row.state === 'persisted' ? canUpdate : canCreate;
-      const fields = childFields.filter(child => fieldReadable(child, hasReadCapability, identity.isAppSuperAdmin) || (writable && fieldWritable(child, rowOperation, hasCapability, identity.isAppSuperAdmin)));
+      const fields = rowFields(row).filter(child => canReadField(child, row) || (writable && canWriteField(child, rowOperation, row)));
       return <MobileSubtableRow key={row.key} row={row} index={index} fields={fields}
         resourceCode={definition.code} operation={rowOperation}
-        canWrite={child => writable && fieldWritable(child, rowOperation, hasCapability, identity.isAppSuperAdmin)}
+        canWrite={child => writable && canWriteField(child, rowOperation, row)}
         canDelete={row.state === 'persisted' ? canDelete : canCreate} onRemove={() => removeRow(row)}
         onChange={data => emit(rows.map(current => current.key === row.key ? { ...current, data, snapshot: { ...current.snapshot, ...Object.fromEntries(Object.entries(data).map(([key, item]) => [key, fieldValueForData(definition.surface.fields[key], item)])) } } : current))}
-        upload={(current, file, recordId) => createNativeResourceClient(definition.code, definition.surface).upload(current.key, file, recordId)} />;
+        workflowFileBinding={rowBinding(row)} upload={upload} taskMode={Boolean(task)} hint={child => requiredHint(child, row)}
+        actions={task?.page.reorder && <Space><MobileButton fill="none" disabled={disabled || index === 0} aria-label={`上移第${index + 1}项`} onClick={() => moveRow(index, -1)}>上移</MobileButton><MobileButton fill="none" disabled={disabled || index === visibleRows.length - 1} aria-label={`下移第${index + 1}项`} onClick={() => moveRow(index, 1)}>下移</MobileButton></Space>} />;
     })}
     {!disabled && <MobileButton block fill="none" color="primary" disabled={!canCreate || visibleRows.length >= maxRows}
       onClick={() => emit([...rows, { key: crypto.randomUUID(), state: 'created', data: {} }])}><PlusOutlined /> 新增一项</MobileButton>}
   </div>;
 
-  const fields = childFields.filter(child => fieldReadable(child, hasReadCapability, identity.isAppSuperAdmin) ||
-    (canCreate && fieldWritable(child, 'create', hasCapability, identity.isAppSuperAdmin)) ||
-    (canUpdate && fieldWritable(child, 'update', hasCapability, identity.isAppSuperAdmin)));
-  const writableCodes = fields.filter(child => fieldWritable(child, 'create', hasCapability, identity.isAppSuperAdmin)).map(child => child.key);
+  const fields = childFields.filter(child => canReadField(child) || (canCreate && canWriteField(child, 'create')) || (canUpdate && canWriteField(child, 'update')));
+  const writableCodes = fields.filter(child => canWriteField(child, 'create')).map(child => child.key);
   const appendRows = (data: Record<string, unknown>[]) => emit([...rows, ...data.map(item => ({
     key: crypto.randomUUID(), state: 'created' as const,
     data: Object.fromEntries(Object.entries(item).map(([key, value]) => [key, fieldValueForForm(definition.surface.fields[key], value)])),
@@ -233,15 +251,15 @@ export function SubtableField({
       <tbody>{loading ? <tr><td colSpan={fields.length + 2}><Spin /></td></tr> : visibleRows.map((row, index) => {
         const rowOperation = row.state === 'persisted' ? 'update' : 'create';
         const writable = row.state === 'persisted' ? canUpdate : canCreate;
-        return <DesktopSubtableRow key={row.key} row={row} index={index} fields={fields} operation={rowOperation}
+        return <DesktopSubtableRow key={row.key} row={row} index={index} fields={fields.map(child => task ? { ...child, requiredHint: false } : child)} operation={rowOperation}
           resourceCode={definition.code} disabled={disabled}
-          canRead={child => fieldReadable(child, hasReadCapability, identity.isAppSuperAdmin)}
-          canWrite={child => writable && fieldWritable(child, rowOperation, hasCapability, identity.isAppSuperAdmin)}
+          canRead={child => canReadField(child, row)}
+          canWrite={child => writable && canWriteField(child, rowOperation, row)}
           onChange={data => emit(rows.map(current => current.key === row.key ? { ...current, data } : current))}
-          upload={(current, file, recordId) => createNativeResourceClient(definition.code, definition.surface).upload(current.key, file, recordId)}
+          workflowFileBinding={rowBinding(row)} upload={upload} hint={child => requiredHint(child, row)}
           actions={<Space size={0}>
-            <Button type="text" aria-label={`上移第${index + 1}项`} disabled={index === 0 || !writable} icon={<UpOutlined />} onClick={() => moveRow(index, -1)} />
-            <Button type="text" aria-label={`下移第${index + 1}项`} disabled={index === visibleRows.length - 1 || !writable} icon={<DownOutlined />} onClick={() => moveRow(index, 1)} />
+            <Button type="text" aria-label={`上移第${index + 1}项`} disabled={index === 0 || !writable || Boolean(task && !task.page.reorder)} icon={<UpOutlined />} onClick={() => moveRow(index, -1)} />
+            <Button type="text" aria-label={`下移第${index + 1}项`} disabled={index === visibleRows.length - 1 || !writable || Boolean(task && !task.page.reorder)} icon={<DownOutlined />} onClick={() => moveRow(index, 1)} />
             <Button type="link" danger disabled={row.state === 'persisted' ? !canDelete : !canCreate} onClick={() => removeRow(row)}>删除</Button>
           </Space>} />;
       })}{!loading && !visibleRows.length && <tr><td colSpan={fields.length + 2}><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无明细" /></td></tr>}</tbody>
@@ -264,11 +282,13 @@ export function SubtableField({
   </div>;
 }
 
-function DesktopSubtableRow({ row, index, fields, operation, resourceCode, disabled, canRead, canWrite, onChange, upload, actions }: {
+function DesktopSubtableRow({ row, index, fields, operation, resourceCode, disabled, canRead, canWrite, onChange, upload, actions, workflowFileBinding, hint }: {
   row: SubtableDraftRow; index: number; fields: SurfaceField[]; operation: 'create' | 'update'; resourceCode: string; disabled?: boolean;
   canRead: (field: SurfaceField) => boolean; canWrite: (field: SurfaceField) => boolean;
   onChange: (data: Record<string, unknown>) => void; upload: (field: SurfaceField, file: File, recordId?: string) => Promise<import('openxiangda-contracts/browser').DataFileRef>;
   actions: import('react').ReactNode;
+  workflowFileBinding?: WorkflowFileBinding;
+  hint?: (field: SurfaceField) => import('react').ReactNode;
 }) {
   const [form] = Form.useForm();
   const registerValidation = useContext(MobileSubtableValidationContext);
@@ -279,8 +299,8 @@ function DesktopSubtableRow({ row, index, fields, operation, resourceCode, disab
   useEffect(() => { form.setFieldsValue(row.data); }, [form, row.data]);
   return <Form component={false} name={`subtable-${row.key}`} form={form} initialValues={row.data} onValuesChange={(_changed, all) => onChange(all)}>
     <tr><td className="oxa-subtable-number">{index + 1}</td>{fields.map(field => <td key={field.key}>
-      {canWrite(field) ? <SurfaceFieldControl field={field} disabled={false} operation={operation} recordId={row.id} resourceCode={resourceCode} renderers={{ upload }} />
-        : canRead(field) ? <SurfaceFieldValue field={field} resourceCode={resourceCode} value={row.snapshot?.[field.key] ?? row.data[field.key]} /> : '—'}
+      {canWrite(field) ? <><SurfaceFieldControl field={field} disabled={Boolean(disabled)} operation={operation} recordId={row.id} resourceCode={resourceCode} renderers={{ upload }} />{hint?.(field)}</>
+        : canRead(field) ? <SurfaceFieldValue field={field} resourceCode={resourceCode} workflowFileBinding={workflowFileBinding && { ...workflowFileBinding, fieldCode: field.key }} value={row.snapshot?.[field.key] ?? row.data[field.key]} /> : '—'}
     </td>)}{!disabled && <td>{actions}</td>}</tr>
   </Form>;
 }
@@ -401,9 +421,11 @@ function draftFromRecord(
   };
 }
 
-function MobileSubtableRow({ row, index, fields, operation, resourceCode, canWrite, canDelete, onRemove, onChange, upload }: {
+function MobileSubtableRow({ row, index, fields, operation, resourceCode, canWrite, canDelete, onRemove, onChange, upload, actions, workflowFileBinding, taskMode, hint }: {
   row: SubtableDraftRow; index: number; fields: SurfaceField[]; operation: 'create' | 'update'; resourceCode: string;
   canWrite: (field: SurfaceField) => boolean; canDelete: boolean; onRemove: () => void;
+  actions?: import('react').ReactNode; workflowFileBinding?: WorkflowFileBinding;
+  taskMode?: boolean; hint?: (field: SurfaceField) => import('react').ReactNode;
   onChange: (data: Record<string, unknown>) => void; upload: (field: SurfaceField, file: File, recordId?: string) => Promise<import('openxiangda-contracts/browser').DataFileRef>;
 }) {
   const [form] = Form.useForm();
@@ -417,10 +439,13 @@ function MobileSubtableRow({ row, index, fields, operation, resourceCode, canWri
   return <div className="oxa-mobile-subtable-card">
     <header><MobileButton fill="none" aria-label={`${expanded ? '折叠' : '展开'}第${index + 1}项`} aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? '▾' : '▸'} {index + 1}</MobileButton>
       {canDelete && <MobileButton fill="none" onClick={onRemove}>删除</MobileButton>}
+      {actions}
     </header>
     <div hidden={!expanded} style={!expanded ? { display: 'none' } : undefined}>
       <Form component={false} name={`subtable-${row.key}`} form={form} initialValues={row.data} onValuesChange={(_changed, all) => onChange(all)}>
-        {fields.map(field => <MobileSurfaceFieldControl key={field.key} field={field} disabled={!canWrite(field)} operation={operation} recordId={row.id} resourceCode={resourceCode} renderers={{ upload }} />)}
+        {fields.map(field => canWrite(field) || !taskMode
+          ? <div key={field.key}><MobileSurfaceFieldControl field={field} disabled={!canWrite(field)} operation={operation} recordId={row.id} resourceCode={resourceCode} renderers={{ upload }} />{hint?.(field)}</div>
+          : <div key={field.key}><Typography.Text type="secondary">{field.label}</Typography.Text><SurfaceFieldValue field={field} resourceCode={resourceCode} workflowFileBinding={workflowFileBinding && { ...workflowFileBinding, fieldCode: field.key }} mobile value={row.snapshot?.[field.key] ?? row.data[field.key]} /></div>)}
       </Form>
     </div>
   </div>;

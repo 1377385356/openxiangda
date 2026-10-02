@@ -676,6 +676,8 @@ export function compileRequiredPlatformCapabilitiesV3(
       ? [{ code: 'workflow.task-managed-files' as const, declaration: taskManagedFileDefinitions }] : []),
     ...(taskRichFieldDefinitions.length
       ? [{ code: 'workflow.task-rich-fields' as const, declaration: taskRichFieldDefinitions }] : []),
+    ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.taskPages || {}).some((page: any) => page.fields.some((field: any) => field.subtable)))
+      ? [{ code: 'workflow.task-owned-subtables' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.taskPages || {}).some((page: any) => page.fields.some((field: any) => field.subtable))) }] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action'))
       ? [{ code: 'workflow.durable-business-step' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action')) }]
       : []),
@@ -6509,7 +6511,7 @@ function validateWorkflowReferences(config: JsonObject) {
     const taskPageErrors = validateWorkflowTaskPages(definition, new Map(
       (resources.get(definition.subject.resourceCode)?.schema.fields || [])
         .map((field: JsonObject) => [field.code, { ...resources.get(definition.subject.resourceCode)?.surface?.fields?.[field.code], ...field, system: ['id', 'revision', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy'].includes(field.code) }])
-    ));
+    ), new Map([...resources].map(([code, resource]) => [code, new Map(resource.schema.fields.map((field: JsonObject) => [field.code, { ...resource.surface?.fields?.[field.code], ...field, system: ['id', 'revision', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy'].includes(field.code) }]))])));
     if (taskPageErrors.length) fail(taskPageErrors[0]!, `${pointer}/definition/taskPages`);
     const policyErrors = validateWorkflowInstanceCommandPolicies(definition, {
       appCode: config.appCode,
