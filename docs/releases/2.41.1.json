@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.41.1",
+  "status": "reviewed",
+  "title": "OpenXiangda 2.41.1：任务补填正文与操作栏",
+  "summary": "补填表单和恢复提示进入可滚动正文，PC与手机保留独立操作底栏。",
+  "newFeatures": ["WorkflowTaskOperationsPanel提供renderLayout({content,actions})呈现插槽，两部分共用同一提交控制器。"],
+  "fixes": ["修复390px手机补填表单挤压详情、与按钮重叠；底栏可换行且保留44px触达。"],
+  "affectedUsers": ["使用标准任务补填页或嵌入任务面板的V2应用。"],
+  "upgradeSteps": ["消费同批本地包并重新启动connected dev；本批不发布npm。", "自定义详情可使用renderLayout插槽，禁止创建两个任务面板拆分状态。"],
+  "knownLimitations": ["沿用2.41.0标量补填合同；私有任务草稿、附件与子表补填待W13.2。", "本说明不代表学校、生产或101流程全量验收。"],
+  "issues": [],
+  "compatibility": {"node": ">=24", "workspaceGenerations": "v2", "platform": "沿用workflow.task-page-submit@1.0.0，不新增SQL或开关。", "v1": "原V1引擎保持。"}
+}

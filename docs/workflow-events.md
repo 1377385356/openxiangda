@@ -530,6 +530,10 @@ approve/resubmit 携带 `form: { expectedRevision, values }` 时，Native 业务
 的 `expired_unconsumed` 才能解除等待，供用户核对资料后重新确认。
 组件复用宿主的 `OpenXiangdaApplication` 导航保护；成功后刷新失败不变成提交失败。
 
+嵌入自定义详情时，可用 `renderLayout={({ content, actions }) => ...}` 将补填表单和
+恢复提示放在可滚动正文，将操作按钮放在底栏。两部分始终使用同一个任务面板，
+不要分别创建两个面板或复制其表单、请求和回执状态。标准详情已自动采用该布局。
+
 多人补填与管理纠错使用 Native 记录 CAS，冲突保留输入。补填刷新固定事实投影；
 修改已计算步骤的输入时清除当前失效输出及依赖输出。仅退回 replay 且所有前向
 审批路径确定重经生产者时允许；resume_current 或后置补填跳过重算会返回

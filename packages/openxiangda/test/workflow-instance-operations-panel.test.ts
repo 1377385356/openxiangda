@@ -180,7 +180,6 @@ test('keeps task and instance wrappers on the shared lifecycle and operation cor
     /<WorkflowInstanceOperationsPanel[\s\S]*instanceId=\{instance\.id\}/,
   );
   assert.match(source, /<WorkflowTaskOperationsPanel[\s\S]*taskId=\{task\.id\}/);
-  assert.match(source, /const operations = task\s*\? <WorkflowTaskOperationsPanel/);
   assert.match(source, /const task = surface \? surfaceTask\(surface\) : null/);
   assert.match(source, /<WorkflowOperations[\s\S]*surface=\{renderSurface\}/);
   assert.equal(

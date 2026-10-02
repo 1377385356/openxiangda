@@ -880,6 +880,7 @@ function WorkflowOperations({
   onBusyChange,
   settlement,
   confirmedReadPending,
+  renderLayout,
 }: {
   surface: WorkflowSurface;
   variant: PageVariant;
@@ -891,6 +892,7 @@ function WorkflowOperations({
   onBusyChange: (busy: boolean) => void;
   settlement: { key: string; result: WorkflowCommandResult | null } | null;
   confirmedReadPending: boolean;
+  renderLayout: (parts: { content: ReactNode; actions: ReactNode }) => ReactNode;
 }) {
   const { message } = App.useApp();
   const [selectedState, setSelectedState] = useState<{
@@ -1032,7 +1034,7 @@ function WorkflowOperations({
     finally { if (mounted.current) { setSubmitting(false); busyRef.current = false; onBusyChange(false); } }
   };
   const locked = submitting || unknown || Boolean(pendingLocator) || Boolean(refreshError) || confirmedReadPending;
-  if (!operations.length && !surface.taskForm && !unknown && !refreshError) return null;
+  if (!operations.length && !surface.taskForm && !unknown && !refreshError) return renderLayout({ content: null, actions: null });
   const primary = operations
     .filter((operation) => operation.placement === 'primary')
     .sort((left, right) => {
@@ -1043,7 +1045,7 @@ function WorkflowOperations({
   const secondary = operations.filter(
     (operation) => operation.placement !== 'primary',
   );
-  return (
+  const content = surface.taskForm || ((submitting || unknown) && !pendingLocator) || unknown || refreshError ? (
     <>
       {surface.taskForm && <WorkflowTaskForm controller={taskForm} disabled={locked} variant={variant}
         resourceCode={surface.presentation.businessDetail.resourceCode || undefined} recordId={surface.presentation.businessDetail.recordId || undefined} />}
@@ -1052,6 +1054,10 @@ function WorkflowOperations({
         action={<Button disabled={submitting} loading={submitting} onClick={() => void sendRequest(true)}>重试原请求</Button>} />}
       {refreshError && <Alert type="warning" showIcon title="任务操作已成功，但资料刷新失败" description={refreshError}
         action={<Button disabled={submitting} onClick={() => void refreshConfirmed()}>刷新资料</Button>} />}
+    </>
+  ) : null;
+  const actions = (
+    <>
       <div className={`oxa-workflow-actions oxa-workflow-actions-${variant}`}>
         {primary.map((operation) => (
           <Button
@@ -1104,6 +1110,7 @@ function WorkflowOperations({
       />
     </>
   );
+  return renderLayout({ content, actions });
 }
 
 interface WorkflowOperationsPanelProps {
@@ -1128,6 +1135,7 @@ interface WorkflowOperationsPanelProps {
   surfaceMismatchMessage: string;
   loadingLabel: string;
   loadErrorFallback: string;
+  renderLayout?: (parts: { content: ReactNode; actions: ReactNode }) => ReactNode;
 }
 
 /**
@@ -1152,6 +1160,7 @@ function WorkflowOperationsPanel({
   surfaceMismatchMessage,
   loadingLabel,
   loadErrorFallback,
+  renderLayout,
 }: WorkflowOperationsPanelProps) {
   const normalizedIdentifier = identifier.trim();
   const runtime = useOptionalRuntime();
@@ -1447,9 +1456,11 @@ function WorkflowOperationsPanel({
   }} />;
   const confirmedWarning = confirmedReadFailure && <Alert showIcon type="warning" title="任务操作已成功，但页面刷新失败"
     description={confirmedReadFailure.message} action={<Button onClick={() => void completed(confirmedReadFailure.result)}>刷新资料</Button>} />;
+  const layout = (parts: { content: ReactNode; actions: ReactNode }) => renderLayout
+    ? renderLayout(parts) : <>{parts.content}{parts.actions}</>;
 
   if (renderLoading) {
-    return (
+    return layout({ actions: null, content: (
       <>{receipt}{confirmedWarning}
       <div
         aria-busy="true"
@@ -1459,10 +1470,10 @@ function WorkflowOperationsPanel({
         <Spin />
       </div>
       </>
-    );
+    ) });
   }
   if (renderError && !renderSurface) {
-    return (
+    return layout({ actions: null, content: (
       <>{receipt}{confirmedWarning}
       <Alert
         action={<Button onClick={() => void refresh().catch(() => undefined)}>重试</Button>}
@@ -1471,16 +1482,10 @@ function WorkflowOperationsPanel({
         type="error"
       />
       </>
-    );
+    ) });
   }
-  if (!renderSurface) return receipt || confirmedWarning ? <>{receipt}{confirmedWarning}</> : null;
+  if (!renderSurface) return layout({ content: receipt || confirmedWarning ? <>{receipt}{confirmedWarning}</> : null, actions: null });
   return (
-    <>
-      {receipt}
-      {confirmedWarning}
-      {renderError && (
-        <Alert description={renderError} showIcon type="warning" />
-      )}
       <WorkflowOperations
         key={`${normalizedIdentifier}:${locatorScope}:${runtime?.identityEpoch || 0}`}
         onCommandSuccess={completed}
@@ -1493,8 +1498,9 @@ function WorkflowOperationsPanel({
         onBusyChange={setWriting}
         settlement={settlement}
         confirmedReadPending={Boolean(confirmedReadFailure)}
+        renderLayout={({ content, actions }) => layout({ actions, content: receipt || confirmedWarning || renderError || content ? <>{receipt}{confirmedWarning}
+          {renderError && <Alert description={renderError} showIcon type="warning" />}{content}</> : null })}
       />
-    </>
   );
 }
 
@@ -1520,6 +1526,8 @@ export interface WorkflowTaskOperationsPanelProps {
   onCommandCompleted?: (
     result: WorkflowCommandResult,
   ) => void | Promise<void>;
+  /** Places the form/recovery content and action bar without duplicating their controller. */
+  renderLayout?: (parts: { content: ReactNode; actions: ReactNode }) => ReactNode;
 }
 
 /** Public, embeddable Workflow task operation surface. */
@@ -1530,11 +1538,13 @@ export function WorkflowTaskOperationsPanel({
   onSurfaceChange,
   onCompleted,
   onCommandCompleted,
+  renderLayout,
 }: WorkflowTaskOperationsPanelProps) {
   return (
     <WorkflowOperationsPanel
       identifier={taskId}
       onCommandCompleted={onCommandCompleted}
+      renderLayout={renderLayout}
       loadErrorFallback="审批任务加载失败"
       loadSurface={loadWorkflowTaskSurface}
       matchesSurface={workflowSurfaceMatchesTask}
@@ -1637,6 +1647,7 @@ interface WorkflowDetailRendererProps {
   timeline: WorkflowTimeline | null;
   warning: string;
   operations: ReactNode;
+  taskContent?: ReactNode;
   onClose?: () => void;
   onEdit?: () => void;
   drawer?: boolean;
@@ -1645,7 +1656,7 @@ interface WorkflowDetailRendererProps {
   editing?: ReactNode; busy?: boolean;
 }
 
-function StandardWorkflowDetailRenderer({ surface, timeline, warning, operations, variant,
+function StandardWorkflowDetailRenderer({ surface, timeline, warning, operations, taskContent, variant,
   onClose, onEdit, drawer, drawerState, newPageHref, editing, busy,
 }: WorkflowDetailRendererProps & { variant: PageVariant }) {
   const navigate = useNavigate();
@@ -1669,7 +1680,7 @@ function StandardWorkflowDetailRenderer({ surface, timeline, warning, operations
       summary.submittedAt ? `${detailTime(summary.submittedAt, timeZone)} 创建` : ''].filter(Boolean).join(' · ')}
     updatedAt={business.record.updated_at || instance.completedAt || instance.startedAt}
     onClose={back} onEdit={edit} editing={editing} busy={busy} drawer={drawer} drawerState={drawerState} newPageHref={newPageHref}
-    footer={hasActions || edit ? <>{operations}{edit && <Button onClick={edit}>编辑</Button>}</> : null}>
+    footer={operations || hasActions || edit ? <>{operations}{edit && <Button onClick={edit}>编辑</Button>}</> : null}>
     {warning && <Alert description={warning} showIcon type="warning" />}
     {!workflowHasEnded(instance) && activeNode && <div className={`oxa-workflow-current-node is-${bannerTone}`} role="status"><span><ClockCircleOutlined />当前节点：{activeNode.title}</span>
       {people && <span>等待{people}处理</span>}</div>}
@@ -1680,6 +1691,7 @@ function StandardWorkflowDetailRenderer({ surface, timeline, warning, operations
         ? <RecordChangeHistory resourceCode={business.resourceCode} recordId={business.recordId} surface={business.surface} readable={() => true} loadPage={loadAudit} />
         : <Empty description="暂无变更记录" /> },
     ]} />
+    {taskContent && <div className="oxa-workflow-task-content">{taskContent}</div>}
   </RecordDetailFrame>;
 }
 
@@ -1797,14 +1809,14 @@ function WorkflowDetailPage({ kind, variant, resourceCode, recordId, onDismiss, 
     {loading ? <Spin /> : <Result status="error" title="流程详情加载失败" subTitle={error || '流程不存在'} extra={<Button onClick={() => void refresh()}>重试</Button>} />}
   </RecordDetailFrame>;
   if (surface.detailNavigation.custom) return <Navigate replace to={detailPath} />;
-  const operations = task
-    ? <WorkflowTaskOperationsPanel key={task.id} onCommandCompleted={onCommandCompleted} surface={surface} taskId={task.id} variant={variant} />
-    : <WorkflowInstanceOperationsPanel instanceId={instance.id} onCommandCompleted={onCommandCompleted} surface={surface} variant={variant} />;
-  return <StandardWorkflowDetailRenderer surface={surface} timeline={timeline} warning={error} operations={operations}
+  const renderDetail = (operations: ReactNode, taskContent?: ReactNode) => <StandardWorkflowDetailRenderer surface={surface} timeline={timeline} warning={error} operations={operations} taskContent={taskContent}
     variant={variant} drawer={Boolean(onDismiss)} drawerState={drawerState} newPageHref={newPageHref} onClose={editing ? () => { if (!editBusy) setEditing(false); } : close} busy={editBusy}
     editing={editing && business?.resourceCode && business.recordId ? <WorkflowRecordEditor resourceCode={business.resourceCode} recordId={business.recordId}
       variant={variant} presentation="embedded" onBusyChange={setEditBusy} onDismiss={() => setEditing(false)} onSaved={() => { setEditing(false); void refresh(); }} /> : undefined}
     onEdit={workflowHasEnded(instance) && identity.isAppSuperAdmin && (business?.status === 'ready' || business?.status === 'stale') ? () => setEditing(true) : undefined} />;
+  return task ? <WorkflowTaskOperationsPanel key={task.id} onCommandCompleted={onCommandCompleted} surface={surface} taskId={task.id} variant={variant}
+    renderLayout={({ content, actions }) => renderDetail(actions, content)} />
+    : renderDetail(<WorkflowInstanceOperationsPanel instanceId={instance.id} onCommandCompleted={onCommandCompleted} surface={surface} variant={variant} />);
 }
 
 export function WorkflowRecordDetailPage({ variant = 'desktop', ...props }: {
