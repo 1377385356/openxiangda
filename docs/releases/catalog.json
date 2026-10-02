@@ -3,6 +3,44 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.43.0",
+      "status": "reviewed",
+      "title": "OpenXiangda 2.43.0：持久命令的有界发现与原申请恢复",
+      "summary": "热点应用可显式延长只读发现预算，刷新合并并优先核对原键；未知受理保留原申请与输入，避免误报排队成功。",
+      "newFeatures": [
+        "DurableCommandOptions 与 useDurableCommand 新增 discoveryRecoveryMs，默认 120 秒，可显式配置最长 30 分钟；每次发现共享固定截止。",
+        "DurableCommandSnapshot 新增 acceptanceConfirmed，供界面区分已确认受理与仍需核对的原申请。"
+      ],
+      "fixes": [
+        "已确认非终态优先读取原键，原键 404 保留受控本人列表兜底；未确认原意图不会被其他周期覆盖。",
+        "重复刷新合并，停止后重新挂载可重新只读发现；回执同时核对原键、operationId 和作用域。",
+        "CLI 内置模板与同批 SDK 精确版本同步，中文接入资料随 skill-kit 发布。"
+      ],
+      "affectedUsers": [
+        "使用持久命令排队提交、原申请恢复的 V2 页面开发者及应用用户。"
+      ],
+      "upgradeSteps": [
+        "安装同批正式 openxiangda 包，刷新技能资料并重启应用；按应用需求显式配置 discoveryRecoveryMs。",
+        "排队文案以 acceptanceConfirmed 为准，未知受理提供显式恢复原申请操作，不在挂载时重放提交。",
+        "本轮能力不要求新服务端契约或 SQL；使用此前新增的工作流能力时仍需对应平台正式迁移与服务端版本。"
+      ],
+      "knownLimitations": [
+        "延长只读发现预算不会延长原首次提交的受理或观察窗口，也不会自动补单。",
+        "单元与发行门禁不证明实际服务器容量；入口、受理和本人结果须在目标环境独立测量。",
+        "浏览器尚未取得受理回执时，离页不能保证原申请已经进入后台队列。"
+      ],
+      "issues": [],
+      "compatibility": {
+        "node": ">=24",
+        "workspaceGenerations": "v2",
+        "platform": "现有 managed concurrency durable command 契约；新增恢复选项为可选。",
+        "v1": "V1 引擎保持独立，本轮无行为变更。"
+      },
+      "sha256": "456c5671abc109c2cadc82bd22ae82adb2756293b63ee79aad941fc3450138d3",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.43.0"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.42.0",
       "status": "reviewed",
       "title": "OpenXiangda 2.42.0：任务私有草稿",
