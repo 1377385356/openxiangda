@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.40.1",
+  "version": "2.41.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -73,13 +73,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.31",
-    "openxiangda-contracts": "2.40.0",
-    "openxiangda-devkit-core": "2.40.1",
+    "openxiangda-cli": "2.6.32",
+    "openxiangda-contracts": "2.41.0",
+    "openxiangda-devkit-core": "2.41.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.70",
-    "openxiangda-nest": "2.13.0",
-    "openxiangda-skill-kit": "2.3.48",
+    "openxiangda-mcp": "2.0.71",
+    "openxiangda-nest": "2.13.1",
+    "openxiangda-skill-kit": "2.3.49",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -145,32 +145,41 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.40.1",
+    "version": "2.41.0",
     "status": "reviewed",
-    "title": "OpenXiangda 2.40.1：业务步骤订阅与恢复保护",
-    "summary": "保留固定处理器过滤条件，并保护未知恢复结果的原请求与宿主导航。",
-    "newFeatures": [],
+    "title": "OpenXiangda 2.41.0：任务页面补填与原命令提交",
+    "summary": "代码页面声明补填规则，普通审批人在当前任务中提交业务资料，再以同一事务完成审批或重提。",
+    "newFeatures": [
+      "taskPages 与 taskPageCode 作为不可管理员覆盖的页面合同。",
+      "save_form 保存补填但保留任务；approve/resubmit 支持 form 和记录 CAS。",
+      "PC、手机与 SDK 共用表单、未知请求重试和重载后的原回执查询。"
+    ],
     "fixes": [
-      "应用规范化保留 workflowStep 过滤条件，两端编译器生成相同固定版本处理器合同与能力闭包。",
-      "共享步骤恢复组件保留未知请求，向原导航 owner 报告 dirty/busy/unknown，明确拒绝可重新预览。"
+      "已确认任务提交与后续资料刷新失败分开，回调仍能获取成功结果。",
+      "补填修改计算输入时清除当前失效输出，只允许确定重经生产者的 replay；历史步骤与签名不改。"
     ],
     "affectedUsers": [
-      "声明持久业务步骤的 V2 应用开发者。"
+      "需要审批补填、销假或退回重新核算的 V2 应用开发者与办理人。"
     ],
     "upgradeSteps": [
-      "升级同批本地包、冻结锁文件后重新检查；本批不发布 npm。"
+      "平台安装正式 SQL 与 Workflow/Native 同批内核，自动提供 workflow.task-page-submit@1.0.0。",
+      "使用同批本地包并冻结 lockfile；本批不发布 npm。",
+      "由应用代码声明命名页面及字段规则，审批资格无需授予通用资源 CRUD。"
     ],
     "knownLimitations": [
-      "沿用 2.40.0 的步骤 Schema、容量、恢复与固定拓扑边界，真实运行验收单独记录。"
+      "每定义16页、每页64字段、表单值64KiB；表达式8层/64节点。",
+      "草稿仍由 FormDraft 拥有，本批尚未开放任务草稿、附件与子表补填。",
+      "修改影响已计算步骤且不能经 replay 重算时明确拒绝；固定数据逻辑修订漂移也拒绝。",
+      "本说明不代表学校、生产或全量流程运行验收完成。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
       "workspaceGenerations": "v2",
-      "platform": "配套 workflow.durable-business-step@1.0.0 与正式 SQL；不新增默认关闭开关。",
+      "platform": "配套 workflow.task-page-submit@1.0.0 与正式 AuthorizeWorkflowTaskPageDataV2 SQL；无新增默认关闭开关。",
       "v1": "原 V1 引擎保持。"
     },
-    "sha256": "6298bde670c7877e61b5439c10d4e66d696615587b1d802ff2749443c2bb570c",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.40.1"
+    "sha256": "6827503a9c1dd801f505da1f20a914fbc4db47d7f09d360090150fa8a98e9b12",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.41.0"
   }
 }
