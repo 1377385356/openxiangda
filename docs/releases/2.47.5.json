@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.47.5",
+  "status": "reviewed",
+  "title": "固定流程图的可读摘要与定位",
+  "summary": "条件卡和步骤卡直接呈现声明的判断变量与产出，长图首次打开保持可读比例，选中来源时定位目标。",
+  "newFeatures": [],
+  "fixes": ["长图按实际缩放判断初始视口，避免节点较少但布局很长时文字过小。", "节点摘要取自同版本条件路径与业务步骤输出，列表和画布均跟随外部选择，保留正交连线和固定拓扑。"],
+  "affectedUsers": ["使用共享WorkflowDiagram的OpenXiangda 2.0应用和流程管理后台。"],
+  "upgradeSteps": ["升级精确SDK和同批CLI；重新构建消费该SDK的流程管理前端，无数据库迁移。本批仅本地制品验证，不执行npm发布。"],
+  "knownLimitations": ["说明由已发布readability元数据提供，界面不推断或执行计算代码；缺失说明需开发者随新定义补充。", "完整业务流程和容量边界需按应用单独验收。"],
+  "issues": [],
+  "compatibility": { "node": ">=22.12.0", "platform": "OpenXiangda 2.0同版本graph projection；不改变1.x运行时" }
+}

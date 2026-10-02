@@ -4,6 +4,7 @@ import { Background, BaseEdge, EdgeLabelRenderer, Handle, MarkerType, MiniMap, P
 import { formatWorkflowExpression, type WorkflowGraphEdge, type WorkflowGraphProjection, type WorkflowGraphVisit } from 'openxiangda-contracts/browser';
 import { WorkflowNodeCard } from './WorkflowNodeCard';
 import { workflowFlowLayout } from './workflow-flow-layout';
+import { workflowNodeIsReadable, workflowReadableZoom } from './workflow-graph-presentation';
 import '@xyflow/react/dist/style.css';
 import { Skeleton } from 'antd';
 
@@ -54,6 +55,7 @@ export default function WorkflowFlowCanvas(props: {
 }) {
   const latest = useRef(props); latest.current = props;
   const container = useRef<HTMLDivElement>(null);
+  const ensureVisible = useRef<((id: string) => void) | null>(null);
   const [instance, setInstance] = useState<ReactFlowInstance<FlowNode, FlowEdge> | null>(null);
   const [layoutState, setLayoutState] = useState<{ graph: WorkflowGraphProjection; positions?: Awaited<ReturnType<typeof workflowFlowLayout>>; error?: Error }>({ graph: props.graph });
   const positions = layoutState.graph === props.graph ? layoutState.positions : undefined;
@@ -81,18 +83,32 @@ export default function WorkflowFlowCanvas(props: {
   }) : [], [props.graph, props.executedEdges, props.selectedNodeId, props.selectedEdgeId, positions]);
   useEffect(() => {
     if (!instance || !positions) return;
+    let active = true;
+    let focusFrame: number | undefined;
+    let navigation = 0;
     const locate = (id: string, focus = false) => {
       const point = positions.nodes.get(id);
-      if (!point) return;
+      if (!active || !point) return;
+      const currentNavigation = ++navigation;
+      if (focusFrame !== undefined) cancelAnimationFrame(focusFrame);
       void instance.setCenter(point.x + point.width / 2, point.y + point.height / 2, { zoom: .95, duration: focus ? 0 : 180 }).then(() => {
-        if (focus) requestAnimationFrame(() => container.current?.querySelector<HTMLButtonElement>(`.react-flow__node[data-id="${CSS.escape(id)}"] button`)?.focus({ preventScroll: true }));
+        if (active && currentNavigation === navigation && focus) focusFrame = requestAnimationFrame(() => container.current?.querySelector<HTMLButtonElement>(`.react-flow__node[data-id="${CSS.escape(id)}"] button`)?.focus({ preventScroll: true }));
       });
     };
+    ensureVisible.current = id => {
+      const point = positions.nodes.get(id), element = container.current;
+      if (point && element && !workflowNodeIsReadable(point, instance.getViewport(), { width: element.clientWidth, height: element.clientHeight })) locate(id);
+    };
     latest.current.onReady({ locate, fit: () => { void instance.fitView({ padding: .18, maxZoom: 1, minZoom: .025, duration: 200 }); }, zoomBy: direction => { void instance.zoomTo(Math.max(.025, Math.min(1.6, instance.getZoom() * (direction > 0 ? 1.25 : .8))), { duration: 120 }); } });
-    if (latest.current.graph.nodes.length > 14) locate(latest.current.selectedNodeId);
-    else void instance.fitView({ padding: .2, maxZoom: 1, minZoom: .025 });
-    return () => latest.current.onReady(null);
+    void instance.fitView({ padding: .2, maxZoom: 1, minZoom: .025 }).then(() => {
+      if (!active || instance.getZoom() >= workflowReadableZoom) return;
+      const graph = latest.current.graph;
+      const target = [latest.current.selectedNodeId, graph.startAt, graph.nodes[0]?.id].find(id => id && positions.nodes.has(id));
+      if (target) locate(target);
+    });
+    return () => { active = false; if (focusFrame !== undefined) cancelAnimationFrame(focusFrame); ensureVisible.current = null; latest.current.onReady(null); };
   }, [instance, positions]);
+  useEffect(() => { ensureVisible.current?.(props.selectedNodeId); }, [props.selectedNodeId]);
   if (layoutState.graph === props.graph && layoutState.error) throw layoutState.error;
   if (!positions) return <div className="oxa-workflow-canvas-loading"><Skeleton active title paragraph={{ rows: 4 }} /></div>;
   return <div ref={container} className="oxa-workflow-reactflow">
