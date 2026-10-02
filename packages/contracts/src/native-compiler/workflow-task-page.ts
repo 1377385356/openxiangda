@@ -163,7 +163,7 @@ export function validateWorkflowTaskPages(definition: Definition, resourceFields
       for (const key of ['visibleWhen', 'requiredWhen'] as const) if (field[key] !== undefined && !validExpression(field[key], fields)) diagnostics.push(`WORKFLOW_TASK_PAGE_EXPRESSION_INVALID:${pointer}.${field.code}.${key}`);
       if (resourceFields) {
         const resource = resourceFields.get(field.code);
-        if (!resource || resource.system || resource.hidden || resource.type === 'serial-number' || (!field.readonly && (resource.widget === 'readonly' || ['subtable', 'signature', 'text.rich'].includes(resource.type)))) diagnostics.push(`WORKFLOW_TASK_PAGE_RESOURCE_FIELD_INVALID:${pointer}.${field.code}`);
+        if (!resource || resource.system || resource.hidden || resource.type === 'serial-number' || (!field.readonly && (resource.widget === 'readonly' || resource.type === 'subtable'))) diagnostics.push(`WORKFLOW_TASK_PAGE_RESOURCE_FIELD_INVALID:${pointer}.${field.code}`);
       }
     }
   }

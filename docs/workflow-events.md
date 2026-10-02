@@ -515,7 +515,7 @@ outbox容量等事务故障会回滚，处理器按原键核对后重交，不�
 页面表达式只读取本页 `values.*`，平台以合并后的业务值强制显隐和必填。
 最多16页、每页64字段、单次值64KiB，表达式8层/64节点。
 系统、流水号和隐藏字段不可作为补填入口。根附件、图片复用平台托管文件；
-签名、子表和富文本仍需后续任务页面支持，不将它们降为任意 JSON。
+签名和富文本同样保留 Native 字段协议；owned 子表仍需后续任务页面支持，不将它降为任意 JSON。
 
 标准 PC/手机任务页和 `WorkflowTaskOperationsPanel` 自动显示当前参与人的
 `surface.taskForm`。`save_form` 表示“提交补填，继续办理”，不是私有草稿。
@@ -559,7 +559,7 @@ approve/resubmit 携带 `form: { expectedRevision, values }` 时，Native 业务
 可编译例子见 `examples/workflow-administration/task-draft.ts`。
 
 最多20份/90天与同用户、应用、环境、资源的其他表单草稿共享，单份最多64字段/64KiB。
-字段支持根附件、图片，暂不包含签名、富文本或子表。读到不兼容草稿时只返回安全标识与诊断，
+字段支持根附件、图片、完整业务签名和富文本，暂不包含 owned 子表。读到不兼容草稿时只返回安全标识与诊断，
 不静默丢弃或泄露旧值。失去任务、角色或代理资格后不能继续读/用。
 
 读取不会自动覆盖输入；采用前确认，业务基线变化先核对并再次保存。相同输入暂存成功后
@@ -612,3 +612,24 @@ const readyFile = await completeWorkflowTaskFileUpload(taskId, input.id);
 复用既有 Native 文件引用 worker 和 GC；流式正式复制限时10秒。
 需要服务端正式 SQL `AddWorkflowTaskManagedFilesV2` 和自动能力
 `workflow.task-managed-files@1.0.0`，初始化无需新增开关。
+
+### 任务业务签名与富文本
+
+任务页面声明可编辑 `signature/text.rich` 时，标准 PC/手机字段控件自动使用同一任务
+文件、私有草稿和原流程提交入口。编译器同时要求 `workflow.task-rich-fields@1.0.0`；
+平台初始化自动提供，无新增配置开关。只有只读展示时不要求上传能力。
+
+业务签名保留完整 Native 值：`file: { id, name, size, contentType }`、可选 `signer`、
+`signedAt`、可选 `points` 和 `hash`，清空为 `null`。PNG、时间、笔迹与 SHA-256 在上传前
+固定，未知结果恢复只采用原文件，不重新签署。任务控件最多采样512个笔迹点并保留首尾；
+原 PNG 字节不改，仍受任务值64KiB限制。这些是业务采集信息，不代表平台认证的签署人、
+可信时间或法律电子签章。
+
+富文本保存清洗后的 HTML 和 Native 稳定托管图片地址，支持最多20图、单图10MiB、100MP。
+PC/手机保留格式、图片和前后文字；插图未知时锁住编辑，恢复采用原插入位置并只插入一次。
+`blob:` 仅用于授权预览，不进入保存值。新任务签名/富文本图片完成时核验实际图片解码与
+声明格式。完整值经 Native 校验后，草稿和正式审批共用排序文件锁、引用验证、保留期及事务。
+
+自定义 Field Kit 上传 renderer 的第四参数为可选 `onRecovered(file)`，仅在恢复原任务上传
+时采用完整字段值；正常上传仍返回 `DataFileRef`。非数组字段必须提供该回调；不能用文件数组
+append 处理签名或 HTML。当前任务、实例、记录或字段改变时清理旧图片预览，重新按范围读取。

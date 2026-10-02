@@ -448,7 +448,12 @@ export function compileRequiredPlatformCapabilitiesV3(
   const taskManagedFileDefinitions = config.workflows.definitions.filter((item: JsonObject) => {
     const fields = resources.find(resource => resource.code === item.definition.subject?.resourceCode)?.schema.fields || [];
     return Object.values(item.definition.taskPages || {}).some((page: any) => page.fields.some((field: any) =>
-      !field.readonly && fields.some((metadata: JsonObject) => metadata.code === field.code && ['file', 'image'].includes(metadata.type))));
+      !field.readonly && fields.some((metadata: JsonObject) => metadata.code === field.code && ['file', 'image', 'signature', 'text.rich'].includes(metadata.type))));
+  });
+  const taskRichFieldDefinitions = taskManagedFileDefinitions.filter((item: JsonObject) => {
+    const fields = resources.find(resource => resource.code === item.definition.subject?.resourceCode)?.schema.fields || [];
+    return Object.values(item.definition.taskPages || {}).some((page: any) => page.fields.some((field: any) =>
+      !field.readonly && fields.some((metadata: JsonObject) => metadata.code === field.code && ['signature', 'text.rich'].includes(metadata.type))));
   });
   const standardProcessDefinitions = config.workflows.definitions.filter(
     (declaration: JsonObject) =>
@@ -669,6 +674,8 @@ export function compileRequiredPlatformCapabilitiesV3(
       : []),
     ...(taskManagedFileDefinitions.length
       ? [{ code: 'workflow.task-managed-files' as const, declaration: taskManagedFileDefinitions }] : []),
+    ...(taskRichFieldDefinitions.length
+      ? [{ code: 'workflow.task-rich-fields' as const, declaration: taskRichFieldDefinitions }] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action'))
       ? [{ code: 'workflow.durable-business-step' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action')) }]
       : []),

@@ -47,7 +47,6 @@ import type { CascadeStoredValue } from '../platform-fields/cascade-value';
 import { DateTimeField, DateTimeFilter, DateTimeValueDisplay } from '../platform-fields/DateTimeField';
 import { rangeValueValidationMessage } from '../platform-fields/field-form-codec';
 import { MobileBooleanField, MobileDateTimeField, MobileNumberField, MobileOptionField, MobileRatingField, MobileTextField } from '../platform-fields/MobileFieldControls';
-import { MobileRichTextField } from '../platform-fields/MobileRichTextField';
 import { MobileSubtableValidationContext, useMobileSubtableValidation } from '../platform-fields/MobileSubtableValidation';
 import { MobileFieldFrame } from '../platform-fields/MobileFieldFrame';
 import { JsonField, JsonValueDisplay } from '../platform-fields/JsonField';
@@ -137,7 +136,8 @@ export interface SurfaceFieldRenderers {
   upload?: (
     field: SurfaceField,
     file: File,
-    recordId?: string
+    recordId?: string,
+    onRecovered?: (file: DataFileRef) => void,
   ) => Promise<DataFileRef>;
   signer?: UserReferenceValue;
   renderValue?: (context: SurfaceFieldValueContext) => ReactNode | undefined;
@@ -490,9 +490,10 @@ export function SurfaceFieldControl({
         <SignatureField
           disabled={disabled}
           onUpload={renderers?.upload
-            ? file => renderers.upload!(field, file, recordId)
+            ? (file, onRecovered) => renderers.upload!(field, file, recordId, onRecovered)
             : undefined}
           resourceCode={resourceCode}
+          workflowBinding={workflowFileBinding}
           signer={renderers?.signer}
         />
       );
@@ -505,9 +506,10 @@ export function SurfaceFieldControl({
         <RichTextField
           disabled={disabled}
           onUpload={renderers?.upload
-            ? file => renderers.upload!(field, file, recordId)
+            ? (file, onRecovered) => renderers.upload!(field, file, recordId, onRecovered)
             : undefined}
           resourceCode={resourceCode}
+          workflowBinding={workflowFileBinding}
         />
       );
       break;
@@ -688,9 +690,10 @@ export function MobileSurfaceFieldControl({
           disabled={disabled}
           mobile
           onUpload={renderers?.upload
-            ? file => renderers.upload!(field, file, recordId)
+            ? (file, onRecovered) => renderers.upload!(field, file, recordId, onRecovered)
             : undefined}
           resourceCode={resourceCode}
+          workflowBinding={workflowFileBinding}
           signer={renderers?.signer}
         />
       );
@@ -699,7 +702,11 @@ export function MobileSurfaceFieldControl({
       control = <AddressField disabled={disabled} mobile />;
       break;
     case 'rich-text':
-      control = <MobileRichTextField disabled={disabled} field={field} />;
+      control = <RichTextField disabled={disabled} mobile
+        onUpload={renderers?.upload
+          ? (file, onRecovered) => renderers.upload!(field, file, recordId, onRecovered)
+          : undefined}
+        resourceCode={resourceCode} workflowBinding={workflowFileBinding} />;
       break;
     case 'json':
       control = <JsonField disabled={disabled} mobile />;

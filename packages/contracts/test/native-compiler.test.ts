@@ -43,6 +43,26 @@ test('automatic cc capability is derived from declarations in both shared compil
   }
 });
 
+test('editable rich task fields require their capability; readonly fields do not enable uploads', () => {
+  for (const type of ['signature', 'text.rich']) {
+    for (const readonly of [false, true]) {
+      const config = JSON.parse(corpus.configuration.canonical);
+      const definition = config.workflows.definitions[0].definition;
+      const resource = config.data.resources.find((item: any) => item.code === definition.subject.resourceCode);
+      resource.schema.fields.push({ code: 'richEvidence', type, nullable: true });
+      resource.surface.fields.richEvidence = { ...resource.surface.fields.name, type, label: '补充材料',
+        widget: type === 'signature' ? 'signature' : 'rich-text', requiredHint: false, searchable: false, sortable: false, list: false };
+      definition.taskPages = { fill: { title: '办理', fields: [{ code: 'richEvidence', readonly }] } };
+      definition.nodes.review.taskPageCode = 'fill';
+      for (const implementation of [esm, cjs]) {
+        const capabilities = implementation.compileRequiredPlatformCapabilitiesV3(config);
+        for (const code of ['workflow.task-managed-files', 'workflow.task-rich-fields'])
+          assert.equal(capabilities.some(item => item.code === code && item.contractVersion === '1.0.0'), !readonly);
+      }
+    }
+  }
+});
+
 test('routing declarations automatically require the platform capability and invalid policies fail in both compiler distributions', () => {
   const configuration = JSON.parse(corpus.configuration.canonical);
   const binding = configuration.workflows.bindings[0].binding.bindings.reviewer;

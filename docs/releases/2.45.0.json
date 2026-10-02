@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.45.0",
+  "status": "reviewed",
+  "title": "OpenXiangda 2.45.0：任务业务签名与富文本",
+  "summary": "当前任务支持完整业务签名和富文本，复用托管文件、本人私有草稿及原流程提交。",
+  "newFeatures": [
+    "代码任务页面支持可编辑 signature/text.rich，并自动要求 workflow.task-rich-fields@1.0.0。",
+    "未知任务上传恢复保留签名时间、笔迹、摘要与富文本原插入位置，不将完整字段转换为文件数组。"
+  ],
+  "fixes": [
+    "手机富文本使用共享 HTML 编辑器，编辑时保留格式和图片。",
+    "签名/富文本编辑与展示按任务、实例、记录和字段范围重新读取授权图片。"
+  ],
+  "affectedUsers": ["使用代码任务补填及移动富文本的办理人、应用开发者和平台维护者。"],
+  "upgradeSteps": ["消费同批 SDK、contracts 与 CLI；服务端支持新增能力后重新构建应用。本次没有新增 SQL 或配置开关。"],
+  "knownLimitations": [
+    "业务签名的采集信息不代表可信认证时间或法律电子签章。",
+    "owned 子表与其余任务/图交互继续后续切片；字段权限仍属于页面代码。",
+    "本轮只准备本地测试文件包，未执行 npm 发布或学校生产迁移。"
+  ],
+  "issues": [],
+  "compatibility": {"node": ">=24", "workspaceGenerations": "v2", "platform": "workflow.task-rich-fields@1.0.0 + workflow.task-managed-files@1.0.0", "v1": "1.x 引擎保持独立。"}
+}

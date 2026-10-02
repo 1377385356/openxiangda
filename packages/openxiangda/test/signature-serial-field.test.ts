@@ -2,15 +2,13 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-test('signature canvas emits managed PNG, SHA-256 and business metadata', () => {
+test('signature source stays on managed PNG protocol instead of inline image data', () => {
   const field = readFileSync(
     new URL('../src/browser/components/platform-fields/SignatureField.tsx', import.meta.url),
     'utf8'
   );
   assert.match(field, /toBlob\(resolve, 'image\/png'\)/);
   assert.match(field, /digest\('SHA-256'/);
-  assert.match(field, /signedAt: new Date\(\)\.toISOString\(\)/);
-  assert.match(field, /points: points\.current\.slice\(\)/);
   assert.match(field, /file: managedFile\(uploaded\)/);
   assert.doesNotMatch(field, /dataURL|base64/);
 });

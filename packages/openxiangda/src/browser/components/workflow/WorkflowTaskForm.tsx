@@ -157,7 +157,7 @@ export function WorkflowTaskForm({ controller, disabled, draftDisabled = disable
     <Form form={form} layout="vertical" initialValues={formValues(source)} disabled={disabled || stale}>
       {workflowTaskPageFieldState(source.page, current).filter(state => state.visible).map(state => {
         const field = { ...source.fields[state.code]!, key: state.code, requiredHint: false };
-        const uploadNeedsSave = ['file', 'image'].includes(field.type) &&
+        const uploadNeedsSave = ['file', 'image', 'signature', 'text.rich'].includes(field.type) &&
           !workflowTaskPageFieldState((latest || source).page, (latest || source).values).some(saved => saved.code === state.code && saved.visible && !saved.readonly);
         return state.readonly
           ? <div className="oxa-workflow-task-readonly" key={state.code}><Typography.Text type="secondary">{field.label}</Typography.Text><div>

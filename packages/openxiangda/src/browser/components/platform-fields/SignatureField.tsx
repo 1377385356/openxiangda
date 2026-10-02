@@ -36,6 +36,14 @@ import {
 } from '../../platform-client';
 
 const CANVAS_HEIGHT = 240;
+const MAX_TASK_POINTS = 512;
+
+function sampledPoints(input: StableSignaturePoint[], maximum: number) {
+  if (input.length <= maximum) return input.slice();
+  return Array.from({ length: maximum }, (_, index) =>
+    input[Math.round(index * (input.length - 1) / (maximum - 1))]!
+  );
+}
 
 async function sha256(blob: Blob) {
   const digest = await crypto.subtle.digest('SHA-256', await blob.arrayBuffer());
@@ -72,7 +80,8 @@ function SignatureImage({
   useEffect(() => {
     let active = true;
     let objectUrl = '';
-    if (!resourceCode && !workflowBinding) return;
+    setSource('');
+    if (!resourceCode && !workflowBinding) { setLoading(false); return; }
     setLoading(true);
     const request = workflowBinding
       ? fetchWorkflowDataFileBlob(workflowBinding, value.file.id)
@@ -94,6 +103,7 @@ function SignatureImage({
   }, [
     resourceCode,
     value.file.id,
+    workflowBinding?.taskId,
     workflowBinding?.instanceId,
     workflowBinding?.resourceCode,
     workflowBinding?.recordId,
@@ -140,14 +150,16 @@ export function SignatureField({
   onUpload,
   signer,
   resourceCode,
+  workflowBinding,
   disabled = false,
   mobile = false,
 }: {
-  value?: StableSignatureValue;
-  onChange?: (value: StableSignatureValue | undefined) => void;
-  onUpload?: (file: File) => Promise<DataFileRef>;
+  value?: StableSignatureValue | null;
+  onChange?: (value: StableSignatureValue | null) => void;
+  onUpload?: (file: File, onRecovered?: (file: DataFileRef) => void) => Promise<DataFileRef>;
   signer?: UserReferenceValue;
   resourceCode?: string;
+  workflowBinding?: WorkflowFileBinding;
   disabled?: boolean;
   mobile?: boolean;
 }) {
@@ -158,6 +170,15 @@ export function SignatureField({
   const [drawn, setDrawn] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const scope = JSON.stringify([resourceCode, workflowBinding?.taskId, workflowBinding?.instanceId,
+    workflowBinding?.resourceCode, workflowBinding?.recordId, workflowBinding?.fieldCode]);
+  const generation = useRef(0);
+  useEffect(() => {
+    generation.current += 1;
+    setOpen(false); setSaving(false); setError(''); drawing.current = false;
+    return () => { generation.current += 1; };
+  }, [scope]);
+  const locked = disabled || saving;
 
   const prepare = useCallback(() => {
     const element = canvas.current;
@@ -195,6 +216,7 @@ export function SignatureField({
   };
 
   const clear = () => {
+    if (locked) return;
     points.current = [];
     setDrawn(false);
     setError('');
@@ -202,6 +224,7 @@ export function SignatureField({
   };
 
   const save = async () => {
+    if (locked) return;
     if (!canvas.current || !points.current.length) {
       setError('请先完成签名');
       return;
@@ -212,6 +235,11 @@ export function SignatureField({
     }
     setSaving(true);
     setError('');
+    const originalGeneration = generation.current;
+    const signedAt = new Date().toISOString();
+    const originalPoints = workflowBinding?.taskId
+      ? sampledPoints(points.current, MAX_TASK_POINTS) : points.current.slice();
+    let uploadStarted = false;
     try {
       const blob = await new Promise<Blob | null>(resolve =>
         canvas.current?.toBlob(resolve, 'image/png')
@@ -221,19 +249,28 @@ export function SignatureField({
       const file = new File([blob], `signature-${Date.now()}.png`, {
         type: 'image/png',
       });
-      const uploaded = await onUpload(file);
-      onChange?.({
-        file: managedFile(uploaded),
+      const envelope = {
         ...(signer ? { signer } : {}),
-        signedAt: new Date().toISOString(),
-        points: points.current.slice(),
+        signedAt,
+        points: originalPoints,
         hash,
-      });
-      setOpen(false);
+      };
+      const adopt = (uploaded: DataFileRef) => {
+        if (generation.current !== originalGeneration) return;
+        onChange?.({ ...envelope, file: managedFile(uploaded) });
+        setOpen(false); setError('');
+      };
+      if (generation.current !== originalGeneration) return;
+      uploadStarted = true;
+      adopt(await onUpload(file, adopt));
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      if (generation.current !== originalGeneration) return;
+      if (workflowBinding?.taskId && uploadStarted) {
+        // The task recovery panel owns upload failures and the original envelope.
+        setOpen(false); setError('');
+      } else setError(reason instanceof Error ? reason.message : String(reason));
     } finally {
-      setSaving(false);
+      if (generation.current === originalGeneration) setSaving(false);
     }
   };
 
@@ -245,6 +282,7 @@ export function SignatureField({
         onPointerCancel={() => { drawing.current = false; }}
         onPointerDown={event => {
           event.preventDefault();
+          if (locked) return;
           event.currentTarget.setPointerCapture(event.pointerId);
           drawing.current = true;
           const next = point(event);
@@ -260,7 +298,7 @@ export function SignatureField({
         }}
         onPointerMove={event => {
           event.preventDefault();
-          if (!drawing.current) return;
+          if (locked || !drawing.current) return;
           const previous = points.current[points.current.length - 1];
           const next = point(event);
           const context = event.currentTarget.getContext('2d');
@@ -271,6 +309,9 @@ export function SignatureField({
             context.stroke();
           }
           points.current.push(next);
+          if (workflowBinding?.taskId && points.current.length > 4096) {
+            points.current = sampledPoints(points.current, 2048);
+          }
         }}
         onPointerUp={event => {
           if (event.currentTarget.hasPointerCapture(event.pointerId)) {
@@ -281,21 +322,25 @@ export function SignatureField({
         ref={canvas}
       />
       {error && <Alert showIcon title={error} type="error" />}
-      {mobile ? <MobileButton disabled={saving} onClick={clear}>清空画布</MobileButton> : <Button disabled={saving} icon={<ClearOutlined />} onClick={clear}>清空画布</Button>}
+      {mobile ? <MobileButton disabled={locked} onClick={clear}>清空画布</MobileButton> : <Button disabled={locked} icon={<ClearOutlined />} onClick={clear}>清空画布</Button>}
     </div>
   );
 
   const dialog: ReactNode = mobile ? (
-    <Popup visible={open} bodyClassName="oxa-mobile-signature-sheet" onMaskClick={() => !saving && setOpen(false)} destroyOnClose>
-      <section role="dialog" aria-label="手写签名"><MobileSheetHeader title="手写签名" disabled={!drawn || saving} confirmText={saving ? '保存中…' : '保存签名'}
-        onCancel={() => !saving && setOpen(false)} onConfirm={() => void save()} />{canvasContent}</section>
+    <Popup visible={open} bodyClassName="oxa-mobile-signature-sheet" onMaskClick={() => !locked && setOpen(false)} destroyOnClose>
+      <section role="dialog" aria-label="手写签名"><MobileSheetHeader title="手写签名" disabled={!drawn || locked} confirmText={saving ? '保存中…' : '保存签名'}
+        onCancel={() => !locked && setOpen(false)} onConfirm={() => void save()} />{canvasContent}</section>
     </Popup>
   ) : (
     <Modal
       destroyOnHidden
-      okButtonProps={{ disabled: !drawn }}
+      okButtonProps={{ disabled: !drawn || locked }}
+      cancelButtonProps={{ disabled: locked }}
+      closable={!locked}
+      maskClosable={!locked}
+      keyboard={!locked}
       okText="保存签名"
-      onCancel={() => setOpen(false)}
+      onCancel={() => !locked && setOpen(false)}
       onOk={() => void save()}
       open={open}
       confirmLoading={saving}
@@ -307,29 +352,30 @@ export function SignatureField({
   );
 
   if (mobile) return <div className="oxa-mobile-signature-field oxa-mobile-scope">
-    <MobileButton className="oxa-mobile-signature-preview" fill="none" disabled={disabled} aria-label={value ? '重新签名' : '开始签名'} onClick={() => setOpen(true)}>
-      {value ? <SignatureImage mobile resourceCode={resourceCode} value={value} /> : <span>点击手写签名</span>}
+    <MobileButton className="oxa-mobile-signature-preview" fill="none" disabled={locked} aria-label={value ? '重新签名' : '开始签名'} onClick={() => setOpen(true)}>
+      {value ? <SignatureImage mobile resourceCode={resourceCode} workflowBinding={workflowBinding} value={value} /> : <span>点击手写签名</span>}
     </MobileButton>
-    {value && !disabled && <MobileButton className="oxa-mobile-signature-clear" fill="none" aria-label="清除签名" onClick={() => onChange?.(undefined)}>×</MobileButton>}
+    {value && <MobileButton disabled={locked} className="oxa-mobile-signature-clear" fill="none" aria-label="清除签名" onClick={() => onChange?.(null)}>×</MobileButton>}
     {dialog}
   </div>;
   return (
     <div className="oxa-signature-field">
       {value ? (
-        <SignatureValueDisplay resourceCode={resourceCode} value={value} />
+        <SignatureValueDisplay resourceCode={resourceCode} workflowBinding={workflowBinding} value={value} />
       ) : (
         <Typography.Text type="secondary">尚未签名</Typography.Text>
       )}
       {!disabled && (
         <Space>
-          <Button icon={<EditOutlined />} onClick={() => setOpen(true)}>
+          <Button disabled={locked} icon={<EditOutlined />} onClick={() => setOpen(true)}>
             {value ? '重新签名' : '开始签名'}
           </Button>
           {value && (
             <Button
               aria-label="清除签名"
               icon={<DeleteOutlined />}
-              onClick={() => onChange?.(undefined)}
+              disabled={locked}
+              onClick={() => onChange?.(null)}
             />
           )}
         </Space>

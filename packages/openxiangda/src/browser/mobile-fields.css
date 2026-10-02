@@ -1,5 +1,9 @@
 @import './mobile-base.css';
 
+.oxa-mobile-rich-text-field .oxa-rich-text-toolbar { display: flex; flex-wrap: wrap; gap: 4px; border-color: var(--adm-color-border); }
+.oxa-mobile-rich-text-field .oxa-rich-text-toolbar button { min-height: 40px; min-width: 40px; }
+.oxa-mobile-rich-text-field .oxa-rich-text-editor { border-color: var(--adm-color-border); }
+
 /* Base tokens and popup containers remain inside mobile component ancestry. */
 /* Every field uses the same row contract, including custom page consumers. */
 .oxa-mobile-field { display: grid; min-width: 0; margin: 0; padding: 16px 0; gap: 8px; border-bottom: 1px solid var(--adm-color-border); }

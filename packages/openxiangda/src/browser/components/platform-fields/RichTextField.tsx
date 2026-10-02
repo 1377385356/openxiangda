@@ -9,8 +9,9 @@ import {
   UnorderedListOutlined,
 } from '@ant-design/icons';
 import { Button, Space, Tooltip } from 'antd';
+import { Button as MobileButton } from '../../mobile';
 import type { DataFileRef } from 'openxiangda-contracts/browser';
-import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { useEffect, useMemo, useRef, useState, type RefObject, type ReactNode } from 'react';
 import {
   dataRichTextImageSource,
   fetchDataFileBlob,
@@ -55,6 +56,9 @@ function useHydratedManagedImages(
 ) {
   const objectUrls = useRef(new Map<string, string>());
   const pendingBlobs = useRef(new Map<string, Promise<Blob>>());
+  const scope = JSON.stringify([resourceCode, workflowBinding?.taskId, workflowBinding?.instanceId,
+    workflowBinding?.resourceCode, workflowBinding?.recordId, workflowBinding?.fieldCode]);
+  const previousScope = useRef(scope);
 
   useEffect(() => () => {
     objectUrls.current.forEach(source => URL.revokeObjectURL(source));
@@ -64,6 +68,14 @@ function useHydratedManagedImages(
 
   useEffect(() => {
     const container = root.current;
+    if (previousScope.current !== scope) {
+      objectUrls.current.forEach(source => URL.revokeObjectURL(source));
+      objectUrls.current.clear(); pendingBlobs.current.clear();
+      container?.querySelectorAll('img').forEach(image => {
+        if (image.getAttribute('src')?.startsWith('blob:')) image.removeAttribute('src');
+      });
+      previousScope.current = scope;
+    }
     if (!container || (!resourceCode && !workflowBinding)) return;
     let active = true;
     const images = [...container.querySelectorAll('img')];
@@ -130,6 +142,7 @@ function useHydratedManagedImages(
     };
   }, [
     html,
+    scope,
     resourceCode,
     root,
     workflowBinding?.instanceId,
@@ -168,19 +181,35 @@ export function RichTextField({
   mobile = false,
   onUpload,
   resourceCode,
+  workflowBinding,
 }: {
   value?: string;
   onChange?: (value: string) => void;
   disabled?: boolean;
   mobile?: boolean;
-  onUpload?: (file: File) => Promise<DataFileRef>;
+  onUpload?: (file: File, onRecovered?: (file: DataFileRef) => void) => Promise<DataFileRef>;
   resourceCode?: string;
+  workflowBinding?: WorkflowFileBinding;
 }) {
   const editor = useRef<HTMLDivElement | null>(null);
   const imageInput = useRef<HTMLInputElement | null>(null);
   const insertedImageUrls = useRef(new Set<string>());
   const [imageUploading, setImageUploading] = useState(false);
   const [imageError, setImageError] = useState('');
+  const selectedImageRange = useRef<Range | null>(null);
+  const generation = useRef(0);
+  const scope = JSON.stringify([resourceCode, workflowBinding?.taskId, workflowBinding?.instanceId,
+    workflowBinding?.resourceCode, workflowBinding?.recordId, workflowBinding?.fieldCode]);
+  useEffect(() => {
+    generation.current += 1;
+    selectedImageRange.current = null;
+    insertedImageUrls.current.forEach(source => URL.revokeObjectURL(source));
+    insertedImageUrls.current.clear();
+    setImageUploading(false); setImageError('');
+    return () => { generation.current += 1; };
+  }, [scope]);
+  const locked = disabled || imageUploading;
+  const uploadResource = resourceCode || workflowBinding?.resourceCode;
 
   useEffect(() => {
     if (editor.current && editableRichTextValue(editor.current) !== value) {
@@ -193,7 +222,7 @@ export function RichTextField({
     insertedImageUrls.current.forEach(source => URL.revokeObjectURL(source));
     insertedImageUrls.current.clear();
   }, []);
-  useHydratedManagedImages(editor, value, resourceCode);
+  useHydratedManagedImages(editor, value, resourceCode, workflowBinding);
 
   const emit = () => {
     if (!editor.current) return;
@@ -212,25 +241,37 @@ export function RichTextField({
   };
 
   const command = (name: string, argument?: string) => {
+    if (locked) return;
     editor.current?.focus();
     document.execCommand(name, false, argument);
     emit();
   };
 
   const insertLink = () => {
+    if (locked) return;
     const url = window.prompt('链接地址');
     if (url && /^(?:https?:|mailto:|tel:)/i.test(url.trim())) {
       command('createLink', url.trim());
     }
   };
 
-  const insertImage = async (file: File) => {
-    if (!editor.current || !onUpload || !resourceCode) return;
+  const chooseImage = () => {
+    if (locked) return;
     const selection = window.getSelection();
-    const selectedRange =
-      selection?.rangeCount && editor.current.contains(selection.anchorNode)
+    selectedImageRange.current =
+      selection?.rangeCount && editor.current?.contains(selection.anchorNode)
         ? selection.getRangeAt(0).cloneRange()
         : null;
+    imageInput.current?.click();
+  };
+
+  const insertImage = async (file: File) => {
+    if (locked || !editor.current || !onUpload || !uploadResource) return;
+    const container = editor.current;
+    const selectedRange = selectedImageRange.current;
+    selectedImageRange.current = null;
+    const originalGeneration = generation.current;
+    let uploadStarted = false;
     try {
       setImageError('');
       setImageUploading(true);
@@ -243,79 +284,53 @@ export function RichTextField({
       if (editor.current.querySelectorAll('img').length >= INLINE_IMAGE_MAX_COUNT) {
         throw new Error('每个富文本最多插入 20 张图片');
       }
-      const uploaded = await onUpload(file);
-      const image = document.createElement('img');
-      const source = dataRichTextImageSource(resourceCode, uploaded.id);
-      image.setAttribute(MANAGED_RICH_TEXT_SOURCE_ATTRIBUTE, source);
-      const objectUrl = URL.createObjectURL(file);
-      insertedImageUrls.current.add(objectUrl);
-      image.src = objectUrl;
-      image.alt = file.name;
-      const range = selectedRange || document.createRange();
-      if (!selectedRange) {
-        range.selectNodeContents(editor.current);
-        range.collapse(false);
-      }
-      range.deleteContents();
-      range.insertNode(image);
-      range.setStartAfter(image);
-      range.collapse(true);
-      selection?.removeAllRanges();
-      selection?.addRange(range);
-      emit();
+      let adopted = false;
+      const adopt = (uploaded: DataFileRef) => {
+        if (adopted || generation.current !== originalGeneration || editor.current !== container) return;
+        const image = document.createElement('img');
+        const source = dataRichTextImageSource(uploadResource, uploaded.id);
+        image.setAttribute(MANAGED_RICH_TEXT_SOURCE_ATTRIBUTE, source);
+        const range = selectedRange || document.createRange();
+        if (selectedRange && !container.contains(range.commonAncestorContainer)) {
+          throw new Error('原插入位置已变更，请保留当前文字并重新核对。');
+        }
+        if (!selectedRange) { range.selectNodeContents(container); range.collapse(false); }
+        const objectUrl = URL.createObjectURL(file);
+        insertedImageUrls.current.add(objectUrl);
+        image.src = objectUrl; image.alt = file.name;
+        range.deleteContents(); range.insertNode(image);
+        range.setStartAfter(image); range.collapse(true);
+        const selection = window.getSelection();
+        selection?.removeAllRanges(); selection?.addRange(range);
+        adopted = true; setImageError(''); emit();
+      };
+      uploadStarted = true;
+      adopt(await onUpload(file, adopt));
     } catch (error) {
-      setImageError(error instanceof Error ? error.message : String(error));
+      if (generation.current === originalGeneration) {
+        setImageError(workflowBinding?.taskId && uploadStarted ? '' : error instanceof Error ? error.message : String(error));
+      }
     } finally {
-      setImageUploading(false);
+      if (generation.current === originalGeneration) setImageUploading(false);
     }
   };
 
+  const toolbarButton = (label: string, icon: ReactNode, action: () => void) => mobile ? (
+    <span key={label} onPointerDown={event => event.preventDefault()}><MobileButton aria-label={label} disabled={locked} fill="none" size="small"
+      onClick={action}>{icon}</MobileButton></span>
+  ) : <Tooltip key={label} title={label}><Button aria-label={label} disabled={locked} icon={icon}
+    onMouseDown={event => event.preventDefault()} onClick={action} size="small" /></Tooltip>;
+  const toolbar = <>
+    {TOOLS.map(tool => toolbarButton(tool.label, tool.icon, () => command(tool.command)))}
+    {toolbarButton('插入链接', <LinkOutlined />, insertLink)}
+    {onUpload && uploadResource && toolbarButton('插入图片', <FileImageOutlined />, chooseImage)}
+  </>;
+
   return (
-    <div className={`oxa-rich-text-field${mobile ? ' oxa-mobile-rich-text-field' : ''}`}>
-      <Space className="oxa-rich-text-toolbar" size={4} wrap>
-        {TOOLS.map(tool => (
-          <Tooltip key={tool.command} title={tool.label}>
-            <Button
-              aria-label={tool.label}
-              disabled={disabled}
-              icon={tool.icon}
-              onMouseDown={event => {
-                event.preventDefault();
-                command(tool.command);
-              }}
-              size="small"
-            />
-          </Tooltip>
-        ))}
-        <Tooltip title="插入链接">
-          <Button
-            aria-label="插入链接"
-            disabled={disabled}
-            icon={<LinkOutlined />}
-            onMouseDown={event => {
-              event.preventDefault();
-              insertLink();
-            }}
-            size="small"
-          />
-        </Tooltip>
-        {onUpload && resourceCode && (
-          <Tooltip title="插入图片">
-            <Button
-              aria-label="插入图片"
-              disabled={disabled}
-              icon={<FileImageOutlined />}
-              loading={imageUploading}
-              onMouseDown={event => {
-                event.preventDefault();
-                imageInput.current?.click();
-              }}
-              size="small"
-            />
-          </Tooltip>
-        )}
-      </Space>
+    <div className={`oxa-rich-text-field${mobile ? ' oxa-mobile-rich-text-field oxa-mobile-scope' : ''}`}>
+      {mobile ? <div className="oxa-rich-text-toolbar">{toolbar}</div> : <Space className="oxa-rich-text-toolbar" size={4} wrap>{toolbar}</Space>}
       <input
+        disabled={locked}
         accept={INLINE_IMAGE_ACCEPT}
         onChange={event => {
           const file = event.currentTarget.files?.[0];
@@ -329,8 +344,10 @@ export function RichTextField({
       {imageError && <div className="oxa-rich-text-error" role="alert">{imageError}</div>}
       <div
         aria-label="富文本内容"
+        aria-disabled={locked}
+        aria-multiline="true"
         className="oxa-rich-text-editor"
-        contentEditable={!disabled}
+        contentEditable={!locked}
         onBlur={emit}
         onInput={emit}
         ref={editor}
