@@ -1,3 +1,4 @@
+import type { WorkflowDelegationAdministration, WorkflowDelegationCatalog, WorkflowDelegationCandidatePage, WorkflowDelegationCandidateQuery, WorkflowDelegationListQuery, WorkflowDelegationPage, WorkflowDelegationMutationPreview, WorkflowDelegationMutationReceipt, WorkflowDelegationMutationRequest, WorkflowDelegationMutationIntent } from "openxiangda-contracts";
 import { assertOutsideManagedExecution, managedExecution } from './managed-command-private.js';
 import type { ManagedCommandExecutionVerification } from 'openxiangda-contracts';
 const managedReadRequest = Symbol('managed-read');
@@ -691,6 +692,38 @@ export class OpenXiangdaPlatformClient {
       )}`,
       { headers: this.identityHeaders(authorization) }
     );
+  }
+
+  async workflowDelegationCatalog(authorization: string) {
+    return this.request<WorkflowDelegationCatalog>(`${this.workflowPath()}/delegation-management/catalog?${this.delegationManagementQuery()}`, { headers: this.identityHeaders(authorization) });
+  }
+  async workflowDelegationManagement(authorization: string, input: WorkflowDelegationListQuery = {}) {
+    return this.request<WorkflowDelegationPage>(`${this.workflowPath()}/delegation-management?${this.delegationManagementQuery(input)}`, { headers: this.identityHeaders(authorization) });
+  }
+  async workflowDelegationCandidates(authorization: string, input: WorkflowDelegationCandidateQuery) {
+    return this.request<WorkflowDelegationCandidatePage>(`${this.workflowPath()}/delegation-management/candidates?${this.delegationManagementQuery(input)}`, { headers: this.identityHeaders(authorization) });
+  }
+  async workflowDelegationAdministration(authorization: string, id: string) {
+    return this.request<WorkflowDelegationAdministration>(`${this.workflowPath()}/delegation-management/${encodeURIComponent(id)}?${this.delegationManagementQuery()}`, { headers: this.identityHeaders(authorization) });
+  }
+  async previewWorkflowDelegationMutation(authorization: string, input: WorkflowDelegationMutationIntent) {
+    return this.request<WorkflowDelegationMutationPreview>(`${this.workflowPath()}/delegation-management/preview`, { method: "POST", headers: this.identityHeaders(authorization), body: JSON.stringify(this.delegationManagementBody(input)) });
+  }
+  async executeWorkflowDelegationMutation(authorization: string, input: WorkflowDelegationMutationIntent) {
+    return this.request<WorkflowDelegationMutationReceipt>(`${this.workflowPath()}/delegation-management/execute`, { method: "POST", headers: this.identityHeaders(authorization), body: JSON.stringify(this.delegationManagementBody(input)) });
+  }
+  async workflowDelegationMutationReceipt(authorization: string, operationId: string) {
+    return this.request<WorkflowDelegationMutationReceipt>(`${this.workflowPath()}/delegation-management/receipts/${encodeURIComponent(operationId)}?${this.delegationManagementQuery()}`, { headers: this.identityHeaders(authorization) });
+  }
+  private delegationManagementQuery(input: object = {}) {
+    if ("environmentKey" in input && input.environmentKey !== this.options.environmentKey) throw new Error("WORKFLOW_DELEGATION_ENVIRONMENT_MISMATCH");
+    const params = new URLSearchParams({ environmentKey: this.options.environmentKey });
+    for (const [key,value] of Object.entries(input)) if (value !== undefined && value !== "") params.set(key,String(value));
+    return params;
+  }
+  private delegationManagementBody(input: WorkflowDelegationMutationIntent): WorkflowDelegationMutationRequest {
+    if ("environmentKey" in input && input.environmentKey !== this.options.environmentKey) throw new Error("WORKFLOW_DELEGATION_ENVIRONMENT_MISMATCH");
+    return { ...input, environmentKey: this.options.environmentKey } as WorkflowDelegationMutationRequest;
   }
 
   async createWorkflowDelegation(

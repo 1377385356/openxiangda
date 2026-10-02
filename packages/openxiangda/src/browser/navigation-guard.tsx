@@ -8,6 +8,8 @@ import { createBrowserRouter, RouterProvider, useBlocker } from 'react-router-do
 export interface UnsavedChangesGuardOptions {
   when: boolean;
   message?: string;
+  /** Keep the page mounted while a write is running or its result is unknown. */
+  preventNavigation?: boolean;
 }
 
 type RegisterGuard = (key: symbol, options: UnsavedChangesGuardOptions) => () => void;
@@ -16,11 +18,11 @@ const RouterContents = createContext<ReactNode>(null);
 type BlockedNavigation = Extract<ReturnType<typeof useBlocker>, { state: 'blocked' }>;
 
 /** Register local dirty state with the application's single navigation owner. */
-export function useUnsavedChangesGuard({ when, message }: UnsavedChangesGuardOptions) {
+export function useUnsavedChangesGuard({ when, message, preventNavigation }: UnsavedChangesGuardOptions) {
   const register = useContext(GuardContext);
   const key = useRef(Symbol('unsaved-changes'));
   if (!register) throw new Error('OPENXIANGDA_NAVIGATION_GUARD_PROVIDER_REQUIRED');
-  useLayoutEffect(() => register(key.current, { when, message }), [register, when, message]);
+  useLayoutEffect(() => register(key.current, { when, message, preventNavigation }), [register, when, message, preventNavigation]);
 }
 
 function NavigationGuardOwner({ children }: { children: ReactNode }) {
@@ -71,6 +73,7 @@ function NavigationGuardOwner({ children }: { children: ReactNode }) {
   };
   const leave = () => {
     if (!pending || settling.current) return;
+    if ([...guards.current.values()].some(item => item.preventNavigation)) { stay(); return; }
     settling.current = true;
     const navigation = pending?.navigation;
     setPending(undefined);
@@ -78,8 +81,8 @@ function NavigationGuardOwner({ children }: { children: ReactNode }) {
   };
   return <GuardContext.Provider value={register}>
     {children}
-    <Modal open={Boolean(pending)} title="离开当前页面？" centered
-      okText="离开" cancelText="继续编辑" onOk={leave} onCancel={stay}
+    <Modal open={Boolean(pending)} title={[...guards.current.values()].some(item => item.preventNavigation) ? '请先完成当前操作' : '离开当前页面？'} centered
+      okText={[...guards.current.values()].some(item => item.preventNavigation) ? '返回处理' : '离开'} cancelText="继续编辑" onOk={leave} onCancel={stay}
       mask={{ closable: false }} focusable={{ trap: true, focusTriggerAfterClose: true }}
       destroyOnHidden>
       <p>{pending?.message}</p>

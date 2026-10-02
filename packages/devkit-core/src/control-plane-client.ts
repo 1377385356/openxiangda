@@ -1,3 +1,4 @@
+import type { WorkflowDelegationAdministration, WorkflowDelegationCatalog, WorkflowDelegationCandidatePage, WorkflowDelegationCandidateQuery, WorkflowDelegationListQuery, WorkflowDelegationPage, WorkflowDelegationMutationPreview, WorkflowDelegationMutationReceipt, WorkflowDelegationMutationRequest } from "openxiangda-contracts";
 import type { DeploymentStrategy } from 'openxiangda-contracts';
 import {
   describePlatformTransportFailure,
@@ -1462,6 +1463,33 @@ export class OpenXiangdaControlPlaneClient {
       )}/activate`,
       { method: "POST", body: JSON.stringify(input) }
     );
+  }
+
+  async workflowDelegationCatalog(appCode: string, environmentKey = "production") {
+    return this.json<WorkflowDelegationCatalog>(`${this.workflowPath(appCode)}/delegation-management/catalog?${new URLSearchParams({ environmentKey })}`);
+  }
+  async workflowDelegationManagement(appCode: string, input: WorkflowDelegationListQuery & { environmentKey: string }) {
+    return this.json<WorkflowDelegationPage>(`${this.workflowPath(appCode)}/delegation-management?${this.delegationManagementQuery(input)}`);
+  }
+  async workflowDelegationCandidates(appCode: string, input: WorkflowDelegationCandidateQuery & { environmentKey: string }) {
+    return this.json<WorkflowDelegationCandidatePage>(`${this.workflowPath(appCode)}/delegation-management/candidates?${this.delegationManagementQuery(input)}`);
+  }
+  async workflowDelegationAdministration(appCode: string, id: string, environmentKey = "production") {
+    return this.json<WorkflowDelegationAdministration>(`${this.workflowPath(appCode)}/delegation-management/${encodeURIComponent(id)}?${new URLSearchParams({ environmentKey })}`);
+  }
+  async previewWorkflowDelegationMutation(appCode: string, input: WorkflowDelegationMutationRequest) {
+    return this.json<WorkflowDelegationMutationPreview>(`${this.workflowPath(appCode)}/delegation-management/preview`, { method: "POST", body: JSON.stringify(input) });
+  }
+  async executeWorkflowDelegationMutation(appCode: string, input: WorkflowDelegationMutationRequest) {
+    return this.json<WorkflowDelegationMutationReceipt>(`${this.workflowPath(appCode)}/delegation-management/execute`, { method: "POST", body: JSON.stringify(input) });
+  }
+  async workflowDelegationMutationReceipt(appCode: string, operationId: string, environmentKey = "production") {
+    return this.json<WorkflowDelegationMutationReceipt>(`${this.workflowPath(appCode)}/delegation-management/receipts/${encodeURIComponent(operationId)}?${new URLSearchParams({ environmentKey })}`);
+  }
+  private delegationManagementQuery(input: object) {
+    const params = new URLSearchParams();
+    for (const [key,value] of Object.entries(input)) if (value !== undefined && value !== "") params.set(key,String(value));
+    return params;
   }
 
   async createWorkflowDelegation(

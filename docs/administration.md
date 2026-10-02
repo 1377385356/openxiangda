@@ -87,6 +87,36 @@ export function ResponsibilityMembers() {
 
 管理范围检索使用 `listRoleManagementScopeValues(dimensionCode, { keyword, limit, offset })`，返回 `NativeRoleManagementScopeValuePage` 的 `id/label` 与 `limit/offset`。它使用 `openxiangda.native-role-management-scope-value-page/v2`，与 Data 字段选择器的 `value/label/cursor` 协议分开。权限仍要求对成员的分配或更新能力；只读权限不因此扩张。
 
+## 限时审批代理 {#workflow-delegations}
+
+平台自动提供 `workflow.delegation-management@1.0.0`，没有额外的默认关闭开关。本人只能委托自己的有效审批职责；代理人必须具有同角色、覆盖原范围且有效期覆盖整个代理窗口的成员身份。采用平台数据库时间与 `[开始, 结束)` 区间，禁止自己代理、重叠链和环。管理员可全应用查看和撤销，创建由原审批人本人完成；成员管理委托不会扩大后台或代理管理权。
+
+标准管理入口、应用后台工具与门户个人页可复用 `WorkflowDelegationManager`。组件读取当前挂载应用和环境；`initialAll` 只是筛选意图，平台仍核验超管权限。宿主把草稿回调交给已有导航保护，避免切页时丢失输入或未知操作：
+
+```tsx
+import { useState } from 'react';
+import { WorkflowDelegationManager, useUnsavedChangesGuard,
+  type WorkflowDelegationDraftState } from 'openxiangda/react';
+
+export function MyApprovalDelegations() {
+  const [draft, setDraft] = useState<WorkflowDelegationDraftState>({ dirty: false, busy: false, unknown: false });
+  useUnsavedChangesGuard({ when: draft.dirty || draft.busy || draft.unknown,
+    preventNavigation: draft.busy || draft.unknown,
+    message: draft.unknown ? '请先核对原操作回执。' : '代理维护尚未完成。' });
+  return <WorkflowDelegationManager onDraftStateChange={setDraft} />;
+}
+```
+
+以上页面须位于原 `OpenXiangdaApplication` 路由内。独立平台Console使用自己的现有导航owner处理回调，不为组件新增Router。提交中或结果未知不能确认丢弃后离开；普通草稿可明确放弃。组件提供PC/窄屏列表、筛选、资格诊断、合法候选分页、核对/提交、撤销原因和回执恢复。
+
+自定义页面使用 `openxiangda/core` 的 `loadWorkflowDelegationCatalog`、`listWorkflowDelegations`、`loadWorkflowDelegation`、`listWorkflowDelegationCandidates`、`previewWorkflowDelegationMutation`、`executeWorkflowDelegationMutation` 和 `loadWorkflowDelegationMutationReceipt`。列表默认20/最大100，候选默认20/最大50，搜索80字；本人职责目录最多100、流程标题最多200。创建请求带双方预期成员修订，撤销带规则 `expectedRevision`，均有UUID `operationId`、原因和绑定环境，请求最多16KiB；额外actor、权限或字段配置被拒绝。
+
+预览完整回滚，不创建规则或回执；新规则提案id为null。核对后显式提交同一个请求，平台再检查当前权限和资格。规则与原回执同事务保存；同key同内容返回原回执，同key改内容或跨actor/应用/环境拒绝。首次明确4xx拒绝可保留输入、读新基准再核对；提交结果未知先查询原回执，404仍未知，允许用户显式重试原key及原请求，不能自动换key重发。`WORKFLOW_V2_DELEGATION_OPERATION_CONFLICT`、`SOURCE_REVISION_CONFLICT`和原owner的`REVISION_CONFLICT`等409都保持草稿；503不表示未提交。
+
+回执保存提交时结果，当前状态以刷新列表的 `effectiveState/evaluatedAt/issues` 为准。创建和撤销只影响后续分派，已有任务保留进入时的原人/代理/职责/时间快照，办理仍复核资格；需要处理既有待办时使用显式任务修复操作。
+
+Nest后端注入请求作用域的 `OpenXiangdaWorkflowService`，调用 `delegationCatalog/delegationManagement/delegationCandidates/delegationAdministration` 与 `previewDelegationMutation/executeDelegationMutation/delegationMutationReceipt`；它复用已验证当前用户，环境来自模块绑定。业务处理器不自报actor、不替别人代建授权，审批后代建属于单独受限合同。
+
 ## 可读流程图与实例路径 {#workflow-graph}
 
 管理员在流程目录检索全部定义，查看指定版本的分支顺序、默认路径、变量类型/单位及来源。拓扑和条件由开发者发布；图和列表只用于查看。当前有效配置只叠加在匹配的激活定义上；历史实例使用固定定义和节点进入时的人员/配置，尚未执行的节点不计入执行路径。

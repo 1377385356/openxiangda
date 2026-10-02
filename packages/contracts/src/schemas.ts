@@ -8854,6 +8854,10 @@ export const contractSchemas = {
   workflowCommandInput: workflowCommandInputSchema,
   workflowLaunchSurface: workflowLaunchSurfaceSchema,
   workflowDelegation: workflowDelegationSchema,
+  workflowDelegationAdministration: workflowDelegationAdministrationSchema,
+  workflowDelegationMutationRequest: workflowDelegationMutationRequestSchema,
+  workflowDelegationMutationPreview: workflowDelegationMutationPreviewSchema,
+  workflowDelegationMutationReceipt: workflowDelegationMutationReceiptSchema,
   workflowAssigneeProvider: workflowAssigneeProviderSchema,
   workflowAssigneeRequest: workflowAssigneeRequestSchema,
   workflowAssigneeResponse: workflowAssigneeResponseSchema,
@@ -8882,3 +8886,4 @@ export const contractSchemas = {
   contractBundle: contractBundleSchema,
   aiCapabilityCatalog: aiCapabilityCatalogSchema,
 } as const;
+import { workflowDelegationAdministrationSchema, workflowDelegationMutationRequestSchema, workflowDelegationMutationPreviewSchema, workflowDelegationMutationReceiptSchema } from './native-compiler/workflow-delegation-administration.js';

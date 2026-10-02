@@ -11,6 +11,7 @@ export * from './surface.js';
 export * from './types.js';
 export * from './workflow-summary.js';
 export * from './workflow-detail.js';
+export * from './native-compiler/workflow-delegation-administration.js';
 export * from './native-compiler/workflow-graph.js';
 export * from './native-compiler/workflow-node-administration.js';
 export * from './native-compiler/workflow-assignment-routing.js';

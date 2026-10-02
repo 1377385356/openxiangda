@@ -6,6 +6,7 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 import { REQUEST } from "@nestjs/core";
+import type { WorkflowDelegationMutationIntent, WorkflowDelegationListQuery, WorkflowDelegationCandidateQuery } from "openxiangda-contracts";
 import type {
   WorkflowCommand,
   WorkflowCommandInput,
@@ -24,6 +25,14 @@ export class OpenXiangdaWorkflowService {
     @Inject(OpenXiangdaPlatformClient)
     private readonly platform: OpenXiangdaPlatformClient
   ) {}
+
+  async delegationCatalog() { return this.platform.workflowDelegationCatalog(this.context().authorization); }
+  async delegationManagement(input: WorkflowDelegationListQuery = {}) { return this.platform.workflowDelegationManagement(this.context().authorization,input); }
+  async delegationCandidates(input: WorkflowDelegationCandidateQuery) { return this.platform.workflowDelegationCandidates(this.context().authorization,input); }
+  async delegationAdministration(id: string) { return this.platform.workflowDelegationAdministration(this.context().authorization,id); }
+  async previewDelegationMutation(input: WorkflowDelegationMutationIntent) { return this.platform.previewWorkflowDelegationMutation(this.context().authorization,input); }
+  async executeDelegationMutation(input: WorkflowDelegationMutationIntent) { return this.platform.executeWorkflowDelegationMutation(this.context().authorization,input); }
+  async delegationMutationReceipt(operationId: string) { return this.platform.workflowDelegationMutationReceipt(this.context().authorization,operationId); }
 
   async createDelegation(input: {
     workflowCode?: string;

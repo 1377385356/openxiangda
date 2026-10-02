@@ -129,6 +129,10 @@ export const SCHEMA_VERSIONS = {
   workflowCommandInput: "openxiangda.workflow-command-input/v2",
   workflowLaunchSurface: "openxiangda.workflow-launch-surface/v3",
   workflowDelegation: "openxiangda.workflow-delegation/v2",
+  workflowDelegationAdministration: WORKFLOW_DELEGATION_ADMINISTRATION_SCHEMA,
+  workflowDelegationMutationRequest: WORKFLOW_DELEGATION_MUTATION_SCHEMA,
+  workflowDelegationMutationPreview: WORKFLOW_DELEGATION_PREVIEW_SCHEMA,
+  workflowDelegationMutationReceipt: WORKFLOW_DELEGATION_RECEIPT_SCHEMA,
   workflowAssigneeProvider: "openxiangda.workflow-assignee-provider/v2",
   workflowAssigneeRequest: "openxiangda.workflow-assignee-request/v2.1",
   workflowAssigneeResponse: "openxiangda.workflow-assignee-response/v2",
@@ -3774,3 +3778,4 @@ export interface DevkitResult<T> {
   nextActions: NextAction[];
   traceId?: string;
 }
+import { WORKFLOW_DELEGATION_ADMINISTRATION_SCHEMA, WORKFLOW_DELEGATION_MUTATION_SCHEMA, WORKFLOW_DELEGATION_PREVIEW_SCHEMA, WORKFLOW_DELEGATION_RECEIPT_SCHEMA } from './native-compiler/workflow-delegation-administration.js';

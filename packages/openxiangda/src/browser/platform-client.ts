@@ -1,4 +1,6 @@
 import { parseBusinessProcessResolution, parseBusinessProcessCommitResult } from 'openxiangda-contracts/browser';
+import type { WorkflowDelegationAdministration, WorkflowDelegationCatalog, WorkflowDelegationCandidatePage, WorkflowDelegationCandidateQuery,
+  WorkflowDelegationListQuery, WorkflowDelegationPage, WorkflowDelegationMutationPreview, WorkflowDelegationMutationReceipt, WorkflowDelegationMutationRequest } from 'openxiangda-contracts/browser';
 import { recoverManagedRead } from './managed-read-recovery';
 import { recoverRuntimeAuthorizationRead } from './runtime-authorization-recovery';
 import type { ManagedReadRecoveryOptions } from './managed-command';
@@ -2435,6 +2437,39 @@ export async function downloadWorkflowDataFile(
 
 function workflowBase() {
   return `${applicationServiceBase()}/workflow`;
+}
+
+function delegationManagementQuery(input: object = {}) {
+  if ('environmentKey' in input && input.environmentKey !== currentEnvironmentKey()) throw new Error('WORKFLOW_DELEGATION_ENVIRONMENT_MISMATCH');
+  const params = new URLSearchParams({ environmentKey: currentEnvironmentKey() });
+  for (const [key,value] of Object.entries(input)) if (value !== undefined && value !== '') params.set(key,String(value));
+  return params;
+}
+export async function loadWorkflowDelegationCatalog() {
+  return requestRead<WorkflowDelegationCatalog>(`${workflowBase()}/delegation-management/catalog?${delegationManagementQuery()}`);
+}
+export async function listWorkflowDelegations(input: WorkflowDelegationListQuery = {}) {
+  return requestRead<WorkflowDelegationPage>(`${workflowBase()}/delegation-management?${delegationManagementQuery(input)}`);
+}
+export async function loadWorkflowDelegation(id: string) {
+  return requestRead<WorkflowDelegationAdministration>(`${workflowBase()}/delegation-management/${encodeURIComponent(id)}?${delegationManagementQuery()}`);
+}
+export async function listWorkflowDelegationCandidates(input: WorkflowDelegationCandidateQuery) {
+  return requestRead<WorkflowDelegationCandidatePage>(`${workflowBase()}/delegation-management/candidates?${delegationManagementQuery(input)}`);
+}
+export async function loadWorkflowDelegationMutationReceipt(operationId: string) {
+  return requestRead<WorkflowDelegationMutationReceipt>(`${workflowBase()}/delegation-management/receipts/${encodeURIComponent(operationId)}?${delegationManagementQuery()}`);
+}
+async function delegationManagementMutation<T>(input: WorkflowDelegationMutationRequest, mode: 'preview' | 'execute'): Promise<T> {
+  if (input.environmentKey !== currentEnvironmentKey()) throw new Error('WORKFLOW_DELEGATION_ENVIRONMENT_MISMATCH');
+  const csrfToken = await workflowCsrfToken();
+  return request<T>(`${workflowBase()}/delegation-management/${mode}`,{method:'POST',headers:{'x-openxiangda-csrf-token':csrfToken},body:JSON.stringify(input)});
+}
+export async function previewWorkflowDelegationMutation(input: WorkflowDelegationMutationRequest) {
+  return delegationManagementMutation<WorkflowDelegationMutationPreview>(input,'preview');
+}
+export async function executeWorkflowDelegationMutation(input: WorkflowDelegationMutationRequest) {
+  return delegationManagementMutation<WorkflowDelegationMutationReceipt>(input,'execute');
 }
 
 export interface WorkflowWorkCenterPage {
