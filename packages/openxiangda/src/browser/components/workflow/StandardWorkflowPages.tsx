@@ -904,6 +904,7 @@ function WorkflowOperations({
   const [operationError, setOperationError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [draftLocked, setDraftLocked] = useState(false);
+  const [fileLocked, setFileLocked] = useState(false);
   const [refreshFailure, setRefreshFailure] = useState<{ outcome: 'succeeded' | 'rejected'; message: string } | null>(null);
   const [unknown, setUnknown] = useState(false);
   const request = useRef<{ surface: WorkflowSurface; operation: WorkflowOperationSurface; input: JsonObject; key: string } | null>(null);
@@ -939,7 +940,7 @@ function WorkflowOperations({
     });
   };
   const submit = async (values: JsonObject) => {
-    if (!selected || busyRef.current || draftLocked || taskForm.draftNeedsSave || pendingLocator || unknown || refreshFailure || confirmedReadPending) return;
+    if (!selected || busyRef.current || draftLocked || fileLocked || taskForm.draftNeedsSave || pendingLocator || unknown || refreshFailure || confirmedReadPending) return;
     setOperationError('');
     setSubmitting(true);
     busyRef.current = true;
@@ -1041,7 +1042,7 @@ function WorkflowOperations({
     finally { if (mounted.current) { setSubmitting(false); busyRef.current = false; onBusyChange(false); } }
   };
   const commandLocked = submitting || unknown || Boolean(pendingLocator) || Boolean(refreshFailure) || confirmedReadPending;
-  const locked = commandLocked || draftLocked;
+  const locked = commandLocked || draftLocked || fileLocked;
   if (!operations.length && !surface.taskForm && !unknown && !refreshFailure) return renderLayout({ content: null, actions: null });
   const primary = operations
     .filter((operation) => operation.placement === 'primary')
@@ -1057,7 +1058,8 @@ function WorkflowOperations({
     <>
       {surface.taskForm && <WorkflowTaskForm controller={taskForm} disabled={locked} variant={variant}
         taskId={surface.task?.id ? String(surface.task.id) : undefined} draftDisabled={commandLocked} onRefresh={onRefresh}
-        onDraftBusyChange={busy => { setDraftLocked(busy); onBusyChange(busy || busyRef.current); }}
+        onDraftBusyChange={busy => { setDraftLocked(busy); onBusyChange(busy || fileLocked || busyRef.current); }}
+        onFileBusyChange={busy => { setFileLocked(busy); onBusyChange(busy || draftLocked || busyRef.current); }}
         resourceCode={surface.presentation.businessDetail.resourceCode || undefined} recordId={surface.presentation.businessDetail.recordId || undefined} />}
       {(submitting || unknown) && !pendingLocator && <WorkflowPendingCommandGuard />}
       {unknown && <Alert type="warning" showIcon title="保留了原提交请求" description={operationError || '提交结果待确认，请重试原请求或查询原结果。'}

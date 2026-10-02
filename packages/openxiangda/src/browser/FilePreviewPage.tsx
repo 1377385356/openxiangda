@@ -224,10 +224,11 @@ export function FilePreviewPage() {
   const [searchParams] = useSearchParams();
   const workflowBinding = useMemo<WorkflowFileBinding | null>(() => {
     const instanceId = searchParams.get('workflowInstanceId')?.trim() || '';
+    const taskId = searchParams.get('workflowTaskId')?.trim() || '';
     const recordId = searchParams.get('workflowRecordId')?.trim() || '';
     const fieldCode = searchParams.get('workflowFieldCode')?.trim() || '';
-    return instanceId && recordId && fieldCode && resourceCode
-      ? { instanceId, recordId, fieldCode, resourceCode }
+    return Boolean(taskId) !== Boolean(instanceId) && recordId && fieldCode && resourceCode
+      ? { ...(taskId ? { taskId } : { instanceId }), recordId, fieldCode, resourceCode }
       : null;
   }, [resourceCode, searchParams]);
   const [preview, setPreview] = useState<DataFilePreview>();
@@ -270,6 +271,7 @@ export function FilePreviewPage() {
     fileId,
     resourceCode,
     workflowBinding?.instanceId,
+    workflowBinding?.taskId,
     workflowBinding?.recordId,
     workflowBinding?.fieldCode,
   ]);

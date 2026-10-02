@@ -124,6 +124,7 @@ function ManagedImageThumbnail({
     file.thumbnailUrl,
     resourceCode,
     workflowBinding?.instanceId,
+    workflowBinding?.taskId,
     workflowBinding?.resourceCode,
     workflowBinding?.recordId,
     workflowBinding?.fieldCode,
@@ -240,7 +241,7 @@ export function AttachmentFileList({
     const basePath = attachmentPreviewPath(resourceCode, file.id);
     const path = workflowBinding
       ? `${basePath}?${new URLSearchParams({
-          workflowInstanceId: workflowBinding.instanceId,
+          ...(workflowBinding.taskId ? { workflowTaskId: workflowBinding.taskId } : { workflowInstanceId: workflowBinding.instanceId! }),
           workflowRecordId: workflowBinding.recordId,
           workflowFieldCode: workflowBinding.fieldCode,
         })}`

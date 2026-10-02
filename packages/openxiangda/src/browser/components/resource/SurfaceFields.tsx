@@ -116,6 +116,7 @@ export interface SurfaceFieldEditContext {
   operation: 'create' | 'update';
   resourceCode?: string;
   recordId?: string;
+  workflowFileBinding?: WorkflowFileBinding;
 }
 
 export interface SurfaceFieldValueContext {
@@ -357,6 +358,7 @@ export function SurfaceFieldControl({
   operation,
   resourceCode,
   recordId,
+  workflowFileBinding,
   renderers,
 }: SurfaceFieldEditContext & { renderers?: SurfaceFieldRenderers }) {
   const subtableValidation = useMobileSubtableValidation();
@@ -476,6 +478,7 @@ export function SurfaceFieldControl({
           onUpload={renderers?.upload}
           recordId={recordId}
           resourceCode={resourceCode}
+          workflowBinding={workflowFileBinding}
         />
       );
       break;
@@ -564,6 +567,7 @@ export function MobileSurfaceFieldControl({
   operation,
   resourceCode,
   recordId,
+  workflowFileBinding,
   renderers,
 }: SurfaceFieldEditContext & { renderers?: SurfaceFieldRenderers }) {
   const subtableValidation = useMobileSubtableValidation();
@@ -671,6 +675,7 @@ export function MobileSurfaceFieldControl({
           onUpload={renderers?.upload}
           recordId={recordId}
           resourceCode={resourceCode}
+          workflowBinding={workflowFileBinding}
         />
       );
       break;
@@ -940,6 +945,7 @@ function ManagedFileField({
   accept,
   onUpload,
   resourceCode,
+  workflowBinding,
   mobile = false,
 }: {
   field: SurfaceField;
@@ -953,6 +959,7 @@ function ManagedFileField({
   accept?: string | string[];
   onUpload?: SurfaceFieldRenderers['upload'];
   resourceCode?: string;
+  workflowBinding?: WorkflowFileBinding;
   mobile?: boolean;
 }) {
   const [uploading, setUploading] = useState(false);
@@ -974,13 +981,14 @@ function ManagedFileField({
     return <MobileManagedFileField value={refs} onChange={onChange} disabled={disabled}
       multiple={multiple} maxCount={maxCount} maxSizeMb={maxSizeMb} accept={accept}
       resourceCode={resourceCode} image={field.type === 'image'}
+      workflowBinding={workflowBinding}
       upload={file => onUpload(field, file, recordId)} />;
   }
   const uploadProps = {
     accept: Array.isArray(accept) ? accept.join(',') : accept,
     disabled,
     maxCount,
-    multiple,
+    multiple: multiple && !workflowBinding?.taskId,
     customRequest: async (options: {
       file: string | Blob;
       onError?: (error: Error) => void;
@@ -994,7 +1002,7 @@ function ManagedFileField({
         options.onProgress?.({ percent: 15 });
         const uploaded = await onUpload(field, options.file as File, recordId);
         options.onProgress?.({ percent: 100 });
-        const next = multiple ? [...refsRef.current, uploaded].slice(0, maxCount) : [uploaded];
+        const next = multiple ? [...refsRef.current.filter(ref => ref.id !== uploaded.id), uploaded].slice(0, maxCount) : [uploaded];
         refsRef.current = next;
         onChange?.(next);
         options.onSuccess?.(uploaded);
@@ -1022,7 +1030,7 @@ function ManagedFileField({
         </div>
       )}
       {refs.length ? (
-        <AttachmentFileList files={refs} resourceCode={resourceCode} onRemove={file => {
+        <AttachmentFileList files={refs} resourceCode={resourceCode} workflowBinding={workflowBinding} onRemove={file => {
           const next = refs.filter(item => item.id !== file.id);
           refsRef.current = next;
           onChange?.(next);

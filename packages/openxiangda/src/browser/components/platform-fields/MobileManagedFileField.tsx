@@ -2,6 +2,7 @@ import { PlusOutlined, UploadOutlined } from '@ant-design/icons';
 import type { DataFileRef } from 'openxiangda-contracts/browser';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '../../mobile';
+import type { WorkflowFileBinding } from '../../platform-client';
 import {
   AttachmentFileList,
   formatManagedFileSize,
@@ -25,6 +26,7 @@ export function MobileManagedFileField({
   maxSizeMb,
   accept,
   resourceCode,
+  workflowBinding,
   image = false,
 }: {
   value?: DataFileRef[];
@@ -36,6 +38,7 @@ export function MobileManagedFileField({
   maxSizeMb: number;
   accept?: string | string[];
   resourceCode?: string;
+  workflowBinding?: WorkflowFileBinding;
   image?: boolean;
 }) {
   const input = useRef<HTMLInputElement>(null);
@@ -69,12 +72,15 @@ export function MobileManagedFileField({
       if (!active.current || tasks.current.get(task.id) !== task) return;
       if (current.current.length >= maxCount)
         throw new Error(`最多上传 ${maxCount} 个文件，请先移除已有文件`);
-      const next = multiple ? [...current.current, uploaded] : [uploaded];
+      const next = multiple ? [...current.current.filter(ref => ref.id !== uploaded.id), uploaded] : [uploaded];
       current.current = next;
       tasks.current.delete(task.id);
       onChange?.(next);
     } catch (error) {
-      if (active.current && tasks.current.get(task.id) === task)
+      if (active.current && tasks.current.get(task.id) === task && workflowBinding?.taskId) {
+        // The task panel retains the original File/intent and owns explicit recovery.
+        tasks.current.delete(task.id);
+      } else if (active.current && tasks.current.get(task.id) === task)
         tasks.current.set(task.id, {
           ...task,
           status: 'error',
@@ -109,7 +115,7 @@ export function MobileManagedFileField({
         hidden
         style={{ display: 'none' }}
         accept={Array.isArray(accept) ? accept.join(',') : accept}
-        multiple={multiple}
+        multiple={multiple && !workflowBinding?.taskId}
         disabled={disabled}
         onChange={event => {
           select(Array.from(event.target.files || []));
@@ -172,6 +178,7 @@ export function MobileManagedFileField({
         }
         files={value}
         resourceCode={resourceCode}
+        workflowBinding={workflowBinding}
         removable={!disabled}
         onRemove={file => {
           const next = current.current.filter(item => item.id !== file.id);

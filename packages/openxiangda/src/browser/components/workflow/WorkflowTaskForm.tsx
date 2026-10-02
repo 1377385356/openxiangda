@@ -6,6 +6,8 @@ import { useUnsavedChangesGuard } from '../../navigation-guard';
 import { workflowLaunchContractJsonEqual } from '../../workflow-launch';
 import { fieldValueForData, fieldValueForForm } from '../platform-fields/field-form-codec';
 import { MobileSurfaceFieldControl, SurfaceFieldControl, SurfaceFieldValue } from '../resource/SurfaceFields';
+import type { WorkflowFileBinding } from '../../platform-client';
+import { useWorkflowTaskFiles, WorkflowTaskFileRecovery } from './WorkflowTaskFiles';
 import { WorkflowTaskDraftPanel } from './WorkflowTaskDraftPanel';
 
 export function workflowTaskFormValues(source: WorkflowTaskFormSurface, values: Record<string, unknown>) {
@@ -104,18 +106,22 @@ export function useWorkflowTaskForm(latest?: WorkflowTaskFormSurface) {
   return { form, source, latest, current, dirty, unsaved, stale, draft, draftNeedsSave, build, reviewLatest, committed, adoptDraft, savedDraft, removedDraft };
 }
 
-export function WorkflowTaskForm({ controller, disabled, draftDisabled = disabled, taskId, onDraftBusyChange, onRefresh, variant, resourceCode, recordId }: {
+export function WorkflowTaskForm({ controller, disabled, draftDisabled = disabled, taskId, onDraftBusyChange, onFileBusyChange, onRefresh, variant, resourceCode, recordId }: {
   controller: ReturnType<typeof useWorkflowTaskForm>;
   disabled: boolean;
   draftDisabled?: boolean;
   taskId?: string;
   onDraftBusyChange?: (busy: boolean) => void;
+  onFileBusyChange?: (busy: boolean) => void;
   onRefresh?: () => Promise<void>;
   variant: 'desktop' | 'mobile';
   resourceCode?: string;
   recordId?: string;
 }) {
   const { modal } = App.useApp();
+  const files = useWorkflowTaskFiles({ taskId, controller, onBusyChange: onFileBusyChange });
+  const binding = (fieldCode: string): WorkflowFileBinding | undefined => taskId && resourceCode && recordId
+    ? { taskId, resourceCode, recordId, fieldCode } : undefined;
   const { form, source, latest, current, unsaved, stale } = controller;
   useUnsavedChangesGuard({ when: unsaved || disabled, preventNavigation: disabled,
     message: disabled ? '资料操作结果尚待确认，请先确认原操作结果。' : '当前输入尚未提交或保存私有草稿，离开后将丢失。' });
@@ -133,15 +139,16 @@ export function WorkflowTaskForm({ controller, disabled, draftDisabled = disable
   return <section className={`oxa-workflow-task-form oxa-workflow-task-form-${variant}`} aria-label={source.page.title}>
     <Typography.Title level={4}>{source.page.title}</Typography.Title>
     <Typography.Paragraph type="secondary">保存补填后，任务仍由你继续办理。同意或重新提交时会一起提交资料。</Typography.Paragraph>
-    {taskId && <WorkflowTaskDraftPanel controller={controller} taskId={taskId} disabled={draftDisabled}
-      variant={variant} resourceCode={resourceCode} onBusyChange={onDraftBusyChange} onRefresh={onRefresh} />}
+    <WorkflowTaskFileRecovery files={files} />
+    {taskId && <WorkflowTaskDraftPanel controller={controller} taskId={taskId} disabled={draftDisabled || Boolean(files.pending)}
+      variant={variant} resourceCode={resourceCode} recordId={recordId} onBusyChange={onDraftBusyChange} onRefresh={onRefresh} />}
     {stale && <Alert showIcon type="warning" title="业务资料已更新，当前输入已保留" description={<>
       <p>请核对最新资料后再提交。</p>
       {latest && workflowTaskFormReviewFields(source, latest, current)
         .map(field => <div className="oxa-workflow-task-value-review" key={field.code}>
           <strong>{latest.fields[field.code]?.label || field.code}</strong>
-          <div><span>最新已保存</span><SurfaceFieldValue field={{ ...latest.fields[field.code]!, key: field.code }} value={latest.values[field.code]} resourceCode={resourceCode} mobile={variant === 'mobile'} /></div>
-          <div><span>我的输入</span><SurfaceFieldValue field={{ ...latest.fields[field.code]!, key: field.code }} value={current[field.code]} resourceCode={resourceCode} mobile={variant === 'mobile'} /></div>
+          <div><span>最新已保存</span><SurfaceFieldValue field={{ ...latest.fields[field.code]!, key: field.code }} value={latest.values[field.code]} resourceCode={resourceCode} workflowFileBinding={binding(field.code)} mobile={variant === 'mobile'} /></div>
+          <div><span>我的输入</span><SurfaceFieldValue field={{ ...latest.fields[field.code]!, key: field.code }} value={current[field.code]} resourceCode={resourceCode} workflowFileBinding={binding(field.code)} mobile={variant === 'mobile'} /></div>
         </div>)}
     </>} action={<Space wrap>
       <Button disabled={disabled} onClick={() => review(true)}>保留输入并核对</Button>
@@ -150,12 +157,16 @@ export function WorkflowTaskForm({ controller, disabled, draftDisabled = disable
     <Form form={form} layout="vertical" initialValues={formValues(source)} disabled={disabled || stale}>
       {workflowTaskPageFieldState(source.page, current).filter(state => state.visible).map(state => {
         const field = { ...source.fields[state.code]!, key: state.code, requiredHint: false };
+        const uploadNeedsSave = ['file', 'image'].includes(field.type) &&
+          !workflowTaskPageFieldState((latest || source).page, (latest || source).values).some(saved => saved.code === state.code && saved.visible && !saved.readonly);
         return state.readonly
           ? <div className="oxa-workflow-task-readonly" key={state.code}><Typography.Text type="secondary">{field.label}</Typography.Text><div>
-              <SurfaceFieldValue field={field} value={source.values[state.code]} resourceCode={resourceCode} mobile={variant === 'mobile'} />
+              <SurfaceFieldValue field={field} value={source.values[state.code]} resourceCode={resourceCode} workflowFileBinding={binding(state.code)} mobile={variant === 'mobile'} />
             </div></div>
           : <div key={state.code} className={state.required ? 'oxa-workflow-task-required' : undefined}>
-              <Control field={field} disabled={disabled || stale} operation="update" resourceCode={resourceCode} recordId={recordId} />
+              {uploadNeedsSave && <Alert type="info" showIcon title="请先保存补填，让该附件字段生效，再上传文件。" />}
+              <Control field={field} disabled={disabled || stale || uploadNeedsSave} operation="update" resourceCode={resourceCode} recordId={recordId}
+                workflowFileBinding={binding(state.code)} renderers={{ upload: files.upload }} />
               {state.required && <Typography.Text className="oxa-workflow-task-required-hint" type="secondary">完成任务前必填</Typography.Text>}
             </div>;
       })}

@@ -514,8 +514,8 @@ outbox容量等事务故障会回滚，处理器按原键核对后重交，不�
 
 页面表达式只读取本页 `values.*`，平台以合并后的业务值强制显隐和必填。
 最多16页、每页64字段、单次值64KiB，表达式8层/64节点。
-系统、流水号和隐藏字段不可作为补填入口；本批编辑字段暂不支持附件、图片、
-签名、子表和富文本，不将它们降为任意 JSON。
+系统、流水号和隐藏字段不可作为补填入口。根附件、图片复用平台托管文件；
+签名、子表和富文本仍需后续任务页面支持，不将它们降为任意 JSON。
 
 标准 PC/手机任务页和 `WorkflowTaskOperationsPanel` 自动显示当前参与人的
 `surface.taskForm`。`save_form` 表示“提交补填，继续办理”，不是私有草稿。
@@ -559,7 +559,7 @@ approve/resubmit 携带 `form: { expectedRevision, values }` 时，Native 业务
 可编译例子见 `examples/workflow-administration/task-draft.ts`。
 
 最多20份/90天与同用户、应用、环境、资源的其他表单草稿共享，单份最多64字段/64KiB。
-字段暂不包含附件、图片、签名、富文本或子表。读到不兼容草稿时只返回安全标识与诊断，
+字段支持根附件、图片，暂不包含签名、富文本或子表。读到不兼容草稿时只返回安全标识与诊断，
 不静默丢弃或泄露旧值。失去任务、角色或代理资格后不能继续读/用。
 
 读取不会自动覆盖输入；采用前确认，业务基线变化先核对并再次保存。相同输入暂存成功后
@@ -572,3 +572,43 @@ approve/resubmit 携带 `form: { expectedRevision, values }` 时，Native 业务
 失败全部回滚。原成功命令重试先返回唯一Workflow回执，不因草稿已消费重复写入。
 任务真正关闭才过期未消费草稿，all/sequence任务仍可办理时保留其他人的有效草稿。
 能力 `workflow.task-private-drafts@1.0.0` 自动提供，无额外配置开关。
+
+### 任务附件与图片
+
+当前任务的可编辑 `file/image` 字段自动接入标准 PC/手机上传、缩略图、预览和下载。
+当前处理资格不授通用资源 CRUD；平台从固定任务派生记录、页面、身份和环境，
+上传时还核验**已保存业务资料对应的页面状态**。局部修改才显示附件字段时，
+先“保存补填”使字段生效，再上传；组件说明此边界，不自动提交业务值。
+
+自定义页面可从 `openxiangda/core` 或 `openxiangda/react` 调用：
+
+```ts
+const input = { id: crypto.randomUUID(), fieldCode: 'evidence',
+  fileName: file.name, fileSize: file.size, contentType: file.type };
+const plan = await initiateWorkflowTaskFileUpload(taskId, input);
+// pending 才按 plan.uploadMethod/uploadUrl/headers 上传原 File；ready 直接采用 plan.file。
+const readyFile = await completeWorkflowTaskFileUpload(taskId, input.id);
+// 结果未知时：loadWorkflowTaskFileUploadPlan(taskId, input.id)，或重试同 ID/规格。
+```
+
+上传 ID 必须在第一次请求前固定。标准组件一次处理一个文件；上传中或结果未知时
+保留原 File、ID、规格和当前输入，锁住新任务动作与草稿写入，提供“核对原上传”
+和“重试原上传”。ready 结果不再 PUT；完成响应丢失后只恢复原完成结果。
+文件字节、签名地址与表单值不进入浏览器持久存储。离开未完成上传时需先确认结果。
+
+预览字段组件传入 `workflowFileBinding: { taskId, resourceCode, recordId, fieldCode }`；
+正式实例详情使用原 `instanceId` binding。同一 binding 只提供一种范围。
+仅本人当前任务可读私有暂存文件，其他处理人和管理员没有私有读取特权。
+当前根业务记录已经引用的文件可按该任务页面规则读取；隐藏、资格失效或任务关闭后拒绝。
+通用 Native 完成、删除和未绑定文件读取不能绕过此范围。
+
+附件完成后仍只是当前输入；私有草稿延长文件保留至该草稿到期，业务绑定再移除引用
+仍尊重该保留期。原 save_form/approve/resubmit 验证真实文件状态、字段、范围与元数据，
+同事务提交业务引用、事实、任务决定和草稿消费；失败全回滚。完成上传时平台复制为
+独占正式对象，旧上传地址不能再修改正式字节。
+
+单文件不超过字段限制与100MiB；每账号/应用/环境最多100个尚未业务绑定的任务文件，
+声明大小合计200MiB。此大小是上传容量预算，staging/正式对象与缩略图另有存储开销。
+复用既有 Native 文件引用 worker 和 GC；流式正式复制限时10秒。
+需要服务端正式 SQL `AddWorkflowTaskManagedFilesV2` 和自动能力
+`workflow.task-managed-files@1.0.0`，初始化无需新增开关。

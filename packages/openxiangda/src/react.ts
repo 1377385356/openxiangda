@@ -32,6 +32,9 @@ export {
   loadWorkflowTaskDrafts,
   saveWorkflowTaskDraft,
   removeWorkflowTaskDraft,
+  initiateWorkflowTaskFileUpload,
+  loadWorkflowTaskFileUploadPlan,
+  completeWorkflowTaskFileUpload,
   type ResourceFormDraftWorkflowScope,
   type ResourceFormDraft,
   createAnonymousPublicClient,
@@ -55,6 +58,8 @@ export type {
   WorkflowTaskDraftSave,
   WorkflowTaskDraftReference,
   WorkflowTaskDraftList,
+  WorkflowTaskFileUpload,
+  WorkflowTaskFileUploadPlan,
 } from 'openxiangda-contracts/browser';
 export * from './browser/components/resource/GeneratedResourceCrud';
 export * from './browser/components/resource/ResourceBatchActions';

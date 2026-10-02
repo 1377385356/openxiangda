@@ -42,7 +42,8 @@ test('page expressions are bounded and only reference declared form fields', () 
 test('compiler checks actual Native field metadata without exposing unsupported editors', () => {
   const fields = new Map(page.fields.map(field => [field.code, { type: 'string' }]));
   assert.deepEqual(validateWorkflowTaskPages(definition, fields), []);
-  for (const metadata of [{ type: 'string', hidden: true }, { type: 'string', system: true }, { type: 'serial-number' }, { type: 'subtable' }, { type: 'file' }, { type: 'string', widget: 'readonly' }]) {
+  for (const type of ['file', 'image']) assert.deepEqual(validateWorkflowTaskPages(definition, new Map([...fields, ['reason', { type }]])), []);
+  for (const metadata of [{ type: 'string', hidden: true }, { type: 'string', system: true }, { type: 'serial-number' }, { type: 'subtable' }, { type: 'signature' }, { type: 'text.rich' }, { type: 'string', widget: 'readonly' }]) {
     assert.match(validateWorkflowTaskPages(definition, new Map([...fields, ['reason', metadata]])).join(','), /RESOURCE_FIELD_INVALID/);
   }
   assert.match(validateWorkflowTaskPages(definition, new Map()).join(','), /RESOURCE_FIELD_INVALID/);

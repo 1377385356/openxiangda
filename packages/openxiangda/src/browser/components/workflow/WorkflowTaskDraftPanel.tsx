@@ -23,12 +23,13 @@ export function workflowTaskDraftConfirmsSave(saved: WorkflowTaskDraft, input: W
 }
 
 /** Presentation state only. The platform owns qualification, storage, CAS and consumption. */
-export function WorkflowTaskDraftPanel({ controller, taskId, disabled, variant, resourceCode, onBusyChange, onRefresh }: {
+export function WorkflowTaskDraftPanel({ controller, taskId, disabled, variant, resourceCode, recordId, onBusyChange, onRefresh }: {
   controller: ReturnType<typeof useWorkflowTaskForm>;
   taskId: string;
   disabled: boolean;
   variant: 'desktop' | 'mobile';
   resourceCode?: string;
+  recordId?: string;
   onBusyChange?: (busy: boolean) => void;
   onRefresh?: () => Promise<void>;
 }) {
@@ -109,8 +110,8 @@ export function WorkflowTaskDraftPanel({ controller, taskId, disabled, variant, 
         <p>采用后会替换当前填写的输入。{changed ? '业务资料已更新，采用后请核对并再次保存草稿。' : '正式提交时仍会重新校验业务资料和任务资格。'}</p>
         {fields.map(field => <div className="oxa-workflow-task-value-review" key={field.code}>
           <strong>{source.fields[field.code]?.label || field.code}</strong>
-          <div><span>当前业务资料</span><SurfaceFieldValue field={{ ...source.fields[field.code]!, key: field.code }} value={source.values[field.code]} resourceCode={resourceCode} mobile={variant === 'mobile'} /></div>
-          <div><span>本人草稿</span><SurfaceFieldValue field={{ ...source.fields[field.code]!, key: field.code }} value={saved.values[field.code]} resourceCode={resourceCode} mobile={variant === 'mobile'} /></div>
+          <div><span>当前业务资料</span><SurfaceFieldValue field={{ ...source.fields[field.code]!, key: field.code }} value={source.values[field.code]} resourceCode={resourceCode} workflowFileBinding={resourceCode && recordId ? { taskId, resourceCode, recordId, fieldCode: field.code } : undefined} mobile={variant === 'mobile'} /></div>
+          <div><span>本人草稿</span><SurfaceFieldValue field={{ ...source.fields[field.code]!, key: field.code }} value={saved.values[field.code]} resourceCode={resourceCode} workflowFileBinding={resourceCode && recordId ? { taskId, resourceCode, recordId, fieldCode: field.code } : undefined} mobile={variant === 'mobile'} /></div>
         </div>)}
       </div>,
       onOk: () => { controller.adoptDraft(saved); setOpen(false); setFailure(''); },

@@ -35,6 +35,7 @@ export const PLATFORM_CAPABILITY_CONTRACT_VERSIONS = {
   "workflow.automatic-cc": "1.0.0",
   "workflow.task-page-submit": "1.0.0",
   "workflow.task-private-drafts": "1.0.0",
+  "workflow.task-managed-files": "1.0.0",
   "workflow.durable-business-step": "1.0.0",
   "business-process.durable-command": "1.1.0",
   "workflow.fresh-command-token": "1.0.0",

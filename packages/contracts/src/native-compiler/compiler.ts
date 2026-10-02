@@ -445,6 +445,11 @@ export function compileRequiredPlatformCapabilitiesV3(
     config.events.subscriptions.some(
       (subscription: JsonObject) => subscription.platformAccess?.notification
     );
+  const taskManagedFileDefinitions = config.workflows.definitions.filter((item: JsonObject) => {
+    const fields = resources.find(resource => resource.code === item.definition.subject?.resourceCode)?.schema.fields || [];
+    return Object.values(item.definition.taskPages || {}).some((page: any) => page.fields.some((field: any) =>
+      !field.readonly && fields.some((metadata: JsonObject) => metadata.code === field.code && ['file', 'image'].includes(metadata.type))));
+  });
   const standardProcessDefinitions = config.workflows.definitions.filter(
     (declaration: JsonObject) =>
       declaration.launch.mode === 'standalone' ||
@@ -662,6 +667,8 @@ export function compileRequiredPlatformCapabilitiesV3(
     ...(config.workflows.definitions.some((item: JsonObject) => item.definition.taskPages !== undefined)
       ? ['workflow.task-page-submit' as const, 'workflow.task-private-drafts' as const].map(code => ({ code, declaration: config.workflows.definitions.filter((item: JsonObject) => item.definition.taskPages !== undefined) }))
       : []),
+    ...(taskManagedFileDefinitions.length
+      ? [{ code: 'workflow.task-managed-files' as const, declaration: taskManagedFileDefinitions }] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action'))
       ? [{ code: 'workflow.durable-business-step' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action')) }]
       : []),

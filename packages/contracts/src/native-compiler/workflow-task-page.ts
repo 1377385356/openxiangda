@@ -1,4 +1,4 @@
-import type { WorkflowExpression } from '../types.js';
+import type { DataFileUploadPlan, WorkflowExpression } from '../types.js';
 import type { DataFieldSurface } from '../surface.js';
 
 export const WORKFLOW_TASK_PAGE_MAX_FIELDS = 64;
@@ -52,6 +52,17 @@ export interface WorkflowTaskDraftList {
   limit: number;
   retentionDays: number;
 }
+
+/** Stable upload intent for a fixed task; no arbitrary resource or record target. */
+export interface WorkflowTaskFileUpload {
+  id: string;
+  fieldCode: string;
+  fileName: string;
+  fileSize: number;
+  contentType?: string;
+}
+
+export type WorkflowTaskFileUploadPlan = DataFileUploadPlan & { state: 'pending' | 'ready' };
 
 export interface WorkflowTaskFormSurface {
   pageCode: string;
@@ -152,7 +163,7 @@ export function validateWorkflowTaskPages(definition: Definition, resourceFields
       for (const key of ['visibleWhen', 'requiredWhen'] as const) if (field[key] !== undefined && !validExpression(field[key], fields)) diagnostics.push(`WORKFLOW_TASK_PAGE_EXPRESSION_INVALID:${pointer}.${field.code}.${key}`);
       if (resourceFields) {
         const resource = resourceFields.get(field.code);
-        if (!resource || resource.system || resource.hidden || resource.type === 'serial-number' || (!field.readonly && (resource.widget === 'readonly' || ['subtable', 'file', 'image', 'signature', 'text.rich'].includes(resource.type)))) diagnostics.push(`WORKFLOW_TASK_PAGE_RESOURCE_FIELD_INVALID:${pointer}.${field.code}`);
+        if (!resource || resource.system || resource.hidden || resource.type === 'serial-number' || (!field.readonly && (resource.widget === 'readonly' || ['subtable', 'signature', 'text.rich'].includes(resource.type)))) diagnostics.push(`WORKFLOW_TASK_PAGE_RESOURCE_FIELD_INVALID:${pointer}.${field.code}`);
       }
     }
   }

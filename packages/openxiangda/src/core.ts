@@ -74,6 +74,8 @@ export type {
   WorkflowTaskDraftSave,
   WorkflowTaskDraftReference,
   WorkflowTaskDraftList,
+  WorkflowTaskFileUpload,
+  WorkflowTaskFileUploadPlan,
   WorkflowTimeline,
   WorkflowWorkCenterItem,
 } from 'openxiangda-contracts/browser';

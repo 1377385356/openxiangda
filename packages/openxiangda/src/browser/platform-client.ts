@@ -2357,21 +2357,21 @@ export async function downloadDataFile(
   }
 }
 
-export interface WorkflowFileBinding {
-  instanceId: string;
+export type WorkflowFileBinding = ({ instanceId: string; taskId?: never } | { taskId: string; instanceId?: never }) & {
   resourceCode: string;
   recordId: string;
   fieldCode: string;
-}
+};
 
 function workflowFileBase(binding: WorkflowFileBinding, fileId: string) {
+  if (binding.taskId) return `${workflowBase()}/tasks/${encodeURIComponent(binding.taskId)}/form-files/${encodeURIComponent(fileId)}?fieldCode=${encodeURIComponent(binding.fieldCode)}`;
   const query = new URLSearchParams({
     resourceCode: binding.resourceCode,
     recordId: binding.recordId,
     fieldCode: binding.fieldCode,
   });
   return `${workflowBase()}/instances/${encodeURIComponent(
-    binding.instanceId,
+    binding.instanceId!,
   )}/files/${encodeURIComponent(fileId)}?${query}`;
 }
 
@@ -2696,6 +2696,23 @@ export async function saveWorkflowTaskDraft(taskId: string, input: import('openx
 export async function removeWorkflowTaskDraft(taskId: string, input: import('openxiangda-contracts/browser').WorkflowTaskDraftReference): Promise<{ deleted: true }> {
   return request(`${workflowBase()}/tasks/${encodeURIComponent(taskId)}/form-drafts/delete`, {
     method: 'POST', headers: { 'x-openxiangda-csrf-token': await workflowCsrfToken() }, body: JSON.stringify(input),
+  });
+}
+
+/** Fix the upload ID before this call. Retrying uses the same intent and task. */
+export async function initiateWorkflowTaskFileUpload(taskId: string, input: import('openxiangda-contracts/browser').WorkflowTaskFileUpload): Promise<import('openxiangda-contracts/browser').WorkflowTaskFileUploadPlan> {
+  return request(`${workflowBase()}/tasks/${encodeURIComponent(taskId)}/form-files`, {
+    method: 'POST', headers: { 'x-openxiangda-csrf-token': await workflowCsrfToken() }, body: JSON.stringify(input),
+  });
+}
+
+export async function loadWorkflowTaskFileUploadPlan(taskId: string, fileId: string): Promise<import('openxiangda-contracts/browser').WorkflowTaskFileUploadPlan> {
+  return requestRead(`${workflowBase()}/tasks/${encodeURIComponent(taskId)}/form-files/${encodeURIComponent(fileId)}`);
+}
+
+export async function completeWorkflowTaskFileUpload(taskId: string, fileId: string): Promise<DataFileRef> {
+  return request(`${workflowBase()}/tasks/${encodeURIComponent(taskId)}/form-files/${encodeURIComponent(fileId)}/complete`, {
+    method: 'POST', headers: { 'x-openxiangda-csrf-token': await workflowCsrfToken() }, body: '{}',
   });
 }
 
