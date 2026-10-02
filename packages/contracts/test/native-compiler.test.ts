@@ -14,6 +14,21 @@ function input(config = JSON.parse(corpus.configuration.canonical)) {
   };
 }
 
+test('automatic cc capability is derived from declarations in both shared compiler distributions', () => {
+  const config = JSON.parse(corpus.configuration.canonical);
+  const definition = config.workflows.definitions[0].definition;
+  const binding = config.workflows.bindings.find((entry: any) => entry.binding.workflowCode === definition.code).binding;
+  definition.nodes.copy = { id: 'copy', kind: 'cc', title: '抄送', binding: 'ccReaders', next: definition.startAt, emptyPolicy: 'block' };
+  definition.startAt = 'copy';
+  binding.bindings.ccReaders = { provider: 'app_role', roleCode: 'reviewer', max: 20 };
+  const contract = { ...JSON.parse(corpus.contract.canonical), configDigest: sha256Digest(config) };
+  const value = { ...input(config), contractBytes: canonicalJson(contract), expectedContractDigest: sha256Digest(contract) };
+  for (const implementation of [esm, cjs]) {
+    const result = implementation.compileNativeApplicationConfiguration(value);
+    assert.equal(result.requiredPlatformCapabilities.find(item => item.code === 'workflow.automatic-cc')?.contractVersion, '1.0.0');
+  }
+});
+
 test('routing declarations automatically require the platform capability and invalid policies fail in both compiler distributions', () => {
   const configuration = JSON.parse(corpus.configuration.canonical);
   const binding = configuration.workflows.bindings[0].binding.bindings.reviewer;

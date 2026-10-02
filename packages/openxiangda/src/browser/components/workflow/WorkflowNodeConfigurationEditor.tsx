@@ -42,10 +42,11 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
   const basis = useRef({ expectedHeadRevision, expectedRevision: initialNode.configuration.revision });
   const frozen = useRef<WorkflowNodeConfigurationMutation | null>(null);
   const [busy, setBusy] = useState(false), [uncertain, setUncertain] = useState(false), [conflict, setConflict] = useState(false), [error, setError] = useState('');
-  const [tab, setTab] = useState(initialNode.kind === 'approval' ? 'people' : 'general');
+  const [tab, setTab] = useState(['approval', 'cc'].includes(initialNode.kind) ? 'people' : 'general');
+  const isCc = node.kind === 'cc';
   const selectedProvider = Form.useWatch('provider', form) || node.effective.binding?.provider;
   const binding = node.defaults.binding;
-  const allowedProviders = node.administration?.assigneeProviders || (binding && providers[binding.provider] ? [binding.provider] : []);
+  const allowedProviders = node.administration?.assigneeProviders || (!isCc && binding && providers[binding.provider] ? [binding.provider] : []);
   const close = () => {
     if (busy) return;
     if (form.isFieldsTouched() || uncertain) modal.confirm({ title: '关闭节点配置？', content: uncertain ? '操作结果尚未确认。请保留原操作 ID，重新打开后先查询配置和修改记录。' : '未保存的草稿将离开编辑器。', okText: '关闭', cancelText: '继续编辑', onOk: onClose });
@@ -112,21 +113,21 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
   };
   return <Drawer open title="调整节点配置" size={620} rootClassName="oxa-workflow-config" onClose={close} closable={!busy} mask={{ closable: !busy }} footer={<div className="oxa-workflow-config-footer"><span>当前待办保留原配置</span><Space><Button disabled={busy} onClick={close}>取消</Button><Button aria-label="保存节点配置" type="primary" loading={busy} disabled={conflict} onClick={() => void save()}>{uncertain ? '重试相同操作' : '保存配置'}</Button></Space></div>}>
     <div className="oxa-workflow-config-context"><Typography.Title level={4}>{node.effective.title}</Typography.Title><Space wrap><Tag>{node.configuration.patch ? '后台覆盖' : '代码默认值'}</Tag><Tag>修订 {basis.current.expectedRevision}</Tag></Space></div>
-    <Alert type="info" showIcon title="对后续进入的节点生效" description={effect} style={{ marginBottom: 16 }} />
+    <Alert type="info" showIcon title="对后续进入的节点生效" description={isCc ? '后续进入使用新配置；已抄送的接收人和记录保留。' : effect} style={{ marginBottom: 16 }} />
     {error && <Alert type="error" showIcon title={conflict ? '配置已有新的修订，草稿已保留' : uncertain ? '操作结果未确认' : '配置未保存'} description={error} style={{ marginBottom: 16 }} />}
     {conflict && <Button onClick={() => void refreshKeepingDraft()} disabled={busy} style={{ marginBottom: 16 }}>载入最新配置并保留草稿</Button>}
     {uncertain && <Typography.Paragraph>继续使用原操作 ID：<Typography.Text code>{frozen.current?.operationId}</Typography.Text>。重试时不修改请求。</Typography.Paragraph>}
     <Form form={form} layout="vertical" disabled={busy || uncertain} initialValues={initialValues(initialNode, initialPrincipals)}>
       <Tabs activeKey={tab} onChange={setTab} items={[
-        { key: 'people', label: '审批人', forceRender: true, children: <>
-          <p className="oxa-workflow-config-help">人员来源和可选审批方式由开发者开放；保存时平台校验人员、角色及范围。</p>
+        { key: 'people', label: isCc ? '抄送人' : '审批人', forceRender: true, children: <>
+          <p className="oxa-workflow-config-help">{isCc ? '抄送来源由开发者开放；保存时校验人员、角色及范围。抄送只提供流程查阅权。' : '人员来源和可选审批方式由开发者开放；保存时平台校验人员、角色及范围。'}</p>
           {allowedProviders.length > 0 ? <>
             <Form.Item name="provider" label="人员来源" rules={[{ required: true }]}><Radio.Group className="oxa-workflow-provider-options" options={allowedProviders.map(value => ({ value, label: providers[value] }))} /></Form.Item>
-            {selectedProvider === 'fixed_users' && <Form.Item name="users" label="指定审批人" rules={[{ required: true, type: 'array', min: 1, max: 200 }]}><PlatformDirectoryPicker kind="user" multiple placeholder="从通讯录选择人员" /></Form.Item>}
-            {['app_role', 'app_role_in_scope'].includes(selectedProvider || '') && <Form.Item name="roleCode" label="审批角色" rules={[{ required: true }]}><Select showSearch={{ optionFilterProp: 'label' }} options={principals.roles.map(role => ({ value: role.code, label: `${role.name}（${role.code}）` }))} /></Form.Item>}
+            {selectedProvider === 'fixed_users' && <Form.Item name="users" label={isCc ? '指定抄送人' : '指定审批人'} rules={[{ required: true, type: 'array', min: 1, max: isCc ? 20 : 200 }]}><PlatformDirectoryPicker kind="user" multiple placeholder="从通讯录选择人员" /></Form.Item>}
+            {['app_role', 'app_role_in_scope'].includes(selectedProvider || '') && <Form.Item name="roleCode" label={isCc ? '抄送角色' : '审批角色'} rules={[{ required: true }]}><Select showSearch={{ optionFilterProp: 'label' }} options={principals.roles.map(role => ({ value: role.code, label: `${role.name}（${role.code}）` }))} /></Form.Item>}
           </> : <Alert type="info" title="人员来源由开发者维护" description="此节点未开放人员来源调整。" />}
           {binding?.scope && <p className="oxa-workflow-config-scope">范围来源：{binding.scope.dimension} · {binding.scope.valueFrom || binding.scope.value}<br />范围计算由流程代码维护。</p>}
-          {node.administration?.modes ? <Form.Item name="mode" label="审批方式" rules={[{ required: true }]}><Radio.Group className="oxa-workflow-mode-options" options={node.administration.modes.map(value => ({ value, label: <span><b>{modes[value]}</b><small>{modeDescriptions[value]}</small></span> }))} /></Form.Item> : <p className="oxa-workflow-config-help">审批方式：{modes[node.effective.mode || ''] || '由开发者维护'}</p>}
+          {!isCc && (node.administration?.modes ? <Form.Item name="mode" label="审批方式" rules={[{ required: true }]}><Radio.Group className="oxa-workflow-mode-options" options={node.administration.modes.map(value => ({ value, label: <span><b>{modes[value]}</b><small>{modeDescriptions[value]}</small></span> }))} /></Form.Item> : <p className="oxa-workflow-config-help">审批方式：{modes[node.effective.mode || ''] || '由开发者维护'}</p>)}
         </> },
         { key: 'operations', label: '审批按钮', forceRender: true, children: <>
           <p className="oxa-workflow-config-help">修改显示文字、开关和意见要求。同意与拒绝保持启用；拒绝必须填写意见。</p>
@@ -142,7 +143,7 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
           <Form.Item name="description" label="节点说明"><Input.TextArea rows={4} maxLength={1000} /></Form.Item>
           <p className="oxa-workflow-config-help">流程连线、条件分支及业务代码由开发者维护。修改名称和说明不会改变流转逻辑。</p>
         </> },
-      ].filter(item => node.kind === 'approval' || item.key === 'general')} />
+      ].filter(item => node.kind === 'approval' || item.key === 'general' || isCc && item.key === 'people')} />
       <div className="oxa-workflow-config-reason"><Form.Item name="reason" label="修改原因" rules={[{ required: true, whitespace: true }]} extra="将记录在配置修改历史中。"><Input.TextArea rows={2} maxLength={1000} placeholder="说明本次调整的原因" /></Form.Item></div>
     </Form>
   </Drawer>;

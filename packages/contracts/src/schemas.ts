@@ -5252,6 +5252,22 @@ const workflowExpressionSchema = {
   },
 } as const;
 
+const workflowCcNodeSchema = {
+  type: 'object', additionalProperties: false,
+  required: ['id', 'kind', 'title', 'binding', 'next', 'emptyPolicy'],
+  properties: {
+    id: nonEmptyString, kind: { const: 'cc' }, title: nonEmptyString,
+    binding: nonEmptyString, next: nonEmptyString,
+    emptyPolicy: { enum: ['block', 'skip'] }, notify: { type: 'boolean' },
+    administration: {
+      type: 'object', additionalProperties: false,
+      properties: {
+        assigneeProviders: { type: 'array', minItems: 1, maxItems: 3, uniqueItems: true, items: { enum: ['fixed_users', 'app_role', 'app_role_in_scope'] } },
+      },
+    },
+  },
+} as const;
+
 const workflowNodeSchema = {
   oneOf: [
     {
@@ -5349,6 +5365,7 @@ const workflowNodeSchema = {
         outcome: nonEmptyString,
       },
     },
+    workflowCcNodeSchema,
   ],
 } as const;
 

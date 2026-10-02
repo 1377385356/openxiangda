@@ -17,7 +17,7 @@ export function WorkflowNodeCard({ node, title, summary, selected, start, visit,
     aria-pressed={selected} aria-label={`${title}，${kinds[node.kind] || node.kind}${visit ? `，${statuses[visit.status] || visit.status}` : ''}`}
     onClick={onClick} onKeyDown={event => { if (onNavigate(node.id, event.key)) event.preventDefault(); }}>
     <span className="oxa-workflow-node-icon"><Icon /></span><span className="oxa-workflow-node-copy"><span className="oxa-workflow-node-kind">{start ? '起点 · ' : ''}{kinds[node.kind] || node.kind}</span>
-      <strong title={title}>{title}</strong><small title={summary}>{summary || (node.mode ? workflowNodeModes[node.mode] || node.mode : node.kind === 'condition' ? '按顺序首次命中' : outcomes[node.outcome || ''] || node.id)}</small></span>
-    {visit && <span className={`oxa-workflow-node-status status-${visit.status}`}>{statuses[visit.status] || visit.status}</span>}
+      <strong title={title}>{title}</strong><small title={summary}>{summary || (node.mode ? workflowNodeModes[node.mode] || node.mode : node.kind === 'cc' ? `${node.emptyPolicy === 'skip' ? '无人时跳过' : '必须有接收人'} · ${node.notify === false ? '仅抄送记录' : '通知接收人'}` : node.kind === 'condition' ? '按顺序首次命中' : outcomes[node.outcome || ''] || node.id)}</small></span>
+    {visit && <span className={`oxa-workflow-node-status status-${visit.status}`}>{visit.skipped ? '无人，已跳过' : statuses[visit.status] || visit.status}</span>}
   </button>;
 }

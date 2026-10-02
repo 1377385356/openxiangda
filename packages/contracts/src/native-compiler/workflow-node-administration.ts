@@ -37,6 +37,12 @@ export function validateWorkflowAdministration(definition: { nodes?: Record<stri
     if (!record(node)) continue;
     const admin = node.administration;
     const policy = node.operationPolicy;
+    if (node.kind === 'cc') {
+      if (policy !== undefined || admin !== undefined && (!record(admin) || !keys(admin, ['assigneeProviders']))) errors.push(`WORKFLOW_NODE_ADMINISTRATION_INVALID:${id}`);
+      if (admin?.assigneeProviders !== undefined && !boundedList(admin.assigneeProviders, WORKFLOW_CONFIGURABLE_PROVIDERS, 3)) errors.push(`WORKFLOW_NODE_ADMINISTRATION_PROVIDERS_INVALID:${id}`);
+      if (admin?.assigneeProviders?.includes('app_role_in_scope') && bindings && !bindings.bindings[node.binding || '']?.scope) errors.push(`WORKFLOW_NODE_ADMINISTRATION_SCOPE_REQUIRED:${id}`);
+      continue;
+    }
     if (node.kind !== 'approval') {
       if (admin !== undefined || policy !== undefined) errors.push(`WORKFLOW_NODE_ADMINISTRATION_APPROVAL_REQUIRED:${id}`);
       continue;
@@ -66,10 +72,10 @@ export function validateWorkflowNodeConfigurationPatch(node: WorkflowAdministrat
   if (patch.operations !== undefined && (node.kind !== 'approval' || !record(patch.operations) || !Object.keys(patch.operations).length || Object.keys(patch.operations).length > 8 || Object.entries(patch.operations).some(([operation, value]) => !admin?.operations?.includes(operation as WorkflowConfigurableOperation) || !workflowNodeAllowedOperations(node).includes(operation) || !policyValid(value, operation, node.operationPolicy?.[operation as WorkflowConfigurableOperation], true)))) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_OPERATION_INVALID');
   if (patch.assignee !== undefined) {
     const value = patch.assignee;
-    const allowed = admin?.assigneeProviders || (binding && WORKFLOW_CONFIGURABLE_PROVIDERS.includes(binding.provider as any) ? [binding.provider] : []);
-    if (!record(value) || node.kind !== 'approval' || !allowed.includes(value.provider) || (value.provider === 'app_role_in_scope' && !binding?.scope)) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_PROVIDER_READONLY');
+    const allowed = admin?.assigneeProviders || (node.kind === 'approval' && binding && WORKFLOW_CONFIGURABLE_PROVIDERS.includes(binding.provider as any) ? [binding.provider] : []);
+    if (!record(value) || !['approval', 'cc'].includes(node.kind) || !allowed.includes(value.provider) || (value.provider === 'app_role_in_scope' && !binding?.scope)) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_PROVIDER_READONLY');
     else if (value.provider === 'fixed_users') {
-      if (!keys(value, ['provider', 'users']) || !Array.isArray(value.users) || value.users.length < 1 || value.users.length > 200 || new Set(value.users).size !== value.users.length || value.users.some(id => typeof id !== 'string' || !id.trim() || id.length > 255)) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_USERS_INVALID');
+      if (!keys(value, ['provider', 'users']) || !Array.isArray(value.users) || value.users.length < 1 || value.users.length > (node.kind === 'cc' ? 20 : 200) || new Set(value.users).size !== value.users.length || value.users.some(id => typeof id !== 'string' || !id.trim() || id.length > 255)) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_USERS_INVALID');
     } else if (!keys(value, ['provider', 'roleCode']) || typeof value.roleCode !== 'string' || !/^[a-z][a-z0-9_-]{0,127}$/.test(value.roleCode)) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_ROLE_INVALID');
   }
   return errors;

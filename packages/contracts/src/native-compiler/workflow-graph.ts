@@ -37,6 +37,9 @@ export interface WorkflowGraphDefinitionSource {
     onReject?: string;
     branches?: Array<{ when: WorkflowGraphExpression; target: string; label?: string }>;
     otherwise?: string;
+    next?: string;
+    emptyPolicy?: 'block' | 'skip';
+    notify?: boolean;
     outcome?: string;
   }>;
 }
@@ -56,7 +59,7 @@ export interface WorkflowGraphEdge {
   id: string;
   from: string;
   to: string;
-  kind: 'approve' | 'reject' | 'branch' | 'default';
+  kind: 'approve' | 'reject' | 'branch' | 'default' | 'next';
   label: string;
   priority?: number;
   expression?: WorkflowGraphExpression;
@@ -70,7 +73,7 @@ export interface WorkflowGraphProjection {
   startAt: string;
   fixedTopology: true;
   branchStrategy: 'first_match';
-  nodes: Array<{ id: string; kind: string; title: string; binding?: string; mode?: string; outcome?: string }>;
+  nodes: Array<{ id: string; kind: string; title: string; binding?: string; mode?: string; outcome?: string; emptyPolicy?: 'block' | 'skip'; notify?: boolean }>;
   edges: WorkflowGraphEdge[];
   variables: WorkflowGraphVariable[];
   logic: NonNullable<WorkflowReadability['logic']>;
@@ -86,7 +89,9 @@ export interface WorkflowGraphVisit {
   matchedBranch?: number;
   target?: string;
   /** Recorded terminal decision; chronological adjacency alone is not execution evidence. */
-  transition?: 'approve' | 'reject';
+  transition?: 'approve' | 'reject' | 'next';
+  skipped?: boolean;
+  notificationRequested?: boolean;
   configuration?: Record<string, unknown>;
   people?: Array<{ userId: string | null; displayName: string; status?: string }>;
 }
@@ -209,6 +214,7 @@ export function projectWorkflowGraph(definition: WorkflowGraphDefinitionSource, 
       for (const [kind, target, label] of [['approve', node.onApprove, '同意'], ['reject', node.onReject, '拒绝']] as const)
         if (target) edges.push({ id: `${node.id}:${kind}`, from: node.id, to: target, kind, label, variablePaths: [] });
     }
+    if (node.kind === 'cc' && node.next) edges.push({ id: `${node.id}:next`, from: node.id, to: node.next, kind: 'next', label: '抄送后继续', variablePaths: [] });
     if (node.kind === 'condition') {
       for (const [index, branch] of (node.branches || []).entries()) {
         const expression = workflowExpressionPaths(branch.when);
@@ -230,7 +236,8 @@ export function projectWorkflowGraph(definition: WorkflowGraphDefinitionSource, 
   });
   return { schemaVersion: 'openxiangda.workflow-graph/v2', workflowCode: definition.code, definitionDigest, startAt: definition.startAt,
     fixedTopology: true, branchStrategy: 'first_match', nodes: Object.values(definition.nodes).map(node => ({ id: node.id, kind: node.kind, title: node.title || node.id,
-      ...(node.binding ? { binding: node.binding } : {}), ...(node.mode ? { mode: node.mode } : {}), ...(node.outcome ? { outcome: node.outcome } : {}) })), edges, variables,
+      ...(node.binding ? { binding: node.binding } : {}), ...(node.mode ? { mode: node.mode } : {}), ...(node.outcome ? { outcome: node.outcome } : {}),
+      ...(node.kind === 'cc' ? { emptyPolicy: node.emptyPolicy, notify: node.notify !== false } : {}) })), edges, variables,
     logic: definition.readability?.logic || [], diagnostics };
 }
 

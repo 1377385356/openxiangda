@@ -8,6 +8,7 @@ import { hasDataAuditReadPolicy, isDataAuditMetadataField } from './data-audit-a
 import { validateWorkflowInstanceCommandPolicies } from './workflow-instance-policy.js';
 import { validateWorkflowReadability, type WorkflowGraphDefinitionSource } from './workflow-graph.js';
 import { validateWorkflowAdministration, type WorkflowAdministrationNodeSource } from './workflow-node-administration.js';
+import { validateWorkflowAutomaticCc } from './workflow-automatic-cc.js';
 import { validateWorkflowAssignmentRoutingBindings, validateWorkflowAssignmentRoutingPolicy } from './workflow-assignment-routing.js';
 import * as crypto from 'crypto';
 import {
@@ -636,6 +637,9 @@ export function compileRequiredPlatformCapabilitiesV3(
       : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.administration !== undefined || node.operationPolicy !== undefined))
       ? [{ code: 'workflow.node-administration' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.administration !== undefined || node.operationPolicy !== undefined)) }]
+      : []),
+    ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'cc'))
+      ? [{ code: 'workflow.automatic-cc' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'cc')) }]
       : []),
     ...(config.workflows.bindings.some((item: JsonObject) => Object.values(item.binding.bindings).some((entry: any) => entry.routing !== undefined))
       ? [{ code: 'workflow.assignment-routing' as const, declaration: config.workflows.bindings.filter((item: JsonObject) => Object.values(item.binding.bindings).some((entry: any) => entry.routing !== undefined)) }]
@@ -6852,6 +6856,8 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
   if (readabilityErrors.length) fail(readabilityErrors[0]!, `${pointer}/readability`);
   const administrationErrors = validateWorkflowAdministration(definition as unknown as { nodes: Record<string, WorkflowAdministrationNodeSource> });
   if (administrationErrors.length) fail(administrationErrors[0]!, `${pointer}/nodes`);
+  const ccErrors = validateWorkflowAutomaticCc(definition as any);
+  if (ccErrors.length) fail(ccErrors[0]!, `${pointer}/nodes`);
   if (!nodes[startAt])
     fail('NATIVE_WORKFLOW_START_NODE_MISSING', `${pointer}/startAt`);
   const edges = new Map<string, string[]>();
@@ -6859,7 +6865,7 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
     const nodePointer = `${pointer}/nodes/${nodeId}`;
     const node = object(rawNode, nodePointer);
     equal(node.id, nodeId, `${nodePointer}/id`);
-    if (!['approval', 'condition', 'end'].includes(node.kind)) {
+    if (!['approval', 'condition', 'end', 'cc'].includes(node.kind)) {
       fail('NATIVE_WORKFLOW_NODE_KIND_INVALID', `${nodePointer}/kind`);
     }
     const targets: string[] = [];
@@ -6897,6 +6903,10 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
           );
         }
       }
+    } else if (node.kind === 'cc') {
+      requiredString(node.title, `${nodePointer}/title`, 255);
+      workflowBindingCode(node.binding, `${nodePointer}/binding`);
+      targets.push(requiredString(node.next, `${nodePointer}/next`, 128));
     } else if (node.kind === 'condition') {
       const branches = boundedArray(
         node.branches,
@@ -7075,11 +7085,13 @@ function validateWorkflowDefinitionBinding(
 ) {
   equal(binding.workflowCode, definition.code, `${pointer}/workflowCode`);
   const entries = object(binding.bindings, `${pointer}/bindings`);
+  const ccErrors = validateWorkflowAutomaticCc(definition as any, binding as any);
+  if (ccErrors.length) fail(ccErrors[0]!, pointer);
   for (const [nodeId, rawNode] of Object.entries(
     object(definition.nodes, `${pointer}/nodes`)
   )) {
     const node = object(rawNode, `${pointer}/nodes/${nodeId}`);
-    if (node.kind === 'approval' && !entries[node.binding]) {
+    if (['approval', 'cc'].includes(node.kind) && !entries[node.binding]) {
       fail(
         'NATIVE_WORKFLOW_BINDING_REFERENCE_MISSING',
         `${pointer}/nodes/${nodeId}/binding`

@@ -76,6 +76,23 @@ function fixture() {
   return { definition, binding };
 }
 
+test('automatic cc is planned before the real approval and rejects unsupported transaction providers', () => {
+  const { definition, binding } = fixture();
+  const withCc = {
+    ...definition, startAt: 'copy', nodes: { ...definition.nodes, copy: {
+      id: 'copy', kind: 'cc' as const, title: '抄送', binding: 'readers', next: definition.startAt,
+      emptyPolicy: 'block' as const,
+    } },
+  };
+  const ccBinding = { ...binding, bindings: { ...binding.bindings, readers: { provider: 'app_role' as const, roleCode: 'reader' } } };
+  assert.doesNotThrow(() => compileWorkflow(withCc, ccBinding));
+  const plan = planWorkflow(withCc, { amount: 100 });
+  assert.equal(plan.steps[0]!.kind, 'cc');
+  assert.equal(plan.steps[0]!.result!.target, definition.startAt);
+  assert.equal(plan.activeNode?.id, 'college-review');
+  assert.throws(() => compileWorkflow(withCc, { ...ccBinding, bindings: { ...ccBinding.bindings, readers: { provider: 'application_provider', providerCode: 'remote' } } }), /WORKFLOW_CC_PROVIDER_INVALID/);
+});
+
 test('compiles immutable topology and bindings with stable digests', () => {
   const { definition, binding } = fixture();
   assert.deepEqual(definition.subject.summaryFields, []);

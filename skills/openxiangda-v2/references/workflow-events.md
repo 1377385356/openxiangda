@@ -153,13 +153,55 @@ Workflow 发起只接受 `{ resourceCode, id }` 形式的 `dataRef`，并要求�
 
 ## 标准工作流范围
 
-首期只支持 `approval`、`condition`、`end`，以及 `single`、`any`、`all`、`sequence` 审批模式。标准操作为提交、同意、拒绝、退回、重新提交、转交、委托、前/后加签、撤回、管理员改派、管理员终止和不改变流程状态的催办。
+标准节点支持 `approval`、`condition`、`cc`、`end`，以及 `single`、`any`、`all`、`sequence` 审批模式。标准操作为提交、同意、拒绝、退回、重新提交、转交、委托、前/后加签、撤回、管理员改派、管理员终止和不改变流程状态的催办。
 
 除命令集之外，平台为实例管理员提供两个维护动作：`admin_jump`（把处于运行或退回状态的实例跳转到指定节点）与 `admin_delete`（删除实例，可选同时删除表单数据、是否触发自动化）。两者走平台管理端点的预览/执行两步流程并要求同源浏览器请求，不属于应用声明的工作流命令，也不占用 `commandToken` 命令合同。
 
 复杂业务状态机继续放在应用领域服务。不要把任意 JavaScript、Service Task、BPMN、通用长事务或业务记录复制进 Workflow。
 
 所有页面和消息动作必须来自后端 Workflow Surface 的 `operations[]`。前端、模板和渠道 Adapter 不自行推断操作权限。
+
+### 自动抄送 {#automatic-cc}
+
+在固定拓扑中声明 `cc` 节点，进入时解析接收人、保存抄送事实，然后继续 `next`。
+完整声明例子见 `examples/workflow-administration/automatic-cc.ts`：
+
+```ts
+copy: {
+  id: 'copy', kind: 'cc', title: '抄送办理负责人',
+  binding: 'readers', next: 'approved', emptyPolicy: 'block',
+  administration: { assigneeProviders: ['app_role', 'fixed_users'] },
+},
+```
+
+接收 binding 支持 `fixed_users`、`initiator`、`input_users`、`form_field_users`、
+`app_role`、`app_role_in_scope`、`previous_node_actor`。仅使用事务内原生来源，
+不支持 `application_provider` 或需要申请人交互的 `initiator_select`。名单按用户去重，
+每次进入最多 20 人；`min/max` 默认 1/20，非空名单仍必须符合声明的下限。
+角色查询超过 200 条有效成员行时明确拒绝，不能使用截断后的名单。
+范围角色要求对应范围的 `cc` 授权（或未限制操作、`*`），仅 `approve` 不满足。
+抄送不套用审批代理。
+
+`emptyPolicy: 'block'` 在真实空名单时回滚触发动作，补齐人员后可重试原申请或任务；
+`'skip'` 记录无人跳过并继续。未知角色、失效账号、非法输入和超限均属于错误，
+不会被 skip 吞掉。通知默认开启；`notify: false` 仍保存抄送审计、事件和实例阅读关系，
+Notification Hub 不生成该次抄送消息。渠道失败通过原 Hub 恢复，不回滚流程。
+
+进入记录、系统抄送日志及事件在同一事务提交。原命令重放不重复抄送；退回等导致实际
+再次进入时产生新轮次，可采用新的兼容节点配置，过去名单和配置保持冻结。时间线显示
+“流程自动抄送”，不会把系统动作记为发起人的人工操作。
+
+接收人可以使用既有抄送列表及实例详情，不获得审批权、后台权限或通用业务数据读取权。
+标准流程详情由服务器按页面代码声明的固定详情字段投影读取；需要排除敏感字段时，
+在 `crud.detail` 和 `subject.factProjection` 中明确选择允许字段，不能仅在浏览器隐藏。
+通用 Data API 继续核验当前数据授权，流程节点不提供字段权限配置。
+
+含 cc 的包自动声明 `workflow.automatic-cc@1.0.0`，平台正式迁移后自动提供该能力，
+没有额外开关。管理员仅可修改名称、说明及代码显式开放的接收来源，
+`next/emptyPolicy/notify` 保持代码所有；配置 SDK 见[应用管理](administration.md#node-administration)。
+
+### 工作流命令
+
 Surface 同时签发短期、一次性的 `commandToken`，绑定当前用户/会话、应用环境
 Head、实例/任务版本、允许的命令集合与 CSRF。命令请求只提交
 `commandToken + idempotencyKey + input`；旧的 caller-authored
@@ -242,8 +284,8 @@ Native Data 事件的 capture plan 由当前 Head 的 Event、Data、AuthZ revis
 不是增量 patch。definition 和 activation 必须一致声明
 `acceptedCommandDeactivationPolicy`：`finish-pinned` 让已接受的 durable process
 command 按固定版本完成，`cancel-on-deactivate` 在声明删除后取消尚未启动的命令；
-既有 Workflow instance 始终按固定版本继续。所有审批人 Provider 的 `min/max`
-默认 1/200，最大 200。
+既有 Workflow instance 始终按固定版本继续。审批人 Provider 的 `min/max`
+默认 1/200，最大 200；自动抄送默认 1/20，最大 20。
 需要按流程实例串行投递时只声明 `ordering: 'workflow-instance'`，不接受下划线别名。
 
 平台按 desired set 直接覆盖环境 Head，不做版本比较。因此 `openxiangda deploy`

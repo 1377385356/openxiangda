@@ -2263,10 +2263,27 @@ export interface WorkflowEndNode {
   outcome: string;
 }
 
+export interface WorkflowCcAdministration {
+  assigneeProviders?: WorkflowConfigurableAssigneeProvider[];
+}
+
+/** Recipients are frozen on entry; topology, empty policy and notification are code-owned. */
+export interface WorkflowCcNode {
+  id: string;
+  kind: 'cc';
+  title: string;
+  binding: string;
+  next: string;
+  emptyPolicy: 'block' | 'skip';
+  notify?: boolean;
+  administration?: WorkflowCcAdministration;
+}
+
 export type WorkflowNode =
   | WorkflowApprovalNode
   | WorkflowConditionNode
-  | WorkflowEndNode;
+  | WorkflowEndNode
+  | WorkflowCcNode;
 
 export interface WorkflowDefinition {
   schemaVersion: typeof SCHEMA_VERSIONS.workflowDefinition;
