@@ -69,7 +69,7 @@ export function ManagedCommandGate({ snapshot, children, fallback }: {
 export type UseDurableCommandOptions = Omit<DurableCommandOptions,'storage'|'sleep'|'random'> & {storage?:DurableCommandOptions['storage']};
 /** Current-actor discovery on mount; submit is an explicit new or original-key retry action. */
 export function useDurableCommand(options:UseDurableCommandOptions) {
-  const controller=useMemo(()=>new DurableCommandController({...options,storage:options.storage||browserStorage}),[options.client,options.command,options.resourceKey,options.storageKey,options.storage,options.acceptanceRecoveryMs]);
+  const controller=useMemo(()=>new DurableCommandController({...options,storage:options.storage||browserStorage}),[options.client,options.command,options.resourceKey,options.storageKey,options.storage,options.acceptanceRecoveryMs,options.discoveryRecoveryMs]);
   const snapshot=useSyncExternalStore(controller.subscribe,controller.snapshot,controller.snapshot);
   useEffect(()=>{void controller.refresh();return()=>controller.stop();},[controller]);
   return {...snapshot,submit:(input:Record<string,unknown>)=>controller.submit(input),refresh:()=>controller.refresh(),resume:()=>controller.resume(),stop:()=>controller.stop()};

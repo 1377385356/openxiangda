@@ -4,6 +4,7 @@ import { SCHEMA_VERSIONS } from 'openxiangda-contracts/browser';
 import { createManagedConcurrencyClient, loadRuntimeAuthorization } from '../src/browser/platform-client';
 import type { ManagedConcurrencyClient } from '../src/browser/managed-command';
 import { currentPerspectiveCode, setActivePerspectiveCode } from '../src/browser/runtime-meta';
+import { DurableCommandController } from '../src/browser/durable-command';
 
 async function withClient(run: (client: ManagedConcurrencyClient, configure: (handler: (path: string, init: RequestInit) => Promise<Response>) => void,
   switchScope: (scope: string) => Promise<void>) => Promise<void>) {
@@ -179,5 +180,47 @@ test('a caller-provided read budget interrupts a pending fetch and propagates it
     configure(async (_path, init) => { calls++; signal = init.signal; return new Promise(() => {}); });
     await assert.rejects(() => api.result({ operationId: 'original' }, undefined, { budgetMs: 10 }), { code: 'CONCURRENCY_READ_RECOVERY_EXHAUSTED' });
     assert.equal(calls, 1); assert.equal(signal?.aborted, true);
+  });
+});
+
+test('durable initial discovery opts into long busy recovery without enqueueing',async t=>{
+  t.mock.timers.enable({apis:['setTimeout']});
+  let elapsed=0;t.mock.method(performance,'now',()=>elapsed);
+  await withClient(async(api,configure)=>{
+    let reads=0,writes=0;
+    configure(async path=>{
+      if(!path.endsWith('/mine')){writes++;assert.fail('discovery is read-only');}
+      if(++reads<=13)return reply(429,'CONCURRENCY_RESULT_BUSY');
+      return new Response(JSON.stringify({code:200,data:{items:[{
+        operationId:'original-operation',requestKey:'original',command:'claim',resourceKey:'offer',state:'succeeded',
+        acceptedAt:new Date().toISOString(),updatedAt:new Date().toISOString(),
+      }]}}),{status:200});
+    });
+    const values=new Map<string,string>();
+    const controller=new DurableCommandController({client:api,command:'claim',resourceKey:'offer',discoveryRecoveryMs:1800000,
+      storage:{getItem:key=>values.get(key)??null,setItem:(key,value)=>{values.set(key,value);},removeItem:key=>{values.delete(key);}}});
+    const pending=controller.refresh();assert.equal(controller.refresh(),pending);
+    await settle();assert.equal(reads,1);assert.equal(controller.snapshot().acceptanceConfirmed,false);
+    for(let attempt=0;attempt<13;attempt++){elapsed+=40000;t.mock.timers.tick(40000);await settle();}
+    await pending;assert.equal(reads,14);assert.equal(writes,0);assert.ok(elapsed>120000);
+    assert.equal(controller.snapshot().state,'succeeded');assert.equal(controller.snapshot().acceptanceConfirmed,true);
+  });
+});
+
+test('authorization change during durable discovery preserves the unknown original without retrying writes',async t=>{
+  t.mock.timers.enable({apis:['setTimeout']});
+  await withClient(async(api,configure,switchScope)=>{
+    const values=new Map<string,string>();let calls=0;
+    const controller=new DurableCommandController({client:api,command:'claim',resourceKey:'offer',discoveryRecoveryMs:1800000,
+      storage:{getItem:key=>values.get(key)??null,setItem:(key,value)=>{values.set(key,value);},removeItem:key=>{values.delete(key);}}});
+    configure(async()=>{calls++;return reply(400,'UNRECOGNIZED');});
+    await assert.rejects(()=>controller.submit({id:'original-channel',phone:'123'}));
+    const original=controller.snapshot().requestKey;
+    configure(async()=>{calls++;return reply(429,'CONCURRENCY_RESULT_BUSY');});
+    const pending=controller.refresh();await settle();assert.equal(calls,2);
+    await switchScope('changed-role-union');t.mock.timers.tick(2500);await pending;
+    assert.equal(calls,2);assert.equal(controller.snapshot().errorCode,'CONCURRENCY_IDENTITY_CHANGED');
+    assert.equal(controller.snapshot().requestKey,original);assert.equal(controller.snapshot().input?.phone,'123');
+    assert.equal(controller.snapshot().acceptanceConfirmed,false);assert.equal(controller.snapshot().isObserving,false);
   });
 });

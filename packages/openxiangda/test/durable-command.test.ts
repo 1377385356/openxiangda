@@ -57,7 +57,8 @@ test('refresh prioritizes a newer cross-device pending cycle over local historic
   const storage=store();const first=fixture({},storage);await first.controller.submit({id:'offer'});
   const historical=first.controller.snapshot().receipt!;
   const second=fixture({result:async()=>historical,mine:async()=>({items:[receipt('new-device','accepted'),historical]})},storage);
-  await second.controller.refresh();assert.equal(second.controller.snapshot().requestKey,'new-device');assert.equal(second.controller.snapshot().state,'accepted');assert.equal(second.controller.snapshot().input,undefined);second.controller.stop();
+  const c=new DurableCommandController({client:second.client,command:'claim',resourceKey:'offer',storage,sleep:async()=>new Promise(()=>{})});
+  await c.refresh();assert.equal(c.snapshot().requestKey,'new-device');assert.equal(c.snapshot().state,'accepted');assert.equal(c.snapshot().input,undefined);c.stop();
 });
 test('a trusted not-accepted 400 allows corrected input; ambiguous errors never discard original intent',async()=>{
   for(const error of [Object.assign(new Error('invalid'),{status:400,code:'CONCURRENCY_INPUT_INVALID'}),Object.assign(new Error('other'),{status:400,code:'UNRECOGNIZED'}),Object.assign(new Error('conflict'),{status:409,code:'CONCURRENCY_IDEMPOTENCY_CONFLICT'}),new TypeError('offline')]) {
@@ -194,7 +195,7 @@ test('expired original observation allows explicit late facts without restarting
   const storage=store(),set=storage.setItem.bind(storage);
   storage.setItem=(key,value)=>{savedStart=JSON.parse(value).firstSubmittedAt;set(key,value);};
   const f=fixture({enqueue:async(_c,_i,key)=>receipt(key,'accepted'),result:async(_input,_signal,recovery)=>{
-    reads++;if(late)assert.equal(recovery,undefined);
+    reads++;if(late)assert.ok(recovery && recovery.budgetMs! > 0 && recovery.budgetMs! <= 120000);
     return receipt(c.snapshot().requestKey,late?'succeeded':'accepted');
   }},storage);
   const c=new DurableCommandController({client:f.client,command:'claim',resourceKey:'offer',storage,random:()=>0,sleep:async()=>{now+=1800000;}});
@@ -210,4 +211,152 @@ test('a cross-device pending receipt uses its original acceptance age, not page 
   const f=fixture({mine:async()=>({items:[pending]}),result:async()=>{reads++;return pending;}});
   await f.controller.refresh();assert.equal(reads,0);assert.equal(f.controller.snapshot().isObserving,false);
   assert.equal(f.controller.snapshot().errorCode,'CONCURRENCY_RESULT_OBSERVATION_EXHAUSTED');
+});
+
+async function unknownIntent(storage=store()) {
+  const f=fixture({enqueue:async()=>{throw Object.assign(new Error('unrecognized response'),{status:400,code:'UNRECOGNIZED'});}},storage);
+  await assert.rejects(()=>f.controller.submit({id:'original-channel',phone:'123'}));
+  return {...f,key:f.controller.snapshot().requestKey!};
+}
+
+test('discovery budgets are opt-in and invalid values fail before a read',async t=>{
+  t.mock.method(performance,'now',()=>0);
+  for(const discoveryRecoveryMs of [undefined,1,1800000]) {
+    let reads=0;
+    const f=fixture({mine:async(_command,_input,_signal,recovery)=>{
+      reads++;assert.equal(recovery?.budgetMs,discoveryRecoveryMs??120000);return {items:[]};
+    }});
+    const c=new DurableCommandController({client:f.client,command:'claim',resourceKey:'offer',storage:f.storage,discoveryRecoveryMs});
+    await c.refresh();assert.equal(reads,1);assert.equal(c.snapshot().state,'idle');assert.equal(c.snapshot().acceptanceConfirmed,false);
+  }
+  for(const discoveryRecoveryMs of [NaN,Infinity,0,-1,1800001]) {
+    const f=fixture({mine:async()=>{assert.fail('invalid configuration must not read');}});
+    assert.throws(()=>new DurableCommandController({client:f.client,command:'claim',resourceKey:'offer',storage:f.storage,discoveryRecoveryMs}),/DISCOVERY_BUDGET_INVALID/);
+  }
+});
+
+test('a discovery chain shares one monotonic deadline and preserves the original start',async t=>{
+  let now=10000000,elapsed=0;
+  t.mock.method(Date,'now',()=>now);t.mock.method(performance,'now',()=>elapsed);
+  const f=fixture();await f.controller.submit({id:'offer'});
+  const original=f.controller.snapshot().receipt!,budgets:number[]=[];
+  const c=new DurableCommandController({client:{...f.client,
+    result:async(_input,_signal,recovery)=>{budgets.push(recovery!.budgetMs!);elapsed+=110000;now+=110000;return original;},
+    mine:async(_command,_input,_signal,recovery)=>{budgets.push(recovery!.budgetMs!);return {items:[]};},
+  },command:'claim',resourceKey:'offer',storage:f.storage,discoveryRecoveryMs:180000});
+  await c.refresh();assert.deepEqual(budgets,[180000,70000]);assert.equal(c.snapshot().requestKey,original.requestKey);
+  // A backwards wall clock cannot renew the fixed discovery budget either.
+  elapsed=0;
+  const backward=new DurableCommandController({client:{...f.client,
+    result:async()=>{elapsed+=90000;now-=60000;return original;},
+    mine:async(_command,_input,_signal,recovery)=>{assert.equal(recovery!.budgetMs,90000);return {items:[]};},
+  },command:'claim',resourceKey:'offer',storage:f.storage,discoveryRecoveryMs:180000});
+  await backward.refresh();assert.equal(backward.snapshot().state,'succeeded');
+});
+
+test('discovery narrows to the original intake deadline and a late query never renews enqueue',async t=>{
+  let now=11000000,elapsed=0,writes=0;
+  t.mock.method(Date,'now',()=>now);t.mock.method(performance,'now',()=>elapsed);
+  const f=await unknownIntent();now+=110000;
+  const budgets:number[]=[];
+  const c=new DurableCommandController({client:{...f.client,
+    result:async(_input,_signal,recovery)=>{if(recovery){budgets.push(recovery.budgetMs!);elapsed+=4000;now+=4000;}throw missing();},
+    mine:async(_command,_input,_signal,recovery)=>{budgets.push(recovery!.budgetMs!);return {items:[]};},
+    enqueue:async()=>{writes++;return receipt(f.key);},
+  },command:'claim',resourceKey:'offer',storage:f.storage,discoveryRecoveryMs:1800000});
+  await c.refresh();assert.deepEqual(budgets,[10000,6000]);assert.equal(c.snapshot().errorCode,'CONCURRENCY_ACCEPTANCE_UNCONFIRMED');
+  now+=1800000;await c.refresh();assert.ok(budgets[2]===1800000);
+  await assert.rejects(()=>c.resume(),{code:'CONCURRENCY_ACCEPTANCE_UNCONFIRMED'});
+  assert.equal(writes,0);assert.equal(c.snapshot().requestKey,f.key);assert.equal(c.snapshot().acceptanceConfirmed,false);
+});
+
+test('a restored accepted nonterminal original uses lookup without mine',async()=>{
+  const f=fixture({enqueue:async(_command,_input,key)=>receipt(key,'accepted')});
+  const first=new DurableCommandController({client:f.client,command:'claim',resourceKey:'offer',storage:f.storage,sleep:async()=>new Promise(()=>{})});
+  await first.submit({id:'offer'});first.stop();
+  const original=first.snapshot().receipt!;let reads=0,lists=0,writes=0;
+  const c=new DurableCommandController({client:{...f.client,
+    result:async()=>{reads++;return original;},mine:async()=>{lists++;return {items:[]};},enqueue:async()=>{writes++;return original;},
+  },command:'claim',resourceKey:'offer',storage:f.storage,sleep:async()=>new Promise(()=>{})});
+  await c.refresh();assert.equal(reads,1);assert.equal(lists,0);assert.equal(writes,0);
+  assert.equal(c.snapshot().state,'accepted');assert.equal(c.snapshot().acceptanceConfirmed,true);c.stop();
+});
+
+test('an original 404 uses one mine fallback and adopts only a matching unconfirmed intent',async()=>{
+  const f=await unknownIntent();let reads=0,lists=0,writes=0;
+  const c=fixture({result:async()=>{reads++;throw missing();},mine:async()=>{lists++;return {items:[receipt('other-active','accepted'),receipt(f.key)]};},
+    enqueue:async()=>{writes++;return receipt(f.key);}},f.storage).controller;
+  await c.refresh();assert.equal(reads,1);assert.equal(lists,1);assert.equal(writes,0);
+  assert.equal(c.snapshot().state,'succeeded');assert.equal(c.snapshot().requestKey,f.key);
+  assert.equal(c.snapshot().input?.id,'original-channel');assert.equal(c.snapshot().acceptanceConfirmed,true);
+});
+
+test('a foreign active cycle cannot discard an unconfirmed original and an empty mine cannot promise acceptance',async()=>{
+  for(const other of [true,false]) {
+    const f=await unknownIntent();let writes=0;
+    const c=fixture({mine:async()=>({items:other?[receipt('other-active','accepted')]:[]}),enqueue:async()=>{writes++;return receipt();}},f.storage).controller;
+    await c.refresh();assert.equal(writes,0);assert.equal(c.snapshot().state,'recovering');
+    assert.equal(c.snapshot().errorCode,other?'CONCURRENCY_ORIGINAL_REQUEST_REQUIRED':'CONCURRENCY_ACCEPTANCE_UNCONFIRMED');
+    assert.equal(c.snapshot().requestKey,f.key);assert.equal(c.snapshot().input?.phone,'123');assert.equal(c.snapshot().acceptanceConfirmed,false);
+    const again=fixture({},f.storage).controller;await again.refresh();
+    assert.equal(again.snapshot().requestKey,f.key);assert.equal(again.snapshot().input?.phone,'123');
+  }
+});
+
+test('read busy and real discovery errors keep the original input and never enqueue or fall back to mine',async()=>{
+  for(const error of [Object.assign(new Error('busy'),{status:429,code:'CONCURRENCY_RESULT_BUSY'}),
+    Object.assign(new Error('cache'),{status:503,code:'CONCURRENCY_CACHE_UNAVAILABLE'}),
+    Object.assign(new Error('unknown'),{status:400,code:'UNRECOGNIZED'}),new TypeError('offline')]) {
+    const f=await unknownIntent();let lists=0,writes=0;
+    const c=fixture({result:async()=>{throw error;},mine:async()=>{lists++;return {items:[]};},enqueue:async()=>{writes++;return receipt();}},f.storage).controller;
+    await c.refresh();assert.equal(c.snapshot().state,(error as any).status===429?'recovering':'error');
+    assert.equal(c.snapshot().requestKey,f.key);assert.equal(c.snapshot().input?.phone,'123');
+    assert.equal(c.snapshot().acceptanceConfirmed,false);assert.equal(lists,0);assert.equal(writes,0);
+  }
+});
+
+test('duplicate refresh shares one task; stop then remount ignores the old response',async()=>{
+  const releases:Array<(items:CommandReceipt[])=>void>=[],signals:AbortSignal[]=[];let reads=0,writes=0;
+  const f=fixture({mine:async(_command,_input,signal)=>{reads++;signals.push(signal!);return new Promise(resolve=>releases.push(items=>resolve({items})));},
+    enqueue:async()=>{writes++;return receipt();}});
+  const first=f.controller.refresh();assert.equal(f.controller.refresh(),first);assert.equal(reads,1);
+  f.controller.stop();assert.equal(signals[0].aborted,true);
+  const next=f.controller.refresh();assert.equal(reads,2);assert.equal(f.controller.refresh(),next);
+  releases[1]([receipt('new-result')]);await next;
+  releases[0]([receipt('old-result')]);await first;
+  assert.equal(f.controller.snapshot().requestKey,'new-result');assert.equal(f.controller.snapshot().state,'succeeded');assert.equal(writes,0);
+});
+
+test('restoration is isolated by trusted user, environment, command and resource',async()=>{
+  const f=await unknownIntent();
+  for(const changes of [{scope:'app/env/other-user'},{scope:'app/other-env/user'},{command:'other-command'},{resourceKey:'other-resource'}]) {
+    let reads=0;
+    const c=new DurableCommandController({client:{...f.client,scope:changes.scope??f.client.scope,result:async()=>{reads++;return receipt(f.key);}},
+      command:changes.command??'claim',resourceKey:changes.resourceKey??'offer',storage:f.storage});
+    await c.refresh();assert.equal(reads,0);assert.equal(c.snapshot().state,'idle');assert.equal(c.snapshot().requestKey,undefined);
+    assert.equal(c.snapshot().input,undefined);assert.equal(c.snapshot().acceptanceConfirmed,false);
+  }
+});
+
+test('mismatched original-key and operation receipts cannot replace the frozen intent',async()=>{
+  const f=await unknownIntent();
+  const wrong=fixture({result:async()=>receipt('another-key')},f.storage).controller;
+  await wrong.refresh();assert.equal(wrong.snapshot().errorCode,'CONCURRENCY_RECEIPT_SCOPE_INVALID');
+  assert.equal(wrong.snapshot().requestKey,f.key);assert.equal(wrong.snapshot().input?.phone,'123');assert.equal(wrong.snapshot().acceptanceConfirmed,false);
+  for(const change of [{requestKey:'another-key'},{operationId:'another-operation'}]) {
+    const c=fixture({enqueue:async(_command,_input,key)=>receipt(key,'accepted'),result:async()=>({...receipt(c.controller.snapshot().requestKey),...change})});
+    await c.controller.submit({id:'offer'});while(c.controller.snapshot().isObserving)await Promise.resolve();
+    assert.equal(c.controller.snapshot().errorCode,'CONCURRENCY_RECEIPT_SCOPE_INVALID');assert.equal(c.controller.snapshot().receipt?.state,'accepted');
+    assert.equal(c.controller.snapshot().acceptanceConfirmed,true);
+  }
+});
+
+test('acceptance is not promised while intake acknowledgement is unknown and storage failure writes nothing',async()=>{
+  let release!:(r:CommandReceipt)=>void;
+  const f=fixture({enqueue:async()=>new Promise(resolve=>{release=resolve;})});
+  const pending=f.controller.submit({id:'offer'});assert.equal(f.controller.snapshot().acceptanceConfirmed,false);
+  release(receipt(f.controller.snapshot().requestKey));await pending;assert.equal(f.controller.snapshot().acceptanceConfirmed,true);
+  let writes=0;
+  const denied=fixture({enqueue:async()=>{writes++;return receipt();}},{getItem:()=>null,setItem:()=>{throw new Error('storage denied');},removeItem:()=>{}});
+  await assert.rejects(()=>denied.controller.submit({id:'offer'}));assert.equal(writes,0);assert.equal(denied.controller.snapshot().acceptanceConfirmed,false);
 });

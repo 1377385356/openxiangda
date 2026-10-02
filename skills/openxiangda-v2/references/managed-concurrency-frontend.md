@@ -224,17 +224,22 @@ export function ClaimAction({ offerId }: { offerId: string }) {
 
 ```tsx
 const client = useMemo(() => createManagedConcurrencyClient(), []);
-const command = useDurableCommand({client,command:'registration-enroll',resourceKey:activityId,acceptanceRecoveryMs:30*60*1000});
+const command = useDurableCommand({client,command:'registration-enroll',resourceKey:activityId,
+  acceptanceRecoveryMs:30*60*1000,discoveryRecoveryMs:30*60*1000});
 // 仅真实点击提交；不是 useEffect 或页面 mount 回调。
 const submit = () => command.submit({activity:activityId,channel:channelId,agreed:true,phone});
 ```
 
-hook 从 `openxiangda/react` 和 `openxiangda/mobile` 导出。state、initialized、isObserving、requestKey、receipt、errorCode 用于统一状态区；submit(input)、resume()、refresh()、stop() 分别为明确提交、用冻结 input 重试原请求、恢复查询和停止观察。挂载只查本地原 key 或服务端 mine，不自动 enqueue。未知应答保留原 key 与 input；用户恢复后先查原结果，不能换 key 重试。浏览器存储失败在提交前明确失败。未知应答后的恢复按钮调用 resume()，不传当前可能已经修改的表单。snapshot.input 可恢复本地冻结表单；跨设备只有回执时不展示推测的原输入。一次明确 submit/resume 期间，429、暂时5xx或网络错误会按原 key/input 自动退避恢复，先查原结果再重试 enqueue，默认最多6次、最长120秒；可用 acceptanceRecoveryMs 明确配置120000至1800000毫秒，更长预算最多120次，遵守更长的 Retry-After。预算从首次明确提交计时，刷新或 resume() 不重置；旧版意图没有时间时从首次明确恢复计时，无法证明更早的提交时间。尚无 receipt 时只能提示“正在确认受理”，不能承诺可关闭页面。用完预算保留原意图，停止自动入队，refresh() 仍可只读核对迟到结果；这不是报名失败。该预算只控制受理恢复，不是后端最终完成时限承诺。如果刷新时原请求尚未被平台受理，挂载只查询，明确点击 resume() 才重新启动有界受理重试。
+hook 从 `openxiangda/react` 和 `openxiangda/mobile` 导出。state、initialized、isObserving、acceptanceConfirmed、requestKey、receipt、errorCode 用于统一状态区；submit(input)、resume()、refresh()、stop() 分别为明确提交、用冻结 input 重试原请求、恢复查询和停止观察。挂载只查本地原 key 或服务端 mine，不自动 enqueue。未知应答保留原 key 与 input；用户恢复后先查原结果，不能换 key 重试。浏览器存储失败在提交前明确失败。未知应答后的恢复按钮调用 resume()，不传当前可能已经修改的表单。snapshot.input 可恢复本地冻结表单；跨设备只有回执时不展示推测的原输入。一次明确 submit/resume 期间，429、暂时5xx或网络错误会按原 key/input 自动退避恢复，先查原结果再重试 enqueue，默认最多6次、最长120秒；可用 acceptanceRecoveryMs 明确配置120000至1800000毫秒，更长预算最多120次，遵守更长的 Retry-After。预算从首次明确提交计时，刷新或 resume() 不重置；旧版意图没有时间时从首次明确恢复计时，无法证明更早的提交时间。尚无已核对归属的受理回执时 acceptanceConfirmed 为 false，只能提示“正在确认受理”，不能承诺可关闭页面。为 true 仅证明此原申请曾持久受理，不代表已成功，也不能替代服务端证明。用完预算保留原意图，停止自动入队，refresh() 仍可只读核对迟到结果；这不是报名失败。该预算只控制受理恢复，不是后端最终完成时限承诺。如果刷新时原请求尚未被平台受理，挂载只查询，明确点击 resume() 才重新启动有界受理重试。
 
-已受理申请的自动观察最多持续到首次明确提交后的 30 分钟，默认受理恢复仍为 120 秒，两者分别计算。每次结果读取同时受单次 120 秒和原提交剩余时间限制；刷新和 resume 不重新获得观察时间。跨设备没有本地首次时间时，用原回执 acceptedAt 计算观察窗口，不能以页面挂载时间重新计时。达到窗口后保留原意图，状态为 recovering、isObserving 为 false，提示稍后核对；明确 refresh 仍可查询迟到终态，但不重新启动已经到期的自动观察，也不自动提交。
+初查/refresh 的 discoveryRecoveryMs 默认仍是 120000 毫秒，应用可以显式配置 1 至 1800000 毫秒。上面的 30 分钟是热点应用的主动选择，不会扩大其他应用默认值。一轮发现的原键 result 和必要的 mine 共用固定、单调计时的读取截止；有尚未到期的原申请时还取原提交剩余窗口的较小值。每次底层只读调用在剩余预算大于 120 秒时最多 120 次请求，其他情况最多 12 次，遵守服务端退避与随机抖动。同一控制器的重复 refresh 共用当前任务，stop 后再次挂载可以开始新读取，旧代次的迟到应答不能覆盖新状态。这项预算不续期、不写入，也不为首个提交额外添加等待。
+
+已受理申请的自动观察最多持续到首次明确提交后的 30 分钟，默认受理恢复仍为 120 秒，两者分别计算。自动观察的每次结果读取同时受单次 120 秒和原提交剩余时间限制；刷新和 resume 不重新获得观察时间。跨设备没有本地首次时间时，用原回执 acceptedAt 计算观察窗口，不能以页面挂载时间重新计时。达到窗口后保留原意图，状态为 recovering、isObserving 为 false，提示稍后核对；明确 refresh 仍可用有界初查预算查询迟到终态，但不重新启动已经到期的自动观察，也不自动提交。
 
 正常待处理结果每次至少间隔 5 秒，遵守更长的服务端 retryAfterMs，再加随机抖动。单次只读恢复耗尽且仍是已知预算繁忙时，外层可在原观察窗口内指数退避继续；权限、依赖、网络故障或悬挂请求超过读取预算时立即停止自动观察，显示 error 并保留原回执和请求键。终态停止。受理恢复中核对原结果同样只允许已知预算繁忙继续，读取依赖失败不能被外层重试隐藏。一个业务区域只挂载一个观察者。离开或关闭页面不撤销已受理请求，平台自动继续；新设备通过 mine 找到本人的原请求。position 为空时显示「已受理，稍后可查看」，不要显示虚假的精确人数或预计秒数。
 
-refresh 会优先恢复 mine 返回的新进行中周期，避免本地历史 succeeded 遮蔽另一个设备的新申请。不要在 mount 发现历史 succeeded 时自动跳成功页或永久禁用提交。它可能已经被管理员取消，需结合当前业务记录展示。只有用户明确再次点击 submit，且原请求已有终态，SDK 才创建新的 requestKey；活跃请求或未知应答始终恢复原 key。平台明确返回未受理的参数错误（400 + CONCURRENCY_INPUT_INVALID 等约定错误）时，SDK 才清除被拒输入，允许修正后再提交；未知 400、409、429、5xx 和网络错误仍保留原意图。成功提示以 receipt.state==='succeeded' 和 receipt.result 为准，accepted/executing 只显示「已登记，处理中」。
+refresh 有本地原键时先薄查询原 key；找到已受理非终态后不再 mine。没有本地意图或原申请已有终态时，mine 优先恢复新的进行中周期，避免本地历史 succeeded 遮蔽另一个设备的新申请。原键明确 404 后保留一次本人列表兜底；未确认的本地意图只能采用同原键回执。列表中只有别的活跃周期时显示 recovering / CONCURRENCY_ORIGINAL_REQUEST_REQUIRED，并保留原 key/input；没有匹配时显示 CONCURRENCY_ACCEPTANCE_UNCONFIRMED，提供「核对原申请」和「恢复原申请」动作。不能把无匹配解释为业务失败，也不丢弃可能迟到受理的原意图。已知读取繁忙耗尽显示 recovering，真实依赖、网络、权限或未知 400 显示 error；两种状态均保留原键、输入和已受理回执，读取失败不自动提交。
+
+不要在 mount 发现历史 succeeded 时自动跳成功页或永久禁用提交。它可能已经被管理员取消，需结合当前业务记录展示。只有用户明确再次点击 submit，且原请求已有终态，SDK 才创建新的 requestKey；活跃请求或未知应答始终恢复原 key。平台明确返回未受理的参数错误（400 + CONCURRENCY_INPUT_INVALID 等约定错误）时，SDK 才清除被拒输入，允许修正后再提交；未知 400、409、429、5xx 和网络错误仍保留原意图。成功提示以 receipt.state==='succeeded' 和 receipt.result 为准，accepted/executing 只显示「已登记，处理中」。
 
 permit 的 ManagedCommandGate 仍只用于 admitted 短确认，不用于 durable。durable 不能套任意前端 onSubmit 冒充后台事务，真正业务必须由已声明的 backend-plan handler 返回受管计划。

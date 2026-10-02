@@ -13,6 +13,8 @@ export interface DurableCommandSnapshot {
     state: 'idle' | 'recovering' | 'error' | CommandReceipt['state'];
     initialized: boolean;
     isObserving: boolean;
+    /** A scoped durable receipt has been confirmed; an unknown intake is not safe to promise as accepted. */
+    acceptanceConfirmed: boolean;
     input?: Readonly<Record<string, unknown>>;
     requestKey?: string;
     receipt?: CommandReceipt;
@@ -26,6 +28,8 @@ export interface DurableCommandOptions {
     storage: StorageLike;
     /** Total automatic intake recovery budget from the original explicit submit. */
     acceptanceRecoveryMs?: number;
+    /** Total read-only discovery budget per refresh; default 120s, explicitly at most 30min. Never renews the original intent. */
+    discoveryRecoveryMs?: number;
     sleep?: (ms: number, signal: AbortSignal) => Promise<void>;
     random?: () => number;
 }
@@ -43,16 +47,19 @@ const sleep = (ms: number, signal: AbortSignal) => new Promise<void>((resolve, r
 });
 /** Mount only reads mine/original receipt. Enqueue always requires explicit submit. */
 export class DurableCommandController {
-    private value: DurableCommandSnapshot = { state: 'idle', initialized: false, isObserving: false };
+    private value: DurableCommandSnapshot = { state: 'idle', initialized: false, isObserving: false, acceptanceConfirmed: false };
     private listeners = new Set<() => void>();
     private intent?: Intent;
     private generation = 0;
     private abort?: AbortController;
     private submitting?: Promise<void>;
+    private refreshing?: Promise<void>;
     private readonly storageKey: string;
     constructor(private readonly options: DurableCommandOptions) {
         if (options.acceptanceRecoveryMs !== undefined && (!Number.isFinite(options.acceptanceRecoveryMs) || options.acceptanceRecoveryMs < 120000 || options.acceptanceRecoveryMs > 1800000))
             throw new Error('CONCURRENCY_RECOVERY_BUDGET_INVALID');
+        if (options.discoveryRecoveryMs !== undefined && (!Number.isFinite(options.discoveryRecoveryMs) || options.discoveryRecoveryMs < 1 || options.discoveryRecoveryMs > 1800000))
+            throw new Error('CONCURRENCY_DISCOVERY_BUDGET_INVALID');
         this.storageKey = `openxiangda:durable-command:${JSON.stringify([options.client.scope, options.command, options.resourceKey, options.storageKey || ''])}`;
     }
     snapshot = () => this.value;
@@ -80,6 +87,11 @@ export class DurableCommandController {
         return remaining === undefined || (allowLateQuery && remaining === 0) ? undefined : { budgetMs: Math.min(120000, remaining) };
     }
     private persist() { this.options.storage.setItem(this.storageKey, JSON.stringify(this.intent)); }
+    private intentSnapshot(): Partial<DurableCommandSnapshot> {
+        return { requestKey: this.intent?.requestKey, receipt: this.intent?.receipt,
+            input: this.intent?.input ? Object.freeze({ ...this.intent.input }) : undefined,
+            acceptanceConfirmed: !!this.intent?.receipt };
+    }
     private restore() {
         if (this.intent)
             return;
@@ -99,21 +111,38 @@ export class DurableCommandController {
             throw new Error('CONCURRENCY_RECOVERY_INVALID');
         if (saved.firstSubmittedAt !== undefined && (!Number.isFinite(saved.firstSubmittedAt) || saved.firstSubmittedAt < 0))
             throw new Error('CONCURRENCY_RECOVERY_INVALID');
+        if (saved.receipt)
+            this.assertReceipt(saved.receipt, saved.requestKey);
         this.intent = saved;
     }
-    private accept(receipt: CommandReceipt) {
-        if (receipt.command !== this.options.command || receipt.resourceKey !== this.options.resourceKey)
+    private assertReceipt(receipt: CommandReceipt, requestKey?: string, operationId?: string) {
+        if (receipt.command !== this.options.command || receipt.resourceKey !== this.options.resourceKey ||
+            (requestKey !== undefined && receipt.requestKey !== requestKey) ||
+            (operationId !== undefined && receipt.operationId !== operationId))
             throw new Error('CONCURRENCY_RECEIPT_SCOPE_INVALID');
+    }
+    private remember(receipt: CommandReceipt) {
+        this.assertReceipt(receipt);
         if (!this.intent || this.intent.requestKey !== receipt.requestKey)
             this.intent = { version: 1, requestKey: receipt.requestKey, input: null };
         this.intent.receipt = receipt;
         this.persist();
-        this.update({ state: receipt.state, receipt, requestKey: receipt.requestKey, errorCode: receipt.errorCode, input: this.intent.input ? Object.freeze({ ...this.intent.input }) : undefined, initialized: true });
     }
-    stop() { this.generation++; this.abort?.abort(); this.abort = undefined; this.update({ isObserving: false }); }
-    async refresh(): Promise<void> {
+    private accept(receipt: CommandReceipt) {
+        this.remember(receipt);
+        this.update({ ...this.intentSnapshot(), state: receipt.state, errorCode: receipt.errorCode, initialized: true });
+    }
+    stop() { this.generation++; this.abort?.abort(); this.abort = undefined; this.refreshing = undefined; this.update({ isObserving: false }); }
+    refresh(): Promise<void> {
         if (this.submitting)
             return this.submitting;
+        if (this.refreshing)
+            return this.refreshing;
+        const task = this.discover().finally(() => { if (this.refreshing === task) this.refreshing = undefined; });
+        this.refreshing = task;
+        return task;
+    }
+    private async discover(): Promise<void> {
         this.stop();
         const generation = this.generation;
         const abort = new AbortController();
@@ -122,10 +151,22 @@ export class DurableCommandController {
         this.update({ state: 'recovering', isObserving: true, errorCode: undefined });
         try {
             this.restore();
+            this.update(this.intentSnapshot());
+            const originalRemaining = this.intent?.receipt ? this.remainingObservationMs() : this.remainingRecoveryMs();
+            const budget = this.options.discoveryRecoveryMs ?? 120000;
+            // A late explicit query may recover a fact but never renews intake or observation.
+            const deadline = performance.now() + (originalRemaining === undefined || originalRemaining === 0 ? budget : Math.min(budget, originalRemaining));
+            const originalDeadline = originalRemaining === undefined || originalRemaining === 0 ? undefined : Date.now() + originalRemaining;
+            const recovery = () => ({ budgetMs: Math.max(0, Math.min(deadline - performance.now(), originalDeadline === undefined ? Infinity : originalDeadline - Date.now())) });
             let receipt: CommandReceipt | undefined;
             if (this.intent) {
                 try {
-                    receipt = await this.options.client.result({ command: this.options.command, requestKey: this.intent.requestKey }, abort.signal, this.readRecovery(true));
+                    receipt = await this.options.client.result({ command: this.options.command, requestKey: this.intent.requestKey }, abort.signal, recovery());
+                    if (!active()) return;
+                    this.assertReceipt(receipt, this.intent.requestKey);
+                    this.remember(receipt);
+                    // Keep the discovery state until a historical result has been checked for a newer cycle.
+                    this.update(this.intentSnapshot());
                 }
                 catch (error) {
                     if (!absent(error))
@@ -136,21 +177,30 @@ export class DurableCommandController {
                 return;
             // A historical local success cannot hide a newer pending cycle on another device.
             if (!receipt || terminal(receipt)) {
-                const page = await this.options.client.mine(this.options.command, { resourceKey: this.options.resourceKey, limit: 20 }, abort.signal, this.readRecovery(true));
+                const page = await this.options.client.mine(this.options.command, { resourceKey: this.options.resourceKey, limit: 20 }, abort.signal, recovery());
                 if (!active())
                     return;
-                receipt = page.items.find(r => !terminal(r)) || receipt || (!this.intent ? page.items[0] : undefined);
+                for (const item of page.items) this.assertReceipt(item);
+                const original = this.intent && page.items.find(r => r.requestKey === this.intent!.requestKey);
+                const pending = page.items.find(r => !terminal(r));
+                if (this.intent && !terminal(this.intent.receipt)) {
+                    receipt = original;
+                    if (!receipt && pending) {
+                        this.update({ ...this.intentSnapshot(), state: 'recovering', errorCode: 'CONCURRENCY_ORIGINAL_REQUEST_REQUIRED', initialized: true, isObserving: false });
+                        return;
+                    }
+                } else receipt = pending || original || receipt || (!this.intent ? page.items[0] : undefined);
             }
             if (receipt) {
                 this.accept(receipt);
                 this.observe(receipt, generation, abort);
             }
             else
-                this.update({ state: this.intent ? 'recovering' : 'idle', requestKey: this.intent?.requestKey, input: this.intent?.input ? Object.freeze({ ...this.intent.input }) : undefined, initialized: true, isObserving: false });
+                this.update({ ...this.intentSnapshot(), state: this.intent ? 'recovering' : 'idle', errorCode: this.intent ? (this.intent.receipt ? 'CONCURRENCY_ORIGINAL_RESULT_MISSING' : 'CONCURRENCY_ACCEPTANCE_UNCONFIRMED') : undefined, initialized: true, isObserving: false });
         }
         catch (error) {
             if (active())
-                this.update({ state: 'error', initialized: true, isObserving: false, errorCode: code(error) });
+                this.update({ ...this.intentSnapshot(), state: isManagedReadBusy(error) ? 'recovering' : 'error', initialized: true, isObserving: false, errorCode: code(error) });
         }
     }
     /** Explicit user action: retry the frozen local intent, never today's edited form. */
@@ -187,6 +237,7 @@ export class DurableCommandController {
                     const found = await this.options.client.result({ command: this.options.command, requestKey: this.intent.requestKey }, abort.signal, this.readRecovery(true));
                     if (!active())
                         return;
+                    this.assertReceipt(found, this.intent.requestKey);
                     this.accept(found);
                     this.observe(found, generation, abort);
                     return;
@@ -203,12 +254,13 @@ export class DurableCommandController {
             // Old intents cannot establish a historical start; begin at this explicit recovery.
             this.intent.firstSubmittedAt ??= Date.now();
             this.persist();
-            this.update({ state: 'recovering', requestKey: this.intent.requestKey, input: Object.freeze({ ...this.intent.input! }), receipt: undefined, errorCode: undefined, initialized: true, isObserving: true });
+            this.update({ state: 'recovering', requestKey: this.intent.requestKey, input: Object.freeze({ ...this.intent.input! }), receipt: undefined, acceptanceConfirmed: false, errorCode: undefined, initialized: true, isObserving: true });
             enqueueAttempted = true;
             const receipt = await this.enqueueWithRecovery(this.intent, abort, active);
             if (!receipt) return;
             if (!active())
                 return;
+            this.assertReceipt(receipt, this.intent.requestKey);
             this.accept(receipt);
             this.observe(receipt, generation, abort);
         }
@@ -220,7 +272,7 @@ export class DurableCommandController {
                 this.intent = undefined;
             }
             if (active())
-                this.update({ state: retryable(error) ? 'recovering' : 'error', errorCode: code(error), requestKey: this.intent?.requestKey, input: this.intent?.input ? Object.freeze({ ...this.intent.input }) : undefined, initialized: true, isObserving: false });
+                this.update({ ...this.intentSnapshot(), state: retryable(error) ? 'recovering' : 'error', errorCode: code(error), initialized: true, isObserving: false });
             throw error;
         }
     }
@@ -306,6 +358,7 @@ export class DurableCommandController {
                 const next = await this.options.client.result({ operationId: current.operationId }, abort.signal, this.readRecovery());
                 if (!active())
                     return;
+                this.assertReceipt(next, current.requestKey, current.operationId);
                 this.accept(next);
                 current = next;
                 failures = 0;
