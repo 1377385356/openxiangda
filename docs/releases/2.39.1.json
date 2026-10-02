@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.39.1",
+  "status": "reviewed",
+  "title": "OpenXiangda 2.39.1：修复自动抄送部署预检",
+  "summary": "应用包与平台预检共用Native能力闭包，避免自动抄送及管理配置的能力摘要漂移。",
+  "newFeatures": [],
+  "fixes": [
+    "Devkit删除重复能力推导，复用contracts现有compileRequiredPlatformCapabilitiesV3。",
+    "共享编译器保留具名关联输入的workflow.named-input-sources能力要求，关闭反向漂移。"
+  ],
+  "affectedUsers": ["使用自动抄送或具名关联输入并进行测试部署的V2开发者。"],
+  "upgradeSteps": ["升级机器确定的同批包并冻结锁文件；本地实验室使用tgz，不发布npm。", "保持配套平台及共享合同版本，重新执行原严格部署预检。"],
+  "knownLimitations": ["未改变抄送provider、节点管理或读取边界。", "学校迁移、生产镜像和真实外部渠道仍需独立验收。"],
+  "issues": [],
+  "compatibility": { "node": ">=24", "workspaceGenerations": "v2", "platform": "需要配套共享Native编译器及workflow.automatic-cc@1.0.0；无新增默认关闭开关。", "v1": "沿用原V1分发与运行时。" }
+}

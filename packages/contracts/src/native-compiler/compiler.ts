@@ -447,6 +447,15 @@ export function compileRequiredPlatformCapabilitiesV3(
   const usesBusinessProcess =
     operations.some(operation => operation.platformAccess?.workflow) ||
     standardProcessDefinitions.length > 0;
+  const namedInputSourceDefinitions = standardProcessDefinitions.filter((declaration: JsonObject) => {
+    const submission = declaration.launch.submission;
+    if (!submission) return false;
+    const resource = resources.find(item => item.code === declaration.definition.subject.resourceCode);
+    return [submission.create, submission.existing].some(intent => intent &&
+      Object.values(intent.inputs).some((binding: any) => binding.source === 'field' &&
+        resource?.schema.fields.some((field: any) => field.code === binding.fieldCode &&
+          field.type.startsWith('resource-ref.') && field.source)));
+  });
   const dataUsage = { resources };
   const authzUsage = {
     perspectives: config.perspectives,
@@ -634,6 +643,9 @@ export function compileRequiredPlatformCapabilitiesV3(
           code: 'workflow.instance-cancellation-policy' as const,
           declaration: config.workflows.definitions.filter((item: JsonObject) => item.definition.instanceCommands !== undefined),
         }]
+      : []),
+    ...(namedInputSourceDefinitions.length
+      ? [{ code: 'workflow.named-input-sources' as const, declaration: namedInputSourceDefinitions }]
       : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.administration !== undefined || node.operationPolicy !== undefined))
       ? [{ code: 'workflow.node-administration' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.administration !== undefined || node.operationPolicy !== undefined)) }]

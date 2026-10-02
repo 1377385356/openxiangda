@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { compileNativeApplicationConfiguration } from 'openxiangda-contracts/native-compiler';
 import {
   canonicalJson,
   SCHEMA_VERSIONS,
@@ -32,6 +33,43 @@ function diagnosticOf(error: unknown, code: string, path: string) {
       .diagnostics?.some(item => item.code === code && item.path === path)
   );
 }
+
+test('sealed package and target preflight share the exact automatic cc capability closure', () => {
+  const definition = {
+    schemaVersion: SCHEMA_VERSIONS.workflowDefinition,
+    code: 'capability-cc', title: '能力闭包抄送', acceptedCommandDeactivationPolicy: 'finish-pinned' as const,
+    subject: { resourceCode: 'instruments', factProjection: { name: 'name' } },
+    startAt: 'done', inputSchema: { type: 'object', additionalProperties: false, properties: { name: { type: 'string' } } },
+    nodes: { done: { id: 'done', kind: 'end' as const, title: '结束', outcome: 'approved' } },
+  };
+  let previousCcDigest: string | undefined;
+  for (const variant of ['none', 'cc', 'cc-administration'] as const) {
+    const hasCc = variant !== 'none';
+    const app = defineOpenXiangdaApp({ ...sourceDeclaration, workflows: {
+      definitions: [{ version: 1, definition: { ...definition, startAt: hasCc ? 'copy' : 'done', nodes: {
+        ...definition.nodes,
+        ...(hasCc ? { copy: { id: 'copy', kind: 'cc' as const, title: '抄送', binding: 'readers', next: 'done', emptyPolicy: 'block' as const,
+          ...(variant === 'cc-administration' ? { administration: { assigneeProviders: ['app_role' as const] } } : {}) } } : {}),
+      } }, launch: { mode: 'work-center-only' } }],
+      bindings: [{ version: 1, binding: { schemaVersion: SCHEMA_VERSIONS.workflowBinding, workflowCode: definition.code,
+        bindings: { readers: { provider: 'app_role', roleCode: 'instrument_admin' } } } }],
+      activations: [{ workflowCode: definition.code, definitionVersion: 1, bindingVersion: 1, acceptedCommandDeactivationPolicy: 'finish-pinned' }],
+    } });
+    const sources = compileApplicationSources(app);
+    const target = compileNativeApplicationConfiguration({ appCode: app.app.code,
+      configBytes: sources.config.content, contractBytes: sources.contracts.content,
+      expectedConfigDigest: sources.config.digest, expectedContractDigest: sources.contracts.digest });
+    const sealed = compileAppPackage({ config: app, version: '0.1.0', source: { repository: 'https://example.invalid/lab.git', commit: 'a'.repeat(40), dirty: false },
+      toolchainVersion: '2.39.0', artifacts: [], manifests: {}, minimumPlatformVersion: '2.39.0' });
+    const capabilities = sealed.manifest.compatibility.requiredPlatformCapabilities;
+    assert.deepEqual(capabilities, target.requiredPlatformCapabilities, variant);
+    assert.equal(capabilities.some(item => item.code === 'workflow.automatic-cc'), hasCc);
+    assert.equal(capabilities.some(item => item.code === 'workflow.node-administration'), variant === 'cc-administration');
+    const ccDigest = capabilities.find(item => item.code === 'workflow.automatic-cc')?.usageDigest;
+    if (previousCcDigest) assert.notEqual(ccDigest, previousCcDigest, 'cc administration is bound to the sealed usage');
+    previousCcDigest = ccDigest;
+  }
+});
 
 const sourceDeclaration: OpenXiangdaAppDeclaration = {
   schemaVersion: 3,
