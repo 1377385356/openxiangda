@@ -503,3 +503,35 @@ outbox容量等事务故障会回滚，处理器按原键核对后重交，不�
 的4xx拒绝可保留原因并重新预览。宿主刷新失败不改变已经确认的提交结果。
 等待处理器的失败从原事件管理受控重放，保留原执行键。普通详情只显示安全状态
 摘要；原输入、输出和外部回执不放入普通时间线。
+
+## 代码任务页面与补填 {#task-page-submit}
+
+需要办理人补填时，在定义的 `taskPages` 声明命名页面，审批节点以
+`taskPageCode` 引用。页面字段顺序、`readonly`、`required`、`visibleWhen` 和
+`requiredWhen` 属于应用代码；流程管理员不能覆盖页面字段、条件或连线。
+字段类型和编码来自同一个 Native 模型。例子见
+`examples/workflow-administration/task-page.ts`。
+
+页面表达式只读取本页 `values.*`，平台以合并后的业务值强制显隐和必填。
+最多16页、每页64字段、单次值64KiB，表达式8层/64节点。
+系统、流水号和隐藏字段不可作为补填入口；本批编辑字段暂不支持附件、图片、
+签名、子表和富文本，不将它们降为任意 JSON。
+
+标准 PC/手机任务页和 `WorkflowTaskOperationsPanel` 自动显示当前参与人的
+`surface.taskForm`。`save_form` 表示“提交补填，继续办理”，不是私有草稿。
+approve/resubmit 携带 `form: { expectedRevision, values }` 时，Native 业务更新、
+事实刷新、任务决定和下游流转同事务提交。reject/return/transfer 等操作不得
+夹带表单。审批人仅获得当前任务对应的单记录/页面字段入口，不获得通用 CRUD。
+
+相同幂等键不同输入拒绝；结果未知时保留原 token/input/key。共享组件锁定
+编辑，只重试原请求或调用 `loadWorkflowTaskCommandReceipt(taskId, key, tokenDigest)`
+查询本人原回执。重载只保存定位信息和 SHA256 token 摘要，不保存凭据或表单。
+`not_observed` 仍然未知；只有平台锁住确切凭证、确认数据库时间已过期且未使用
+的 `expired_unconsumed` 才能解除等待，供用户核对资料后重新确认。
+组件复用宿主的 `OpenXiangdaApplication` 导航保护；成功后刷新失败不变成提交失败。
+
+多人补填与管理纠错使用 Native 记录 CAS，冲突保留输入。补填刷新固定事实投影；
+修改已计算步骤的输入时清除当前失效输出及依赖输出。仅退回 replay 且所有前向
+审批路径确定重经生产者时允许；resume_current 或后置补填跳过重算会返回
+`WORKFLOW_TASK_FORM_RECOMPUTATION_REQUIRED` 并回滚，历史结果与签名保持。
+自动能力为 `workflow.task-page-submit@1.0.0`，平台初始化无需额外开关。

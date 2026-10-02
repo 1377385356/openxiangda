@@ -2921,6 +2921,13 @@ export async function executeWorkflowInstanceCommand(
   );
 }
 
+/** A read does not consume a token or imply that an unobserved command failed. */
+export async function loadWorkflowTaskCommandReceipt(taskId: string, idempotencyKey: string, tokenDigest?: string) {
+  return await request<import('openxiangda-contracts/browser').WorkflowTaskCommandReceipt>(
+    `${workflowBase()}/tasks/${encodeURIComponent(taskId)}/commands/original?idempotencyKey=${encodeURIComponent(idempotencyKey)}${tokenDigest ? `&tokenDigest=${encodeURIComponent(tokenDigest)}` : ''}`,
+  );
+}
+
 /** Execute a server-issued Workflow operation without task/instance branching. */
 export async function executeWorkflowOperation(
   surface: WorkflowSurface,

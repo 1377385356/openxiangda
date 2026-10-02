@@ -623,7 +623,12 @@ function writePerspectivePreference(key: string, code: string | null) {
 }
 
 export function useRuntime() {
-  const value = useContext(RuntimeContext);
+  const value = useOptionalRuntime();
   if (!value) throw new Error('OPENXIANGDA_RUNTIME_NOT_READY');
   return value;
+}
+
+/** Injected Surfaces may be rendered without a live runtime (for example SSR). */
+export function useOptionalRuntime() {
+  return useContext(RuntimeContext);
 }

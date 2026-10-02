@@ -138,6 +138,16 @@ test('command result remains observable when a refresh returns no Surface', asyn
   assert.equal(legacyCalls, 0);
 });
 
+test('confirmed completion reaches the host even when its Surface read fails', async () => {
+  const result = { taskId: 'task-1', status: 'assigned', advanced: false };
+  let received: unknown;
+  await assert.rejects(completeWorkflowCommand('task', result, {
+    refresh: async () => { throw new Error('read unavailable'); },
+    onCommandCompleted: value => { received = value; },
+  }), /read unavailable/);
+  assert.equal(received, result);
+});
+
 test('command completion forwards the result instanceId without an instance Surface masquerading as a task Surface', async () => {
   let callbackResult: { instanceId?: string | null } | undefined;
 

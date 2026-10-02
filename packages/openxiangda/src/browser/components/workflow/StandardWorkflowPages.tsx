@@ -1,5 +1,8 @@
 import { applicationCode } from '../../runtime-meta';
 import { readPendingWorkflowSubmission, writePendingWorkflowSubmission, clearPendingWorkflowSubmission, workflowSubmissionScope, submissionLocatorStorage, standardProcessWasRejected, type PendingWorkflowSubmission } from '../../workflow-submission-recovery';
+import { readPendingWorkflowTaskCommand, writePendingWorkflowTaskCommand, clearPendingWorkflowTaskCommand, workflowTaskCommandScope, workflowCommandTokenDigest, workflowTaskCommandWasRejected, type PendingWorkflowTaskCommand } from '../../workflow-task-command-recovery';
+import { WorkflowTaskForm, useWorkflowTaskForm } from './WorkflowTaskForm';
+import { WorkflowPendingCommandGuard, WorkflowTaskCommandReceipt } from './WorkflowTaskCommandReceipt';
 import { PresentationTime, usePresentationTimeZone } from '../../presentation-time';
 import {
   ArrowLeftOutlined,
@@ -100,7 +103,7 @@ import {
 import { useResourceDefinitions } from '../../resource-definitions';
 import { selectedSurfaceFields } from '../resource/resource-field-selection';
 import type { GeneratedResourceDefinition } from '../resource/generated-resource-definition';
-import { useRuntime } from '../../runtime';
+import { useRuntime, useOptionalRuntime } from '../../runtime';
 import {
   MobileSurfaceFieldControl,
   SurfaceFieldControl,
@@ -165,13 +168,26 @@ export async function completeWorkflowCommand(
   },
 ): Promise<WorkflowSurface | null> {
   const refreshSurface = shouldRefreshWorkflowSurface(kind, result);
-  const nextSurface = refreshSurface ? await options.refresh() : null;
+  let nextSurface: WorkflowSurface | null = null;
+  let refreshFailure: unknown;
+  try { nextSurface = refreshSurface ? await options.refresh() : null; }
+  catch (error) { refreshFailure = error; }
   await options.onCommandCompleted?.(result);
   if (nextSurface) await options.onCompleted?.(nextSurface, result);
+  if (refreshFailure) throw refreshFailure;
   return nextSurface;
 }
 
 function errorMessage(error: unknown, fallback: string) {
+  const code = (error as { code?: string } | null)?.code;
+  const taskPageMessages: Record<string, string> = {
+    WORKFLOW_TASK_FORM_REQUIRED: '请完成本页必填资料后再提交。',
+    WORKFLOW_TASK_FORM_REVISION_CONFLICT: '业务资料已被其他处理人更新。请刷新并核对，当前输入会保留。',
+    WORKFLOW_TASK_FORM_RECOMPUTATION_REQUIRED: '这些资料会影响已完成的计算，请退回到计算前的节点重新办理。',
+    WORKFLOW_TASK_FORM_FIELD_NOT_EDITABLE: '页面规则已变化，请刷新资料后重新确认。',
+    WORKFLOW_TASK_FORM_COMMAND_FORBIDDEN: '此操作不提交补填资料，请使用保存补填、同意或重新提交。',
+  };
+  if (code && taskPageMessages[code]) return taskPageMessages[code];
   return error instanceof Error ? error.message : fallback;
 }
 
@@ -794,7 +810,7 @@ function OperationDialog({
     confirmation?: { description?: string };
   };
   const formNode = (
-    <Form form={form} layout="vertical" onFinish={onSubmit}>
+    <Form form={form} layout="vertical" onFinish={onSubmit} disabled={submitting}>
       {error && <Alert role="alert" title="审批尚未完成" description={error} showIcon type="error" />}
       {ui.confirmation?.description && (
         <Alert
@@ -838,11 +854,15 @@ function OperationDialog({
     <Modal
       cancelText="取消"
       confirmLoading={submitting}
+      cancelButtonProps={{ disabled: submitting }}
       okText={ui.confirmText || `确认${operation.label}`}
       onCancel={onCancel}
       onOk={() => form.submit()}
       open
       title={operation.label}
+      keyboard={!submitting}
+      mask={{ closable: !submitting }}
+      closable={!submitting}
     >
       {formNode}
     </Modal>
@@ -854,11 +874,23 @@ function WorkflowOperations({
   variant,
   onRefresh,
   onCommandSuccess,
+  pendingLocator,
+  persistLocator,
+  clearLocator,
+  onBusyChange,
+  settlement,
+  confirmedReadPending,
 }: {
   surface: WorkflowSurface;
   variant: PageVariant;
   onRefresh: () => Promise<void>;
   onCommandSuccess: (result: WorkflowCommandResult) => Promise<void>;
+  pendingLocator: PendingWorkflowTaskCommand | null;
+  persistLocator: (locator: PendingWorkflowTaskCommand) => void;
+  clearLocator: (key: string) => void;
+  onBusyChange: (busy: boolean) => void;
+  settlement: { key: string; result: WorkflowCommandResult | null } | null;
+  confirmedReadPending: boolean;
 }) {
   const { message } = App.useApp();
   const [selectedState, setSelectedState] = useState<{
@@ -869,6 +901,20 @@ function WorkflowOperations({
   const [moreOpen, setMoreOpen] = useState(false);
   const [operationError, setOperationError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [refreshError, setRefreshError] = useState('');
+  const [unknown, setUnknown] = useState(false);
+  const request = useRef<{ surface: WorkflowSurface; operation: WorkflowOperationSurface; input: JsonObject; key: string } | null>(null);
+  const mounted = useRef(false);
+  const busyRef = useRef(false);
+  const taskForm = useWorkflowTaskForm(surface.taskForm);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  useEffect(() => {
+    if (!settlement || request.current?.key !== settlement.key) return;
+    if (settlement.result) taskForm.committed(request.current.input.form as any, Number(settlement.result.dataRevision) || undefined);
+    request.current = null;
+    setUnknown(false);
+    setSelectedState(null);
+  }, [settlement]);
   const operations = standardWorkflowOperations(surface);
   const selected = selectedState?.surface === surface
     ? operations.find(
@@ -879,8 +925,8 @@ function WorkflowOperations({
       ) || null
     : null;
   useEffect(() => {
-    if (selectedState && !selected) setSelectedState(null);
-  }, [selected, selectedState]);
+    if (selectedState && !selected && !submitting && !unknown) setSelectedState(null);
+  }, [selected, selectedState, submitting, unknown]);
   const selectOperation = (operation: WorkflowOperationSurface) => {
     setOperationError('');
     setSelectedState({
@@ -890,9 +936,11 @@ function WorkflowOperations({
     });
   };
   const submit = async (values: JsonObject) => {
-    if (!selected || submitting) return;
+    if (!selected || busyRef.current || pendingLocator || unknown || refreshError || confirmedReadPending) return;
     setOperationError('');
     setSubmitting(true);
+    busyRef.current = true;
+    onBusyChange(true);
     try {
       if (selected.kind !== 'workflow_command') {
         throw new Error('WORKFLOW_APP_ACTION_NOT_EXECUTABLE_IN_STANDARD_PANEL');
@@ -906,21 +954,21 @@ function WorkflowOperations({
         await onRefresh();
         throw new Error('WORKFLOW_COMMAND_SURFACE_EXPIRED');
       }
-      const result = await executeWorkflowOperation(
-        surface,
-        selected,
-        values,
-        { idempotencyKey: randomId(`workflow:${selected.key}`) },
-      );
-      message.success(`${selected.label}已提交`);
-      setSelectedState(null);
-      await onCommandSuccess(result);
+      const input = { ...values };
+      if (surface.taskForm && ['save_form', 'approve', 'resubmit'].includes(selected.key)) {
+        if (taskForm.stale) throw new Error('业务资料已更新，请先核对最新资料');
+        input.form = await taskForm.build(selected.key !== 'save_form');
+      }
+      const key = randomId(`workflow:${selected.key}`);
+      if (surface.task?.id) persistLocator({ taskId: String(surface.task.id), command: selected.key,
+        idempotencyKey: key, requestedAt: new Date().toISOString(), tokenDigest: await workflowCommandTokenDigest(commandToken) });
+      request.current = { surface, operation: selected, input: JSON.parse(JSON.stringify(input)), key };
     } catch (error) {
       const hasFreshSurface = Boolean(
         (error as { data?: { freshSurface?: unknown } })?.data?.freshSurface,
       );
       if (hasFreshSurface) {
-        await onRefresh();
+        await onRefresh().catch(() => undefined);
         setSelectedState(null);
         message.warning('内容已更新，请刷新后重试');
       } else {
@@ -930,11 +978,61 @@ function WorkflowOperations({
         setOperationError(failure);
         message.error(failure);
       }
-    } finally {
       setSubmitting(false);
+      busyRef.current = false;
+      onBusyChange(false);
+      return;
+    }
+    await sendRequest(false);
+  };
+  const sendRequest = async (recovering: boolean) => {
+    const wire = request.current;
+    if (!wire || (recovering && busyRef.current)) return;
+    setSubmitting(true);
+    busyRef.current = true;
+    onBusyChange(true);
+    setOperationError('');
+    let result: WorkflowCommandResult;
+    try {
+      // Replay uses the exact token, input and key captured before the first write.
+      result = await executeWorkflowOperation(wire.surface, wire.operation, wire.input, { idempotencyKey: wire.key });
+    } catch (error) {
+      if (!mounted.current) return;
+      const rejected = !recovering && workflowTaskCommandWasRejected(error);
+      if (rejected) { clearLocator(wire.key); request.current = null; }
+      else { setUnknown(true); setSelectedState(null); }
+      const failure = errorMessage(error, '任务操作尚未完成');
+      setOperationError(failure);
+      if (rejected) message.error(failure);
+      setSubmitting(false);
+      busyRef.current = false;
+      onBusyChange(false);
+      return;
+    }
+    if (!mounted.current) return;
+    clearLocator(wire.key);
+    request.current = null;
+    setUnknown(false);
+    setSelectedState(null);
+    taskForm.committed(wire.input.form as any, Number(result.dataRevision) || undefined);
+    onBusyChange(false);
+    message.success(`${wire.operation.label}已提交`);
+    // The write has succeeded. A callback or read failure can only affect refresh.
+    try { await onCommandSuccess(result); }
+    catch (error) { if (mounted.current) setRefreshError(errorMessage(error, '页面刷新失败')); }
+    finally {
+      if (mounted.current) { setSubmitting(false); busyRef.current = false; onBusyChange(false); }
     }
   };
-  if (!operations.length) return null;
+  const refreshConfirmed = async () => {
+    if (busyRef.current) return;
+    setSubmitting(true); busyRef.current = true; onBusyChange(true);
+    try { await onRefresh(); if (mounted.current) setRefreshError(''); }
+    catch (error) { if (mounted.current) setRefreshError(errorMessage(error, '页面刷新失败')); }
+    finally { if (mounted.current) { setSubmitting(false); busyRef.current = false; onBusyChange(false); } }
+  };
+  const locked = submitting || unknown || Boolean(pendingLocator) || Boolean(refreshError) || confirmedReadPending;
+  if (!operations.length && !surface.taskForm && !unknown && !refreshError) return null;
   const primary = operations
     .filter((operation) => operation.placement === 'primary')
     .sort((left, right) => {
@@ -947,11 +1045,18 @@ function WorkflowOperations({
   );
   return (
     <>
+      {surface.taskForm && <WorkflowTaskForm controller={taskForm} disabled={locked} variant={variant}
+        resourceCode={surface.presentation.businessDetail.resourceCode || undefined} recordId={surface.presentation.businessDetail.recordId || undefined} />}
+      {(submitting || unknown) && !pendingLocator && <WorkflowPendingCommandGuard />}
+      {unknown && <Alert type="warning" showIcon title="保留了原提交请求" description={operationError || '提交结果待确认，请重试原请求或查询原结果。'}
+        action={<Button disabled={submitting} loading={submitting} onClick={() => void sendRequest(true)}>重试原请求</Button>} />}
+      {refreshError && <Alert type="warning" showIcon title="任务操作已成功，但资料刷新失败" description={refreshError}
+        action={<Button disabled={submitting} onClick={() => void refreshConfirmed()}>刷新资料</Button>} />}
       <div className={`oxa-workflow-actions oxa-workflow-actions-${variant}`}>
         {primary.map((operation) => (
           <Button
             danger={operation.emphasis === 'danger'}
-            disabled={submitting || !operation.enabled}
+            disabled={locked || !operation.enabled}
             key={operation.key}
             onClick={() => selectOperation(operation)}
             title={operation.disabledReason}
@@ -963,7 +1068,7 @@ function WorkflowOperations({
         {secondary.length > 0 && (
           <Button
             className="oxa-workflow-more-trigger"
-            disabled={submitting}
+            disabled={locked}
             icon={<EllipsisOutlined />}
             onClick={() => setMoreOpen((value) => !value)}
           >
@@ -974,7 +1079,7 @@ function WorkflowOperations({
           <div className="oxa-workflow-more-actions">
             {secondary.map((operation) => (
               <Button
-                disabled={submitting || !operation.enabled}
+                disabled={locked || !operation.enabled}
                 key={operation.key}
                 onClick={() => {
                   setMoreOpen(false);
@@ -1049,6 +1154,30 @@ function WorkflowOperationsPanel({
   loadErrorFallback,
 }: WorkflowOperationsPanelProps) {
   const normalizedIdentifier = identifier.trim();
+  const runtime = useOptionalRuntime();
+  const { message } = App.useApp();
+  const locatorScope = surfaceKind === 'task' && runtime
+    ? workflowTaskCommandScope(applicationCode(), runtime.identity.environment.id, runtime.identity.userId, normalizedIdentifier) : '';
+  const [locatorState, setLocatorState] = useState<{ scope: string; value: PendingWorkflowTaskCommand | null }>(
+    () => ({ scope: locatorScope, value: locatorScope ? readPendingWorkflowTaskCommand(submissionLocatorStorage(), locatorScope) : null }));
+  const [writing, setWriting] = useState(false);
+  const [settlement, setSettlement] = useState<{ key: string; result: WorkflowCommandResult | null } | null>(null);
+  const [confirmedReadFailure, setConfirmedReadFailure] = useState<{ result: WorkflowCommandResult; message: string } | null>(null);
+  const locator = locatorState.scope === locatorScope ? locatorState.value : null;
+  useEffect(() => {
+    setLocatorState({ scope: locatorScope, value: locatorScope ? readPendingWorkflowTaskCommand(submissionLocatorStorage(), locatorScope) : null });
+  }, [locatorScope]);
+  const persistLocator = (value: PendingWorkflowTaskCommand) => {
+    if (!locatorScope) return;
+    if (!writePendingWorkflowTaskCommand(submissionLocatorStorage(), locatorScope, value))
+      message.warning('原请求已保留在当前页面，请在此确认提交结果。');
+    setLocatorState({ scope: locatorScope, value });
+  };
+  const clearLocator = (key: string) => {
+    if (locatorScope) clearPendingWorkflowTaskCommand(submissionLocatorStorage(), locatorScope, key);
+    setLocatorState(current => current.scope === locatorScope && current.value?.idempotencyKey === key
+      ? { scope: locatorScope, value: null } : current);
+  };
   const inputSurface = suppliedSurface || null;
   const suppliedSurfaceMatches = matchesSurface(
     inputSurface,
@@ -1061,6 +1190,8 @@ function WorkflowOperationsPanel({
   const [surfaceIdentifier, setSurfaceIdentifier] = useState<string | null>(
     initialSurface ? normalizedIdentifier : null,
   );
+  const displayedSurfaceRef = useRef(surface);
+  displayedSurfaceRef.current = surface;
   const [acceptedInputSurface, setAcceptedInputSurface] = useState<
     WorkflowSurface | null
   >(initialSurface ? inputSurface : null);
@@ -1122,8 +1253,10 @@ function WorkflowOperationsPanel({
     }
     const requestInputSurface = currentInputSurfaceRef.current;
     setAcceptedInputSurface(requestInputSurface);
-    setSurface(null);
-    setSurfaceIdentifier(null);
+    if (!matchesSurface(displayedSurfaceRef.current, requestIdentifier)) {
+      setSurface(null);
+      setSurfaceIdentifier(null);
+    }
     setLoading(true);
     setLoadingIdentifier(requestIdentifier);
     setErrorState(null);
@@ -1136,7 +1269,7 @@ function WorkflowOperationsPanel({
           identifier: requestIdentifier,
           message: surfaceMismatchMessage,
         });
-        return null;
+        throw new Error(surfaceMismatchMessage);
       }
       setSurface(nextSurface);
       setSurfaceIdentifier(requestIdentifier);
@@ -1151,7 +1284,7 @@ function WorkflowOperationsPanel({
           message: errorMessage(reason, loadErrorFallback),
         });
       }
-      return null;
+      throw reason;
     } finally {
       if (isCurrentRequest(sequence)) {
         setLoading(false);
@@ -1197,9 +1330,11 @@ function WorkflowOperationsPanel({
         requestSequence.current += 1;
       };
     }
-    setSurface(null);
-    setSurfaceIdentifier(null);
-    void refresh();
+    if (!matchesSurface(displayedSurfaceRef.current, normalizedIdentifier)) {
+      setSurface(null);
+      setSurfaceIdentifier(null);
+    }
+    void refresh().catch(() => undefined);
     return () => {
       activeRef.current = false;
       requestSequence.current += 1;
@@ -1243,7 +1378,7 @@ function WorkflowOperationsPanel({
       setLoading(false);
       setLoadingIdentifier(null);
     }
-    await completeWorkflowCommand(surfaceKind, result, {
+    try { await completeWorkflowCommand(surfaceKind, result, {
       refresh: async () => {
         if (!isCurrentGeneration(identifierAtStart, generationAtStart)) {
           return null;
@@ -1267,7 +1402,8 @@ function WorkflowOperationsPanel({
         if (!callback) return;
         await callback(nextSurface, commandResult);
       },
-    });
+    }); if (isCurrentGeneration(identifierAtStart, generationAtStart)) setConfirmedReadFailure(null); }
+    catch (error) { if (isCurrentGeneration(identifierAtStart, generationAtStart)) setConfirmedReadFailure({ result, message: errorMessage(error, '页面刷新失败') }); }
   }, [
     isCurrentGeneration,
     normalizedIdentifier,
@@ -1302,8 +1438,19 @@ function WorkflowOperationsPanel({
       surfaceIdentifier !== normalizedIdentifier ||
       !acceptedInput);
 
+  const receipt = locator && <WorkflowTaskCommandReceipt key={locatorScope} locator={locator} busy={writing} onSettled={async (result, text) => {
+    clearLocator(locator.idempotencyKey);
+    setSettlement({ key: locator.idempotencyKey, result });
+    message.info(text);
+    try { if (result) await completed(result); else await refreshCurrent(); }
+    catch (error) { message.warning(result ? '原操作已成功，请刷新查看最新资料。' : errorMessage(error, '资料刷新失败')); }
+  }} />;
+  const confirmedWarning = confirmedReadFailure && <Alert showIcon type="warning" title="任务操作已成功，但页面刷新失败"
+    description={confirmedReadFailure.message} action={<Button onClick={() => void completed(confirmedReadFailure.result)}>刷新资料</Button>} />;
+
   if (renderLoading) {
     return (
+      <>{receipt}{confirmedWarning}
       <div
         aria-busy="true"
         aria-label={loadingLabel}
@@ -1311,29 +1458,41 @@ function WorkflowOperationsPanel({
       >
         <Spin />
       </div>
+      </>
     );
   }
   if (renderError && !renderSurface) {
     return (
+      <>{receipt}{confirmedWarning}
       <Alert
-        action={<Button onClick={() => void refresh()}>重试</Button>}
+        action={<Button onClick={() => void refresh().catch(() => undefined)}>重试</Button>}
         description={renderError}
         showIcon
         type="error"
       />
+      </>
     );
   }
-  if (!renderSurface) return null;
+  if (!renderSurface) return receipt || confirmedWarning ? <>{receipt}{confirmedWarning}</> : null;
   return (
     <>
+      {receipt}
+      {confirmedWarning}
       {renderError && (
         <Alert description={renderError} showIcon type="warning" />
       )}
       <WorkflowOperations
+        key={`${normalizedIdentifier}:${locatorScope}:${runtime?.identityEpoch || 0}`}
         onCommandSuccess={completed}
         onRefresh={refreshCurrent}
         surface={renderSurface}
         variant={variant}
+        pendingLocator={locator}
+        persistLocator={persistLocator}
+        clearLocator={clearLocator}
+        onBusyChange={setWriting}
+        settlement={settlement}
+        confirmedReadPending={Boolean(confirmedReadFailure)}
       />
     </>
   );
@@ -1624,10 +1783,6 @@ function WorkflowDetailPage({ kind, variant, resourceCode, recordId, onDismiss, 
   const detailPath = surface ? (variant === 'mobile' ? surface.detailNavigation.mobilePath : surface.detailNavigation.desktopPath) : '';
   const newPageHref = useHref(detailPath || '.');
   const close = onDismiss || (() => navigate(returnPath || (detail ? variant === 'mobile' ? detail.navigationContext.mobileReturnPath : detail.navigationContext.desktopReturnPath : variant === 'mobile' ? '/m/work-center' : '/work-center')));
-  if (!surface || !detail || !instance) return <RecordDetailFrame variant={variant} title="申请详情" drawer={Boolean(onDismiss)} drawerState={drawerState} onClose={close}>
-    {loading ? <Spin /> : <Result status="error" title="流程详情加载失败" subTitle={error || '流程不存在'} extra={<Button onClick={() => void refresh()}>重试</Button>} />}
-  </RecordDetailFrame>;
-  if (surface.detailNavigation.custom) return <Navigate replace to={detailPath} />;
   const onCommandCompleted = async (result: WorkflowCommandResult) => {
     if (kind === 'task' && result.advanced === true) {
       const nextId = String(result.instanceId || '').trim();
@@ -1636,6 +1791,12 @@ function WorkflowDetailPage({ kind, variant, resourceCode, recordId, onDismiss, 
       navigate(variant === 'mobile' ? next.surface.detailNavigation.mobilePath : next.surface.detailNavigation.desktopPath, { replace: true });
     } else await refresh();
   };
+  if (!surface || !detail || !instance) return <RecordDetailFrame variant={variant} title="申请详情" drawer={Boolean(onDismiss)} drawerState={drawerState} onClose={close}>
+    {kind === 'task' && readPendingWorkflowTaskCommand(submissionLocatorStorage(), workflowTaskCommandScope(applicationCode(), identity.environment.id, identity.userId, id)) &&
+      <WorkflowTaskOperationsPanel taskId={id} variant={variant} onCommandCompleted={onCommandCompleted} />}
+    {loading ? <Spin /> : <Result status="error" title="流程详情加载失败" subTitle={error || '流程不存在'} extra={<Button onClick={() => void refresh()}>重试</Button>} />}
+  </RecordDetailFrame>;
+  if (surface.detailNavigation.custom) return <Navigate replace to={detailPath} />;
   const operations = task
     ? <WorkflowTaskOperationsPanel key={task.id} onCommandCompleted={onCommandCompleted} surface={surface} taskId={task.id} variant={variant} />
     : <WorkflowInstanceOperationsPanel instanceId={instance.id} onCommandCompleted={onCommandCompleted} surface={surface} variant={variant} />;

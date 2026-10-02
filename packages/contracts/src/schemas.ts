@@ -5335,6 +5335,7 @@ const workflowNodeSchema = {
         mode: { enum: ["single", "any", "all", "sequence"] },
         onApprove: nonEmptyString,
         onReject: nonEmptyString,
+        taskPageCode: { type: 'string', pattern: '^[A-Za-z][A-Za-z0-9_-]{0,63}$' },
         allowedOperations: {
           type: "array",
           uniqueItems: true,
@@ -5347,6 +5348,7 @@ const workflowNodeSchema = {
               "delegate",
               "add_assignee",
               "resubmit",
+              "save_form",
               "admin_reassign",
               "admin_override",
             ],
@@ -5433,6 +5435,27 @@ export const workflowDefinitionSchema = {
     schemaVersion: { const: SCHEMA_VERSIONS.workflowDefinition },
     code: { type: "string", pattern: "^[A-Za-z][A-Za-z0-9_-]{0,127}$" },
     title: nonEmptyString,
+    taskPages: {
+      type: 'object', minProperties: 1, maxProperties: 16,
+      propertyNames: { pattern: '^[A-Za-z][A-Za-z0-9_-]{0,63}$' },
+      additionalProperties: {
+        type: 'object', additionalProperties: false, required: ['title', 'fields'],
+        properties: {
+          title: { type: 'string', minLength: 1, maxLength: 160 },
+          fields: {
+            type: 'array', minItems: 1, maxItems: 64,
+            items: {
+              type: 'object', additionalProperties: false, required: ['code'],
+              properties: {
+                code: { type: 'string', pattern: '^[A-Za-z][A-Za-z0-9_]{0,62}$' },
+                readonly: { type: 'boolean' }, required: { type: 'boolean' },
+                visibleWhen: workflowExpressionSchema, requiredWhen: workflowExpressionSchema,
+              },
+            },
+          },
+        },
+      },
+    },
     acceptedCommandDeactivationPolicy: {
       enum: ["finish-pinned", "cancel-on-deactivate"],
     },
@@ -6492,6 +6515,15 @@ export const workflowSurfaceSchema = {
     },
     instance: { type: "object" },
     task: { anyOf: [{ type: "object" }, { type: "null" }] },
+    taskForm: {
+      type: 'object', additionalProperties: false,
+      required: ['pageCode', 'page', 'expectedRevision', 'fields', 'values'],
+      properties: {
+        pageCode: nonEmptyString, page: { type: 'object' },
+        expectedRevision: { type: 'integer', minimum: 1 },
+        fields: { type: 'object', maxProperties: 64 }, values: { type: 'object', maxProperties: 64 },
+      },
+    },
     presentation: {
       type: "object",
       required: ["businessData", "businessDetail", "summary"],

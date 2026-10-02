@@ -9,6 +9,7 @@ import { validateWorkflowInstanceCommandPolicies } from './workflow-instance-pol
 import { validateWorkflowReadability, type WorkflowGraphDefinitionSource } from './workflow-graph.js';
 import { validateWorkflowAdministration, type WorkflowAdministrationNodeSource } from './workflow-node-administration.js';
 import { validateWorkflowAutomaticCc } from './workflow-automatic-cc.js';
+import { validateWorkflowTaskPages } from './workflow-task-page.js';
 import { validateWorkflowBusinessSteps, compileWorkflowBusinessStepHandlers, validateWorkflowBusinessStepSubscriptions, WORKFLOW_BUSINESS_STEP_EVENT, WORKFLOW_BUSINESS_STEP_EVENTS } from './workflow-business-step.js';
 import { validateWorkflowAssignmentRoutingBindings, validateWorkflowAssignmentRoutingPolicy } from './workflow-assignment-routing.js';
 import * as crypto from 'crypto';
@@ -657,6 +658,9 @@ export function compileRequiredPlatformCapabilitiesV3(
       : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'cc'))
       ? [{ code: 'workflow.automatic-cc' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'cc')) }]
+      : []),
+    ...(config.workflows.definitions.some((item: JsonObject) => item.definition.taskPages !== undefined)
+      ? [{ code: 'workflow.task-page-submit' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => item.definition.taskPages !== undefined) }]
       : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action'))
       ? [{ code: 'workflow.durable-business-step' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action')) }]
@@ -6488,6 +6492,11 @@ function validateWorkflowReferences(config: JsonObject) {
       resources,
       `${pointer}/definition/subject`
     );
+    const taskPageErrors = validateWorkflowTaskPages(definition, new Map(
+      (resources.get(definition.subject.resourceCode)?.schema.fields || [])
+        .map((field: JsonObject) => [field.code, { ...resources.get(definition.subject.resourceCode)?.surface?.fields?.[field.code], ...field, system: ['id', 'revision', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy'].includes(field.code) }])
+    ));
+    if (taskPageErrors.length) fail(taskPageErrors[0]!, `${pointer}/definition/taskPages`);
     const policyErrors = validateWorkflowInstanceCommandPolicies(definition, {
       appCode: config.appCode,
       capabilities: config.authz.capabilities.map((item: JsonObject) => item.code),
@@ -6852,7 +6861,7 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
       'nodes',
     ],
     pointer,
-    ['organizationContext', 'instanceCommands', 'readability']
+    ['organizationContext', 'instanceCommands', 'readability', 'taskPages']
   );
   equal(
     definition.schemaVersion,
@@ -6883,6 +6892,8 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
   if (administrationErrors.length) fail(administrationErrors[0]!, `${pointer}/nodes`);
   const ccErrors = validateWorkflowAutomaticCc(definition as any);
   if (ccErrors.length) fail(ccErrors[0]!, `${pointer}/nodes`);
+  const taskPageErrors = validateWorkflowTaskPages(definition);
+  if (taskPageErrors.length) fail(taskPageErrors[0]!, `${pointer}/taskPages`);
   const stepErrors = validateWorkflowBusinessSteps(definition);
   if (stepErrors.length) fail(stepErrors[0]!, `${pointer}/nodes`);
   if (!nodes[startAt])

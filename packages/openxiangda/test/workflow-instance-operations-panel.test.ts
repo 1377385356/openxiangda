@@ -226,7 +226,7 @@ test('keeps Surface mirroring and StrictMode effect replay inside one panel gene
     source.indexOf('export interface WorkflowTaskOperationsPanelProps'),
   );
   const effectSource = panelSource.slice(
-    panelSource.indexOf('  useEffect(() => {'),
+    panelSource.indexOf('  useEffect(() => {\n    activeRef.current = true;'),
     panelSource.indexOf('  const isCurrentGeneration'),
   );
 

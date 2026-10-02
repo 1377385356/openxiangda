@@ -186,7 +186,7 @@ test('keeps the standard task page and embedded panel on one operation core', ()
   assert.match(source, /export function WorkflowTaskOperationsPanel/);
   assert.match(source, /loadSurface\(requestIdentifier\)/);
   assert.match(source, /matchesSurface\(nextSurface, requestIdentifier\)/);
-  assert.match(source, /executeWorkflowOperation\([\s\S]*surface,[\s\S]*selected/);
+  assert.match(source, /executeWorkflowOperation\(wire\.surface, wire\.operation, wire\.input, \{ idempotencyKey: wire\.key \}/);
   assert.match(source, /selected\.kind !== 'workflow_command'/);
   assert.match(source, /WORKFLOW_APP_ACTION_DISABLED_REASON/);
   assert.match(source, /inputSchema/);
@@ -209,7 +209,7 @@ test('keeps the standard task page and embedded panel on one operation core', ()
   assert.match(source, /onSurfaceChangeRef\.current\?\./);
   assert.match(source, /const callback = onCompletedRef\.current/);
   assert.match(source, /setSurface\(null\)/);
-  assert.match(source, /action={<Button onClick={\(\) => void refresh\(\)}/);
+  assert.match(source, /action={<Button onClick={\(\) => void refresh\(\)\.catch\(\(\) => undefined\)}/);
   assert.match(source, /<WorkflowTaskOperationsPanel[\s\S]*taskId=\{task\.id\}/);
   assert.match(source, /<WorkflowInstanceOperationsPanel[\s\S]*instanceId=\{instance\.id\}/);
   assert.doesNotMatch(source, /onClick=\{\(\) => setSelected\(operation\)\}/);

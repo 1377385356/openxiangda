@@ -3048,6 +3048,16 @@
   .oxa-member-footer .ant-space { width: 100%; }
 }
 .oxa-workflow-delegation-manager { min-width: 0; width: 100%; }
+.oxa-workflow-task-form { margin: 16px 0 24px; padding: 20px 0; border-top: 1px solid var(--ant-color-border-secondary, #e0e6ed); min-width: 0; }
+.oxa-workflow-task-form .ant-form { max-width: 680px; margin-top: 20px; }
+.oxa-workflow-task-form .ant-alert { margin: 16px 0; }
+.oxa-workflow-task-readonly { margin-bottom: 20px; line-height: 1.7; overflow-wrap: anywhere; }
+.oxa-workflow-task-readonly > div { margin-top: 4px; }
+.oxa-workflow-task-required { margin-bottom: 20px; }
+.oxa-workflow-task-required .ant-form-item { margin-bottom: 4px; }
+.oxa-workflow-task-required-hint { font-size: 12px; }
+.oxa-workflow-task-form-mobile { padding: 16px 0; }
+.oxa-workflow-task-form-mobile .ant-alert { display: flex; flex-wrap: wrap; gap: 8px; }
 .oxa-delegation-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
 .oxa-delegation-toolbar .ant-input-search { flex: 1 1 220px; max-width: 340px; min-width: 0; }
 .oxa-delegation-toolbar .ant-select { min-width: 140px; max-width: 100%; }

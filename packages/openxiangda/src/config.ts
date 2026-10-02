@@ -41,6 +41,7 @@ export {
   type ResourceRecordSchemaOptions,
 } from 'openxiangda-devkit-core';
 export type {
+  WorkflowTaskPage, WorkflowTaskPageField, WorkflowApprovalNode,
   WorkflowBusinessStepNode, WorkflowBusinessStepInput,
   ManagedConcurrencyDeclaration, ManagedReadDeclaration, QueuedCommandDeclaration,
   IntegerQuotaDeclaration, AdmissionPolicy, ConcurrencyBinding, ConcurrencyParameter,

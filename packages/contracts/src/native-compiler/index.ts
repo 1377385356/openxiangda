@@ -30,3 +30,4 @@ export * from './role-membership-batch.js';
 export { workflowDelegationMutationRequestSchema } from './workflow-delegation-administration.js';
 
 export * from './workflow-business-step-identity.js';
+export * from './workflow-task-page.js';

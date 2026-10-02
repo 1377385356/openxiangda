@@ -16,6 +16,7 @@ import {
   nativePlatformCapabilityCatalog,
   validateDataResource,
   validateWorkflowInstanceCommandPolicies,
+  validateWorkflowTaskPages,
   validateWorkflowAssignmentRoutingBindings,
   WORKFLOW_SUMMARY_MAX_FIELDS,
   WORKFLOW_SUMMARY_TEXT_LONG_MAX_BYTES,
@@ -4055,6 +4056,13 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
         resource => object(resource).code === definition.subject?.resourceCode
       ));
       const policyFields = object(policyResource.schema).fields;
+      for (const error of validateWorkflowTaskPages(definition, new Map(
+        (Array.isArray(policyFields) ? policyFields : []).map(raw => {
+          const field = object(raw);
+          const surfaceField = object(object(policyResource.surface).fields)[string(field.code)];
+          return [string(field.code), { ...object(surfaceField), type: string(field.type) }];
+        })
+      ))) diagnostics.push(diagnostic('APP_CONFIG_WORKFLOW_TASK_PAGE_INVALID', error, `${path}.definition.taskPages`));
       for (const error of validateWorkflowInstanceCommandPolicies(definition, {
         appCode,
         capabilities: declaredCapabilities.map(item => string(object(item).code)),

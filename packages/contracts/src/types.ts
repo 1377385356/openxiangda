@@ -2194,6 +2194,7 @@ export type WorkflowFieldPolicy =
   | "edit"
   | "edit_required";
 export type WorkflowCommand =
+  | "save_form"
   | "approve"
   | "reject"
   | "return"
@@ -2229,6 +2230,8 @@ export interface WorkflowApprovalNode {
   onReject: string;
   allowedOperations?: WorkflowCommand[];
   returnTargets?: string[];
+  /** Immutable reference to an application-owned task page input contract. */
+  taskPageCode?: string;
   /** Code-owned defaults; labels never change the stable command semantics. */
   operationPolicy?: Partial<Record<WorkflowConfigurableOperation, WorkflowNodeOperationPolicy>>;
   /** Explicit upper bound for administrator changes. Topology remains immutable. */
@@ -2326,6 +2329,8 @@ export interface WorkflowDefinition {
     };
   };
   nodes: Record<string, WorkflowNode>;
+  /** Code-owned page definitions, independent of node administrator settings. */
+  taskPages?: Record<string, import('./native-compiler/workflow-task-page.js').WorkflowTaskPage>;
   /** Read-only explanations versioned with the executing definition. */
   readability?: import('./native-compiler/workflow-graph.js').WorkflowReadability;
 }
@@ -3098,6 +3103,7 @@ export interface WorkflowSurface {
   navigationTarget: WorkflowNavigationTarget | null;
   instance: WorkflowInstance | Record<string, unknown>;
   task: WorkflowTask | Record<string, unknown> | null;
+  taskForm?: import('./native-compiler/workflow-task-page.js').WorkflowTaskFormSurface;
   presentation: WorkflowSurfacePresentation;
   fieldPolicy: {
     default: WorkflowFieldPolicy;
