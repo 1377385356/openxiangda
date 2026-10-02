@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.39.1",
+  "version": "2.40.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -73,13 +73,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.29",
-    "openxiangda-contracts": "2.39.1",
-    "openxiangda-devkit-core": "2.39.1",
+    "openxiangda-cli": "2.6.30",
+    "openxiangda-contracts": "2.40.0",
+    "openxiangda-devkit-core": "2.40.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.68",
-    "openxiangda-nest": "2.12.2",
-    "openxiangda-skill-kit": "2.3.46",
+    "openxiangda-mcp": "2.0.69",
+    "openxiangda-nest": "2.13.0",
+    "openxiangda-skill-kit": "2.3.47",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -145,34 +145,40 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.39.1",
+    "version": "2.40.0",
     "status": "reviewed",
-    "title": "OpenXiangda 2.39.1：修复自动抄送部署预检",
-    "summary": "应用包与平台预检共用Native能力闭包，避免自动抄送及管理配置的能力摘要漂移。",
-    "newFeatures": [],
+    "title": "OpenXiangda 2.40.0：持久业务步骤与原结果恢复",
+    "summary": "固定版本的计算和有回执的外部业务步骤成功后再推进流程；已收结果受阻时保留原执行键并恢复后续流转。",
+    "newFeatures": [
+      "Workflow action 声明、闭合输入输出、步骤事实来源和可读图。",
+      "Nest 处理器使用平台持久回执；副作用每次先核对原执行键。",
+      "标准管理端与公开 SDK 共用受阻步骤恢复组件。"
+    ],
     "fixes": [
-      "Devkit删除重复能力推导，复用contracts现有compileRequiredPlatformCapabilitiesV3。",
-      "共享编译器保留具名关联输入的workflow.named-input-sources能力要求，关闭反向漂移。"
+      "浏览器步骤合同与 Node 签名、摘要计算分离。"
     ],
     "affectedUsers": [
-      "使用自动抄送或具名关联输入并进行测试部署的V2开发者。"
+      "需要计算后分支、审批间业务步骤或有回执的集成操作的 V2 应用开发者。"
     ],
     "upgradeSteps": [
-      "升级机器确定的同批包并冻结锁文件；本地实验室使用tgz，不发布npm。",
-      "保持配套平台及共享合同版本，重新执行原严格部署预检。"
+      "使用机器确定的同批包并冻结锁文件；本批仅本地 tgz 测试，不发布 npm。",
+      "平台内核及正式 SQL 同批更新，自动提供 workflow.durable-business-step@1.0.0。",
+      "为每个固定版本保留处理器实现、订阅和闭合 Schema；应用通过统一 openxiangda 入口使用。"
     ],
     "knownLimitations": [
-      "未改变抄送provider、节点管理或读取边界。",
-      "学校迁移、生产镜像和真实外部渠道仍需独立验收。"
+      "字段权限继续由页面代码维护，流程连线、代码和条件只读。",
+      "步骤后不支持未预备的 HTTP provider 或发起人选人；先产生有 Schema 的人员结果再使用原生解析器。",
+      "输入输出各 16KiB、回执 2KiB、200 节点；自动推进恢复最多 5 次、每批 20。",
+      "学校迁移和生产发布需要独立验收；此更新说明不代表实际运行验收完成。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
       "workspaceGenerations": "v2",
-      "platform": "需要配套共享Native编译器及workflow.automatic-cc@1.0.0；无新增默认关闭开关。",
-      "v1": "沿用原V1分发与运行时。"
+      "platform": "配套 Workflow 内核、252 SQL 迁移及 workflow.durable-business-step@1.0.0；无新增默认关闭开关。",
+      "v1": "原 V1 分发与运行时保持。"
     },
-    "sha256": "afb760e88ebea86b46e7fa42676ad75194baa46e1b78be5750a6653b89f4bba9",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.39.1"
+    "sha256": "eceec21f4aab91f4a4858c11f4c205e1467881349a4d60038e2f8d52424fdeb2",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.40.0"
   }
 }
