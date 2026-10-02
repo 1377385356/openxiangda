@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.41.2",
+  "version": "2.42.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -73,13 +73,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.34",
-    "openxiangda-contracts": "2.41.0",
-    "openxiangda-devkit-core": "2.41.0",
+    "openxiangda-cli": "2.6.35",
+    "openxiangda-contracts": "2.42.0",
+    "openxiangda-devkit-core": "2.41.1",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.71",
-    "openxiangda-nest": "2.13.1",
-    "openxiangda-skill-kit": "2.3.49",
+    "openxiangda-mcp": "2.0.72",
+    "openxiangda-nest": "2.13.2",
+    "openxiangda-skill-kit": "2.3.50",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -145,36 +145,38 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.41.2",
+    "version": "2.42.0",
     "status": "reviewed",
-    "title": "OpenXiangda 2.41.2：补填并发核对与拒绝恢复",
-    "summary": "任务请求被明确拒绝后读取最新资料，保留本人输入并提供核对。",
+    "title": "OpenXiangda 2.42.0：任务私有草稿",
+    "summary": "当前任务处理人可以私有暂存不完整的标量输入，正式补填、同意或重提时沿原流程命令消费草稿。",
     "newFeatures": [
-      "renderLayout提供面板当前Surface，自定义详情可以同源展示最新资料。"
+      "公开 SDK 支持本人任务草稿的保存、读取和按修订删除；PC 与手机共用确认采用、并发核对与原保存结果恢复。",
+      "任务私有草稿和通用表单草稿共享原有容量与保留规则。"
     ],
     "fixes": [
-      "修复并发补填冲突后始终停留旧版本、无法核对继续的问题。",
-      "拒绝后刷新失败显示本次未提交，锁住旧操作；核对区并列最新值和本人输入。"
+      "通用 CRUD 草稿接口明确隔离任务草稿，草稿不授予业务写入权。"
     ],
     "affectedUsers": [
-      "使用代码任务补填页面的V2办理人和嵌入任务面板的应用。"
+      "使用代码任务页面的 V2 应用、当前任务办理人和 SDK 页面开发者。"
     ],
     "upgradeSteps": [
-      "使用同批本地包并重启连接开发，本轮不发布npm。",
-      "自定义详情消费renderLayout.surface，不复制表单或Surface生命周期。"
+      "部署配套的正式 SQL 和服务端实现；Native2 自动提供 workflow.task-private-drafts@1.0.0，无需配置开关。",
+      "本轮消费同批本地包并重启应用，不发布 npm。",
+      "页面字段显隐、只读和必填规则继续由应用代码维护。"
     ],
     "knownLimitations": [
-      "草稿、附件和子表编辑仍属于W13.2。",
-      "该修正不代表学校生产迁移或101流程验收。"
+      "本轮草稿仅支持代码任务页面的标量字段，附件和子表随后补足。",
+      "包含任务草稿期间，不可单独回退到缺少通用草稿隔离的旧服务端。",
+      "本地测试不代表学校生产迁移或 101 流程验收完成。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
       "workspaceGenerations": "v2",
-      "platform": "沿用workflow.task-page-submit@1.0.0，无新SQL或配置开关。",
-      "v1": "原V1引擎保持。"
+      "platform": "workflow.task-private-drafts@1.0.0，正式迁移 AddWorkflowTaskFormDraftsV2。",
+      "v1": "原 V1 引擎保持。"
     },
-    "sha256": "99242a1168ba924c12f600c3d7e84605e8f17f2d62551ff944b24760b2839c93",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.41.2"
+    "sha256": "873832a1286e4e064f21480411a6f3a4ba7da99deff7a08dd55e243f2b97ae73",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.42.0"
   }
 }
