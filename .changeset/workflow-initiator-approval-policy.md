@@ -1,6 +1,7 @@
 ---
 "openxiangda-contracts": minor
 "openxiangda": patch
+"openxiangda-cli": patch
 "openxiangda-skill-kit": patch
 ---
 
