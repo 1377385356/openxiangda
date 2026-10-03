@@ -87,6 +87,8 @@ export const SCHEMA_VERSIONS = {
   nativeScopeValuePage: "openxiangda.native-scope-value-page/v2",
   dataFieldSourceQuery: "openxiangda.data-field-source-query/v2",
   dataFieldSourcePage: "openxiangda.data-field-source-page/v2",
+  userCandidatesQuery: "openxiangda.user-candidates-query/v2",
+  userCandidatesPage: "openxiangda.user-candidates-page/v2",
   dataRef: "openxiangda.data-ref/v2",
   dataResource: "openxiangda.data-resource/v2",
   dataQuery: "openxiangda.data-query/v2",
@@ -1128,6 +1130,41 @@ export interface DataFieldSourcePage {
   sourceResourceCode: string;
   operation: "create" | "update";
   items: ResourceReferenceValue[];
+  nextCursor: string | null;
+}
+
+/** Candidate scope is owned by the field declaration and saved record/task. */
+export interface UserCandidateSearch {
+  schemaVersion: typeof SCHEMA_VERSIONS.userCandidatesQuery;
+  keyword?: string;
+  cursor?: string;
+  selectedIds?: string[];
+}
+
+export type DataFieldUserCandidateQuery = UserCandidateSearch & {
+  launch?: DataFieldSourceLaunchBinding;
+} & (
+  | { operation: 'create'; recordId?: never; expectedRevision?: never }
+  | { operation: 'update'; recordId: string; expectedRevision: number }
+);
+
+export interface WorkflowTaskUserCandidateQuery extends UserCandidateSearch {
+  expectedRevision: number;
+  expectedTaskVersion: number;
+}
+
+export interface UserCandidatePage {
+  schemaVersion: typeof SCHEMA_VERSIONS.userCandidatesPage;
+  resourceCode: string;
+  fieldCode: string;
+  environmentHeadRevision: number;
+  recordRevision?: number;
+  evaluatedAt: IsoDateTime;
+  items: Array<{ value: string; label: string }>;
+  selected: Array<
+    | { value: string; label: string; status: 'valid' }
+    | { value: string; status: 'invalid' }
+  >;
   nextCursor: string | null;
 }
 
@@ -2462,9 +2499,11 @@ export interface WorkflowRoleReference {
   configurationRevision: number;
   contexts: Array<'active' | 'in_flight'>;
   source: 'default_binding' | 'node_override' | 'routing_source';
-  provider: 'app_role' | 'app_role_in_scope';
+  provider: 'app_role' | 'app_role_in_scope' | 'form_field_users';
   routingSourceCode?: string;
   scopeDimensionCode?: string;
+  candidateField?: string;
+  dataLogicalRevisionId?: string;
 }
 
 export interface WorkflowRoleReferencePage {

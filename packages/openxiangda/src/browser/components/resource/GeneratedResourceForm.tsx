@@ -205,7 +205,7 @@ export function GeneratedResourceFormPage({
   };
   const formContent = (
     <ResourceFormContent
-      variant={variant} mode={mode} resourceCode={code} recordId={record?.id} groups={groups}
+      variant={variant} mode={mode} resourceCode={code} recordId={record?.id} expectedRevision={record?.revision} groups={groups}
       form={form} busy={busy} pending={pending} submitDisabled={drafts.busy} error={submitError} feedback={drafts.feedback}
       onValuesChange={() => drafts.clearSaved()}
       onSubmit={values => void submit(values)}

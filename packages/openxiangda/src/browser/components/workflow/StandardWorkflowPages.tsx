@@ -1073,6 +1073,7 @@ function WorkflowOperations({
         title="请刷新操作后继续办理" description="页面停留较久，需重新确认当前办理权限。刷新会保留尚未保存的输入。"
         action={<Button disabled={locked} loading={submitting} onClick={() => void refreshConfirmed()}>刷新操作</Button>} />}
       {surface.taskForm && <WorkflowTaskForm controller={taskForm} disabled={locked} variant={variant}
+        taskVersion={surface.task?.version ? Number(surface.task.version) : undefined}
         taskId={surface.task?.id ? String(surface.task.id) : undefined} draftDisabled={commandLocked} onRefresh={onRefresh}
         onDraftBusyChange={busy => { setDraftLocked(busy); onBusyChange(busy || fileLocked || busyRef.current); }}
         onFileBusyChange={busy => { setFileLocked(busy); onBusyChange(busy || draftLocked || busyRef.current); }}
@@ -2907,6 +2908,7 @@ export function WorkflowSubmissionPage({
     embedded: Boolean(onDismiss),
     fieldRenderers,
     recordId: mutationMode === 'update' ? subjectId : undefined,
+    expectedRevision: mutationMode === 'update' ? loadedSubjectRevision : undefined,
     onBack: onDismiss ? dismissDrawer : () => navigate(-1),
     onSubmit: submit,
     onAnswer: answer,
@@ -2940,6 +2942,7 @@ interface ProcessSubmissionRendererProps {
   completion: { subjectId: string; subjectRevision?: number } | null;
   fieldRenderers?: SurfaceFieldRenderers;
   recordId?: string;
+  expectedRevision?: number;
   onBack: () => void;
   onSubmit: (values: JsonObject) => Promise<void>;
   onAnswer: (answers: JsonObject) => Promise<void>;
@@ -3024,6 +3027,7 @@ function StandardProcessSubmissionRenderer(props: ProcessSubmissionRendererProps
     </header>}
     <ResourceFormContent variant={props.variant} mode={props.mutationMode === 'update' ? 'edit' : 'create'}
       resourceCode={props.subjectDefinition.code} recordId={props.recordId} groups={groups}
+      expectedRevision={props.expectedRevision}
       initialValues={props.mutationMode === 'update' ? undefined : Object.fromEntries(props.fields.filter(field => field.type === 'user.multiple').map(field => [field.key, []]))}
       form={props.subjectForm} busy={props.loading || props.submitted} pending={props.loading || props.processing}
       submitDisabled={props.submitted} submitLabel="提交审批" canWriteField={() => true} renderers={props.fieldRenderers}

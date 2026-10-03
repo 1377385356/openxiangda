@@ -110,6 +110,7 @@ function WorkflowRecordEditSession({ resourceCode, recordId, onDismiss, onSaved,
       loading ? <div className="oxa-page-loading"><Spin /></div> : !surface ?
         <Alert type="error" title="数据读取失败" description={error} action={<Button aria-label="重试" onClick={() => setAttempt(value => value + 1)}>重试</Button>} /> :
         <ResourceFormContent variant={variant} mode="edit" resourceCode={resourceCode} recordId={recordId}
+          expectedRevision={surface.record.revision}
           initialValues={normalizeRecordForForm(surface.record, surface.surface)} groups={correctionGroups(surface)}
           busy={pending || saved.current} pending={pending} submitDisabled={saved.current} error={error}
           actions={presentation === 'embedded' ? <Button disabled={pending} onClick={dismiss}>取消</Button> : undefined}

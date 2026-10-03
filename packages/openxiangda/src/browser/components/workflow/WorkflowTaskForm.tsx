@@ -124,11 +124,12 @@ export function useWorkflowTaskForm(latest?: WorkflowTaskFormSurface) {
   return { form, source, latest, current, subtableError, dirty, unsaved, stale, draft, draftNeedsSave, build, reviewLatest, committed, adoptDraft, savedDraft, removedDraft };
 }
 
-export function WorkflowTaskForm({ controller, disabled, draftDisabled = disabled, taskId, onDraftBusyChange, onFileBusyChange, onRefresh, variant, resourceCode, recordId }: {
+export function WorkflowTaskForm({ controller, disabled, draftDisabled = disabled, taskId, taskVersion, onDraftBusyChange, onFileBusyChange, onRefresh, variant, resourceCode, recordId }: {
   controller: ReturnType<typeof useWorkflowTaskForm>;
   disabled: boolean;
   draftDisabled?: boolean;
   taskId?: string;
+  taskVersion?: number;
   onDraftBusyChange?: (busy: boolean) => void;
   onFileBusyChange?: (busy: boolean) => void;
   onRefresh?: () => Promise<void>;
@@ -184,6 +185,7 @@ export function WorkflowTaskForm({ controller, disabled, draftDisabled = disable
           : <div key={state.code} className={state.required ? 'oxa-workflow-task-required' : undefined}>
               {uploadNeedsSave && <Alert type="info" showIcon title="请先保存补填，让该附件字段生效，再上传文件。" />}
               <Control field={field} disabled={disabled || stale || uploadNeedsSave} operation="update" resourceCode={resourceCode} recordId={recordId}
+                expectedRevision={source.expectedRevision} workflowCandidateBinding={{ taskId: taskId || '', expectedTaskVersion: taskVersion }}
                 workflowFileBinding={binding(state.code)} renderers={{ upload: files.upload,
                   renderSubtable: source.subtables?.[state.code] ? context => {
                     const child = source.subtables![state.code]!;

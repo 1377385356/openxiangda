@@ -6,13 +6,14 @@ import { MobileSurfaceFieldControl, SurfaceFieldControl, type SurfaceField, type
 
 /** Shared presentation only; each platform owner supplies its existing load/save lifecycle. */
 export function ResourceFormContent({
-  variant, mode, resourceCode, recordId, groups, form, initialValues, busy,
+  variant, mode, resourceCode, recordId, expectedRevision, groups, form, initialValues, busy,
   pending, submitDisabled, submitLabel = mode === 'edit' ? '保存' : '提交', error, feedback, actions, canWriteField, renderers, onValuesChange, onSubmit,
 }: {
   variant: 'desktop' | 'mobile';
   mode: 'create' | 'edit';
   resourceCode: string;
   recordId?: string;
+  expectedRevision?: number;
   groups: Array<{ section: string; fields: SurfaceField[] }>;
   form?: FormInstance;
   initialValues?: Record<string, unknown>;
@@ -48,7 +49,7 @@ export function ResourceFormContent({
         {grouped && <h2 id={`resource-form-section-${index}`}>{group.section === 'default' ? '基本信息' : group.section}</h2>}
         <div className="oxa-grid">{group.fields.map(field => <FieldControl
           key={field.key} field={field} disabled={busy || !canWriteField(field)}
-          operation={mode === 'create' ? 'create' : 'update'} resourceCode={resourceCode} recordId={recordId} renderers={renderers}
+          operation={mode === 'create' ? 'create' : 'update'} resourceCode={resourceCode} recordId={recordId} expectedRevision={expectedRevision} renderers={renderers}
         />)}</div>
       </section>)}</div>
     </div>

@@ -144,8 +144,8 @@ import { AttachmentFileList } from 'openxiangda/field-kit';
 
 `user.single` / `user.multiple` 可在代码中声明 `userCandidates`，引用本应用职责和可选范围。
 它与资源选择的显示 `source` 分开，编译产物中的字段和 Surface 必须一致。
-当前仅完成声明与编译校验，尚不能在未开放 `data.user-candidates@1.0.0` 的平台部署；
-后续候选查询、保存校验和双端组件接入完成后才开放能力。不能以普通通讯录过滤替代服务端约束。
+使用前确认平台已开放 `data.user-candidates@1.0.0`。SDK已接入候选读取和双端字段组件，
+平台运行时仍在本地集成验收；未广告能力时不能部署该声明。不能以普通通讯录过滤替代服务端约束。
 
 ```ts
 {
@@ -169,6 +169,18 @@ import { AttachmentFileList } from 'openxiangda/field-kit';
 办理页不能同时修改范围字段与相依选人字段。首版任务候选只支持主体字段，任务中可写子表候选字段明确拒绝；
 普通子表记录的 Native 约束和历史只读显示仍按各自合同处理。
 流程进入节点时再次核验原职责成员，随后解释职责代理；历史已创建任务保留当时快照。
+
+标准表单、流程发起和任务补填自动传递候选上下文。自定义页使用Field Kit的
+`SurfaceFieldControl`/`MobileSurfaceFieldControl`，更新时提供`recordId`和`expectedRevision`；
+任务页额外提供`workflowCandidateBinding: { taskId, expectedTaskVersion }`。缺失任务版本会要求刷新，
+不会转用普通数据或通讯录接口。使用`ResourceFormContent`时也提供已加载记录的`expectedRevision`。
+
+自定义选人交互可从`openxiangda/react`调用`queryFieldUserCandidates(resourceCode, fieldCode, input)`
+或`queryWorkflowTaskUserCandidates(taskId, fieldCode, input)`。查询schema固定为
+`openxiangda.user-candidates-query/v2`，支持keyword/cursor/selectedIds；Native更新绑定recordId/expectedRevision，
+任务绑定expectedRevision/expectedTaskVersion。不要传入职责或学院覆盖参数。返回`UserCandidatePage`只包含
+稳定ID、名称、已选项valid/invalid及下一页游标；invalid不返回无权读取的名称，页面保留原显示快照。
+确认前复核选择只能改善交互，不能替代保存及节点进入时的服务器核验。
 
 仅选择时间时使用 `time`，并显式决定精度：
 

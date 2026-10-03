@@ -376,7 +376,7 @@ function DesktopSubtableRow({ row, index, fields, operation, resourceCode, disab
   useEffect(() => { form.setFieldsValue(row.data); }, [form, row.data]);
   return <Form component={false} layout="vertical" name={`subtable-${row.key}`} form={form} initialValues={row.data} onValuesChange={(_changed, all) => onChange(all)}>
     <tr><td className="oxa-subtable-number">{index + 1}</td>{fields.map(field => <td key={field.key}>
-      {canWrite(field) ? <><SurfaceFieldControl field={field} disabled={Boolean(disabled || uploadBlocked?.(field))} operation={operation} recordId={row.id} resourceCode={resourceCode} workflowFileBinding={workflowFileBinding && { ...workflowFileBinding, fieldCode: field.key }} renderers={{ upload, signer }} />{uploadBlocked?.(field) && <Typography.Text type="secondary">请先保存补填，让该附件字段生效，再上传文件。</Typography.Text>}{hint?.(field)}</>
+      {canWrite(field) ? <><SurfaceFieldControl field={field} disabled={Boolean(disabled || uploadBlocked?.(field))} operation={operation} recordId={row.id} expectedRevision={row.revision} resourceCode={resourceCode} workflowFileBinding={workflowFileBinding && { ...workflowFileBinding, fieldCode: field.key }} renderers={{ upload, signer }} />{uploadBlocked?.(field) && <Typography.Text type="secondary">请先保存补填，让该附件字段生效，再上传文件。</Typography.Text>}{hint?.(field)}</>
         : canRead(field) ? <SurfaceFieldValue field={field} resourceCode={resourceCode} workflowFileBinding={workflowFileBinding && { ...workflowFileBinding, fieldCode: field.key }} value={rowDisplayValue(row, field, taskMode)} /> : '—'}
     </td>)}{!disabled && <td>{actions}</td>}</tr>
   </Form>;
@@ -522,7 +522,7 @@ function MobileSubtableRow({ row, index, fields, operation, resourceCode, canWri
     <div hidden={!expanded} style={!expanded ? { display: 'none' } : undefined}>
       <Form component={false} layout="vertical" name={`subtable-${row.key}`} form={form} initialValues={row.data} onValuesChange={(_changed, all) => onChange(all)}>
         {fields.map(field => canWrite(field) || !taskMode
-          ? <div key={field.key}><MobileSurfaceFieldControl field={field} disabled={Boolean(disabled || !canWrite(field) || uploadBlocked?.(field))} operation={operation} recordId={row.id} resourceCode={resourceCode} workflowFileBinding={workflowFileBinding && { ...workflowFileBinding, fieldCode: field.key }} renderers={{ upload, signer }} />{uploadBlocked?.(field) && <Typography.Text type="secondary">请先保存补填，让该附件字段生效，再上传文件。</Typography.Text>}{hint?.(field)}</div>
+          ? <div key={field.key}><MobileSurfaceFieldControl field={field} disabled={Boolean(disabled || !canWrite(field) || uploadBlocked?.(field))} operation={operation} recordId={row.id} expectedRevision={row.revision} resourceCode={resourceCode} workflowFileBinding={workflowFileBinding && { ...workflowFileBinding, fieldCode: field.key }} renderers={{ upload, signer }} />{uploadBlocked?.(field) && <Typography.Text type="secondary">请先保存补填，让该附件字段生效，再上传文件。</Typography.Text>}{hint?.(field)}</div>
           : <div key={field.key}><Typography.Text type="secondary">{field.label}</Typography.Text><SurfaceFieldValue field={field} resourceCode={resourceCode} workflowFileBinding={workflowFileBinding && { ...workflowFileBinding, fieldCode: field.key }} mobile value={rowDisplayValue(row, field, taskMode)} /></div>)}
       </Form>
     </div>

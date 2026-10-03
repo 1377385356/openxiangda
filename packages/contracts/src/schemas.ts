@@ -2071,6 +2071,76 @@ export const dataFieldSourcePageSchema = {
   },
 } as const;
 
+const userCandidateId = { type: 'string', minLength: 1, maxLength: 255, pattern: '^\\S(?:[\\s\\S]*\\S)?$' } as const;
+const userCandidateRevision = { type: 'integer', minimum: 1, maximum: Number.MAX_SAFE_INTEGER } as const;
+const userCandidateSearchProperties = {
+  schemaVersion: { const: SCHEMA_VERSIONS.userCandidatesQuery },
+  keyword: { type: 'string', maxLength: 64 },
+  cursor: { type: 'string', minLength: 1, maxLength: 2048 },
+  selectedIds: { type: 'array', maxItems: 200, uniqueItems: true, items: userCandidateId },
+} as const;
+
+/** Each endpoint accepts exactly one owner context, never caller-supplied role/scope. */
+export const userCandidatesQuerySchema = {
+  $id: SCHEMA_VERSIONS.userCandidatesQuery,
+  oneOf: [
+    {
+      type: 'object', additionalProperties: false, required: ['schemaVersion', 'operation'],
+      properties: {
+        ...userCandidateSearchProperties, operation: { const: 'create' },
+        launch: dataFieldSourceQuerySchema.properties.launch,
+      },
+    },
+    {
+      type: 'object', additionalProperties: false,
+      required: ['schemaVersion', 'operation', 'recordId', 'expectedRevision'],
+      properties: {
+        ...userCandidateSearchProperties, operation: { const: 'update' },
+        recordId: userCandidateId, expectedRevision: userCandidateRevision,
+        launch: dataFieldSourceQuerySchema.properties.launch,
+      },
+    },
+    {
+      type: 'object', additionalProperties: false,
+      required: ['schemaVersion', 'expectedRevision', 'expectedTaskVersion'],
+      properties: {
+        ...userCandidateSearchProperties, expectedRevision: userCandidateRevision,
+        expectedTaskVersion: userCandidateRevision,
+      },
+    },
+  ],
+} as const;
+
+const userCandidateValue = {
+  type: 'object', additionalProperties: false, required: ['value', 'label'],
+  properties: { value: userCandidateId, label: { type: 'string' } },
+} as const;
+
+export const userCandidatesPageSchema = {
+  $id: SCHEMA_VERSIONS.userCandidatesPage,
+  type: 'object', additionalProperties: false,
+  required: ['schemaVersion', 'resourceCode', 'fieldCode', 'environmentHeadRevision', 'evaluatedAt', 'items', 'selected', 'nextCursor'],
+  properties: {
+    schemaVersion: { const: SCHEMA_VERSIONS.userCandidatesPage },
+    resourceCode: nativeStableCode,
+    fieldCode: { type: 'string', pattern: '^[A-Za-z][A-Za-z0-9_]{0,62}$' },
+    environmentHeadRevision: userCandidateRevision,
+    recordRevision: userCandidateRevision,
+    evaluatedAt: dateTime,
+    items: { type: 'array', maxItems: 50, items: userCandidateValue },
+    selected: {
+      type: 'array', maxItems: 200,
+      items: { oneOf: [
+        { ...userCandidateValue, required: ['value', 'label', 'status'],
+          properties: { ...userCandidateValue.properties, status: { const: 'valid' } } },
+        { type: 'object', additionalProperties: false, required: ['value', 'status'],
+          properties: { value: userCandidateId, status: { const: 'invalid' } } },
+      ] },
+    },
+    nextCursor: { type: ['string', 'null'] },
+  },
+} as const;
+
 export const dataRefSchema = {
   $id: SCHEMA_VERSIONS.dataRef,
   type: "object",
@@ -8944,6 +9014,8 @@ export const contractSchemas = {
   nativeScopeValuePage: nativeScopeValuePageSchema,
   dataFieldSourceQuery: dataFieldSourceQuerySchema,
   dataFieldSourcePage: dataFieldSourcePageSchema,
+  userCandidatesQuery: userCandidatesQuerySchema,
+  userCandidatesPage: userCandidatesPageSchema,
   dataRef: dataRefSchema,
   dataResource: dataResourceSchema,
   dataQuery: dataQuerySchema,

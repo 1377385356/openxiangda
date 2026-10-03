@@ -52,6 +52,8 @@ import { MobileFieldFrame } from '../platform-fields/MobileFieldFrame';
 import { JsonField, JsonValueDisplay } from '../platform-fields/JsonField';
 import { LocationField, LocationValueDisplay } from '../platform-fields/LocationField';
 import { PlatformDirectoryPicker } from '../platform-fields/PlatformDirectoryPicker';
+import { ConstrainedUserField, type ConstrainedUserFieldProps } from '../platform-fields/ConstrainedUserField';
+import { userCandidateFieldContext, type WorkflowCandidateBinding } from '../platform-fields/user-candidate-context';
 import { ResourceReferenceField } from '../platform-fields/ResourceReferenceField';
 import { RichTextField, RichTextValueDisplay } from '../platform-fields/RichTextField';
 import { SignatureField, SignatureValueDisplay } from '../platform-fields/SignatureField';
@@ -115,6 +117,8 @@ export interface SurfaceFieldEditContext {
   operation: 'create' | 'update';
   resourceCode?: string;
   recordId?: string;
+  expectedRevision?: number;
+  workflowCandidateBinding?: WorkflowCandidateBinding;
   workflowFileBinding?: WorkflowFileBinding;
 }
 
@@ -141,6 +145,15 @@ export interface SurfaceFieldRenderers {
   ) => Promise<DataFileRef>;
   signer?: UserReferenceValue;
   renderValue?: (context: SurfaceFieldValueContext) => ReactNode | undefined;
+}
+
+function CandidateFieldControl({ field, mobile, disabled, operation, resourceCode, recordId, expectedRevision, workflowCandidateBinding, renderers, value, onChange, id }:
+  SurfaceFieldEditContext & Pick<ConstrainedUserFieldProps, 'value' | 'onChange' | 'id'> & { mobile?: boolean; renderers?: SurfaceFieldRenderers }) {
+  const result = userCandidateFieldContext({ resourceCode, fieldCode: field.key, operation, recordId,
+    expectedRevision, workflowCandidateBinding, launch: renderers?.referenceLaunch,
+    requiresSavedScope: Boolean(field.userCandidates?.scope?.field) });
+  return <ConstrainedUserField mobile={mobile} disabled={disabled} multiple={field.type.endsWith('.multiple')}
+    placeholder={`选择${field.label}`} context={result.context} unavailableReason={result.error} value={value} onChange={onChange} id={id} />;
 }
 
 export interface SurfaceFilterContext {
@@ -337,6 +350,8 @@ export function SurfaceFieldControl({
   operation,
   resourceCode,
   recordId,
+  expectedRevision,
+  workflowCandidateBinding,
   workflowFileBinding,
   renderers,
 }: SurfaceFieldEditContext & { renderers?: SurfaceFieldRenderers }) {
@@ -409,7 +424,10 @@ export function SurfaceFieldControl({
       break;
     case 'directory-user':
     case 'directory-department':
-      control = (
+      control = field.userCandidates ? (
+        <CandidateFieldControl field={field} disabled={disabled} operation={operation} resourceCode={resourceCode}
+          recordId={recordId} expectedRevision={expectedRevision} workflowCandidateBinding={workflowCandidateBinding} renderers={renderers} />
+      ) : (
         <PlatformDirectoryPicker
           disabled={disabled}
           kind={field.widget === 'directory-user' ? 'user' : 'department'}
@@ -538,6 +556,8 @@ export function MobileSurfaceFieldControl({
   operation,
   resourceCode,
   recordId,
+  expectedRevision,
+  workflowCandidateBinding,
   workflowFileBinding,
   renderers,
 }: SurfaceFieldEditContext & { renderers?: SurfaceFieldRenderers }) {
@@ -598,7 +618,10 @@ export function MobileSurfaceFieldControl({
       break;
     case 'directory-user':
     case 'directory-department':
-      control = (
+      control = field.userCandidates ? (
+        <CandidateFieldControl mobile field={field} disabled={disabled} operation={operation} resourceCode={resourceCode}
+          recordId={recordId} expectedRevision={expectedRevision} workflowCandidateBinding={workflowCandidateBinding} renderers={renderers} />
+      ) : (
         <PlatformDirectoryPicker
           mobile
           disabled={disabled}

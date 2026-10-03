@@ -18,6 +18,9 @@ import {
   type DataFileUploadPlan,
   type DataFieldSourcePage,
   type DataFieldSourceQuery,
+  type DataFieldUserCandidateQuery,
+  type WorkflowTaskUserCandidateQuery,
+  type UserCandidatePage,
   type DataExportRequest,
   type DataPage,
   type DataQuery,
@@ -1352,6 +1355,28 @@ export async function searchResource(
         environmentKey: currentEnvironmentKey(),
       }),
     },
+  );
+}
+
+export async function queryFieldUserCandidates(
+  resourceCode: string,
+  fieldCode: string,
+  input: DataFieldUserCandidateQuery,
+): Promise<UserCandidatePage> {
+  return requestRead<UserCandidatePage>(
+    `${nativeBase()}/data-resources/${encodeURIComponent(resourceCode)}/fields/${encodeURIComponent(fieldCode)}/user-candidates/query`,
+    { method: 'POST', body: JSON.stringify({ ...input, environmentKey: currentEnvironmentKey() }) },
+  );
+}
+
+export async function queryWorkflowTaskUserCandidates(
+  taskId: string,
+  fieldCode: string,
+  input: WorkflowTaskUserCandidateQuery,
+): Promise<UserCandidatePage> {
+  return requestRead<UserCandidatePage>(
+    `${workflowBase()}/tasks/${encodeURIComponent(taskId)}/fields/${encodeURIComponent(fieldCode)}/user-candidates/query`,
+    { method: 'POST', body: JSON.stringify(input) },
   );
 }
 

@@ -30,6 +30,8 @@ export {
   createResourceFormDraftClient,
   createWorkflowFormDraftClient,
   loadWorkflowTaskDrafts,
+  queryFieldUserCandidates,
+  queryWorkflowTaskUserCandidates,
   saveWorkflowTaskDraft,
   removeWorkflowTaskDraft,
   initiateWorkflowTaskFileUpload,
@@ -60,6 +62,10 @@ export type {
   WorkflowTaskDraftList,
   WorkflowTaskFileUpload,
   WorkflowTaskFileUploadPlan,
+  DataFieldUserCandidateQuery,
+  WorkflowTaskUserCandidateQuery,
+  UserCandidateSearch,
+  UserCandidatePage,
 } from 'openxiangda-contracts/browser';
 export * from './browser/components/resource/GeneratedResourceCrud';
 export * from './browser/components/resource/ResourceBatchActions';

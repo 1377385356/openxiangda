@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { canonicalJson, sha256Digest } from '../src/canonical.js';
 import { validateDataFieldDefinition } from '../src/data-field-validation.js';
-import { dataResourceSchema, workflowBindingSchema } from '../src/schemas.js';
+import { dataResourceSchema, workflowBindingSchema, userCandidatesQuerySchema, userCandidatesPageSchema } from '../src/schemas.js';
 import * as esm from '../dist/native-compiler/index.js';
 
 const require = createRequire(import.meta.url);
@@ -30,6 +30,42 @@ const roleSource = {
   roleCode: 'reviewer',
   pageSize: 20,
 };
+
+test('candidate query schemas require one complete owner context and bound untrusted search input', () => {
+  const validate = ajv.compile(userCandidatesQuerySchema);
+  const search = { schemaVersion: 'openxiangda.user-candidates-query/v2', selectedIds: ['same-name-a', 'same-name-b'] };
+  for (const context of [
+    { operation: 'create' },
+    { operation: 'update', recordId: 'record-1', expectedRevision: 7 },
+    { expectedRevision: 7, expectedTaskVersion: 2 },
+  ]) assert.equal(validate({ ...search, ...context }), true, JSON.stringify(validate.errors));
+  for (const input of [
+    { ...search },
+    { ...search, operation: 'update', recordId: 'record-1' },
+    { ...search, operation: 'create', expectedRevision: 7 },
+    { ...search, expectedRevision: 7 },
+    { ...search, expectedRevision: 7, expectedTaskVersion: 0 },
+    { ...search, operation: 'create', roleCode: 'other-role' },
+    { ...search, operation: 'create', bindings: { college: 'other' } },
+    { ...search, operation: 'create', selectedIds: ['duplicate', 'duplicate'] },
+    { ...search, operation: 'create', selectedIds: [' padded '] },
+    { ...search, operation: 'create', selectedIds: Array.from({ length: 201 }, (_, i) => `u-${i}`) },
+    { ...search, operation: 'create', keyword: 'a'.repeat(65) },
+    { ...search, operation: 'create', cursor: 'a'.repeat(2049) },
+  ]) assert.equal(validate(input), false, JSON.stringify(input));
+});
+
+test('candidate pages expose names only for valid selections and keep bounded pages', () => {
+  const validate = ajv.compile(userCandidatesPageSchema);
+  const page = { schemaVersion: 'openxiangda.user-candidates-page/v2', resourceCode: 'requests', fieldCode: 'leaders',
+    environmentHeadRevision: 3, recordRevision: 7, evaluatedAt: '2026-10-03T00:00:00.000Z',
+    items: [{ value: 'same-name-a', label: '陈老师' }],
+    selected: [{ value: 'departed', status: 'invalid' }], nextCursor: null };
+  assert.equal(validate(page), true, JSON.stringify(validate.errors));
+  assert.equal(validate({ ...page, selected: [{ value: 'same-name-a', status: 'valid', label: '陈老师' }] }), true);
+  assert.equal(validate({ ...page, selected: [{ value: 'departed', status: 'invalid', label: 'Hidden name' }] }), false);
+  assert.equal(validate({ ...page, items: Array.from({ length: 51 }, () => page.items[0]) }), false);
+});
 
 function fixture(scope?: {
   dimensionCode: string;

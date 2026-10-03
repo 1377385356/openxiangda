@@ -1624,7 +1624,7 @@ function RoleReferences({
         rowKey={(item) =>
           `${item.workflowCode}:${item.definitionVersion}:${
             item.bindingVersion
-          }:${item.nodeId}:${item.source}:${item.routingSourceCode || ''}`
+          }:${item.nodeId}:${item.source}:${item.routingSourceCode || ''}:${item.dataLogicalRevisionId || ''}`
         }
         size="small"
         loading={result.loading}
@@ -1673,11 +1673,12 @@ function RoleReferences({
             title: '来源',
             render: (_, item) => (
               <>
-                {item.source === 'default_binding'
+                {item.candidateField ? '字段候选职责' : item.source === 'default_binding'
                   ? '代码默认角色'
                   : item.source === 'node_override'
                   ? '节点配置覆盖'
                   : '代码许可路由来源'}
+                {item.candidateField && <small className="oxa-member-sub">字段：{item.candidateField}</small>}
                 {item.routingSourceCode && (
                   <small className="oxa-member-sub">
                     {item.routingSourceCode}

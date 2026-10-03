@@ -7,6 +7,8 @@ export type { DateTimeConstraints } from './browser/components/platform-fields/z
 export * from './browser/components/platform-fields/JsonField';
 export * from './browser/components/platform-fields/LocationField';
 export * from './browser/components/platform-fields/PlatformDirectoryPicker';
+export * from './browser/components/platform-fields/ConstrainedUserField';
+export * from './browser/components/platform-fields/user-candidate-context';
 export * from './browser/components/platform-fields/ResourceReferenceField';
 export * from './browser/components/platform-fields/RichTextField';
 export * from './browser/components/platform-fields/SignatureField';

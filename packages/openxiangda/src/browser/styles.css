@@ -3092,3 +3092,16 @@
   .oxa-delegation-toolbar .ant-input-search { flex-basis: 100%; max-width: 100%; }
   .oxa-delegation-toolbar .ant-select { flex: 1 1 140px; min-width: 0; }
 }
+
+.oxa-user-candidate-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(200px, 0.65fr); gap: 20px; }
+.oxa-user-candidate-columns > section, .oxa-user-candidate-columns > aside { min-width: 0; }
+.oxa-user-candidate-columns > aside { padding-left: 20px; border-left: 1px solid var(--ant-color-border-secondary, #e5e7eb); }
+.oxa-user-candidate-list { min-height: 180px; max-height: min(380px, 45vh); overflow: auto; margin-top: 12px; }
+.oxa-user-candidate-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; }
+.oxa-user-candidate-row > span:last-of-type { min-width: 0; flex: 1; }
+.oxa-user-candidate-row strong, .oxa-user-candidate-row small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.oxa-user-candidate-row small { font-size: 12px; color: var(--ant-color-text-secondary, #6b7280); }
+.oxa-user-candidate-pagination { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; }
+.oxa-user-candidate-footer { display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--ant-color-border-secondary, #e5e7eb); margin-top: 16px; padding-top: 16px; }
+.oxa-user-candidate-hint { font-size: 13px; color: var(--ant-color-text-secondary, #6b7280); overflow-wrap: anywhere; }
+.oxa-user-candidate-invalid { font-size: 13px; color: var(--ant-color-error, #b42318); overflow-wrap: anywhere; }
