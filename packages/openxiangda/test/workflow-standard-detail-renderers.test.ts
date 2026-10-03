@@ -174,6 +174,7 @@ const timeline = {
 function render(
   renderer: typeof DesktopWorkflowDetailRenderer,
   renderSurface = surface,
+  renderTimeline = timeline,
 ) {
   return renderToStaticMarkup(
     createElement(
@@ -184,7 +185,7 @@ function render(
         null,
         createElement(renderer, {
           surface: renderSurface,
-          timeline,
+          timeline: renderTimeline,
           warning: '',
           operations: null,
         }),
@@ -225,6 +226,85 @@ test('desktop and mobile share the detail frame and keep approval history in its
     assert.match(markup, /aria-label="返回"/);
   }
 });
+
+function waitingTimeline(assignees: Array<{ userId: string; displayName: string; status?: string; outcome?: string }>) {
+  const current = timeline.display.entries.at(-1);
+  return {
+    ...timeline,
+    flow: [...timeline.flow, {
+      key: current.key, nodeId: current.nodeId, kind: 'approval', title: current.title,
+      status: 'active', startedAt: current.enteredAt, completedAt: null, assignees, operations: [],
+    }],
+    display: { entries: [...timeline.display.entries.slice(0, -1), {
+      ...current,
+      people: assignees.map(person => ({ ...person, avatarUrl: null, departmentDisplayName: null })),
+    }] },
+  };
+}
+
+for (const [device, renderer] of [['desktop', DesktopWorkflowDetailRenderer], ['mobile', MobileWorkflowDetailRenderer]] as const) {
+  test(`${device} all approval waits only for the remaining seat after an initiator automatic vote`, () => {
+    const current = waitingTimeline([
+      { userId: 'initiator', displayName: '申请人', status: 'approved', outcome: 'approved' },
+      { userId: 'remaining', displayName: '周宁', status: 'active' },
+    ]);
+    const markup = render(renderer, surface, current);
+    assert.match(markup, /当前节点：分管负责人/);
+    assert.match(markup, /等待周宁处理/);
+    assert.doesNotMatch(markup, /等待申请人/);
+    const history = renderToStaticMarkup(createElement(App, null, createElement(WorkflowTimelineSection, { timeline: current })));
+    assert.match(history, /申请人/);
+    assert.match(history, /周宁/);
+  });
+
+  test(`${device} sequence approval excludes later pending and completed seats from current waiting`, () => {
+    const current = waitingTimeline([
+      { userId: 'first', displayName: '王岚', status: 'approved', outcome: 'approved' },
+      { userId: 'current', displayName: '周宁', status: 'active' },
+      { userId: 'later', displayName: '陈明', status: 'pending' },
+    ]);
+    const markup = render(renderer, surface, current);
+    assert.match(markup, /等待周宁处理/);
+    assert.doesNotMatch(markup, /等待王岚|等待[^<]*陈明/);
+  });
+
+  test(`${device} transfer and add-sign waiting uses the effective seats`, () => {
+    const current = waitingTimeline([
+      { userId: 'old', displayName: '王岚', status: 'cancelled', outcome: 'transferred' },
+      { userId: 'transferred', displayName: '周宁', status: 'active' },
+      { userId: 'add-sign', displayName: '陈明', status: 'active' },
+      { userId: 'rejected', displayName: '李清', status: 'rejected', outcome: 'rejected' },
+    ]);
+    const markup = render(renderer, surface, current);
+    assert.match(markup, /等待周宁、陈明处理/);
+    assert.doesNotMatch(markup, /等待[^<]*王岚|等待[^<]*李清/);
+  });
+
+  test(`${device} repeated node ids do not mix the current visit with its historical seats`, () => {
+    const current = waitingTimeline([{ userId: 'current', displayName: '周宁', status: 'active' }]);
+    const currentFlow = current.flow.at(-1);
+    current.flow.unshift({ ...currentFlow, key: 'old-visit', status: 'completed',
+      assignees: [{ userId: 'old', displayName: '王岚', status: 'approved' }] });
+    const markup = render(renderer, surface, current);
+    assert.match(markup, /等待周宁处理/);
+    assert.doesNotMatch(markup, /等待王岚/);
+  });
+
+  test(`${device} missing current seat status or visit does not guess a waiting list`, () => {
+    const current = waitingTimeline([{ userId: 'unknown', displayName: '王岚' }]);
+    for (const value of [current, { ...current, flow: timeline.flow }]) {
+      const markup = render(renderer, surface, value);
+      assert.match(markup, /当前节点：分管负责人/);
+      assert.doesNotMatch(markup, /等待[^<]*处理/);
+    }
+  });
+
+  test(`${device} terminal details never display current waiting seats`, () => {
+    const current = waitingTimeline([{ userId: 'remaining', displayName: '周宁', status: 'active' }]);
+    const markup = render(renderer, { ...surface, instance: { ...surface.instance, status: 'approved' } }, current);
+    assert.doesNotMatch(markup, /当前节点：|等待[^<]*处理/);
+  });
+}
 
 test('older workflow details use only the platform-resolved business record target', () => {
   const legacySurface = {

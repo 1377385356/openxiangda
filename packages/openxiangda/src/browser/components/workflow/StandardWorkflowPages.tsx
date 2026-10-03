@@ -1700,7 +1700,8 @@ function StandardWorkflowDetailRenderer({ surface, timeline, warning, operations
   const titleField = workflowDetailGroups(business).flatMap(group => group.fields).find(field => field.type === 'text.short');
   const title = titleField && business.record[titleField.key] ? String(business.record[titleField.key]) : summary.title;
   const activeNode = timeline?.display?.entries.find(entry => entry.status === 'active');
-  const people = activeNode?.people.map(person => person.displayName).filter(Boolean).join('、');
+  const activeFlow = activeNode && timeline?.flow.find(entry => entry.key === activeNode.key && entry.status === 'active');
+  const people = activeFlow?.assignees.filter(person => person.status === 'active').map(person => person.displayName).filter(Boolean).join('、');
   const statusTone = workflowStatus(instance.status).color;
   const bannerTone = statusTone === 'error' ? 'error' : 'active';
   const edit = workflowHasEnded(instance) ? onEdit : undefined;

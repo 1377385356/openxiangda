@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.49.13",
+  "status": "reviewed",
+  "title": "流程详情准确显示当前等待人员",
+  "summary": "PC和手机的在办流程顶部使用平台当前有效席位显示等待人员，历史仍保留完整进入名单和办理记录。",
+  "newFeatures": [],
+  "fixes": [
+    "会签中已经自动或人工同意的人不再显示为等待；依次审批后续pending席位、已转交或取消的人也不计入当前等待。",
+    "按稳定visit key匹配当前节点，避免同一节点重复进入时混用历史名单；缺少明确状态时只显示节点。"
+  ],
+  "affectedUsers": [
+    "使用V2标准PC或手机流程详情页的应用及审批人员。"
+  ],
+  "upgradeSteps": [
+    "安装同源本地SDK组合并重新构建用户端；复用既有Workflow详情协议。"
+  ],
+  "knownLimitations": [
+    "本轮只做本地包消费与验证，没有npm发布或生产部署。",
+    "不改变流程人员解析、权限、执行、数据或完整历史；学校103条源流程仍需逐项验收。"
+  ],
+  "issues": [],
+  "compatibility": {
+    "node": ">=24",
+    "platform": "复用现有WorkflowTimelineFlowItem.assignees.status和display entry key；V1引擎不变。"
+  }
+}
