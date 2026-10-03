@@ -7,7 +7,9 @@ export {
 } from 'openxiangda-devkit-core';
 export {
   PLATFORM_CAPABILITY_CONTRACT_VERSIONS,
+  SCHEMA_VERSIONS,
   sha256Digest,
+  validateDataTransactionRequest,
   type PlatformCapabilityCode,
   type PlatformFeatureCapabilityContract,
   type RequiredPlatformCapabilityContract,

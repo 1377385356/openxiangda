@@ -36,6 +36,23 @@ Web 默认保留开发服务回环访问检查。按需 Nest 使用 `tsx --test`
 
 只改文案时验证受影响页面。复杂事务、并发和值转换使用聚焦测试。浏览器验收实际操作并检查错误，不能用模拟响应或空页面加载代替真实角色验收。
 
+应用后端生成 Native 事务或 BusinessProcess 数据守卫时，业务测试通过统一根包的公开测试入口校验真实生成的请求，不复制验证规则或额外依赖底层包：
+
+```ts
+import { SCHEMA_VERSIONS, validateDataTransactionRequest } from 'openxiangda/testing';
+
+const diagnostics = validateDataTransactionRequest({
+  schemaVersion: SCHEMA_VERSIONS.dataTransactionRequest,
+  idempotencyKey: submission.idempotencyKey,
+  guards: submission.data.guards,
+  operations: submission.data.operations.map(item => ({
+    operation: item.kind, resourceCode: item.resourceCode, data: item.data,
+  })),
+});
+```
+
+合法请求返回空诊断数组；守卫失败码必须使用 `OPENXIANGDA_*`。纯合同校验不证明数据库锁、权限、实际执行或失败恢复通过，这些仍需要对应角色和原操作的运行验收。
+
 匿名访问另验证续填、上传、校验、幂等提交、own.list/own.read；另一浏览器应无法获取前一浏览器的记录。工作流按已启用功能检查发起、处理、历史详情和消息跳转，不为未启用通道增加测试负担。
 
 ## 可选临时身份 {#temporary-identities}
