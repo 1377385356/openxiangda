@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.49.9",
+  "version": "2.49.10",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -74,13 +74,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.64",
-    "openxiangda-contracts": "2.53.1",
-    "openxiangda-devkit-core": "2.42.7",
+    "openxiangda-cli": "2.6.65",
+    "openxiangda-contracts": "2.54.0",
+    "openxiangda-devkit-core": "2.42.8",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.86",
-    "openxiangda-nest": "2.13.15",
-    "openxiangda-skill-kit": "2.3.66",
+    "openxiangda-mcp": "2.0.87",
+    "openxiangda-nest": "2.13.16",
+    "openxiangda-skill-kit": "2.3.67",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -146,37 +146,36 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.49.9",
+    "version": "2.49.10",
     "status": "reviewed",
-    "title": "受管视频与音频播放器",
-    "summary": "补齐标准文件页的媒体播放，提供拥有鉴权读取与内容生命周期的Field Kit内嵌播放器。",
+    "title": "发起人审批策略与真实流程说明",
+    "summary": "增加代码声明的发起人自动同意契约、能力协商和固定流程图说明，保持审批配置的有限修改边界。",
     "newFeatures": [
-      "新增ManagedMediaPlayer，接收平台文件引用并按当前身份读取媒体，提供加载、拒绝和重试状态。"
+      "审批节点可声明 initiatorApprovalPolicy，默认 manual；auto_approve 只面向原解析产生的当前发起人直接席位。",
+      "节点配置和固定流程图显示代码拥有的策略，执行图可读取持久化的自动审批证据。"
     ],
     "fixes": [
-      "video/audio的合法inline预览不再落入无预览器分支。",
-      "文件、资源、身份或绑定变化与卸载释放ObjectURL，迟到响应不会展示原媒体。"
+      "配置校验拒绝自动同意与强制同意意见、补填页面或可写字段的组合。",
+      "同步托管媒体文档到随包 Skill 参考，保持开发资料同源。"
     ],
     "affectedUsers": [
-      "在2.0应用中观看托管视频或音频、迁移原课时视频弹窗的开发者。"
+      "重建多人审批、发起人与审批人重合业务以及维护固定流程配置的开发者和管理员。"
     ],
     "upgradeSteps": [
-      "升级完整根发行，在原任务界面使用openxiangda/field-kit的ManagedMediaPlayer。",
-      "传入正式resourceCode与DataFileRef；保留显式学习提交，不根据播放状态改写业务进度。"
+      "升级完整根包组合，并使用支持 workflow.initiator-approval-policy@1.0.0 的配套服务端。",
+      "只为没有必填业务输入的审批节点显式声明 auto_approve；需要补选人员、补材料等节点继续使用 manual。"
     ],
     "knownLimitations": [
-      "内嵌播放器默认单文件100MiB；浏览器编码支持由实际媒体决定，需真实播放验收。",
-      "不增加流式转码、范围读取或观看时长规则，权限继续由原Native文件API控制。",
-      "本轮仅本机完整SDK配套，不执行npm或学校生产发布。"
+      "代理、转交、加签、管理员重分配和退回补正保持人工办理，不能用自动同意替代业务输入。",
+      "不代表已精确复现宜搭 originatorMerge 的全部运行效果；真实源流程仍需逐条验收。",
+      "本轮只进行本地配套分发，不发布 npm 或执行学校生产迁移。"
     ],
-    "issues": [
-      "PLT-014"
-    ],
+    "issues": [],
     "compatibility": {
       "node": ">=24",
-      "platform": "复用现有DataFilePreview和Native文件授权，不改变compiler、数据模型或1.x引擎"
+      "platform": "新增显式能力协商；只有声明该策略的 V2 应用需要配套 Workflow 实现，默认人工和 1.x 保持原行为。"
     },
-    "sha256": "6258c81bf6fe452133e118982cefc432bbab138629d12908602523c2e04f8ba4",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.49.9"
+    "sha256": "b20657ae94bdda668654996d5f5f526ce3bda95df005327c959764d143ae23e4",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.49.10"
   }
 }
