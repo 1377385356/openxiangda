@@ -471,6 +471,14 @@ export interface NativeScopeDimensionApplicability {
   roleCodes: string[];
   unrestrictedRoleCodes: string[];
   rules: NativeScopeDimensionApplicabilityRule[];
+  /** Scoped candidate fields are independent of CRUD policy applicability. */
+  candidateFields?: Array<{
+    dataLogicalRevisionId: string;
+    resourceCode: string;
+    fieldCode: string;
+    roleCode: string;
+    operation: string;
+  }>;
 }
 
 export interface NativeAuthorizationManagementScopeDimension {

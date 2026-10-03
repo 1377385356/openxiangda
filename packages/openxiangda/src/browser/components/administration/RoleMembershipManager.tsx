@@ -17,6 +17,7 @@ import {
   Tag,
 } from 'antd';
 import dayjs from 'dayjs';
+import { scopeAppliesToRole } from './scope-applicability';
 import type {
   NativeAuthorizationManagementCatalog,
   NativeAuthorizationMutationReceipt,
@@ -841,9 +842,7 @@ function MembershipBatchEditor({
     fromMode = Form.useWatch('fromMode', form),
     toMode = Form.useWatch('toMode', form);
   const dimensions = catalog.scopeDimensions.filter(
-    (dimension) =>
-      dimension.applicability.allRoles ||
-      dimension.applicability.roleCodes.includes(roleCode)
+    (dimension) => scopeAppliesToRole(dimension.applicability, roleCode)
   );
   const pending = items
       ? membershipBatchPending(items, outcomes, receipts)

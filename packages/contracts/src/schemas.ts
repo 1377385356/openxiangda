@@ -1128,6 +1128,22 @@ export const nativeAuthorizationManagementCatalogSchema = {
               "unrestrictedRoleCodes", "rules",
             ],
             properties: {
+              candidateFields: {
+                type: "array",
+                maxItems: 10000,
+                items: {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["dataLogicalRevisionId", "resourceCode", "fieldCode", "roleCode", "operation"],
+                  properties: {
+                    dataLogicalRevisionId: nonEmptyString,
+                    resourceCode: nativeStableCode,
+                    fieldCode: nonEmptyString,
+                    roleCode: nativeStableCode,
+                    operation: nonEmptyString,
+                  },
+                },
+              },
               dimensionCode: nativeStableCode,
               allRoles: { type: "boolean" },
               roleCodes: {
