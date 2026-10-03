@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.49.4",
+  "version": "2.49.5",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -74,13 +74,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.59",
-    "openxiangda-contracts": "2.52.0",
-    "openxiangda-devkit-core": "2.42.4",
+    "openxiangda-cli": "2.6.60",
+    "openxiangda-contracts": "2.53.0",
+    "openxiangda-devkit-core": "2.42.5",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.83",
-    "openxiangda-nest": "2.13.13",
-    "openxiangda-skill-kit": "2.3.63",
+    "openxiangda-mcp": "2.0.84",
+    "openxiangda-nest": "2.13.14",
+    "openxiangda-skill-kit": "2.3.64",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -146,32 +146,33 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.49.4",
+    "version": "2.49.5",
     "status": "reviewed",
-    "title": "统一入口校验 Native 事务",
-    "summary": "应用业务测试可以从统一根包读取共享事务校验器，验证实际生成的守卫而无需额外依赖底层实现包。",
+    "title": "单人资料的条件唯一约束",
+    "summary": "Native 唯一键可以按平台用户的稳定身份和布尔启用条件约束有效资料，并由数据库处理并发冲突。",
     "newFeatures": [
-      "openxiangda/testing 导出 validateDataTransactionRequest 与 SCHEMA_VERSIONS，保留共享合同诊断。"
+      "user.single 支持 exact-v1 唯一键；布尔字段支持 eq/ne 条件。",
+      "仅使用新增声明时要求 data.unique-keys 1.1.0，既有规则维持原能力要求。"
     ],
-    "fixes": [
-      "补齐统一依赖约束下业务事务测试缺少受支持校验入口的问题。"
-    ],
+    "fixes": [],
     "affectedUsers": [
-      "编写 Native 原子事务和 BusinessProcess 提交业务测试的 V2 应用开发者。"
+      "需要每人仅一份有效资料、同时保留停用历史的 V2 应用开发者。"
     ],
     "upgradeSteps": [
-      "消费同源精确根包后从 openxiangda/testing 导入，不添加底层包依赖。",
-      "本轮仅导出本地密封测试分发，不执行 npm 发布。"
+      "使用精确同源 SDK 和支持 data.unique-keys 1.1.0 的平台；通过普通模型声明安装规则。",
+      "历史有效资料重复时先按业务处理冲突，平台不会自动删除或停用记录。",
+      "本轮仅导出本地密封分发，不执行 npm 发布。"
     ],
     "knownLimitations": [
-      "合同诊断不替代真实权限、数据库并发、业务运行和恢复验收。"
+      "NULL 不参与布尔 eq/ne 条件；规则仍限 8 个，每个最多 4 字段和 4 条件。",
+      "已安装规则的删除仍需托管迁移，不通过普通旧版本激活移除。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
-      "platform": "Native 事务合同不变，稳定 1.x 不受影响"
+      "platform": "新增声明要求 data.unique-keys 1.1.0；稳定 1.x 与既有唯一键规则不变"
     },
-    "sha256": "2ddc0a54c3ded4aeb9b33c98ae7ed43007653097dabd9ee10e3b68ff6998b83d",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.49.4"
+    "sha256": "033fd95bf90f5e242f030ee1b24688dc5358aace39a4477977eb25f08c158429",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.49.5"
   }
 }
