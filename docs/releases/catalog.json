@@ -3,6 +3,36 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.49.11",
+      "status": "reviewed",
+      "title": "保留原生 Nest 业务拒绝说明",
+      "summary": "修复浏览器 SDK 丢失没有 code 字段的原生 Nest HTTP 拒绝文案，继续保留结构化错误与原请求恢复边界。",
+      "newFeatures": [],
+      "fixes": [
+        "非成功 HTTP JSON 对象即使没有 code，也保留后端的中文 4xx message、data、retryable 和请求诊断。",
+        "根包与 CLI 打包模板的精确依赖按既有耦合规则同步版本化。"
+      ],
+      "affectedUsers": [
+        "使用可选 Nest 后端业务动作、需要显示明确冲突或权限拒绝原因的 V2 应用开发者。"
+      ],
+      "upgradeSteps": [
+        "升级完整根包发行并核对项目锁文件；既有生成契约与平台配置不需因本修复改变。",
+        "应用按结构化 code/status 和提交阶段判断恢复，不通过解析中文文案自动重试写入。"
+      ],
+      "knownLimitations": [
+        "仅支持既有合法字符串 message；非 JSON、primitive 和数组错误响应继续显示 HTTP fallback。",
+        "本轮仅本机完整配套分发，不代表 npm 发布、生产部署或应用全部功能验收。"
+      ],
+      "issues": [],
+      "compatibility": {
+        "node": ">=24",
+        "platform": "无新增平台契约或权限要求；继续使用当前项目匹配的完整校验器发行。V1 引擎保持原行为。"
+      },
+      "sha256": "bebca7dfc7577833fe7f79e9bf7e14fa73681c4bf64eb564882b025e11a7d8b7",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.49.11"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.49.10",
       "status": "reviewed",
       "title": "发起人审批策略与真实流程说明",
