@@ -522,6 +522,7 @@ export function SurfaceFieldControl({
       label={field.label}
       name={field.key}
       rules={rules}
+      validateTrigger={field.widget === 'subtable' ? [] : undefined}
       valuePropName={field.widget === 'switch' ? 'checked' : 'value'}
     >
       {control}
@@ -689,6 +690,7 @@ export function MobileSurfaceFieldControl({
       noStyle
       name={field.key}
       rules={rules}
+      validateTrigger={field.widget === 'subtable' ? [] : undefined}
       valuePropName={field.widget === 'switch' ? 'checked' : 'value'}
     >
       <MobileFieldFrame field={field} extra={renderers?.renderExtra?.({ field, disabled, operation, recordId })}>
