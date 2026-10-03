@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.48.0",
+  "version": "2.48.1",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -74,13 +74,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.50",
+    "openxiangda-cli": "2.6.51",
     "openxiangda-contracts": "2.47.0",
     "openxiangda-devkit-core": "2.41.6",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
     "openxiangda-mcp": "2.0.77",
     "openxiangda-nest": "2.13.7",
-    "openxiangda-skill-kit": "2.3.56",
+    "openxiangda-skill-kit": "2.3.57",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -146,35 +146,32 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.48.0",
+    "version": "2.48.1",
     "status": "reviewed",
-    "title": "有界主子表容量与整单流程发起",
-    "summary": "标准流程可通过现有Field Kit填写并原子提交声明的主子表，任务办理和草稿共同支持源业务所需的50/350行规模。",
-    "newFeatures": [
-      "标准流程发起页支持声明子表；子行日期和零值沿字段编码，原命令保持整体提交与原结果恢复。",
-      "每表最多100行、父资源与任务页声明合计400行，完整替换保留旧行删除与新行意图。"
-    ],
+    "title": "大子表分页与整表校验",
+    "summary": "PC与手机主子表每页渲染十行，保留完整输入、草稿、排序和整单提交；校验覆盖全部行。",
+    "newFeatures": [],
     "fixes": [
-      "统一事务1000操作/2MiB、任务值1MiB和普通表单草稿2MiB预算；页面定义、状态及文件保持独立配额。"
+      "减少大子表同时挂载的编辑控件；未显示行继续复用标准字段规则校验，任务完成的错误定位到对应页。",
+      "跨页移动使用绝对行序号，上传和待重试文件未处理时保留当前页。"
     ],
     "affectedUsers": [
-      "使用OpenXiangda 2.0主子表、标准流程发起和任务办理的开发者与用户。"
+      "使用V2标准主子表、流程发起或任务办理页面的用户。"
     ],
     "upgradeSteps": [
-      "先安装包含有界容量、标准主子表发起和正式授权增量迁移的匹配Server，再升级本批精确SDK/CLI并构建应用。",
-      "本任务仅本地打包及合成环境验证，不执行npm发布。"
+      "升级精确SDK/CLI并重新构建应用；本修正不引入服务端迁移或数据格式变更。",
+      "本任务仅本地包消费与合成验证，不执行npm发布。"
     ],
     "knownLimitations": [
-      "一般child CRUD不提供跨所有写入者的父集合容量锁；标准整单提交与任务提交按各自受控事务验证。",
-      "最大附件组合仍受文件配额限制；本批容量能力不代表学校完整源流程通过运行验收。",
-      "产生大记录后应先停止新定义并处理在途；不能直接降级到旧49行runtime或截断数据。"
+      "分页是渲染边界，数据和事务仍遵守原先每表100行、声明合计400行等预算。",
+      "最大附件组合与学校完整源流程运行验收仍单独验证。"
     ],
     "issues": [],
     "compatibility": {
-      "node": ">=22.12.0",
-      "platform": "匹配的Native/BusinessProcess/Workflow/FormDraft运行时及增量SQL；1.x不消费这些契约"
+      "node": ">=24",
+      "platform": "沿用2.48.0匹配平台；1.x不消费此组件"
     },
-    "sha256": "ea24a3f478a5fdfd7f6907ba0693f151d98456af554c7370cdb169e492e7400c",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.48.0"
+    "sha256": "ba545c3aadbbc7a8b4b31de91b2257dd1600df59c20e05e0ec452c0bf07362b0",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.48.1"
   }
 }
