@@ -6592,7 +6592,10 @@ function validateCapabilityClosure(
     const code = string(object(raw).code);
     if (code) catalogOwners.set(code, 'authz.capabilities');
   }
-  for (const [resourceIndex, rawResource] of (Array.isArray(data.resources) ? data.resources : []).entries()) {
+  const resources = Array.isArray(data.resources) ? data.resources : [];
+  // Register every real definition before inspecting field references. A field
+  // may reference a later resource without claiming that resource's catalog.
+  for (const rawResource of resources) {
     const resource = object(rawResource);
     const resourceOwner = `data.resources.${string(resource.code)}`;
     Object.values(object(resource.capabilities)).forEach(value => {
@@ -6600,18 +6603,23 @@ function validateCapabilityClosure(
       registerCapabilityOwner(code, resourceOwner, catalogOwners, diagnostics);
       catalog.add(code);
     });
+  }
+  const definedCapabilities = new Set(catalog);
+  for (const [resourceIndex, rawResource] of resources.entries()) {
+    const resource = object(rawResource);
+    const resourceOwner = `data.resources.${string(resource.code)}`;
     Object.entries(object(resource.fieldPolicies)).forEach(([fieldCode, rawPolicy]) => {
       const policy = object(rawPolicy);
       for (const key of ['read', 'create', 'update'] as const) {
         for (const value of Array.isArray(policy[key]) ? policy[key] : []) {
           const code = string(value);
-          if (isDataAuditMetadataField(fieldCode)) {
-            references.push({
-              capability: code,
-              path: `data.resources[${resourceIndex}].fieldPolicies.${fieldCode}.${key}`,
-            });
-            continue;
-          }
+          references.push({
+            capability: code,
+            path: `data.resources[${resourceIndex}].fieldPolicies.${fieldCode}.${key}`,
+          });
+          if (isDataAuditMetadataField(fieldCode) || definedCapabilities.has(code)) continue;
+          // Preserve resource-owned implicit field capabilities. Reusing an
+          // explicit/CRUD definition is different from two implicit owners.
           registerCapabilityOwner(
             code,
             resourceOwner,

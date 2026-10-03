@@ -1722,9 +1722,12 @@ function compileCapabilities(config: JsonObject) {
     };
     catalog.set(code, capability);
   }
-  for (const [resourceIndex, raw] of config.data.resources.entries()) {
-    const pointer = `/config/data/resources/${resourceIndex}`;
-    const resource = validateResource(raw, pointer, config.appCode);
+  const resources = config.data.resources.map((raw: unknown, resourceIndex: number) => ({
+    pointer: `/config/data/resources/${resourceIndex}`,
+    resource: validateResource(raw, `/config/data/resources/${resourceIndex}`, config.appCode),
+  }));
+  // CRUD definitions precede all field references, regardless of source order.
+  for (const { pointer, resource } of resources) {
     const operationNames: Record<string, string> = {
       read: `读取${resource.name}`,
       create: `新建${resource.name}`,
@@ -1750,6 +1753,10 @@ function compileCapabilities(config: JsonObject) {
         source: 'data',
       });
     }
+  }
+  const definedCapabilities = new Set(catalog.keys());
+  const fieldOwners = new Map<string, string>();
+  for (const { pointer, resource } of resources) {
     for (const [fieldCode, rawPolicy] of Object.entries(
       resource.fieldPolicies
     )) {
@@ -1767,6 +1774,12 @@ function compileCapabilities(config: JsonObject) {
             `${pointer}/fieldPolicies/${fieldCode}/${operation}`,
             config.appCode
           );
+          if (definedCapabilities.has(code)) continue;
+          const existingOwner = fieldOwners.get(code);
+          if (existingOwner && existingOwner !== resource.code) {
+            fail('NATIVE_CAPABILITY_DUPLICATE', `${pointer}/fieldPolicies/${fieldCode}/${operation}`);
+          }
+          fieldOwners.set(code, resource.code);
           if (catalog.has(code)) continue;
           catalog.set(code, {
             code,

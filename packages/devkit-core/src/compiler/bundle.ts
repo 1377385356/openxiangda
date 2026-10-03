@@ -1636,10 +1636,9 @@ type NormalizedCapabilityConfiguration = Pick<
  * Compile the capability projection from normalized configuration only.
  *
  * Catalog ownership is validated before compilation. This keeps the existing
- * platform -> explicit -> resource registration semantics and the resource
- * owner when a field policy reuses its code. The only new determinism rule is
- * that normalized resources/field keys and the platform's fixed operation
- * order are used instead of source object insertion order.
+ * platform -> explicit -> all resource definitions -> field references. Field
+ * policies never replace an explicit or CRUD owner, including later resources.
+ * Normalized resources/field keys and fixed operation order keep this stable.
  */
 function compileCapabilities(
   configuration: NormalizedCapabilityConfiguration
@@ -1656,9 +1655,10 @@ function compileCapabilities(
       source: 'explicit',
     });
   }
-  for (const resource of [...configuration.data.resources].sort((left, right) =>
+  const resources = [...configuration.data.resources].sort((left, right) =>
     compare(left.code, right.code)
-  )) {
+  );
+  for (const resource of resources) {
     const operationNames: Record<string, string> = {
       read: `读取${resource.name}`,
       create: `新建${resource.name}`,
@@ -1675,6 +1675,8 @@ function compileCapabilities(
         source: 'data',
       });
     }
+  }
+  for (const resource of resources) {
     for (const [fieldCode, policy] of Object.entries(
       resource.fieldPolicies || {}
     ).sort(([left], [right]) => compare(left, right))) {
