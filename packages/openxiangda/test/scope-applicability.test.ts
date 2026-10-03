@@ -19,3 +19,20 @@ test('candidate duties and policy OR remain independent in the membership select
   assert.equal(scopeAppliesToRole(dimension, 'reader'), false);
   assert.equal(scopeAppliesToRole(dimension, 'leader'), true);
 });
+
+test('Workflow-only duties remain editable while unrelated policy exclusions stay enforced', () => {
+  const dimension: NativeScopeDimensionApplicability = {
+    dimensionCode: 'college', allRoles: true, roleCodes: ['secretary'], unrestrictedRoleCodes: ['secretary', 'manager'],
+    rules: [{ policyCode: 'all', allRoles: true, roleCodes: [], unrestrictedRoleCodes: ['secretary', 'manager'] }],
+    workflowBindings: [{ workflowCode: 'return', nodeId: 'review', roleCode: 'secretary', definitionVersion: 1,
+      bindingVersion: 1, configurationRevision: 0, source: 'default_binding', contexts: ['active'] }],
+  };
+  assert.equal(scopeAppliesToRole(dimension, 'secretary'), true);
+  assert.equal(scopeAppliesToRole(dimension, 'manager'), false);
+  assert.equal(scopeAppliesToRole(dimension, 'reader'), true);
+  dimension.rules = [];
+  assert.equal(scopeAppliesToRole(dimension, 'reader'), false);
+  assert.equal(scopeAppliesToRole(dimension, 'secretary'), true);
+  delete dimension.workflowBindings;
+  assert.equal(scopeAppliesToRole(dimension, 'secretary'), false);
+});

@@ -479,6 +479,10 @@ export interface NativeScopeDimensionApplicability {
     roleCode: string;
     operation: string;
   }>;
+  /** Effective scoped workflow duties; does not grant ordinary data access. */
+  workflowBindings?: Array<Pick<WorkflowRoleReference,
+    'workflowCode' | 'nodeId' | 'roleCode' | 'definitionVersion' | 'bindingVersion' |
+    'configurationRevision' | 'source' | 'contexts'>>;
 }
 
 export interface NativeAuthorizationManagementScopeDimension {

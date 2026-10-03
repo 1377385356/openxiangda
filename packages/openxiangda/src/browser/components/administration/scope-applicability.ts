@@ -6,6 +6,7 @@ export function scopeAppliesToRole(
 ): boolean {
   return Boolean(
     applicability.candidateFields?.some((field) => field.roleCode === roleCode) ||
+    applicability.workflowBindings?.some((binding) => binding.roleCode === roleCode) ||
     applicability.rules.some((rule) =>
       !rule.unrestrictedRoleCodes.includes(roleCode) &&
       (rule.allRoles || rule.roleCodes.includes(roleCode))

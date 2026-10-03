@@ -1128,6 +1128,21 @@ export const nativeAuthorizationManagementCatalogSchema = {
               "unrestrictedRoleCodes", "rules",
             ],
             properties: {
+              workflowBindings: {
+                type: "array", maxItems: 10000,
+                items: {
+                  type: "object", additionalProperties: false,
+                  required: ["workflowCode", "nodeId", "roleCode", "definitionVersion", "bindingVersion", "configurationRevision", "source", "contexts"],
+                  properties: {
+                    workflowCode: nonEmptyString, nodeId: nonEmptyString, roleCode: nativeStableCode,
+                    definitionVersion: { type: "integer", minimum: 1 },
+                    bindingVersion: { type: "integer", minimum: 1 },
+                    configurationRevision: { type: "integer", minimum: 0 },
+                    source: { enum: ["default_binding", "node_override", "routing_source"] },
+                    contexts: { type: "array", minItems: 1, maxItems: 2, uniqueItems: true, items: { enum: ["active", "in_flight"] } },
+                  },
+                },
+              },
               candidateFields: {
                 type: "array",
                 maxItems: 10000,

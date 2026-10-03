@@ -4,7 +4,9 @@
 
 角色成员的范围维度也支持模型字段的 `userCandidates.scope` 引用，不要求为审批人职责增加无关的数据读写策略。目录 `scopeDimensions[].applicability.candidateFields` 返回字段所在的资源、数据修订、字段、角色与操作；当前环境及仍在办理的历史流程所引用的字段均可贡献范围适用性。实例完成或发起命令取消后，旧字段不再单独贡献适用性。配置成员的范围不会自动授予数据读写、菜单或应用管理权限；实际选人与提交仍核验范围、操作、成员有效期及账号状态。
 
-自定义管理页面按“候选字段引用该角色，或任一数据策略规则适用于该角色”筛选维度。每条策略须单独处理 `unrestrictedRoleCodes`；不能仅依据汇总 `allRoles`、`roleCodes` 或全局排除列表判断。未返回 `candidateFields` 时按空列表处理。
+流程的 `app_role_in_scope` 绑定也贡献范围适用性，包括审批、抄送、兼容的节点人员覆盖及路由补充来源。目录 `scopeDimensions[].applicability.workflowBindings` 返回流程、节点、角色、定义/绑定版本、配置修订、来源和 `active`/`in_flight` 上下文；不包含业务事实或标题。当前启用定义和仍在办理的固定版本均可维护其职责，终态实例或已取消发起命令不再单独贡献适用性。
+
+自定义管理页面按“候选字段引用该角色、有效流程范围职责引用该角色，或任一数据策略规则适用于该角色”筛选维度。每条策略须单独处理 `unrestrictedRoleCodes`；不能仅依据汇总 `allRoles`、`roleCodes` 或全局排除列表判断。未返回 `candidateFields` 或 `workflowBindings` 时按空列表处理。流程职责的范围维护不授予普通数据读写权限，也不改变已创建任务的参与人快照。
 
 ## 发现当前入口 {#context}
 
