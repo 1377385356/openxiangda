@@ -36,6 +36,9 @@ pnpm openxiangda check
 要求 `data.unique-keys@1.1.0`，两者由同一共享编译器确定。旧平台在
 发布前明确报告缺少能力。未声明的模型不增加这一要求。
 
+支持1.1.0的平台同时支持原1.0.0基础规则；工具预检只接受这项已知兼容关系，
+不会按版本大小推断其他版本或能力可用。要求1.1.0的应用不能在1.0.0平台部署。
+
 ```ts
 const partners = defineDataModel({
   code: 'partners', name: '往来单位',

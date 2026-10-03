@@ -2293,6 +2293,30 @@ test("requires every derived platform capability to be available at the exact co
   );
 });
 
+test("accepts only the implemented basic unique capability compatibility", () => {
+  const requirement = (contractVersion: string) => ({
+    ...requiredCapability('data.unique-keys'), contractVersion,
+  });
+  const fixture = (version: string, status: 'available' | 'preview' | 'planned' = 'available') => ({
+    ...platformCapabilitiesFixture(),
+    features: { 'data.unique-keys': { contractVersion: version, status } },
+  });
+  for (const [required, supported] of [['1.0.0', '1.0.0'], ['1.1.0', '1.1.0'], ['1.0.0', '1.1.0']]) {
+    assert.doesNotThrow(() => assertRequiredCapabilitiesAvailable(fixture(supported), [requirement(required)]));
+  }
+  for (const [required, supported] of [['1.1.0', '1.0.0'], ['1.0.0', '1.2.0'], ['1.0.0', '2.0.0']]) {
+    assert.throws(() => assertRequiredCapabilitiesAvailable(fixture(supported), [requirement(required)]),
+      (error: unknown) => error instanceof ControlPlaneError && error.code === 'OPENXIANGDA_REQUIRED_CAPABILITY_UNAVAILABLE');
+  }
+  for (const status of ['preview', 'planned'] as const) {
+    assert.throws(() => assertRequiredCapabilitiesAvailable(fixture('1.1.0', status), [requirement('1.0.0')]));
+  }
+  assert.throws(() => assertRequiredCapabilitiesAvailable({ ...fixture('1.1.0'), features: {} }, [requirement('1.0.0')]));
+  assert.throws(() => assertRequiredCapabilitiesAvailable({ ...fixture('1.1.0'),
+    features: { 'data.native-golden-crud': { contractVersion: '1.1.0', status: 'available' } },
+  }, [requiredCapability('data.native-golden-crud')]));
+});
+
 test("rejects every direct deployment target except preproduction", async () => {
   const root = mkdtempSync(join(tmpdir(), "openxiangda-v2-prod-deploy-"));
   try {

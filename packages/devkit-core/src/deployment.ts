@@ -326,7 +326,12 @@ export function assertRequiredCapabilitiesAvailable(
     const capability = capabilities.features[requirement.code];
     if (
       capability?.status === 'available' &&
-      capability.contractVersion === requirement.contractVersion
+      (capability.contractVersion === requirement.contractVersion ||
+        // The implemented 1.1 contract preserves all basic 1.0 unique rules.
+        // Do not infer compatibility for unknown versions or other features.
+        (requirement.code === 'data.unique-keys' &&
+          requirement.contractVersion === '1.0.0' &&
+          capability.contractVersion === '1.1.0'))
     ) {
       return [];
     }
