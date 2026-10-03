@@ -3,6 +3,41 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.49.0",
+      "status": "reviewed",
+      "title": "表单与审批任务的限定职责选人",
+      "summary": "为限定职责的人员字段提供 SDK 查询和电脑、手机选择器，支持分页、已选复核、失效提示与当前任务版本绑定。配套平台负责候选授权、保存及进入审批节点时的再次核验。",
+      "newFeatures": [
+        "Native 表单和当前审批任务可通过正式 SDK 查询声明中的候选职责，保留记录修订与任务版本边界。",
+        "电脑和手机 Field Kit 支持搜索、分页、跨页选择、清空、取消、确认前复核及失效历史值显示。",
+        "普通 CRUD、发起页、任务补填和资料修正页传递同一候选上下文，职责引用展示受限字段来源。"
+      ],
+      "fixes": [
+        "补齐候选查询与返回的 JSON Schema，查询失败或缺少上下文时明确报错，过时响应不覆盖当前选择。"
+      ],
+      "affectedUsers": [
+        "使用按职责或已保存业务范围选择审批人的 V2 应用开发者、流程管理员和办理人员。"
+      ],
+      "upgradeSteps": [
+        "本轮版本封存用于本地 SDK 与平台联合验证，不执行 npm 发布或生产部署。",
+        "目标平台须支持 data.user-candidates@1.0.0；在 user.single/user.multiple 字段上声明 userCandidates，流程通过 candidateField 引用该字段。",
+        "升级应用的精确依赖并重新生成、检查和测试部署；按真实角色验证候选范围、事务保存、任务补填及下游派单。"
+      ],
+      "knownLimitations": [
+        "首版任务仅支持主体候选字段；可写子表候选字段仍明确拒绝。",
+        "使用记录字段作为范围时，新建不能选择非空人员；须先保存范围，后续任务按该保存值选人。",
+        "源码检查和合成组件验收不代表学校流程或完整应用运行验收完成。"
+      ],
+      "issues": [],
+      "compatibility": {
+        "node": ">=24",
+        "platform": "data.user-candidates@1.0.0；稳定 1.x 和普通人员字段不消费新候选合同"
+      },
+      "sha256": "618a1e0ea1c9292de4f9a7120905fb5e11453e674e224cf46f57b34bb1316491",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.49.0"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.48.4",
       "status": "reviewed",
       "title": "限定职责选人的字段与流程合同",

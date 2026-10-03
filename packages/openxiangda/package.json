@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.48.4",
+  "version": "2.49.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -74,13 +74,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.54",
-    "openxiangda-contracts": "2.49.0",
-    "openxiangda-devkit-core": "2.42.0",
+    "openxiangda-cli": "2.6.55",
+    "openxiangda-contracts": "2.50.0",
+    "openxiangda-devkit-core": "2.42.1",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.79",
-    "openxiangda-nest": "2.13.9",
-    "openxiangda-skill-kit": "2.3.59",
+    "openxiangda-mcp": "2.0.80",
+    "openxiangda-nest": "2.13.10",
+    "openxiangda-skill-kit": "2.3.60",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -146,33 +146,37 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.48.4",
+    "version": "2.49.0",
     "status": "reviewed",
-    "title": "限定职责选人的字段与流程合同",
-    "summary": "定义人员候选职责、记录范围和固定流程字段绑定，编译时拒绝来源漂移和范围绕过。此版本用于后续运行时接入，尚未开放该平台能力。",
+    "title": "表单与审批任务的限定职责选人",
+    "summary": "为限定职责的人员字段提供 SDK 查询和电脑、手机选择器，支持分页、已选复核、失效提示与当前任务版本绑定。配套平台负责候选授权、保存及进入审批节点时的再次核验。",
     "newFeatures": [
-      "user.single/user.multiple 的 userCandidates 引用同包职责与可选范围，schema、Surface和纯编译器共同校验。",
-      "form_field_users 的 candidateField 精确引用主体字段与事实投影，禁止重复来源配置、嵌套路径绕过和任务同时修改范围与选择。",
-      "使用该声明自动要求 data.user-candidates@1.0.0；未支持的平台必须拒绝部署。"
+      "Native 表单和当前审批任务可通过正式 SDK 查询声明中的候选职责，保留记录修订与任务版本边界。",
+      "电脑和手机 Field Kit 支持搜索、分页、跨页选择、清空、取消、确认前复核及失效历史值显示。",
+      "普通 CRUD、发起页、任务补填和资料修正页传递同一候选上下文，职责引用展示受限字段来源。"
     ],
-    "fixes": [],
+    "fixes": [
+      "补齐候选查询与返回的 JSON Schema，查询失败或缺少上下文时明确报错，过时响应不覆盖当前选择。"
+    ],
     "affectedUsers": [
-      "需要按职责和已保存业务范围选择审批人的 V2 应用开发者及平台维护者。"
+      "使用按职责或已保存业务范围选择审批人的 V2 应用开发者、流程管理员和办理人员。"
     ],
     "upgradeSteps": [
-      "本轮只固定本地合同包供平台接入，不执行 npm 发布或生产部署。",
-      "应用须等待 Native、Workflow、SDK及双端组件验证完成且平台广告能力后再采用声明。"
+      "本轮版本封存用于本地 SDK 与平台联合验证，不执行 npm 发布或生产部署。",
+      "目标平台须支持 data.user-candidates@1.0.0；在 user.single/user.multiple 字段上声明 userCandidates，流程通过 candidateField 引用该字段。",
+      "升级应用的精确依赖并重新生成、检查和测试部署；按真实角色验证候选范围、事务保存、任务补填及下游派单。"
     ],
     "knownLimitations": [
-      "尚无公开候选接口或完整运行时约束；仅有编译检查不能证明选人或流程验收完成。",
-      "首版任务只支持主体候选字段，可写子表候选字段明确拒绝；新建不能提交非空的记录范围选人。"
+      "首版任务仅支持主体候选字段；可写子表候选字段仍明确拒绝。",
+      "使用记录字段作为范围时，新建不能选择非空人员；须先保存范围，后续任务按该保存值选人。",
+      "源码检查和合成组件验收不代表学校流程或完整应用运行验收完成。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
-      "platform": "目标须支持 data.user-candidates@1.0.0；1.x 不消费新合同"
+      "platform": "data.user-candidates@1.0.0；稳定 1.x 和普通人员字段不消费新候选合同"
     },
-    "sha256": "2795353dc826b385cf6bef43883266fb9727b99e0ce2c9eaa7c12369e121fbc7",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.48.4"
+    "sha256": "618a1e0ea1c9292de4f9a7120905fb5e11453e674e224cf46f57b34bb1316491",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.49.0"
   }
 }
