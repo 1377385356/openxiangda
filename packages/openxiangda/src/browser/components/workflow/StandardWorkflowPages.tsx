@@ -127,6 +127,9 @@ import { RecordChangeHistory } from '../resource/RecordChangeHistory';
 import { ResourceFormContent, type ResourceFormDrawerState } from '../resource/ResourceFormFrame';
 import { WorkflowRecordEditor } from './WorkflowRecordEditor';
 import { PlatformAvatar } from '../PlatformAvatar';
+import { SubtableField } from '../platform-fields/SubtableField';
+import { standardProcessFormValues } from './standard-process-values';
+import { fieldWritable } from '../resource/resource-page-helpers';
 
 type PageVariant = 'desktop' | 'mobile';
 export type WorkflowPageVariant = PageVariant;
@@ -2643,7 +2646,7 @@ export function WorkflowSubmissionPage({
     return frame(<Result status="500" title="标准流程合同不完整" />);
   }
 
-  if (!commandId && fields.some(field => field.type === 'subtable')) {
+  if (!commandId && namedIntent && fields.some(field => field.type === 'subtable')) {
     return frame(
       <Result
         status="error"
@@ -2667,7 +2670,9 @@ export function WorkflowSubmissionPage({
       setPendingSubmission(dispatched); setRecoveryError(null); setRecoveryObservedAbsent(false);
     };
     try {
-      const encoded = normalizeFormValues(values, subjectDefinition.surface);
+      const encoded = namedIntent ? normalizeFormValues(values, subjectDefinition.surface)
+        : standardProcessFormValues(values, subjectDefinition.surface, resources,
+          (field, mode) => fieldWritable(field, mode === 'create' ? 'create' : 'edit', hasCapability, identity.isAppSuperAdmin));
       const data = Object.fromEntries(fields.filter(field => Object.hasOwn(encoded, field.key)).map(field => [field.key, encoded[field.key]]));
       const signature = JSON.stringify({ workflowCode, subjectId, environmentKey: identity.environment.key, submissionMode, data });
       if (submissionAttempt.current?.signature !== signature) {
@@ -2851,6 +2856,8 @@ export function WorkflowSubmissionPage({
     namedIntent?.operationCode || definition.processOperationCode;
   const fieldRenderers: SurfaceFieldRenderers | undefined = uploadOperationCode
     ? {
+        ...(!namedIntent ? { renderSubtable: ({ field, disabled, operation, recordId }: Parameters<NonNullable<SurfaceFieldRenderers['renderSubtable']>>[0]) =>
+          <SubtableField field={field} disabled={disabled} operation={operation} parentRecordId={recordId} mobile={variant === 'mobile'} /> } : {}),
         ...(namedIntent ? { referenceLaunch: { workflowCode: definition.code, operationCode: namedIntent.operationCode } } : {}),
         upload: async (field, file) =>
           await uploadOperationManagedFile({
