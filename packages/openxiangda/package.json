@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.49.8",
+  "version": "2.49.9",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -74,7 +74,7 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.63",
+    "openxiangda-cli": "2.6.64",
     "openxiangda-contracts": "2.53.1",
     "openxiangda-devkit-core": "2.42.7",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
@@ -146,35 +146,37 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.49.8",
+    "version": "2.49.9",
     "status": "reviewed",
-    "title": "基础唯一键制品合同与编译器派生一致",
-    "summary": "修复制品封装对基础唯一键1.0.0的误拒，保留增强1.1.0以及精确使用闭包校验。",
-    "newFeatures": [],
+    "title": "受管视频与音频播放器",
+    "summary": "补齐标准文件页的媒体播放，提供拥有鉴权读取与内容生命周期的Field Kit内嵌播放器。",
+    "newFeatures": [
+      "新增ManagedMediaPlayer，接收平台文件引用并按当前身份读取媒体，提供加载、拒绝和重试状态。"
+    ],
     "fixes": [
-      "contracts制品语法接受共享编译器实际派生的data.unique-keys基础1.0.0及现行1.1.0。",
-      "增加实际compileAppPackage回归，覆盖基础与增强唯一键从配置到制品的完整链路。"
+      "video/audio的合法inline预览不再落入无预览器分支。",
+      "文件、资源、身份或绑定变化与卸载释放ObjectURL，迟到响应不会展示原媒体。"
     ],
     "affectedUsers": [
-      "使用基础唯一键且目标平台已实现增强1.1.0能力的2.0应用开发者。"
+      "在2.0应用中观看托管视频或音频、迁移原课时视频弹窗的开发者。"
     ],
     "upgradeSteps": [
-      "使用精确完整根发行升级，并配套已修复的Server入站制品校验。",
-      "重新检查和部署原应用；保留编译器派生需求，不手改contractVersion、usageDigest或唯一键声明。"
+      "升级完整根发行，在原任务界面使用openxiangda/field-kit的ManagedMediaPlayer。",
+      "传入正式resourceCode与DataFileRef；保留显式学习提交，不根据播放状态改写业务进度。"
     ],
     "knownLimitations": [
-      "未知能力、未知版本及其他能力版本差异仍拒绝；语法接受不代表目标能力或部署成功。",
-      "增强声明降级为基础仍由精确配置闭包拒绝；权限、数据库唯一约束与激活Head保持原边界。",
-      "本批仅本机完整SDK分发，不执行npm或学校生产发布。"
+      "内嵌播放器默认单文件100MiB；浏览器编码支持由实际媒体决定，需真实播放验收。",
+      "不增加流式转码、范围读取或观看时长规则，权限继续由原Native文件API控制。",
+      "本轮仅本机完整SDK配套，不执行npm或学校生产发布。"
     ],
     "issues": [
-      "PLT-013"
+      "PLT-014"
     ],
     "compatibility": {
       "node": ">=24",
-      "platform": "需配套Server338d5ac3；不改变共享compiler派生、validatorDigest或1.x引擎"
+      "platform": "复用现有DataFilePreview和Native文件授权，不改变compiler、数据模型或1.x引擎"
     },
-    "sha256": "3cd0baea28368559da50567109bd7fb991089ed4ba00f03f3ffa772108cd24dd",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.49.8"
+    "sha256": "6258c81bf6fe452133e118982cefc432bbab138629d12908602523c2e04f8ba4",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.49.9"
   }
 }
