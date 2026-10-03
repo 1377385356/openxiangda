@@ -3,6 +3,38 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.49.1",
+      "status": "reviewed",
+      "title": "候选职责的成员范围维护",
+      "summary": "成员管理识别人员候选字段声明的范围，支持当前与在办流程的字段版本，并正确处理数据策略的逐规则适用性。",
+      "newFeatures": [
+        "管理目录提供 candidateFields 引用，可追溯候选角色对应的资源、字段、数据修订与操作。"
+      ],
+      "fixes": [
+        "没有 CRUD 范围策略的审批人职责也能配置声明中的范围。",
+        "SDK 维度筛选按逐策略规则及候选职责判断，保留无限制角色和 OR 语义。"
+      ],
+      "affectedUsers": [
+        "通过角色与范围维护审批候选人的 V2 应用开发者和管理员。"
+      ],
+      "upgradeSteps": [
+        "本轮仅封装本地测试包，不执行 npm 发布。",
+        "配套平台须包含候选范围适用性修复；更新精确依赖后验证范围维护、候选选择与任务办理。"
+      ],
+      "knownLimitations": [
+        "候选字段不会赋予额外 CRUD、菜单或应用管理权限。",
+        "学校完整流程验收仍独立于合成平台验证。"
+      ],
+      "issues": [],
+      "compatibility": {
+        "node": ">=24",
+        "platform": "V2 候选范围适用性修复；不影响稳定 1.x"
+      },
+      "sha256": "0e629fd587327d3cea452a3f021c7dc5a7bc5dc40ae32b17b3d10f86de0aa3fd",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.49.1"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.49.0",
       "status": "reviewed",
       "title": "表单与审批任务的限定职责选人",
