@@ -3,6 +3,36 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.49.7",
+      "status": "reviewed",
+      "title": "标准流程提交表单的代码扩展",
+      "summary": "应用通过公开标准提交页提供预填、动态显隐和说明，继续复用平台上传、具名动作与原结果恢复。",
+      "newFeatures": [
+        "WorkflowSubmissionPage.formOptions提供canonical initialValues、fieldState和intro，PC与手机使用同一表单协议。"
+      ],
+      "fixes": [],
+      "affectedUsers": [
+        "需要业务资料预填或条件材料显隐的2.0流程应用开发者。"
+      ],
+      "upgradeSteps": [
+        "使用精确完整根发行升级，重新生成、检查并验证两端页面。",
+        "应用通过Data API读取获授权资料，将规则交给标准提交页；保留服务端资格与业务验证。"
+      ],
+      "knownLimitations": [
+        "字段规则只能作用于匹配发起合同的已有输入，不授予身份或业务字段权限。",
+        "原必填不可取消或隐藏；未知结果继续按原请求恢复。",
+        "本批仅本机密封分发，不执行npm或生产发布。"
+      ],
+      "issues": [],
+      "compatibility": {
+        "node": ">=24",
+        "platform": "新增可选React扩展，不改变后端及共享compiler合同；未采用的工作流维持原行为"
+      },
+      "sha256": "1b59c7b4fe96583ea47387daeb27101e8f62f3971fe4ed27303a438037de879e",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.49.7"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.49.6",
       "status": "reviewed",
       "title": "基础唯一键的平台预检兼容修复",

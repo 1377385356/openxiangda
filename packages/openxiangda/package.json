@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.49.6",
+  "version": "2.49.7",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -74,7 +74,7 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.61",
+    "openxiangda-cli": "2.6.62",
     "openxiangda-contracts": "2.53.0",
     "openxiangda-devkit-core": "2.42.6",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
@@ -146,32 +146,32 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.49.6",
+    "version": "2.49.7",
     "status": "reviewed",
-    "title": "基础唯一键的平台预检兼容修复",
-    "summary": "修复基础唯一键应用在已支持增强合同的平台上被能力预检误拒，保留实际使用派生及严格边界。",
-    "newFeatures": [],
-    "fixes": [
-      "data.unique-keys要求1.0.0时可使用available的1.1.0平台；不推断未知版本或其他能力的兼容性。"
+    "title": "标准流程提交表单的代码扩展",
+    "summary": "应用通过公开标准提交页提供预填、动态显隐和说明，继续复用平台上传、具名动作与原结果恢复。",
+    "newFeatures": [
+      "WorkflowSubmissionPage.formOptions提供canonical initialValues、fieldState和intro，PC与手机使用同一表单协议。"
     ],
+    "fixes": [],
     "affectedUsers": [
-      "使用既有文本条件唯一键并连接支持data.unique-keys 1.1.0平台的V2开发者。"
+      "需要业务资料预填或条件材料显隐的2.0流程应用开发者。"
     ],
     "upgradeSteps": [
-      "按精确完整根发行升级并保留旧锁文件，重新运行目标检查或部署。",
-      "应用继续声明原业务唯一键，不修改共享编译器派生的能力要求或删除约束。",
-      "本轮仅导出本机完整发行，不执行npm或学校生产发布。"
+      "使用精确完整根发行升级，重新生成、检查并验证两端页面。",
+      "应用通过Data API读取获授权资料，将规则交给标准提交页；保留服务端资格与业务验证。"
     ],
     "knownLimitations": [
-      "要求1.1.0仍不能使用1.0.0平台；preview/planned/缺失及未知版本继续拒绝。",
-      "能力预检不替代平台准备、激活与真实业务验收。"
+      "字段规则只能作用于匹配发起合同的已有输入，不授予身份或业务字段权限。",
+      "原必填不可取消或隐藏；未知结果继续按原请求恢复。",
+      "本批仅本机密封分发，不执行npm或生产发布。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
-      "platform": "既有data.unique-keys 1.0.0与已实现1.1.0的已知兼容关系；validator及应用唯一键语义不变"
+      "platform": "新增可选React扩展，不改变后端及共享compiler合同；未采用的工作流维持原行为"
     },
-    "sha256": "662caf90440646203a04f8cf2398a146cc895fc7259a4f5514786f83a63868ab",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.49.6"
+    "sha256": "1b59c7b4fe96583ea47387daeb27101e8f62f3971fe4ed27303a438037de879e",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.49.7"
   }
 }
