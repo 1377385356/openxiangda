@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.49.11",
+  "version": "2.49.12",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -74,13 +74,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.66",
-    "openxiangda-contracts": "2.54.0",
-    "openxiangda-devkit-core": "2.42.8",
+    "openxiangda-cli": "2.6.67",
+    "openxiangda-contracts": "2.54.1",
+    "openxiangda-devkit-core": "2.42.9",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.87",
-    "openxiangda-nest": "2.13.16",
-    "openxiangda-skill-kit": "2.3.67",
+    "openxiangda-mcp": "2.0.88",
+    "openxiangda-nest": "2.13.17",
+    "openxiangda-skill-kit": "2.3.68",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -146,32 +146,32 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.49.11",
+    "version": "2.49.12",
     "status": "reviewed",
-    "title": "保留原生 Nest 业务拒绝说明",
-    "summary": "修复浏览器 SDK 丢失没有 code 字段的原生 Nest HTTP 拒绝文案，继续保留结构化错误与原请求恢复边界。",
-    "newFeatures": [],
-    "fixes": [
-      "非成功 HTTP JSON 对象即使没有 code，也保留后端的中文 4xx message、data、retryable 和请求诊断。",
-      "根包与 CLI 打包模板的精确依赖按既有耦合规则同步版本化。"
+    "title": "显式读取本人业务联系电话",
+    "summary": "本人报名等具名业务动作可声明只读电话投影，编译器派生独立平台能力，默认身份和其他人员查询保持原投影。",
+    "newFeatures": [
+      "current-initiator 目录支持显式声明 phone，并将可空且最多80字符的电话纳入 snapshotRevision。",
+      "受管 backend-plan 命令使用同一本人投影规则；两个编译器按实际声明派生 directory.current-initiator-phone 1.0.0。"
     ],
+    "fixes": [],
     "affectedUsers": [
-      "使用可选 Nest 后端业务动作、需要显示明确冲突或权限拒绝原因的 V2 应用开发者。"
+      "需要在本人报名或联系业务中展示平台账号只读电话的 V2 应用开发者。"
     ],
     "upgradeSteps": [
-      "升级完整根包发行并核对项目锁文件；既有生成契约与平台配置不需因本修复改变。",
-      "应用按结构化 code/status 和提交阶段判断恢复，不通过解析中文文案自动重试写入。"
+      "安装完整同源根包发行，并先配套实现该能力的 Server；由编译器生成契约和要求，不手改摘要。",
+      "业务按原规则处理缺失电话，提交重新核对正式目录修订，不能接受浏览器身份快照。"
     ],
     "knownLimitations": [
-      "仅支持既有合法字符串 message；非 JSON、primitive 和数组错误响应继续显示 HTTP fallback。",
-      "本轮仅本机完整配套分发，不代表 npm 发布、生产部署或应用全部功能验收。"
+      "默认 SubjectProfile、人员搜索和 selected-user 不查询或返回电话。",
+      "不提供手机号查人或电话修改；本轮仅本机配套发行，不代表 npm 或生产部署。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
-      "platform": "无新增平台契约或权限要求；继续使用当前项目匹配的完整校验器发行。V1 引擎保持原行为。"
+      "platform": "新 phone 声明需要 directory.current-initiator-phone 1.0.0 及同源完整校验器。既有不声明 phone 的目录行为和 V1 引擎不变。"
     },
-    "sha256": "bebca7dfc7577833fe7f79e9bf7e14fa73681c4bf64eb564882b025e11a7d8b7",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.49.11"
+    "sha256": "e9f3ee1ec0e86f6cec12288bc02d64dc6af1db8e579ff336e0feef936e4842b4",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.49.12"
   }
 }
