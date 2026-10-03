@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import { canonicalJson, sha256Digest, parseNativeUniqueKeys, nativeUniqueKeysJsonSchema, validateDataResource } from 'openxiangda-contracts';
 import { compileNativeApplicationConfiguration } from 'openxiangda-contracts/native-compiler';
-import { compileApplicationSources, defineOpenXiangdaApp, defineDataModel, defineApplicationModule, requiredPlatformCapabilities,
+import { compileApplicationSources, compileAppPackage, defineOpenXiangdaApp, defineDataModel, defineApplicationModule, requiredPlatformCapabilities,
   type OpenXiangdaAppDeclaration } from '../src/index.js';
 
 const cjs = createRequire(import.meta.url)('openxiangda-contracts/native-compiler');
@@ -102,6 +102,24 @@ const profileFields = [
   { code: 'user', label: 'User', type: 'user.single' as const },
   { code: 'enabled', label: 'Enabled', type: 'boolean' as const },
 ];
+test('basic and extended compiler requirements survive actual application package sealing', () => {
+  const extended: OpenXiangdaAppDeclaration = { app: source().app, data: { resources: [{
+    code: 'profiles', name: 'Profiles', fields: profileFields,
+    uniqueKeys: [{ code: 'active-user', fields: [{fieldCode: 'user'}], when: [{fieldCode: 'enabled', operator: 'eq', value: true}] }],
+  }] } };
+  for (const [input, version] of [[source(), '1.0.0'], [extended, '1.1.0']] as const) {
+    const config = defineOpenXiangdaApp(input), compiled = compileApplicationSources(config);
+    const pkg = compileAppPackage({ config, version: 'test', createdAt: '2026-10-04T00:00:00Z',
+      source: {repository: 'https://example.invalid/app.git', commit: 'fixture', dirty: false},
+      artifacts: [compiled.config.artifact, compiled.contracts.artifact],
+      manifests: {config: compiled.config.artifact.digest, dataContract: compiled.contracts.artifact.digest},
+      toolchainVersion: 'test', minimumPlatformVersion: 'test',
+    });
+    const actual = pkg.manifest.compatibility.requiredPlatformCapabilities.find(item => item.code === 'data.unique-keys');
+    assert.equal(actual?.contractVersion, version);
+    assert.deepEqual(actual, platform(compiled).requiredPlatformCapabilities.find(item => item.code === 'data.unique-keys'));
+  }
+});
 test('one active profile uses the canonical user identity and only raises the extended capability floor', () => {
   for (const operator of ['eq', 'ne'] as const) for (const value of [true, false]) {
     const key = [{code:'active-user',fields:[{fieldCode:'user'}],when:[{fieldCode:'enabled',operator,value}]}];

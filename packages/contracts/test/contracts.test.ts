@@ -347,6 +347,28 @@ function fixture(): AppPackage {
   };
 }
 
+test('package syntax accepts only the two implemented unique-key requirements', () => {
+  const pkg = fixture();
+  const capability = { code: 'data.unique-keys' as const, contractVersion: '1.0.0', usageDigest: `sha256:${'c'.repeat(64)}` as const };
+  for (const version of ['1.0.0', '1.1.0']) {
+    pkg.compatibility.requiredPlatformCapabilities = [{ ...capability, contractVersion: version }];
+    assert.deepEqual(validateAppPackage(pkg), [], version);
+  }
+  for (const version of ['0.9.0', '1.2.0', '2.0.0', '', null]) {
+    const invalid = structuredClone(pkg) as any;
+    invalid.compatibility.requiredPlatformCapabilities = [{ ...capability, contractVersion: version }];
+    assert.ok(validateAppPackage(invalid).some(item => item.code === 'APP_PACKAGE_PLATFORM_CAPABILITY_CONTRACT_UNSUPPORTED'));
+  }
+  for (const code of ['data-api-v2', 'unknown-capability']) {
+    const invalid = structuredClone(pkg) as any;
+    invalid.compatibility.requiredPlatformCapabilities = [{ ...capability, code, contractVersion: '1.0.0' }];
+    assert.ok(validateAppPackage(invalid).length > 0);
+  }
+  const forged = structuredClone(pkg);
+  forged.compatibility.requiredPlatformCapabilities[0]!.usageDigest = 'not-a-digest' as any;
+  assert.ok(validateAppPackage(forged).some(item => item.code === 'APP_PACKAGE_PLATFORM_CAPABILITY_USAGE_DIGEST_INVALID'));
+});
+
 test('exports every frozen M0 JSON Schema', () => {
   assert.deepEqual(
     Object.values(contractSchemas)
