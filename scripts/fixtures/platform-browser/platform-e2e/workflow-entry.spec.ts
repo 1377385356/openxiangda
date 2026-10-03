@@ -522,7 +522,8 @@ test('ordinary workflow editing reuses Native uploads, rich text and parent-chil
   await editor.getByRole('textbox', { name: '富文本内容' }).fill('直接修改富文本说明');
   await subtable.getByLabel('品名', { exact: true }).first().fill('');
   await editor.getByRole('button', { name: '保存', exact: true }).click();
-  await expect(editor.getByText('请完善子表单第 1 项')).toBeVisible();
+  await expect(subtable.getByLabel('品名', { exact: true }).first()).toHaveAttribute('aria-invalid', 'true');
+  await expect(editor.getByText(/第 1 项/).last()).toBeVisible();
   expect(state.correctionWrites).toHaveLength(0);
   await subtable.getByLabel('品名', { exact: true }).first().fill('修改后的明细甲');
   await subtable.getByRole('row').nth(2).getByRole('button', { name: '删除', exact: true }).click();
