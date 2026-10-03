@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.49.7",
+  "version": "2.49.8",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -74,13 +74,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.62",
-    "openxiangda-contracts": "2.53.0",
-    "openxiangda-devkit-core": "2.42.6",
+    "openxiangda-cli": "2.6.63",
+    "openxiangda-contracts": "2.53.1",
+    "openxiangda-devkit-core": "2.42.7",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.85",
-    "openxiangda-nest": "2.13.14",
-    "openxiangda-skill-kit": "2.3.65",
+    "openxiangda-mcp": "2.0.86",
+    "openxiangda-nest": "2.13.15",
+    "openxiangda-skill-kit": "2.3.66",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -146,32 +146,35 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.49.7",
+    "version": "2.49.8",
     "status": "reviewed",
-    "title": "标准流程提交表单的代码扩展",
-    "summary": "应用通过公开标准提交页提供预填、动态显隐和说明，继续复用平台上传、具名动作与原结果恢复。",
-    "newFeatures": [
-      "WorkflowSubmissionPage.formOptions提供canonical initialValues、fieldState和intro，PC与手机使用同一表单协议。"
+    "title": "基础唯一键制品合同与编译器派生一致",
+    "summary": "修复制品封装对基础唯一键1.0.0的误拒，保留增强1.1.0以及精确使用闭包校验。",
+    "newFeatures": [],
+    "fixes": [
+      "contracts制品语法接受共享编译器实际派生的data.unique-keys基础1.0.0及现行1.1.0。",
+      "增加实际compileAppPackage回归，覆盖基础与增强唯一键从配置到制品的完整链路。"
     ],
-    "fixes": [],
     "affectedUsers": [
-      "需要业务资料预填或条件材料显隐的2.0流程应用开发者。"
+      "使用基础唯一键且目标平台已实现增强1.1.0能力的2.0应用开发者。"
     ],
     "upgradeSteps": [
-      "使用精确完整根发行升级，重新生成、检查并验证两端页面。",
-      "应用通过Data API读取获授权资料，将规则交给标准提交页；保留服务端资格与业务验证。"
+      "使用精确完整根发行升级，并配套已修复的Server入站制品校验。",
+      "重新检查和部署原应用；保留编译器派生需求，不手改contractVersion、usageDigest或唯一键声明。"
     ],
     "knownLimitations": [
-      "字段规则只能作用于匹配发起合同的已有输入，不授予身份或业务字段权限。",
-      "原必填不可取消或隐藏；未知结果继续按原请求恢复。",
-      "本批仅本机密封分发，不执行npm或生产发布。"
+      "未知能力、未知版本及其他能力版本差异仍拒绝；语法接受不代表目标能力或部署成功。",
+      "增强声明降级为基础仍由精确配置闭包拒绝；权限、数据库唯一约束与激活Head保持原边界。",
+      "本批仅本机完整SDK分发，不执行npm或学校生产发布。"
     ],
-    "issues": [],
+    "issues": [
+      "PLT-013"
+    ],
     "compatibility": {
       "node": ">=24",
-      "platform": "新增可选React扩展，不改变后端及共享compiler合同；未采用的工作流维持原行为"
+      "platform": "需配套Server338d5ac3；不改变共享compiler派生、validatorDigest或1.x引擎"
     },
-    "sha256": "1b59c7b4fe96583ea47387daeb27101e8f62f3971fe4ed27303a438037de879e",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.49.7"
+    "sha256": "3cd0baea28368559da50567109bd7fb991089ed4ba00f03f3ffa772108cd24dd",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.49.8"
   }
 }
