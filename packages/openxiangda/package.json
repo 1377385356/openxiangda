@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.49.12",
+  "version": "2.49.13",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -74,7 +74,7 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.67",
+    "openxiangda-cli": "2.6.68",
     "openxiangda-contracts": "2.54.1",
     "openxiangda-devkit-core": "2.42.9",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
@@ -146,32 +146,31 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.49.12",
+    "version": "2.49.13",
     "status": "reviewed",
-    "title": "显式读取本人业务联系电话",
-    "summary": "本人报名等具名业务动作可声明只读电话投影，编译器派生独立平台能力，默认身份和其他人员查询保持原投影。",
-    "newFeatures": [
-      "current-initiator 目录支持显式声明 phone，并将可空且最多80字符的电话纳入 snapshotRevision。",
-      "受管 backend-plan 命令使用同一本人投影规则；两个编译器按实际声明派生 directory.current-initiator-phone 1.0.0。"
+    "title": "流程详情准确显示当前等待人员",
+    "summary": "PC和手机的在办流程顶部使用平台当前有效席位显示等待人员，历史仍保留完整进入名单和办理记录。",
+    "newFeatures": [],
+    "fixes": [
+      "会签中已经自动或人工同意的人不再显示为等待；依次审批后续pending席位、已转交或取消的人也不计入当前等待。",
+      "按稳定visit key匹配当前节点，避免同一节点重复进入时混用历史名单；缺少明确状态时只显示节点。"
     ],
-    "fixes": [],
     "affectedUsers": [
-      "需要在本人报名或联系业务中展示平台账号只读电话的 V2 应用开发者。"
+      "使用V2标准PC或手机流程详情页的应用及审批人员。"
     ],
     "upgradeSteps": [
-      "安装完整同源根包发行，并先配套实现该能力的 Server；由编译器生成契约和要求，不手改摘要。",
-      "业务按原规则处理缺失电话，提交重新核对正式目录修订，不能接受浏览器身份快照。"
+      "安装同源本地SDK组合并重新构建用户端；复用既有Workflow详情协议。"
     ],
     "knownLimitations": [
-      "默认 SubjectProfile、人员搜索和 selected-user 不查询或返回电话。",
-      "不提供手机号查人或电话修改；本轮仅本机配套发行，不代表 npm 或生产部署。"
+      "本轮只做本地包消费与验证，没有npm发布或生产部署。",
+      "不改变流程人员解析、权限、执行、数据或完整历史；学校103条源流程仍需逐项验收。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
-      "platform": "新 phone 声明需要 directory.current-initiator-phone 1.0.0 及同源完整校验器。既有不声明 phone 的目录行为和 V1 引擎不变。"
+      "platform": "复用现有WorkflowTimelineFlowItem.assignees.status和display entry key；V1引擎不变。"
     },
-    "sha256": "e9f3ee1ec0e86f6cec12288bc02d64dc6af1db8e579ff336e0feef936e4842b4",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.49.12"
+    "sha256": "29838892d286d510a2cff475f4ae727b7fc73e11e1e21f479274d1dbc50d979c",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.49.13"
   }
 }
