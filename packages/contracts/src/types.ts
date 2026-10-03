@@ -1313,7 +1313,8 @@ export interface DataDecimalReservationLifecycle {
 export type DataUniqueKeyNormalizer = 'exact-v1' | 'nfkc-space-v1' | 'nfkc-upper-ascii-v1';
 export type DataUniqueKeyCondition =
   | { fieldCode: string; operator: 'empty' | 'nonempty' }
-  | { fieldCode: string; operator: 'in' | 'notIn'; values: string[] };
+  | { fieldCode: string; operator: 'in' | 'notIn'; values: string[] }
+  | { fieldCode: string; operator: 'eq' | 'ne'; value: boolean };
 export interface DataUniqueKey {
   code: string;
   fields: Array<{ fieldCode: string; normalizer?: DataUniqueKeyNormalizer }>;

@@ -16,7 +16,7 @@ export const PLATFORM_CAPABILITY_CONTRACT_VERSIONS = {
   "data.managed-files": "1.1.0",
   "data.decimal-reservations": "1.1.0",
   "data.decimal-reservation-lifecycle": "1.0.0",
-  "data.unique-keys": "1.0.0",
+  "data.unique-keys": "1.1.0",
   "data.user-candidates": "1.0.0",
   "data.managed-concurrency": "1.0.0",
   "data.managed-concurrency.durable": "1.0.0",

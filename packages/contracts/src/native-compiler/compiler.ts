@@ -1,5 +1,5 @@
 import { validateUserCandidateReferences, validateWorkflowUserCandidateBindings, UserCandidateContractError } from './user-candidates.js';
-import { NativeUniqueKeyContractError, parseNativeUniqueKeys } from './unique-keys.js';
+import { NativeUniqueKeyContractError, parseNativeUniqueKeys, nativeUniqueKeysContractVersion } from './unique-keys.js';
 import { validateManagedConcurrency, ManagedConcurrencyContractError } from './managed-concurrency.js';
 import { normalizeDecimalReservationEventDeclaration, decimalReservationEventContext } from './decimal-reservation.js';
 import { NativeDecimalLifecycleContractError, parseDecimalReservationLifecycle, validateDecimalReservationLifecycles } from './decimal-lifecycle.js';
@@ -767,7 +767,9 @@ export function compileRequiredPlatformCapabilitiesV3(
     .map(({ code, declaration }) => ({
       code,
       contractVersion:
-        OPENXIANGDA_V2_PLATFORM_CAPABILITY_CONTRACT_VERSIONS[code],
+        code === 'data.unique-keys'
+          ? (resources.some(resource => nativeUniqueKeysContractVersion(resource.schema.fields, resource.uniqueKeys) === '1.1.0') ? '1.1.0' : '1.0.0')
+          : OPENXIANGDA_V2_PLATFORM_CAPABILITY_CONTRACT_VERSIONS[code],
       usageDigest: `sha256:${sha256Canonical(declaration)}` as const,
     }))
     .sort((left, right) =>

@@ -44,8 +44,8 @@ export function parseNativeUniqueKeys(
       if (!record(key)) return fail(keyPath, '字段必须是对象');
       exactKeys(key, ['fieldCode', 'normalizer'], keyPath);
       const field = byCode.get(key.fieldCode);
-      if (!field || !['text.short', 'uuid', 'option.single', 'resource-ref.single'].includes(field.type) || seenFields.has(key.fieldCode))
-        return fail(`${keyPath}/fieldCode`, '需要不重复的短文本、UUID、单选或单记录引用字段');
+      if (!field || !['text.short', 'uuid', 'option.single', 'resource-ref.single', 'user.single'].includes(field.type) || seenFields.has(key.fieldCode))
+        return fail(`${keyPath}/fieldCode`, '需要不重复的短文本、UUID、单选、单记录引用或单人字段');
       seenFields.add(key.fieldCode);
       const normalizer: DataUniqueKeyNormalizer = key.normalizer === undefined ? 'exact-v1' : key.normalizer;
       if (!NATIVE_UNIQUE_KEY_NORMALIZERS.includes(normalizer) ||
@@ -74,7 +74,12 @@ export function parseNativeUniqueKeys(
             raw.values.some((item: unknown) => typeof item !== 'string' || item.length < 1 || item.length > 128 || !allowed.has(item)) || new Set(raw.values).size !== raw.values.length)
           return fail(conditionPath, '集合条件需要 1 到 16 个不重复的已声明单选值');
         condition = { fieldCode: field.code, operator: raw.operator, values: [...raw.values].sort(compare) };
-      } else return fail(`${conditionPath}/operator`, '只支持 empty、nonempty、in 和 notIn');
+      } else if (raw.operator === 'eq' || raw.operator === 'ne') {
+        exactKeys(raw, ['fieldCode', 'operator', 'value'], conditionPath);
+        if (field.type !== 'boolean' || typeof raw.value !== 'boolean')
+          return fail(conditionPath, '等值条件仅支持布尔字段和布尔值');
+        condition = { fieldCode: field.code, operator: raw.operator, value: raw.value };
+      } else return fail(`${conditionPath}/operator`, '只支持 empty、nonempty、in、notIn 和布尔 eq、ne');
       const identity = JSON.stringify(condition);
       if (seenConditions.has(identity)) return fail(conditionPath, '条件不能重复');
       seenConditions.add(identity);
@@ -82,6 +87,13 @@ export function parseNativeUniqueKeys(
     }).sort((a, b) => compare(JSON.stringify(a), JSON.stringify(b)));
     return { code: rule.code, fields: keys, when };
   }).sort((a, b) => compare(a.code, b.code));
+}
+
+/** Existing declarations retain their canonical v1.0 capability requirement. */
+export function nativeUniqueKeysContractVersion(fields: readonly Field[], rules?: readonly DataUniqueKey[]): '1.0.0' | '1.1.0' {
+  const userFields = new Set(fields.filter(field => field.type === 'user.single').map(field => field.code));
+  return rules?.some(rule => rule.fields.some(key => userFields.has(key.fieldCode)) ||
+    rule.when?.some(condition => condition.operator === 'eq' || condition.operator === 'ne')) ? '1.1.0' : '1.0.0';
 }
 
 const fieldCode = { type: 'string', pattern: '^[A-Za-z_][A-Za-z0-9_]{0,62}$' };
@@ -100,6 +112,8 @@ export const nativeUniqueKeysJsonSchema = {
         { type: 'object', additionalProperties: false, required: ['fieldCode', 'operator', 'values'],
           properties: { fieldCode, operator: { enum: ['in', 'notIn'] },
             values: { type: 'array', minItems: 1, maxItems: 16, uniqueItems: true, items: { type: 'string', minLength: 1, maxLength: 128 } } } },
+        { type: 'object', additionalProperties: false, required: ['fieldCode', 'operator', 'value'],
+          properties: { fieldCode, operator: { enum: ['eq', 'ne'] }, value: { type: 'boolean' } } },
       ] } },
     },
   },

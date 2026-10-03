@@ -32,7 +32,8 @@ pnpm openxiangda check
 
 需要“同一编号只能有一条有效主档”时，在模型声明 `uniqueKeys`。平台在环境
 激活时安装约束；普通 CRUD、导入和业务事务共用该约束。应用无需先查重再创建，
-也无需另建锁服务。声明会自动要求平台能力 `data.unique-keys@1.0.0`，旧平台在
+也无需另建锁服务。基础规则要求平台能力 `data.unique-keys@1.0.0`；单人键或布尔条件
+要求 `data.unique-keys@1.1.0`，两者由同一共享编译器确定。旧平台在
 发布前明确报告缺少能力。未声明的模型不增加这一要求。
 
 ```ts
@@ -59,12 +60,16 @@ const partners = defineDataModel({
 
 - 每模型最多 8 条，稳定 `code` 使用最长 20 字符的 lower-kebab-case；每条包含
   1–4 个不重复字段、最多 4 个 AND 条件。
-- 字段支持短文本、UUID、单选和单记录引用；单选/引用比较保存的 `value`，忽略标签。
+- 字段支持短文本、UUID、单选、单记录引用和单人；单选/引用/人员比较保存的 `value`，忽略标签。
 - `exact-v1` 原样比较（默认）；文本可用 `nfkc-space-v1` 做 NFKC 归一化、Unicode
   空白折叠和首尾修剪，或 `nfkc-upper-ascii-v1` 再将 ASCII 小写转大写。非文本只
   支持 exact；不按操作系统 locale 折叠其他文字大小写。
 - 文本条件是 `empty` / `nonempty`，按 NFKC 空白规则判断；单选条件是 `in` /
   `notIn`，包含 1–16 个已声明选项值。缺失选项不满足 `notIn`。
+- 布尔条件是 `eq` / `ne`，使用真实布尔 `value`，例如
+  `when: [{fieldCode:'enabled',operator:'eq',value:true}]`。两种比较均不包含 NULL。
+  用 `user.single` 唯一键配合 enabled eq:true，可维护同一平台用户唯一有效资料；
+  禁用历史记录可共存，改为有效、调整人员或并发创建都由同一数据库约束保护。
 - 任一键字段为空或归一化后为空，该行不参加比较。需要每行填写时仍应声明字段
   必填。参与比较的每个字段归一化后最多 256 个 UTF-8 字节。
 

@@ -97,3 +97,44 @@ test('canonical order is independent from the authoring order of compound fields
   (b[0]!.when[1] as any).values.reverse();
   assert.deepEqual(parseNativeUniqueKeys(a,fields),parseNativeUniqueKeys(b,fields));
 });
+
+const profileFields = [
+  { code: 'user', label: 'User', type: 'user.single' as const },
+  { code: 'enabled', label: 'Enabled', type: 'boolean' as const },
+];
+test('one active profile uses the canonical user identity and only raises the extended capability floor', () => {
+  for (const operator of ['eq', 'ne'] as const) for (const value of [true, false]) {
+    const key = [{code:'active-user',fields:[{fieldCode:'user'}],when:[{fieldCode:'enabled',operator,value}]}];
+    const declaration = {app:source().app,data:{resources:[{code:'profiles',name:'Profiles',fields:profileFields,uniqueKeys:key}]}};
+    const output = compileApplicationSources(defineOpenXiangdaApp(declaration as any)), native = platform(output);
+    for(const parse of [parseNativeUniqueKeys,cjs.parseNativeUniqueKeys])
+      assert.deepEqual(parse(key,profileFields),[{...key[0],fields:[{fieldCode:'user',normalizer:'exact-v1'}]}]);
+    assert.deepEqual(validateDataResource(output.config.value.data.resources[0]),[]);
+    assert.deepEqual(output.config.value.data.resources[0]!.uniqueKeys,native.projections.data.value.resources[0]!.uniqueKeys);
+    const required = requiredPlatformCapabilities(defineOpenXiangdaApp(declaration as any)).find(c=>c.code==='data.unique-keys');
+    assert.equal(required?.contractVersion,'1.1.0');
+    assert.deepEqual(required,native.requiredPlatformCapabilities.find(c=>c.code==='data.unique-keys'));
+  }
+  assert.equal(requiredPlatformCapabilities(defineOpenXiangdaApp(source())).find(c=>c.code==='data.unique-keys')?.contractVersion,'1.0.0');
+});
+
+test('single-user keys reject text normalization and boolean predicates stay closed and typed', () => {
+  const shape = new Ajv2020({strict:false}).compile(nativeUniqueKeysJsonSchema);
+  const base = {code:'active-user',fields:[{fieldCode:'user'}]};
+  const valid = [{...base,when:[{fieldCode:'enabled',operator:'eq',value:true}]}];
+  assert.equal(shape(valid),true);
+  const shapes = ['true',1,null,{},[]].map(value=>[{...base,when:[{fieldCode:'enabled',operator:'eq',value}]}]);
+  shapes.push([{...base,when:[{fieldCode:'enabled',operator:'eq',value:true,extra:'forbidden'}]}] as any,
+    [{...base,when:[{fieldCode:'enabled',operator:'eq'}]}] as any);
+  for(const key of shapes) {
+    assert.equal(shape(key),false);
+    for(const parse of [parseNativeUniqueKeys,cjs.parseNativeUniqueKeys])
+      assert.throws(()=>parse(key,profileFields),(e:any)=>e.code==='NATIVE_UNIQUE_KEY_INVALID');
+  }
+  for(const key of [
+    [{...base,fields:[{fieldCode:'user',normalizer:'nfkc-space-v1'}]}],
+    [{...base,when:[{fieldCode:'user',operator:'eq',value:true}]}],
+    [{...base,when:[{fieldCode:'enabled',operator:'in',values:['true']}]}],
+  ]) for(const parse of [parseNativeUniqueKeys,cjs.parseNativeUniqueKeys])
+    assert.throws(()=>parse(key,profileFields),(e:any)=>e.code==='NATIVE_UNIQUE_KEY_INVALID');
+});
