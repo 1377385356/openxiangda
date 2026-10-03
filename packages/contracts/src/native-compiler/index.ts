@@ -15,6 +15,7 @@ export * from './workflow-graph.js';
 export * from './workflow-node-administration.js';
 export * from './workflow-automatic-cc.js';
 export * from './workflow-approval-empty.js';
+export * from './workflow-initiator-approval.js';
 export * from './workflow-business-step.js';
 export * from './workflow-assignment-routing.js';
 export type { WorkflowAssignmentRoutingPolicy, WorkflowAssignmentRoutingRule } from '../types.js';

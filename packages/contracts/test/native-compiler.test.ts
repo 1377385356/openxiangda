@@ -54,6 +54,23 @@ test('approval empty policy is negotiated and unsupported sources fail in both c
     assert.throws(() => implementation.compileNativeApplicationConfiguration(compileInput()), /WORKFLOW_APPROVAL_EMPTY_PROVIDER_UNSUPPORTED/);
 });
 
+test('initiator approval policy is negotiated and rejects mandatory input in ESM and CJS', () => {
+  const config = JSON.parse(corpus.configuration.canonical);
+  const node = config.workflows.definitions[0].definition.nodes.review;
+  node.initiatorApprovalPolicy = 'auto_approve';
+  node.fieldPolicy = { default: 'readonly' };
+  const compileInput = () => {
+    const contract = { ...JSON.parse(corpus.contract.canonical), configDigest: sha256Digest(config) };
+    return { ...input(config), contractBytes: canonicalJson(contract), expectedContractDigest: sha256Digest(contract) };
+  };
+  for (const implementation of [esm, cjs]) {
+    assert.equal(implementation.compileNativeApplicationConfiguration(compileInput()).requiredPlatformCapabilities.find(item => item.code === 'workflow.initiator-approval-policy')?.contractVersion, '1.0.0');
+  }
+  node.operationPolicy = { approve: { commentRequired: true } };
+  for (const implementation of [esm, cjs])
+    assert.throws(() => implementation.compileNativeApplicationConfiguration(compileInput()), /WORKFLOW_INITIATOR_APPROVAL_COMMENT_REQUIRED/);
+});
+
 test('automatic cc capability is derived from declarations in both shared compiler distributions', () => {
   const config = JSON.parse(corpus.configuration.canonical);
   const definition = config.workflows.definitions[0].definition;

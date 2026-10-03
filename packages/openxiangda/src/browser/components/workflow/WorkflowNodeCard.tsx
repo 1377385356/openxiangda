@@ -14,13 +14,13 @@ export function WorkflowNodeCard({ node, title, summary, selected, start, visit,
 }) {
   const Icon = icons[node.kind as keyof typeof icons] || CodeOutlined;
   const stepStatus = visit?.businessStep?.status;
-  const stateLabel = visit?.skipped ? (node.kind === 'approval' ? '无审批人，已跳过' : '无人，已跳过') : stepStatus === 'result_ready' ? '结果已收 · 推进受阻' : stepStatus === 'waiting' ? '等待业务结果' : visit ? statuses[visit.status] || visit.status : '';
+  const stateLabel = visit?.skipped ? (node.kind === 'approval' ? '无审批人，已跳过' : '无人，已跳过') : stepStatus === 'result_ready' ? '结果已收 · 推进受阻' : stepStatus === 'waiting' ? '等待业务结果' : visit ? `${statuses[visit.status] || visit.status}${visit.automaticApprovals?.length ? ' · 发起人自动同意' : ''}` : '';
   const stepSummary = node.businessStep ? `v${node.businessStep.handler.version} · ${node.businessStep.handler.mode === 'pure' ? '业务计算' : '核对后执行业务'}` : undefined;
   return <button type="button" ref={buttonRef} className={`oxa-workflow-node ${selected ? 'selected' : ''} ${visit ? 'visited' : ''} kind-${node.kind}`}
     aria-pressed={selected} aria-label={`${title}，${kinds[node.kind] || node.kind}${visit ? `，${stateLabel}` : ''}`}
     onClick={onClick} onKeyDown={event => { if (onNavigate(node.id, event.key)) event.preventDefault(); }}>
     <span className="oxa-workflow-node-icon"><Icon /></span><span className="oxa-workflow-node-copy"><span className="oxa-workflow-node-kind">{start ? '起点 · ' : ''}{kinds[node.kind] || node.kind}</span>
-      <strong title={title}>{title}</strong><small title={summary || stepSummary}>{summary || stepSummary || (node.mode ? `${workflowNodeModes[node.mode] || node.mode}${node.emptyPolicy === 'skip' ? ' · 无人时跳过' : ''}` : node.kind === 'cc' ? `${node.emptyPolicy === 'skip' ? '无人时跳过' : '必须有接收人'} · ${node.notify === false ? '仅抄送记录' : '通知接收人'}` : node.kind === 'condition' ? '按顺序首次命中' : outcomes[node.outcome || ''] || node.id)}</small></span>
+      <strong title={title}>{title}</strong><small title={summary || stepSummary}>{summary || stepSummary || (node.mode ? `${workflowNodeModes[node.mode] || node.mode}${node.emptyPolicy === 'skip' ? ' · 无人时跳过' : ''}${node.initiatorApprovalPolicy === 'auto_approve' ? ' · 发起人自动同意' : ''}` : node.kind === 'cc' ? `${node.emptyPolicy === 'skip' ? '无人时跳过' : '必须有接收人'} · ${node.notify === false ? '仅抄送记录' : '通知接收人'}` : node.kind === 'condition' ? '按顺序首次命中' : outcomes[node.outcome || ''] || node.id)}</small></span>
     {visit && <span className={`oxa-workflow-node-status status-${stepStatus === 'result_ready' ? 'error' : visit.status}`}>{stateLabel}</span>}
   </button>;
 }

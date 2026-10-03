@@ -11,6 +11,7 @@ import { validateWorkflowReadability, type WorkflowGraphDefinitionSource } from 
 import { validateWorkflowAdministration, type WorkflowAdministrationNodeSource } from './workflow-node-administration.js';
 import { validateWorkflowAutomaticCc } from './workflow-automatic-cc.js';
 import { validateWorkflowApprovalEmptyPolicy, workflowBindingAllowsEmptyUsers } from './workflow-approval-empty.js';
+import { validateWorkflowInitiatorApprovalPolicy } from './workflow-initiator-approval.js';
 import { validateWorkflowTaskPages } from './workflow-task-page.js';
 import { validateWorkflowBusinessSteps, compileWorkflowBusinessStepHandlers, validateWorkflowBusinessStepSubscriptions, WORKFLOW_BUSINESS_STEP_EVENT, WORKFLOW_BUSINESS_STEP_EVENTS } from './workflow-business-step.js';
 import { validateWorkflowAssignmentRoutingBindings, validateWorkflowAssignmentRoutingPolicy } from './workflow-assignment-routing.js';
@@ -678,6 +679,9 @@ export function compileRequiredPlatformCapabilitiesV3(
       : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'approval' && node.emptyPolicy !== undefined))
       ? [{ code: 'workflow.approval-empty-policy' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'approval' && node.emptyPolicy !== undefined)) }]
+      : []),
+    ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.initiatorApprovalPolicy !== undefined))
+      ? [{ code: 'workflow.initiator-approval-policy' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.initiatorApprovalPolicy !== undefined)) }]
       : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'cc'))
       ? [{ code: 'workflow.automatic-cc' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'cc')) }]
@@ -6953,6 +6957,8 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
   if (administrationErrors.length) fail(administrationErrors[0]!, `${pointer}/nodes`);
   const emptyPolicyErrors = validateWorkflowApprovalEmptyPolicy(definition as any);
   if (emptyPolicyErrors.length) fail(emptyPolicyErrors[0]!, `${pointer}/nodes`);
+  const initiatorPolicyErrors = validateWorkflowInitiatorApprovalPolicy(definition as any);
+  if (initiatorPolicyErrors.length) fail(initiatorPolicyErrors[0]!, `${pointer}/nodes`);
   const ccErrors = validateWorkflowAutomaticCc(definition as any);
   if (ccErrors.length) fail(ccErrors[0]!, `${pointer}/nodes`);
   const taskPageErrors = validateWorkflowTaskPages(definition);

@@ -1,4 +1,5 @@
 import type { WorkflowApprovalAdministration, WorkflowConfigurableOperation, WorkflowNodeConfigurationPatch, WorkflowNodeOperationPolicy } from '../types.js';
+import { validateWorkflowInitiatorApprovalPolicy } from './workflow-initiator-approval.js';
 
 export const WORKFLOW_CONFIGURABLE_OPERATIONS = ['approve', 'reject', 'return', 'transfer', 'delegate', 'add_assignee'] as const;
 export const WORKFLOW_CONFIGURABLE_PROVIDERS = ['fixed_users', 'app_role', 'app_role_in_scope'] as const;
@@ -7,6 +8,8 @@ type PolicyMap = Partial<Record<WorkflowConfigurableOperation, WorkflowNodeOpera
 export interface WorkflowAdministrationNodeSource {
   kind: string;
   emptyPolicy?: string;
+  initiatorApprovalPolicy?: 'manual' | 'auto_approve';
+  taskPageCode?: string;
   mode?: string;
   binding?: string;
   allowedOperations?: string[];
@@ -79,6 +82,7 @@ export function validateWorkflowNodeConfigurationPatch(node: WorkflowAdministrat
       if (!keys(value, ['provider', 'users']) || !Array.isArray(value.users) || (value.users.length < 1 && !(node.kind === 'approval' && node.emptyPolicy === 'skip')) || value.users.length > (node.kind === 'cc' ? 20 : 200) || new Set(value.users).size !== value.users.length || value.users.some(id => typeof id !== 'string' || !id.trim() || id.length > 255)) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_USERS_INVALID');
     } else if (!keys(value, ['provider', 'roleCode']) || typeof value.roleCode !== 'string' || !/^[a-z][a-z0-9_-]{0,127}$/.test(value.roleCode)) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_ROLE_INVALID');
   }
+  errors.push(...validateWorkflowInitiatorApprovalPolicy({ nodes: { node: { ...node, operationPolicy: projectWorkflowNodePolicy(node, patch).operationPolicy } } }));
   return errors;
 }
 
@@ -92,6 +96,7 @@ export function projectWorkflowNodePolicy(node: WorkflowAdministrationNodeSource
   })) as PolicyMap;
   return {
     mode: patch?.mode || node.mode,
+    initiatorApprovalPolicy: node.initiatorApprovalPolicy || 'manual',
     allowedOperations: workflowNodeAllowedOperations(node).filter(operation => patch?.operations?.[operation as WorkflowConfigurableOperation]?.enabled !== false),
     operationPolicy: operations,
     fieldPolicy: { default: node.fieldPolicy?.default || 'readonly', fields: { ...node.fieldPolicy?.fields } },

@@ -16,6 +16,7 @@ export * from './native-compiler/workflow-graph.js';
 export * from './native-compiler/workflow-node-administration.js';
 export * from './native-compiler/workflow-automatic-cc.js';
 export * from './native-compiler/workflow-approval-empty.js';
+export * from './native-compiler/workflow-initiator-approval.js';
 export * from './native-compiler/workflow-business-step.js';
 export * from './native-compiler/workflow-task-page.js';
 export * from './native-compiler/data-capacity.js';

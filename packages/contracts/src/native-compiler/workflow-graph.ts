@@ -40,6 +40,7 @@ export interface WorkflowGraphDefinitionSource {
     otherwise?: string;
     next?: string;
     emptyPolicy?: 'block' | 'skip';
+    initiatorApprovalPolicy?: 'manual' | 'auto_approve';
     notify?: boolean;
     outcome?: string;
     handler?: { code: string; version: number; mode: 'pure' | 'reconciled-effect' };
@@ -77,7 +78,7 @@ export interface WorkflowGraphProjection {
   startAt: string;
   fixedTopology: true;
   branchStrategy: 'first_match';
-  nodes: Array<{ id: string; kind: string; title: string; binding?: string; mode?: string; outcome?: string; emptyPolicy?: 'block' | 'skip'; notify?: boolean;
+  nodes: Array<{ id: string; kind: string; title: string; binding?: string; mode?: string; outcome?: string; emptyPolicy?: 'block' | 'skip'; initiatorApprovalPolicy?: 'manual' | 'auto_approve'; notify?: boolean;
     businessStep?: { handler: NonNullable<WorkflowGraphDefinitionSource['nodes'][string]['handler']>; inputs: Record<string, WorkflowBusinessStepInput>; outputPaths: string[] } }>;
   edges: WorkflowGraphEdge[];
   variables: WorkflowGraphVariable[];
@@ -96,6 +97,7 @@ export interface WorkflowGraphVisit {
   /** Recorded terminal decision; chronological adjacency alone is not execution evidence. */
   transition?: 'approve' | 'reject' | 'next';
   skipped?: boolean;
+  automaticApprovals?: Array<{ participantId: string; assignmentId: string; initiatorUserId: string; roleSubjectKey: string | null }>;
   notificationRequested?: boolean;
   configuration?: Record<string, unknown>;
   businessStep?: import('./workflow-business-step.js').WorkflowBusinessStepSummary;
@@ -252,7 +254,7 @@ export function projectWorkflowGraph(definition: WorkflowGraphDefinitionSource, 
     fixedTopology: true, branchStrategy: 'first_match', nodes: Object.values(definition.nodes).map(node => ({ id: node.id, kind: node.kind, title: node.title || node.id,
       ...(node.binding ? { binding: node.binding } : {}), ...(node.mode ? { mode: node.mode } : {}), ...(node.outcome ? { outcome: node.outcome } : {}),
       ...(node.kind === 'cc' ? { emptyPolicy: node.emptyPolicy, notify: node.notify !== false } : {}),
-      ...(node.kind === 'approval' ? { emptyPolicy: node.emptyPolicy || 'block' } : {}),
+      ...(node.kind === 'approval' ? { emptyPolicy: node.emptyPolicy || 'block', initiatorApprovalPolicy: node.initiatorApprovalPolicy || 'manual' } : {}),
       ...(node.kind === 'action' && node.handler ? { businessStep: { handler: node.handler, inputs: node.inputs || {}, outputPaths: Object.keys(record(node.outputSchema).properties || {}).map(key => `steps.${node.id}.${key}`) } } : {}) })), edges, variables,
     logic: definition.readability?.logic || [], diagnostics };
 }

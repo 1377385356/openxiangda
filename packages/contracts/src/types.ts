@@ -2282,6 +2282,8 @@ export interface WorkflowApprovalNode {
   mode: WorkflowApprovalMode;
   /** Code-owned. Omitted means block; skip requires a verified empty supported source. */
   emptyPolicy?: "block" | "skip";
+  /** Code-owned. Only a direct active initiator seat can be automatically approved. */
+  initiatorApprovalPolicy?: "manual" | "auto_approve";
   onApprove: string;
   onReject: string;
   allowedOperations?: WorkflowCommand[];
@@ -2583,6 +2585,7 @@ export interface WorkflowNodeConfigurations {
       binding?: WorkflowBindingEntry;
       mode?: WorkflowApprovalMode;
       emptyPolicy?: "block" | "skip";
+      initiatorApprovalPolicy?: "manual" | "auto_approve";
       allowedOperations?: WorkflowCommand[];
       operationPolicy?: Partial<Record<WorkflowConfigurableOperation, WorkflowNodeOperationPolicy>>;
       fieldPolicy?: WorkflowApprovalNode['fieldPolicy'];
@@ -2597,6 +2600,7 @@ export interface WorkflowNodeConfigurations {
       bindingDigest?: string;
       mode?: WorkflowApprovalMode;
       emptyPolicy?: "block" | "skip";
+      initiatorApprovalPolicy?: "manual" | "auto_approve";
       allowedOperations?: WorkflowCommand[];
       operationPolicy?: Partial<Record<WorkflowConfigurableOperation, WorkflowNodeOperationPolicy>>;
       fieldPolicy?: WorkflowApprovalNode['fieldPolicy'];
