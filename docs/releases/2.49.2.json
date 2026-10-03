@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.49.2",
+  "status": "reviewed",
+  "title": "字段权限引用与开发态契约加载修复",
+  "summary": "字段复用已有权限时保留真实目录所有者，消除资源顺序影响；连接开发的后端读取当前生成源码契约。",
+  "newFeatures": [],
+  "fixes": [
+    "普通业务字段的 read/create/update 可复用显式或其他资源的 CRUD capability，保持唯一目录定义。",
+    "声明、契约生成与共享 Native 编译器采用相同定义优先规则，继续拒绝真实 owner 冲突和跨应用引用。",
+    "连接开发后端采用 openxiangda-source 条件加载当前源码，保留 Node 选项，避免新 operation 被旧构建输出遗漏。"
+  ],
+  "affectedUsers": ["使用私有字段投影、跨资源权限或连接开发后端的 V2 应用开发者。"],
+  "upgradeSteps": ["本轮仅导出完整同源本地测试七包，不执行 npm 发布。", "更新精确根包及完整配套依赖，验证目标兼容性、本人行/字段权限和连接开发后端启动。"],
+  "knownLimitations": ["源码修复和包检查不替代应用真实角色、文件与业务验收。", "应用仍须声明运行时授权规则；本修复不会赋予新的业务权限。"],
+  "issues": [],
+  "compatibility": { "node": ">=24", "platform": "共享 Native 编译器完整同源配套；稳定 1.x 不变" }
+}
