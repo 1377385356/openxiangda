@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.49.2",
+  "version": "2.49.3",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -74,13 +74,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.57",
-    "openxiangda-contracts": "2.51.1",
-    "openxiangda-devkit-core": "2.42.3",
+    "openxiangda-cli": "2.6.58",
+    "openxiangda-contracts": "2.52.0",
+    "openxiangda-devkit-core": "2.42.4",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.82",
-    "openxiangda-nest": "2.13.12",
-    "openxiangda-skill-kit": "2.3.62",
+    "openxiangda-mcp": "2.0.83",
+    "openxiangda-nest": "2.13.13",
+    "openxiangda-skill-kit": "2.3.63",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -146,33 +146,33 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.49.2",
+    "version": "2.49.3",
     "status": "reviewed",
-    "title": "字段权限引用与开发态契约加载修复",
-    "summary": "字段复用已有权限时保留真实目录所有者，消除资源顺序影响；连接开发的后端读取当前生成源码契约。",
-    "newFeatures": [],
+    "title": "按业务范围维护流程职责",
+    "summary": "成员管理支持有效审批与抄送流程中的范围职责，避免必须增加无关的数据策略才能维护审批人。",
+    "newFeatures": [
+      "范围目录返回有效流程绑定、兼容节点覆盖、补充路由和在途固定版本的职责来源。"
+    ],
     "fixes": [
-      "普通业务字段的 read/create/update 可复用显式或其他资源的 CRUD capability，保持唯一目录定义。",
-      "声明、契约生成与共享 Native 编译器采用相同定义优先规则，继续拒绝真实 owner 冲突和跨应用引用。",
-      "连接开发后端采用 openxiangda-source 条件加载当前源码，保留 Node 选项，避免新 operation 被旧构建输出遗漏。"
+      "SDK 成员选择器识别仅用于流程的范围角色，并继续按每条数据策略处理不受限角色排除。"
     ],
     "affectedUsers": [
-      "使用私有字段投影、跨资源权限或连接开发后端的 V2 应用开发者。"
+      "按学院、部门等业务范围配置审批和抄送人员的 V2 应用开发者与管理员。"
     ],
     "upgradeSteps": [
-      "本轮仅导出完整同源本地测试七包，不执行 npm 发布。",
-      "更新精确根包及完整配套依赖，验证目标兼容性、本人行/字段权限和连接开发后端启动。"
+      "本轮导出同源的完整本地测试七包，不执行 npm 发布。",
+      "更新精确根包与配套依赖，并使用支持 Workflow 范围适用性的 V2 Server。"
     ],
     "knownLimitations": [
-      "源码修复和包检查不替代应用真实角色、文件与业务验收。",
-      "应用仍须声明运行时授权规则；本修复不会赋予新的业务权限。"
+      "职责范围维护不授予普通数据读写、应用管理或额外菜单权限。",
+      "已创建任务的参与人快照保持原语义；本地平台回归不代表学校真实流程验收。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
-      "platform": "共享 Native 编译器完整同源配套；稳定 1.x 不变"
+      "platform": "同源 Native 编译器与 Workflow 范围适用性服务；稳定 1.x 不受影响"
     },
-    "sha256": "2af2124516e3a440a5f078ddfd95280bd52e1f2e84ad59297123c98f88c9263c",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.49.2"
+    "sha256": "fa74e19fb94432a9b2c5765c216512b1fa8dabfc094e8e06ddaf88600851ada9",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.49.3"
   }
 }
