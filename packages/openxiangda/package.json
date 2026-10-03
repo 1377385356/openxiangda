@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.49.5",
+  "version": "2.49.6",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -74,13 +74,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.60",
+    "openxiangda-cli": "2.6.61",
     "openxiangda-contracts": "2.53.0",
-    "openxiangda-devkit-core": "2.42.5",
+    "openxiangda-devkit-core": "2.42.6",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.84",
+    "openxiangda-mcp": "2.0.85",
     "openxiangda-nest": "2.13.14",
-    "openxiangda-skill-kit": "2.3.64",
+    "openxiangda-skill-kit": "2.3.65",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -146,33 +146,32 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.49.5",
+    "version": "2.49.6",
     "status": "reviewed",
-    "title": "单人资料的条件唯一约束",
-    "summary": "Native 唯一键可以按平台用户的稳定身份和布尔启用条件约束有效资料，并由数据库处理并发冲突。",
-    "newFeatures": [
-      "user.single 支持 exact-v1 唯一键；布尔字段支持 eq/ne 条件。",
-      "仅使用新增声明时要求 data.unique-keys 1.1.0，既有规则维持原能力要求。"
+    "title": "基础唯一键的平台预检兼容修复",
+    "summary": "修复基础唯一键应用在已支持增强合同的平台上被能力预检误拒，保留实际使用派生及严格边界。",
+    "newFeatures": [],
+    "fixes": [
+      "data.unique-keys要求1.0.0时可使用available的1.1.0平台；不推断未知版本或其他能力的兼容性。"
     ],
-    "fixes": [],
     "affectedUsers": [
-      "需要每人仅一份有效资料、同时保留停用历史的 V2 应用开发者。"
+      "使用既有文本条件唯一键并连接支持data.unique-keys 1.1.0平台的V2开发者。"
     ],
     "upgradeSteps": [
-      "使用精确同源 SDK 和支持 data.unique-keys 1.1.0 的平台；通过普通模型声明安装规则。",
-      "历史有效资料重复时先按业务处理冲突，平台不会自动删除或停用记录。",
-      "本轮仅导出本地密封分发，不执行 npm 发布。"
+      "按精确完整根发行升级并保留旧锁文件，重新运行目标检查或部署。",
+      "应用继续声明原业务唯一键，不修改共享编译器派生的能力要求或删除约束。",
+      "本轮仅导出本机完整发行，不执行npm或学校生产发布。"
     ],
     "knownLimitations": [
-      "NULL 不参与布尔 eq/ne 条件；规则仍限 8 个，每个最多 4 字段和 4 条件。",
-      "已安装规则的删除仍需托管迁移，不通过普通旧版本激活移除。"
+      "要求1.1.0仍不能使用1.0.0平台；preview/planned/缺失及未知版本继续拒绝。",
+      "能力预检不替代平台准备、激活与真实业务验收。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
-      "platform": "新增声明要求 data.unique-keys 1.1.0；稳定 1.x 与既有唯一键规则不变"
+      "platform": "既有data.unique-keys 1.0.0与已实现1.1.0的已知兼容关系；validator及应用唯一键语义不变"
     },
-    "sha256": "033fd95bf90f5e242f030ee1b24688dc5358aace39a4477977eb25f08c158429",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.49.5"
+    "sha256": "662caf90440646203a04f8cf2398a146cc895fc7259a4f5514786f83a63868ab",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.49.6"
   }
 }
