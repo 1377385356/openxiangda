@@ -2138,6 +2138,8 @@ export interface WorkflowSubmissionFormOptions {
   initialValues?: JsonObject;
   fieldState?: (values: Readonly<JsonObject>) => WorkflowSubmissionFieldStates;
   intro?: ReactNode;
+  /** Blocks only a new form; original submission recovery always takes priority. */
+  preparation?: ReactNode;
 }
 
 export function WorkflowSubmissionPage({
@@ -2276,7 +2278,7 @@ export function WorkflowSubmissionPage({
   }, [fields, formOptions?.fieldState, subjectDefinition, watchedFormValues]);
   const prefillContext = JSON.stringify([recoveryScope, identity.environment.activeAppVersionId, submissionMode, subjectId]);
   useEffect(() => {
-    if (!launchSurface || commandId || pendingSubmission || mutationMode !== 'create' || !subjectDefinition ||
+    if (!launchSurface || commandId || pendingSubmission || formOptions?.preparation || mutationMode !== 'create' || !subjectDefinition ||
       launchSurface.environmentId !== identity.environment.id || (generatedNamedSubmission && !namedIntent)) return;
     if (prefill.current.context !== prefillContext) prefill.current = { context: prefillContext, applied: new Set() };
     try {
@@ -2286,7 +2288,7 @@ export function WorkflowSubmissionPage({
       subjectForm.setFields(Object.entries(normalized).map(([name, value]) => ({ name, value, touched: false })));
       setPrefillError(false);
     } catch { setPrefillError(true); }
-  }, [commandId, fields, formOptions?.initialValues, generatedNamedSubmission, identity.environment.id,
+  }, [commandId, fields, formOptions?.initialValues, formOptions?.preparation, generatedNamedSubmission, identity.environment.id,
     launchSurface, mutationMode, namedIntent, pendingSubmission, prefillContext, subjectDefinition, subjectForm]);
   useEffect(() => {
     if (loading || commandId || pendingSubmission || !launchSurface || formProjection.error || !subjectDefinition) return;
@@ -2673,6 +2675,7 @@ export function WorkflowSubmissionPage({
     );
   if (!subjectDefinition)
     return frame(<Result status="500" title="标准流程合同不完整" />);
+  if (!commandId && formOptions?.preparation) return frame(formOptions.preparation);
   if (launchError && !commandId)
     return frame(<Result status="error" title="发起页面当前不可用" subTitle={launchError} />);
   if (!launchSurface && !commandId)
@@ -2704,7 +2707,7 @@ export function WorkflowSubmissionPage({
   }
 
   const submit = async (values: JsonObject) => {
-    if (submitInFlight.current || commandId || completion || !launchSurface || prefillError || formProjection.error) return;
+    if (submitInFlight.current || commandId || completion || !launchSurface || formOptions?.preparation || prefillError || formProjection.error) return;
     const unresolved = readPendingWorkflowSubmission(submissionLocatorStorage(), recoveryScope);
     if (pendingSubmission || unresolved) { if (unresolved) setPendingSubmission(unresolved); return; }
     submitInFlight.current = true;

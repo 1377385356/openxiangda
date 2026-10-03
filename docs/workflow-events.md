@@ -432,6 +432,8 @@ return <WorkflowSubmissionPage workflowCode="reinstatement" variant="mobile" for
 `fieldState`读取canonical值，`required`只能增加校验，不能撤销原必填或隐藏原必填字段；
 可选字段隐藏时清为`hiddenValue`或undefined，提交也使用同一投影，不发送旧材料/人员。
 初值或规则引用范围外字段会阻断表单。`intro`只提供页面说明，不拥有身份、授权或提交。
+资料加载/失败或业务资格提示可传`preparation`内容，它仅阻断尚未提交的表单；原请求查询
+及已接受命令的展示优先于该提示。应用应始终挂载标准页，避免当前资格变化遮蔽原结果恢复。
 这些规则属于应用代码，不能通过管理员节点配置修改；服务器仍独立校验实际业务资格与字段。
 
 通用应用待办页通过 `frontend.user.applicationTodoCenter: true` 启用，平台同时提供
