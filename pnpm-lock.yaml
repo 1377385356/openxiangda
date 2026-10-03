@@ -169,7 +169,7 @@ importers:
         specifier: 0.12.0
         version: 0.12.0
       openxiangda-cli:
-        specifier: 2.6.58
+        specifier: 2.6.59
         version: link:../cli
       openxiangda-contracts:
         specifier: 2.52.0

@@ -3,6 +3,36 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.49.4",
+      "status": "reviewed",
+      "title": "统一入口校验 Native 事务",
+      "summary": "应用业务测试可以从统一根包读取共享事务校验器，验证实际生成的守卫而无需额外依赖底层实现包。",
+      "newFeatures": [
+        "openxiangda/testing 导出 validateDataTransactionRequest 与 SCHEMA_VERSIONS，保留共享合同诊断。"
+      ],
+      "fixes": [
+        "补齐统一依赖约束下业务事务测试缺少受支持校验入口的问题。"
+      ],
+      "affectedUsers": [
+        "编写 Native 原子事务和 BusinessProcess 提交业务测试的 V2 应用开发者。"
+      ],
+      "upgradeSteps": [
+        "消费同源精确根包后从 openxiangda/testing 导入，不添加底层包依赖。",
+        "本轮仅导出本地密封测试分发，不执行 npm 发布。"
+      ],
+      "knownLimitations": [
+        "合同诊断不替代真实权限、数据库并发、业务运行和恢复验收。"
+      ],
+      "issues": [],
+      "compatibility": {
+        "node": ">=24",
+        "platform": "Native 事务合同不变，稳定 1.x 不受影响"
+      },
+      "sha256": "2ddc0a54c3ded4aeb9b33c98ae7ed43007653097dabd9ee10e3b68ff6998b83d",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.49.4"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.49.3",
       "status": "reviewed",
       "title": "按业务范围维护流程职责",

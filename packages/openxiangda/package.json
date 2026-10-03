@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.49.3",
+  "version": "2.49.4",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -74,7 +74,7 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.58",
+    "openxiangda-cli": "2.6.59",
     "openxiangda-contracts": "2.52.0",
     "openxiangda-devkit-core": "2.42.4",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
@@ -146,33 +146,32 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.49.3",
+    "version": "2.49.4",
     "status": "reviewed",
-    "title": "按业务范围维护流程职责",
-    "summary": "成员管理支持有效审批与抄送流程中的范围职责，避免必须增加无关的数据策略才能维护审批人。",
+    "title": "统一入口校验 Native 事务",
+    "summary": "应用业务测试可以从统一根包读取共享事务校验器，验证实际生成的守卫而无需额外依赖底层实现包。",
     "newFeatures": [
-      "范围目录返回有效流程绑定、兼容节点覆盖、补充路由和在途固定版本的职责来源。"
+      "openxiangda/testing 导出 validateDataTransactionRequest 与 SCHEMA_VERSIONS，保留共享合同诊断。"
     ],
     "fixes": [
-      "SDK 成员选择器识别仅用于流程的范围角色，并继续按每条数据策略处理不受限角色排除。"
+      "补齐统一依赖约束下业务事务测试缺少受支持校验入口的问题。"
     ],
     "affectedUsers": [
-      "按学院、部门等业务范围配置审批和抄送人员的 V2 应用开发者与管理员。"
+      "编写 Native 原子事务和 BusinessProcess 提交业务测试的 V2 应用开发者。"
     ],
     "upgradeSteps": [
-      "本轮导出同源的完整本地测试七包，不执行 npm 发布。",
-      "更新精确根包与配套依赖，并使用支持 Workflow 范围适用性的 V2 Server。"
+      "消费同源精确根包后从 openxiangda/testing 导入，不添加底层包依赖。",
+      "本轮仅导出本地密封测试分发，不执行 npm 发布。"
     ],
     "knownLimitations": [
-      "职责范围维护不授予普通数据读写、应用管理或额外菜单权限。",
-      "已创建任务的参与人快照保持原语义；本地平台回归不代表学校真实流程验收。"
+      "合同诊断不替代真实权限、数据库并发、业务运行和恢复验收。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
-      "platform": "同源 Native 编译器与 Workflow 范围适用性服务；稳定 1.x 不受影响"
+      "platform": "Native 事务合同不变，稳定 1.x 不受影响"
     },
-    "sha256": "fa74e19fb94432a9b2c5765c216512b1fa8dabfc094e8e06ddaf88600851ada9",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.49.3"
+    "sha256": "2ddc0a54c3ded4aeb9b33c98ae7ed43007653097dabd9ee10e3b68ff6998b83d",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.49.4"
   }
 }
