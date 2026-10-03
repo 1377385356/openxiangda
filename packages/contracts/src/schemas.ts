@@ -2153,6 +2153,23 @@ const dataFieldResourceSourceFilterSchema = {
   ],
 } as const;
 
+export const dataFieldUserCandidatesSchema = {
+  type: 'object', additionalProperties: false, required: ['kind', 'roleCode'],
+  properties: {
+    kind: { const: 'app-role' },
+    roleCode: { type: 'string', minLength: 1, maxLength: 128, pattern: '^[a-z][a-z0-9]*(?:[-_.][a-z0-9]+)*$' },
+    pageSize: { type: 'integer', minimum: 1, maximum: 50 },
+    scope: { type: 'object', additionalProperties: false, required: ['dimensionCode', 'operation'],
+      properties: {
+        dimensionCode: { type: 'string', minLength: 1, maxLength: 128, pattern: '^[a-z][a-z0-9]*(?:[-_.][a-z0-9]+)*$' },
+        operation: { type: 'string', minLength: 1, maxLength: 64, pattern: '^[a-z][a-z0-9]*(?:[-_.][a-z0-9]+)*$' },
+        field: dataFieldCode, value: { type: 'string', minLength: 1, maxLength: 255, pattern: '^\\S(?:[\\s\\S]*\\S)?$' },
+      },
+      oneOf: [{ required: ['field'], not: { required: ['value'] } }, { required: ['value'], not: { required: ['field'] } }],
+    },
+  },
+} as const;
+
 const dataFieldResourceSourceSchema = {
   type: "object",
   additionalProperties: false,
@@ -2205,6 +2222,10 @@ const dataFieldSurfaceSchema = {
   type: "object",
   additionalProperties: false,
   allOf: [
+    {
+      if: { required: ['userCandidates'] },
+      then: { properties: { type: { enum: ['user.single', 'user.multiple'] } } },
+    },
     {
       if: {
         properties: { type: { enum: ["date-range", "datetime-range"] } },
@@ -2294,6 +2315,7 @@ const dataFieldSurfaceSchema = {
     searchable: { type: "boolean" },
     sortable: { type: "boolean" },
     source: dataFieldResourceSourceSchema,
+    userCandidates: dataFieldUserCandidatesSchema,
     timePrecision: { enum: ["minute", "second"] },
     serial: {
       type: "object",
@@ -2531,6 +2553,10 @@ export const dataResourceSchema = {
             additionalProperties: false,
             allOf: [
               {
+                if: { required: ['userCandidates'] },
+                then: { properties: { type: { enum: ['user.single', 'user.multiple'] } } },
+              },
+              {
                 if: {
                   properties: {
                     type: { enum: ["date-range", "datetime-range"] },
@@ -2597,6 +2623,7 @@ export const dataResourceSchema = {
                 items: { $ref: "#/$defs/dataFieldOption" },
               },
               source: dataFieldResourceSourceSchema,
+              userCandidates: dataFieldUserCandidatesSchema,
               maxLength: { type: "integer", minimum: 1, maximum: 1000000 },
               precision: { type: "integer", minimum: 1, maximum: 1000 },
               scale: { type: "integer", minimum: 0, maximum: 1000 },
@@ -5576,6 +5603,14 @@ export const workflowBindingSchema = {
         type: "object",
         additionalProperties: false,
         required: ["provider"],
+        allOf: [{
+          if: { required: ['candidateField'] },
+          then: {
+            required: ['inputPath'],
+            properties: { provider: { const: 'form_field_users' } },
+            not: { anyOf: [{ required: ['roleCode'] }, { required: ['scope'] }, { required: ['routing'] }] },
+          },
+        }],
         properties: {
           provider: {
             enum: [
@@ -5594,6 +5629,7 @@ export const workflowBindingSchema = {
           },
           users: { type: "array", uniqueItems: true, items: nonEmptyString },
           inputPath: { type: "string" },
+          candidateField: dataFieldCode,
           departmentIdFrom: { type: "string" },
           level: { type: "integer", minimum: 1, maximum: 20 },
           fallbackToAncestorSupervisor: { type: "boolean" },

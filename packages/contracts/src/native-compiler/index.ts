@@ -33,3 +33,5 @@ export { workflowDelegationMutationRequestSchema } from './workflow-delegation-a
 export * from './workflow-business-step-identity.js';
 export * from './workflow-task-page.js';
 export * from './data-capacity.js';
+
+export * from './user-candidates.js';

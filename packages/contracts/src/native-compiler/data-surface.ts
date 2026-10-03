@@ -56,6 +56,7 @@ export const OPENXIANGDA_NATIVE_DATA_SURFACE_KEYS_V2 = {
     'searchable',
     'sortable',
     'source',
+    'userCandidates',
     'timePrecision',
     'serial',
     'subtable',
@@ -438,6 +439,7 @@ function validateSurfaceField(
     'rangeBoundary',
     'options',
     'source',
+    'userCandidates',
     'timePrecision',
     'serial',
     'subtable',
@@ -594,6 +596,7 @@ function assertProjection(
     | 'rangeBoundary'
     | 'options'
     | 'source'
+    | 'userCandidates'
     | 'timePrecision'
     | 'serial'
     | 'subtable',

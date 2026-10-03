@@ -1,4 +1,5 @@
 import type { DataFieldOption } from './field-values.js';
+import type { DataFieldUserCandidates } from './native-compiler/user-candidates.js';
 import type { DataFieldResourceSource } from './references.js';
 import type { DataFieldType, DataRangeBoundary } from './types.js';
 
@@ -71,6 +72,7 @@ export interface DataFieldSurface {
   searchable?: boolean;
   sortable?: boolean;
   source?: DataFieldResourceSource;
+  userCandidates?: DataFieldUserCandidates;
   timePrecision?: 'minute' | 'second';
   serial?: {
     prefix?: string;

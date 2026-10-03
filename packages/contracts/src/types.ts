@@ -14,6 +14,7 @@ import type {
   StableSignatureValue,
   UserReferenceValue,
 } from "./field-values.js";
+import type { DataFieldUserCandidates } from './native-compiler/user-candidates.js';
 import type { DataFieldResourceSource } from "./references.js";
 import type { WorkflowBusinessData } from "./workflow-summary.js";
 import type { WorkflowBusinessDetail } from "./workflow-detail.js";
@@ -1185,6 +1186,8 @@ export interface DataFieldDefinition {
   options?: DataFieldOption[];
   /** Dynamic same-application source for resource-reference fields. */
   source?: DataFieldResourceSource;
+  /** Authoritative role membership constraint for user references. */
+  userCandidates?: DataFieldUserCandidates;
   maxLength?: number;
   precision?: number;
   scale?: number;
@@ -2365,6 +2368,8 @@ export type WorkflowBindingProvider =
 
 export interface WorkflowBindingEntry {
   provider: WorkflowBindingProvider;
+  /** Reference to the constrained subject field; role/scope remain declared once. */
+  candidateField?: string;
   users?: string[];
   inputPath?: string;
   departmentIdFrom?: string;

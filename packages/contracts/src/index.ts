@@ -36,3 +36,5 @@ export * from './native-compiler/unique-keys.js';
 export * from './native-compiler/role-membership-batch.js';
 
 export * from './native-compiler/workflow-business-step-identity.js';
+
+export * from './native-compiler/user-candidates.js';

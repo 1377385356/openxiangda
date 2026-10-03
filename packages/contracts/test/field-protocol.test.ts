@@ -133,6 +133,7 @@ test('keeps the complete generated resource surface in the public schema', () =>
     'searchable',
     'sortable',
     'source',
+    'userCandidates',
     'timePrecision',
     'serial',
     'subtable',

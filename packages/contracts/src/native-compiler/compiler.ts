@@ -1,3 +1,4 @@
+import { validateUserCandidateReferences, validateWorkflowUserCandidateBindings, UserCandidateContractError } from './user-candidates.js';
 import { NativeUniqueKeyContractError, parseNativeUniqueKeys } from './unique-keys.js';
 import { validateManagedConcurrency, ManagedConcurrencyContractError } from './managed-concurrency.js';
 import { normalizeDecimalReservationEventDeclaration, decimalReservationEventContext } from './decimal-reservation.js';
@@ -647,6 +648,9 @@ export function compileRequiredPlatformCapabilitiesV3(
             declaration: config.events,
           },
         ]
+      : []),
+    ...(config.data.resources.some((resource: JsonObject) => resource.schema.fields.some((field: JsonObject) => field.userCandidates !== undefined))
+      ? [{ code: 'data.user-candidates' as const, declaration: config.data.resources.filter((resource: JsonObject) => resource.schema.fields.some((field: JsonObject) => field.userCandidates !== undefined)) }]
       : []),
     ...(config.workflows.activations.length
       ? [
@@ -6153,8 +6157,14 @@ function validateDataFieldReferences(config: JsonObject) {
       config.data.resources,
       '/config/data/resources'
     );
+    config.data.resources.forEach((resource: JsonObject, index: number) => validateUserCandidateReferences(
+      resource.schema.fields,
+      new Set(config.authz.roles.map((role: JsonObject) => role.code)),
+      new Set(config.authz.scopeDimensions.map((dimension: JsonObject) => dimension.code)),
+      `/config/data/resources/${index}/schema/fields`
+    ));
   } catch (error) {
-    if (error instanceof NativeDataFieldContractV2Error) {
+    if (error instanceof NativeDataFieldContractV2Error || error instanceof UserCandidateContractError) {
       fail(error.code, error.pointer);
     }
     throw error;
@@ -6629,6 +6639,15 @@ function validateWorkflowReferences(config: JsonObject) {
       binding,
       `/config/workflows/activations/${index}`
     );
+    try {
+      const fields = resources.get(definition.subject.resourceCode)?.schema.fields || [];
+      validateWorkflowUserCandidateBindings(definition as any, binding as any,
+        new Map(fields.map((field: any) => [field.code, field])), `${pointer}/bindings`,
+        new Map([...resources].map(([code, resource]) => [code, new Map(resource.schema.fields.map((field: any) => [field.code, field]))])));
+    } catch (error) {
+      if (error instanceof UserCandidateContractError) fail(error.code, error.pointer);
+      throw error;
+    }
     activeBindings.set(code, binding);
   }
 
@@ -7339,7 +7358,7 @@ function validateResource(raw: any, pointer: string, appCode: string) {
       `${pointer}/surface`
     );
   } catch (error) {
-    if (error instanceof NativeDataFieldContractV2Error || error instanceof NativeDecimalLifecycleContractError || error instanceof NativeUniqueKeyContractError) {
+    if (error instanceof NativeDataFieldContractV2Error || error instanceof UserCandidateContractError || error instanceof NativeDecimalLifecycleContractError || error instanceof NativeUniqueKeyContractError) {
       fail(error.code, error.pointer);
     }
     throw error;

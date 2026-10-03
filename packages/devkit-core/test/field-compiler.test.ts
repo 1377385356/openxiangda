@@ -574,6 +574,44 @@ test('rejects aggregate subtable capacity above one atomic transaction', () => {
   );
 });
 
+test('constrained users retain one source in storage, generated surfaces and normalized packages', () => {
+  const userCandidates = {
+    kind: 'app-role' as const, roleCode: 'reviewer', pageSize: 10,
+    scope: { dimensionCode: 'college', operation: 'approve', field: 'college' },
+  };
+  const declaration = baseDeclaration([
+    { code: 'college', type: 'option.single', label: '学院', options: [{ value: 'arts', label: '艺术学院' }] },
+    { code: 'approvers', type: 'user.multiple', label: '审核人', userCandidates },
+  ]);
+  declaration.authz = {
+    capabilities: [],
+    roles: [{ code: 'reviewer', name: '审核职责', capabilities: [] }],
+    scopeDimensions: [{ code: 'college', name: '学院', valueType: 'string', hierarchyMode: 'flat' }],
+  };
+  const compiled = compileApplicationSources(defineOpenXiangdaApp(declaration));
+  const resource = compiled.config.value.data.resources[0]!;
+  assert.deepEqual(resource.schema.fields.find(field => field.code === 'approvers')?.userCandidates, userCandidates);
+  assert.deepEqual(resource.surface?.fields.approvers?.userCandidates, userCandidates);
+  const surfaces = JSON.parse(compiled.contracts.typescript.match(/export const resourceSurfaces = ([\s\S]*?) as const;/)![1]!);
+  assert.deepEqual(surfaces['all-fields'].fields.approvers.userCandidates, userCandidates);
+
+  for (const invalidSource of [null, false, 0, '', { ...userCandidates, pageSize: 51 }]) {
+    const invalid = structuredClone(declaration);
+    invalid.data!.resources[0]!.fields[1]!.userCandidates = invalidSource as any;
+    assert.throws(() => defineOpenXiangdaApp(invalid), (error: any) => error.diagnostics.some((item: any) => String(item.code).startsWith('DATA_USER_CANDIDATES_')));
+  }
+
+  for (const [change, expected] of [
+    [(value: typeof declaration) => { value.authz!.roles = []; }, 'DATA_USER_CANDIDATES_ROLE_UNDECLARED'],
+    [(value: typeof declaration) => { value.authz!.scopeDimensions = []; }, 'DATA_USER_CANDIDATES_DIMENSION_UNDECLARED'],
+    [(value: typeof declaration) => { const field = value.data!.resources[0]!.fields[0]!; field.type = 'department.single'; delete field.options; }, 'DATA_USER_CANDIDATES_SCOPE_FIELD_INVALID'],
+  ] as const) {
+    const invalid = structuredClone(declaration);
+    change(invalid);
+    assert.throws(() => defineOpenXiangdaApp(invalid), (error: any) => error.diagnostics.some((item: any) => item.code === expected));
+  }
+});
+
 function baseDeclaration(fields: AppDataFieldDeclaration[]): OpenXiangdaAppDeclaration {
   return {
     schemaVersion: 3,

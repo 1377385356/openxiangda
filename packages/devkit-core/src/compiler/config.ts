@@ -1,3 +1,4 @@
+import { validateUserCandidateReferences, validateWorkflowUserCandidateBindings, UserCandidateContractError } from 'openxiangda-contracts';
 import { parseNativeUniqueKeys, DATA_SUBTABLE_MAX_TOTAL_ROWS } from 'openxiangda-contracts';
 import type { ManagedConcurrencyDeclaration } from 'openxiangda-contracts';
 import { validateManagedConcurrency } from 'openxiangda-contracts/native-compiler';
@@ -203,6 +204,7 @@ export interface AppDataFieldDeclaration {
   indexed?: boolean;
   options?: DataFieldDefinition['options'];
   source?: DataFieldDefinition['source'];
+  userCandidates?: DataFieldDefinition['userCandidates'];
   maxLength?: DataFieldDefinition['maxLength'];
   precision?: DataFieldDefinition['precision'];
   scale?: DataFieldDefinition['scale'];
@@ -1692,6 +1694,7 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
       secretEnvs.add(env);
     }
   );
+  const authz = object(config.authz);
   const data = object(config.data);
   if (config.data !== undefined && !Array.isArray(data.resources)) {
     diagnostics.push(
@@ -1743,6 +1746,17 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
     resources.forEach((resource, index) => {
       const resourceRecord = object(resource);
       const fields = object(resourceRecord.schema).fields;
+      try {
+        validateUserCandidateReferences((Array.isArray(fields) ? fields : []) as any,
+          new Set((Array.isArray(authz.roles) ? authz.roles : []).map(item => string(object(item).code))),
+          new Set((Array.isArray(authz.scopeDimensions) ? authz.scopeDimensions : []).map(item => string(object(item).code))),
+          `data.resources[${index}].schema.fields`);
+      } catch (error) {
+        if (!(error instanceof UserCandidateContractError)) throw error;
+        const issue = error;
+        diagnostics.push(diagnostic(issue.code, '人员候选必须引用同一应用声明的职责、范围和兼容字段', issue.pointer));
+      }
+
       (Array.isArray(fields) ? fields : []).forEach((rawField, fieldIndex) => {
         const field = object(rawField);
         const source = object(field.source);
@@ -1850,7 +1864,6 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
       });
     });
   }
-  const authz = object(config.authz);
   const declaredCapabilities = Array.isArray(authz.capabilities)
     ? authz.capabilities
     : [];
@@ -4185,6 +4198,18 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
         diagnostics.push(
           diagnostic('APP_CONFIG_WORKFLOW_BINDING_INVALID', error, path)
         );
+      }
+      try {
+        const resource = (Array.isArray(data.resources) ? data.resources : []).map(object).find(item => item.code === definition.subject.resourceCode);
+        const fields = object(resource?.schema).fields;
+        validateWorkflowUserCandidateBindings(definition, binding,
+          new Map((Array.isArray(fields) ? fields : []).map(item => [String(object(item).code), item as any])), `${path}.bindings`,
+          new Map((Array.isArray(data.resources) ? data.resources : []).map(object).map(resource => [String(resource.code),
+            new Map((Array.isArray(object(resource.schema).fields) ? object(resource.schema).fields as any[] : []).map(field => [field.code, field]))])));
+      } catch (error) {
+        if (!(error instanceof UserCandidateContractError)) throw error;
+        const issue = error;
+        diagnostics.push(diagnostic(issue.code, '流程选人必须引用原人员字段及固定范围事实，办理页不能修改选人范围', issue.pointer));
       }
       activeRoutingBindings.push(binding);
       for (const entry of Object.values(binding.bindings || {})) {
@@ -6905,6 +6930,7 @@ export function materializeDataResource(
         Boolean(field.filter || field.searchable || field.sortable),
       ...(field.options ? { options: field.options } : {}),
       ...(field.source ? { source: field.source } : {}),
+      ...(field.userCandidates !== undefined ? { userCandidates: field.userCandidates } : {}),
       ...(field.maxLength !== undefined ? { maxLength: field.maxLength } : {}),
       ...(field.precision !== undefined ? { precision: field.precision } : {}),
       ...(field.scale !== undefined ? { scale: field.scale } : {}),
@@ -6990,6 +7016,7 @@ export function materializeDataResource(
           ...(field.file?.accept ? { accept: field.file.accept } : {}),
           ...(field.options ? { options: field.options } : {}),
           ...(field.source ? { source: field.source } : {}),
+          ...(field.userCandidates !== undefined ? { userCandidates: field.userCandidates } : {}),
           ...(field.timePrecision ? { timePrecision: field.timePrecision } : {}),
           ...(field.serial ? { serial: field.serial } : {}),
           ...(field.subtable ? { subtable: field.subtable } : {}),
@@ -7101,6 +7128,7 @@ export function validateAppDeclaration(value: unknown): Diagnostic[] {
     'indexed',
     'options',
     'source',
+    'userCandidates',
     'maxLength',
     'precision',
     'scale',

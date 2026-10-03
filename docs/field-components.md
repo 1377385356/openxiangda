@@ -140,6 +140,36 @@ import { AttachmentFileList } from 'openxiangda/field-kit';
 成员快照可包含头像、工号、职务、手机号、邮箱和所属部门；部门快照可包含完整路径、
 路径节点和父部门。凭证、Token 和认证秘密永远不能进入快照。
 
+### 限定职责候选（合同已定义，运行时接入中）
+
+`user.single` / `user.multiple` 可在代码中声明 `userCandidates`，引用本应用职责和可选范围。
+它与资源选择的显示 `source` 分开，编译产物中的字段和 Surface 必须一致。
+当前仅完成声明与编译校验，尚不能在未开放 `data.user-candidates@1.0.0` 的平台部署；
+后续候选查询、保存校验和双端组件接入完成后才开放能力。不能以普通通讯录过滤替代服务端约束。
+
+```ts
+{
+  code: 'unitLeaders', type: 'user.multiple', label: '单位负责人',
+  userCandidates: {
+    kind: 'app-role', roleCode: 'unit-leader', pageSize: 20,
+    scope: { dimensionCode: 'college', operation: 'approve', field: 'college' },
+  },
+}
+```
+
+职责和范围维度必须在同包声明。`pageSize` 为1–50，默认20；范围使用代码常量 `value`，
+或同资源的 `text.short`、`uuid`、`option.single` 字段 `field`，两者互斥。
+单选范围取稳定的 `.value`，不按显示标签决定身份。记录范围必须来自已授权、已保存的记录或当前任务，
+首版新建不接受非空的记录范围选人。修改范围须清空相依选择并保存，再按新范围重选。
+候选显示失败不能当作空名单；旧选择失效须保留显示快照并提示重选。
+
+流程使用 `{ provider: 'form_field_users', inputPath: 'leaders', candidateField: 'unitLeaders' }`，
+其中 `subject.factProjection.leaders` 必须精确指向 `unitLeaders`，范围字段也须有唯一事实投影。
+不能另写职责、范围或路由覆盖来源，不能用嵌套输入路径绕过候选字段。
+办理页不能同时修改范围字段与相依选人字段。首版任务候选只支持主体字段，任务中可写子表候选字段明确拒绝；
+普通子表记录的 Native 约束和历史只读显示仍按各自合同处理。
+流程进入节点时再次核验原职责成员，随后解释职责代理；历史已创建任务保留当时快照。
+
 仅选择时间时使用 `time`，并显式决定精度：
 
 ```ts

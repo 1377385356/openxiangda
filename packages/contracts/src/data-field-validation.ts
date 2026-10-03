@@ -1,3 +1,4 @@
+import { parseDataFieldUserCandidates, UserCandidateContractError } from './native-compiler/user-candidates.js';
 import { DATA_SUBTABLE_MAX_ROWS } from './native-compiler/data-capacity.js';
 import {
   DATA_FIELD_TYPES,
@@ -42,6 +43,7 @@ const DATA_FIELD_PROPERTIES = new Set([
   'indexed',
   'options',
   'source',
+  'userCandidates',
   'maxLength',
   'precision',
   'scale',
@@ -110,6 +112,12 @@ export function validateDataFieldDefinition(
   }
   validateOptions(field, path, diagnostics);
   validateSource(field, path, diagnostics);
+  try {
+    parseDataFieldUserCandidates(field.userCandidates, type, `${path}.userCandidates`);
+  } catch (error) {
+    if (!(error instanceof UserCandidateContractError)) throw error;
+    diagnostics.push(diagnostic(error.code, '人员候选声明无效，请检查职责、范围和分页配置', error.pointer));
+  }
   validateScalarConfig(field, path, diagnostics);
   validateRangeBoundary(field, path, diagnostics);
   validateFileConfig(field, path, diagnostics);

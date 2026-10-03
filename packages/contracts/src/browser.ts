@@ -29,3 +29,5 @@ export * from './application-diagnostics.js';
 
 export * from './native-compiler/unique-keys.js';
 export * from './native-compiler/role-membership-batch.js';
+
+export * from './native-compiler/user-candidates.js';

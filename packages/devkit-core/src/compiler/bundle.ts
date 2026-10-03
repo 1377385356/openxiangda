@@ -2024,6 +2024,7 @@ function normalizeDataResource(resource: DataResource): DataResource {
         ...(field.source
           ? { source: normalizeDataFieldSource(field.source) }
           : {}),
+        ...(field.userCandidates !== undefined ? { userCandidates: field.userCandidates } : {}),
         ...(field.maxLength !== undefined ? { maxLength: field.maxLength } : {}),
         ...(field.precision !== undefined ? { precision: field.precision } : {}),
         ...(field.scale !== undefined ? { scale: field.scale } : {}),
@@ -2490,6 +2491,7 @@ function normalizeResourceSurface(
           ...(field.source
             ? { source: normalizeDataFieldSource(field.source) }
             : {}),
+          ...(field.userCandidates !== undefined ? { userCandidates: field.userCandidates } : {}),
           ...(field.timePrecision
             ? { timePrecision: field.timePrecision }
             : {}),
@@ -2609,6 +2611,7 @@ function defaultResourceSurface(resource: DataResource): DataResourceSurface {
         ...(field.file?.accept ? { accept: uniqueSorted(field.file.accept) } : {}),
         ...(field.options ? { options: field.options } : {}),
         ...(field.source ? { source: field.source } : {}),
+        ...(field.userCandidates !== undefined ? { userCandidates: field.userCandidates } : {}),
         ...(field.timePrecision ? { timePrecision: field.timePrecision } : {}),
         ...(field.serial ? { serial: { ...field.serial } } : {}),
         ...(field.subtable ? { subtable: { ...field.subtable } } : {}),

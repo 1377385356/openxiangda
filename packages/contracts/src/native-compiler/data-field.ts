@@ -1,3 +1,4 @@
+import { parseDataFieldUserCandidates, type DataFieldUserCandidates } from './user-candidates.js';
 import { DATA_SUBTABLE_MAX_ROWS, DATA_SUBTABLE_MAX_TOTAL_ROWS } from './data-capacity.js';
 
 const FIELD_CODE_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,62}$/;
@@ -104,6 +105,7 @@ export interface NativeDataFieldV2 {
   indexed?: boolean;
   options?: NativeDataFieldOptionV2[];
   source?: NativeDataFieldResourceSourceV2;
+  userCandidates?: DataFieldUserCandidates;
   maxLength?: number;
   precision?: number;
   scale?: number;
@@ -207,6 +209,7 @@ export function parseNativeDataFieldsV2(
         'indexed',
         'options',
         'source',
+        'userCandidates',
         'maxLength',
         'precision',
         'scale',
@@ -247,6 +250,7 @@ export function parseNativeDataFieldsV2(
     }
     const options = parseOptions(field.options, semanticType, fieldPointer);
     const source = parseSource(field.source, semanticType, fieldPointer);
+    const userCandidates = parseDataFieldUserCandidates(field.userCandidates, semanticType, `${fieldPointer}/userCandidates`);
     const scalar = parseScalarConfiguration(field, semanticType, fieldPointer);
     const exactDecimal = optionalBoolean(
       field.exactDecimal,
@@ -270,6 +274,7 @@ export function parseNativeDataFieldsV2(
       ...(indexed === undefined ? {} : { indexed }),
       ...(options ? { options } : {}),
       ...(source ? { source } : {}),
+      ...(userCandidates ? { userCandidates } : {}),
       ...scalar,
       ...(exactDecimal === undefined ? {} : { exactDecimal }),
       ...(rangeBoundary ? { rangeBoundary } : {}),
