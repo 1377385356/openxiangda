@@ -1,6 +1,7 @@
 import { CheckCircleOutlined, FormatPainterOutlined } from '@ant-design/icons';
 import { Alert, Button, Input, Space } from 'antd';
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useId, useState } from 'react';
+import { SubtableEditActivityContext } from './MobileSubtableValidation';
 
 function stringify(value: unknown) {
   if (value === undefined) return '';
@@ -29,6 +30,10 @@ export function JsonField({
 }) {
   const [draft, setDraft] = useState(() => stringify(value));
   const [error, setError] = useState('');
+  const reportPending = useContext(SubtableEditActivityContext);
+  const activityKey = useId();
+  useEffect(() => { reportPending?.(activityKey, Boolean(error)); }, [activityKey, error, reportPending]);
+  useEffect(() => () => { reportPending?.(activityKey, false); }, [activityKey, reportPending]);
 
   useEffect(() => setDraft(stringify(value)), [value]);
 

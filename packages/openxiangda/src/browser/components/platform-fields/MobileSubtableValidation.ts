@@ -1,11 +1,14 @@
 import { createContext, useCallback, useRef } from 'react';
 
+// Local lifecycle observation; each control owns its unfinished edits and pending Files.
+export const SubtableEditActivityContext = createContext<((key: string, pending: boolean) => void) | null>(null);
+
 type ValidateRow = () => Promise<void>;
 export const MobileSubtableValidationContext = createContext<
   ((key: string, validate: ValidateRow) => () => void) | null
 >(null);
 
-/** Inline row forms remain the sole field/validation owners, including collapsed rows. */
+/** Field Kit registers complete-value validation as well as current-page inline feedback. */
 export function useMobileSubtableValidation() {
   const rows = useRef(new Map<string, ValidateRow>());
   const register = useCallback((key: string, validate: ValidateRow) => {

@@ -45,7 +45,7 @@ import { AttachmentFileList, formatManagedFileSize } from '../platform-fields/At
 import { CascadeField, CascadeValueDisplay } from '../platform-fields/CascadeField';
 import type { CascadeStoredValue } from '../platform-fields/cascade-value';
 import { DateTimeField, DateTimeFilter, DateTimeValueDisplay } from '../platform-fields/DateTimeField';
-import { rangeValueValidationMessage } from '../platform-fields/field-form-codec';
+import { surfaceFieldValidationRules } from '../platform-fields/surface-field-validation';
 import { MobileBooleanField, MobileDateTimeField, MobileNumberField, MobileOptionField, MobileRatingField, MobileTextField } from '../platform-fields/MobileFieldControls';
 import { MobileSubtableValidationContext, useMobileSubtableValidation } from '../platform-fields/MobileSubtableValidation';
 import { MobileFieldFrame } from '../platform-fields/MobileFieldFrame';
@@ -159,30 +159,6 @@ function numberInputProps(field: SurfaceField) {
     ...(field.widget === 'money' ? { prefix: '¥' } : {}),
     ...(field.widget === 'percent' ? { suffix: '%' } : {}),
   };
-}
-
-function rangeValidationRules(field: SurfaceField) {
-  if (field.type !== 'date-range' && field.type !== 'datetime-range') return [];
-  return [{
-    validator: (_rule: unknown, value: unknown) => {
-      const message = rangeValueValidationMessage(field, value);
-      return message ? Promise.reject(new Error(message)) : Promise.resolve();
-    },
-  }];
-}
-
-function mobileNumberValidationRules(field: SurfaceField) {
-  if (!field.type.startsWith('number.')) return [];
-  return [{ validator: (_rule: unknown, value: unknown) => {
-    if (value == null || value === '') return Promise.resolve();
-    const valid = typeof value === 'number' && Number.isFinite(value) &&
-      (field.type !== 'number.integer' || Number.isSafeInteger(value)) &&
-      (field.min === undefined || value >= field.min) &&
-      (field.max === undefined || value <= field.max);
-    return valid ? Promise.resolve() : Promise.reject(new Error(
-      `请填写有效${field.type === 'number.integer' ? '整数' : '数字'}${field.min === undefined ? '' : `，最小 ${field.min}`}${field.max === undefined ? '' : `，最大 ${field.max}`}`
-    ));
-  } }];
 }
 
 /** Render a standard filter control from the same field surface used by forms. */
@@ -365,19 +341,8 @@ export function SurfaceFieldControl({
   renderers,
 }: SurfaceFieldEditContext & { renderers?: SurfaceFieldRenderers }) {
   const subtableValidation = useMobileSubtableValidation();
-  const rules = disabled || field.widget === 'readonly' ? [] : [
-    ...(field.requiredHint
-      ? [{ required: true, message: `请填写或选择${field.label}` }]
-      : []),
-    ...(field.widget === 'email'
-      ? [{ type: 'email' as const, message: '邮箱格式不正确' }]
-      : []),
-    ...(field.widget === 'phone'
-      ? [{ pattern: /^1\d{10}$/, message: '请输入 11 位手机号' }]
-      : []),
-    ...rangeValidationRules(field),
-    ...(field.widget === 'subtable' ? [{ validator: subtableValidation.validator }] : []),
-  ];
+  const rules = [...surfaceFieldValidationRules(field, false, disabled),
+    ...(field.widget === 'subtable' && !disabled ? [{ validator: subtableValidation.validator }] : [])];
   const common = {
     disabled,
     ...(field.maxLength === undefined ? {} : { maxLength: field.maxLength }),
@@ -576,16 +541,8 @@ export function MobileSurfaceFieldControl({
   renderers,
 }: SurfaceFieldEditContext & { renderers?: SurfaceFieldRenderers }) {
   const subtableValidation = useMobileSubtableValidation();
-  const rules = disabled || field.widget === 'readonly'
-    ? []
-    : [
-        ...(field.requiredHint
-          ? [{ required: true, message: `请填写或选择${field.label}` }]
-          : []),
-        ...rangeValidationRules(field),
-        ...mobileNumberValidationRules(field),
-        ...(field.widget === 'subtable' ? [{ validator: subtableValidation.validator }] : []),
-      ];
+  const rules = [...surfaceFieldValidationRules(field, true, disabled),
+    ...(field.widget === 'subtable' && !disabled ? [{ validator: subtableValidation.validator }] : [])];
   let control: ReactNode = <MobileTextField disabled={disabled} field={field} />;
   switch (field.widget) {
     case 'textarea':

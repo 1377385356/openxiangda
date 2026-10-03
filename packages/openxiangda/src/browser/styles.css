@@ -2425,6 +2425,17 @@
   min-width: 0;
 }
 
+.oxa-subtable-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 0;
+  font-size: 13px;
+  color: var(--ant-color-text-secondary);
+}
+
 .oxa-subtable-toolbar {
   display: flex;
   min-height: 32px;

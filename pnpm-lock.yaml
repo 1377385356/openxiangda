@@ -147,6 +147,9 @@ importers:
       '@js-temporal/polyfill':
         specifier: 0.5.1
         version: 0.5.1
+      '@rc-component/async-validator':
+        specifier: 6.0.0
+        version: 6.0.0
       '@rc-component/picker':
         specifier: 1.10.0
         version: 1.10.0(date-fns@2.30.0)(dayjs@1.11.18)(luxon@3.7.2)(moment@2.30.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)

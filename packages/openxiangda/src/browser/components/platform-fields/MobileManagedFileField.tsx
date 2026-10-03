@@ -1,6 +1,7 @@
 import { PlusOutlined, UploadOutlined } from '@ant-design/icons';
 import type { DataFileRef } from 'openxiangda-contracts/browser';
-import { useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useId, useRef, useState } from 'react';
+import { SubtableEditActivityContext } from './MobileSubtableValidation';
 import { Button } from '../../mobile';
 import type { WorkflowFileBinding } from '../../platform-client';
 import {
@@ -47,6 +48,10 @@ export function MobileManagedFileField({
   const current = useRef(value);
   const [pending, setPending] = useState<Pending[]>([]);
   const [notice, setNotice] = useState('');
+  const reportPending = useContext(SubtableEditActivityContext);
+  const activityKey = useId();
+  useEffect(() => { reportPending?.(activityKey, pending.length > 0); }, [activityKey, pending.length, reportPending]);
+  useEffect(() => () => { reportPending?.(activityKey, false); }, [activityKey, reportPending]);
   useEffect(() => {
     current.current = value;
   }, [value]);
