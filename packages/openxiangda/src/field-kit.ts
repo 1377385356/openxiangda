@@ -1,6 +1,7 @@
 export * from './browser/AuthoritativeSelector';
 export * from './browser/components/platform-fields/AddressField';
 export * from './browser/components/platform-fields/AttachmentFileList';
+export {ManagedMediaPlayer} from './browser/components/platform-fields/ManagedMediaPlayer';
 export * from './browser/components/platform-fields/CascadeField';
 export * from './browser/components/platform-fields/DateTimeField';
 export type { DateTimeConstraints } from './browser/components/platform-fields/zoned-date-time';

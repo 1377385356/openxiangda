@@ -21,6 +21,7 @@ import {
   type WorkflowFileBinding,
 } from './platform-client';
 import { formatManagedFileSize } from './components/platform-fields/AttachmentFileList';
+import {ManagedMediaElement} from './components/platform-fields/ManagedMediaPlayer';
 
 const MAX_SPREADSHEET_ROWS = 5_000;
 const MAX_SPREADSHEET_COLUMNS = 200;
@@ -189,6 +190,9 @@ function PreviewBody({ preview, blob }: { preview: DataFilePreview; blob?: Blob 
   if (!blob) return <Spin description="正在读取文件内容" />;
   if (preview.previewType === 'image') {
     return <img alt={preview.file.name} className="oxa-preview-image" src={objectUrl} />;
+  }
+  if(preview.previewType==='video'||preview.previewType==='audio'){
+    return <ManagedMediaElement src={objectUrl} kind={preview.previewType} name={preview.file.name} className="oxa-preview-media"/>;
   }
   if (preview.renderMode === 'pdfjs') {
     return (
