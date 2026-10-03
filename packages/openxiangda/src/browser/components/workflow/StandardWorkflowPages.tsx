@@ -130,6 +130,8 @@ import { PlatformAvatar } from '../PlatformAvatar';
 import { SubtableField } from '../platform-fields/SubtableField';
 import { standardProcessFormValues } from './standard-process-values';
 import { fieldWritable } from '../resource/resource-page-helpers';
+import { workflowSubmissionFormProjection, workflowSubmissionPrefill, type WorkflowSubmissionFieldStates } from './workflow-submission-form';
+export type { WorkflowSubmissionFieldState, WorkflowSubmissionFieldStates } from './workflow-submission-form';
 
 type PageVariant = 'desktop' | 'mobile';
 export type WorkflowPageVariant = PageVariant;
@@ -2131,18 +2133,27 @@ async function workflowContextPrefillValue(
   return workflowContextScalarValue(field, value);
 }
 
+export interface WorkflowSubmissionFormOptions {
+  /** Canonical values for the matched launch inputs, applied once to untouched fields. */
+  initialValues?: JsonObject;
+  fieldState?: (values: Readonly<JsonObject>) => WorkflowSubmissionFieldStates;
+  intro?: ReactNode;
+}
+
 export function WorkflowSubmissionPage({
   instancePath,
   workflowCode: declaredWorkflowCode,
   variant = 'desktop',
   onDismiss,
   onCompleted,
+  formOptions,
 }: {
   instancePath?: string;
   workflowCode?: string;
   variant?: PageVariant;
   onDismiss?: () => void;
   onCompleted?: (subjectId: string) => void;
+  formOptions?: WorkflowSubmissionFormOptions;
 } = {}) {
   const { workflowCode: routeWorkflowCode = '' } = useParams();
   const workflowCode = declaredWorkflowCode || routeWorkflowCode;
@@ -2154,6 +2165,9 @@ export function WorkflowSubmissionPage({
   const { message } = App.useApp();
   const [subjectForm] = Form.useForm<JsonObject>();
   const [requirementForm] = Form.useForm<JsonObject>();
+  const watchedFormValues = Form.useWatch([], { form: subjectForm, preserve: true }) as JsonObject | undefined;
+  const [prefillError, setPrefillError] = useState(false);
+  const prefill = useRef({ context: '', applied: new Set<string>() });
   const [loading, setLoading] = useState(false);
   const [launchSurface, setLaunchSurface] =
     useState<WorkflowLaunchSurface | null>(null);
@@ -2251,6 +2265,36 @@ export function WorkflowSubmissionPage({
     namedIntent,
     subjectDefinition,
   ]);
+
+  const formProjection = useMemo(() => {
+    try {
+      const values = subjectDefinition ? normalizeFormValues(watchedFormValues || {}, subjectDefinition.surface) : {};
+      return { ...workflowSubmissionFormProjection(fields, values, formOptions?.fieldState?.(values)), error: false };
+    } catch {
+      return { fields, values: {}, hiddenValues: {}, error: true };
+    }
+  }, [fields, formOptions?.fieldState, subjectDefinition, watchedFormValues]);
+  const prefillContext = JSON.stringify([recoveryScope, identity.environment.activeAppVersionId, submissionMode, subjectId]);
+  useEffect(() => {
+    if (!launchSurface || commandId || pendingSubmission || mutationMode !== 'create' || !subjectDefinition ||
+      launchSurface.environmentId !== identity.environment.id || (generatedNamedSubmission && !namedIntent)) return;
+    if (prefill.current.context !== prefillContext) prefill.current = { context: prefillContext, applied: new Set() };
+    try {
+      const values = workflowSubmissionPrefill(fields, formOptions?.initialValues || {}, prefill.current.applied,
+        key => subjectForm.isFieldTouched(key));
+      const normalized = normalizeRecordForForm(values, subjectDefinition.surface);
+      subjectForm.setFields(Object.entries(normalized).map(([name, value]) => ({ name, value, touched: false })));
+      setPrefillError(false);
+    } catch { setPrefillError(true); }
+  }, [commandId, fields, formOptions?.initialValues, generatedNamedSubmission, identity.environment.id,
+    launchSurface, mutationMode, namedIntent, pendingSubmission, prefillContext, subjectDefinition, subjectForm]);
+  useEffect(() => {
+    if (loading || commandId || pendingSubmission || !launchSurface || formProjection.error || !subjectDefinition) return;
+    const values = normalizeRecordForForm(formProjection.hiddenValues, subjectDefinition.surface);
+    const changes = Object.entries(values).filter(([key, value]) =>
+      JSON.stringify(subjectForm.getFieldValue(key)) !== JSON.stringify(value));
+    if (changes.length) subjectForm.setFields(changes.map(([name, value]) => ({ name, value, errors: [] })));
+  }, [commandId, formProjection, launchSurface, loading, pendingSubmission, subjectDefinition, subjectForm]);
 
   useEffect(() => {
     let active = true;
@@ -2660,7 +2704,7 @@ export function WorkflowSubmissionPage({
   }
 
   const submit = async (values: JsonObject) => {
-    if (submitInFlight.current || commandId || completion || !launchSurface) return;
+    if (submitInFlight.current || commandId || completion || !launchSurface || prefillError || formProjection.error) return;
     const unresolved = readPendingWorkflowSubmission(submissionLocatorStorage(), recoveryScope);
     if (pendingSubmission || unresolved) { if (unresolved) setPendingSubmission(unresolved); return; }
     submitInFlight.current = true;
@@ -2676,7 +2720,7 @@ export function WorkflowSubmissionPage({
       const encoded = namedIntent ? normalizeFormValues(values, subjectDefinition.surface)
         : standardProcessFormValues(values, subjectDefinition.surface, resources,
           (field, mode) => fieldWritable(field, mode === 'create' ? 'create' : 'edit', hasCapability, identity.isAppSuperAdmin));
-      const data = Object.fromEntries(fields.filter(field => Object.hasOwn(encoded, field.key)).map(field => [field.key, encoded[field.key]]));
+      const data = workflowSubmissionFormProjection(fields, encoded, formOptions?.fieldState?.(encoded)).values;
       const signature = JSON.stringify({ workflowCode, subjectId, environmentKey: identity.environment.key, submissionMode, data });
       if (submissionAttempt.current?.signature !== signature) {
         submissionAttempt.current = { signature, idempotencyKey: randomId(`process:${workflowCode}`), requestedAt: new Date().toISOString() };
@@ -2893,7 +2937,7 @@ export function WorkflowSubmissionPage({
       (namedIntent
         ? '业务操作将在服务端完成校验、幂等提交，并按规则决定是否进入审批'
         : '业务数据和流程发起意图将原子提交'),
-    fields,
+    fields: formProjection.fields,
     subjectDefinition,
     subjectForm,
     requirementForm,
@@ -2907,6 +2951,8 @@ export function WorkflowSubmissionPage({
     completion,
     embedded: Boolean(onDismiss),
     fieldRenderers,
+    formIntro: formOptions?.intro,
+    formError: prefillError || formProjection.error ? '表单规则暂不可用，请联系管理员。' : undefined,
     recordId: mutationMode === 'update' ? subjectId : undefined,
     expectedRevision: mutationMode === 'update' ? loadedSubjectRevision : undefined,
     onBack: onDismiss ? dismissDrawer : () => navigate(-1),
@@ -2941,6 +2987,8 @@ interface ProcessSubmissionRendererProps {
   launchControls: ReactNode;
   completion: { subjectId: string; subjectRevision?: number } | null;
   fieldRenderers?: SurfaceFieldRenderers;
+  formIntro?: ReactNode;
+  formError?: string;
   recordId?: string;
   expectedRevision?: number;
   onBack: () => void;
@@ -3030,8 +3078,9 @@ function StandardProcessSubmissionRenderer(props: ProcessSubmissionRendererProps
       expectedRevision={props.expectedRevision}
       initialValues={props.mutationMode === 'update' ? undefined : Object.fromEntries(props.fields.filter(field => field.type === 'user.multiple').map(field => [field.key, []]))}
       form={props.subjectForm} busy={props.loading || props.submitted} pending={props.loading || props.processing}
-      submitDisabled={props.submitted} submitLabel="提交审批" canWriteField={() => true} renderers={props.fieldRenderers}
-      feedback={<>{props.launchControls}{props.processing && <Alert type="info" showIcon title="正在提交申请，请稍候…" />}</>}
+      submitDisabled={props.submitted || Boolean(props.formError)} submitLabel="提交审批" canWriteField={() => true} renderers={props.fieldRenderers}
+      feedback={<>{props.formIntro}{props.launchControls}{props.formError && <Alert type="error" showIcon title={props.formError} />}
+        {props.processing && <Alert type="info" showIcon title="正在提交申请，请稍候…" />}</>}
       onSubmit={values => void props.onSubmit(values)} />
     <ProcessCommandPanel error={props.processError} form={props.requirementForm} loading={props.loading}
       onAnswer={props.onAnswer} onRetry={props.onRetry} onRefresh={props.onRefresh} surface={props.processSurface} />

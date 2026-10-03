@@ -52,7 +52,7 @@ test('mounts workflow submission as a standalone user page on both devices', () 
   assert.doesNotMatch(submissionSource, /<Shell\b/);
   assert.match(submissionSource, /oxa-workflow-submission-standalone-page/);
   assert.doesNotMatch(submissionSource, /\/admin\/workflows/);
-  assert.match(pageSource, /<ResourceFormContent[\s\S]*submitDisabled=\{props\.submitted\} submitLabel="提交审批"/);
+  assert.match(pageSource, /<ResourceFormContent[\s\S]*submitDisabled=\{props\.submitted\b[^}]*\} submitLabel="提交审批"/);
   assert.match(pageSource, /props\.processing && <Alert type="info" showIcon title="正在提交申请，请稍候…"/);
   assert.match(pageSource, /definition\.processOperationCode/);
   assert.doesNotMatch(pageSource, /提交状态 ·/);

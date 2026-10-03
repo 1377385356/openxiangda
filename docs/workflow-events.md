@@ -404,6 +404,36 @@ processCommand 路径和 allowlisted context 预填。标准页调用原 Named A
 `ProcessCommandSurface`；`awaiting_input` 只回答已生成 requirement，`started` 再进入 pinned
 instance entry。浏览器不再导出 prepare/start 发起协议。
 
+### 标准提交页的业务表单扩展
+
+应用读取获授权的业务资料后，可将 canonical 预填值和同步字段规则传给公开
+`WorkflowSubmissionPage` 的 `formOptions`。PC和手机复用同一个组件及Field Kit；
+上传、具名动作、幂等操作和未知结果恢复继续由标准页处理，应用不要复制提交生命周期。
+
+```tsx
+import { WorkflowSubmissionPage, type WorkflowSubmissionFormOptions } from 'openxiangda/react';
+
+const formOptions: WorkflowSubmissionFormOptions = {
+  initialValues: { phone: profile.phone, className: profile.className },
+  fieldState: values => {
+    const medical = (values.reason as { value?: string } | undefined)?.value === 'illness';
+    return {
+      recoveryEvidence: { visible: medical, required: medical, hiddenValue: [] },
+      medicalReviewer: { visible: medical, required: medical, hiddenValue: null },
+    };
+  },
+  intro: <p>请核对预填资料；因病申请需要康复证明。</p>,
+};
+return <WorkflowSubmissionPage workflowCode="reinstatement" variant="mobile" formOptions={formOptions} />;
+```
+
+初值仅在当前匹配的发起合同内应用到未触碰字段，每字段一次；后到资料和父组件重新渲染
+不会覆盖已填写或手动清空的内容。日期和范围使用canonical值，标准页通过原codec转换。
+`fieldState`读取canonical值，`required`只能增加校验，不能撤销原必填或隐藏原必填字段；
+可选字段隐藏时清为`hiddenValue`或undefined，提交也使用同一投影，不发送旧材料/人员。
+初值或规则引用范围外字段会阻断表单。`intro`只提供页面说明，不拥有身份、授权或提交。
+这些规则属于应用代码，不能通过管理员节点配置修改；服务器仍独立校验实际业务资格与字段。
+
 通用应用待办页通过 `frontend.user.applicationTodoCenter: true` 启用，平台同时提供
 `/todos` 和 `/m/todos`。它只投影当前登录用户的 Notification Hub 收件人数据，
 `查看详情` 使用上述统一导航解析；待办页不常驻业务详情，审批命令仍在目标 Workflow
