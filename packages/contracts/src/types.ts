@@ -1842,6 +1842,7 @@ export const DATA_EVENT_TYPES_V2 = [
 export type DataEventTypeV2 = (typeof DATA_EVENT_TYPES_V2)[number];
 
 export const WORKFLOW_EVENT_TYPES_V2 = [
+  "openxiangda.workflow.node.skipped.v2",
   "openxiangda.workflow.step.requested.v2",
   "openxiangda.workflow.step.result_received.v2",
   "openxiangda.workflow.step.completed.v2",
@@ -2226,6 +2227,8 @@ export interface WorkflowApprovalNode {
   title: string;
   binding: string;
   mode: WorkflowApprovalMode;
+  /** Code-owned. Omitted means block; skip requires a verified empty supported source. */
+  emptyPolicy?: "block" | "skip";
   onApprove: string;
   onReject: string;
   allowedOperations?: WorkflowCommand[];
@@ -2522,6 +2525,7 @@ export interface WorkflowNodeConfigurations {
       title: string;
       binding?: WorkflowBindingEntry;
       mode?: WorkflowApprovalMode;
+      emptyPolicy?: "block" | "skip";
       allowedOperations?: WorkflowCommand[];
       operationPolicy?: Partial<Record<WorkflowConfigurableOperation, WorkflowNodeOperationPolicy>>;
       fieldPolicy?: WorkflowApprovalNode['fieldPolicy'];
@@ -2535,6 +2539,7 @@ export interface WorkflowNodeConfigurations {
       binding?: WorkflowBindingEntry;
       bindingDigest?: string;
       mode?: WorkflowApprovalMode;
+      emptyPolicy?: "block" | "skip";
       allowedOperations?: WorkflowCommand[];
       operationPolicy?: Partial<Record<WorkflowConfigurableOperation, WorkflowNodeOperationPolicy>>;
       fieldPolicy?: WorkflowApprovalNode['fieldPolicy'];
@@ -3205,6 +3210,7 @@ export interface WorkflowTimelineFlowItem {
   title: string;
   status:
     | "completed"
+    | "skipped"
     | "active"
     | "waiting"
     | "returned"
@@ -3243,6 +3249,7 @@ export interface WorkflowTimelineItem {
 
 export type WorkflowTimelineDisplayStatus =
   | "completed"
+    | "skipped"
   | "active"
   | "waiting"
   | "returned"

@@ -211,6 +211,7 @@ function workflowStatus(status: string) {
     running: { label: '审批中', color: 'processing' },
     returned: { label: '已退回', color: 'orange' },
     completed: { label: '已完成', color: 'success' },
+    skipped: { label: '已跳过', color: 'default' },
     approved: { label: '已同意', color: 'success' },
     rejected: { label: '已拒绝', color: 'error' },
     withdrawn: { label: '已撤回', color: 'default' },
@@ -618,6 +619,7 @@ export function WorkflowTimelineSection({
                   <strong>{item.title}</strong>
                   {businessStep?.status === 'waiting' ? <Tag color="processing">等待业务结果</Tag> : businessStep?.status === 'result_ready' ? <Tag color="warning">推进受阻</Tag> : <StatusTag status={item.status} />}
                 </div>
+                {item.status === 'skipped' && <Typography.Text type="secondary">无审批人，按此节点的规则自动继续。</Typography.Text>}
                 {businessStep?.status === 'result_ready' && <Typography.Text type="secondary">计算结果已收到，后续流转等待修复。</Typography.Text>}
                 {visiblePeople.length > 0 && (
                   <div className="oxa-workflow-timeline-assignees">
@@ -3022,6 +3024,7 @@ function StandardProcessSubmissionRenderer(props: ProcessSubmissionRendererProps
     </header>}
     <ResourceFormContent variant={props.variant} mode={props.mutationMode === 'update' ? 'edit' : 'create'}
       resourceCode={props.subjectDefinition.code} recordId={props.recordId} groups={groups}
+      initialValues={props.mutationMode === 'update' ? undefined : Object.fromEntries(props.fields.filter(field => field.type === 'user.multiple').map(field => [field.key, []]))}
       form={props.subjectForm} busy={props.loading || props.submitted} pending={props.loading || props.processing}
       submitDisabled={props.submitted} submitLabel="提交审批" canWriteField={() => true} renderers={props.fieldRenderers}
       feedback={<>{props.launchControls}{props.processing && <Alert type="info" showIcon title="正在提交申请，请稍候…" />}</>}

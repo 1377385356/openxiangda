@@ -123,10 +123,11 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
           <p className="oxa-workflow-config-help">{isCc ? '抄送来源由开发者开放；保存时校验人员、角色及范围。抄送只提供流程查阅权。' : '人员来源和可选审批方式由开发者开放；保存时平台校验人员、角色及范围。'}</p>
           {allowedProviders.length > 0 ? <>
             <Form.Item name="provider" label="人员来源" rules={[{ required: true }]}><Radio.Group className="oxa-workflow-provider-options" options={allowedProviders.map(value => ({ value, label: providers[value] }))} /></Form.Item>
-            {selectedProvider === 'fixed_users' && <Form.Item name="users" label={isCc ? '指定抄送人' : '指定审批人'} rules={[{ required: true, type: 'array', min: 1, max: isCc ? 20 : 200 }]}><PlatformDirectoryPicker kind="user" multiple placeholder="从通讯录选择人员" /></Form.Item>}
+            {selectedProvider === 'fixed_users' && <Form.Item name="users" label={isCc ? '指定抄送人' : '指定审批人'} rules={[{ required: isCc || node.effective.emptyPolicy !== 'skip', type: 'array', min: !isCc && node.effective.emptyPolicy === 'skip' ? 0 : 1, max: isCc ? 20 : 200 }]}><PlatformDirectoryPicker kind="user" multiple placeholder="从通讯录选择人员" /></Form.Item>}
             {['app_role', 'app_role_in_scope'].includes(selectedProvider || '') && <Form.Item name="roleCode" label={isCc ? '抄送角色' : '审批角色'} rules={[{ required: true }]}><Select showSearch={{ optionFilterProp: 'label' }} options={principals.roles.map(role => ({ value: role.code, label: `${role.name}（${role.code}）` }))} /></Form.Item>}
           </> : <Alert type="info" title="人员来源由开发者维护" description="此节点未开放人员来源调整。" />}
           {binding?.scope && <p className="oxa-workflow-config-scope">范围来源：{binding.scope.dimension} · {binding.scope.valueFrom || binding.scope.value}<br />范围计算由流程代码维护。</p>}
+          {!isCc && <p className="oxa-workflow-config-help">无审批人时：{node.effective.emptyPolicy === 'skip' ? '成功解析为空后自动跳过' : '阻塞，等待人员配置修复'}。此规则由流程代码确定。</p>}
           {!isCc && (node.administration?.modes ? <Form.Item name="mode" label="审批方式" rules={[{ required: true }]}><Radio.Group className="oxa-workflow-mode-options" options={node.administration.modes.map(value => ({ value, label: <span><b>{modes[value]}</b><small>{modeDescriptions[value]}</small></span> }))} /></Form.Item> : <p className="oxa-workflow-config-help">审批方式：{modes[node.effective.mode || ''] || '由开发者维护'}</p>)}
         </> },
         { key: 'operations', label: '审批按钮', forceRender: true, children: <>

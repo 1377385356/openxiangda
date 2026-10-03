@@ -885,7 +885,7 @@ function compileContractBundleFromNormalized(
     }))
   ) || [];
   const workflowEventProducers = config.workflows?.activations.length
-    ? WORKFLOW_EVENT_TYPES_V2.filter(eventType => !WORKFLOW_BUSINESS_STEP_EVENTS.includes(eventType as any) || config.workflows?.definitions.some(item => Object.values(item.definition.nodes).some(node => node.kind === 'action'))).map(eventType => ({
+    ? WORKFLOW_EVENT_TYPES_V2.filter(eventType => !WORKFLOW_BUSINESS_STEP_EVENTS.includes(eventType as any) || config.workflows?.definitions.some(item => Object.values(item.definition.nodes).some(node => node.kind === 'action'))).filter(eventType => eventType !== 'openxiangda.workflow.node.skipped.v2' || config.workflows?.definitions.some(item => Object.values(item.definition.nodes).some(node => node.kind === 'approval' && node.emptyPolicy === 'skip'))).map(eventType => ({
         code: `workflow:${eventType}`,
         source: 'workflow' as const,
         eventType,

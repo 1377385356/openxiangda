@@ -6,6 +6,8 @@ import {
   validateWorkflowReadability,
   validateWorkflowAdministration,
   validateWorkflowAutomaticCc,
+  validateWorkflowApprovalEmptyPolicy,
+  workflowBindingAllowsEmptyUsers,
   validateWorkflowTaskPages,
   validateWorkflowBusinessSteps,
   validateWorkflowAssignmentRoutingBindings,
@@ -115,7 +117,7 @@ export function compileWorkflow(
 }
 
 export function validateWorkflowDefinition(definition: WorkflowDefinition) {
-  const diagnostics = [...validateWorkflowInstanceCommandPolicies(definition), ...validateWorkflowReadability(definition), ...validateWorkflowAdministration(definition), ...validateWorkflowAutomaticCc(definition), ...validateWorkflowTaskPages(definition), ...validateWorkflowBusinessSteps(definition)];
+  const diagnostics = [...validateWorkflowInstanceCommandPolicies(definition), ...validateWorkflowReadability(definition), ...validateWorkflowAdministration(definition), ...validateWorkflowAutomaticCc(definition), ...validateWorkflowApprovalEmptyPolicy(definition), ...validateWorkflowTaskPages(definition), ...validateWorkflowBusinessSteps(definition)];
   if (definition?.schemaVersion !== SCHEMA_VERSIONS.workflowDefinition) {
     diagnostics.push('WORKFLOW_DEFINITION_SCHEMA_INVALID');
   }
@@ -206,7 +208,7 @@ export function validateWorkflowBinding(
   definition: WorkflowDefinition,
   binding: WorkflowBinding
 ) {
-  const diagnostics: string[] = [...validateWorkflowAdministration(definition, binding), ...validateWorkflowAssignmentRoutingBindings([binding]), ...validateWorkflowAutomaticCc(definition, binding), ...validateWorkflowBusinessSteps(definition, binding)];
+  const diagnostics: string[] = [...validateWorkflowAdministration(definition, binding), ...validateWorkflowAssignmentRoutingBindings([binding]), ...validateWorkflowAutomaticCc(definition, binding), ...validateWorkflowApprovalEmptyPolicy(definition, binding), ...validateWorkflowBusinessSteps(definition, binding)];
   if (binding?.schemaVersion !== SCHEMA_VERSIONS.workflowBinding) {
     diagnostics.push('WORKFLOW_BINDING_SCHEMA_INVALID');
   }
@@ -214,6 +216,8 @@ export function validateWorkflowBinding(
     diagnostics.push('WORKFLOW_BINDING_CODE_MISMATCH');
   }
   for (const [code, entry] of Object.entries(binding?.bindings || {})) {
+    if (entry.provider === 'fixed_users' && (!Array.isArray(entry.users) || !entry.users.length && !workflowBindingAllowsEmptyUsers(definition, code)))
+      diagnostics.push(`WORKFLOW_BINDING_USERS_REQUIRED:${code}`);
     const minimum = entry.min === undefined ? 1 : entry.min;
     const maximum = entry.max === undefined ? 200 : entry.max;
     if (

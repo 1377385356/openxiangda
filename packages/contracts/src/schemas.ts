@@ -5335,6 +5335,7 @@ const workflowNodeSchema = {
         title: nonEmptyString,
         binding: nonEmptyString,
         mode: { enum: ["single", "any", "all", "sequence"] },
+        emptyPolicy: { enum: ["block", "skip"] },
         onApprove: nonEmptyString,
         onReject: nonEmptyString,
         taskPageCode: { type: 'string', pattern: '^[A-Za-z][A-Za-z0-9_-]{0,63}$' },

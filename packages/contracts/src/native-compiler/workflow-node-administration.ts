@@ -6,6 +6,7 @@ const modes = ['single', 'any', 'all', 'sequence'];
 type PolicyMap = Partial<Record<WorkflowConfigurableOperation, WorkflowNodeOperationPolicy>>;
 export interface WorkflowAdministrationNodeSource {
   kind: string;
+  emptyPolicy?: string;
   mode?: string;
   binding?: string;
   allowedOperations?: string[];
@@ -75,7 +76,7 @@ export function validateWorkflowNodeConfigurationPatch(node: WorkflowAdministrat
     const allowed = admin?.assigneeProviders || (node.kind === 'approval' && binding && WORKFLOW_CONFIGURABLE_PROVIDERS.includes(binding.provider as any) ? [binding.provider] : []);
     if (!record(value) || !['approval', 'cc'].includes(node.kind) || !allowed.includes(value.provider) || (value.provider === 'app_role_in_scope' && !binding?.scope)) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_PROVIDER_READONLY');
     else if (value.provider === 'fixed_users') {
-      if (!keys(value, ['provider', 'users']) || !Array.isArray(value.users) || value.users.length < 1 || value.users.length > (node.kind === 'cc' ? 20 : 200) || new Set(value.users).size !== value.users.length || value.users.some(id => typeof id !== 'string' || !id.trim() || id.length > 255)) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_USERS_INVALID');
+      if (!keys(value, ['provider', 'users']) || !Array.isArray(value.users) || (value.users.length < 1 && !(node.kind === 'approval' && node.emptyPolicy === 'skip')) || value.users.length > (node.kind === 'cc' ? 20 : 200) || new Set(value.users).size !== value.users.length || value.users.some(id => typeof id !== 'string' || !id.trim() || id.length > 255)) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_USERS_INVALID');
     } else if (!keys(value, ['provider', 'roleCode']) || typeof value.roleCode !== 'string' || !/^[a-z][a-z0-9_-]{0,127}$/.test(value.roleCode)) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_ROLE_INVALID');
   }
   return errors;

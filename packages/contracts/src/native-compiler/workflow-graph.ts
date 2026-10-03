@@ -252,6 +252,7 @@ export function projectWorkflowGraph(definition: WorkflowGraphDefinitionSource, 
     fixedTopology: true, branchStrategy: 'first_match', nodes: Object.values(definition.nodes).map(node => ({ id: node.id, kind: node.kind, title: node.title || node.id,
       ...(node.binding ? { binding: node.binding } : {}), ...(node.mode ? { mode: node.mode } : {}), ...(node.outcome ? { outcome: node.outcome } : {}),
       ...(node.kind === 'cc' ? { emptyPolicy: node.emptyPolicy, notify: node.notify !== false } : {}),
+      ...(node.kind === 'approval' ? { emptyPolicy: node.emptyPolicy || 'block' } : {}),
       ...(node.kind === 'action' && node.handler ? { businessStep: { handler: node.handler, inputs: node.inputs || {}, outputPaths: Object.keys(record(node.outputSchema).properties || {}).map(key => `steps.${node.id}.${key}`) } } : {}) })), edges, variables,
     logic: definition.readability?.logic || [], diagnostics };
 }

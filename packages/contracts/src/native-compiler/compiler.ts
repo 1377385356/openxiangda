@@ -9,6 +9,7 @@ import { validateWorkflowInstanceCommandPolicies } from './workflow-instance-pol
 import { validateWorkflowReadability, type WorkflowGraphDefinitionSource } from './workflow-graph.js';
 import { validateWorkflowAdministration, type WorkflowAdministrationNodeSource } from './workflow-node-administration.js';
 import { validateWorkflowAutomaticCc } from './workflow-automatic-cc.js';
+import { validateWorkflowApprovalEmptyPolicy, workflowBindingAllowsEmptyUsers } from './workflow-approval-empty.js';
 import { validateWorkflowTaskPages } from './workflow-task-page.js';
 import { validateWorkflowBusinessSteps, compileWorkflowBusinessStepHandlers, validateWorkflowBusinessStepSubscriptions, WORKFLOW_BUSINESS_STEP_EVENT, WORKFLOW_BUSINESS_STEP_EVENTS } from './workflow-business-step.js';
 import { validateWorkflowAssignmentRoutingBindings, validateWorkflowAssignmentRoutingPolicy } from './workflow-assignment-routing.js';
@@ -149,6 +150,7 @@ export const DATA_EVENT_TYPES_V2 = [
   'openxiangda.data.record.deleted.v2',
 ] as const;
 export const WORKFLOW_EVENT_TYPES_V2 = [
+  'openxiangda.workflow.node.skipped.v2',
   WORKFLOW_BUSINESS_STEP_EVENT,
   'openxiangda.workflow.step.result_received.v2',
   'openxiangda.workflow.step.completed.v2',
@@ -669,6 +671,9 @@ export function compileRequiredPlatformCapabilitiesV3(
       : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.administration !== undefined || node.operationPolicy !== undefined))
       ? [{ code: 'workflow.node-administration' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.administration !== undefined || node.operationPolicy !== undefined)) }]
+      : []),
+    ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'approval' && node.emptyPolicy !== undefined))
+      ? [{ code: 'workflow.approval-empty-policy' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'approval' && node.emptyPolicy !== undefined)) }]
       : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'cc'))
       ? [{ code: 'workflow.automatic-cc' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'cc')) }]
@@ -1467,7 +1472,7 @@ function compileExpectedContract(
         field: trigger.field,
       })),
       ...(config.workflows.activations.length
-        ? WORKFLOW_EVENT_TYPES_V2.filter(eventType => !WORKFLOW_BUSINESS_STEP_EVENTS.includes(eventType as any) || config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action'))).map(eventType => ({
+        ? WORKFLOW_EVENT_TYPES_V2.filter(eventType => !WORKFLOW_BUSINESS_STEP_EVENTS.includes(eventType as any) || config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action'))).filter(eventType => eventType !== 'openxiangda.workflow.node.skipped.v2' || config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'approval' && node.emptyPolicy === 'skip'))).map(eventType => ({
             code: `workflow:${eventType}`,
             source: 'workflow',
             eventType,
@@ -6912,6 +6917,8 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
   if (readabilityErrors.length) fail(readabilityErrors[0]!, `${pointer}/readability`);
   const administrationErrors = validateWorkflowAdministration(definition as unknown as { nodes: Record<string, WorkflowAdministrationNodeSource> });
   if (administrationErrors.length) fail(administrationErrors[0]!, `${pointer}/nodes`);
+  const emptyPolicyErrors = validateWorkflowApprovalEmptyPolicy(definition as any);
+  if (emptyPolicyErrors.length) fail(emptyPolicyErrors[0]!, `${pointer}/nodes`);
   const ccErrors = validateWorkflowAutomaticCc(definition as any);
   if (ccErrors.length) fail(ccErrors[0]!, `${pointer}/nodes`);
   const taskPageErrors = validateWorkflowTaskPages(definition);
@@ -7098,15 +7105,9 @@ function validateWorkflowBinding(binding: JsonObject, pointer: string) {
         `${pointer}/bindings/${code}/provider`
       );
     }
-    if (
-      provider === 'fixed_users' &&
-      boundedArray(entry.users, `${pointer}/bindings/${code}/users`, 200)
-        .length === 0
-    ) {
-      fail(
-        'NATIVE_WORKFLOW_BINDING_USERS_REQUIRED',
-        `${pointer}/bindings/${code}/users`
-      );
+    if (provider === 'fixed_users') {
+      if (!Array.isArray(entry.users)) fail('NATIVE_WORKFLOW_BINDING_USERS_REQUIRED', `${pointer}/bindings/${code}/users`);
+      boundedArray(entry.users, `${pointer}/bindings/${code}/users`, 200);
     }
     if (['input_users', 'form_field_users'].includes(provider)) {
       requiredString(
@@ -7147,6 +7148,12 @@ function validateWorkflowDefinitionBinding(
 ) {
   equal(binding.workflowCode, definition.code, `${pointer}/workflowCode`);
   const entries = object(binding.bindings, `${pointer}/bindings`);
+  for (const [code, entry] of Object.entries(entries)) {
+    if (entry.provider === 'fixed_users' && !entry.users.length && !workflowBindingAllowsEmptyUsers(definition as any, code))
+      fail('NATIVE_WORKFLOW_BINDING_USERS_REQUIRED', `${pointer}/bindings/${code}/users`);
+  }
+  const emptyPolicyErrors = validateWorkflowApprovalEmptyPolicy(definition as any, binding as any);
+  if (emptyPolicyErrors.length) fail(emptyPolicyErrors[0]!, pointer);
   const ccErrors = validateWorkflowAutomaticCc(definition as any, binding as any);
   if (ccErrors.length) fail(ccErrors[0]!, pointer);
   const stepErrors = validateWorkflowBusinessSteps(definition, binding);

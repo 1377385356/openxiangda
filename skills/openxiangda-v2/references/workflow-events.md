@@ -702,3 +702,11 @@ PC/手机保留格式、图片和前后文字；插图未知时锁住编辑，�
 自定义 Field Kit 上传 renderer 的第四参数为可选 `onRecovered(file)`，仅在恢复原任务上传
 时采用完整字段值；正常上传仍返回 `DataFileRef`。非数组字段必须提供该回调；不能用文件数组
 append 处理签名或 HTML。当前任务、实例、记录或字段改变时清理旧图片预览，重新按范围读取。
+
+### 审批人为空时的节点策略
+
+审批节点可声明 `emptyPolicy: 'skip'`，省略或声明 `block` 时保持阻塞。第一版 skip 支持 fixed_users、input_users、form_field_users、app_role、app_role_in_scope；编译器拒绝其他来源与 skip 组合。表单人员明确为 `[]`，或存在的角色在有效范围内没有成员，且解析成功、没有警告，才允许自动继续到 `onApprove`。缺失/null 字段、不存在的角色、无效账号、缺少范围、解析失败和非零人数不满足 min/max 都不能跳过。
+
+该策略由代码固定。每次实际跳过记录节点访问、当时配置、解析依据和 `openxiangda.workflow.node.skipped.v2` 事件；图和 PC/手机历史显示“已跳过”。连续节点推进受 200 节点上限约束，业务步骤仍等待其正式结果。后续失败与业务变更在原事务一起回滚，重试沿用原命令。
+
+退回补正（return_review）必须有人实际处理，不能靠空人跳过；重提后的正常 replay/resume 流转继续采用原节点策略。使用此声明时，生成契约要求目标平台支持 `workflow.approval-empty-policy@1.0.0`，缺少该能力的旧服务端不能接收。

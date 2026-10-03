@@ -28,6 +28,32 @@ test('fixed task pages automatically require submission and private drafts in ES
   }
 });
 
+test('approval empty policy is negotiated and unsupported sources fail in both compiler distributions', () => {
+  const config = JSON.parse(corpus.configuration.canonical);
+  const definition = config.workflows.definitions[0].definition;
+  definition.nodes.review.emptyPolicy = 'skip';
+  const compileInput = () => {
+    const contract = { ...JSON.parse(corpus.contract.canonical), configDigest: sha256Digest(config) };
+    const eventType = 'openxiangda.workflow.node.skipped.v2';
+    contract.eventProducers.push({ code: `workflow:${eventType}`, source: 'workflow', eventType, dataSchemaVersion: '2.0.0' });
+    contract.eventProducers.sort((a: any, b: any) => `${a.source}:${a.code}:${a.eventType}`.localeCompare(`${b.source}:${b.code}:${b.eventType}`));
+    contract.eventTypes.push(eventType);
+    contract.eventTypes.sort();
+    return { ...input(config), contractBytes: canonicalJson(contract), expectedContractDigest: sha256Digest(contract) };
+  };
+  for (const implementation of [esm, cjs]) {
+    assert.equal(implementation.compileNativeApplicationConfiguration(compileInput()).requiredPlatformCapabilities.find(item => item.code === 'workflow.approval-empty-policy')?.contractVersion, '1.0.0');
+  }
+  const binding = config.workflows.bindings.find((entry: any) => entry.binding.workflowCode === definition.code).binding;
+  binding.bindings[definition.nodes.review.binding] = { provider: 'fixed_users', users: [] };
+  for (const implementation of [esm, cjs]) {
+    assert.ok(implementation.compileNativeApplicationConfiguration(compileInput()));
+  }
+  binding.bindings[definition.nodes.review.binding].provider = 'previous_node_actor';
+  for (const implementation of [esm, cjs])
+    assert.throws(() => implementation.compileNativeApplicationConfiguration(compileInput()), /WORKFLOW_APPROVAL_EMPTY_PROVIDER_UNSUPPORTED/);
+});
+
 test('automatic cc capability is derived from declarations in both shared compiler distributions', () => {
   const config = JSON.parse(corpus.configuration.canonical);
   const definition = config.workflows.definitions[0].definition;

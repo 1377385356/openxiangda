@@ -33,6 +33,7 @@ export const PLATFORM_CAPABILITY_CONTRACT_VERSIONS = {
   "workflow.role-references": "1.0.0",
   "workflow.delegation-management": "1.0.0",
   "workflow.automatic-cc": "1.0.0",
+  "workflow.approval-empty-policy": "1.0.0",
   "workflow.task-page-submit": "1.0.0",
   "workflow.task-private-drafts": "1.0.0",
   "workflow.task-managed-files": "1.0.0",
