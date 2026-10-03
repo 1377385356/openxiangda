@@ -129,7 +129,7 @@ export interface ManagedCommandExecution {
   handlerCode: string;
   timeoutMs: number;
   resources: Array<{ resourceCode: string; readFields: string[]; writeOperations: Array<'create' | 'update' | 'increment'>; writeFields: string[] }>;
-  directory?: { mode: 'current-initiator'; fields: Array<'displayName' | 'employeeNumber' | 'primaryDepartment' | 'departments'> };
+  directory?: { mode: 'current-initiator'; fields: Array<'displayName' | 'employeeNumber' | 'primaryDepartment' | 'departments' | 'phone'> };
 }
 
 export type ManagedCommandAssertion = DataTransactionRecordAssertion | {
@@ -154,7 +154,7 @@ export interface ManagedCommandExecutionVerification {
 }
 export type ReadonlyManagedCommandExecution = Omit<ManagedCommandExecution,'resources'|'directory'> & {
   readonly resources: readonly {readonly resourceCode:string;readonly readFields:readonly string[];readonly writeOperations:readonly ('create'|'update'|'increment')[];readonly writeFields:readonly string[]}[];
-  readonly directory?: {readonly mode:'current-initiator';readonly fields:readonly ('displayName'|'employeeNumber'|'primaryDepartment'|'departments')[]};
+  readonly directory?: {readonly mode:'current-initiator';readonly fields:readonly ('displayName'|'employeeNumber'|'primaryDepartment'|'departments'|'phone')[]};
 };
 export interface ManagedCommandHandlerManifest {
   readonly schemaVersion: 'openxiangda.managed-command-handler-manifest/v1';

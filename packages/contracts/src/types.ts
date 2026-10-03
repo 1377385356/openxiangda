@@ -362,13 +362,15 @@ export interface CurrentInitiatorDirectorySnapshot {
   userId: string;
   displayName?: string;
   employeeNumber?: string | null;
+  /** Only present when a verified current-initiator operation declares phone. */
+  phone?: string | null;
   primaryDepartment?: { value: string; label: string } | null;
   departments?: Array<{ value: string; label: string }>;
   snapshotRevision: Sha256Digest;
   resolvedAt: IsoDateTime;
 }
 
-export interface SelectedUserDirectorySnapshot extends Omit<CurrentInitiatorDirectorySnapshot, "schemaVersion"> {
+export interface SelectedUserDirectorySnapshot extends Omit<CurrentInitiatorDirectorySnapshot, "schemaVersion" | "phone"> {
   schemaVersion: "openxiangda.selected-user-directory-snapshot/v2";
 }
 

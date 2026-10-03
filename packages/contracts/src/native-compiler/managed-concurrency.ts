@@ -107,7 +107,7 @@ export function validateManagedConcurrency(value: unknown, resources: readonly a
         if(ops.length && !a.writeFields.length) fail(p,'write operations require fields');
         if(d.quotas.some((q:any)=>q.allocationResource===a.resourceCode) && ops.length) fail(p,'allocation references remain owned by their pool command');
       }
-      if(e.directory!==undefined) { obj(e.directory,p,['mode','fields']); if(e.directory.mode!=='current-initiator') fail(p,'only current initiator allowed'); const fs=list(e.directory.fields,4,p); if(!fs.length || new Set(fs).size!==fs.length || fs.some(f=>!['displayName','employeeNumber','primaryDepartment','departments'].includes(f))) fail(p,'unsupported directory fields'); }
+      if(e.directory!==undefined) { obj(e.directory,p,['mode','fields']); if(e.directory.mode!=='current-initiator') fail(p,'only current initiator allowed'); const fs=list(e.directory.fields,5,p); if(!fs.length || new Set(fs).size!==fs.length || fs.some(f=>!['displayName','employeeNumber','primaryDepartment','departments','phone'].includes(f))) fail(p,'unsupported directory fields'); }
       continue;
     }
     if(c.execution!==undefined || c.intake!==undefined) fail(p,'execution and intake require durable mode');

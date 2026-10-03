@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.49.12",
+  "status": "reviewed",
+  "title": "显式读取本人业务联系电话",
+  "summary": "本人报名等具名业务动作可声明只读电话投影，编译器派生独立平台能力，默认身份和其他人员查询保持原投影。",
+  "newFeatures": [
+    "current-initiator 目录支持显式声明 phone，并将可空且最多80字符的电话纳入 snapshotRevision。",
+    "受管 backend-plan 命令使用同一本人投影规则；两个编译器按实际声明派生 directory.current-initiator-phone 1.0.0。"
+  ],
+  "fixes": [],
+  "affectedUsers": [
+    "需要在本人报名或联系业务中展示平台账号只读电话的 V2 应用开发者。"
+  ],
+  "upgradeSteps": [
+    "安装完整同源根包发行，并先配套实现该能力的 Server；由编译器生成契约和要求，不手改摘要。",
+    "业务按原规则处理缺失电话，提交重新核对正式目录修订，不能接受浏览器身份快照。"
+  ],
+  "knownLimitations": [
+    "默认 SubjectProfile、人员搜索和 selected-user 不查询或返回电话。",
+    "不提供手机号查人或电话修改；本轮仅本机配套发行，不代表 npm 或生产部署。"
+  ],
+  "issues": [],
+  "compatibility": {
+    "node": ">=24",
+    "platform": "新 phone 声明需要 directory.current-initiator-phone 1.0.0 及同源完整校验器。既有不声明 phone 的目录行为和 V1 引擎不变。"
+  }
+}

@@ -412,6 +412,14 @@ export function compileRequiredPlatformCapabilitiesV3(
   const roles = config.authz.roles as JsonObject[];
   const resources = config.data.resources as JsonObject[];
   const operations = config.backend.operations as JsonObject[];
+  const initiatorPhoneOperations = operations.filter(operation =>
+    operation.platformAccess?.directory?.mode === 'current-initiator' &&
+    operation.platformAccess.directory.fields.includes('phone')
+  );
+  const initiatorPhoneCommands = (config.data.concurrency?.commands || []).filter((command: JsonObject) =>
+    command.execution?.directory?.mode === 'current-initiator' &&
+    command.execution.directory.fields.includes('phone')
+  );
   const requiresDirectoryV2 =
     roles.some(role =>
       role.capabilities.some((capability: string) =>
@@ -603,6 +611,13 @@ export function compileRequiredPlatformCapabilitiesV3(
         ]
       : []),
     ...(operations.some(operation => operation.platformAccess?.directory?.mode === 'selected-user') ? [{ code: 'directory.selected-user' as const, declaration: operations.filter(operation => operation.platformAccess?.directory?.mode === 'selected-user').map(operation => ({code:operation.code,directory:operation.platformAccess.directory})) }] : []),
+    ...(initiatorPhoneOperations.length || initiatorPhoneCommands.length ? [{
+      code: 'directory.current-initiator-phone' as const,
+      declaration: {
+        operations: initiatorPhoneOperations.map(operation => ({ code: operation.code, directory: operation.platformAccess.directory })),
+        commands: initiatorPhoneCommands.map((command: JsonObject) => ({ code: command.code, directory: command.execution.directory })),
+      },
+    }] : []),
     ...(usesManagedFiles
       ? [
           {
@@ -2680,11 +2695,12 @@ function validateOperationPlatformAccess(
       'employeeNumber',
       'primaryDepartment',
       'departments',
+      ...(directory.mode === 'current-initiator' ? ['phone'] : []),
     ]);
     const fields = uniqueStrings(
       directory.fields,
       `${pointer}/directory/fields`,
-      4
+      allowed.size
     );
     if (!fields.length || fields.some(field => !allowed.has(field))) {
       fail(

@@ -14,6 +14,7 @@ import {
   WORKFLOW_EVENT_TYPES_V2,
   sha256Digest,
   type AppApiOperationContract,
+  type AppOperationPlatformAccessDeclaration,
   type AppEventSubscriptionPlatformAccessDeclaration,
   type AppAdminNavigationGroupContract,
   type AppAdminPageContract,
@@ -398,12 +399,7 @@ export function normalizeConfiguration(
                   } : {}),
                   ...(operation.platformAccess.directory
                     ? {
-                        directory: {
-                          mode: operation.platformAccess.directory.mode,
-                          fields: uniqueSorted(
-                            operation.platformAccess.directory.fields
-                          ),
-                        },
+                        directory: normalizeOperationDirectory(operation.platformAccess.directory),
                       }
                     : {}),
                   ...(operation.platformAccess.managedFiles
@@ -1758,12 +1754,7 @@ function compileOperations(config: OpenXiangdaAppConfig) {
               } : {}),
               ...(operation.platformAccess.directory
                 ? {
-                    directory: {
-                      mode: operation.platformAccess.directory.mode,
-                      fields: uniqueSorted(
-                        operation.platformAccess.directory.fields
-                      ),
-                    },
+                    directory: normalizeOperationDirectory(operation.platformAccess.directory),
                   }
                 : {}),
               ...(operation.platformAccess.managedFiles
@@ -1934,6 +1925,15 @@ function compileWorkflows(config: OpenXiangdaAppConfig) {
   });
 }
 
+function normalizeOperationDirectory(
+  directory: NonNullable<AppOperationPlatformAccessDeclaration['directory']>
+): NonNullable<AppOperationPlatformAccessDeclaration['directory']> {
+  if (directory.mode === 'current-initiator') {
+    return { mode: directory.mode, fields: uniqueSorted(directory.fields) };
+  }
+  return { mode: directory.mode, fields: uniqueSorted(directory.fields) };
+}
+
 function runtimeProtocolCapabilities(config: OpenXiangdaAppConfig) {
   const operations = config.backend.operations || [];
   const usesDirectory =
@@ -1952,6 +1952,9 @@ function runtimeProtocolCapabilities(config: OpenXiangdaAppConfig) {
     ...(config.data?.resources.length ? ['data-api-v2'] : []),
     ...(usesDirectory ? ['directory-v2'] : []),
     ...(operations.some(operation=>operation.platformAccess?.directory?.mode==='selected-user') ? ['directory.selected-user'] : []),
+    ...(operations.some(operation => operation.platformAccess?.directory?.mode === 'current-initiator' && operation.platformAccess.directory.fields.includes('phone')) ||
+    config.data?.concurrency?.commands.some(command => command.execution?.directory?.fields.includes('phone'))
+      ? ['directory.current-initiator-phone'] : []),
     ...(operations.some(
       operation =>
         operation.platformAccess?.managedFiles ||

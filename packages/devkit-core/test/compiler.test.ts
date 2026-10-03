@@ -4929,3 +4929,31 @@ test('selected-user directory adds a distinct platform requirement without widen
   assert.equal(requiredPlatformCapabilities(declaration).find(item=>item.code==='directory.selected-user')?.contractVersion,'1.0.0');
   assert.equal(requiredPlatformCapabilities(defineOpenXiangdaApp(sourceDeclaration)).some(item=>item.code==='directory.selected-user'),false);
 });
+
+test('explicit initiator phone requires its implemented capability and remains forbidden for selected users', () => {
+  const sourcePhone: OpenXiangdaAppDeclaration = {
+    ...sourceDeclaration,
+    authz: { ...source.authz!, capabilities: [{ code: 'app:reference-app:phone:read', kind: 'backend', name: 'Read own contact' }] },
+    backend: { ...source.backend, enabled: true, operations: [{
+      code: 'contact.read', method: 'POST', path: '/api/contact', capability: 'app:reference-app:phone:read',
+      requestSchema: { type: 'object' }, responseSchema: { type: 'object' },
+      platformAccess: { directory: { mode: 'current-initiator', fields: ['displayName', 'employeeNumber', 'primaryDepartment', 'departments', 'phone'] } },
+    }] },
+  };
+  const config = defineOpenXiangdaApp(sourcePhone), compiled = compileApplicationSources(config);
+  const cap = requiredPlatformCapabilities(config).find(item => String(item.code) === 'directory.current-initiator-phone');
+  assert.equal(cap?.contractVersion, '1.0.0');
+  assert.equal(requiredPlatformCapabilities(defineOpenXiangdaApp(sourceDeclaration)).some(item => String(item.code) === 'directory.current-initiator-phone'), false);
+  const native = compileNativeApplicationConfiguration({ appCode: config.app.code,
+    configBytes: canonicalJson(compiled.config.value), contractBytes: canonicalJson(compiled.contracts.value),
+    expectedConfigDigest: sha256Digest(compiled.config.value), expectedContractDigest: sha256Digest(compiled.contracts.value) });
+  assert.deepEqual(native.requiredPlatformCapabilities.find(item => String(item.code) === cap?.code), cap);
+  assert.ok(compiled.config.value.runtime.protocolCapabilities.includes('directory.current-initiator-phone'));
+  (sourcePhone.backend!.operations![0]!.platformAccess!.directory as any).mode = 'selected-user';
+  assert.throws(() => defineOpenXiangdaApp(sourcePhone));
+  (compiled.config.value.backend.operations[0]!.platformAccess!.directory as any).mode = 'selected-user';
+  (compiled.contracts.value.operations[0]!.platformAccess!.directory as any).mode = 'selected-user';
+  assert.throws(() => compileNativeApplicationConfiguration({ appCode: config.app.code,
+    configBytes: canonicalJson(compiled.config.value), contractBytes: canonicalJson(compiled.contracts.value),
+    expectedConfigDigest: sha256Digest(compiled.config.value), expectedContractDigest: sha256Digest(compiled.contracts.value) }));
+});

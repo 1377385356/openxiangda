@@ -4688,6 +4688,7 @@ function validateBackendOperations(
           'employeeNumber',
           'primaryDepartment',
           'departments',
+          ...(directory.mode === 'current-initiator' ? ['phone'] : []),
         ]);
         invalid ||=
           !['current-initiator','selected-user'].includes(String(directory.mode)) ||

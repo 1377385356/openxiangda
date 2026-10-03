@@ -747,6 +747,7 @@ export const currentInitiatorDirectorySnapshotSchema = {
     userId: nonEmptyString,
     displayName: nonEmptyString,
     employeeNumber: { anyOf: [nonEmptyString, { type: "null" }] },
+    phone: { anyOf: [{ type: "string", minLength: 1, maxLength: 80 }, { type: "null" }] },
     primaryDepartment: {
       anyOf: [directorySnapshotValueSchema, { type: "null" }],
     },
@@ -7357,7 +7358,7 @@ const appOperationPlatformAccessSchema = {
         fields: {
           type: "array",
           minItems: 1,
-          maxItems: 4,
+          maxItems: 5,
           uniqueItems: true,
           items: {
             enum: [
@@ -7365,10 +7366,18 @@ const appOperationPlatformAccessSchema = {
               "employeeNumber",
               "primaryDepartment",
               "departments",
+              "phone",
             ],
           },
         },
       },
+      allOf: [{
+        if: { properties: { mode: { const: "selected-user" } } },
+        then: { properties: { fields: {
+          maxItems: 4,
+          items: { enum: ["displayName", "employeeNumber", "primaryDepartment", "departments"] },
+        } } },
+      }],
     },
     managedFiles: {
       type: "array",

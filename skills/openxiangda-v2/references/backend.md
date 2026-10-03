@@ -394,6 +394,19 @@ if (output.status === 'pending') {
 主子记录共享精确金额额度、撤回修订和审批释放，请使用[精确金额占用](decimal-reservations.md)的受管提交及终态事务。
 
 
+## 本人业务联系信息
+
+本人报名等确需联系电话的具名动作，显式声明
+`platformAccess: { directory: { mode: 'current-initiator', fields: ['displayName', 'primaryDepartment', 'phone'] } }`，
+然后调用 `businessDirectory.currentInitiator()`。平台从当前账号返回只读 `phone: string | null`，
+修剪空白且最多80字符；未设置时返回 null，由业务规则处理资料缺失。调用方不能指定人员 ID
+或信任浏览器提交的联系信息，关键提交仍须核对 `snapshotRevision`；电话变化会改变该修订。
+
+`phone` 只在该动作显式声明时查询和返回；默认 SubjectProfile、人员搜索和 `selected-user`
+不提供此投影。使用此字段需要平台能力 `directory.current-initiator-phone` 1.0.0，编译器从声明
+自动派生，不手写能力目录。受管 `backend-plan` 命令可在 execution.directory 中以相同方式
+声明本人电话；平台保留执行证明和有效 lease 边界。本能力不提供电话查人或联系方式修改。
+
 ## 解析管理员选定的组织人员
 
 管理员补录或身份订正应使用平台目录，不创建第二份人员主数据。具名动作声明

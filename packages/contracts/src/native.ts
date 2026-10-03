@@ -257,14 +257,18 @@ export type AppOperationDirectoryField =
   | 'displayName'
   | 'employeeNumber'
   | 'primaryDepartment'
-  | 'departments';
+  | 'departments'
+  | 'phone';
 
 export interface AppOperationPlatformAccessDeclaration {
   /** 在业务事务内核对目标用户的已声明角色；不授予成员管理权限。 */
   roleAssertions?: { roleCodes: readonly string[] };
   directory?: {
-    mode: 'current-initiator' | 'selected-user';
+    mode: 'current-initiator';
     fields: readonly AppOperationDirectoryField[];
+  } | {
+    mode: 'selected-user';
+    fields: readonly Exclude<AppOperationDirectoryField, 'phone'>[];
   };
   managedFiles?: ReadonlyArray<{
     resourceCode: string;

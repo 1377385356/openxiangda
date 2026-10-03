@@ -81,6 +81,16 @@ function durableSource() {
   return source;
 }
 
+test('durable own contact projection is explicit and has the same capability closure in both compilers', () => {
+  const source = durableSource();
+  (source.data!.concurrency!.commands[0]!.execution!.directory!.fields as string[]).push('phone');
+  const config = defineOpenXiangdaApp(source), compiled = compileApplicationSources(config), native = platformCompile(compiled);
+  const capability = requiredPlatformCapabilities(config).find(item => String(item.code) === 'directory.current-initiator-phone');
+  assert.equal(capability?.contractVersion, '1.0.0');
+  assert.deepEqual(native.requiredPlatformCapabilities.find(item => item.code === capability?.code), capability);
+  assert.equal(requiredPlatformCapabilities(defineOpenXiangdaApp(durableSource())).some(item => String(item.code) === 'directory.current-initiator-phone'), false);
+});
+
 test('durable handler declarations opt into independent capability and preserve ordinary resource writes',()=>{
   const config=defineOpenXiangdaApp(durableSource());
   const compiled=compileApplicationSources(config),native=platformCompile(compiled);
@@ -99,7 +109,7 @@ test('durable compilation rejects unsafe scope, unbounded inputs and mixed permi
   for(const mutate of [
     (c:any)=>{c.execution.url='https://elsewhere.invalid';},(c:any)=>{c.execution.resources[0].writeOperations=['delete'];},
     (c:any)=>{c.execution.resources[0].writeFields=['id'];},(c:any)=>{c.execution.resources[0].writeFields=['revision'];},(c:any)=>{c.parameters.phone.maxLength=257;},
-    (c:any)=>{c.execution.directory.mode='selected-user';},(c:any)=>{c.execution.directory.fields=['phone'];},
+    (c:any)=>{c.execution.directory.mode='selected-user';},(c:any)=>{c.execution.directory.fields=['email'];},
     (c:any)=>{delete c.intake;},(c:any)=>{c.intake.maxInFlight=1001;},(c:any)=>{c.operations=[];},
     (c:any)=>{c.execution.resources[0].readFields=['undeclared'];},(c:any)=>{c.mode='permit';},
   ]) {

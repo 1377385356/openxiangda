@@ -503,16 +503,18 @@ test("posts operation proof to the current-initiator directory endpoint", async 
           "openxiangda.current-initiator-directory-snapshot/v2",
         userId: "user-1",
         displayName: "王老师",
+        phone: "13800000000",
         snapshotRevision: "c".repeat(64),
         resolvedAt: "2026-08-29T08:00:00.000Z",
       });
     })
   );
 
-  await client.resolveCurrentInitiator("Bearer invocation-token", {
+  const snapshot = await client.resolveCurrentInitiator("Bearer invocation-token", {
     code: "welfare.save",
     requiredCapability: "app:reference-app:welfare:save",
   });
+  assert.equal(snapshot.phone, "13800000000");
 
   assert.equal(
     requests[0]!.url,
