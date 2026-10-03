@@ -244,7 +244,12 @@ export async function runConnectedDevelopment(
       return child;
     };
     spawnManaged(["run", "dev:web"], { HOST: LOOPBACK_HOST, PORT: String(webPort) });
-    if (backendRoot) spawnManaged(["--dir", backendRoot, "run", "dev"], { PORT: String(appPort) });
+    if (backendRoot) spawnManaged(["--dir", backendRoot, "run", "dev"], {
+      PORT: String(appPort),
+      // The compiler just generated src contracts. Production imports dist,
+      // while connected dev must resolve the current declared source exports.
+      NODE_OPTIONS: [process.env.NODE_OPTIONS, "--conditions=openxiangda-source"].filter(Boolean).join(" "),
+    });
     for (const signal of ["SIGINT", "SIGTERM"] as const) {
       const handler = () => stop(signal, true);
       signalHandlers.set(signal, handler);

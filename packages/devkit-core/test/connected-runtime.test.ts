@@ -48,16 +48,29 @@ server.listen(Number(process.env.OPENXIANGDA_WEB_PORT), '127.0.0.1');
   return { root, options, grant, revoked, created: () => created, close: () => rmSync(root, { recursive: true, force: true }) };
 }
 
-test('actual Nest boots against a frontend-only Head from a configured package without root dev:server', async () => {
+test('actual Nest boots with current source contracts and preserves caller Node options', async () => {
   const f = fixture();
+  const oldNodeOptions = process.env.NODE_OPTIONS;
+  process.env.NODE_OPTIONS = [oldNodeOptions, '--max-http-header-size=24576'].filter(Boolean).join(' ');
   try {
     const backendRoot = join(f.root, 'services/business');
     mkdirSync(backendRoot, { recursive: true });
     writeFileSync(join(backendRoot, 'package.json'), JSON.stringify({ private: true, scripts: { dev: 'node main.mjs' } }));
+    const contractsRoot = join(f.root, 'packages/contracts');
+    mkdirSync(contractsRoot, { recursive: true });
+    mkdirSync(join(f.root, 'node_modules/@app'), { recursive: true });
+    symlinkSync(contractsRoot, join(f.root, 'node_modules/@app/contracts'), 'dir');
+    writeFileSync(join(contractsRoot, 'package.json'), JSON.stringify({name:'@app/contracts',type:'module',exports:{'.':{'openxiangda-source':'./source.ts',import:'./stale.js'}}}));
+    writeFileSync(join(contractsRoot, 'source.ts'), "export const appOperations: Record<string, string> = { newAction: 'current-source' };\n");
+    writeFileSync(join(contractsRoot, 'stale.js'), "export const appOperations = {};\n");
     const nestPackage = resolve(import.meta.dirname, '../../nest/package.json');
     const nestEntry = pathToFileURL(resolve(import.meta.dirname, '../../nest/dist/index.js')).href;
     writeFileSync(join(backendRoot, 'main.mjs'), `
 import {createRequire} from 'node:module';
+import {appOperations} from '@app/contracts';
+import {maxHeaderSize} from 'node:http';
+if (appOperations.newAction !== 'current-source') throw new Error('stale operation contracts');
+if (maxHeaderSize !== 24576) throw new Error('caller Node options discarded');
 const require = createRequire(${JSON.stringify(nestPackage)});
 require('reflect-metadata');
 const {Module} = require('@nestjs/common');
@@ -81,7 +94,11 @@ await sdk.bootstrapOpenXiangdaApplication(TestModule);
     assert.equal(result.exitCode, 0);
     assert.deepEqual(f.revoked, ['private-session-token']);
     assert.doesNotMatch(JSON.stringify(result), /private-session-token/);
-  } finally { f.close(); }
+  } finally {
+    if (oldNodeOptions === undefined) delete process.env.NODE_OPTIONS;
+    else process.env.NODE_OPTIONS = oldNodeOptions;
+    f.close();
+  }
 });
 
 test('frontend-only connected development starts no Nest and rejects application API routes', async () => {
