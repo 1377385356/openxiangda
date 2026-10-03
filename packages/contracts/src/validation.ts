@@ -386,11 +386,15 @@ export function validateAppPackage(value: unknown): Diagnostic[] {
           );
         } else {
           codes.push(code);
-          if (item.contractVersion !== expectedVersion) {
+          // The compiler derives the basic unique contract from actual usage.
+          // The advertised platform version describes the enhanced implementation,
+          // not the only valid package requirement. Closure equality stays exact.
+          const basicUnique = code === 'data.unique-keys' && item.contractVersion === '1.0.0';
+          if (item.contractVersion !== expectedVersion && !basicUnique) {
             diagnostics.push(
               diagnostic(
                 'APP_PACKAGE_PLATFORM_CAPABILITY_CONTRACT_UNSUPPORTED',
-                `${code} contractVersion 必须是 ${expectedVersion}`,
+                `${code} contractVersion 必须是 ${code === 'data.unique-keys' ? '1.0.0 或 1.1.0' : expectedVersion}`,
                 `${path}.contractVersion`
               )
             );
