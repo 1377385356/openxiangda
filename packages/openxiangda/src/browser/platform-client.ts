@@ -172,7 +172,7 @@ export function platformRequestDiagnostic(error: unknown) {
     status: error.status, ...error.request };
 }
 
-function responseRequestError(path: string, init: RequestInit | undefined, response: Response, payload: PlatformEnvelope<unknown> | null, fallback: string) {
+function responseRequestError(path: string, init: RequestInit | undefined, response: Response, payload: Partial<PlatformEnvelope<unknown>> | null, fallback: string) {
   const context = requestContext(path, init, response, payload?.requestId);
   const dataCode = payload?.data && typeof payload.data === 'object' && 'errorCode' in payload.data
     && typeof payload.data.errorCode === 'string' ? payload.data.errorCode : undefined;
@@ -296,7 +296,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
         ? (payload as PlatformEnvelope<T>)
         : null;
     if (!response.ok || (envelope && envelope.code !== 200)) {
-      throw responseRequestError(path, init, response, envelope, '平台请求失败');
+      // Application backends may return Nest HttpException JSON without an envelope code.
+      // Only failed HTTP responses use that object as an error payload; successful JSON
+      // retains the existing envelope/plain-response contract.
+      const failurePayload = payload && typeof payload === 'object' && !Array.isArray(payload)
+        ? payload as Partial<PlatformEnvelope<unknown>> : null;
+      throw responseRequestError(path, init, response, failurePayload, '平台请求失败');
     }
     return envelope ? envelope.data : (payload as T);
   } finally {

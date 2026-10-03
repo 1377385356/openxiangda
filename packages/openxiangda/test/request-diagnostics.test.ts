@@ -81,3 +81,56 @@ test('throttled requests preserve Retry-After for bounded durable intake recover
   globalThis.fetch=async()=>new Response(JSON.stringify({code:429,errorCode:'CONCURRENCY_RATE_LIMITED'}),{status:429,headers:{'retry-after':'12'}});
   await assert.rejects(requestApplicationApi('/enqueue',{method:'POST',body:'{}'}),(error:any)=>error instanceof OpenXiangdaPlatformRequestError&&error.retryAfterMs===12000);
 }));
+
+test('native Nest HTTP refusals preserve the message without requiring an envelope code', async () => fixture(async () => {
+  for (const status of [400, 403, 409, 422]) {
+    let calls = 0;
+    globalThis.fetch = async () => {
+      calls++;
+      return new Response(JSON.stringify({
+        statusCode: 200, error: 'Conflict', message: '试卷已变化或该仪器已有试卷，不能覆盖',
+        retryable: false, data: { guardIndex: 2, secret: 'private data' },
+      }), { status, headers: { 'x-request-id': 'nest-refusal', 'retry-after': '3' } });
+    };
+    await assert.rejects(requestApplicationApi('/paper/prepare?token=secret', { method: 'POST', body: '{}' }), error => {
+      assert.ok(error instanceof OpenXiangdaPlatformRequestError);
+      assert.equal(error.message, '试卷已变化或该仪器已有试卷，不能覆盖');
+      assert.equal(error.status, status);
+      assert.equal(error.code, `HTTP_${status}`);
+      assert.equal(error.retryable, false);
+      assert.equal(error.retryAfterMs, 3000);
+      assert.equal((error.data as any).guardIndex, 2);
+      assert.equal(platformRequestDiagnostic(error)!.requestId, 'nest-refusal');
+      assert.doesNotMatch(JSON.stringify(platformRequestDiagnostic(error)), /secret|private|试卷|token|guardIndex/);
+      return true;
+    });
+    assert.equal(calls, 1);
+  }
+  globalThis.fetch = async () => new Response(JSON.stringify({
+    errorCode: 'PAPER_CONTEXT_CHANGED', message: '请刷新试卷后核对草稿',
+  }), { status: 409 });
+  await assert.rejects(requestApplicationApi('/paper/prepare', { method: 'POST' }), error => {
+    assert.ok(error instanceof OpenXiangdaPlatformRequestError);
+    assert.equal(error.code, 'PAPER_CONTEXT_CHANGED');
+    assert.equal(error.message, '请刷新试卷后核对草稿');
+    return true;
+  });
+}));
+
+test('plain successful JSON stays plain and non-object HTTP errors keep fallback diagnostics', async () => fixture(async () => {
+  const value = { statusCode: 200, message: 'saved', data: { id: 'receipt' } };
+  globalThis.fetch = async () => new Response(JSON.stringify(value));
+  assert.deepEqual(await requestApplicationApi('/paper'), value);
+  globalThis.fetch = async () => new Response(JSON.stringify({ code: 200, data: value }));
+  assert.deepEqual(await requestApplicationApi('/paper'), value);
+  for (const body of ['null', '"private error"', '[{"message":"private error"}]', 'invalid JSON']) {
+    globalThis.fetch = async () => new Response(body, { status: 409, headers: { 'x-request-id': 'fallback-refusal' } });
+    await assert.rejects(requestApplicationApi('/paper'), error => {
+      assert.ok(error instanceof OpenXiangdaPlatformRequestError);
+      assert.equal(error.code, 'HTTP_409');
+      assert.equal(error.message, 'HTTP_409: 平台请求失败 (requestId: fallback-refusal)');
+      assert.equal(platformRequestDiagnostic(error)!.requestId, 'fallback-refusal');
+      return true;
+    });
+  }
+}));
