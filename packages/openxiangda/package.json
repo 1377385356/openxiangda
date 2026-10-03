@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.48.1",
+  "version": "2.48.2",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -74,7 +74,7 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.51",
+    "openxiangda-cli": "2.6.52",
     "openxiangda-contracts": "2.47.0",
     "openxiangda-devkit-core": "2.41.6",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
@@ -146,14 +146,13 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.48.1",
+    "version": "2.48.2",
     "status": "reviewed",
-    "title": "大子表分页与整表校验",
-    "summary": "PC与手机主子表每页渲染十行，保留完整输入、草稿、排序和整单提交；校验覆盖全部行。",
+    "title": "子表输入与整表提交校验",
+    "summary": "保留子表分页的全部校验，在提交时定位离页错误，输入时稳定停留在当前页。",
     "newFeatures": [],
     "fixes": [
-      "减少大子表同时挂载的编辑控件；未显示行继续复用标准字段规则校验，任务完成的错误定位到对应页。",
-      "跨页移动使用绝对行序号，上传和待重试文件未处理时保留当前页。"
+      "父级子表完整校验只在显式校验或提交时执行，避免逐键扫描全部行并跳转至尚未填写的页；当前页字段仍即时反馈。"
     ],
     "affectedUsers": [
       "使用V2标准主子表、流程发起或任务办理页面的用户。"
@@ -171,7 +170,7 @@
       "node": ">=24",
       "platform": "沿用2.48.0匹配平台；1.x不消费此组件"
     },
-    "sha256": "ba545c3aadbbc7a8b4b31de91b2257dd1600df59c20e05e0ec452c0bf07362b0",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.48.1"
+    "sha256": "bfc22a1f10ca53c3d5146d4e0b797363afa4f0ae78dda80b0a9724e74d0bc4f9",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.48.2"
   }
 }
