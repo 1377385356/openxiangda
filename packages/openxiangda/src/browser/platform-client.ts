@@ -2755,6 +2755,24 @@ export async function loadWorkflowInstanceSurface(instanceId: string) {
   return bindWorkflowCsrf(normalizeWorkflowSurface(surface), csrfToken);
 }
 
+/** Current record read/RLS plus explicit history policy, without handling authority. */
+export async function loadWorkflowRecordHistory(
+  resourceCode: string,
+  recordId: string,
+  options: { instanceId?: string; limit?: number; offset?: number } = {},
+) {
+  const limit = options.limit ?? 20;
+  const offset = options.offset ?? 0;
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100 ||
+      !Number.isSafeInteger(offset) || offset < 0 || offset > 500)
+    throw new Error('WORKFLOW_V2_RECORD_HISTORY_PAGE_INVALID');
+  const query = new URLSearchParams({ environmentKey: currentEnvironmentKey(), limit: String(limit), offset: String(offset) });
+  if (options.instanceId) query.set('instanceId', options.instanceId);
+  return await requestRead<import('openxiangda-contracts/browser').WorkflowRecordHistory>(
+    `${workflowBase()}/records/${encodeURIComponent(resourceCode)}/${encodeURIComponent(recordId)}/history?${query}`,
+  );
+}
+
 export async function loadWorkflowTimeline(instanceId: string) {
   return await requestRead<WorkflowTimeline>(
     `${workflowBase()}/instances/${encodeURIComponent(instanceId)}/timeline`,

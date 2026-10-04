@@ -95,6 +95,7 @@ import { WorkflowRecordDetailPage, WorkflowSubmissionPage } from '../workflow/St
 import { RecordDetailFrame, RecordDetailSections, detailTime } from './RecordDetailFrame';
 import { RecordChangeHistory } from './RecordChangeHistory';
 import { WorkflowRecordEditor } from '../workflow/WorkflowRecordEditor';
+import { WorkflowRecordHistoryPanel } from '../workflow/WorkflowRecordHistoryPanel';
 import type { ResourceFormDrawerState } from './ResourceFormFrame';
 
 async function exportResourceRows(
@@ -995,6 +996,10 @@ function NativeResourceDetailPage({ definition, paths, variant, recordId, onDism
     isAdminContributionAllowed(item, hasCapability)
   );
   const [auditExpanded, setAuditExpanded] = useState(false);
+  const [workflowHistoryExpanded, setWorkflowHistoryExpanded] = useState(false);
+  const historyRead = definition.workflowHistory?.read;
+  const workflowHistoryVisible = Boolean(record && historyRead?.length &&
+    (identity.isAppSuperAdmin || historyRead.every(code => hasReadCapability(code))));
   const auditVisible = Boolean(record && DATA_AUDIT_METADATA_FIELDS.every(code =>
     Object.prototype.hasOwnProperty.call(record, code)));
   const readable = (field: SurfaceField) => fieldReadable(field, hasReadCapability, identity.isAppSuperAdmin);
@@ -1027,6 +1032,10 @@ function NativeResourceDetailPage({ definition, paths, variant, recordId, onDism
         {auditVisible && <Collapse className="oxa-audit-collapse" activeKey={auditExpanded ? ['audit'] : []} expandIconPlacement="end"
           onChange={keys => setAuditExpanded((Array.isArray(keys) ? keys : [keys]).includes('audit'))}
           items={[{ key: 'audit', label: '变更记录', children: auditExpanded ? <RecordChangeHistory resourceCode={definition.code} recordId={record.id} surface={definition.surface} readable={readable} /> : null }]} />}
+        {workflowHistoryVisible && <Collapse className="oxa-workflow-history-collapse" activeKey={workflowHistoryExpanded ? ['history'] : []} expandIconPlacement="end"
+          onChange={keys => setWorkflowHistoryExpanded((Array.isArray(keys) ? keys : [keys]).includes('history'))}
+          items={[{ key: 'history', label: '流程办理记录', children: workflowHistoryExpanded
+            ? <WorkflowRecordHistoryPanel resourceCode={definition.code} recordId={record.id} variant={variant} /> : null }]} />}
         {detailContributions.map(contribution => <Fragment key={contribution.code}>{contribution.render({ record, resource: definition.code, refresh: () => query.query.refetch() })}</Fragment>)}
       </>}
   </RecordDetailFrame>;

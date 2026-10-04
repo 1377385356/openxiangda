@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.50.0",
+  "status": "reviewed",
+  "title": "按业务资料权限查看流程办理历史",
+  "summary": "业务查看组可以在当前资料范围内查看原固定流程的节点、办理人、时间和意见，审批授权保持独立。",
+  "newFeatures": [
+    "模型新增workflowHistory显式声明，按同一成员同时持有资料读取和全部历史能力校验。",
+    "公开loadWorkflowRecordHistory与PC/手机WorkflowRecordHistoryPanel，标准Native详情可按声明展开记录。",
+    "有界安全投影不返回事实、业务值、代码、角色席位、原detail或操作令牌；分页、容量与一致性冲突有明确失败。"
+  ],
+  "fixes": [],
+  "affectedUsers": [
+    "需要业务查看职责、本人记录范围和独立历史授权的V2应用。"
+  ],
+  "upgradeSteps": [
+    "安装同源本地包组合；声明历史能力并在模型workflowHistory.read中引用。",
+    "平台Server需提供workflow.record-history-read@1.0.0后再部署新声明；旧固定实例沿当前Native资料权限读取。"
+  ],
+  "knownLimitations": [
+    "没有npm发布、学校业务写入或生产部署。",
+    "服务端20项定向测试、5项编译测试和独立PG10项真实查询/fixture RLS通过；完整应用六组当前角色矩阵及两端运行仍待验。",
+    "源评论、打印和删除不由本历史接口实现。"
+  ],
+  "issues": [],
+  "compatibility": {
+    "node": ">=24",
+    "platform": "workflow.record-history-read@1.0.0；未声明workflowHistory的应用继续原合同。"
+  }
+}

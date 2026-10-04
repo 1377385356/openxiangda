@@ -514,6 +514,14 @@ export function validateDataResource(value: unknown): Diagnostic[] {
     if (!(error instanceof NativeDecimalLifecycleContractError)) throw error;
     diagnostics.push(diagnostic(error.code, error.message, error.pointer.replace(/^\//, '').replace(/\//g, '.')));
   }
+  if (value.workflowHistory !== undefined) {
+    const policy = value.workflowHistory;
+    if (!isRecord(policy) || Object.keys(policy).some(key => key !== 'read') ||
+        !Array.isArray(policy.read) || policy.read.length > 20 ||
+        policy.read.some(code => typeof code !== 'string' || !code.trim()) || new Set(policy.read).size !== policy.read.length)
+      diagnostics.push(diagnostic('NATIVE_WORKFLOW_HISTORY_READ_INVALID',
+        'workflowHistory.read 必须为不重复的能力数组，空数组关闭此入口', 'workflowHistory.read'));
+  }
   diagnostics.push(...validateDataResourceViews(value));
   diagnostics.push(...validateDataResourceDraftStates(value));
   if (isRecord(value.surface) && isRecord(value.surface.list))

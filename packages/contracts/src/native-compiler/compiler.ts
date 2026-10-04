@@ -575,6 +575,8 @@ export function compileRequiredPlatformCapabilitiesV3(
           },
         ]
       : []),
+    ...(resources.some(resource => resource.workflowHistory !== undefined)
+      ? [{ code: 'workflow.record-history-read' as const, declaration: dataUsage }] : []),
     ...(resources.some(hasDataAuditReadPolicy)
       ? [{ code: 'data.audit-read-access' as const, declaration: dataUsage }]
       : []),
@@ -5434,6 +5436,13 @@ function validateAuthorizationReferences(
   config.data.resources.forEach((rawResource: unknown, index: number) => {
     const resourcePointer = `/config/data/resources/${index}`;
     const resource = object(rawResource, resourcePointer);
+    if (resource.workflowHistory !== undefined) {
+      const pointer = `${resourcePointer}/workflowHistory/read`;
+      for (const capability of resource.workflowHistory.read) {
+        capabilityCode(capability, pointer, config.appCode);
+        if (!capabilityCodes.has(capability)) fail('NATIVE_CAPABILITY_REFERENCE_MISSING', pointer);
+      }
+    }
     for (const [fieldCode, rawPolicy] of Object.entries(resource.fieldPolicies || {})) {
       if (!isDataAuditMetadataField(fieldCode)) continue;
       const pointer = `${resourcePointer}/fieldPolicies/${fieldCode}/read`;
@@ -7359,6 +7368,7 @@ function validateResource(raw: any, pointer: string, appCode: string) {
       'invariants',
       'decimalReservationLifecycle',
       'uniqueKeys',
+      'workflowHistory',
       'capabilities',
       'dataPolicyCode',
       'fieldPolicies',
@@ -7399,6 +7409,14 @@ function validateResource(raw: any, pointer: string, appCode: string) {
       fail(error.code, error.pointer);
     }
     throw error;
+  }
+  if (resource.workflowHistory !== undefined) {
+    const policy = object(resource.workflowHistory, `${pointer}/workflowHistory`);
+    exactKeys(policy, ['read'], `${pointer}/workflowHistory`);
+    const read = policy.read;
+    if (!Array.isArray(read) || read.length > 20 ||
+        read.some(value => typeof value !== 'string' || !value.trim()) || new Set(read).size !== read.length)
+      fail('NATIVE_WORKFLOW_HISTORY_READ_INVALID', `${pointer}/workflowHistory/read`);
   }
   const fieldCodes = new Set<string>(fields.map(field => field.code));
   const capabilities = object(resource.capabilities, `${pointer}/capabilities`);

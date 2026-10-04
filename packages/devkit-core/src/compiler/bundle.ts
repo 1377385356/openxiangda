@@ -2064,6 +2064,7 @@ function normalizeDataResource(resource: DataResource): DataResource {
       : {}),
     ...(decimalReservationLifecycle ? { decimalReservationLifecycle } : {}),
     ...(uniqueKeys !== undefined ? { uniqueKeys } : {}),
+    ...(resource.workflowHistory !== undefined ? { workflowHistory: { read: uniqueSorted(resource.workflowHistory.read) } } : {}),
     ...(resource.invariants
       ? {
           invariants: [...resource.invariants]
@@ -2249,6 +2250,7 @@ export function renderGeneratedContracts(
                 .split('\n')
                 .map((line, index) => (index === 0 ? line : `    ${line}`))
                 .join('\n')},\n` +
+              (item.workflowHistory !== undefined ? `    workflowHistory: ${JSON.stringify(item.workflowHistory)},\n` : '') +
               `    surface: resourceSurfaces[${JSON.stringify(item.code)}],\n` +
               '  }'
           )

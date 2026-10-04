@@ -2641,6 +2641,10 @@ export const dataResourceSchema = {
     appCode: nonEmptyString,
     code: dataResourceCode,
     name: nonEmptyString,
+    workflowHistory: {
+      type: 'object', additionalProperties: false, required: ['read'],
+      properties: { read: { type: 'array', maxItems: 20, uniqueItems: true, items: nonEmptyString } },
+    },
     schema: {
       type: "object",
       additionalProperties: false,

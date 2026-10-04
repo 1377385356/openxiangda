@@ -29,6 +29,7 @@ export const PLATFORM_CAPABILITY_CONTRACT_VERSIONS = {
   "events.capture-policy": "1.0.0",
   "events.native-data-actions": "1.0.0",
   "workflow-kernel-v2": "1.0.0",
+  "workflow.record-history-read": "1.0.0",
   "workflow.instance-cancellation-policy": "1.0.0",
   "workflow.node-administration": "1.0.0",
   "workflow.assignment-routing": "1.0.0",

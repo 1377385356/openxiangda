@@ -212,3 +212,10 @@ export default defineOpenXiangdaApp({
 ## 图片上传的像素上限
 
 image/signature/富文本图片字段在上传计划（initiate）里返回 `maxPixels`；超过上限的图片会被标准组件自动压缩后重新发起上传。用 API 直传时自行按 `maxPixels` 预检。当前平台上限覆盖主流手机主摄（48/50/64MP）；超出会得到带实际尺寸的 `OPENXIANGDA_NATIVE_DATA_IMAGE_PIXEL_LIMIT_EXCEEDED` 错误。
+
+## 业务查看组的流程办理历史
+
+在模型或直接资源声明中设置 `workflowHistory: { read: true | false | string[] }`。
+省略/false关闭新入口；true绑定资源read，数组引用已有能力，不隐式生成能力。
+同一角色成员须同时满足资源read和全部历史能力，原行权限继续约束旧固定实例；该项独立于Native `audit.read`。
+标准Native详情和公开 `WorkflowRecordHistoryPanel` 可复用，参见[工作流历史](workflow-events.md#record-history-read)。

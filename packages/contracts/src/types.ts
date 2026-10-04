@@ -1336,6 +1336,8 @@ export interface DataResource {
   invariants?: DataResourceInvariant[];
   decimalReservationLifecycle?: DataDecimalReservationLifecycle;
   uniqueKeys?: DataUniqueKey[];
+  /** Explicit business-viewer history policy; absence and empty read disable it. */
+  workflowHistory?: { read: string[] };
   /** Default UI metadata projected with the authoritative Data Resource. */
   surface?: DataResourceSurface;
   capabilities: {
@@ -3351,6 +3353,63 @@ export interface WorkflowTimelineDisplayEntry {
 
 export interface WorkflowTimelineDisplay {
   entries: WorkflowTimelineDisplayEntry[];
+}
+
+/** Read-only business history. No facts, raw log detail, tokens or role seats. */
+export interface WorkflowRecordHistoryPerson {
+  userId: string;
+  displayName: string;
+  status: string;
+  outcome: string | null;
+  comment: string | null;
+  completedAt: IsoDateTime | null;
+}
+
+export interface WorkflowRecordHistoryVisit {
+  id: string;
+  nodeId: string;
+  nodeKind: string;
+  title: string;
+  status: string;
+  enteredAt: IsoDateTime | null;
+  completedAt: IsoDateTime | null;
+  people: WorkflowRecordHistoryPerson[];
+}
+
+export interface WorkflowRecordHistoryOperation {
+  id: string;
+  nodeVisitId: string | null;
+  operation: string;
+  operationLabel: string;
+  actor: { userId: string; displayName: string };
+  actingForUserId: string | null;
+  reason: string | null;
+  occurredAt: IsoDateTime | null;
+}
+
+export interface WorkflowRecordHistory {
+  schemaVersion: 'openxiangda.workflow-record-history/v1';
+  resourceCode: string;
+  recordId: string;
+  recordRevision: number;
+  environmentKey: 'preproduction' | 'production';
+  instance: {
+    id: string;
+    workflowCode: string;
+    version: number;
+    definitionVersionId: string;
+    definitionDigest: string;
+    status: string;
+    eventSequence: number;
+    startedAt: IsoDateTime | null;
+    completedAt: IsoDateTime | null;
+  };
+  visits: WorkflowRecordHistoryVisit[];
+  items: WorkflowRecordHistoryOperation[];
+  total: number;
+  limit: number;
+  offset: number;
+  hasMore: boolean;
 }
 
 export interface WorkflowTimeline {

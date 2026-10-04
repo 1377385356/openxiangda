@@ -764,3 +764,19 @@ append 处理签名或 HTML。当前任务、实例、记录或字段改变时�
 该策略由代码固定。每次实际跳过记录节点访问、当时配置、解析依据和 `openxiangda.workflow.node.skipped.v2` 事件；图和 PC/手机历史显示“已跳过”。连续节点推进受 200 节点上限约束，业务步骤仍等待其正式结果。后续失败与业务变更在原事务一起回滚，重试沿用原命令。
 
 退回补正（return_review）必须有人实际处理，不能靠空人跳过；重提后的正常 replay/resume 流转继续采用原节点策略。使用此声明时，生成契约要求目标平台支持 `workflow.approval-empty-policy@1.0.0`，缺少该能力的旧服务端不能接收。
+
+## 按业务资料权限查看办理历史 {#record-history-read}
+
+发起人、审批人、抄送人使用既有 Workflow 详情。业务查看人员需要根据当前资料范围读取办理记录时，模型可显式声明：
+
+```ts
+workflowHistory: { read: ['app:my-app:history:read'] },
+```
+
+`read: true` 绑定本资源的 read 能力，`false` 关闭入口；省略也关闭。能力数组引用已声明能力，最多20项，必须由同一角色成员全部持有，同时具备资源read。ALL资料读取角色与本人历史角色组合时，历史仍限本人行；Perspective和Native RLS继续收窄范围。此声明不授予审批、转交、后台或流程图管理能力，且独立于 `audit.read` 的资料变更记录。
+
+标准Native详情按声明提供折叠的“流程办理记录”。自定义用户端PC/手机页面可复用 `WorkflowRecordHistoryPanel`（`openxiangda/react`），传入 `resourceCode`、`recordId` 和 `variant`。通过 `loadWorkflowRecordHistory`（`openxiangda/core` 或 `openxiangda/react`）直接读取时，可传 `instanceId` 查看该记录的原固定实例，以及 `limit`（默认20、最多100）、`offset`（最多500）。环境来自当前平台runtime；接口不提供办理Surface或操作令牌。
+
+结果仅包含原流程版本、实际节点访问、人员、操作时间和意见，不返回条件事实、业务字段、代码、角色席位、原始log detail或授权摘要。每次请求重新授权；无权、没有可读实例、容量超限及读取中资料/实例变化分别保留明确失败。组件清除失败后的旧数据并提供手动重试，不自动重放写入。单实例最多500操作、200访问、1000审批/自动抄送席位，响应最多2MiB；历史较大时返回413，不静默截断。
+
+本能力要求平台 `workflow.record-history-read@1.0.0`。只读历史不提供评论发布、源系统打印或删除；这些行为需分别声明、授权和验收。

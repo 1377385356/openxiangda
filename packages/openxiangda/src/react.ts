@@ -45,6 +45,7 @@ export {
   issueApplicationFileIntent,
   loadApplicationOperationSurfaces,
   loadSubjectReadSurface,
+  loadWorkflowRecordHistory,
   logoutCurrentUser,
   type AnonymousPublicDraft,
   type AnonymousPublicRecord,
@@ -56,6 +57,9 @@ export type {
   ApplicationOperationSurfaceCatalogV2,
   ApplicationOperationSurfaceV2,
   WorkflowCommandResult,
+  WorkflowRecordHistory,
+  WorkflowRecordHistoryVisit,
+  WorkflowRecordHistoryOperation,
   WorkflowTaskDraft,
   WorkflowTaskDraftSave,
   WorkflowTaskDraftReference,
@@ -84,3 +88,5 @@ export * from './browser/components/todo/ApplicationTodoCenterPage';
 export type * from './browser/components/resource/generated-resource-definition';
 
 export * from "./browser/components/workflow/WorkflowBusinessStepRecoveryPanel";
+
+export * from './browser/components/workflow/WorkflowRecordHistoryPanel';

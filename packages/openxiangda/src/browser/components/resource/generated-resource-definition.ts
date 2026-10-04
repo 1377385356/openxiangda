@@ -10,6 +10,7 @@ export interface GeneratedResourceDefinition {
     update: string;
     delete: string;
   };
+  workflowHistory?: { read: string[] };
   surface: DataResourceSurface;
 }
 

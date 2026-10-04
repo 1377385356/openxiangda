@@ -77,6 +77,9 @@ export type {
   WorkflowTaskFileUpload,
   WorkflowTaskFileUploadPlan,
   WorkflowTimeline,
+  WorkflowRecordHistory,
+  WorkflowRecordHistoryVisit,
+  WorkflowRecordHistoryOperation,
   WorkflowWorkCenterItem,
 } from 'openxiangda-contracts/browser';
 export * from './browser/platform-client';
