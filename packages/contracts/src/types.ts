@@ -2462,6 +2462,7 @@ export interface WorkflowDefinition {
     | "cancel-on-deactivate";
   subject: WorkflowSubjectDefinition;
   commandHandlers?: import('./native-compiler/workflow-business-command.js').WorkflowCommandHandlers;
+  launchPreflight?: import('./native-compiler/workflow-launch-preflight.js').WorkflowLaunchPreflight;
   instanceCommands?: WorkflowInstanceCommandPolicies;
   /** Code-owned, frozen at rejection using the subject's last successful business writer. */
   rejectionNotification?: import('./native-compiler/workflow-rejection-notification.js').WorkflowRejectionNotification;

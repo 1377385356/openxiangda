@@ -810,3 +810,15 @@ rejectionNotification: {
 
 应用无需后端或自建事件订阅。可编译例子见
 `examples/workflow-administration/rejection-notification.ts`。
+
+### 提交前检查必需审批人
+
+需要在保存业务资料前确认特定审批节点有人时，可在固定 definition 中声明：
+
+```ts
+launchPreflight: { requiredApprovalNodes: ['departmentReview', 'finalReview'] }
+```
+
+节点必须为实际 approval，最多20个且不能重复；本版只支持 fixed_users、initiator、app_role、app_role_in_scope，不能依赖未来任务补填、外部 provider 或候选字段。BusinessProcess.commit 在业务写入的同一事务内，按当前有效节点配置和真实成员/范围解析这些节点；空人、失效账号、超限或需要尚未提供的交互输入时整笔回滚。emptyPolicy:skip 不能绕过该准入。命中原提交回执时不会重新执行检查。
+
+这是提交准入，不预先冻结未来审批人；实际进入节点仍重新解析。声明要求目标具备 workflow.launch-preflight@1.0.0，未声明的流程保持原提交行为。实际角色与事务回滚需在目标平台验收。

@@ -98,3 +98,29 @@ test('browser invocation has an exact target/subject/CAS/token envelope', () => 
   assert.equal(validateCommand({ ...command, expectedTransition: { ...command.expectedTransition, status: 'completed' } }), false);
   assert.equal(validateCommand({ ...command, workflow: { ...input, command: 'forged' } }), false);
 });
+
+test('launch preflight seals required approval nodes and identical opt-in capability closure', () => {
+  const source = fixture();
+  source.workflows!.definitions[0]!.definition.launchPreflight = { requiredApprovalNodes: ['review'] };
+  const output = compileApplicationSources(defineOpenXiangdaApp(source));
+  const target = compileNativeApplicationConfiguration({ appCode: 'command-review', configBytes: output.config.content,
+    expectedConfigDigest: output.config.digest, contractBytes: output.contracts.content, expectedContractDigest: output.contracts.digest });
+  assert.deepEqual(target.requiredPlatformCapabilities, requiredPlatformCapabilitiesFromConfiguration(output.config.value));
+  assert.equal(target.requiredPlatformCapabilities.find(item => item.code === 'workflow.launch-preflight')?.contractVersion, '1.0.0');
+  const validate = new Ajv2020({ strict: false, validateFormats: false }).compile(workflowDefinitionSchema);
+  assert.equal(validate(output.config.value.workflows.definitions[0]!.definition), true, JSON.stringify(validate.errors));
+  const ordinary = compileApplicationSources(defineOpenXiangdaApp(fixture()));
+  assert.equal(requiredPlatformCapabilitiesFromConfiguration(ordinary.config.value).some(item => item.code === 'workflow.launch-preflight'), false);
+});
+
+test('launch preflight rejects invalid references, cardinality and providers before sealing', () => {
+  for (const nodes of [[], ['missing'], ['approved'], ['review', 'review'], Array.from({ length: 21 }, (_, i) => `node${i}`)]) {
+    const source = fixture(); source.workflows!.definitions[0]!.definition.launchPreflight = { requiredApprovalNodes: nodes };
+    assert.throws(() => compileApplicationSources(defineOpenXiangdaApp(source)), JSON.stringify(nodes));
+  }
+  for (const provider of ['form_field_users', 'initiator_select', 'application_provider', 'previous_node_actor']) {
+    const source = fixture(); source.workflows!.definitions[0]!.definition.launchPreflight = { requiredApprovalNodes: ['review'] };
+    (source.workflows!.bindings[0]!.binding.bindings.reviewer as any) = { provider, inputPath: 'amount', providerCode: 'directory' };
+    assert.throws(() => compileApplicationSources(defineOpenXiangdaApp(source)), provider);
+  }
+});

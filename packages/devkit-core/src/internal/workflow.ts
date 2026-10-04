@@ -11,6 +11,7 @@ import {
   workflowBindingAllowsEmptyUsers,
   validateWorkflowTaskPages,
   validateWorkflowCommandHandlers,
+  validateWorkflowLaunchPreflight,
   validateWorkflowBusinessSteps,
   validateWorkflowAssignmentRoutingBindings,
   type WorkflowApprovalMode,
@@ -119,7 +120,7 @@ export function compileWorkflow(
 }
 
 export function validateWorkflowDefinition(definition: WorkflowDefinition) {
-  const diagnostics = [...validateWorkflowCommandHandlers(definition), ...validateWorkflowInstanceCommandPolicies(definition), ...validateWorkflowReadability(definition), ...validateWorkflowAdministration(definition), ...validateWorkflowAutomaticCc(definition), ...validateWorkflowApprovalEmptyPolicy(definition), ...validateWorkflowRejectionNotification(definition), ...validateWorkflowTaskPages(definition), ...validateWorkflowBusinessSteps(definition)];
+  const diagnostics = [...validateWorkflowLaunchPreflight(definition), ...validateWorkflowCommandHandlers(definition), ...validateWorkflowInstanceCommandPolicies(definition), ...validateWorkflowReadability(definition), ...validateWorkflowAdministration(definition), ...validateWorkflowAutomaticCc(definition), ...validateWorkflowApprovalEmptyPolicy(definition), ...validateWorkflowRejectionNotification(definition), ...validateWorkflowTaskPages(definition), ...validateWorkflowBusinessSteps(definition)];
   if (definition?.schemaVersion !== SCHEMA_VERSIONS.workflowDefinition) {
     diagnostics.push('WORKFLOW_DEFINITION_SCHEMA_INVALID');
   }
@@ -210,7 +211,7 @@ export function validateWorkflowBinding(
   definition: WorkflowDefinition,
   binding: WorkflowBinding
 ) {
-  const diagnostics: string[] = [...validateWorkflowAdministration(definition, binding), ...validateWorkflowAssignmentRoutingBindings([binding]), ...validateWorkflowAutomaticCc(definition, binding), ...validateWorkflowApprovalEmptyPolicy(definition, binding), ...validateWorkflowBusinessSteps(definition, binding)];
+  const diagnostics: string[] = [...validateWorkflowLaunchPreflight(definition, binding), ...validateWorkflowAdministration(definition, binding), ...validateWorkflowAssignmentRoutingBindings([binding]), ...validateWorkflowAutomaticCc(definition, binding), ...validateWorkflowApprovalEmptyPolicy(definition, binding), ...validateWorkflowBusinessSteps(definition, binding)];
   if (binding?.schemaVersion !== SCHEMA_VERSIONS.workflowBinding) {
     diagnostics.push('WORKFLOW_BINDING_SCHEMA_INVALID');
   }

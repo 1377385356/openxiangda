@@ -24,6 +24,7 @@ export * from './native-compiler/workflow-initiator-approval.js';
 export * from './native-compiler/workflow-rejection-notification.js';
 export * from './native-compiler/workflow-business-step.js';
 export * from './native-compiler/workflow-business-command.js';
+export * from './native-compiler/workflow-launch-preflight.js';
 export * from './native-compiler/workflow-task-page.js';
 export * from './native-compiler/data-capacity.js';
 export * from './native-compiler/workflow-assignment-routing.js';

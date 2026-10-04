@@ -5588,6 +5588,11 @@ export const workflowDefinitionSchema = {
     schemaVersion: { const: SCHEMA_VERSIONS.workflowDefinition },
     code: { type: "string", pattern: "^[A-Za-z][A-Za-z0-9_-]{0,127}$" },
     title: nonEmptyString,
+    launchPreflight: {
+      type: 'object', additionalProperties: false, required: ['requiredApprovalNodes'],
+      properties: { requiredApprovalNodes: { type: 'array', minItems: 1, maxItems: 20, uniqueItems: true,
+        items: { type: 'string', pattern: '^[A-Za-z][A-Za-z0-9_-]{0,127}$' } } },
+    },
     commandHandlers: {
       type: 'object', additionalProperties: false, minProperties: 1,
       properties: Object.fromEntries(['approve', 'reject', 'withdraw'].map(command => [command, {

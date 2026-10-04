@@ -14,6 +14,7 @@ import { validateWorkflowApprovalEmptyPolicy, workflowBindingAllowsEmptyUsers } 
 import { validateWorkflowInitiatorApprovalPolicy } from './workflow-initiator-approval.js';
 import { validateWorkflowRejectionNotification } from './workflow-rejection-notification.js';
 import { validateWorkflowCommandHandlers } from './workflow-business-command.js';
+import { validateWorkflowLaunchPreflight } from './workflow-launch-preflight.js';
 import { validateWorkflowTaskPages } from './workflow-task-page.js';
 import { validateWorkflowBusinessSteps, compileWorkflowBusinessStepHandlers, validateWorkflowBusinessStepSubscriptions, WORKFLOW_BUSINESS_STEP_EVENT, WORKFLOW_BUSINESS_STEP_EVENTS } from './workflow-business-step.js';
 import { validateWorkflowAssignmentRoutingBindings, validateWorkflowAssignmentRoutingPolicy } from './workflow-assignment-routing.js';
@@ -708,6 +709,8 @@ export function compileRequiredPlatformCapabilitiesV3(
           definitions: config.workflows.definitions.filter((item: JsonObject) => item.definition.commandHandlers !== undefined),
           operations: operations.filter(operation => operation.platformAccess?.workflow?.businessCommands),
         } }] : []),
+    ...(config.workflows.definitions.some((item: JsonObject) => item.definition.launchPreflight !== undefined)
+      ? [{ code: 'workflow.launch-preflight' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => item.definition.launchPreflight !== undefined) }] : []),
     ...(namedInputSourceDefinitions.length
       ? [{ code: 'workflow.named-input-sources' as const, declaration: namedInputSourceDefinitions }]
       : []),
@@ -6619,6 +6622,8 @@ function validateWorkflowReferences(config: JsonObject) {
     }
     definitions.add(key);
     validateWorkflowDefinition(definition, `${pointer}/definition`);
+    const preflightErrors = validateWorkflowLaunchPreflight(definition as any);
+    if (preflightErrors.length) fail(preflightErrors[0]!, `${pointer}/definition/launchPreflight`);
     const businessCommandErrors = validateWorkflowCommandHandlers(definition as any, config.backend.operations);
     if (businessCommandErrors.length) fail(businessCommandErrors[0]!, `${pointer}/definition/commandHandlers`);
     validateWorkflowSubject(
@@ -6717,6 +6722,8 @@ function validateWorkflowReferences(config: JsonObject) {
     }
     const definition = definitionValues.get(definitionKey)!;
     const binding = bindingValues.get(bindingKey)!;
+    const preflightErrors = validateWorkflowLaunchPreflight(definition as any, binding as any);
+    if (preflightErrors.length) fail(preflightErrors[0]!, pointer);
     const administrationErrors = validateWorkflowAdministration(definition as unknown as { nodes: Record<string, WorkflowAdministrationNodeSource> }, binding as any);
     if (administrationErrors.length) fail(administrationErrors[0]!, pointer);
     if (
@@ -7004,7 +7011,7 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
       'nodes',
     ],
     pointer,
-    ['organizationContext', 'instanceCommands', 'readability', 'taskPages', 'rejectionNotification', 'commandHandlers']
+    ['organizationContext', 'instanceCommands', 'readability', 'taskPages', 'rejectionNotification', 'commandHandlers', 'launchPreflight']
   );
   equal(
     definition.schemaVersion,
