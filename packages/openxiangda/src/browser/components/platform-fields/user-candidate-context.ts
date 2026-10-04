@@ -1,4 +1,4 @@
-import type { DataFieldSourceLaunchBinding, UserCandidatePage, UserCandidateSearch } from 'openxiangda-contracts/browser';
+import type { DataFieldSourceLaunchBinding, DataRecordEditInput, UserCandidatePage, UserCandidateSearch } from 'openxiangda-contracts/browser';
 import { SCHEMA_VERSIONS } from 'openxiangda-contracts/browser';
 import { queryFieldUserCandidates, queryWorkflowTaskUserCandidates } from '../../platform-client';
 
@@ -9,7 +9,7 @@ export interface WorkflowCandidateBinding {
 
 export type UserCandidateFieldContext =
   | { kind: 'native'; resourceCode: string; fieldCode: string; operation: 'create'; launch?: DataFieldSourceLaunchBinding }
-  | { kind: 'native'; resourceCode: string; fieldCode: string; operation: 'update'; recordId: string; expectedRevision: number; launch?: DataFieldSourceLaunchBinding }
+  | { kind: 'native'; resourceCode: string; fieldCode: string; operation: 'update'; recordId: string; expectedRevision: number; action?: DataRecordEditInput; launch?: DataFieldSourceLaunchBinding }
   | { kind: 'workflow-task'; taskId: string; fieldCode: string; expectedRevision: number; expectedTaskVersion: number };
 
 const revision = (value: number | undefined): value is number => Number.isSafeInteger(value) && Number(value) > 0;
@@ -17,8 +17,11 @@ const revision = (value: number | undefined): value is number => Number.isSafeIn
 export function userCandidateFieldContext(input: {
   resourceCode?: string; fieldCode: string; operation: 'create' | 'update';
   recordId?: string; expectedRevision?: number; workflowCandidateBinding?: WorkflowCandidateBinding;
-  launch?: DataFieldSourceLaunchBinding; requiresSavedScope?: boolean;
+  action?: DataRecordEditInput; launch?: DataFieldSourceLaunchBinding; requiresSavedScope?: boolean;
 }): { context?: UserCandidateFieldContext; error?: string } {
+  if (input.action && (input.operation !== 'update' || input.launch || input.workflowCandidateBinding ||
+      input.action.recordId !== input.recordId || input.action.expectedRevision !== input.expectedRevision))
+    return { error: '当前修改资料上下文已变化，请重新打开页面。' };
   const task = input.workflowCandidateBinding;
   if (task) {
     if (!task.taskId || !revision(task.expectedTaskVersion) || !revision(input.expectedRevision))
@@ -35,6 +38,7 @@ export function userCandidateFieldContext(input: {
   if (!input.recordId || !revision(input.expectedRevision)) return { error: '请刷新已保存的资料后再选择人员，当前输入已保留。' };
   return { context: { kind: 'native', operation: 'update', resourceCode: input.resourceCode,
     fieldCode: input.fieldCode, recordId: input.recordId, expectedRevision: input.expectedRevision,
+    ...(input.action ? { action: input.action } : {}),
     ...(input.launch ? { launch: input.launch } : {}) } };
 }
 
@@ -48,6 +52,7 @@ export function queryUserCandidateField(context: UserCandidateFieldContext, sear
   return queryFieldUserCandidates(context.resourceCode, context.fieldCode, context.operation === 'create'
     ? { ...query, operation: 'create', ...(context.launch ? { launch: context.launch } : {}) }
     : { ...query, operation: 'update', recordId: context.recordId, expectedRevision: context.expectedRevision,
+        ...(context.action ? { action: context.action } : {}),
         ...(context.launch ? { launch: context.launch } : {}) });
 }
 

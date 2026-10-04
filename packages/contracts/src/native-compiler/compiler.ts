@@ -538,6 +538,9 @@ export function compileRequiredPlatformCapabilitiesV3(
     ...(operations.some(operation => operation.platformAccess?.dataCommands)
       ? [{ code: 'data.business-commands' as const, declaration: operations.filter(operation => operation.platformAccess?.dataCommands) }]
       : []),
+    ...(operations.some(operation => operation.platformAccess?.recordEdit)
+      ? [{ code: 'data.record-edit' as const, declaration: operations.filter(operation => operation.platformAccess?.recordEdit) }]
+      : []),
     ...(operations.some(operation => operation.platformAccess?.decimalReservation) ||
       config.events.subscriptions.some((subscription: any) => subscription.platformAccess?.decimalReservation)
       ? [{
@@ -2324,6 +2327,14 @@ function compileOperations(config: JsonObject) {
         declaredWorkflowCodes,
         new Set<string>(config.authz.roles.map((role: JsonObject) => String(role.code)))
       );
+      if (platformAccess?.recordEdit) {
+        const owner = config.data.resources.find((item: JsonObject) => item.code === platformAccess.recordEdit.resourceCode);
+        if (owner?.surface?.mutationOwner !== 'action') fail('NATIVE_RECORD_EDIT_ACTION_OWNER_REQUIRED', `${pointer}/platformAccess/recordEdit`);
+        for (const fieldCode of platformAccess.recordEdit.fieldCodes) {
+          if (!owner.fieldPolicies?.[fieldCode]?.update?.length || owner.surface?.fields?.[fieldCode]?.system === true)
+            fail('NATIVE_RECORD_EDIT_FIELD_INVALID', `${pointer}/platformAccess/recordEdit/fieldCodes`);
+        }
+      }
       if (platformAccess?.decimalReservation) {
         const reservation = platformAccess.decimalReservation as JsonObject;
         const resourceCode = String(reservation.resourceCode);
@@ -2695,7 +2706,7 @@ function validateOperationPlatformAccess(
   const access = object(value, pointer);
   exactKeys(
     access,
-    ['directory', 'managedFiles', 'managedFileCopies', 'notification', 'workflow', 'roleAssertions', 'decimalReservation', 'dataCommands'],
+    ['directory', 'managedFiles', 'managedFileCopies', 'notification', 'workflow', 'roleAssertions', 'decimalReservation', 'dataCommands', 'recordEdit'],
     pointer,
     true
   );
@@ -2708,6 +2719,21 @@ function validateOperationPlatformAccess(
     exactKeys(commands, ['mode'], `${pointer}/dataCommands`);
     equal(commands.mode, 'recoverable-native', `${pointer}/dataCommands/mode`);
     result.dataCommands = { mode: 'recoverable-native' };
+  }
+  if (access.recordEdit !== undefined) {
+    const entryPointer = `${pointer}/recordEdit`;
+    const entry = object(access.recordEdit, entryPointer);
+    exactKeys(entry, ['resourceCode', 'fieldCodes'], entryPointer);
+    const code = resourceCode(entry.resourceCode, `${entryPointer}/resourceCode`);
+    const fields = declaredResourceFields.get(code);
+    const fieldCodes = uniqueStrings(entry.fieldCodes, `${entryPointer}/fieldCodes`, 200);
+    if (!fields || !fieldCodes.length || !result.dataCommands) fail('NATIVE_RECORD_EDIT_DECLARATION_INVALID', entryPointer);
+    for (const fieldCode of fieldCodes) {
+      const field = fields.get(fieldCode);
+      if (!field || field.type === 'serial-number' || field.type === 'subtable')
+        fail('NATIVE_RECORD_EDIT_FIELD_INVALID', `${entryPointer}/fieldCodes`);
+    }
+    result.recordEdit = { resourceCode: code, fieldCodes: uniqueSorted(fieldCodes) };
   }
   if (access.roleAssertions !== undefined) {
     const assertions = object(access.roleAssertions, `${pointer}/roleAssertions`);

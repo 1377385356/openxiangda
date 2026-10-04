@@ -19,6 +19,7 @@ export type {
   DataFieldSourcePage,
   DataFieldSourceQuery,
   DataFieldSourceLaunchBinding,
+  DataRecordEditInput,
   DataFieldSurface,
   DataFilePreview,
   DataFileRef,

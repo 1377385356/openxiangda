@@ -4679,11 +4679,25 @@ function validateBackendOperations(
         'workflow',
         'roleAssertions',
         'decimalReservation',
+        'dataCommands',
+        'recordEdit',
       ]);
       let invalid =
         !isRecord(operation.platformAccess) ||
         Object.keys(access).length === 0 ||
         Object.keys(access).some(key => !allowedAccessKeys.has(key));
+      if (access.dataCommands !== undefined) {
+        const commands = object(access.dataCommands);
+        invalid ||= commands.mode !== 'recoverable-native' || Object.keys(commands).some(key => key !== 'mode');
+      }
+      if (access.recordEdit !== undefined) {
+        const edit = object(access.recordEdit);
+        const fields = Array.isArray(edit.fieldCodes) ? edit.fieldCodes : [];
+        invalid ||= !isRecord(access.recordEdit) || !string(edit.resourceCode) || fields.length < 1 || fields.length > 200 ||
+          new Set(fields).size !== fields.length || fields.some(field => !string(field)) ||
+          Object.keys(edit).some(key => !['resourceCode', 'fieldCodes'].includes(key)) ||
+          object(access.dataCommands).mode !== 'recoverable-native';
+      }
       if (access.roleAssertions !== undefined) {
         const assertion = object(access.roleAssertions);
         const roles = Array.isArray(assertion.roleCodes) ? assertion.roleCodes : [];

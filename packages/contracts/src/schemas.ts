@@ -2043,6 +2043,12 @@ export const nativeScopeValuePageSchema = {
   },
 } as const;
 
+const recordEditInputSchema = {
+  type: 'object', additionalProperties: false, required: ['operationCode', 'recordId', 'expectedRevision'],
+  properties: { operationCode: { type: 'string', minLength: 1, maxLength: 128 },
+    recordId: { type: 'string', format: 'uuid' }, expectedRevision: { type: 'integer', minimum: 1, maximum: Number.MAX_SAFE_INTEGER } },
+} as const;
+
 export const dataFieldSourceQuerySchema = {
   $id: SCHEMA_VERSIONS.dataFieldSourceQuery,
   type: "object",
@@ -2050,6 +2056,7 @@ export const dataFieldSourceQuerySchema = {
   required: ["schemaVersion", "operation"],
   properties: {
     schemaVersion: { const: SCHEMA_VERSIONS.dataFieldSourceQuery },
+    action: recordEditInputSchema,
     operation: { enum: ["create", "update"] },
     launch: {
       type: "object", additionalProperties: false,
@@ -2131,6 +2138,7 @@ export const userCandidatesQuerySchema = {
       properties: {
         ...userCandidateSearchProperties, operation: { const: 'update' },
         recordId: userCandidateId, expectedRevision: userCandidateRevision,
+        action: recordEditInputSchema,
         launch: dataFieldSourceQuerySchema.properties.launch,
       },
     },
@@ -7422,6 +7430,10 @@ const appOperationPlatformAccessSchema = {
   additionalProperties: false,
   minProperties: 1,
   properties: {
+    recordEdit: {
+      type: 'object', additionalProperties: false, required: ['resourceCode', 'fieldCodes'],
+      properties: { resourceCode: dataResourceCode, fieldCodes: { type: 'array', minItems: 1, maxItems: 200, uniqueItems: true, items: dataFieldCode } },
+    },
     dataCommands: {
       type: 'object', additionalProperties: false, required: ['mode'],
       properties: { mode: { const: 'recoverable-native' } },

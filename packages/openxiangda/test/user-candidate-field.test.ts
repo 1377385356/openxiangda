@@ -29,6 +29,18 @@ test('selected inspection uses stable IDs, retains stale labels and preserves ch
   assert.match(userCandidateError(new Error('network')), /失败/);
 });
 
+test('record edit candidates reject mixed owners and stale record revisions', () => {
+  const action = { operationCode: 'record.edit', recordId: 'saved-1', expectedRevision: 8 };
+  const base = { resourceCode: 'requests', fieldCode: 'leaders', operation: 'update' as const,
+    recordId: action.recordId, expectedRevision: action.expectedRevision, action };
+  assert.deepEqual(userCandidateFieldContext(base).context, { kind: 'native', ...base });
+  for (const override of [
+    { recordId: 'different' }, { expectedRevision: 9 }, { operation: 'create' as const },
+    { launch: { workflowCode: 'return', operationCode: 'submit' } },
+    { workflowCandidateBinding: { taskId: 'task-1', expectedTaskVersion: 3 } },
+  ]) assert.equal(userCandidateFieldContext({ ...base, ...override }).context, undefined);
+});
+
 test('candidate requests bind Native and task owners, propagate revisions and preserve errors without a directory fallback', async () => {
   const oldDocument = globalThis.document, oldFetch = globalThis.fetch;
   const metadata: Record<string, string> = { 'openxiangda-runtime-base': '/dev/candidate-fixture', 'openxiangda-app-code': 'candidate-fixture', 'openxiangda-environment': 'preproduction' };
@@ -53,9 +65,15 @@ test('candidate requests bind Native and task owners, propagate revisions and pr
     await queryUserCandidateField({ kind: 'workflow-task', taskId: 'task-1', fieldCode: 'leaders', expectedRevision: 8, expectedTaskVersion: 3 }, { selectedIds: ['user-1'] });
     assert.match(calls[2]!.url, /tasks\/task-1\/fields\/leaders\/user-candidates\/query$/);
     assert.deepEqual(JSON.parse(String(calls[2]!.init!.body)), { schemaVersion: 'openxiangda.user-candidates-query/v2', selectedIds: ['user-1'], expectedRevision: 8, expectedTaskVersion: 3 });
+    const action = { operationCode: 'record.edit', recordId: 'saved-1', expectedRevision: 8 };
+    const editing = userCandidateFieldContext({ resourceCode: 'requests', fieldCode: 'leaders', operation: 'update',
+      recordId: action.recordId, expectedRevision: action.expectedRevision, action }).context!;
+    await queryUserCandidateField(editing, { selectedIds: ['user-1'] });
+    assert.deepEqual(JSON.parse(String(calls[3]!.init!.body)), { schemaVersion: 'openxiangda.user-candidates-query/v2', operation: 'update',
+      selectedIds: ['user-1'], recordId: 'saved-1', expectedRevision: 8, action, environmentKey: 'preproduction' });
     status = 409;
     await assert.rejects(queryUserCandidateField(updated, {}));
-    assert.equal(calls.length, 4);
+    assert.equal(calls.length, 5);
     assert.ok(calls.every(call => !call.url.includes('/directory') && call.init?.credentials === 'include'));
   } finally {
     globalThis.fetch = oldFetch;

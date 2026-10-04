@@ -2,6 +2,7 @@ import { Form } from 'antd';
 import type {
   DataFieldSurface,
   DataFieldSourceLaunchBinding,
+  DataRecordEditInput,
   ResourceReferenceValue,
 } from 'openxiangda-contracts/browser';
 import { useRef } from 'react';
@@ -17,6 +18,7 @@ export function ResourceReferenceField({
   resourceCode,
   operation,
   launch,
+  action,
   disabled,
   mobile,
   value,
@@ -28,6 +30,7 @@ export function ResourceReferenceField({
   resourceCode?: string;
   operation: 'create' | 'update';
   launch?: DataFieldSourceLaunchBinding;
+  action?: DataRecordEditInput;
   disabled?: boolean;
   mobile?: boolean;
   value?: ResourceReferenceValue | ResourceReferenceValue[];
@@ -72,6 +75,7 @@ export function ResourceReferenceField({
       }
       operation={operation}
       launch={launch}
+      action={action}
       placeholder={`搜索并选择${field.label}`}
       resourceCode={resourceCode}
       source="resource"
