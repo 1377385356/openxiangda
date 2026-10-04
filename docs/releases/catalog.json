@@ -3,6 +3,36 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.49.14",
+      "status": "reviewed",
+      "title": "流程办理校验意见并保留明确拒绝的输入",
+      "summary": "PC与手机的标准操作表单按平台Schema核对意见和原因，明确拒绝后保留同一有效操作的输入供用户重新确认。",
+      "newFeatures": [],
+      "fixes": [
+        "操作表单不再忽略string的minLength、maxLength和pattern；必填文字不能仅为空格。",
+        "明确拒绝后，同一实例、任务版本、流程序列和操作签名仍有效时保持对话框与输入；当前权限和版本变化继续阻断旧操作。",
+        "意见、原因及转交本人拒绝提供可读提示，未知结果仍锁原请求并恢复原回执。"
+      ],
+      "affectedUsers": [
+        "使用V2标准PC或手机审批操作面板的应用与审批人员。"
+      ],
+      "upgradeSteps": [
+        "安装同源本地SDK组合并重新构建应用用户端；平台Server同时提供原因非空白Schema与事务前校验。"
+      ],
+      "knownLimitations": [
+        "本轮只消费本地密封包，没有npm发布或生产部署。",
+        "不改变流程拓扑、人员资格、节点字段权限或原命令协议；完整源业务验收继续独立记录。"
+      ],
+      "issues": [],
+      "compatibility": {
+        "node": ">=24",
+        "platform": "复用WorkflowSurface操作Schema及现有token/CAS/回执合同；原因校验与Server同步，V1引擎不变。"
+      },
+      "sha256": "d3dcf657d0a5ebc50c861a2c74c47b1ee79c3de91baa3ed32d5e779ae201c2bf",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.49.14"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.49.13",
       "status": "reviewed",
       "title": "流程详情准确显示当前等待人员",

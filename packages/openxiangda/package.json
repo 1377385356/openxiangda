@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.49.13",
+  "version": "2.49.14",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -74,7 +74,7 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.68",
+    "openxiangda-cli": "2.6.69",
     "openxiangda-contracts": "2.54.1",
     "openxiangda-devkit-core": "2.42.9",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
@@ -146,31 +146,32 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.49.13",
+    "version": "2.49.14",
     "status": "reviewed",
-    "title": "流程详情准确显示当前等待人员",
-    "summary": "PC和手机的在办流程顶部使用平台当前有效席位显示等待人员，历史仍保留完整进入名单和办理记录。",
+    "title": "流程办理校验意见并保留明确拒绝的输入",
+    "summary": "PC与手机的标准操作表单按平台Schema核对意见和原因，明确拒绝后保留同一有效操作的输入供用户重新确认。",
     "newFeatures": [],
     "fixes": [
-      "会签中已经自动或人工同意的人不再显示为等待；依次审批后续pending席位、已转交或取消的人也不计入当前等待。",
-      "按稳定visit key匹配当前节点，避免同一节点重复进入时混用历史名单；缺少明确状态时只显示节点。"
+      "操作表单不再忽略string的minLength、maxLength和pattern；必填文字不能仅为空格。",
+      "明确拒绝后，同一实例、任务版本、流程序列和操作签名仍有效时保持对话框与输入；当前权限和版本变化继续阻断旧操作。",
+      "意见、原因及转交本人拒绝提供可读提示，未知结果仍锁原请求并恢复原回执。"
     ],
     "affectedUsers": [
-      "使用V2标准PC或手机流程详情页的应用及审批人员。"
+      "使用V2标准PC或手机审批操作面板的应用与审批人员。"
     ],
     "upgradeSteps": [
-      "安装同源本地SDK组合并重新构建用户端；复用既有Workflow详情协议。"
+      "安装同源本地SDK组合并重新构建应用用户端；平台Server同时提供原因非空白Schema与事务前校验。"
     ],
     "knownLimitations": [
-      "本轮只做本地包消费与验证，没有npm发布或生产部署。",
-      "不改变流程人员解析、权限、执行、数据或完整历史；学校103条源流程仍需逐项验收。"
+      "本轮只消费本地密封包，没有npm发布或生产部署。",
+      "不改变流程拓扑、人员资格、节点字段权限或原命令协议；完整源业务验收继续独立记录。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
-      "platform": "复用现有WorkflowTimelineFlowItem.assignees.status和display entry key；V1引擎不变。"
+      "platform": "复用WorkflowSurface操作Schema及现有token/CAS/回执合同；原因校验与Server同步，V1引擎不变。"
     },
-    "sha256": "29838892d286d510a2cff475f4ae727b7fc73e11e1e21f479274d1dbc50d979c",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.49.13"
+    "sha256": "d3dcf657d0a5ebc50c861a2c74c47b1ee79c3de91baa3ed32d5e779ae201c2bf",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.49.14"
   }
 }
