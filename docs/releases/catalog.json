@@ -3,6 +3,38 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.55.3",
+      "status": "reviewed",
+      "title": "OpenXiangda 2.55.3：认证公共投影与管理范围",
+      "summary": "登录用户公共字段与有权管理私有字段通过同一 Native 资源声明，公共基线例外由双编译器闭合证明。",
+      "newFeatures": [
+        "只读 dataPolicy.publicRead.fields 声明唯一公共业务字段，协商 data.authenticated-public-projection@1.0.0。"
+      ],
+      "fixes": [
+        "保留直接 baseline unrestrictedRoleCodes 保护；拒绝公共字段畸形、私有字段或历史误开放及 canonical 篡改。"
+      ],
+      "affectedUsers": [
+        "需要在同一资源保留认证公共目录并按学院或负责人范围管理私有字段的 V2 应用。"
+      ],
+      "upgradeSteps": [
+        "使用完整同源 SDK 与配套平台；显式声明只读公共字段，全部未列出字段及 audit.read 必须拒绝基线，重新执行 check 和真实角色验收。"
+      ],
+      "knownLimitations": [
+        "不开放匿名普通 Data API，不支持公共子表；发行和实际应用验收分别记录，本轮仅本机使用。"
+      ],
+      "compatibility": {
+        "node": ">=24",
+        "platform": "native-4；需 data.authenticated-public-projection@1.0.0",
+        "v1": "V1 引擎与应用不变"
+      },
+      "issues": [
+        "PLT-031"
+      ],
+      "sha256": "c4f158dfd785f22e7d47453d29bd6b47be2318d6aa10ddac91dea5c729f677c8",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.55.3"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.55.2",
       "status": "reviewed",
       "title": "具名事务当前办理人操作与范围校验",
