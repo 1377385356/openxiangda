@@ -3,6 +3,36 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.54.6",
+      "status": "reviewed",
+      "title": "业务提交前检查必需审批人",
+      "summary": "流程可显式要求提交前解析指定审批节点。缺少当前有效审批人时，平台在业务事务内拒绝申请，避免保存后留下无法推进的流程。",
+      "newFeatures": [
+        "固定 definition.launchPreflight.requiredApprovalNodes 指定最多20个必需审批节点，两端编译器验证引用、范围和本机参与人来源。",
+        "BusinessProcess 同事务解析当前有效配置与 Native 角色成员；原成功提交回执优先返回，实际节点进入仍重新核验审批人。"
+      ],
+      "fixes": [],
+      "affectedUsers": [
+        "需要在保存申请时保证前置审批人存在的 V2 应用；仅显式声明时要求新平台能力。"
+      ],
+      "upgradeSteps": [
+        "完整升级同源SDK与支持 workflow.launch-preflight@1.0.0 的平台，然后为所需审批节点声明准入并验证当前角色范围。"
+      ],
+      "knownLimitations": [
+        "当前为本机开发候选，未发布 npm 或学校生产；工具检查、平台事务测试与真实应用角色验收分别记录。",
+        "仅支持 fixed_users、initiator、app_role、app_role_in_scope；未来任务字段、外部provider和交互选人不参与同步准入。",
+        "准入不冻结未来参与人，成功后人员改变仍由实际节点进入处理；正式 npm 发行门禁尚未完成。"
+      ],
+      "issues": [],
+      "compatibility": {
+        "node": ">=24",
+        "platform": "workflow.launch-preflight@1.0.0（显式声明才要求）"
+      },
+      "sha256": "ca379b1ab33ef8362ea34b9242cc30772caf30c0830f2a77fbd4dba1b17a6c21",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.54.6"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.54.5",
       "status": "reviewed",
       "title": "具名业务数据命令的原结果恢复",
