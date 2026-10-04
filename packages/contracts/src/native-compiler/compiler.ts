@@ -12,6 +12,7 @@ import { validateWorkflowAdministration, type WorkflowAdministrationNodeSource }
 import { validateWorkflowAutomaticCc } from './workflow-automatic-cc.js';
 import { validateWorkflowApprovalEmptyPolicy, workflowBindingAllowsEmptyUsers } from './workflow-approval-empty.js';
 import { validateWorkflowInitiatorApprovalPolicy } from './workflow-initiator-approval.js';
+import { validateWorkflowRejectionNotification } from './workflow-rejection-notification.js';
 import { validateWorkflowTaskPages } from './workflow-task-page.js';
 import { validateWorkflowBusinessSteps, compileWorkflowBusinessStepHandlers, validateWorkflowBusinessStepSubscriptions, WORKFLOW_BUSINESS_STEP_EVENT, WORKFLOW_BUSINESS_STEP_EVENTS } from './workflow-business-step.js';
 import { validateWorkflowAssignmentRoutingBindings, validateWorkflowAssignmentRoutingPolicy } from './workflow-assignment-routing.js';
@@ -453,6 +454,7 @@ export function compileRequiredPlatformCapabilitiesV3(
       (subscription: JsonObject) => subscription.platformAccess?.managedFileCopies
     );
   const usesNotification =
+    config.workflows.definitions.some((item: JsonObject) => item.definition.rejectionNotification !== undefined) ||
     operations.some(operation => operation.platformAccess?.notification) ||
     config.events.subscriptions.some(
       (subscription: JsonObject) => subscription.platformAccess?.notification
@@ -688,6 +690,12 @@ export function compileRequiredPlatformCapabilitiesV3(
           declaration: config.workflows.definitions.filter((item: JsonObject) => item.definition.instanceCommands !== undefined),
         }]
       : []),
+    ...(config.workflows.definitions.some((item: JsonObject) => item.definition.rejectionNotification !== undefined)
+      ? [{
+          code: 'workflow.rejection-notification' as const,
+          declaration: config.workflows.definitions.filter((item: JsonObject) => item.definition.rejectionNotification !== undefined),
+        }]
+      : []),
     ...(namedInputSourceDefinitions.length
       ? [{ code: 'workflow.named-input-sources' as const, declaration: namedInputSourceDefinitions }]
       : []),
@@ -748,6 +756,8 @@ export function compileRequiredPlatformCapabilitiesV3(
           {
             code: 'notification-hub-v2' as const,
             declaration: {
+              ...(config.workflows.definitions.some((item: JsonObject) => item.definition.rejectionNotification !== undefined)
+                ? { rejectionNotifications: config.workflows.definitions.filter((item: JsonObject) => item.definition.rejectionNotification !== undefined) } : {}),
               operations: operations
                 .filter(operation => operation.platformAccess?.notification)
                 .map(operation => ({
@@ -6951,7 +6961,7 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
       'nodes',
     ],
     pointer,
-    ['organizationContext', 'instanceCommands', 'readability', 'taskPages']
+    ['organizationContext', 'instanceCommands', 'readability', 'taskPages', 'rejectionNotification']
   );
   equal(
     definition.schemaVersion,
@@ -6984,6 +6994,8 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
   if (emptyPolicyErrors.length) fail(emptyPolicyErrors[0]!, `${pointer}/nodes`);
   const initiatorPolicyErrors = validateWorkflowInitiatorApprovalPolicy(definition as any);
   if (initiatorPolicyErrors.length) fail(initiatorPolicyErrors[0]!, `${pointer}/nodes`);
+  const rejectionNotificationErrors = validateWorkflowRejectionNotification(definition as any);
+  if (rejectionNotificationErrors.length) fail(rejectionNotificationErrors[0]!, `${pointer}/rejectionNotification`);
   const ccErrors = validateWorkflowAutomaticCc(definition as any);
   if (ccErrors.length) fail(ccErrors[0]!, `${pointer}/nodes`);
   const taskPageErrors = validateWorkflowTaskPages(definition);

@@ -2368,6 +2368,8 @@ export interface WorkflowDefinition {
     | "cancel-on-deactivate";
   subject: WorkflowSubjectDefinition;
   instanceCommands?: WorkflowInstanceCommandPolicies;
+  /** Code-owned, frozen at rejection using the subject's last successful business writer. */
+  rejectionNotification?: import('./native-compiler/workflow-rejection-notification.js').WorkflowRejectionNotification;
   startAt: string;
   inputSchema: Record<string, unknown> & {
     type: "object";

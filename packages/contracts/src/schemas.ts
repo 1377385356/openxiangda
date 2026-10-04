@@ -5596,6 +5596,15 @@ export const workflowDefinitionSchema = {
     acceptedCommandDeactivationPolicy: {
       enum: ["finish-pinned", "cancel-on-deactivate"],
     },
+    rejectionNotification: {
+      type: 'object', additionalProperties: false,
+      required: ['recipient', 'title', 'summary'],
+      properties: {
+        recipient: { const: 'record_last_modifier' },
+        title: { type: 'string', minLength: 1, maxLength: 160, pattern: '\\S' },
+        summary: { type: 'string', minLength: 1, maxLength: 500, pattern: '\\S' },
+      },
+    },
     instanceCommands: {
       type: "object",
       additionalProperties: false,
