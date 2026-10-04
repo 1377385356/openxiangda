@@ -12,6 +12,7 @@ import { useWorkflowTaskFiles, WorkflowTaskFileRecovery } from './WorkflowTaskFi
 import { WorkflowTaskDraftPanel } from './WorkflowTaskDraftPanel';
 import { SubtableField } from '../platform-fields/SubtableField';
 import { rebaseWorkflowTaskSubtable, workflowTaskSubtableDataRows, workflowTaskSubtableFormRows } from './workflow-task-subtable';
+import { workflowTaskRequiredErrorUpdates } from './workflow-task-required-errors';
 
 export function workflowTaskFormValues(source: WorkflowTaskFormSurface, values: Record<string, unknown>) {
   return Object.fromEntries(source.page.fields.map(field => [field.code,
@@ -44,6 +45,7 @@ export function useWorkflowTaskForm(latest?: WorkflowTaskFormSurface) {
   const [subtableError, setSubtableError] = useState<{ field: string; index: number }>();
   const initialSource = useRef(latest);
   const acceptedLatest = useRef(latest);
+  const requiredErrors = useRef(new Map<string, string>());
   const watched = Form.useWatch([], { form, preserve: true }) as Record<string, unknown> | undefined;
   const current = source ? workflowTaskFormValues(source, { ...formValues(source), ...(watched || form.getFieldsValue(true)) }) : {};
   const dirty = Boolean(source && source.page.fields.some(field => !field.readonly &&
@@ -53,6 +55,12 @@ export function useWorkflowTaskForm(latest?: WorkflowTaskFormSurface) {
   const safelyDrafted = Boolean(draft && source && !stale && !draftNeedsSave &&
     workflowLaunchContractJsonEqual(draft.values, workflowTaskFormPatch(source, { ...formValues(source), ...(watched || form.getFieldsValue(true)) }).values));
   const unsaved = dirty && !safelyDrafted;
+  useEffect(() => {
+    if (!source || !requiredErrors.current.size) return;
+    const updates = workflowTaskRequiredErrorUpdates(source, current, requiredErrors.current, code => form.getFieldError(code));
+    for (const code of updates.release) requiredErrors.current.delete(code);
+    if (updates.fields.length) form.setFields(updates.fields);
+  }, [source, current, form]);
   useEffect(() => {
     if (!latest || dirty || latest === acceptedLatest.current) return;
     acceptedLatest.current = latest;
@@ -78,12 +86,16 @@ export function useWorkflowTaskForm(latest?: WorkflowTaskFormSurface) {
       }
     }
     catch (error) {
-      const { field, rowIndex, childField } = error as { field?: string; rowIndex?: number; childField?: string };
+      const { code, field, rowIndex, childField } = error as { code?: string; field?: string; rowIndex?: number; childField?: string };
       const label = field && source.fields[field]?.label;
       const childLabel = field && childField && source.subtables?.[field]?.fields[childField]?.label;
       const text = rowIndex !== undefined ? `${label || field}第${rowIndex + 1}项：请填写或选择${childLabel || childField}` : label ? `请填写或选择${label}` : '请核对补填资料';
       if (field && rowIndex !== undefined) setSubtableError({ field, index: rowIndex });
-      if (field) { form.setFields([{ name: field, errors: [text] }]); form.scrollToField(field); }
+      if (field) {
+        if (code === 'WORKFLOW_TASK_FORM_REQUIRED' && rowIndex === undefined) requiredErrors.current.set(field, text);
+        else requiredErrors.current.delete(field);
+        form.setFields([{ name: field, errors: [text] }]); form.scrollToField(field);
+      }
       throw new Error(text);
     }
     return { ...input, ...(draft ? { draft: { id: draft.id, expectedRevision: draft.revision } } : {}) };
