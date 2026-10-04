@@ -1342,6 +1342,8 @@ export interface DataResource {
   recordPrint?: { read: string[] };
   /** Independent same-membership collaboration; omission disables comments. */
   recordComments?: { read: string[]; create: string[] };
+  /** Explicit same-membership authority to delete a record and its workflow. */
+  recordDeletion?: { delete: string[] };
   /** Default UI metadata projected with the authoritative Data Resource. */
   surface?: DataResourceSurface;
   capabilities: {
@@ -1359,6 +1361,46 @@ export interface DataResource {
 }
 
 /** Platform-owned append-only comment, independent of business edits and workflow opinions. */
+/** Explicit record permission; opaque previews never expose another instance or its participants. */
+export interface DataRecordDeletionPreview {
+  schemaVersion: 'openxiangda.data-record-deletion-preview/v1';
+  resourceCode: string;
+  resourceName: string;
+  recordId: string;
+  appVersionId: string;
+  environmentHeadRevision: number;
+  recordRevision: number;
+  affectedRecords: number;
+  workflowCount: number;
+  pendingLaunchCount: number;
+  cancelledTaskCount: number;
+  canCommit: boolean;
+  blocker?: 'pending_launch' | 'multiple_workflows' | 'owned_workflow';
+  receiptOwner?: 'native-transaction' | 'workflow-command';
+  previewToken?: string;
+  expiresAt?: IsoDateTime;
+}
+
+export interface DataRecordDeletionMutation {
+  schemaVersion: 'openxiangda.data-record-deletion-request/v1';
+  previewToken: string;
+  idempotencyKey: string;
+  reason: string;
+}
+
+/** Projection over an existing Native transaction or Workflow command receipt. */
+export interface DataRecordDeletionReceipt {
+  schemaVersion: 'openxiangda.data-record-deletion-receipt/v1';
+  resourceCode: string;
+  recordId: string;
+  idempotencyKey: string;
+  receiptOwner: 'native-transaction' | 'workflow-command';
+  receiptId: string;
+  deleted: boolean;
+  replayed: boolean;
+  errorCode?: string;
+}
+
 export interface DataRecordComment {
   id: string;
   body: string;

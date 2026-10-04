@@ -475,13 +475,15 @@ function bindWorkflowCsrf(surface: WorkflowSurface, csrf: string): WorkflowSurfa
   bindWorkflowCommandCsrf(surface.commandToken, surface.commandTokenExpiresAt, csrf);
   return surface;
 }
-function bindWorkflowCommandCsrf(commandToken: string | null | undefined, expiration: string | null | undefined, csrf: string) {
+function bindWorkflowCommandCsrf(commandToken: string | null | undefined, expiration: string | null | undefined, csrf: string, retainForReceipt = false) {
   const now = Date.now();
   for (const [key, value] of workflowCommandCsrf) if (value.expiresAt <= now) workflowCommandCsrf.delete(key);
   const expiresAt = Date.parse(expiration || '');
   if (commandToken && Number.isFinite(expiresAt) && expiresAt > now) {
     if (!workflowCommandCsrf.has(commandToken) && workflowCommandCsrf.size >= 512) workflowCommandCsrf.delete(workflowCommandCsrf.keys().next().value!);
-    workflowCommandCsrf.set(commandToken, { csrf, expiresAt });
+    // Record deletion receipts can outlive their preview. Keep the original header
+    // in the same bounded, identity-cleared command cache until it is evicted.
+    workflowCommandCsrf.set(commandToken, { csrf, expiresAt: retainForReceipt ? Infinity : expiresAt });
   }
 }
 async function commandBoundCsrf(commandToken?: string | null) {
@@ -1665,6 +1667,55 @@ export async function loadNativeRecordCommentReceipt(code: string, recordId: str
   return checkedRecordCommentReceipt(receipt, code, recordId, idempotencyKey);
 }
 
+function checkedRecordDeletionPreview(value: import('openxiangda-contracts/browser').DataRecordDeletionPreview, code: string, recordId: string) {
+  const count = (n: number, min = 0, max = 100) => Number.isSafeInteger(n) && n >= min && n <= max;
+  if (value.schemaVersion !== 'openxiangda.data-record-deletion-preview/v1' || value.resourceCode !== code || value.recordId !== recordId ||
+    typeof value.resourceName !== 'string' || typeof value.appVersionId !== 'string' || !count(value.environmentHeadRevision, 1, Number.MAX_SAFE_INTEGER) ||
+    !count(value.recordRevision, 1, Number.MAX_SAFE_INTEGER) || !count(value.affectedRecords, 1) || !count(value.workflowCount) ||
+    !count(value.pendingLaunchCount) || !count(value.cancelledTaskCount, 0, Number.MAX_SAFE_INTEGER) || typeof value.canCommit !== 'boolean' ||
+    (value.canCommit ? value.workflowCount > 1 || value.pendingLaunchCount !== 0 || value.blocker !== undefined ||
+      !['native-transaction', 'workflow-command'].includes(value.receiptOwner || '') ||
+      (value.receiptOwner === 'workflow-command') !== (value.workflowCount === 1) ||
+      typeof value.previewToken !== 'string' || !/^[A-Za-z0-9_-]{100,16384}$/.test(value.previewToken) ||
+      typeof value.expiresAt !== 'string' || !Number.isFinite(Date.parse(value.expiresAt))
+      : !['pending_launch', 'multiple_workflows', 'owned_workflow'].includes(value.blocker || '') || value.previewToken !== undefined || value.receiptOwner !== undefined))
+    throw new Error('OPENXIANGDA_NATIVE_RECORD_DELETION_RESPONSE_INVALID');
+  return value;
+}
+
+function checkedRecordDeletionReceipt(value: import('openxiangda-contracts/browser').DataRecordDeletionReceipt, code: string, recordId: string, key: string) {
+  if (value.schemaVersion !== 'openxiangda.data-record-deletion-receipt/v1' || value.resourceCode !== code || value.recordId !== recordId ||
+    value.idempotencyKey !== key || !['native-transaction', 'workflow-command'].includes(value.receiptOwner) ||
+    typeof value.receiptId !== 'string' || !value.receiptId || value.receiptId.length > 255 ||
+    typeof value.deleted !== 'boolean' || typeof value.replayed !== 'boolean' ||
+    (!value.deleted && (typeof value.errorCode !== 'string' || !value.errorCode)))
+    throw new Error('OPENXIANGDA_NATIVE_RECORD_DELETION_RESPONSE_INVALID');
+  return value;
+}
+
+/** Maintenance uses the current user role union, independent of read Perspective. */
+export async function previewNativeRecordDeletion(code: string, recordId: string) {
+  const csrf = await workflowCsrfToken();
+  const result = await request<import('openxiangda-contracts/browser').DataRecordDeletionPreview>(`${dataBase(code)}/records/${encodeURIComponent(recordId)}/deletion/preview`,
+    { method: 'POST', headers: { 'x-openxiangda-csrf-token': csrf }, body: JSON.stringify({ environmentKey: currentEnvironmentKey() }) });
+  const preview = checkedRecordDeletionPreview(result, code, recordId);
+  if (preview.canCommit) bindWorkflowCommandCsrf(preview.previewToken, preview.expiresAt, csrf, true);
+  return preview;
+}
+
+export async function deleteNativeRecordWithPreview(code: string, recordId: string, input: import('openxiangda-contracts/browser').DataRecordDeletionMutation) {
+  const result = await request<import('openxiangda-contracts/browser').DataRecordDeletionReceipt>(`${dataBase(code)}/records/${encodeURIComponent(recordId)}/deletion/execute`,
+    { method: 'POST', headers: { 'x-openxiangda-csrf-token': await commandBoundCsrf(input.previewToken) }, body: JSON.stringify({ ...input, environmentKey: currentEnvironmentKey() }) });
+  return checkedRecordDeletionReceipt(result, code, recordId, input.idempotencyKey);
+}
+
+/** Read the original owner receipt; never replace the pending request with a new key. */
+export async function recoverNativeRecordDeletion(code: string, recordId: string, input: import('openxiangda-contracts/browser').DataRecordDeletionMutation) {
+  const result = await request<import('openxiangda-contracts/browser').DataRecordDeletionReceipt>(`${dataBase(code)}/records/${encodeURIComponent(recordId)}/deletion/receipt`,
+    { method: 'POST', headers: { 'x-openxiangda-csrf-token': await commandBoundCsrf(input.previewToken) }, body: JSON.stringify({ ...input, environmentKey: currentEnvironmentKey() }) });
+  return checkedRecordDeletionReceipt(result, code, recordId, input.idempotencyKey);
+}
+
 export function createNativeResourceClient(
   code: string,
   surface: DataResourceSurface,
@@ -1679,6 +1730,9 @@ export function createNativeResourceClient(
     return field;
   };
   return {
+    previewDeletion: (recordId: string) => previewNativeRecordDeletion(code, recordId),
+    deleteWithPreview: (recordId: string, input: import('openxiangda-contracts/browser').DataRecordDeletionMutation) => deleteNativeRecordWithPreview(code, recordId, input),
+    deletionReceipt: (recordId: string, input: import('openxiangda-contracts/browser').DataRecordDeletionMutation) => recoverNativeRecordDeletion(code, recordId, input),
     async list(query: GenericResourceQuery) {
       const body = nativeResourceListQuery(code, surface, query);
       const page = await requestRead<DataPage<Record<string, unknown>>>(

@@ -1,0 +1,11 @@
+.oxa-record-deletion-modal .ant-modal-body { display: grid; gap: 14px; }
+.oxa-record-deletion-modal .ant-modal-body > p { margin: 0; line-height: 1.7; }
+.oxa-record-deletion-modal .ant-modal-body > label { font-weight: 600; }
+.oxa-record-deletion-impact { padding: 16px; border-radius: 8px; background: #f8fafc; }
+.oxa-record-deletion-impact p { margin: 0 0 10px; line-height: 1.7; overflow-wrap: anywhere; }
+.oxa-record-deletion-impact p:last-child { margin-bottom: 0; }
+.oxa-record-deletion-modal code { white-space: pre-wrap; overflow-wrap: anywhere; }
+.oxa-record-deletion-modal .ant-alert-description p { margin: 0 0 12px; }
+@media (max-width: 600px) {
+  .oxa-record-deletion-modal .ant-modal-footer .ant-space { display: flex; justify-content: flex-end; }
+}

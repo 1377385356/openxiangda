@@ -23,6 +23,7 @@ export interface AppDataModelDeclaration {
   workflowHistory?: AppDataResourceDeclaration['workflowHistory'];
   recordPrint?: AppDataResourceDeclaration['recordPrint'];
   recordComments?: AppDataResourceDeclaration['recordComments'];
+  recordDeletion?: AppDataResourceDeclaration['recordDeletion'];
   mutationOwner?: AppDataResourceDeclaration['mutationOwner'];
   invariants?: AppDataResourceDeclaration['invariants'];
   decimalReservationLifecycle?: AppDataResourceDeclaration['decimalReservationLifecycle'];
@@ -106,7 +107,7 @@ export function defineApplicationModule<const Module extends AppModuleDeclaratio
 
 /** One authoring projection into the platform's existing execution contract. */
 export const APP_MODEL_DECLARATION_KEYS = [
-  'code', 'name', 'fields', 'audit', 'workflowHistory', 'recordPrint', 'recordComments', 'mutationOwner', 'invariants', 'decimalReservationLifecycle', 'uniqueKeys', 'dataPolicyCode', 'detailRouteCode',
+  'code', 'name', 'fields', 'audit', 'workflowHistory', 'recordPrint', 'recordComments', 'recordDeletion', 'mutationOwner', 'invariants', 'decimalReservationLifecycle', 'uniqueKeys', 'dataPolicyCode', 'detailRouteCode',
 ] as const;
 
 export function materializeApplicationModules(modules: readonly AppModuleDeclaration[]) {
@@ -249,6 +250,7 @@ export function materializeApplicationModules(modules: readonly AppModuleDeclara
         ...(model.workflowHistory !== undefined ? { workflowHistory: model.workflowHistory } : {}),
         ...(model.recordPrint !== undefined ? { recordPrint: model.recordPrint } : {}),
         ...(model.recordComments !== undefined ? { recordComments: model.recordComments } : {}),
+        ...(model.recordDeletion !== undefined ? { recordDeletion: model.recordDeletion } : {}),
         generated: {
           list: Boolean(view), detail: Boolean(view),
           create: Boolean(view) && native, update: Boolean(view) && native,

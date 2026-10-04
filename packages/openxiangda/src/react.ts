@@ -50,6 +50,9 @@ export {
   loadNativeRecordComments,
   createNativeRecordComment,
   loadNativeRecordCommentReceipt,
+  previewNativeRecordDeletion,
+  deleteNativeRecordWithPreview,
+  recoverNativeRecordDeletion,
   logoutCurrentUser,
   type AnonymousPublicDraft,
   type AnonymousPublicRecord,
@@ -63,6 +66,9 @@ export type {
   WorkflowCommandResult,
   WorkflowRecordHistory,
   DataRecordPrint,
+  DataRecordDeletionPreview,
+  DataRecordDeletionMutation,
+  DataRecordDeletionReceipt,
   WorkflowRecordHistoryVisit,
   WorkflowRecordHistoryOperation,
   WorkflowTaskDraft,
@@ -78,6 +84,7 @@ export type {
 } from 'openxiangda-contracts/browser';
 export * from './browser/components/resource/GeneratedResourceCrud';
 export { ResourceRecordComments } from './browser/components/resource/ResourceRecordComments';
+export { ResourceRecordDeletion } from './browser/components/resource/ResourceRecordDeletion';
 export { ResourceRecordPrintPreview } from './browser/components/resource/ResourceRecordPrintPreview';
 export * from './browser/components/resource/ResourceBatchActions';
 export * from './browser/components/resource/StandardResourcePages';

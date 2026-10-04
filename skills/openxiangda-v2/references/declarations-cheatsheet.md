@@ -1,5 +1,7 @@
 # 声明速查：一次写对 openxiangda.config.ts {#cheatsheet}
 
+资料维护删除用模型或直接资源的 `recordDeletion: { delete: true | false | string[] }`。缺省关闭；`true`绑定本资源Native delete；能力数组最多20项并须在同应用定义。平台自动注册 `data.workflow-record-deletion@1.0.0`，无需手动初始化开关。维护职责还必须同时持有资料read/delete，同一成员与RLS决定实际可删范围；不使用整套流程管理员替代业务资料权。仅支持零关联实例或一个根关联实例，待启动、多实例、明细其他流程及owned超100/深度8均阻塞。详见[数据与权限](data-authz.md)。
+
 按"错误码 → 规则 → 正确片段"组织。这些规则全部来自真实返工：先扫一遍本页，再写声明，能省掉绝大多数首轮校验迭代。普通 CRUD 的完整可过检骨架见文末。
 
 ## 模块与 CRUD 视图

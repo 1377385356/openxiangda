@@ -2648,6 +2648,10 @@ export const dataResourceSchema = {
         create: { type: 'array', maxItems: 20, uniqueItems: true, items: nonEmptyString },
       },
     },
+    recordDeletion: {
+      type: 'object', additionalProperties: false, required: ['delete'],
+      properties: { delete: { type: 'array', maxItems: 20, uniqueItems: true, items: nonEmptyString } },
+    },
     recordPrint: {
       type: "object", additionalProperties: false, required: ["read"],
       properties: { read: { type: "array", maxItems: 20, uniqueItems: true, items: nonEmptyString } },

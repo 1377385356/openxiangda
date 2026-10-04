@@ -18,6 +18,7 @@ cpSync(
 cpSync(resolve(root, 'src/browser/record-detail.css'), resolve(root, 'dist/browser/record-detail.css'));
 cpSync(resolve(root, 'src/browser/record-print.css'), resolve(root, 'dist/browser/record-print.css'));
 cpSync(resolve(root, 'src/browser/record-comments.css'), resolve(root, 'dist/browser/record-comments.css'));
+cpSync(resolve(root, 'src/browser/record-deletion.css'), resolve(root, 'dist/browser/record-deletion.css'));
 const require = createRequire(import.meta.url);
 writeFileSync(resolve(root, 'dist/browser/mobile-base.css'), scopeMobileCss(
   readFileSync(require.resolve('antd-mobile/es/global/global.css'), 'utf8')

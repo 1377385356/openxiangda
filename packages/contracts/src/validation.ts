@@ -523,6 +523,14 @@ export function validateDataResource(value: unknown): Diagnostic[] {
       diagnostics.push(diagnostic('NATIVE_RECORD_COMMENTS_POLICY_INVALID',
         'recordComments.read/create 必须为不重复的能力数组，空数组关闭对应操作', 'recordComments'));
   }
+  if (value.recordDeletion !== undefined) {
+    const policy = value.recordDeletion;
+    if (!isRecord(policy) || Object.keys(policy).some(key => key !== 'delete') ||
+        !Array.isArray(policy.delete) || policy.delete.length > 20 ||
+        policy.delete.some(code => typeof code !== 'string' || !code.trim()) || new Set(policy.delete).size !== policy.delete.length)
+      diagnostics.push(diagnostic('NATIVE_RECORD_DELETION_DELETE_INVALID',
+        'recordDeletion.delete 必须为不重复的能力数组，空数组关闭此入口', 'recordDeletion.delete'));
+  }
   if (value.recordPrint !== undefined) {
     const policy = value.recordPrint;
     if (!isRecord(policy) || Object.keys(policy).some(key => key !== "read") ||

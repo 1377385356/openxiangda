@@ -579,6 +579,8 @@ export function compileRequiredPlatformCapabilitiesV3(
       : []),
     ...(resources.some(resource => resource.recordComments !== undefined)
       ? [{ code: 'data.record-comments' as const, declaration: dataUsage }] : []),
+    ...(resources.some(resource => resource.recordDeletion !== undefined)
+      ? [{ code: 'data.workflow-record-deletion' as const, declaration: dataUsage }] : []),
     ...(resources.some(resource => resource.recordPrint !== undefined)
       ? [{ code: 'data.record-print' as const, declaration: dataUsage }] : []),
     ...(resources.some(resource => resource.workflowHistory !== undefined)
@@ -5450,6 +5452,13 @@ function validateAuthorizationReferences(
   config.data.resources.forEach((rawResource: unknown, index: number) => {
     const resourcePointer = `/config/data/resources/${index}`;
     const resource = object(rawResource, resourcePointer);
+    if (resource.recordDeletion !== undefined) {
+      const pointer = `${resourcePointer}/recordDeletion/delete`;
+      for (const capability of resource.recordDeletion.delete) {
+        capabilityCode(capability, pointer, config.appCode);
+        if (!capabilityCodes.has(capability)) fail('NATIVE_CAPABILITY_REFERENCE_MISSING', pointer);
+      }
+    }
     if (resource.recordComments !== undefined) {
       for (const mode of ['read', 'create']) {
         const pointer = `${resourcePointer}/recordComments/${mode}`;
@@ -7403,6 +7412,7 @@ function validateResource(raw: any, pointer: string, appCode: string) {
       'workflowHistory',
       'recordPrint',
       'recordComments',
+      'recordDeletion',
       'capabilities',
       'dataPolicyCode',
       'fieldPolicies',
@@ -7453,6 +7463,14 @@ function validateResource(raw: any, pointer: string, appCode: string) {
           list.some(value => typeof value !== 'string' || !value.trim()) || new Set(list).size !== list.length)
         fail('NATIVE_RECORD_COMMENTS_POLICY_INVALID', `${pointer}/recordComments/${mode}`);
     }
+  }
+  if (resource.recordDeletion !== undefined) {
+    const policy = object(resource.recordDeletion, `${pointer}/recordDeletion`);
+    exactKeys(policy, ['delete'], `${pointer}/recordDeletion`);
+    const remove = policy.delete;
+    if (!Array.isArray(remove) || remove.length > 20 ||
+        remove.some(value => typeof value !== 'string' || !value.trim()) || new Set(remove).size !== remove.length)
+      fail('NATIVE_RECORD_DELETION_DELETE_INVALID', `${pointer}/recordDeletion/delete`);
   }
   if (resource.recordPrint !== undefined) {
     const policy = object(resource.recordPrint, `${pointer}/recordPrint`);

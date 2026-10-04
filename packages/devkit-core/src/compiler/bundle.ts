@@ -2067,6 +2067,7 @@ function normalizeDataResource(resource: DataResource): DataResource {
     ...(resource.workflowHistory !== undefined ? { workflowHistory: { read: uniqueSorted(resource.workflowHistory.read) } } : {}),
     ...(resource.recordPrint !== undefined ? { recordPrint: { read: uniqueSorted(resource.recordPrint.read) } } : {}),
     ...(resource.recordComments !== undefined ? { recordComments: { read: uniqueSorted(resource.recordComments.read), create: uniqueSorted(resource.recordComments.create) } } : {}),
+    ...(resource.recordDeletion !== undefined ? { recordDeletion: { delete: uniqueSorted(resource.recordDeletion.delete) } } : {}),
     ...(resource.invariants
       ? {
           invariants: [...resource.invariants]
@@ -2255,6 +2256,7 @@ export function renderGeneratedContracts(
               (item.workflowHistory !== undefined ? `    workflowHistory: ${JSON.stringify(item.workflowHistory)},\n` : '') +
               (item.recordPrint !== undefined ? `    recordPrint: ${JSON.stringify(item.recordPrint)},\n` : '') +
               (item.recordComments !== undefined ? `    recordComments: ${JSON.stringify(item.recordComments)},\n` : '') +
+              (item.recordDeletion !== undefined ? `    recordDeletion: ${JSON.stringify(item.recordDeletion)},\n` : '') +
               `    surface: resourceSurfaces[${JSON.stringify(item.code)}],\n` +
               '  }'
           )

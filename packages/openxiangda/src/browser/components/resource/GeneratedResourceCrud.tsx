@@ -1,3 +1,4 @@
+import { ResourceRecordDeletion } from './ResourceRecordDeletion';
 import { PresentationTime, usePresentationTimeZone } from '../../presentation-time';
 import { DATA_AUDIT_METADATA_FIELDS, DATA_SYSTEM_SORT_FIELD_CODES, isDataSystemSortField, projectDataResourceView } from 'openxiangda-contracts/browser';
 import {
@@ -1006,6 +1007,10 @@ function NativeResourceDetailPage({ definition, paths, variant, recordId, onDism
     (identity.isAppSuperAdmin || commentsRead.every(code => hasReadCapability(code))));
   const canCreateComments = Boolean(commentsCreate?.length &&
     (identity.isAppSuperAdmin || commentsCreate.every(code => hasCapability(code))));
+  const [deleting, setDeleting] = useState(false);
+  const deletePolicy = definition.recordDeletion?.delete;
+  const deletionVisible = Boolean(record && deletePolicy?.length &&
+    (identity.isAppSuperAdmin || hasCapability(definition.capabilities.read) && hasCapability(definition.capabilities.delete) && deletePolicy.every(code => hasCapability(code))));
   const [printing, setPrinting] = useState(false);
   const printRead = definition.recordPrint?.read;
   const printVisible = Boolean(record && printRead?.length &&
@@ -1034,6 +1039,7 @@ function NativeResourceDetailPage({ definition, paths, variant, recordId, onDism
     metadata={[creatorLabel, createdTime ? `${createdTime} 创建` : ''].filter(Boolean).join(' · ')} updatedAt={record?.updated_at}
     variant={variant} drawer={Boolean(onDismiss)} drawerState={drawerState} newPageHref={newPageHref} onClose={close} onEdit={record ? edit : undefined} busy={editBusy}
     onPrint={printVisible ? () => setPrinting(true) : undefined}
+    onDelete={deletionVisible ? () => setDeleting(true) : undefined}
     editing={editing && record ? <GeneratedResourceFormPage definition={definition} paths={paths} variant={variant} recordId={id} mode="edit" embedded
       onBusyChange={setEditBusy} onDismiss={() => setEditing(false)} onSaved={() => { setEditing(false); void query.query.refetch(); }} /> : undefined}>
     {!hasReadCapability(definition.capabilities.read) ? <Result status="403" title="当前平台用户无此页面权限" />
@@ -1043,6 +1049,8 @@ function NativeResourceDetailPage({ definition, paths, variant, recordId, onDism
         <RecordDetailSections groups={fieldsBySection(definition.surface, 'detail').map(group => ({ ...group, fields: group.fields.filter(readable) }))}
           renderValue={field => field.type === 'subtable' ? <SubtableValueDisplay field={field} mobile={variant === 'mobile'} parentRecordId={record.id} />
             : <SurfaceFieldValue field={field} mobile={variant === 'mobile'} resourceCode={definition.code} value={record[field.key]} />} />
+        {deleting && deletionVisible && <ResourceRecordDeletion resourceCode={definition.code} recordId={id} onClose={() => setDeleting(false)}
+          onDeleted={() => { onDismiss?.(); navigate(paths.list || paths.fallback); }} />}
         {printing && printVisible && <ResourceRecordPrintPreview key={id} resourceCode={definition.code} recordId={id} viewCode={definition.viewCode} onClose={() => setPrinting(false)} />}
         {auditVisible && <Collapse className="oxa-audit-collapse" activeKey={auditExpanded ? ['audit'] : []} expandIconPlacement="end"
           onChange={keys => setAuditExpanded((Array.isArray(keys) ? keys : [keys]).includes('audit'))}

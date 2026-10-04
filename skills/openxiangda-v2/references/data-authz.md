@@ -198,6 +198,18 @@ publicSubtableFields: { items: ['sku', 'quantity'] },
 
 评论属于平台附属数据，不修改申请revision/最后修改人、不推进流程或发业务updated事件，不授给匿名/应用联合主体。当前不含回复、附件、提及、编辑/删除、自动通知和旧评论导入；审批意见继续由Workflow拥有。源宜搭这些附加语义尚未运行核实，不能据COMMENT=y宣称完整等价。
 
+### 按资料权限删除关联流程
+
+模型或直接资源可显式声明 `recordDeletion: { delete: ['app:my-app:record:delete'] }`，引用能力须在同应用定义并授给维护职责。`true` 使用本资源 Native delete，`false` 或缺省关闭。每组最多20项，全部满足；编译器自动派生 `data.workflow-record-deletion@1.0.0`，平台自动注册，不需要初始化开关。标准详情在启用且当前用户具备资料 read、delete 和维护能力时提供“删除资料”，action/workflow拥有普通写入的模型也可单独启用资料维护。
+
+服务端在预览、执行和回执恢复时重新检查当前用户。必须由同一个成员同时持有资源 read/delete 及全部维护能力，再沿该成员原 RLS；不能把全部资料读取职责与本人删除职责拼成全部删除。应用管理员称谓不自动授权，匿名、应用后台断言及工作流任务断言不能调用此浏览器入口。维护能力不授予编辑资料、改派任务或整套流程管理员权限。Perspective 不改变写权限，维护沿当前用户原角色并集。
+
+先填写非空原因（trim后最多1000字符），再预览，确认使用原预览Token和幂等键。无关联实例时复用 Native 事务；一个根关联实例时复用 Workflow Kernel 的 `admin_delete`，同事务删除资料及 owned 明细、关闭任务/参与人/返回会话并记录审计。共享 resource-ref 不级联。待启动命令、多个实例或明细关联其他实例会阻止全部删除；owned最多100条、深度8，超限明确拒绝。普通 Native 删除的流程关联保护保持，不能用它绕开维护协议。
+
+预览有效五分钟，绑定当前账号/登录会话/CSRF、环境Head、根revision及全部owned摘要。变化或到期须重新预览。未知结果先读取原回执，只有 `OPENXIANGDA_NATIVE_RECORD_DELETION_RECEIPT_NOT_FOUND` 且预览有效时可显式原键重试，不能创建新键。回执恢复允许预览到期，但仍检查当前权限、原账号/会话/CSRF和同一Head，成功后不重读已删除资料。两类回执的 `receiptOwner` 分别为 `native-transaction` 和 `workflow-command`。
+
+SDK复用现有应用CSRF与512条命令绑定缓存，预览到期不会自动丢弃原header。身份退出、缓存容量淘汰或刷新后不保证恢复原CSRF；标准弹层不跨刷新自动保存原请求。页内导航和关闭保护保留未确认操作，无法确认的请求不得用重新预览掩盖。删除不可由代码回滚恢复；应用须按自身保留和归档要求决定是否开启。
+
 打印先筛选同一成员同时具备资料read及所有打印能力的资格，再沿原RLS、Perspective、字段读取与脱敏；不能把ALL-read职责和own-print职责合并成ALL-print。普通app-admin与平台超管分别验收。SDK `loadNativeRecordPrint(resourceCode, recordId, { viewCode? })` 只读当前单记录投影；公开 `ResourceRecordPrintPreview` 与生成Native详情中的“打印”入口共用它。字段权限仍使用页面/模型规则，不增加流程节点字段权限配置。
 
 预览显示读取时间、当前详情可见字段和分组。打印前重新读取当前授权数据，失败清除旧预览，身份/授权/Perspective变化和关闭淘汰过期请求。附件/图片只列名称及大小、富文本转安全文本，没有自动外部下载；系统打印取消不写业务资料。当前版本只支持主记录，详情包含可读子表返回409，超2MiB返回413，不静默漏项；专用PDF模板、签章与子表完整打印另行提供。独立权限保护平台的打印接口和标准入口，已读资料的截图/浏览器自行打印不属于可撤销许可。

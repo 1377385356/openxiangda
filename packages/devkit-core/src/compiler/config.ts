@@ -253,6 +253,7 @@ export interface AppDataResourceDeclaration {
   workflowHistory?: { read: string[] | boolean };
   recordPrint?: { read: string[] | boolean };
   recordComments?: { read: string[] | boolean; create: string[] | boolean };
+  recordDeletion?: { delete: string[] | boolean };
   invariants?: DataResource['invariants'];
   decimalReservationLifecycle?: DataResource['decimalReservationLifecycle'];
   uniqueKeys?: DataResource['uniqueKeys'];
@@ -6620,6 +6621,10 @@ function validateCapabilityClosure(
       }
     }
     const printRead = object(resource.recordPrint).read;
+    const recordDelete = object(resource.recordDeletion).delete;
+    for (const capability of Array.isArray(recordDelete) ? recordDelete : []) {
+      references.push({ capability: string(capability), path: `data.resources[${resourceIndex}].recordDeletion.delete` });
+    }
     for (const capability of Array.isArray(printRead) ? printRead : []) {
       references.push({ capability: string(capability), path: `data.resources[${resourceIndex}].recordPrint.read` });
     }
@@ -7102,6 +7107,10 @@ export function materializeDataResource(
       read: declaration.recordPrint.read === false ? [] : declaration.recordPrint.read === true
         ? [capabilities.read] : [...declaration.recordPrint.read],
     } }),
+    ...(declaration.recordDeletion === undefined ? {} : { recordDeletion: {
+      delete: declaration.recordDeletion.delete === false ? [] : declaration.recordDeletion.delete === true
+        ? [capabilities.delete] : [...declaration.recordDeletion.delete],
+    } }),
     ...(declaration.workflowHistory === undefined ? {} : { workflowHistory: {
       read: declaration.workflowHistory.read === false ? [] : declaration.workflowHistory.read === true
         ? [capabilities.read] : [...declaration.workflowHistory.read],
@@ -7163,6 +7172,7 @@ export function validateAppDeclaration(value: unknown): Diagnostic[] {
     'workflowHistory',
     'recordPrint',
     'recordComments',
+    'recordDeletion',
   ]);
   const fieldKeys = new Set([
     'code',
@@ -7237,6 +7247,20 @@ export function validateAppDeclaration(value: unknown): Diagnostic[] {
         diagnostics.push(diagnostic('APP_CONFIG_RECORD_COMMENTS_POLICY_INVALID',
           'recordComments.read/create 必须为 true、false 或不重复的非空 capability 数组（最多20项）',
           `${resourcePath}.recordComments`, 'true绑定本资源read；每项操作的能力需由同一成员全部持有。'));
+      }
+    }
+    let recordDeletionValid = true;
+    if (resource.recordDeletion !== undefined) {
+      const rule = object(resource.recordDeletion);
+      const remove = rule.delete;
+      if (!resource.recordDeletion || typeof resource.recordDeletion !== 'object' || Array.isArray(resource.recordDeletion) ||
+          Object.keys(rule).some(key => key !== 'delete') ||
+          (remove !== true && remove !== false && (!Array.isArray(remove) || remove.length < 1 || remove.length > 20 ||
+            remove.some(value => typeof value !== 'string' || !value.trim()) || new Set(remove).size !== remove.length))) {
+        recordDeletionValid = false;
+        diagnostics.push(diagnostic('APP_CONFIG_RECORD_DELETION_DELETE_INVALID',
+          'recordDeletion.delete 必须为 true、false 或不重复的非空 capability 数组（最多20项）',
+          `${resourcePath}.recordDeletion`, 'true绑定本资源delete；同一成员需同时有资料read、delete及全部维护能力。'));
       }
     }
     let recordPrintValid = true;
@@ -7336,7 +7360,7 @@ export function validateAppDeclaration(value: unknown): Diagnostic[] {
       return;
     }
     const declaredCodes = new Set<string>();
-    let materializable = auditValid && workflowHistoryValid && recordPrintValid && recordCommentsValid;
+    let materializable = auditValid && workflowHistoryValid && recordPrintValid && recordCommentsValid && recordDeletionValid;
     fields.forEach((rawField, fieldIndex) => {
       const field = object(rawField);
       const fieldPath = `${resourcePath}.fields[${fieldIndex}]`;

@@ -1,5 +1,13 @@
 # 前端架构
 
+## 资料维护删除
+
+模型的 `recordDeletion.delete` 显式开启后，标准 `GeneratedResourcePage` 详情提供“删除资料”。普通资料编辑仍按原 `mutationOwner` 和生成页许可决定。删除面复用平台导航 guard，原因输入、显式影响预览、确认、到期、明确拒绝、未知结果和成功分别呈现，PC与手机使用同一响应式弹层。
+
+自定义详情可嵌入 `ResourceRecordDeletion`（`resourceCode`、`recordId`、`onClose`、`onDeleted`），服务端始终重验资料权限。独立接入使用 `createNativeResourceClient(resourceCode, surface)` 的 `previewDeletion(id)`、`deleteWithPreview(id, input)`、`deletionReceipt(id, input)`；也可从 `openxiangda/react` 导入 `previewNativeRecordDeletion`、`deleteNativeRecordWithPreview`、`recoverNativeRecordDeletion` 及对应 `DataRecordDeletion*` 类型。
+
+写入input包含 `schemaVersion: 'openxiangda.data-record-deletion-request/v1'`、原 `previewToken`、固定 `idempotencyKey` 与 `reason`。提交前固定完整请求，未知时先查原回执；专用回执不存在且预览未过期才可让用户明确重试原请求。预览有效五分钟，回执可在到期后恢复；SDK保留原CSRF的有界缓存不等于跨刷新保存。标准组件不跨刷新保存Token/原因/键，身份退出、Head变化或缓存淘汰后的旧请求恢复限制须向应用维护者说明。详情与历史不从删除成功回执回填已删除旧值。授权、级联预算和错误边界见[数据与权限](./data-authz.md)。
+
 状态：Vite/Refine 已成为 OpenXiangda 2.0 唯一默认前端栈。决策与实测见
 [核心架构](./concepts.md)。
 
