@@ -74,3 +74,33 @@ test('direct resources and module models preserve cross-resource capability refe
     resources: declaration.modules![0]!.models.map(model => ({ ...model, fields: [...model.fields] })) } });
   assert.deepEqual(modules.data?.resources.map(resource => resource.recordDeletion), direct.data?.resources.map(resource => resource.recordDeletion));
 });
+
+test('action-owned maintenance may grant explicit deletion while ordinary mutations and disabled deletion remain closed', () => {
+  const native = (operation: string) => `app:deletion-app:data:requests:${operation}`;
+  const grant = (declaration: OpenXiangdaAppDeclaration, operation = 'delete') => {
+    declaration.authz!.roles = [{ code: 'maintainer', name: '资料维护', capabilities: [native('read'), native(operation), capability] }];
+    return declaration;
+  };
+  for (const policy of [true, [capability]]) {
+    const compiled = compileApplicationSources(defineOpenXiangdaApp(grant(source(policy))));
+    const resource = compiled.config.value.data.resources[0]!;
+    assert.equal(resource.surface?.mutationOwner, 'action');
+    assert.equal(resource.surface?.generated?.delete, false);
+    assert.equal(platform(compiled.config.value, compiled.contracts.value).appCode, 'deletion-app');
+    for (const operation of ['create', 'update']) {
+      assert.throws(() => defineOpenXiangdaApp(grant(source(policy), operation)));
+      const forbidden = structuredClone(compiled.config.value);
+      forbidden.authz.roles[0]!.capabilities.push(native(operation));
+      assert.throws(() => platform(forbidden, compiled.contracts.value), (error: any) =>
+        error.code === 'NATIVE_DATA_SURFACE_MUTATION_GRANT_FORBIDDEN');
+    }
+  }
+  for (const policy of [undefined, false]) {
+    assert.throws(() => defineOpenXiangdaApp(grant(source(policy))));
+    const compiled = compileApplicationSources(defineOpenXiangdaApp(source(policy)));
+    const forbidden = structuredClone(compiled.config.value);
+    forbidden.authz.roles = grant(source(policy)).authz!.roles;
+    assert.throws(() => platform(forbidden, compiled.contracts.value), (error: any) =>
+      error.code === 'NATIVE_DATA_SURFACE_MUTATION_GRANT_FORBIDDEN');
+  }
+});

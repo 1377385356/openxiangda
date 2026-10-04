@@ -5502,6 +5502,8 @@ function validateAuthorizationReferences(
       `${resourcePointer}/capabilities`
     );
     for (const operation of ['create', 'update', 'delete']) {
+      if (operation === 'delete' && Array.isArray(resource.recordDeletion?.delete) &&
+          resource.recordDeletion.delete.length > 0) continue;
       forbiddenNativeMutationCapabilities.set(
         String(resourceCapabilities[operation]),
         operation

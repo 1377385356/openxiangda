@@ -1904,7 +1904,12 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
       const mutationOwner =
         string(object(resource.surface).mutationOwner) || 'native';
       if (['native', 'queued-command'].includes(mutationOwner)) continue;
+      const recordDeletionCapabilities = object(resource.recordDeletion).delete;
       for (const operation of ['create', 'update', 'delete'] as const) {
+        // This capability authorizes the server's controlled deletion entry;
+        // ordinary Native mutations still belong to the declared owner.
+        if (operation === 'delete' && Array.isArray(recordDeletionCapabilities) &&
+            recordDeletionCapabilities.length > 0) continue;
         const capability = string(object(resource.capabilities)[operation]);
         if (capability) {
           forbiddenNativeMutationCapabilities.set(capability, {
