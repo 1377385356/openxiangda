@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.55.0",
+  "version": "2.55.1",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -74,13 +74,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.82",
-    "openxiangda-contracts": "2.62.0",
-    "openxiangda-devkit-core": "2.48.1",
+    "openxiangda-cli": "2.6.83",
+    "openxiangda-contracts": "2.63.0",
+    "openxiangda-devkit-core": "2.48.2",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.100",
-    "openxiangda-nest": "2.14.2",
-    "openxiangda-skill-kit": "2.3.80",
+    "openxiangda-mcp": "2.0.101",
+    "openxiangda-nest": "2.14.3",
+    "openxiangda-skill-kit": "2.3.81",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -146,36 +146,34 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.55.0",
+    "version": "2.55.1",
     "status": "reviewed",
-    "title": "流程拒绝意见策略与受限资料编辑",
-    "summary": "流程定义可显式允许选填拒绝意见，保留旧流程必填默认和管理员收紧边界；同步主线的具名资料编辑支持固定字段及受限输入。",
+    "title": "持久原结果恢复与流程字段策略修复",
+    "summary": "已受理命令的短读取超时不会提前终止原三十分钟观察；同步主线的条件必填错误清理和冻结的选填撤回原因策略。",
     "newFeatures": [
-      "固定审批节点可声明 operationPolicy.reject.commentRequired:false；省略时仍必填，新声明要求 workflow.optional-rejection-comment@1.0.0。",
-      "具名资料编辑可声明固定资源和字段，复用受限人员、字典和托管附件输入，PC 与移动页共用 Field Kit。"
+      "固定流程定义支持 instanceCommands.withdraw.reasonRequired:false；省略仍必填，新声明要求 workflow.optional-withdrawal-reason@1.0.0。"
     ],
     "fixes": [
-      "审批节点 JSON Schema 接受并有界校验正式 operationPolicy，Surface 和执行端使用同一冻结策略。",
-      "主线修正 dataCommands 在开发配置和产物投影中的遗漏。"
+      "已受理 durable 原结果查询收到 SDK 明确标记可恢复的短读取预算耗尽后，在原绝对截止前按退避继续只读查询；不重放提交。",
+      "另一字段解除条件必填后清除 SDK 自己生成的旧必填错误，保留其他客户端、子表和服务端错误。"
     ],
     "affectedUsers": [
-      "需要保留选填拒绝意见语义的 V2 流程，或使用具名动作编辑固定资料字段的应用。"
+      "使用 durable 持久命令的热点报名应用和包含条件必填或撤回策略的 V2 流程。"
     ],
     "upgradeSteps": [
-      "完整升级同源 SDK 与目标平台；选填拒绝意见须启用支持该能力的平台，并以新不可变流程版本声明。",
-      "已有任务继续使用进入节点时冻结的规则，管理员不得放宽代码必填策略。"
+      "使用正式精确版本升级应用 SDK；原结果恢复无需更改服务端协议。",
+      "使用选填撤回原因时，平台必须具备对应能力；已有实例继续使用冻结版本。"
     ],
     "knownLimitations": [
-      "当前用于本机开发配套，不代表 npm 或学校生产已发布；真实应用验收单独记录。",
-      "选填仅允许省略、空串或空白；已提供的非字符串及超过 4000 字符仍拒绝。",
-      "具名资料编辑仍受动作能力、行范围和原修订校验约束，不开放普通 UPDATE。"
+      "一次读取仍最多两分钟，总观察仍为原三十分钟；权限、依赖和普通网络错误不会被自动隐藏。",
+      "容量必须在目标硬件上独立测量；单元验证不能证明万人或浏览器洪峰已通过。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
-      "platform": "显式选填要求 workflow.optional-rejection-comment@1.0.0；具名资料编辑按声明要求匹配平台能力"
+      "platform": "durable 恢复沿用既有结果协议；显式选填撤回原因要求 workflow.optional-withdrawal-reason@1.0.0"
     },
-    "sha256": "c48e83ce9ccb01af7e8af97458fee0fb192e0945fc6a596b985ed1fffaf876a0",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.55.0"
+    "sha256": "c6c0691f9fe9571dfe1c9078546a5db3f63645ba11a67a3f3d0d6324ba7713d1",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.55.1"
   }
 }
