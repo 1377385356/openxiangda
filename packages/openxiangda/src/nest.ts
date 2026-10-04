@@ -66,6 +66,7 @@ export type {
   OpenXiangdaBusinessActionContext,
   OpenXiangdaBusinessNotificationInput,
   OpenXiangdaBusinessProcessCommitInput,
+  OpenXiangdaBusinessProcessCommandWithDataInput,
   WorkflowAssigneeProviderHandler,
   OpenXiangdaEventBusinessNotificationInput,
   OpenXiangdaRuntimeLeaseState,

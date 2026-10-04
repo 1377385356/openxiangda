@@ -1,6 +1,7 @@
 import { DATA_SUBTABLE_MAX_ROWS, DATA_TRANSACTION_MAX_OPERATIONS, DATA_TRANSACTION_MAX_BYTES } from './native-compiler/data-capacity.js';
 import { nativeUniqueKeysJsonSchema } from './native-compiler/unique-keys.js';
 import { workflowAssignmentRoutingPolicySchema } from './native-compiler/workflow-assignment-routing.js';
+import { workflowBusinessCommandInvocationSchema } from './native-compiler/workflow-business-command.js';
 import { DATA_AUDIT_METADATA_FIELDS } from './native-compiler/data-audit-access.js';
 import {
   CONFIGURATION_COMPATIBILITY_CAPABILITY,
@@ -5587,6 +5588,13 @@ export const workflowDefinitionSchema = {
     schemaVersion: { const: SCHEMA_VERSIONS.workflowDefinition },
     code: { type: "string", pattern: "^[A-Za-z][A-Za-z0-9_-]{0,127}$" },
     title: nonEmptyString,
+    commandHandlers: {
+      type: 'object', additionalProperties: false, minProperties: 1,
+      properties: Object.fromEntries(['approve', 'reject', 'withdraw'].map(command => [command, {
+        type: 'object', additionalProperties: false, required: ['operationCode'],
+        properties: { operationCode: { type: 'string', pattern: '^[a-z][a-z0-9]*(?:[-_.][a-z0-9]+)*$' } },
+      }])),
+    },
     taskPages: {
       type: 'object', minProperties: 1, maxProperties: 16,
       propertyNames: { pattern: '^[A-Za-z][A-Za-z0-9_-]{0,63}$' },
@@ -6064,6 +6072,32 @@ export const businessProcessCommitSchema = {
           properties: { fromOperation: { type: "string", minLength: 1, maxLength: 128 } },
         },
         answers: businessProcessAnswers,
+      },
+    },
+  },
+} as const;
+
+export const businessProcessCommandWithDataSchema = {
+  $id: SCHEMA_VERSIONS.businessProcessCommandWithData,
+  type: 'object',
+  additionalProperties: false,
+  required: ['schemaVersion', 'environmentKey', 'workflow', 'subject', 'data', 'expectedTransition'],
+  properties: {
+    schemaVersion: { const: SCHEMA_VERSIONS.businessProcessCommandWithData },
+    environmentKey: { enum: DEPLOYMENT_ENVIRONMENTS },
+    workflow: workflowBusinessCommandInvocationSchema,
+    subject: {
+      type: 'object', additionalProperties: false, required: ['fromOperation'],
+      properties: { fromOperation: { type: 'string', minLength: 1, maxLength: 128 } },
+    },
+    data: businessProcessCommitSchema.properties.data,
+    expectedTransition: {
+      type: 'object', additionalProperties: false,
+      required: ['status', 'outcome', 'currentNodeId'],
+      properties: {
+        status: { enum: ['running', 'completed', 'withdrawn'] },
+        outcome: { type: ['string', 'null'], maxLength: 128 },
+        currentNodeId: { type: ['string', 'null'], minLength: 1, maxLength: 128 },
       },
     },
   },
@@ -7453,6 +7487,7 @@ const appOperationPlatformAccessSchema = {
           uniqueItems: true,
           items: stableCode,
         },
+        businessCommands: { type: 'array', minItems: 1, maxItems: 3, uniqueItems: true, items: { enum: ['approve', 'reject', 'withdraw'] } },
       },
     },
     decimalReservation: {
@@ -9137,6 +9172,7 @@ export const contractSchemas = {
   workflowAssigneeRequest: workflowAssigneeRequestSchema,
   workflowAssigneeResponse: workflowAssigneeResponseSchema,
   businessProcessCommit: businessProcessCommitSchema,
+  businessProcessCommandWithData: businessProcessCommandWithDataSchema,
   standardProcessCommit: standardProcessCommitSchema,
   businessProcessCommand: businessProcessCommandSchema,
   businessProcessReceipt: businessProcessReceiptSchema,

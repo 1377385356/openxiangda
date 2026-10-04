@@ -1977,6 +1977,13 @@ export async function executeApplicationOperation<
   input: Record<string, unknown>,
   options: { idempotencyKey?: string; signal?: AbortSignal } = {},
 ): Promise<ApplicationOperationReceiptV2<TResult>> {
+  return executeApplicationOperationWithCsrf(operationSurface, input, options, workflowCsrfToken);
+}
+
+async function executeApplicationOperationWithCsrf<TResult extends Record<string, unknown>>(
+  operationSurface: ApplicationOperationSurfaceV2, input: Record<string, unknown>,
+  options: { idempotencyKey?: string; signal?: AbortSignal }, csrf: () => Promise<string>,
+): Promise<ApplicationOperationReceiptV2<TResult>> {
   if (
     !operationSurface?.code ||
     !operationSurface.appVersionId ||
@@ -1993,7 +2000,7 @@ export async function executeApplicationOperation<
   ) {
     throw new Error('OPENXIANGDA_APPLICATION_OPERATION_IDEMPOTENCY_REQUIRED');
   }
-  const csrfToken = await workflowCsrfToken();
+  const csrfToken = await csrf();
   return await request<ApplicationOperationReceiptV2<TResult>>(
     `${nativeBase()}/operation-surfaces/${encodeURIComponent(
       operationSurface.code,
@@ -3146,6 +3153,30 @@ export async function executeWorkflowOperation(
   if (!surface.commandToken) {
     throw new Error('OPENXIANGDA_WORKFLOW_COMMAND_TOKEN_REQUIRED');
   }
+  const idempotencyKey = options.idempotencyKey || randomWorkflowIdempotencyKey(operation.key);
+  if (operation.execute.operationCode) {
+    const catalog = await loadApplicationOperationSurfaces();
+    const action = catalog.operations.find(item => item.code === operation.execute.operationCode);
+    if (!action) throw new Error('OPENXIANGDA_WORKFLOW_BUSINESS_OPERATION_UNAVAILABLE');
+    const instance = surface.instance as Record<string, unknown>;
+    const dataRef = instance.dataRef as { resourceCode?: string; id?: string } | undefined;
+    const resourceCode = surface.navigationTarget?.resourceCode || dataRef?.resourceCode;
+    const recordId = surface.navigationTarget?.recordId || dataRef?.id;
+    const detail = surface.presentation.businessDetail;
+    const expectedRevision = surface.taskForm?.expectedRevision || detail?.sourceRevision;
+    if (!recordId || !resourceCode || resourceCode !== action.subject.resourceCode ||
+        !Number.isSafeInteger(expectedRevision) || Number(expectedRevision) < 1 ||
+        !['approve', 'reject', 'withdraw'].includes(operation.key)) throw new Error('OPENXIANGDA_WORKFLOW_BUSINESS_SUBJECT_UNAVAILABLE');
+    const target = operation.key === 'withdraw'
+      ? { kind: 'instance', id: String(instance.id), command: 'withdraw' }
+      : { kind: 'task', id: String(surface.task?.id || ''), command: operation.key };
+    if (!target.id || target.id === 'undefined') throw new Error('OPENXIANGDA_WORKFLOW_BUSINESS_TARGET_UNAVAILABLE');
+    const receipt = await executeApplicationOperationWithCsrf<WorkflowCommandResult>(action, {
+      workflowCode: instance.workflowCode, target, recordId, expectedRevision,
+      commandToken: surface.commandToken, idempotencyKey, input,
+    }, { idempotencyKey }, () => commandBoundCsrf(surface.commandToken));
+    return receipt.result;
+  }
   const csrfToken = await commandBoundCsrf(surface.commandToken);
   const href = operation.execute.href.startsWith('/service/')
     ? operation.execute.href
@@ -3155,8 +3186,7 @@ export async function executeWorkflowOperation(
     headers: { 'x-openxiangda-csrf-token': csrfToken },
     body: JSON.stringify({
       commandToken: surface.commandToken,
-      idempotencyKey:
-        options.idempotencyKey || randomWorkflowIdempotencyKey(operation.key),
+      idempotencyKey,
       input,
     } satisfies WorkflowCommandInput),
   });

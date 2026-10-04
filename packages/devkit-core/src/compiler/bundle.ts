@@ -441,6 +441,7 @@ export function normalizeConfiguration(
                           codes: uniqueSorted(
                             operation.platformAccess.workflow.codes
                           ),
+                          ...(operation.platformAccess.workflow.businessCommands ? { businessCommands: uniqueSorted(operation.platformAccess.workflow.businessCommands) } : {}),
                         },
                       }
                     : {}),
@@ -1794,6 +1795,7 @@ function compileOperations(config: OpenXiangdaAppConfig) {
                 ? {
                     workflow: {
                       codes: uniqueSorted(operation.platformAccess.workflow.codes),
+                      ...(operation.platformAccess.workflow.businessCommands ? { businessCommands: uniqueSorted(operation.platformAccess.workflow.businessCommands) } : {}),
                     },
                   }
                 : {}),
@@ -1993,6 +1995,8 @@ function runtimeProtocolCapabilities(config: OpenXiangdaAppConfig) {
     ...(config.workflows?.activations.length
       ? ['workflow-kernel-v2', 'workflow.fresh-command-token']
       : []),
+    ...((config.workflows?.definitions || []).some(item => item.definition.commandHandlers !== undefined) || operations.some(operation => operation.platformAccess?.workflow?.businessCommands)
+      ? ['workflow.business-data-command'] : []),
     ...((config.workflows?.definitions || []).some(item => item.definition.instanceCommands !== undefined)
       ? ['workflow.instance-cancellation-policy']
       : []),

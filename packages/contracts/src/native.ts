@@ -283,7 +283,7 @@ export interface AppOperationPlatformAccessDeclaration {
     targetFieldCodes: readonly string[];
   }>;
   notification?: { mode: 'business-standard' };
-  workflow?: { codes: readonly string[] };
+  workflow?: { codes: readonly string[]; businessCommands?: readonly import('./native-compiler/workflow-business-command.js').WorkflowBusinessCommand[] };
   /** Exact NUMERIC(18,2) reservation transitions are owned by the Native transaction kernel. */
   decimalReservation?: {
     mode: 'reserve' | 'commit' | 'release';

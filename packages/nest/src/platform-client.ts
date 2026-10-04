@@ -62,6 +62,7 @@ import type {
   BusinessProcessCommandQuery,
   BusinessProcessCommandList,
   BusinessProcessCommit,
+  BusinessProcessCommandWithData,
   BusinessProcessPoll,
   BusinessProcessReceipt,
   BusinessProcessResolution,
@@ -567,6 +568,16 @@ export class OpenXiangdaPlatformClient {
         body: JSON.stringify(input),
       }
     );
+  }
+
+  async commandBusinessProcessWithData(
+    authorization: string, input: BusinessProcessCommandWithData,
+    businessAction: OpenXiangdaBusinessActionContext, csrfToken: string,
+  ): Promise<WorkflowCommandResult> {
+    return this.request<WorkflowCommandResult>(`${this.businessProcessPath()}/workflow-commands`, {
+      method: 'POST', headers: { ...this.identityHeaders(authorization, null, businessAction), 'x-openxiangda-csrf-token': csrfToken },
+      body: JSON.stringify(input),
+    });
   }
 
   async listBusinessProcessCommands(

@@ -18,6 +18,7 @@ import {
   validateDataResource,
   validateWorkflowInstanceCommandPolicies,
   validateWorkflowTaskPages,
+  validateWorkflowCommandHandlers,
   validateWorkflowAssignmentRoutingBindings,
   WORKFLOW_SUMMARY_MAX_FIELDS,
   WORKFLOW_SUMMARY_TEXT_LONG_MAX_BYTES,
@@ -4065,7 +4066,7 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
           }
         }
       }
-      for (const error of validateWorkflowDefinition(definition)) {
+      for (const error of [...validateWorkflowDefinition(definition), ...validateWorkflowCommandHandlers(definition, object(config.backend).operations as any[])]) {
         diagnostics.push(
           diagnostic('APP_CONFIG_WORKFLOW_DEFINITION_INVALID', error, path)
         );
@@ -4803,7 +4804,12 @@ function validateBackendOperations(
           workflowCodes.length > 16 ||
           new Set(workflowCodes).size !== workflowCodes.length ||
           workflowCodes.some(code => !declaredWorkflowCodes.has(code)) ||
-          Object.keys(workflow).some(key => key !== 'codes');
+          Object.keys(workflow).some(key => !['codes', 'businessCommands'].includes(key));
+        if (workflow.businessCommands !== undefined) {
+          const commands = workflow.businessCommands;
+          invalid ||= !Array.isArray(commands) || commands.length === 0 || commands.length > 3 ||
+            new Set(commands).size !== commands.length || commands.some(command => !['approve', 'reject', 'withdraw'].includes(command));
+        }
       }
       if (access.decimalReservation !== undefined) {
         const reservation = object(access.decimalReservation);

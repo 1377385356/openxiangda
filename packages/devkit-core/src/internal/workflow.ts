@@ -10,6 +10,7 @@ import {
   validateWorkflowRejectionNotification,
   workflowBindingAllowsEmptyUsers,
   validateWorkflowTaskPages,
+  validateWorkflowCommandHandlers,
   validateWorkflowBusinessSteps,
   validateWorkflowAssignmentRoutingBindings,
   type WorkflowApprovalMode,
@@ -118,7 +119,7 @@ export function compileWorkflow(
 }
 
 export function validateWorkflowDefinition(definition: WorkflowDefinition) {
-  const diagnostics = [...validateWorkflowInstanceCommandPolicies(definition), ...validateWorkflowReadability(definition), ...validateWorkflowAdministration(definition), ...validateWorkflowAutomaticCc(definition), ...validateWorkflowApprovalEmptyPolicy(definition), ...validateWorkflowRejectionNotification(definition), ...validateWorkflowTaskPages(definition), ...validateWorkflowBusinessSteps(definition)];
+  const diagnostics = [...validateWorkflowCommandHandlers(definition), ...validateWorkflowInstanceCommandPolicies(definition), ...validateWorkflowReadability(definition), ...validateWorkflowAdministration(definition), ...validateWorkflowAutomaticCc(definition), ...validateWorkflowApprovalEmptyPolicy(definition), ...validateWorkflowRejectionNotification(definition), ...validateWorkflowTaskPages(definition), ...validateWorkflowBusinessSteps(definition)];
   if (definition?.schemaVersion !== SCHEMA_VERSIONS.workflowDefinition) {
     diagnostics.push('WORKFLOW_DEFINITION_SCHEMA_INVALID');
   }

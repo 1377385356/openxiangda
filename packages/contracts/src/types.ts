@@ -141,6 +141,7 @@ export const SCHEMA_VERSIONS = {
   workflowAssigneeRequest: "openxiangda.workflow-assignee-request/v2.1",
   workflowAssigneeResponse: "openxiangda.workflow-assignee-response/v2",
   businessProcessCommit: "openxiangda.business-process.commit/v2",
+  businessProcessCommandWithData: 'openxiangda.business-process-command-with-data/v2',
   standardProcessCommit: "openxiangda.standard-process.commit/v2",
   businessProcessCommand: "openxiangda.business-process.command/v2",
   businessProcessReceipt: "openxiangda.business-process-receipt/v2",
@@ -2460,6 +2461,7 @@ export interface WorkflowDefinition {
     | "finish-pinned"
     | "cancel-on-deactivate";
   subject: WorkflowSubjectDefinition;
+  commandHandlers?: import('./native-compiler/workflow-business-command.js').WorkflowCommandHandlers;
   instanceCommands?: WorkflowInstanceCommandPolicies;
   /** Code-owned, frozen at rejection using the subject's last successful business writer. */
   rejectionNotification?: import('./native-compiler/workflow-rejection-notification.js').WorkflowRejectionNotification;
@@ -3220,6 +3222,8 @@ export interface WorkflowOperationSurface {
     method: "POST";
     href: string;
     idempotencyRequired: boolean;
+    /** Fixed Workflow handler; shared client uses the current immutable app operation surface. */
+    operationCode?: string;
   };
   refresh: string[];
 }
@@ -3282,6 +3286,24 @@ export interface WorkflowCommandInput {
   commandToken: string;
   idempotencyKey: string;
   input?: Record<string, unknown>;
+}
+
+/** Original Workflow authority and exact subject CAS from the shared Surface client. */
+export interface WorkflowBusinessCommandInvocation extends WorkflowCommandInput {
+  workflowCode: string;
+  target: { kind: 'task'; id: string; command: 'approve' | 'reject' } | { kind: 'instance'; id: string; command: 'withdraw' };
+  recordId: string;
+  expectedRevision: number;
+}
+
+/** A verified Named Action combines business effects with the original Workflow decision. */
+export interface BusinessProcessCommandWithData {
+  schemaVersion: typeof SCHEMA_VERSIONS.businessProcessCommandWithData;
+  environmentKey: DeploymentEnvironment;
+  workflow: WorkflowBusinessCommandInvocation;
+  subject: { fromOperation: string };
+  data: BusinessProcessCommit['data'];
+  expectedTransition: { status: 'running' | 'completed' | 'withdrawn'; outcome: string | null; currentNodeId: string | null };
 }
 
 /**

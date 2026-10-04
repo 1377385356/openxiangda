@@ -18,6 +18,7 @@ export * from './workflow-approval-empty.js';
 export * from './workflow-initiator-approval.js';
 export * from './workflow-rejection-notification.js';
 export * from './workflow-business-step.js';
+export * from './workflow-business-command.js';
 export * from './workflow-assignment-routing.js';
 export type { WorkflowAssignmentRoutingPolicy, WorkflowAssignmentRoutingRule } from '../types.js';
 export type { WorkflowInstanceCommandPolicies } from '../types.js';

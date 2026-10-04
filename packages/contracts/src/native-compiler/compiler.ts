@@ -13,6 +13,7 @@ import { validateWorkflowAutomaticCc } from './workflow-automatic-cc.js';
 import { validateWorkflowApprovalEmptyPolicy, workflowBindingAllowsEmptyUsers } from './workflow-approval-empty.js';
 import { validateWorkflowInitiatorApprovalPolicy } from './workflow-initiator-approval.js';
 import { validateWorkflowRejectionNotification } from './workflow-rejection-notification.js';
+import { validateWorkflowCommandHandlers } from './workflow-business-command.js';
 import { validateWorkflowTaskPages } from './workflow-task-page.js';
 import { validateWorkflowBusinessSteps, compileWorkflowBusinessStepHandlers, validateWorkflowBusinessStepSubscriptions, WORKFLOW_BUSINESS_STEP_EVENT, WORKFLOW_BUSINESS_STEP_EVENTS } from './workflow-business-step.js';
 import { validateWorkflowAssignmentRoutingBindings, validateWorkflowAssignmentRoutingPolicy } from './workflow-assignment-routing.js';
@@ -702,6 +703,11 @@ export function compileRequiredPlatformCapabilitiesV3(
           declaration: config.workflows.definitions.filter((item: JsonObject) => item.definition.rejectionNotification !== undefined),
         }]
       : []),
+    ...(config.workflows.definitions.some((item: JsonObject) => item.definition.commandHandlers !== undefined) || operations.some(operation => operation.platformAccess?.workflow?.businessCommands)
+      ? [{ code: 'workflow.business-data-command' as const, declaration: {
+          definitions: config.workflows.definitions.filter((item: JsonObject) => item.definition.commandHandlers !== undefined),
+          operations: operations.filter(operation => operation.platformAccess?.workflow?.businessCommands),
+        } }] : []),
     ...(namedInputSourceDefinitions.length
       ? [{ code: 'workflow.named-input-sources' as const, declaration: namedInputSourceDefinitions }]
       : []),
@@ -2870,7 +2876,7 @@ function validateOperationPlatformAccess(
   }
   if (access.workflow !== undefined) {
     const workflow = object(access.workflow, `${pointer}/workflow`);
-    exactKeys(workflow, ['codes'], `${pointer}/workflow`);
+    exactKeys(workflow, ['codes'], `${pointer}/workflow`, ['businessCommands']);
     const codes = uniqueStrings(
       workflow.codes,
       `${pointer}/workflow/codes`,
@@ -2882,7 +2888,11 @@ function validateOperationPlatformAccess(
         `${pointer}/workflow/codes`
       );
     }
-    result.workflow = { codes: uniqueSorted(codes) };
+    const businessCommands = workflow.businessCommands === undefined ? undefined : uniqueStrings(workflow.businessCommands, `${pointer}/workflow/businessCommands`, 3);
+    if (businessCommands && (!businessCommands.length || businessCommands.some(command => !['approve', 'reject', 'withdraw'].includes(command)))) {
+      fail('NATIVE_OPERATION_WORKFLOW_BUSINESS_COMMAND_INVALID', `${pointer}/workflow/businessCommands`);
+    }
+    result.workflow = { codes: uniqueSorted(codes), ...(businessCommands ? { businessCommands: uniqueSorted(businessCommands) } : {}) };
   }
   if (access.decimalReservation !== undefined) {
     const reservationPointer = `${pointer}/decimalReservation`;
@@ -6607,6 +6617,8 @@ function validateWorkflowReferences(config: JsonObject) {
     }
     definitions.add(key);
     validateWorkflowDefinition(definition, `${pointer}/definition`);
+    const businessCommandErrors = validateWorkflowCommandHandlers(definition as any, config.backend.operations);
+    if (businessCommandErrors.length) fail(businessCommandErrors[0]!, `${pointer}/definition/commandHandlers`);
     validateWorkflowSubject(
       definition.subject,
       resources,
@@ -6990,7 +7002,7 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
       'nodes',
     ],
     pointer,
-    ['organizationContext', 'instanceCommands', 'readability', 'taskPages', 'rejectionNotification']
+    ['organizationContext', 'instanceCommands', 'readability', 'taskPages', 'rejectionNotification', 'commandHandlers']
   );
   equal(
     definition.schemaVersion,

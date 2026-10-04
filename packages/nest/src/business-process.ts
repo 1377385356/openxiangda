@@ -7,6 +7,8 @@ import {
   type BusinessProcessCommandQuery,
   type BusinessProcessCommandList,
   type BusinessProcessCommit,
+  type BusinessProcessCommandWithData,
+  type WorkflowCommandResult,
   type BusinessProcessPoll,
   type BusinessProcessReceipt,
   type BusinessProcessResolution,
@@ -21,6 +23,8 @@ export type OpenXiangdaBusinessProcessCommitInput = Omit<
   BusinessProcessCommit,
   'schemaVersion' | 'environmentKey'
 >;
+
+export type OpenXiangdaBusinessProcessCommandWithDataInput = Omit<BusinessProcessCommandWithData, 'schemaVersion' | 'environmentKey'>;
 
 /**
  * Durable business mutation + Workflow command facade for verified Named Actions.
@@ -48,6 +52,21 @@ export class OpenXiangdaBusinessProcessService {
       },
       context.action
     );
+  }
+
+  async commandWithData(input: OpenXiangdaBusinessProcessCommandWithDataInput): Promise<WorkflowCommandResult> {
+    assertOpenXiangdaRoleAssertions(this.request, input.data.guards);
+    const context = this.context(input.workflow.workflowCode);
+    const commands = this.request.openxiangda!.operation!.platformAccess?.workflow?.businessCommands;
+    if (!commands?.includes(input.workflow.target.command)) {
+      throw new UnauthorizedException('OPENXIANGDA_BUSINESS_PROCESS_COMMAND_NOT_DECLARED');
+    }
+    const header = this.request.headers['x-openxiangda-csrf-token'];
+    const csrfToken = String(Array.isArray(header) ? header[0] || '' : header || '').trim();
+    if (!csrfToken) throw new UnauthorizedException('WORKFLOW_V2_CSRF_INVALID');
+    return this.platform.commandBusinessProcessWithData(context.authorization, {
+      ...input, schemaVersion: SCHEMA_VERSIONS.businessProcessCommandWithData, environmentKey: context.environmentKey,
+    }, context.action, csrfToken);
   }
 
   async list(
@@ -157,7 +176,7 @@ export class OpenXiangdaBusinessProcessService {
     const declaration = verified.operation?.platformAccess?.workflow;
     if (
       !declaration ||
-      Object.keys(declaration).length !== 1 ||
+      Object.keys(declaration).some(key => !['codes', 'businessCommands'].includes(key)) ||
       !Array.isArray(declaration.codes) ||
       declaration.codes.length === 0 ||
       new Set(declaration.codes).size !== declaration.codes.length
