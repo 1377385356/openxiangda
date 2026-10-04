@@ -3,6 +3,35 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.54.1",
+      "status": "reviewed",
+      "title": "业务动作模型的受控删除授权修正",
+      "summary": "显式开启资料维护删除的模型可以声明其 Native 删除范围能力，仍由受控入口执行删除。",
+      "newFeatures": [],
+      "fixes": [
+        "双编译器仅为非空 recordDeletion.delete 放行模型删除能力授予；普通创建、更新、删除和关闭维护入口的模型继续遵守原所有者约束。"
+      ],
+      "affectedUsers": [
+        "由业务动作维护申请数据、同时需要独立资料删除权的 V2 应用。"
+      ],
+      "upgradeSteps": [
+        "使用同源本地 SDK2.54.1/contracts2.59.1/devkit2.47.1及完整配套包，重新生成契约并运行公开应用检查。"
+      ],
+      "knownLimitations": [
+        "受控删除仍限零个或唯一根关联实例、owned100条及深度8；待启动、多流程和明细其他关联保持阻塞。",
+        "预览五分钟；未知提交先恢复原回执。原 CSRF 缓存有界，退出、刷新或容量淘汰后不保证恢复。",
+        "本批不发布 npm，真实应用权限及正式部署验收仍待执行；不代表103条源流程业务已完成。"
+      ],
+      "issues": [],
+      "compatibility": {
+        "node": ">=24",
+        "platform": "data.workflow-record-deletion@1.0.0；普通 Native mutationOwner 授权边界保留，默认未声明不启用。"
+      },
+      "sha256": "2e1de49c0dfe3b700f29e5a3bbb0e46f9923456878f8b9bece259fe26808d954",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.54.1"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.54.0",
       "status": "reviewed",
       "title": "按资料权限受控删除关联流程",
