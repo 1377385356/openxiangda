@@ -1,4 +1,5 @@
 import { DATA_TRANSACTION_MAX_BYTES, DATA_TRANSACTION_MAX_OPERATIONS, serializedDataBytes } from './native-compiler/data-capacity.js';
+import { isDataTransactionActorAuthorityGuard } from './native-compiler/actor-authority.js';
 import {
   validateDataResourceDraftStates,
   validateDataResourceViews,
@@ -951,6 +952,13 @@ export function validateDataTransactionRequest(
         !Number.isFinite(Date.parse(literal))) {
         diagnostics.push(diagnostic('DATA_TRANSACTION_OPERATION_TIME_INPUT_INVALID',
           `${path} must bind a literal datetime in an existing create/update operation`, path));
+      }
+      return;
+    }
+    if (guard.kind === 'actor-authority') {
+      if (!isDataTransactionActorAuthorityGuard(guard)) {
+        diagnostics.push(diagnostic('DATA_TRANSACTION_ACTOR_AUTHORITY_INVALID',
+          `${path} requires 1–20 distinct declared role/scope branches without caller identity or capability`, path));
       }
       return;
     }

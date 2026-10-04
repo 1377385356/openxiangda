@@ -400,7 +400,8 @@ export function normalizeConfiguration(
                     fieldCodes: uniqueSorted(operation.platformAccess.recordEdit.fieldCodes),
                   } } : {}),
                   ...(operation.platformAccess.roleAssertions ? {
-                    roleAssertions: { roleCodes: uniqueSorted(operation.platformAccess.roleAssertions.roleCodes) },
+                    roleAssertions: { roleCodes: uniqueSorted(operation.platformAccess.roleAssertions.roleCodes),
+                      ...(operation.platformAccess.roleAssertions.actorAuthority ? { actorAuthority: true as const } : {}) },
                   } : {}),
                   ...(operation.platformAccess.directory
                     ? {
@@ -1761,7 +1762,8 @@ function compileOperations(config: OpenXiangdaAppConfig) {
                     fieldCodes: uniqueSorted(operation.platformAccess.recordEdit.fieldCodes),
                   } } : {}),
                   ...(operation.platformAccess.roleAssertions ? {
-                roleAssertions: { roleCodes: uniqueSorted(operation.platformAccess.roleAssertions.roleCodes) },
+                roleAssertions: { roleCodes: uniqueSorted(operation.platformAccess.roleAssertions.roleCodes),
+                  ...(operation.platformAccess.roleAssertions.actorAuthority ? { actorAuthority: true as const } : {}) },
               } : {}),
               ...(operation.platformAccess.directory
                 ? {
@@ -1989,6 +1991,7 @@ function runtimeProtocolCapabilities(config: OpenXiangdaAppConfig) {
       ? ['business-process.durable-command']
       : []),
     ...(operations.some(operation => operation.platformAccess?.dataCommands) ? ['data.business-commands'] : []),
+    ...(operations.some(operation => operation.platformAccess?.roleAssertions?.actorAuthority) ? ['data.transaction-actor-authority'] : []),
     ...(operations.some(operation => operation.platformAccess?.recordEdit) ? ['data.record-edit'] : []),
     ...(operations.some(operation => operation.platformAccess?.decimalReservation) ||
       config.events?.subscriptions.some(subscription => subscription.platformAccess?.decimalReservation)

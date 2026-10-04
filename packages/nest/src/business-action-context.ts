@@ -1,4 +1,4 @@
-import type { DataTransactionGuard } from 'openxiangda-contracts';
+import { isDataTransactionActorAuthorityGuard, type DataTransactionGuard } from 'openxiangda-contracts';
 import { UnauthorizedException } from '@nestjs/common';
 import type {
   OpenXiangdaBusinessActionContext,
@@ -68,11 +68,17 @@ export function assertOpenXiangdaRoleAssertions(
   guards: readonly DataTransactionGuard[] | undefined
 ): void {
   const members = (guards || []).filter(guard => guard.kind === 'role-member');
-  if (!members.length) return;
+  const actors = (guards || []).filter(guard => guard.kind === 'actor-authority');
+  if (!members.length && !actors.length) return;
   if (!request) throw new UnauthorizedException('OPENXIANGDA_ROLE_ASSERTION_ACTION_REQUIRED');
   requireOpenXiangdaBusinessActionContext(request);
   const declared = request.openxiangda!.operation!.platformAccess?.roleAssertions?.roleCodes;
   if (!declared || members.some(member => !declared.includes(member.roleCode))) {
     throw new UnauthorizedException('OPENXIANGDA_ROLE_ASSERTION_NOT_DECLARED');
+  }
+  if (actors.length && (request.openxiangda!.operation!.platformAccess?.roleAssertions?.actorAuthority !== true ||
+    actors.some(guard => !isDataTransactionActorAuthorityGuard(guard) ||
+      guard.anyOf.some(branch => !declared.includes(branch.roleCode))))) {
+    throw new UnauthorizedException('OPENXIANGDA_ACTOR_AUTHORITY_NOT_DECLARED');
   }
 }

@@ -269,6 +269,36 @@ await businessData.transaction({
 分派已接受后撤销角色，不会自动撤销历史分派；后续处理动作必须重新验证当前权限，
 由管理员重新分派。此规则应写入 AppSpec，并实测撤销先发生和分派先发生两种顺序。
 
+## 在事务中核对当前办理人的操作和范围 {#actor-authority}
+
+管理动作需要同时具备操作权限和业务范围时，在具名动作声明
+`platformAccess: { roleAssertions: { roleCodes: ['college-admin'], actorAuthority: true } }`。
+这会要求平台 `data.transaction-actor-authority@1.0.0`。提交同一业务事务时增加：
+
+```ts
+{ kind: 'actor-authority', errorCode: 'OPENXIANGDA_MANAGEMENT_SCOPE_DENIED',
+  anyOf: [{ roleCode: 'college-admin',
+    scope: { dimensionCode: 'college', value: authoritativeCollegeCode, operation: 'manage' } }],
+  allowAppSuperAdmin: false }
+```
+
+`anyOf` 为 1–20 个不同的角色/精确范围分支；角色必须在动作声明和当前授权定义内，
+范围维度必须在当前定义内。省略 scope 的分支仍需角色与本动作 capability 属于同一成员。
+当前办理人和 capability 仅从已验证动作取得，守卫不接收 userId、成员 ID 或能力输入。
+平台在同一事务锁定账号、相关有效 package 成员和授权投影，锁后以数据库时间重新解释；
+不能把不同成员的能力和范围拼接，也不使用账号部门、前端权限缓存或选人候选替代管理授权。
+scope operations 省略、null、空数组或包含 `*` 表示允许全部，否则必须包含指定操作。
+
+`allowAppSuperAdmin` 默认 false；只有明确设为 true 且当前应用管理员授权被锁定并验证时
+才能通过这个分支，它不代表审批参与人。单事务最多核对 400 条相关成员；超限返回
+`OPENXIANGDA_ACTOR_AUTHORITY_BUSY`。锁冲突沿用 `OPENXIANGDA_ROLE_ASSERTION_CONFLICT`，
+锁等待最多 1 秒、单条 SQL 最多 10 秒（保留更紧的已有上限）。已先完成撤权则新提交拒绝；
+已先锁定并接受的事务结束后才能撤权。守卫失败返回应用声明的失败码及 `/guards/<index>`，
+业务写入、事件和回执一起回滚。结果未知继续查询原请求；已有成功回执重放不重复写入。
+普通 Data SDK、应用凭据、事件和队列上下文不能使用；未声明返回
+`OPENXIANGDA_ACTOR_AUTHORITY_NOT_DECLARED`。仪器归属等业务事实仍由应用在同一事务
+使用 Native revision/CAS/记录守卫冻结；prepare 不授予后续提交权限。
+
 ## AI 能力目录与 MCP Facade {#ai-catalog}
 
 编译器为每个应用生成不可变的 AI 能力目录：资源的标准 CRUD 面（query/get/create/update/delete，

@@ -38,6 +38,8 @@ export * from './workflow-business-step-identity.js';
 export * from './workflow-task-page.js';
 export * from './data-capacity.js';
 export * from './data-business-command.js';
+export * from './actor-authority.js';
+export type { DataActorAuthorityRequirement, DataTransactionActorAuthorityGuard } from '../types.js';
 
 export * from './user-candidates.js';
 

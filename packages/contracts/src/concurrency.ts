@@ -136,7 +136,7 @@ export type ManagedCommandAssertion = DataTransactionRecordAssertion | {
   /** Queue only: compare the declared field to the original database acceptance time. */
   kind: 'command-accepted-at'; field: string; operator: 'lt' | 'lte' | 'gt' | 'gte';
 };
-export type ManagedCommandPlanGuard = Exclude<DataTransactionGuard, { kind: 'record-assert' | 'record-match' | 'role-member' }> |
+export type ManagedCommandPlanGuard = Exclude<DataTransactionGuard, { kind: 'record-assert' | 'record-match' | 'role-member' | 'actor-authority' }> |
   (Omit<Extract<DataTransactionGuard, { kind: 'record-assert' | 'record-match' }>, 'assertions'> & { assertions: ManagedCommandAssertion[] });
 export interface ManagedCommandPlan {
   schemaVersion: 'openxiangda.managed-command-plan/v1';

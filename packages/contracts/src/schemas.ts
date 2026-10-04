@@ -3668,6 +3668,32 @@ const dataTransactionOperation = {
 const dataTransactionGuard = {
   oneOf: [
     {
+      type: 'object', additionalProperties: false,
+      required: ['kind', 'errorCode', 'anyOf'],
+      properties: {
+        kind: { const: 'actor-authority' },
+        errorCode: { type: 'string', pattern: '^OPENXIANGDA_[A-Z0-9_]{1,96}$' },
+        allowAppSuperAdmin: { type: 'boolean' },
+        anyOf: {
+          type: 'array', minItems: 1, maxItems: 20, uniqueItems: true,
+          items: {
+            type: 'object', additionalProperties: false, required: ['roleCode'],
+            properties: {
+              roleCode: { type: 'string', pattern: '^[a-z][a-z0-9]*(?:[-_.][a-z0-9]+)*$', maxLength: 100 },
+              scope: {
+                type: 'object', additionalProperties: false, required: ['dimensionCode', 'value', 'operation'],
+                properties: {
+                  dimensionCode: { type: 'string', pattern: '^[a-z][a-z0-9]*(?:[-_.][a-z0-9]+)*$', maxLength: 100 },
+                  value: { type: 'string', minLength: 1, maxLength: 255, pattern: '^\\S(?:[\\s\\S]*\\S)?$' },
+                  operation: { type: 'string', maxLength: 64, pattern: '^[A-Za-z0-9*][A-Za-z0-9*._:-]*$' },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    {
       type: "object", additionalProperties: false,
       required: ["kind", "operationIndex", "field", "operator", "offsetMilliseconds", "errorCode"],
       properties: {
@@ -7444,7 +7470,7 @@ const appOperationPlatformAccessSchema = {
       properties: { roleCodes: {
         type: "array", minItems: 1, maxItems: 20, uniqueItems: true,
         items: { type: "string", pattern: "^[a-z][a-z0-9]*(?:[-_.][a-z0-9]+)*$", maxLength: 100 },
-      } },
+      }, actorAuthority: { const: true } },
     },
     directory: {
       type: "object",

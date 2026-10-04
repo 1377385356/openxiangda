@@ -266,7 +266,7 @@ export interface AppOperationPlatformAccessDeclaration {
   /** Fixed business fields edited through this action; ordinary UPDATE remains closed. */
   recordEdit?: { resourceCode: string; fieldCodes: readonly string[] };
   /** 在业务事务内核对目标用户的已声明角色；不授予成员管理权限。 */
-  roleAssertions?: { roleCodes: readonly string[] };
+  roleAssertions?: { roleCodes: readonly string[]; actorAuthority?: true };
   directory?: {
     mode: 'current-initiator';
     fields: readonly AppOperationDirectoryField[];

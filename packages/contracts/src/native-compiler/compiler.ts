@@ -538,6 +538,10 @@ export function compileRequiredPlatformCapabilitiesV3(
     ...(operations.some(operation => operation.platformAccess?.dataCommands)
       ? [{ code: 'data.business-commands' as const, declaration: operations.filter(operation => operation.platformAccess?.dataCommands) }]
       : []),
+    ...(operations.some(operation => operation.platformAccess?.roleAssertions?.actorAuthority)
+      ? [{ code: 'data.transaction-actor-authority' as const,
+          declaration: operations.filter(operation => operation.platformAccess?.roleAssertions?.actorAuthority) }]
+      : []),
     ...(operations.some(operation => operation.platformAccess?.recordEdit)
       ? [{ code: 'data.record-edit' as const, declaration: operations.filter(operation => operation.platformAccess?.recordEdit) }]
       : []),
@@ -2741,13 +2745,15 @@ function validateOperationPlatformAccess(
   }
   if (access.roleAssertions !== undefined) {
     const assertions = object(access.roleAssertions, `${pointer}/roleAssertions`);
-    exactKeys(assertions, ['roleCodes'], `${pointer}/roleAssertions`);
+    exactKeys(assertions, ['roleCodes', 'actorAuthority'], `${pointer}/roleAssertions`, true);
+    if (assertions.actorAuthority !== undefined) equal(assertions.actorAuthority, true, `${pointer}/roleAssertions/actorAuthority`);
     const codes = uniqueStrings(assertions.roleCodes, `${pointer}/roleAssertions/roleCodes`, 20);
     if (!codes.length) fail('NATIVE_OPERATION_ROLE_ASSERTIONS_REQUIRED', `${pointer}/roleAssertions/roleCodes`);
     codes.forEach((code, index) => {
       if (!declaredRoleCodes.has(code)) fail('NATIVE_ROLE_REFERENCE_MISSING', `${pointer}/roleAssertions/roleCodes/${index}`);
     });
-    result.roleAssertions = { roleCodes: uniqueSorted(codes) };
+    result.roleAssertions = { roleCodes: uniqueSorted(codes),
+      ...(assertions.actorAuthority === true ? { actorAuthority: true } : {}) };
   }
   if (access.directory !== undefined) {
     const directory = object(access.directory, `${pointer}/directory`);

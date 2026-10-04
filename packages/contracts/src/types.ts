@@ -1887,7 +1887,20 @@ export type DataTransactionRecordAssertion =
       operator: "eq" | "neq" | "gt" | "gte" | "lt" | "lte";
     };
 
-export type DataTransactionGuard =
+export interface DataActorAuthorityRequirement {
+  roleCode: string;
+  scope?: { dimensionCode: string; value: string; operation: string };
+}
+
+export interface DataTransactionActorAuthorityGuard {
+  /** Current actor and required capability come only from the verified named action. */
+  kind: 'actor-authority';
+  anyOf: DataActorAuthorityRequirement[];
+  allowAppSuperAdmin?: boolean;
+  errorCode: string;
+}
+
+export type DataTransactionGuard = DataTransactionActorAuthorityGuard
   | {
       /** Compare an actual create/update datetime with database acceptance time plus offset. */
       kind: "operation-time";

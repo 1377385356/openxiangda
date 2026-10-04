@@ -4703,7 +4703,8 @@ function validateBackendOperations(
         const roles = Array.isArray(assertion.roleCodes) ? assertion.roleCodes : [];
         invalid ||= !isRecord(access.roleAssertions) || roles.length < 1 || roles.length > 20 ||
           new Set(roles).size !== roles.length || roles.some(role => !declaredRoleCodes.has(string(role))) ||
-          Object.keys(assertion).some(key => key !== 'roleCodes');
+          Object.keys(assertion).some(key => !['roleCodes', 'actorAuthority'].includes(key)) ||
+          (Object.hasOwn(assertion, 'actorAuthority') && assertion.actorAuthority !== true);
       }
       if (access.directory !== undefined) {
         const directory = object(access.directory);
