@@ -28,6 +28,36 @@ pnpm openxiangda check
 
 角色成员、维度授权和平台管理员由平台管理面维护，不属于应用开发 CLI。
 
+### 登录用户的公共字段与管理范围
+
+同一资源需要保留公共目录、同时按学院或负责人读取私有字段时，在只读策略声明
+`publicRead: { fields: ['name', 'category'] }`。这仅适用于已认证用户，基线角色由
+`authenticatedUserRoleCode` 确定，不传入角色、身份或范围。`operations` 必须恰好是
+`['read']`，不能搭配 `readExpression` 或 `writeBoundary`。
+
+公共字段是 1–1000 个唯一的真实业务字段，必须允许基线角色读取；不能包含平台元数据
+或子表。所有未列出的业务字段都必须通过 `access.read` 拒绝基线角色，有私有字段时
+`audit.read` 也必须拒绝基线角色。缺失字段策略、把私有能力授给基线、遗漏历史限制都会
+在两侧编译器校验失败。平台基础元数据保持原读取协议，不计入业务公共白名单。
+
+源声明仍禁止把基线角色直接放入 `unrestrictedRoleCodes`。编译器只在上述证明通过后
+物化公共读取，并保留公共字段意图；需要 `data.authenticated-public-projection@1.0.0`。
+每次列表、筛选、排序、聚合或导出使用整组请求字段筛选同一个有效成员，再执行其行策略。
+因此管理私有字段不能借用公共成员的全行范围，不同成员的字段能力和范围也不能拼接。
+管理 Perspective 可以进一步收窄读取；关键写入仍独立验证当前角色并集和事务条件。
+
+```ts
+{
+  code: 'catalogue-read', name: '公共目录与管理读取', resourceCode: 'catalogue',
+  operations: ['read'], publicRead: { fields: ['name', 'category'] },
+  unrestrictedRoleCodes: ['school-admin'], matchMode: 'OR',
+  rules: [{ dimensionCode: 'college', field: 'college', valuePath: 'value',
+    operation: 'manage', roleCodes: ['college-admin'] }],
+}
+```
+
+这不是匿名公开数据接口；对外无账号读取仍使用独立的 `frontend.publicAccess` 合同。
+
 ### 条件唯一键
 
 需要“同一编号只能有一条有效主档”时，在模型声明 `uniqueKeys`。平台在环境

@@ -1,3 +1,4 @@
+import { validateAuthenticatedPublicRead, AuthenticatedPublicReadContractError } from 'openxiangda-contracts/native-compiler';
 import { validateUserCandidateReferences, validateWorkflowUserCandidateBindings, UserCandidateContractError } from 'openxiangda-contracts';
 import { parseNativeUniqueKeys, DATA_SUBTABLE_MAX_TOTAL_ROWS } from 'openxiangda-contracts';
 import type { ManagedConcurrencyDeclaration } from 'openxiangda-contracts';
@@ -2504,6 +2505,7 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
             'name',
             'resourceCode',
             'unrestrictedRoleCodes',
+            'publicRead',
             'operations',
             'matchMode',
             'rules',
@@ -2582,6 +2584,18 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
             `authz.dataPolicies[${index}].resourceCode`
           )
         );
+      }
+      if (policy.publicRead !== undefined) {
+        const resource = dataResources.map(object).find(resource => resource.code === policy.resourceCode);
+        const baseline = roles.map(object).find(role => role.code === authenticatedUserRoleCode);
+        try {
+          validateAuthenticatedPublicRead({ policy, resource, baselineRoleCode: authenticatedUserRoleCode,
+            baselineCapabilities: Array.isArray(baseline?.capabilities) ? baseline.capabilities : [],
+            baselineDeniedCapabilities: Array.isArray(baseline?.deniedCapabilities) ? baseline.deniedCapabilities : [], pointer: policyPath });
+        } catch (error) {
+          if (!(error instanceof AuthenticatedPublicReadContractError)) throw error;
+          diagnostics.push(diagnostic(error.code, '认证公共投影必须闭合公共字段，所有非公开字段与历史继续拒绝基线成员', error.pointer));
+        }
       }
       if (policy.unrestrictedRoleCodes !== undefined) {
         const unrestrictedRoleCodes = Array.isArray(

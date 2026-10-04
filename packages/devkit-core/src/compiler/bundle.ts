@@ -359,7 +359,7 @@ export function normalizeConfiguration(
       ),
       dataPolicies: sorted(
         (config.authz?.dataPolicies || []).map(
-          normalizeDataPolicyDeclaration
+          policy => normalizeDataPolicyDeclaration(policy, config.authz?.authenticatedUserRoleCode || '')
         ),
         item => item.code
       ),
@@ -2202,13 +2202,16 @@ function normalizeDataPolicyExpression(
 }
 
 function normalizeDataPolicyDeclaration(
-  policy: AppDataPolicyDeclaration
+  policy: AppDataPolicyDeclaration,
+  baselineRoleCode: string
 ): AppDataPolicyDeclaration {
   const common = {
     code: policy.code,
     name: policy.name,
     resourceCode: policy.resourceCode,
-    ...(policy.unrestrictedRoleCodes !== undefined
+    ...(policy.publicRead !== undefined ? { publicRead: { fields: uniqueSorted(policy.publicRead.fields) } } : {}),
+    ...(policy.publicRead !== undefined ? { unrestrictedRoleCodes: uniqueSorted([...(policy.unrestrictedRoleCodes || []), baselineRoleCode]) } :
+      policy.unrestrictedRoleCodes !== undefined
       ? { unrestrictedRoleCodes: uniqueSorted(policy.unrestrictedRoleCodes) }
       : {}),
   };

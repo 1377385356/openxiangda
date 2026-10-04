@@ -8578,6 +8578,9 @@ const appDataPolicyDeclarationSchema = {
     name: nonEmptyString,
     resourceCode: stableCode,
     unrestrictedRoleCodes: dataPolicyRoleCodes,
+    publicRead: { type: 'object', additionalProperties: false, required: ['fields'], properties: {
+      fields: { type: 'array', minItems: 1, maxItems: 1000, uniqueItems: true, items: { type: 'string', pattern: '^[A-Za-z][A-Za-z0-9_]{0,62}$' } },
+    } },
     operations: {
       type: "array",
       minItems: 1,
@@ -8612,6 +8615,7 @@ const appDataPolicyDeclarationSchema = {
       ],
     },
     { not: { required: ["operations", "readExpression"] } },
+    { if: { required: ['publicRead'] }, then: { required: ['operations'], properties: { operations: { const: ['read'] } }, not: { anyOf: [{ required: ['readExpression'] }, { required: ['writeBoundary'] }] } } },
   ],
 } as const;
 

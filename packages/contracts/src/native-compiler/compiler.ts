@@ -1,3 +1,4 @@
+import { validateAuthenticatedPublicRead, AuthenticatedPublicReadContractError } from './authenticated-public-read.js';
 import { validateUserCandidateReferences, validateWorkflowUserCandidateBindings, UserCandidateContractError } from './user-candidates.js';
 import { NativeUniqueKeyContractError, parseNativeUniqueKeys, nativeUniqueKeysContractVersion } from './unique-keys.js';
 import { validateManagedConcurrency, ManagedConcurrencyContractError } from './managed-concurrency.js';
@@ -537,6 +538,10 @@ export function compileRequiredPlatformCapabilitiesV3(
       : []),
     ...(operations.some(operation => operation.platformAccess?.dataCommands)
       ? [{ code: 'data.business-commands' as const, declaration: operations.filter(operation => operation.platformAccess?.dataCommands) }]
+      : []),
+    ...(config.authz.dataPolicies.some((policy: JsonObject) => policy.publicRead)
+      ? [{ code: 'data.authenticated-public-projection' as const,
+          declaration: config.authz.dataPolicies.filter((policy: JsonObject) => policy.publicRead) }]
       : []),
     ...(operations.some(operation => operation.platformAccess?.roleAssertions?.actorAuthority)
       ? [{ code: 'data.transaction-actor-authority' as const,
@@ -6041,6 +6046,7 @@ function validateDataPolicyReferences(config: JsonObject) {
         'name',
         'resourceCode',
         'unrestrictedRoleCodes',
+        'publicRead',
         'operations',
         'matchMode',
         'rules',
@@ -6090,6 +6096,22 @@ function validateDataPolicyReferences(config: JsonObject) {
       : undefined;
     if (hasReadExpression && !policyFields) {
       fail('NATIVE_DATA_POLICY_RESOURCE_MISSING', `${pointer}/resourceCode`);
+    }
+    if (policy.publicRead !== undefined) {
+      try {
+        const baseline = config.authz.roles.find((role: JsonObject) => role.code === authenticatedUserRoleCode);
+        validateAuthenticatedPublicRead({ policy,
+          resource: config.data.resources.find((resource: JsonObject) => resource.code === policyResourceCode),
+          baselineRoleCode: authenticatedUserRoleCode,
+          baselineCapabilities: baseline?.capabilities || [],
+          baselineDeniedCapabilities: baseline?.deniedCapabilities || [], pointer });
+      } catch (error) {
+        if (!(error instanceof AuthenticatedPublicReadContractError)) throw error;
+        fail(error.code, error.pointer);
+      }
+      if (!(policy.unrestrictedRoleCodes || []).includes(authenticatedUserRoleCode)) fail('AUTHENTICATED_PUBLIC_READ_CANONICAL_BASELINE_MISSING', `${pointer}/unrestrictedRoleCodes`);
+    } else if (authenticatedUserRoleCode && (policy.unrestrictedRoleCodes || []).includes(authenticatedUserRoleCode)) {
+      fail('NATIVE_DATA_POLICY_BASELINE_UNRESTRICTED', `${pointer}/unrestrictedRoleCodes`);
     }
     const unrestrictedRoleCodes = uniqueStrings(
       policy.unrestrictedRoleCodes || [],

@@ -39,6 +39,7 @@
 | --- | --- |
 | 数据策略是**白名单**语义：规则 `roleCodes` 之外的角色若不在 `unrestrictedRoleCodes` 中会被 RLS 全拒（报错只有 FIELD_ROW_FORBIDDEN） | `unrestrictedRoleCodes: ['admin']` 必须列出所有"不受限"角色 |
 | 基线角色（`authenticatedUserRoleCode`）进 `unrestrictedRoleCodes` = 策略对所有人失效（角色并集必含基线角色），编译器直接报错 | 把基线角色移出 unrestrictedRoleCodes，为其单独声明 rules |
+| 登录公共字段与管理私有范围共存不能直接放开基线角色 | 只读策略显式 `publicRead: { fields: [...] }`，全部非公开字段及变更历史须拒绝基线，详见 data-authz；不支持公共子表 |
 | 匿名公开策略的 `ownRecordFields` 必须是 `fields` 的子集；`create` 必须配套 `draft`；`requiredFields` ⊆ `fields` | 先定 fields，再从中选 required/own |
 | workflow definition 必须显式 `launch`（编译器强制） | `definitions: [{ version: 1, definition, launch: { mode: 'standalone' } }]` |
 | option/user/department/resource-ref/cascade 字段投影进工作流事实是 { label, value } 对象，不能声明为标量；条件比较用 `<fact>.value` | `inputSchema.properties.urgency = { type: 'object', ... }` + `path: 'urgency.value'` |

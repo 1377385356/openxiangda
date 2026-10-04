@@ -4957,3 +4957,61 @@ test('explicit initiator phone requires its implemented capability and remains f
     configBytes: canonicalJson(compiled.config.value), contractBytes: canonicalJson(compiled.contracts.value),
     expectedConfigDigest: sha256Digest(compiled.config.value), expectedContractDigest: sha256Digest(compiled.contracts.value) }));
 });
+
+function authenticatedPublicDeclaration() {
+  const declaration = structuredClone(sourceDeclaration);
+  const privateCapability = 'app:reference-app:management:read';
+  declaration.authz!.capabilities.push({ code: privateCapability, kind: 'backend', name: 'Private management read' });
+  declaration.authz!.roles[0]!.capabilities.push(privateCapability);
+  declaration.authz!.roles.push({ code: 'member', name: 'Authenticated member', capabilities: resourceRoleCapabilities('reference-app', 'instruments', ['read']) });
+  declaration.authz!.authenticatedUserRoleCode = 'member';
+  const resource = declaration.data!.resources[0]!;
+  resource.audit = { read: [privateCapability] };
+  resource.fields = resource.fields.map(field => field.code === 'name' ? field : { ...field, access: { read: [privateCapability] } });
+  declaration.authz!.dataPolicies![0] = {
+    ...declaration.authz!.dataPolicies![0]!, operations: ['read'], publicRead: { fields: ['name'] },
+  };
+  return declaration;
+}
+
+test('authenticated public read is explicit, scoped private reads remain and both compilers agree', () => {
+  const declaration = authenticatedPublicDeclaration();
+  const sources = compileApplicationSources(defineOpenXiangdaApp(declaration));
+  const policy = sources.config.value.authz.dataPolicies[0]!;
+  assert.deepEqual(policy.publicRead, { fields: ['name'] });
+  assert.deepEqual(policy.unrestrictedRoleCodes, ['member']);
+  assert.deepEqual(policy.rules, compileApplicationSources(source).config.value.authz.dataPolicies[0]!.rules);
+  const target = compileNativeApplicationConfiguration({ appCode: declaration.app.code,
+    configBytes: sources.config.content, contractBytes: sources.contracts.content,
+    expectedConfigDigest: sources.config.digest, expectedContractDigest: sources.contracts.digest });
+  assert.equal(target.requiredPlatformCapabilities.find(item => item.code === 'data.authenticated-public-projection')?.contractVersion, '1.0.0');
+  assert.equal(requiredPlatformCapabilities(source).some(item => item.code === 'data.authenticated-public-projection'), false);
+
+  const cases: Array<[(value: any) => void, string]> = [
+    [v => { v.authz.dataPolicies[0].unrestrictedRoleCodes = ['member']; }, 'APP_CONFIG_AUTHZ_POLICY_BASELINE_UNRESTRICTED'],
+    [v => { v.authz.dataPolicies[0].publicRead.roleCode = 'member'; }, 'AUTHENTICATED_PUBLIC_READ_FIELDS_INVALID'],
+    [v => { v.authz.dataPolicies[0].publicRead.fields = ['name', 'name']; }, 'AUTHENTICATED_PUBLIC_READ_FIELDS_INVALID'],
+    [v => { v.authz.dataPolicies[0].operations = ['read', 'update']; }, 'AUTHENTICATED_PUBLIC_READ_POLICY_NOT_READ_ONLY'],
+    [v => { delete v.data.resources[0].fields[1].access; }, 'AUTHENTICATED_PUBLIC_READ_PRIVATE_FIELD_ACCESSIBLE'],
+    [v => { delete v.data.resources[0].audit; }, 'AUTHENTICATED_PUBLIC_READ_PRIVATE_HISTORY_ACCESSIBLE'],
+    [v => { v.authz.roles.at(-1).capabilities = ['*']; }, 'AUTHENTICATED_PUBLIC_READ_PRIVATE_FIELD_ACCESSIBLE'],
+    [v => { v.data.resources[0].fields[0].access = { read: false }; }, 'AUTHENTICATED_PUBLIC_READ_FIELD_NOT_BASELINE_READABLE'],
+  ];
+  for (const [mutate, code] of cases) {
+    const invalid = structuredClone(declaration); mutate(invalid);
+    assert.throws(() => defineOpenXiangdaApp(invalid), (error: any) => error?.diagnostics?.some((item: any) => item.code === code), code);
+  }
+
+  for (const [mutate, code] of [
+    [(v: any) => { delete v.authz.dataPolicies[0].publicRead; }, 'NATIVE_DATA_POLICY_BASELINE_UNRESTRICTED'],
+    [(v: any) => { v.authz.dataPolicies[0].unrestrictedRoleCodes = ['instrument_admin']; }, 'AUTHENTICATED_PUBLIC_READ_CANONICAL_BASELINE_MISSING'],
+    [(v: any) => { v.data.resources.find((r: any) => r.code === 'instruments').fieldPolicies.owner.read = ['app:reference-app:data:instruments:read']; }, 'AUTHENTICATED_PUBLIC_READ_PRIVATE_FIELD_ACCESSIBLE'],
+    [(v: any) => { v.authz.dataPolicies[0].publicRead.fields = ['name', 'owner']; }, 'AUTHENTICATED_PUBLIC_READ_FIELD_NOT_BASELINE_READABLE'],
+  ] as const) {
+    const canonical = structuredClone(sources.config.value); mutate(canonical);
+    const contract = { ...sources.contracts.value, configDigest: sha256Digest(canonical) };
+    assert.throws(() => compileNativeApplicationConfiguration({ appCode: declaration.app.code,
+      configBytes: canonicalJson(canonical), contractBytes: canonicalJson(contract),
+      expectedConfigDigest: sha256Digest(canonical), expectedContractDigest: sha256Digest(contract) }), new RegExp(code), code);
+  }
+});

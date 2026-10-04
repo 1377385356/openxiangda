@@ -178,6 +178,8 @@ interface AppDataPolicyDeclarationBase {
   name: string;
   resourceCode: string;
   unrestrictedRoleCodes?: string[];
+  /** Authenticated baseline's closed public fields, only for operations:['read']. */
+  publicRead?: { fields: string[] };
 }
 
 export type AppDataPolicyDeclaration = AppDataPolicyDeclarationBase &
