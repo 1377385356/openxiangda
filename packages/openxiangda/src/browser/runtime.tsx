@@ -36,12 +36,14 @@ import {
   type ApplicationAuthenticationSurfaceContribution,
 } from './authentication';
 import type { ApplicationRoutePageContribution } from './admin-contributions';
+import type { DeepReadonly } from './components/resource/generated-resource-definition';
 import {
   standardRouteManifestDeviceForViewport,
   type StandardRouteManifestDevice,
 } from './route-manifest';
 
-export type RuntimePerspective = AppPerspectiveContract;
+/** Generated declarations are `as const`; runtime only reads the projection. */
+export type RuntimePerspective = DeepReadonly<AppPerspectiveContract>;
 
 interface RuntimeValue {
   identity: RuntimeIdentity;

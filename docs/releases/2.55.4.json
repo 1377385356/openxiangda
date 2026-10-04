@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.55.4",
+  "status": "reviewed",
+  "title": "OpenXiangda 2.55.4：生成管理视图的只读类型",
+  "summary": "公共 React perspectives 输入接受编译器生成的非空嵌套只读声明，运行时授权语义不变。",
+  "newFeatures": [],
+  "fixes": ["RuntimePerspective 复用 DeepReadonly，修复 appPerspectives as const 不能直接传入 OpenXiangdaApplication 的类型错误。"],
+  "affectedUsers": ["声明非空管理读取 Perspective 的 V2 React 应用。"],
+  "upgradeSteps": ["安装完整同源 SDK，保留官方生成契约，重新执行 check 并验证真实页面。"],
+  "knownLimitations": ["类型验收不代替真实角色与行/字段范围验收；本轮仅本机分发，不发布 npm。"],
+  "compatibility": {"node": ">=24", "platform": "native-4；无需新增平台协议", "v1": "V1 引擎与应用不变"},
+  "issues": ["PLT-032"]
+}
