@@ -24,7 +24,7 @@ test('fixed handler dispatch preserves the original Workflow CSRF, subject and u
       writes++; assert.equal(new Headers(init?.headers).get('x-openxiangda-csrf-token'), issuedCsrf);
       bodies.push(JSON.parse(String(init?.body)));
       if (writes === 1) throw new TypeError('response lost');
-      return response({ result: { status: 'completed', dataRevision: 4 } });
+      return response({ result: { status: 'approved', dataRevision: 4 } });
     }
     if (path.includes('/operation-surfaces')) return response({ operations: deny ? [] : [{ code: 'decide-request', appVersionId: 'version',
       environmentHeadRevision: 9, method: 'POST', behavior: 'controlled', idempotency: 'required', subject: { resourceCode: 'requests', inputField: 'recordId' } }] });

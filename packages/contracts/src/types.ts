@@ -3303,7 +3303,7 @@ export interface BusinessProcessCommandWithData {
   workflow: WorkflowBusinessCommandInvocation;
   subject: { fromOperation: string };
   data: BusinessProcessCommit['data'];
-  expectedTransition: { status: 'running' | 'completed' | 'withdrawn'; outcome: string | null; currentNodeId: string | null };
+  expectedTransition: { status: 'running' | 'approved' | 'rejected' | 'withdrawn'; outcome: string | null; currentNodeId: string | null };
 }
 
 /**

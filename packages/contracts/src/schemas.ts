@@ -6097,7 +6097,7 @@ export const businessProcessCommandWithDataSchema = {
       type: 'object', additionalProperties: false,
       required: ['status', 'outcome', 'currentNodeId'],
       properties: {
-        status: { enum: ['running', 'completed', 'withdrawn'] },
+        status: { enum: ['running', 'approved', 'rejected', 'withdrawn'] },
         outcome: { type: ['string', 'null'], maxLength: 128 },
         currentNodeId: { type: ['string', 'null'], minLength: 1, maxLength: 128 },
       },

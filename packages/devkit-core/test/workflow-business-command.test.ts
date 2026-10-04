@@ -89,7 +89,12 @@ test('browser invocation has an exact target/subject/CAS/token envelope', () => 
   const command = { schemaVersion: 'openxiangda.business-process-command-with-data/v2', environmentKey: 'preproduction', workflow: input,
     subject: { fromOperation: 'subject' }, data: { operations: [{ key: 'subject', kind: 'update', resourceCode: 'requests',
       id: input.recordId, expectedRevision: input.expectedRevision, data: { status: 'approved' } }] },
-    expectedTransition: { status: 'completed', outcome: 'approved', currentNodeId: null } };
+    expectedTransition: { status: 'approved', outcome: 'approved', currentNodeId: null } };
   assert.equal(validateCommand(command), true, JSON.stringify(validateCommand.errors));
+  for (const status of ['running', 'approved', 'rejected', 'withdrawn']) {
+    assert.equal(validateCommand({ ...command, expectedTransition: { ...command.expectedTransition, status } }), true,
+      `authoritative instance status ${status}: ${JSON.stringify(validateCommand.errors)}`);
+  }
+  assert.equal(validateCommand({ ...command, expectedTransition: { ...command.expectedTransition, status: 'completed' } }), false);
   assert.equal(validateCommand({ ...command, workflow: { ...input, command: 'forged' } }), false);
 });
