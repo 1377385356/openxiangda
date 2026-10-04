@@ -46,9 +46,52 @@ SDK 继承当前环境与身份，平台沿用发起人或既有超级管理员�
 `committed` 才有可信回执；`not_observed` 可能仍在提交，不能据此生成新键或宣称回滚。
 前端可用 `resolveBusinessProcessOriginal`（`openxiangda/react`），传原 workflowCode、
 operationCode、idempotencyKey；SDK 绑定当前环境并核验返回关联。Named Action 如果业务无需
-审批，没有流程回执并不代表业务没写入，应沿该动作自身回执诊断。
+审批，使用下面的 Native 数据命令恢复；没有流程回执并不代表业务没写入。
 标准 PC/移动发起页在响应未知时保留原操作定位信息，刷新可继续查询；同一页面、原身份和
 版本内可手动重试冻结的标准输入，绝不自动重发或悄悄换键。
+
+### 数据修改的原结果恢复 {#data-business-commands}
+
+仅修改业务资料的具名动作，在 `platformAccess` 声明
+`dataCommands: { mode: 'recoverable-native' }`，使用请求作用域的
+`OpenXiangdaBusinessDataApiService.commitCommand` 与 `resolveOriginalCommand`。
+编译器自动要求 `data.business-commands` 1.0.0；平台初始化默认提供，无额外开关。
+此声明不授予用户普通 UPDATE，也不替代应用的业务校验、同成员数据范围或附件输入授权。
+
+```ts
+// 固定动作代码从原请求组装；目标、原 revision、字段与原因共同构成稳定意图。
+const original = {
+  idempotencyKey: input.idempotencyKey,
+  intent: { id: input.id, expectedRevision: input.expectedRevision,
+    name: input.name, reason: input.reason },
+};
+const observed = await businessData.resolveOriginalCommand(original);
+if (observed.outcome === 'committed') return observed.receipt;
+
+// 这是用户明确提交或同键重试的动作处理器；只查询结果的接口在上面直接返回。
+// 在此读取合法字典/人员，并把业务规则转为原 Native guards，避免读写竞争。
+const committed = await businessData.commitCommand({
+  ...original,
+  data: { operations: [{ operation: 'update', resourceCode: 'requests',
+    id: input.id, expectedRevision: input.expectedRevision, data: { name: input.name } }] },
+});
+return committed.receipt;
+```
+
+响应丢失时保留原输入和原键，调用只读恢复。`not_observed` 仅表示本次未看到已提交回执，
+另一请求仍可能正在执行；SDK 不自动重放、更换键或提交。显式同键重试在事务锁内最多生效一次，
+相同键但不同意图返回 `OPENXIANGDA_DATA_COMMAND_IDEMPOTENCY_CONFLICT`。
+恢复发生在当前业务校验之前，因此原资料或字典后来变化不会遮蔽已成功结果。
+
+身份、应用、环境和动作来自原验证证明；普通用户直调、Worker、未声明动作与伪造请求拒绝。
+平台另外核对当前动作能力，失权后拒绝读取。用户、动作、能力或环境不同均不能复用原结果。
+同环境升级后可用当前同动作查询，回执保留原 `appVersionId`、`environmentHeadRevision`
+和事务条目；不会把原结果重写为当前版本。恢复不要求原资料仍然存在。
+
+意图只允许 JSON 对象，最多 64 KiB、32 层、10000 个值；不接受 undefined、循环对象或 Date。
+键最多 128 字符；数据仍沿 Native 1000 操作/2 MiB、CAS、guard 和文件规则。
+服务端只持久保存意图和公开键的摘要，复用原 Native 回执，不建立第二份状态表。
+结果仅返回可信应用后端，应用按已声明的 responseSchema 向用户投影。
 
 自定义表单页若先用 `createResourceFormDraftClient` 保存认证草稿，并由 Named Action
 提交业务记录和流程，则在同一次 `OpenXiangdaBusinessProcessService.commit` 中传入
