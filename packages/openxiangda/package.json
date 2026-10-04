@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.49.15",
+  "version": "2.50.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -74,13 +74,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.70",
-    "openxiangda-contracts": "2.54.1",
-    "openxiangda-devkit-core": "2.42.9",
+    "openxiangda-cli": "2.6.71",
+    "openxiangda-contracts": "2.55.0",
+    "openxiangda-devkit-core": "2.43.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.88",
-    "openxiangda-nest": "2.13.17",
-    "openxiangda-skill-kit": "2.3.68",
+    "openxiangda-mcp": "2.0.89",
+    "openxiangda-nest": "2.13.18",
+    "openxiangda-skill-kit": "2.3.69",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -146,32 +146,34 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.49.15",
+    "version": "2.50.0",
     "status": "reviewed",
-    "title": "流程操作表单只显示首条字段错误",
-    "summary": "标准审批操作弹层按顺序执行现有字段校验，空原因和无效选人只显示首条错误，减少重复反馈。",
-    "newFeatures": [],
-    "fixes": [
-      "PC与移动操作表单为每个字段启用validateFirst，必填失败后不重复展示同一字段的字符串或数组错误。",
-      "合法值仍须通过全部规则；字符串长度、非空白、模式、选人数量和服务端最终校验保持有效。"
+    "title": "按业务资料权限查看流程办理历史",
+    "summary": "业务查看组可以在当前资料范围内查看原固定流程的节点、办理人、时间和意见，审批授权保持独立。",
+    "newFeatures": [
+      "模型新增workflowHistory显式声明，按同一成员同时持有资料读取和全部历史能力校验。",
+      "公开loadWorkflowRecordHistory与PC/手机WorkflowRecordHistoryPanel，标准Native详情可按声明展开记录。",
+      "有界安全投影不返回事实、业务值、代码、角色席位、原detail或操作令牌；分页、容量与一致性冲突有明确失败。"
     ],
+    "fixes": [],
     "affectedUsers": [
-      "使用V2标准审批或实例操作弹层的办理人员。"
+      "需要业务查看职责、本人记录范围和独立历史授权的V2应用。"
     ],
     "upgradeSteps": [
-      "更新同源本地SDK组合并重新构建应用；CLI随根包更新模板版本。"
+      "安装同源本地包组合；声明历史能力并在模型workflowHistory.read中引用。",
+      "平台Server需提供workflow.record-history-read@1.0.0后再部署新声明；旧固定实例沿当前Native资料权限读取。"
     ],
     "knownLimitations": [
       "没有npm发布、学校业务写入或生产部署。",
-      "源码400项SDK与12项受影响检查通过；本地Docker中断，部署后的PC/390px复验仍待依赖恢复。",
-      "不改变流程定义、意见语义、授权、拒绝后输入保留或原命令恢复协议。"
+      "服务端20项定向测试、5项编译测试和独立PG11项真实查询/fixture RLS通过；完整应用六组当前角色矩阵及两端运行仍待验。",
+      "源评论、打印和删除不由本历史接口实现。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
-      "platform": "复用现有WorkflowSurface操作Schema与命令协议，不需要新增服务端接口。"
+      "platform": "workflow.record-history-read@1.0.0；未声明workflowHistory的应用继续原合同。"
     },
-    "sha256": "5fab39366980185f2bb4d494c0b808a4c1977ad453169ccdb12f78a7b9d5bf9b",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.49.15"
+    "sha256": "b07d99099c55cad220f613f90c368e456bd6a698b8fa18cda3554d7ee0153c15",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.50.0"
   }
 }
