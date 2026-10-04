@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.49.15",
+  "status": "reviewed",
+  "title": "流程操作表单只显示首条字段错误",
+  "summary": "标准审批操作弹层按顺序执行现有字段校验，空原因和无效选人只显示首条错误，减少重复反馈。",
+  "newFeatures": [],
+  "fixes": [
+    "PC与移动操作表单为每个字段启用validateFirst，必填失败后不重复展示同一字段的字符串或数组错误。",
+    "合法值仍须通过全部规则；字符串长度、非空白、模式、选人数量和服务端最终校验保持有效。"
+  ],
+  "affectedUsers": ["使用V2标准审批或实例操作弹层的办理人员。"],
+  "upgradeSteps": ["更新同源本地SDK组合并重新构建应用；CLI随根包更新模板版本。"],
+  "knownLimitations": [
+    "没有npm发布、学校业务写入或生产部署。",
+    "源码400项SDK与12项受影响检查通过；本地Docker中断，部署后的PC/390px复验仍待依赖恢复。",
+    "不改变流程定义、意见语义、授权、拒绝后输入保留或原命令恢复协议。"
+  ],
+  "issues": [],
+  "compatibility": {
+    "node": ">=24",
+    "platform": "复用现有WorkflowSurface操作Schema与命令协议，不需要新增服务端接口。"
+  }
+}

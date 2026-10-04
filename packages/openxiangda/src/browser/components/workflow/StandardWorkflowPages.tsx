@@ -763,6 +763,7 @@ function OperationFields({
             label={property.title || key}
             name={key}
             rules={rules}
+            validateFirst
           >
             {control}
           </Form.Item>
