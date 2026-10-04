@@ -3,6 +3,35 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.54.3",
+      "status": "reviewed",
+      "title": "主子资料删除容量说明对齐",
+      "summary": "同源开发者资料说明平台根记录加400条后代的有界删除能力，SDK请求形式保持。",
+      "newFeatures": [],
+      "fixes": [
+        "修正删除说明中旧100行上限，补充401行总量、嵌套共用预算、末行核对以及普通管理员100项边界。"
+      ],
+      "affectedUsers": [
+        "已显式开启资料维护删除、需要删除多张owned子表的V2应用。"
+      ],
+      "upgradeSteps": [
+        "同步同源CLI/Skill使用资料，并使用已落实共享400行后代预算的平台Server；在本地验证资料授权与实际业务。"
+      ],
+      "knownLimitations": [
+        "仍只支持零个或唯一根关联实例；待启动、多流程和明细其他关联阻塞。关联流程最多100条、深度8及原字节/超时预算保持。",
+        "普通管理员公开请求仍最多100项，只有服务器核对的内部DELETE集合可展开至总401条；请求不能自行扩大预算。",
+        "本批不发布npm；源码及隔离数据库验证不能替代真实App六组、双端和103条源流程验收。"
+      ],
+      "issues": [],
+      "compatibility": {
+        "node": ">=24",
+        "platform": "data.workflow-record-deletion@1.0.0，Server owned删除预算从共享DATA_SUBTABLE_MAX_TOTAL_ROWS派生。"
+      },
+      "sha256": "3fa7938d4646ad6773099e52086a1142ae7aa380e1e78c692608e3916c4fcce4",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.54.3"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.54.2",
       "status": "reviewed",
       "title": "审批命令与业务数据原子提交契约",
