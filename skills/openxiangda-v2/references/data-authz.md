@@ -183,3 +183,11 @@ publicSubtableFields: { items: ['sku', 'quantity'] },
 业务分派需要目标人员具有指定角色时，使用[事务中的角色条件](backend.md#role-member)，
 由平台在写入事务中核对当前有效成员。候选查询、页面隐藏、应用管理员身份和历史
 角色列表都不能替代这一规则，也不应在应用中复制一份权限状态。
+
+## 独立资料打印 {#record-print}
+
+模型可显式声明 `recordPrint: { read: ['app:my-app:record:print'] }`，能力须在本应用 `authz.capabilities` 定义并授给适当职责。`read: true` 绑定本资源读取能力，`false` 关闭，缺省不提供打印。平台自动提供 `data.record-print@1.0.0`，无需初始化SQL或全局开关；应用打印许可仍由声明拥有。
+
+打印先筛选同一成员同时具备资料read及所有打印能力的资格，再沿原RLS、Perspective、字段读取与脱敏；不能把ALL-read职责和own-print职责合并成ALL-print。普通app-admin与平台超管分别验收。SDK `loadNativeRecordPrint(resourceCode, recordId, { viewCode? })` 只读当前单记录投影；公开 `ResourceRecordPrintPreview` 与生成Native详情中的“打印”入口共用它。字段权限仍使用页面/模型规则，不增加流程节点字段权限配置。
+
+预览显示读取时间、当前详情可见字段和分组。打印前重新读取当前授权数据，失败清除旧预览，身份/授权/Perspective变化和关闭淘汰过期请求。附件/图片只列名称及大小、富文本转安全文本，没有自动外部下载；系统打印取消不写业务资料。当前版本只支持主记录，详情包含可读子表返回409，超2MiB返回413，不静默漏项；专用PDF模板、签章与子表完整打印另行提供。独立权限保护平台的打印接口和标准入口，已读资料的截图/浏览器自行打印不属于可撤销许可。

@@ -16,6 +16,7 @@ cpSync(
   resolve(root, 'dist/browser/mobile-runtime-global.css')
 );
 cpSync(resolve(root, 'src/browser/record-detail.css'), resolve(root, 'dist/browser/record-detail.css'));
+cpSync(resolve(root, 'src/browser/record-print.css'), resolve(root, 'dist/browser/record-print.css'));
 const require = createRequire(import.meta.url);
 writeFileSync(resolve(root, 'dist/browser/mobile-base.css'), scopeMobileCss(
   readFileSync(require.resolve('antd-mobile/es/global/global.css'), 'utf8')

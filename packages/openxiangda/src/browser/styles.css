@@ -1,6 +1,7 @@
 
 @import './mobile-fields.css';
 @import './record-detail.css';
+@import './record-print.css';
 
 .oxa-ui-root {
   min-width: 0;

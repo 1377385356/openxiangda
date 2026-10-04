@@ -26,6 +26,7 @@ import {
   type DataQuery,
   type DataWhere,
   type DataRecord,
+  type DataRecordPrint,
   type DataResourceSurface,
   type DataFormDraftStateSchema,
   type DataTransactionOperation,
@@ -1598,6 +1599,19 @@ export async function batchAggregateNativeResources<
       aggregate: item.data,
     };
   });
+}
+
+export async function loadNativeRecordPrint(code: string, recordId: string, options: { viewCode?: string } = {}): Promise<DataRecordPrint> {
+  const query = new URLSearchParams({ environmentKey: currentEnvironmentKey(),
+    ...(options.viewCode === undefined ? {} : { viewCode: options.viewCode }) });
+  const snapshot = await requestRead<DataRecordPrint>(`${dataBase(code)}/records/${encodeURIComponent(recordId)}/print?${query}`);
+  if (snapshot.schemaVersion !== 'openxiangda.data-record-print/v1' || snapshot.resourceCode !== code ||
+      snapshot.recordId !== recordId || snapshot.viewCode !== options.viewCode ||
+      !Array.isArray(snapshot.fields) || snapshot.fields.length < 1 || snapshot.fields.length > 100 ||
+      new Set(snapshot.fields.map(field => field.code)).size !== snapshot.fields.length ||
+      !snapshot.data || typeof snapshot.data !== 'object' || Array.isArray(snapshot.data))
+    throw new Error('OPENXIANGDA_NATIVE_RECORD_PRINT_RESPONSE_INVALID');
+  return snapshot;
 }
 
 export function createNativeResourceClient(

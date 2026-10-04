@@ -14,12 +14,12 @@ export function detailTime(value: unknown, timeZone?: string) {
 
 /** One presentation owner. Data, authorization and commands remain with their controllers. */
 export function RecordDetailFrame({ variant = 'desktop', title, heading, status, metadata, updatedAt,
-  children, footer, onClose, onEdit, drawer = false, drawerState, newPageHref, editing, busy = false,
+  children, footer, onClose, onEdit, onPrint, drawer = false, drawerState, newPageHref, editing, busy = false,
 }: {
   editing?: ReactNode; busy?: boolean;
   variant?: 'desktop' | 'mobile'; title: string; heading?: ReactNode; status?: ReactNode;
   metadata?: ReactNode; updatedAt?: unknown; children: ReactNode; footer?: ReactNode;
-  onClose: () => void; onEdit?: () => void; drawer?: boolean;
+  onClose: () => void; onEdit?: () => void; onPrint?: () => void; drawer?: boolean;
   drawerState?: ResourceFormDrawerState; newPageHref?: string;
 }) {
   const [localFullScreen, setLocalFullScreen] = useState(false);
@@ -34,6 +34,7 @@ export function RecordDetailFrame({ variant = 'desktop', title, heading, status,
         <h2>{editing ? '编辑数据' : title}</h2>
       </div>
       <Space size={4}>
+        {onPrint && !editing && <Button onClick={onPrint}>打印</Button>}
         {onEdit && !editing && <Button type="link" onClick={onEdit}>编辑</Button>}
         {drawer && <Tooltip title={fullScreen ? '退出全屏' : '全屏'}><Button type="text" aria-label={fullScreen ? '退出全屏' : '全屏'} icon={fullScreen ? <CompressOutlined /> : <ExpandOutlined />} onClick={() => setFullScreen(!fullScreen)} /></Tooltip>}
         {drawer && newPageHref && !editing && <Tooltip title="新开页面"><Button type="text" aria-label="新开页面" icon={<ExportOutlined />} href={newPageHref} target="_blank" rel="noopener noreferrer" /></Tooltip>}

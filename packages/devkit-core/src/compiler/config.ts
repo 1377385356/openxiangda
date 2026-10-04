@@ -251,6 +251,7 @@ export interface AppDataResourceDeclaration {
   audit?: { read: string[] | boolean };
   /** Business record viewers may read workflow history; omission disables this entry. */
   workflowHistory?: { read: string[] | boolean };
+  recordPrint?: { read: string[] | boolean };
   invariants?: DataResource['invariants'];
   decimalReservationLifecycle?: DataResource['decimalReservationLifecycle'];
   uniqueKeys?: DataResource['uniqueKeys'];
@@ -6611,6 +6612,10 @@ function validateCapabilityClosure(
   for (const [resourceIndex, rawResource] of resources.entries()) {
     const resource = object(rawResource);
     const resourceOwner = `data.resources.${string(resource.code)}`;
+    const printRead = object(resource.recordPrint).read;
+    for (const capability of Array.isArray(printRead) ? printRead : []) {
+      references.push({ capability: string(capability), path: `data.resources[${resourceIndex}].recordPrint.read` });
+    }
     const historyRead = object(resource.workflowHistory).read;
     for (const capability of Array.isArray(historyRead) ? historyRead : []) {
       references.push({ capability: string(capability), path: `data.resources[${resourceIndex}].workflowHistory.read` });
@@ -7080,6 +7085,10 @@ export function materializeDataResource(
     ...(declaration.invariants ? { invariants: declaration.invariants } : {}),
     ...(declaration.decimalReservationLifecycle !== undefined ? { decimalReservationLifecycle: declaration.decimalReservationLifecycle } : {}),
     ...(uniqueKeys !== undefined ? { uniqueKeys } : {}),
+    ...(declaration.recordPrint === undefined ? {} : { recordPrint: {
+      read: declaration.recordPrint.read === false ? [] : declaration.recordPrint.read === true
+        ? [capabilities.read] : [...declaration.recordPrint.read],
+    } }),
     ...(declaration.workflowHistory === undefined ? {} : { workflowHistory: {
       read: declaration.workflowHistory.read === false ? [] : declaration.workflowHistory.read === true
         ? [capabilities.read] : [...declaration.workflowHistory.read],
@@ -7139,6 +7148,7 @@ export function validateAppDeclaration(value: unknown): Diagnostic[] {
     'userSurface',
     'audit',
     'workflowHistory',
+    'recordPrint',
   ]);
   const fieldKeys = new Set([
     'code',
@@ -7198,6 +7208,20 @@ export function validateAppDeclaration(value: unknown): Diagnostic[] {
         diagnostics.push(diagnostic('APP_CONFIG_DATA_AUDIT_READ_INVALID',
           'audit.read 必须为 true（绑定资源读能力）、false 或不重复的非空 capability 数组（最多 20 项）', `${resourcePath}.audit`,
           `audit: { read: true } 会把审计读取绑定到本资源的 read 能力；需要更细粒度时写能力数组，例如 audit: { read: ['app:${appCode}:data:<resource>:read'] }`));
+      }
+    }
+    let recordPrintValid = true;
+    if (resource.recordPrint !== undefined) {
+      const rule = object(resource.recordPrint);
+      const read = rule.read;
+      if (!resource.recordPrint || typeof resource.recordPrint !== 'object' || Array.isArray(resource.recordPrint) ||
+          Object.keys(rule).some(key => key !== 'read') ||
+          (read !== true && read !== false && (!Array.isArray(read) || read.length < 1 || read.length > 20 ||
+            read.some(value => typeof value !== 'string' || !value.trim()) || new Set(read).size !== read.length))) {
+        recordPrintValid = false;
+        diagnostics.push(diagnostic('APP_CONFIG_RECORD_PRINT_READ_INVALID',
+          'recordPrint.read 必须为 true、false 或不重复的非空 capability 数组（最多 20 项）',
+          `${resourcePath}.recordPrint`, 'true 绑定本资源 read；独立能力数组按同一成员全部持有校验。'));
       }
     }
     let workflowHistoryValid = true;
@@ -7283,7 +7307,7 @@ export function validateAppDeclaration(value: unknown): Diagnostic[] {
       return;
     }
     const declaredCodes = new Set<string>();
-    let materializable = auditValid && workflowHistoryValid;
+    let materializable = auditValid && workflowHistoryValid && recordPrintValid;
     fields.forEach((rawField, fieldIndex) => {
       const field = object(rawField);
       const fieldPath = `${resourcePath}.fields[${fieldIndex}]`;

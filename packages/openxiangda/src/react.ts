@@ -46,6 +46,7 @@ export {
   loadApplicationOperationSurfaces,
   loadSubjectReadSurface,
   loadWorkflowRecordHistory,
+  loadNativeRecordPrint,
   logoutCurrentUser,
   type AnonymousPublicDraft,
   type AnonymousPublicRecord,
@@ -58,6 +59,7 @@ export type {
   ApplicationOperationSurfaceV2,
   WorkflowCommandResult,
   WorkflowRecordHistory,
+  DataRecordPrint,
   WorkflowRecordHistoryVisit,
   WorkflowRecordHistoryOperation,
   WorkflowTaskDraft,
@@ -72,6 +74,7 @@ export type {
   UserCandidatePage,
 } from 'openxiangda-contracts/browser';
 export * from './browser/components/resource/GeneratedResourceCrud';
+export { ResourceRecordPrintPreview } from './browser/components/resource/ResourceRecordPrintPreview';
 export * from './browser/components/resource/ResourceBatchActions';
 export * from './browser/components/resource/StandardResourcePages';
 export * from './browser/components/workflow/StandardWorkflowPages';

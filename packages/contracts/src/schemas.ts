@@ -2641,6 +2641,10 @@ export const dataResourceSchema = {
     appCode: nonEmptyString,
     code: dataResourceCode,
     name: nonEmptyString,
+    recordPrint: {
+      type: "object", additionalProperties: false, required: ["read"],
+      properties: { read: { type: "array", maxItems: 20, uniqueItems: true, items: nonEmptyString } },
+    },
     workflowHistory: {
       type: 'object', additionalProperties: false, required: ['read'],
       properties: { read: { type: 'array', maxItems: 20, uniqueItems: true, items: nonEmptyString } },

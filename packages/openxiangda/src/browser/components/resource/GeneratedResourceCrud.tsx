@@ -81,6 +81,7 @@ import {
 
 import type { GeneratedResourceDefinition } from './generated-resource-definition';
 import { selectedSurfaceFields } from './resource-field-selection';
+import { ResourceRecordPrintPreview } from './ResourceRecordPrintPreview';
 import { isGeneratedDetailFieldVisible } from './detail-field-visibility';
 import { GeneratedResourceFormPage } from './GeneratedResourceForm';
 import { ResourceListSettings, type ListDisplaySettings } from './ResourceListSettings';
@@ -997,6 +998,10 @@ function NativeResourceDetailPage({ definition, paths, variant, recordId, onDism
   );
   const [auditExpanded, setAuditExpanded] = useState(false);
   const [workflowHistoryExpanded, setWorkflowHistoryExpanded] = useState(false);
+  const [printing, setPrinting] = useState(false);
+  const printRead = definition.recordPrint?.read;
+  const printVisible = Boolean(record && printRead?.length &&
+    (identity.isAppSuperAdmin || printRead.every(code => hasReadCapability(code))));
   const historyRead = definition.workflowHistory?.read;
   const workflowHistoryVisible = Boolean(record && historyRead?.length &&
     (identity.isAppSuperAdmin || historyRead.every(code => hasReadCapability(code))));
@@ -1020,6 +1025,7 @@ function NativeResourceDetailPage({ definition, paths, variant, recordId, onDism
     status={statusField && record && record[statusField.key] != null && record[statusField.key] !== '' ? <Tag color="processing"><SurfaceFieldValue field={statusField} value={record[statusField.key]} /></Tag> : undefined}
     metadata={[creatorLabel, createdTime ? `${createdTime} 创建` : ''].filter(Boolean).join(' · ')} updatedAt={record?.updated_at}
     variant={variant} drawer={Boolean(onDismiss)} drawerState={drawerState} newPageHref={newPageHref} onClose={close} onEdit={record ? edit : undefined} busy={editBusy}
+    onPrint={printVisible ? () => setPrinting(true) : undefined}
     editing={editing && record ? <GeneratedResourceFormPage definition={definition} paths={paths} variant={variant} recordId={id} mode="edit" embedded
       onBusyChange={setEditBusy} onDismiss={() => setEditing(false)} onSaved={() => { setEditing(false); void query.query.refetch(); }} /> : undefined}>
     {!hasReadCapability(definition.capabilities.read) ? <Result status="403" title="当前平台用户无此页面权限" />
@@ -1029,6 +1035,7 @@ function NativeResourceDetailPage({ definition, paths, variant, recordId, onDism
         <RecordDetailSections groups={fieldsBySection(definition.surface, 'detail').map(group => ({ ...group, fields: group.fields.filter(readable) }))}
           renderValue={field => field.type === 'subtable' ? <SubtableValueDisplay field={field} mobile={variant === 'mobile'} parentRecordId={record.id} />
             : <SurfaceFieldValue field={field} mobile={variant === 'mobile'} resourceCode={definition.code} value={record[field.key]} />} />
+        {printing && printVisible && <ResourceRecordPrintPreview key={id} resourceCode={definition.code} recordId={id} viewCode={definition.viewCode} onClose={() => setPrinting(false)} />}
         {auditVisible && <Collapse className="oxa-audit-collapse" activeKey={auditExpanded ? ['audit'] : []} expandIconPlacement="end"
           onChange={keys => setAuditExpanded((Array.isArray(keys) ? keys : [keys]).includes('audit'))}
           items={[{ key: 'audit', label: '变更记录', children: auditExpanded ? <RecordChangeHistory resourceCode={definition.code} recordId={record.id} surface={definition.surface} readable={readable} /> : null }]} />}

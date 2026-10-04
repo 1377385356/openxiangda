@@ -11,6 +11,7 @@ export interface GeneratedResourceDefinition {
     delete: string;
   };
   workflowHistory?: { read: string[] };
+  recordPrint?: { read: string[] };
   surface: DataResourceSurface;
 }
 

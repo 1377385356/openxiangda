@@ -577,6 +577,8 @@ export function compileRequiredPlatformCapabilitiesV3(
           },
         ]
       : []),
+    ...(resources.some(resource => resource.recordPrint !== undefined)
+      ? [{ code: 'data.record-print' as const, declaration: dataUsage }] : []),
     ...(resources.some(resource => resource.workflowHistory !== undefined)
       ? [{ code: 'workflow.record-history-read' as const, declaration: dataUsage }] : []),
     ...(resources.some(hasDataAuditReadPolicy)
@@ -5446,6 +5448,13 @@ function validateAuthorizationReferences(
   config.data.resources.forEach((rawResource: unknown, index: number) => {
     const resourcePointer = `/config/data/resources/${index}`;
     const resource = object(rawResource, resourcePointer);
+    if (resource.recordPrint !== undefined) {
+      const pointer = `${resourcePointer}/recordPrint/read`;
+      for (const capability of resource.recordPrint.read) {
+        capabilityCode(capability, pointer, config.appCode);
+        if (!capabilityCodes.has(capability)) fail('NATIVE_CAPABILITY_REFERENCE_MISSING', pointer);
+      }
+    }
     if (resource.workflowHistory !== undefined) {
       const pointer = `${resourcePointer}/workflowHistory/read`;
       for (const capability of resource.workflowHistory.read) {
@@ -7381,6 +7390,7 @@ function validateResource(raw: any, pointer: string, appCode: string) {
       'decimalReservationLifecycle',
       'uniqueKeys',
       'workflowHistory',
+      'recordPrint',
       'capabilities',
       'dataPolicyCode',
       'fieldPolicies',
@@ -7421,6 +7431,14 @@ function validateResource(raw: any, pointer: string, appCode: string) {
       fail(error.code, error.pointer);
     }
     throw error;
+  }
+  if (resource.recordPrint !== undefined) {
+    const policy = object(resource.recordPrint, `${pointer}/recordPrint`);
+    exactKeys(policy, ['read'], `${pointer}/recordPrint`);
+    const read = policy.read;
+    if (!Array.isArray(read) || read.length > 20 ||
+        read.some(value => typeof value !== 'string' || !value.trim()) || new Set(read).size !== read.length)
+      fail('NATIVE_RECORD_PRINT_READ_INVALID', `${pointer}/recordPrint/read`);
   }
   if (resource.workflowHistory !== undefined) {
     const policy = object(resource.workflowHistory, `${pointer}/workflowHistory`);

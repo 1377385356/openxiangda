@@ -1,0 +1,31 @@
+.oxa-record-print-loading { padding: 48px 16px; text-align: center; }
+.oxa-record-print-document { color: #1f2937; background: #fff; padding: 20px; font-family: inherit; }
+.oxa-record-print-document header { border-bottom: 2px solid #374151; padding-bottom: 16px; margin-bottom: 24px; }
+.oxa-record-print-document h1 { margin: 0 0 8px; font-size: 22px; line-height: 1.4; overflow-wrap: anywhere; }
+.oxa-record-print-document header p { color: #64748b; margin: 0; font-size: 12px; }
+.oxa-record-print-document section { margin-bottom: 24px; }
+.oxa-record-print-document h2 { margin: 0; padding: 8px 0; border-bottom: 1px solid #d1d5db; font-size: 15px; }
+.oxa-record-print-document dl { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px; }
+.oxa-record-print-document dl > div { min-width: 0; padding: 12px 0; border-bottom: 1px solid #e5e7eb; break-inside: avoid; }
+.oxa-record-print-document dl > .is-wide { grid-column: 1 / -1; }
+.oxa-record-print-document dt { color: #64748b; margin-bottom: 4px; font-size: 12px; }
+.oxa-record-print-document dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.7; font-size: 14px; }
+@media (max-width: 600px) {
+  .oxa-record-print-document { padding: 8px 0; }
+  .oxa-record-print-document dl { grid-template-columns: minmax(0, 1fr); }
+}
+@media print {
+  @page { size: A4; margin: 16mm; }
+  html:has(.oxa-record-print-host), body:has(.oxa-record-print-host) { height: auto !important; overflow: visible !important; }
+  body:has(.oxa-record-print-host) > *:not(.oxa-record-print-host) { display: none !important; }
+  .oxa-record-print-host .ant-modal-mask,
+  .oxa-record-print-host .ant-modal-header,
+  .oxa-record-print-host .ant-modal-footer,
+  .oxa-record-print-host .ant-modal-close { display: none !important; }
+  .oxa-record-print-host .ant-modal-wrap { position: static !important; overflow: visible !important; }
+  .oxa-record-print-host .ant-modal { width: auto !important; max-width: none !important; top: 0 !important; margin: 0 !important; padding: 0 !important; transform: none !important; }
+  .oxa-record-print-host .ant-modal-content,
+  .oxa-record-print-host .ant-modal-body { padding: 0 !important; box-shadow: none !important; overflow: visible !important; max-height: none !important; }
+  .oxa-record-print-document { padding: 0; }
+  .oxa-record-print-document dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

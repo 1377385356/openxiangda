@@ -1,6 +1,6 @@
 import { OPENXIANGDA_COMPILER_CONTRACT_VERSION, PLATFORM_CAPABILITY_CONTRACT_VERSIONS } from "./native-version.js";
 export { OPENXIANGDA_COMPILER_CONTRACT_VERSION, PLATFORM_CAPABILITY_CONTRACT_VERSIONS } from "./native-version.js";
-import type { DataResourceSurface } from "./surface.js";
+import type { DataFieldSurface, DataResourceSurface } from "./surface.js";
 import type {
   CascadePathValue,
   DataFieldOption,
@@ -1338,6 +1338,8 @@ export interface DataResource {
   uniqueKeys?: DataUniqueKey[];
   /** Explicit business-viewer history policy; absence and empty read disable it. */
   workflowHistory?: { read: string[] };
+  /** Independent same-membership record printing policy; omission disables it. */
+  recordPrint?: { read: string[] };
   /** Default UI metadata projected with the authoritative Data Resource. */
   surface?: DataResourceSurface;
   capabilities: {
@@ -1461,6 +1463,21 @@ export interface DataBatchQueryResult<
 > {
   schemaVersion: typeof SCHEMA_VERSIONS.dataBatchQueryResult;
   results: DataBatchQueryItemResult<T>[];
+}
+
+/** A bounded current-user print projection, without commands or permission metadata. */
+export interface DataRecordPrint {
+  schemaVersion: "openxiangda.data-record-print/v1";
+  resourceCode: string;
+  resourceName: string;
+  recordId: string;
+  viewCode?: string;
+  viewName?: string;
+  appVersionId: string;
+  environmentHeadRevision: number;
+  preparedAt: IsoDateTime;
+  fields: Array<Pick<DataFieldSurface, "label" | "type" | "widget" | "section" | "options" | "rangeBoundary" | "timePrecision"> & { code: string }>;
+  data: Record<string, unknown>;
 }
 
 export interface DataRecord<
