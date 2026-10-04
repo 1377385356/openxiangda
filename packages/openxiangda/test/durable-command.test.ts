@@ -172,6 +172,45 @@ test('real result dependency, permission and transport failures stop automatic o
   }
 });
 
+test('a short accepted-result read expiry resumes the original result without another submit',async t=>{
+  let now=6100000,reads=0,writes=0; t.mock.method(Date,'now',()=>now);
+  const inputs:unknown[]=[],delays:number[]=[];
+  const f=fixture({enqueue:async(_c,_i,key)=>{writes++;return receipt(key,'accepted');},result:async(input,_signal,recovery)=>{
+    inputs.push(input);reads++;assert.equal(recovery?.budgetMs,120000);
+    if(reads===1){now+=120000;throw Object.assign(new Error('read expired'),{status:504,code:'CONCURRENCY_READ_RECOVERY_EXHAUSTED',retryable:true});}
+    return receipt(c.snapshot().requestKey);
+  }});
+  const c=new DurableCommandController({client:f.client,command:'claim',resourceKey:'offer',storage:f.storage,random:()=>0,sleep:async ms=>{delays.push(ms);now+=ms;}});
+  await c.submit({id:'offer'});while(c.snapshot().isObserving)await Promise.resolve();
+  assert.equal(c.snapshot().state,'succeeded');assert.equal(writes,1);assert.equal(reads,2);
+  assert.deepEqual(inputs,[{operationId:'operation'},{operationId:'operation'}]);assert.deepEqual(delays,[6000,10000]);
+});
+
+test('repeated short result expiries stop at the original absolute observation deadline',async t=>{
+  let now=6200000,reads=0,writes=0; t.mock.method(Date,'now',()=>now);
+  const f=fixture({enqueue:async(_c,_i,key)=>{writes++;return receipt(key,'accepted');},result:async(_input,_signal,recovery)=>{
+    reads++;now+=recovery!.budgetMs!;throw Object.assign(new Error('read expired'),{status:504,code:'CONCURRENCY_READ_RECOVERY_EXHAUSTED',retryable:true});
+  }});
+  const c=new DurableCommandController({client:f.client,command:'claim',resourceKey:'offer',storage:f.storage,random:()=>0,sleep:async ms=>{now+=ms;}});
+  await c.submit({id:'offer'});while(c.snapshot().isObserving)await Promise.resolve();
+  assert.ok(reads>1);assert.ok(now<=8000000);assert.equal(writes,1);assert.equal(c.snapshot().acceptanceConfirmed,true);
+  assert.equal(c.snapshot().errorCode,'CONCURRENCY_RESULT_OBSERVATION_EXHAUSTED');
+});
+
+test('unmarked or foreign read expiry errors cannot extend accepted-result observation',async()=>{
+  for(const error of [
+    {status:504,code:'CONCURRENCY_READ_RECOVERY_EXHAUSTED',retryable:false},
+    {status:504,code:'CONCURRENCY_READ_RECOVERY_EXHAUSTED'},
+    {status:503,code:'CONCURRENCY_READ_RECOVERY_EXHAUSTED',retryable:true},
+    {status:504,code:'CONCURRENCY_DEPENDENCY_TIMEOUT',retryable:true},
+  ]){
+    let reads=0;
+    const f=fixture({enqueue:async(_c,_i,key)=>receipt(key,'accepted'),result:async()=>{reads++;throw Object.assign(new Error(error.code),error);}});
+    await f.controller.submit({id:'offer'});while(f.controller.snapshot().isObserving)await Promise.resolve();
+    assert.equal(reads,1);assert.equal(f.controller.snapshot().state,'error');assert.equal(f.controller.snapshot().acceptanceConfirmed,true);
+  }
+});
+
 test('a read error during intake does not repeatedly hide a dependency fault',async()=>{
   let writes=0,reads=0;
   const error=Object.assign(new Error('cache unavailable'),{status:503,code:'CONCURRENCY_CACHE_UNAVAILABLE'});

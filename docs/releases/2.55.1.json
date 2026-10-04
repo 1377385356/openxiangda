@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.55.1",
+  "status": "reviewed",
+  "title": "持久原结果恢复与流程字段策略修复",
+  "summary": "已受理命令的短读取超时不会提前终止原三十分钟观察；同步主线的条件必填错误清理和冻结的选填撤回原因策略。",
+  "newFeatures": ["固定流程定义支持 instanceCommands.withdraw.reasonRequired:false；省略仍必填，新声明要求 workflow.optional-withdrawal-reason@1.0.0。"],
+  "fixes": ["已受理 durable 原结果查询收到 SDK 明确标记可恢复的短读取预算耗尽后，在原绝对截止前按退避继续只读查询；不重放提交。", "另一字段解除条件必填后清除 SDK 自己生成的旧必填错误，保留其他客户端、子表和服务端错误。"],
+  "affectedUsers": ["使用 durable 持久命令的热点报名应用和包含条件必填或撤回策略的 V2 流程。"],
+  "upgradeSteps": ["使用正式精确版本升级应用 SDK；原结果恢复无需更改服务端协议。", "使用选填撤回原因时，平台必须具备对应能力；已有实例继续使用冻结版本。"],
+  "knownLimitations": ["一次读取仍最多两分钟，总观察仍为原三十分钟；权限、依赖和普通网络错误不会被自动隐藏。", "容量必须在目标硬件上独立测量；单元验证不能证明万人或浏览器洪峰已通过。"],
+  "issues": [],
+  "compatibility": {"node": ">=24", "platform": "durable 恢复沿用既有结果协议；显式选填撤回原因要求 workflow.optional-withdrawal-reason@1.0.0"}
+}

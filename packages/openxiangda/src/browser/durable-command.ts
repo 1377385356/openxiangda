@@ -37,6 +37,11 @@ const terminal = (r?: CommandReceipt) => !!r && ['succeeded', 'rejected', 'expir
 const code = (e: unknown) => String((e as any)?.code || (/^CONCURRENCY_[A-Z_]+$/.test((e as Error)?.message) ? (e as Error).message : 'CONCURRENCY_REQUEST_FAILED'));
 const retryable = (e: unknown) => e instanceof TypeError || Number((e as any)?.status) === 429 || Number((e as any)?.status) >= 500;
 const absent = (e: unknown) => Number((e as any)?.status) === 404 && code(e) === 'CONCURRENCY_COMMAND_NOT_FOUND';
+// A single bounded read expiring is not the original receipt's observation
+// deadline. This classification is deliberately confined to accepted results;
+// it does not imply busy, acceptance, or permission to enqueue again.
+const resultReadExhausted = (e: unknown) => (e as any)?.status === 504 &&
+    (e as any)?.retryable === true && code(e) === 'CONCURRENCY_READ_RECOVERY_EXHAUSTED';
 const canonical = (input: Record<string, unknown>) => JSON.stringify(Object.fromEntries(Object.entries(input).sort(([a], [b]) => a.localeCompare(b))));
 const sleep = (ms: number, signal: AbortSignal) => new Promise<void>((resolve, reject) => {
     if (signal.aborted)
@@ -370,7 +375,7 @@ export class DurableCommandController {
             catch (error) {
                 if (!active())
                     return;
-                if (!isManagedReadBusy(error)) {
+                if (!isManagedReadBusy(error) && !resultReadExhausted(error)) {
                     this.update({ state: 'error', errorCode: code(error), isObserving: false });
                     return;
                 }
