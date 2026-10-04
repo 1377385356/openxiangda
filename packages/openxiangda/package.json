@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.53.0",
+  "version": "2.54.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -74,13 +74,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.74",
-    "openxiangda-contracts": "2.58.0",
-    "openxiangda-devkit-core": "2.46.0",
+    "openxiangda-cli": "2.6.75",
+    "openxiangda-contracts": "2.59.0",
+    "openxiangda-devkit-core": "2.47.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.92",
-    "openxiangda-nest": "2.13.21",
-    "openxiangda-skill-kit": "2.3.72",
+    "openxiangda-mcp": "2.0.93",
+    "openxiangda-nest": "2.13.22",
+    "openxiangda-skill-kit": "2.3.73",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -146,36 +146,37 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.53.0",
+    "version": "2.54.0",
     "status": "reviewed",
-    "title": "独立授权的单记录资料评论",
-    "summary": "标准详情提供单记录评论，读取和新增分别声明，同一成员的数据范围与当前用户授权控制服务端执行。",
+    "title": "按资料权限受控删除关联流程",
+    "summary": "标准详情提供显式的资料删除影响预览与确认，沿同一成员的资料范围复用 Native 事务和 Workflow Kernel 的删除命令与回执。",
     "newFeatures": [
-      "模型可选recordComments分别配置read/create，编译器自动派生data.record-comments@1.0.0，fresh/update自动执行正式SQL迁移。",
-      "平台单记录有界分页、纯文本新增及本人原键回执接口，评论不修改主记录或工作流意见。",
-      "公开列表、新增、回执SDK及ResourceRecordComments标准面板，提交不确定时锁定原键并先核对结果。",
-      "记录锁与唯一约束保障并发容量及幂等，来源版本与评论回执原子保存。CLI模板随SDK精确升级。"
+      "模型可选 recordDeletion.delete，声明自动派生 data.workflow-record-deletion@1.0.0，无需额外初始化开关。",
+      "同一成员须同时拥有资料 read、delete 和全部维护能力，保留原行权限，不授普通编辑或通用流程管理员权。",
+      "公开预览、执行、原回执 SDK 与标准详情弹层；未知结果固定原键、原因和预览，先恢复结果。",
+      "无关联实例沿 Native 事务，唯一关联实例沿 Kernel admin_delete；待启动、多实例及明细另有关联明确阻塞。"
     ],
     "fixes": [],
     "affectedUsers": [
-      "需要独立资料评论权限的V2应用及平台维护者。"
+      "需要将资料维护权限与流程管理员权限分别授予的 V2 应用及平台维护者。"
     ],
     "upgradeSteps": [
-      "消费同源SDK/contracts/devkit与提供data.record-comments@1.0.0的Server，走正式SQL迁移链。",
-      "声明recordComments、同应用能力与职责，保留原资料范围；应用不要为评论另建权限或绕开主记录mutationOwner。",
-      "未知结果保留原请求并查本人回执，仅回执不存在时显式同键重试。"
+      "消费同源 SDK/contracts/devkit 与提供 data.workflow-record-deletion@1.0.0 的 Server。",
+      "显式声明 recordDeletion 与资料 read/delete、维护能力，沿同一成员的数据范围执行。",
+      "未知提交先核原回执；只有专用回执不存在且原预览有效时，显式用原请求重试。"
     ],
     "knownLimitations": [
-      "未发布npm，实际六组应用授权、普通app-admin与PC/390px浏览器验收待共享平台空闲。",
-      "当前仅纯文本评论，不含回复、附件、提及、编辑/删除、通知及旧评论导入；源端附加语义尚未运行核实。",
-      "页内导航和关闭浏览器有未完成保护；当前不支持跨刷新自动续写，需保留原键和正文并通过SDK查询原结果。"
+      "本批仅本地包，无 npm 发布；真实应用六组权限与正式本地部署验收仍待共享平台验证窗口。",
+      "owned 删除上限100条、深度8；多个关联实例、待启动命令及明细关联其他实例不支持自动删除。",
+      "预览有效期五分钟，过期后仍可恢复原回执；原 CSRF 绑定保留在既有512条身份缓存中，容量淘汰、退出或刷新后不保证恢复。页面不跨刷新保存原请求。",
+      "合成组件及隔离数据库证据不代表103条源流程完整业务验收。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
-      "platform": "data.record-comments@1.0.0；正式expand SQL新增附属表，未声明应用与已有流程实例保持原行为。"
+      "platform": "data.workflow-record-deletion@1.0.0；复用既有 Native 与 Kernel 数据表及平台密钥，无新增初始化开关。未声明应用与1.x保持原行为。"
     },
-    "sha256": "6f06443044f74eec12049a8e7c208a84a70a958be5f4495bbdc42e4e953a9184",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.53.0"
+    "sha256": "940ca30e5fa17c12f4e22f675879a02d5f316eee276108ff9ab8b6e000e167b1",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.54.0"
   }
 }
