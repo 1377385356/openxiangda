@@ -3,6 +3,36 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.54.4",
+      "status": "reviewed",
+      "title": "原子业务审批的最终状态合同修正",
+      "summary": "同源SDK的审批事务守卫对齐Workflow实例实际的已通过、已拒绝状态，防止最终审批或驳回被错误阻断。",
+      "newFeatures": [],
+      "fixes": [
+        "expectedTransition.status使用running、approved、rejected、withdrawn；拒绝将任务completed状态当作实例状态。",
+        "Schema与公开TypeScript类型同步，补充四种实际状态与错误completed状态的回归验证。"
+      ],
+      "affectedUsers": [
+        "显式使用definition.commandHandlers及BusinessProcess.commandWithData的V2应用。"
+      ],
+      "upgradeSteps": [
+        "整体使用同源SDK发行，并配套接受实际实例状态的平台Server；在测试环境验证原token、回执、补填及业务效果的原子提交。"
+      ],
+      "knownLimitations": [
+        "这是本机测试候选，npm发布和真实三端业务验收分别记录，源码检查不代表完成交付。",
+        "固定handler仍仅支持approve、reject、withdraw；不降级为分离事务，也不支持跳转、强制决定或自动同意。",
+        "正式npm发行验证仍需配套参考应用锁文件；本机同源制品不替代该门禁。"
+      ],
+      "issues": [],
+      "compatibility": {
+        "node": ">=24",
+        "platform": "workflow.business-data-command@1.0.0，Server使用真实实例状态与同事务Native效果。"
+      },
+      "sha256": "245c53a18b1af890f22f38e5d0f75129e47aaae8898ae98844fa0ebd141ba48b",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.54.4"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.54.3",
       "status": "reviewed",
       "title": "主子资料删除容量说明对齐",

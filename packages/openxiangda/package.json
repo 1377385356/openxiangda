@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.54.3",
+  "version": "2.54.4",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -74,13 +74,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.78",
-    "openxiangda-contracts": "2.59.2",
-    "openxiangda-devkit-core": "2.47.3",
+    "openxiangda-cli": "2.6.79",
+    "openxiangda-contracts": "2.59.3",
+    "openxiangda-devkit-core": "2.47.4",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.96",
-    "openxiangda-nest": "2.13.24",
-    "openxiangda-skill-kit": "2.3.76",
+    "openxiangda-mcp": "2.0.97",
+    "openxiangda-nest": "2.13.25",
+    "openxiangda-skill-kit": "2.3.77",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -146,31 +146,32 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.54.3",
+    "version": "2.54.4",
     "status": "reviewed",
-    "title": "主子资料删除容量说明对齐",
-    "summary": "同源开发者资料说明平台根记录加400条后代的有界删除能力，SDK请求形式保持。",
+    "title": "原子业务审批的最终状态合同修正",
+    "summary": "同源SDK的审批事务守卫对齐Workflow实例实际的已通过、已拒绝状态，防止最终审批或驳回被错误阻断。",
     "newFeatures": [],
     "fixes": [
-      "修正删除说明中旧100行上限，补充401行总量、嵌套共用预算、末行核对以及普通管理员100项边界。"
+      "expectedTransition.status使用running、approved、rejected、withdrawn；拒绝将任务completed状态当作实例状态。",
+      "Schema与公开TypeScript类型同步，补充四种实际状态与错误completed状态的回归验证。"
     ],
     "affectedUsers": [
-      "已显式开启资料维护删除、需要删除多张owned子表的V2应用。"
+      "显式使用definition.commandHandlers及BusinessProcess.commandWithData的V2应用。"
     ],
     "upgradeSteps": [
-      "同步同源CLI/Skill使用资料，并使用已落实共享400行后代预算的平台Server；在本地验证资料授权与实际业务。"
+      "整体使用同源SDK发行，并配套接受实际实例状态的平台Server；在测试环境验证原token、回执、补填及业务效果的原子提交。"
     ],
     "knownLimitations": [
-      "仍只支持零个或唯一根关联实例；待启动、多流程和明细其他关联阻塞。关联流程最多100条、深度8及原字节/超时预算保持。",
-      "普通管理员公开请求仍最多100项，只有服务器核对的内部DELETE集合可展开至总401条；请求不能自行扩大预算。",
-      "本批不发布npm；源码及隔离数据库验证不能替代真实App六组、双端和103条源流程验收。"
+      "这是本机测试候选，npm发布和真实三端业务验收分别记录，源码检查不代表完成交付。",
+      "固定handler仍仅支持approve、reject、withdraw；不降级为分离事务，也不支持跳转、强制决定或自动同意。",
+      "正式npm发行验证仍需配套参考应用锁文件；本机同源制品不替代该门禁。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
-      "platform": "data.workflow-record-deletion@1.0.0，Server owned删除预算从共享DATA_SUBTABLE_MAX_TOTAL_ROWS派生。"
+      "platform": "workflow.business-data-command@1.0.0，Server使用真实实例状态与同事务Native效果。"
     },
-    "sha256": "3fa7938d4646ad6773099e52086a1142ae7aa380e1e78c692608e3916c4fcce4",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.54.3"
+    "sha256": "245c53a18b1af890f22f38e5d0f75129e47aaae8898ae98844fa0ebd141ba48b",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.54.4"
   }
 }
