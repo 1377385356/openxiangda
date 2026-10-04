@@ -394,6 +394,11 @@ export function normalizeConfiguration(
           ...(operation.platformAccess
             ? {
                 platformAccess: {
+                  ...(operation.platformAccess.dataCommands ? { dataCommands: { mode: operation.platformAccess.dataCommands.mode } } : {}),
+                  ...(operation.platformAccess.recordEdit ? { recordEdit: {
+                    resourceCode: operation.platformAccess.recordEdit.resourceCode,
+                    fieldCodes: uniqueSorted(operation.platformAccess.recordEdit.fieldCodes),
+                  } } : {}),
                   ...(operation.platformAccess.roleAssertions ? {
                     roleAssertions: { roleCodes: uniqueSorted(operation.platformAccess.roleAssertions.roleCodes) },
                   } : {}),
@@ -1750,7 +1755,12 @@ function compileOperations(config: OpenXiangdaAppConfig) {
       ...(operation.platformAccess
         ? {
             platformAccess: {
-              ...(operation.platformAccess.roleAssertions ? {
+              ...(operation.platformAccess.dataCommands ? { dataCommands: { mode: operation.platformAccess.dataCommands.mode } } : {}),
+                  ...(operation.platformAccess.recordEdit ? { recordEdit: {
+                    resourceCode: operation.platformAccess.recordEdit.resourceCode,
+                    fieldCodes: uniqueSorted(operation.platformAccess.recordEdit.fieldCodes),
+                  } } : {}),
+                  ...(operation.platformAccess.roleAssertions ? {
                 roleAssertions: { roleCodes: uniqueSorted(operation.platformAccess.roleAssertions.roleCodes) },
               } : {}),
               ...(operation.platformAccess.directory
@@ -1979,6 +1989,7 @@ function runtimeProtocolCapabilities(config: OpenXiangdaAppConfig) {
       ? ['business-process.durable-command']
       : []),
     ...(operations.some(operation => operation.platformAccess?.dataCommands) ? ['data.business-commands'] : []),
+    ...(operations.some(operation => operation.platformAccess?.recordEdit) ? ['data.record-edit'] : []),
     ...(operations.some(operation => operation.platformAccess?.decimalReservation) ||
       config.events?.subscriptions.some(subscription => subscription.platformAccess?.decimalReservation)
       ? ['data.decimal-reservations']

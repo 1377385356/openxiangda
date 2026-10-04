@@ -1340,12 +1340,14 @@ export async function searchResource(
     cursor?: string;
     bindings?: Record<string, unknown>;
     launch?: DataFieldSourceQuery['launch'];
+    action?: DataFieldSourceQuery['action'];
   },
 ) {
   const query: DataFieldSourceQuery = {
     schemaVersion: SCHEMA_VERSIONS.dataFieldSourceQuery,
     operation: options.operation,
     ...(options.launch ? { launch: options.launch } : {}),
+    ...(options.action ? { action: options.action } : {}),
     ...(options.keyword.trim() ? { keyword: options.keyword.trim() } : {}),
     ...(options.cursor ? { cursor: options.cursor } : {}),
     ...(options.bindings && Object.keys(options.bindings).length

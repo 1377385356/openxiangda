@@ -457,3 +457,18 @@ if (output.status === 'pending') {
 后，调用 `businessDirectory.selectedUser(userId)`。仅传标准人员选择器返回的确定 ID；姓名、工号和部门均由平台返回，不能相信表单传入快照。
 
 此动作的调用者还需要既有 `app:<appCode>:directory:read` 权限；平台复核当前租户、环境、目录范围和人员有效期，一次只解析一人。普通用户本人报名继续使用 `currentInitiator()`。身份快照不是永久授权凭据，后续业务事务仍需检查角色、状态与额度。平台能力为 `directory.selected-user` 1.0.0；失败时保留原操作，不回退姓名匹配或应用人员表。
+## 具名资料编辑的字段输入
+
+action-owned 资源需要跨字段业务校验时，可在具名动作声明
+`platformAccess: { dataCommands: { mode: 'recoverable-native' }, recordEdit: { resourceCode: 'requests', fieldCodes: ['name', 'reason'] } }`。
+只允许一个资源、最多200个已声明可更新的普通字段；系统字段、流水号和子表不适用。普通CRUD权限不会因此开放。
+声明自动要求 `data.record-edit` 1.0.0 平台能力；仅支持旧具名数据命令的平台需要先升级。
+
+Field Kit 的 `SurfaceFieldRenderers.recordEditInput` 接受 `{ operationCode, recordId, expectedRevision }`，
+字典与受限人员通过现有接口读取保存资料的范围，不能用浏览器bindings替代。
+上传继续使用 `uploadOperationManagedFile` 的update意图及同记录ID。
+平台验证同一成员同时拥有动作能力与资料read，再按原RLS读取；首次commitCommand仅接受同资源的一条update和声明字段，
+CAS与写后范围检查同事务执行。应用仍负责业务规则和字典guards。
+
+保存与核对共用同一operation，首次业务读取前先resolveOriginalCommand；not_observed只表示观察时未见回执，
+不自动重试或换键。管理员资料修改不会重写已完成意见、已走路径或已派审批人，后续任务按平台原Native修订协议处理。

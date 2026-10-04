@@ -1126,6 +1126,12 @@ export interface DataFieldSourceLaunchBinding {
   operationCode: string;
 }
 
+export interface DataRecordEditInput {
+  operationCode: string;
+  recordId: string;
+  expectedRevision: number;
+}
+
 export interface DataFieldSourceQuery {
   schemaVersion: typeof SCHEMA_VERSIONS.dataFieldSourceQuery;
   operation: "create" | "update";
@@ -1135,6 +1141,7 @@ export interface DataFieldSourceQuery {
   bindings?: Record<string, unknown>;
   /** 正式流程发起意图；平台核验字段绑定和动作能力，目标仍按当前用户读取。 */
   launch?: DataFieldSourceLaunchBinding;
+  action?: DataRecordEditInput;
 }
 
 export interface DataFieldSourcePage {
@@ -1158,6 +1165,7 @@ export interface UserCandidateSearch {
 
 export type DataFieldUserCandidateQuery = UserCandidateSearch & {
   launch?: DataFieldSourceLaunchBinding;
+  action?: DataRecordEditInput;
 } & (
   | { operation: 'create'; recordId?: never; expectedRevision?: never }
   | { operation: 'update'; recordId: string; expectedRevision: number }

@@ -24,6 +24,7 @@ import type {
   DataEventFieldChange,
   DataFieldSurface,
   DataFieldSourceLaunchBinding,
+  DataRecordEditInput,
   DataFileRef,
   DepartmentReferenceValue,
   EventValueDigest,
@@ -133,6 +134,7 @@ export interface SurfaceFieldValueContext {
 
 export interface SurfaceFieldRenderers {
   referenceLaunch?: DataFieldSourceLaunchBinding;
+  recordEditInput?: DataRecordEditInput;
   renderExtra?: (context: SurfaceFieldEditContext) => ReactNode;
   renderScope?: (context: SurfaceFieldEditContext) => ReactNode;
   renderSubtable?: (context: SurfaceFieldEditContext) => ReactNode;
@@ -150,7 +152,7 @@ export interface SurfaceFieldRenderers {
 function CandidateFieldControl({ field, mobile, disabled, operation, resourceCode, recordId, expectedRevision, workflowCandidateBinding, renderers, value, onChange, id }:
   SurfaceFieldEditContext & Pick<ConstrainedUserFieldProps, 'value' | 'onChange' | 'id'> & { mobile?: boolean; renderers?: SurfaceFieldRenderers }) {
   const result = userCandidateFieldContext({ resourceCode, fieldCode: field.key, operation, recordId,
-    expectedRevision, workflowCandidateBinding, launch: renderers?.referenceLaunch,
+    expectedRevision, workflowCandidateBinding, launch: renderers?.referenceLaunch, action: renderers?.recordEditInput,
     requiresSavedScope: Boolean(field.userCandidates?.scope?.field) });
   return <ConstrainedUserField mobile={mobile} disabled={disabled} multiple={field.type.endsWith('.multiple')}
     placeholder={`选择${field.label}`} context={result.context} unavailableReason={result.error} value={value} onChange={onChange} id={id} />;
@@ -405,6 +407,7 @@ export function SurfaceFieldControl({
           fieldCode={field.key}
           operation={operation}
           launch={renderers?.referenceLaunch}
+          action={renderers?.recordEditInput}
           resourceCode={resourceCode}
         />
       ) : (
@@ -444,6 +447,7 @@ export function SurfaceFieldControl({
           fieldCode={field.key}
           operation={operation}
           launch={renderers?.referenceLaunch}
+          action={renderers?.recordEditInput}
           resourceCode={resourceCode}
         />
       );
@@ -599,6 +603,7 @@ export function MobileSurfaceFieldControl({
           mobile
           operation={operation}
           launch={renderers?.referenceLaunch}
+          action={renderers?.recordEditInput}
           resourceCode={resourceCode}
         />
       ) : (
@@ -640,6 +645,7 @@ export function MobileSurfaceFieldControl({
           mobile
           operation={operation}
           launch={renderers?.referenceLaunch}
+          action={renderers?.recordEditInput}
           resourceCode={resourceCode}
         />
       );

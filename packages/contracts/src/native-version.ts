@@ -12,6 +12,7 @@ export const PLATFORM_CAPABILITY_CONTRACT_VERSIONS = {
   "environment.runtime-lifecycle": "1.0.0",
   "data-api-v2": "1.1.0",
   "data.business-commands": "1.0.0",
+  "data.record-edit": "1.0.0",
   "data.native-golden-crud": "1.0.0",
   "data.audit-read-access": "1.0.0",
   "data.managed-files": "1.1.0",

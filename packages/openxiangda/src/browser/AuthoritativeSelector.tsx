@@ -6,6 +6,7 @@ import {
 import { Avatar, Select, Space, Spin, Tag, Typography } from 'antd';
 import type {
   DataFieldSourceLaunchBinding,
+  DataRecordEditInput,
   DepartmentReferenceValue,
   DirectoryEntry,
   ResourceReferenceValue,
@@ -114,6 +115,11 @@ function useStableSourceLaunch(input?: DataFieldSourceLaunchBinding) {
     [input?.workflowCode, input?.operationCode]);
 }
 
+function useStableRecordEdit(input?: DataRecordEditInput) {
+  return useMemo(() => input ? { operationCode: input.operationCode, recordId: input.recordId, expectedRevision: input.expectedRevision } : undefined,
+    [input?.operationCode, input?.recordId, input?.expectedRevision]);
+}
+
 async function searchSource(
   source: Source,
   operation: 'create' | 'update',
@@ -123,6 +129,7 @@ async function searchSource(
   fieldCode?: string,
   bindings?: Record<string, unknown>,
   launch?: DataFieldSourceLaunchBinding,
+  action?: DataRecordEditInput,
 ) {
   try {
   if (source === 'resource') {
@@ -130,6 +137,7 @@ async function searchSource(
     const page = await searchResource(resourceCode, fieldCode, {
       operation,
       launch,
+      action,
       keyword,
       cursor,
       bindings,
@@ -187,6 +195,7 @@ export type AuthoritativeSelectorProps = {
   fieldCode?: string;
   bindings?: Record<string, unknown>;
   launch?: DataFieldSourceLaunchBinding;
+  action?: DataRecordEditInput;
 };
 
 export function AuthoritativeSelector({
@@ -202,8 +211,10 @@ export function AuthoritativeSelector({
   fieldCode,
   bindings,
   launch: launchInput,
+  action: actionInput,
 }: AuthoritativeSelectorProps) {
   const launch = useStableSourceLaunch(launchInput);
+  const action = useStableRecordEdit(actionInput);
   const [options, setOptions] = useState<Option[]>(() =>
     storedReferenceOptions(source, value)
   );
@@ -216,6 +227,15 @@ export function AuthoritativeSelector({
   const values = useMemo(() => storedValues(value), [value]);
   const valuesRef = useRef(values);
   valuesRef.current = values;
+
+  useEffect(() => {
+    ++requestSequence.current;
+    setCursor(null);
+    setLoading(false);
+    setError('');
+    setOptions(current => current.filter(option => valuesRef.current.includes(option.value)));
+    return () => { ++requestSequence.current; };
+  }, [action, launch, disabled, operation, resourceCode, fieldCode]);
 
   useEffect(() => {
     setOptions(current => mergeOptions(current, storedReferenceOptions(source, value)));
@@ -231,7 +251,7 @@ export function AuthoritativeSelector({
     const timer = window.setTimeout(() => {
       setLoading(true);
       setError('');
-      void searchSource(source, operation, keyword, undefined, resourceCode, fieldCode, bindings, launch)
+      void searchSource(source, operation, keyword, undefined, resourceCode, fieldCode, bindings, launch, action)
         .then(page => {
           if (sequence !== requestSequence.current) return;
           setOptions(current => {
@@ -253,14 +273,14 @@ export function AuthoritativeSelector({
         });
     }, 300);
     return () => window.clearTimeout(timer);
-  }, [launch, bindings, disabled, fieldCode, keyword, operation, resourceCode, source]);
+  }, [action, launch, bindings, disabled, fieldCode, keyword, operation, resourceCode, source]);
 
   useEffect(() => {
     if (disabled || !open || keyword.trim().length >= 2) return;
     const sequence = ++requestSequence.current;
     setLoading(true);
     setError('');
-    void searchSource(source, operation, '', undefined, resourceCode, fieldCode, bindings, launch)
+    void searchSource(source, operation, '', undefined, resourceCode, fieldCode, bindings, launch, action)
       .then(page => {
         if (sequence !== requestSequence.current) return;
         setOptions(current => {
@@ -279,22 +299,24 @@ export function AuthoritativeSelector({
       .finally(() => {
         if (sequence === requestSequence.current) setLoading(false);
       });
-  }, [launch, bindings, disabled, fieldCode, keyword, open, operation, resourceCode, source]);
+  }, [action, launch, bindings, disabled, fieldCode, keyword, open, operation, resourceCode, source]);
 
   const loadNext = () => {
     if (!cursor || loading) return;
+    const sequence = ++requestSequence.current;
     const nextCursor = cursor;
     setLoading(true);
     setError('');
-    void searchSource(source, operation, keyword, nextCursor, resourceCode, fieldCode, bindings, launch)
+    void searchSource(source, operation, keyword, nextCursor, resourceCode, fieldCode, bindings, launch, action)
       .then(page => {
+        if (sequence !== requestSequence.current) return;
         setOptions(current => mergeOptions(current, page.items));
         setCursor(page.nextCursor);
       })
-      .catch(reason =>
-        setError(reason instanceof Error ? reason.message : String(reason))
-      )
-      .finally(() => setLoading(false));
+      .catch(reason => {
+        if (sequence === requestSequence.current) setError(reason instanceof Error ? reason.message : String(reason));
+      })
+      .finally(() => { if (sequence === requestSequence.current) setLoading(false); });
   };
 
   return (
@@ -421,14 +443,15 @@ export function MobileAuthoritativeSelector(props: AuthoritativeSelectorProps) {
 }
 
 function MobileReferenceSelection({ value, onChange, source, operation, multiple = false,
-  placeholder, resourceCode, fieldCode, bindings, launch: launchInput, onClose }: AuthoritativeSelectorProps & { onClose: () => void }) {
+  placeholder, resourceCode, fieldCode, bindings, launch: launchInput, action: actionInput, onClose }: AuthoritativeSelectorProps & { onClose: () => void }) {
   const launch = useStableSourceLaunch(launchInput);
+  const action = useStableRecordEdit(actionInput);
   const copy = mobileReferenceSelectorCopy(placeholder);
   const [selected, setSelected] = useState(() => storedReferenceOptions(source, value));
   const [keyword, setKeyword] = useState('');
   const query = keyword.trim();
-  const loadPage = useCallback((cursor?: string) => searchSource(source, operation, query, cursor, resourceCode, fieldCode, bindings, launch),
-    [launch, bindings, fieldCode, operation, query, resourceCode, source]);
+  const loadPage = useCallback((cursor?: string) => searchSource(source, operation, query, cursor, resourceCode, fieldCode, bindings, launch, action),
+    [action, launch, bindings, fieldCode, operation, query, resourceCode, source]);
   const page = useMobilePickerPage({ loadPage, enabled: query.length !== 1, delay: query ? 300 : 0 });
   const choices = [...new Map(page.items.map(item => [item.value, item])).values()];
   const known = new Map([...selected, ...choices].map(item => [item.value, item]));
