@@ -2,6 +2,7 @@ import { applicationCode } from '../../runtime-meta';
 import { readPendingWorkflowSubmission, writePendingWorkflowSubmission, clearPendingWorkflowSubmission, workflowSubmissionScope, submissionLocatorStorage, standardProcessWasRejected, type PendingWorkflowSubmission } from '../../workflow-submission-recovery';
 import { readPendingWorkflowTaskCommand, writePendingWorkflowTaskCommand, clearPendingWorkflowTaskCommand, workflowTaskCommandScope, workflowCommandTokenDigest, workflowTaskCommandWasRejected, type PendingWorkflowTaskCommand } from '../../workflow-task-command-recovery';
 import { WorkflowTaskForm, useWorkflowTaskForm } from './WorkflowTaskForm';
+import { retainedWorkflowOperation, workflowOperationSignature, workflowOperationStringError, workflowOperationInputFailure } from '../../workflow-operation-input';
 import { WorkflowPendingCommandGuard, WorkflowTaskCommandReceipt } from './WorkflowTaskCommandReceipt';
 import { PresentationTime, usePresentationTimeZone } from '../../presentation-time';
 import {
@@ -277,26 +278,6 @@ function workflowSurfaceMatchesInstance(
 
 function surfaceBusinessDetail(surface: WorkflowSurface): WorkflowBusinessDetail {
   return normalizeWorkflowBusinessDetail(surface.presentation.businessDetail);
-}
-
-function workflowOperationSignature(operation: WorkflowOperationSurface) {
-  return JSON.stringify({
-    key: operation.key,
-    kind: operation.kind,
-    label: operation.label,
-    placement: operation.placement,
-    group: operation.group,
-    audience: operation.audience,
-    emphasis: operation.emphasis,
-    tone: operation.tone,
-    visible: operation.visible,
-    enabled: operation.enabled,
-    disabledReason: operation.disabledReason,
-    inputSchema: operation.inputSchema,
-    uiSchema: operation.uiSchema,
-    execute: operation.execute,
-    refresh: operation.refresh,
-  });
 }
 
 const WORKFLOW_APP_ACTION_DISABLED_REASON = '应用动作由应用页面负责';
@@ -710,7 +691,9 @@ function schemaProperties(operation: WorkflowOperationSurface) {
         type?: string;
         title?: string;
         format?: string;
+        minLength?: number;
         maxLength?: number;
+        pattern?: string;
         minItems?: number;
         maxItems?: number;
         enum?: string[];
@@ -740,6 +723,10 @@ function OperationFields({
       {schemaProperties(operation).map(({ key, property, required, ui }) => {
         const rules = [
           ...(required ? [{ required: true, message: `请填写${property.title || key}` }] : []),
+          ...(property.type === 'string' ? [{ validator: async (_rule: unknown, value: unknown) => {
+            const error = workflowOperationStringError(property, value, required, property.title || key);
+            if (error) throw new Error(error);
+          } }] : []),
           ...(property.type === 'array' ? [{ validator: async (_rule: unknown, value: unknown) => {
             if (value == null && !required) return;
             if (!Array.isArray(value) || value.length < (property.minItems ?? 0) || value.length > (property.maxItems ?? 200)) {
@@ -902,6 +889,7 @@ function WorkflowOperations({
   } | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const [operationError, setOperationError] = useState('');
+  const [retainRefusedInput, setRetainRefusedInput] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [draftLocked, setDraftLocked] = useState(false);
   const [fileLocked, setFileLocked] = useState(false);
@@ -935,18 +923,13 @@ function WorkflowOperations({
     timer = setTimeout(tick, Math.min(commandExpiresAt - Date.now(), 2_147_483_647));
     return () => clearTimeout(timer);
   }, [surface.commandToken, commandExpiresAt]);
-  const selected = !commandNeedsRefresh && selectedState?.surface === surface
-    ? operations.find(
-        (operation) =>
-          operation.key === selectedState.operation.key &&
-          workflowOperationSignature(operation) ===
-            selectedState.operationSignature,
-      ) || null
-    : null;
+  const selected = commandNeedsRefresh ? null
+    : retainedWorkflowOperation(selectedState, surface, operations, retainRefusedInput);
   useEffect(() => {
     if (selectedState && !selected && !submitting && !unknown) setSelectedState(null);
   }, [selected, selectedState, submitting, unknown]);
   const selectOperation = (operation: WorkflowOperationSurface) => {
+    setRetainRefusedInput(false);
     setOperationError('');
     setSelectedState({
       operation,
@@ -1018,9 +1001,9 @@ function WorkflowOperations({
     } catch (error) {
       if (!mounted.current) return;
       const rejected = !recovering && workflowTaskCommandWasRejected(error);
-      if (rejected) { clearLocator(wire.key); request.current = null; setSelectedState(null); }
+      if (rejected) { clearLocator(wire.key); request.current = null; setRetainRefusedInput(true); }
       else { setUnknown(true); setSelectedState(null); }
-      const failure = errorMessage(error, '任务操作尚未完成');
+      const failure = workflowOperationInputFailure(error) || errorMessage(error, '任务操作尚未完成');
       setOperationError(failure);
       if (rejected) {
         message.error(failure);
@@ -1134,7 +1117,7 @@ function WorkflowOperations({
       </div>
       <OperationDialog
         error={operationError}
-        onCancel={() => setSelectedState(null)}
+        onCancel={() => { setRetainRefusedInput(false); setSelectedState(null); }}
         onSubmit={(values) => void submit(values)}
         operation={selected}
         submitting={submitting}
