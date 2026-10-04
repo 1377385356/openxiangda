@@ -117,6 +117,31 @@ function fixture(): OpenXiangdaAppDeclaration {
   };
 }
 
+test('optional withdrawal reasons close both compiler capabilities and JSON Schema', () => {
+  const source = fixture();
+  source.workflows!.definitions![0]!.definition.instanceCommands = { withdraw: { reasonRequired: false } };
+  const validate = new Ajv2020({ strict: false }).compile(workflowDefinitionSchema);
+  const output = compileApplicationSources(defineOpenXiangdaApp(source));
+  const definition = output.config.value.workflows.definitions[0]!.definition;
+  assert.equal(validate(definition), true, JSON.stringify(validate.errors));
+  const platform = compileNativeApplicationConfiguration({ appCode: source.app.code,
+    configBytes: output.config.content, expectedConfigDigest: output.config.digest,
+    contractBytes: output.contracts.content, expectedContractDigest: output.contracts.digest });
+  const required = requiredPlatformCapabilitiesFromConfiguration(output.config.value);
+  assert.deepEqual(required, platform.requiredPlatformCapabilities);
+  assert.equal(required.find(item => item.code === 'workflow.optional-withdrawal-reason')?.contractVersion, '1.0.0');
+  const defaultOutput = compileApplicationSources(defineOpenXiangdaApp(fixture()));
+  assert.equal(requiredPlatformCapabilitiesFromConfiguration(defaultOutput.config.value)
+    .some(item => item.code === 'workflow.optional-withdrawal-reason'), false);
+  for (const instanceCommands of [{ withdraw: {} }, { withdraw: { reasonRequired: 'false' } },
+    { terminate: { capability, reasonRequired: false } }]) {
+    const invalid = { ...definition, instanceCommands };
+    assert.equal(validate(invalid), false);
+    assert.throws(() => defineOpenXiangdaApp({ ...source, workflows: { ...source.workflows!,
+      definitions: [{ ...source.workflows!.definitions![0]!, definition: invalid as any }] } }));
+  }
+});
+
 test('official application and platform compilers preserve policies and identical capability closure', () => {
   const output = compileApplicationSources(defineOpenXiangdaApp(fixture()));
   const platform = compileNativeApplicationConfiguration({

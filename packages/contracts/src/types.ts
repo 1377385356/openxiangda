@@ -2504,7 +2504,7 @@ export interface WorkflowDefinition {
 }
 
 export interface WorkflowInstanceCommandPolicies {
-  withdraw?: { beforeFact: string };
+  withdraw?: { beforeFact?: string; reasonRequired?: boolean };
   terminate?: { capability: string; beforeFact?: string };
 }
 

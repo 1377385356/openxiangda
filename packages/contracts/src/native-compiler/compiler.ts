@@ -704,6 +704,10 @@ export function compileRequiredPlatformCapabilitiesV3(
           declaration: config.workflows.definitions.filter((item: JsonObject) => item.definition.instanceCommands !== undefined),
         }]
       : []),
+    ...(config.workflows.definitions.some((item: JsonObject) => item.definition.instanceCommands?.withdraw?.reasonRequired === false)
+      ? [{ code: 'workflow.optional-withdrawal-reason' as const,
+          declaration: config.workflows.definitions.filter((item: JsonObject) => item.definition.instanceCommands?.withdraw?.reasonRequired === false) }]
+      : []),
     ...(config.workflows.definitions.some((item: JsonObject) => item.definition.rejectionNotification !== undefined)
       ? [{
           code: 'workflow.rejection-notification' as const,

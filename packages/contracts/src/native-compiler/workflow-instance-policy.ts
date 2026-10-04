@@ -37,8 +37,9 @@ export function validateWorkflowInstanceCommandPolicies(
   for (const [command, raw] of Object.entries(policies)) {
     const policy = object(raw);
     const keys =
-      command === 'withdraw' ? ['beforeFact'] : ['beforeFact', 'capability'];
-    if (!policy || Object.keys(policy).some((key) => !keys.includes(key))) {
+      command === 'withdraw' ? ['beforeFact', 'reasonRequired'] : ['beforeFact', 'capability'];
+    if (!policy || !Object.keys(policy).length || Object.keys(policy).some((key) => !keys.includes(key)) ||
+      (Object.hasOwn(policy, 'reasonRequired') && typeof policy.reasonRequired !== 'boolean')) {
       errors.push(`WORKFLOW_INSTANCE_COMMAND_POLICY_INVALID:${command}`);
       continue;
     }
@@ -57,7 +58,7 @@ export function validateWorkflowInstanceCommandPolicies(
         errors.push('WORKFLOW_INSTANCE_TERMINATE_CAPABILITY_INVALID');
       }
     }
-    if (command === 'withdraw' || policy.beforeFact !== undefined) {
+    if (Object.hasOwn(policy, 'beforeFact')) {
       const fact = policy.beforeFact;
       const schema = object(definition.inputSchema);
       const property = object(object(schema?.properties)?.[fact]);
@@ -96,6 +97,13 @@ export function workflowInstanceTerminateCapabilityAllowed(
   );
 }
 
+/** Frozen instance policy; omitted declarations retain the required default. */
+export function workflowInstanceWithdrawalReasonRequired(
+  policies: WorkflowInstanceCommandPolicies | undefined,
+): boolean {
+  return policies?.withdraw?.reasonRequired !== false;
+}
+
 // Require an offset and reject calendar normalization such as February 30.
 export function workflowPolicyTimestamp(value: unknown): number | null {
   if (typeof value !== 'string') return null;
@@ -130,7 +138,7 @@ export function workflowInstanceCommandDeadlineError(
   databaseNow: Date | string
 ): string | null {
   const policy = policies?.[command];
-  if (!policy || (command === 'terminate' && policy.beforeFact === undefined))
+  if (!policy || policy.beforeFact === undefined)
     return null;
   const beforeFact = policy.beforeFact;
   const values = object(facts);

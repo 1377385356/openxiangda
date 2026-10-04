@@ -5660,9 +5660,10 @@ export const workflowDefinitionSchema = {
         withdraw: {
           type: "object",
           additionalProperties: false,
-          required: ["beforeFact"],
+          minProperties: 1,
           properties: {
             beforeFact: { type: "string", pattern: "^[A-Za-z][A-Za-z0-9_]{0,62}$" },
+            reasonRequired: { type: "boolean" },
           },
         },
         terminate: {

@@ -5,6 +5,7 @@ import {
   validateWorkflowInstanceCommandPolicies,
   workflowInstanceCommandDeadlineError,
   workflowInstanceTerminateCapabilityAllowed,
+  workflowInstanceWithdrawalReasonRequired,
   workflowPolicyTimestamp,
 } from '../src/native-compiler/workflow-instance-policy.js';
 import type { WorkflowInstanceCommandPolicies } from '../src/types.js';
@@ -31,6 +32,24 @@ const context = {
   capabilities: [capability],
   fields: new Map([['starts_at', { type: 'datetime', nullable: false }]]),
 };
+
+test('withdrawal reason opt-in is independent from deadlines and cannot relax termination', () => {
+  assert.equal(workflowInstanceWithdrawalReasonRequired(undefined), true);
+  assert.equal(workflowInstanceWithdrawalReasonRequired(policies), true);
+  for (const withdraw of [{ reasonRequired: false }, { reasonRequired: true },
+    { beforeFact: 'startsAt', reasonRequired: false }]) {
+    assert.deepEqual(validateWorkflowInstanceCommandPolicies({ ...fixture(), instanceCommands: { withdraw } }, context), []);
+  }
+  const optional = { withdraw: { reasonRequired: false } };
+  assert.equal(workflowInstanceWithdrawalReasonRequired(optional), false);
+  assert.equal(workflowInstanceCommandDeadlineError(optional, 'withdraw', {}, new Date()), null);
+  assert.equal(workflowInstanceCommandDeadlineError({ withdraw: { beforeFact: 'startsAt', reasonRequired: false } },
+    'withdraw', { startsAt: '2026-09-08T09:00:00+08:00' }, '2026-09-08T09:00:00+08:00'), 'WORKFLOW_V2_CANCELLATION_DEADLINE_PASSED');
+  for (const instanceCommands of [{ withdraw: { reasonRequired: 'false' } }, { withdraw: { reasonRequired: null } },
+    { withdraw: { beforeFact: undefined } }, { terminate: { capability, reasonRequired: false } }]) {
+    assert.ok(validateWorkflowInstanceCommandPolicies({ ...fixture(), instanceCommands }, context).length);
+  }
+});
 
 test('policy contracts are optional and validate the declared owner and required fact', () => {
   assert.deepEqual(validateWorkflowInstanceCommandPolicies({}, context), []);
