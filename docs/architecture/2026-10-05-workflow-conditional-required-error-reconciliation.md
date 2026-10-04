@@ -22,4 +22,4 @@ SDK 只登记自己因顶层 WORKFLOW_TASK_FORM_REQUIRED 写入的具体字段/�
 
 ## 实际源码验证
 
-verify:affected 12/12任务成功（24.813秒），包含boundary/orchestration、受影响包类型/测试/构建及应用样例。新增6项与原任务表单8项，正式 styles loader 下14项通过。首次手工命令遗漏仓库 test/register-styles.mjs 导致原测试在CSS import处无法运行，新纯函数6项当时通过；没有降低校验，按仓库正式测试入口恢复。真实页面尚未换SDK，不记PLT-029业务关闭。
+verify:affected 12/12任务成功（24.813秒），包含boundary/orchestration、受影响包类型/测试/构建及应用样例。新增6项与原任务表单7项，正式 styles loader 下13项通过。首次手工命令遗漏仓库 test/register-styles.mjs 导致原测试在CSS import处无法运行，新纯函数6项当时通过；没有降低校验，按仓库正式测试入口恢复。真实页面尚未换SDK，不记PLT-029业务关闭。
