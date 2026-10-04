@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.52.0",
+  "status": "reviewed",
+  "title": "独立授权的单记录资料打印",
+  "summary": "标准资料详情提供PC与手机打印预览，读取和打印均使用当前身份的独立打印许可及原数据范围。",
+  "newFeatures": [
+    "模型新增可选 recordPrint 声明，编译器同源派生 data.record-print@1.0.0。",
+    "平台先筛选同一成员的资料读取和全部打印能力，再执行原RLS、Perspective、字段权限与脱敏。",
+    "公开 loadNativeRecordPrint 与 ResourceRecordPrintPreview，标准详情直接提供打印入口；打印前重新读取当前资料，失败和身份变化清除旧预览。",
+    "CLI模板随根包更新精确SDK依赖；平台能力自动注册，不增加初始化SQL、开关或数据表。"
+  ],
+  "fixes": [],
+  "affectedUsers": ["需要为业务资料配置独立打印权限的V2应用及维护者。"],
+  "upgradeSteps": [
+    "消费同源SDK、contracts及devkit，使用提供 data.record-print@1.0.0 的Server。",
+    "声明 recordPrint.read、同应用能力及对应职责，沿既有资料范围和字段规则配置打印许可。"
+  ],
+  "knownLimitations": [
+    "尚未发布npm；真实应用六组权限和PC/390px浏览器验收待共享平台空闲。",
+    "当前只支持主记录；可读子表明确返回409，PDF模板、完整子表快照、签章和源打印模板等价另行实现。",
+    "附件及图片打印名称和大小，富文本转安全文本；不自动下载附件。",
+    "独立许可保护平台打印接口与标准入口；已读取资料的截图或浏览器自行打印不由平台阻止。"
+  ],
+  "issues": [],
+  "compatibility": {
+    "node": ">=24",
+    "platform": "data.record-print@1.0.0；未声明应用继续原行为，已有流程定义及历史实例不迁绑。"
+  }
+}
