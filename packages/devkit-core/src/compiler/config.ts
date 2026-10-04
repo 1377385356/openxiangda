@@ -252,6 +252,7 @@ export interface AppDataResourceDeclaration {
   /** Business record viewers may read workflow history; omission disables this entry. */
   workflowHistory?: { read: string[] | boolean };
   recordPrint?: { read: string[] | boolean };
+  recordComments?: { read: string[] | boolean; create: string[] | boolean };
   invariants?: DataResource['invariants'];
   decimalReservationLifecycle?: DataResource['decimalReservationLifecycle'];
   uniqueKeys?: DataResource['uniqueKeys'];
@@ -6612,6 +6613,12 @@ function validateCapabilityClosure(
   for (const [resourceIndex, rawResource] of resources.entries()) {
     const resource = object(rawResource);
     const resourceOwner = `data.resources.${string(resource.code)}`;
+    for (const mode of ['read', 'create']) {
+      const list = object(resource.recordComments)[mode];
+      for (const capability of Array.isArray(list) ? list : []) {
+        references.push({ capability: string(capability), path: `data.resources[${resourceIndex}].recordComments.${mode}` });
+      }
+    }
     const printRead = object(resource.recordPrint).read;
     for (const capability of Array.isArray(printRead) ? printRead : []) {
       references.push({ capability: string(capability), path: `data.resources[${resourceIndex}].recordPrint.read` });
@@ -7085,6 +7092,12 @@ export function materializeDataResource(
     ...(declaration.invariants ? { invariants: declaration.invariants } : {}),
     ...(declaration.decimalReservationLifecycle !== undefined ? { decimalReservationLifecycle: declaration.decimalReservationLifecycle } : {}),
     ...(uniqueKeys !== undefined ? { uniqueKeys } : {}),
+    ...(declaration.recordComments === undefined ? {} : { recordComments: {
+      read: declaration.recordComments.read === false ? [] : declaration.recordComments.read === true
+        ? [capabilities.read] : [...declaration.recordComments.read],
+      create: declaration.recordComments.create === false ? [] : declaration.recordComments.create === true
+        ? [capabilities.read] : [...declaration.recordComments.create],
+    } }),
     ...(declaration.recordPrint === undefined ? {} : { recordPrint: {
       read: declaration.recordPrint.read === false ? [] : declaration.recordPrint.read === true
         ? [capabilities.read] : [...declaration.recordPrint.read],
@@ -7149,6 +7162,7 @@ export function validateAppDeclaration(value: unknown): Diagnostic[] {
     'audit',
     'workflowHistory',
     'recordPrint',
+    'recordComments',
   ]);
   const fieldKeys = new Set([
     'code',
@@ -7208,6 +7222,21 @@ export function validateAppDeclaration(value: unknown): Diagnostic[] {
         diagnostics.push(diagnostic('APP_CONFIG_DATA_AUDIT_READ_INVALID',
           'audit.read 必须为 true（绑定资源读能力）、false 或不重复的非空 capability 数组（最多 20 项）', `${resourcePath}.audit`,
           `audit: { read: true } 会把审计读取绑定到本资源的 read 能力；需要更细粒度时写能力数组，例如 audit: { read: ['app:${appCode}:data:<resource>:read'] }`));
+      }
+    }
+    let recordCommentsValid = true;
+    if (resource.recordComments !== undefined) {
+      const rule = object(resource.recordComments);
+      if (!resource.recordComments || typeof resource.recordComments !== 'object' || Array.isArray(resource.recordComments) ||
+          Object.keys(rule).some(key => !['read', 'create'].includes(key)) || ['read', 'create'].some(mode => {
+            const list = rule[mode];
+            return list !== false && list !== true && (!Array.isArray(list) || list.length < 1 || list.length > 20 ||
+              list.some(value => typeof value !== 'string' || !value.trim()) || new Set(list).size !== list.length);
+          })) {
+        recordCommentsValid = false;
+        diagnostics.push(diagnostic('APP_CONFIG_RECORD_COMMENTS_POLICY_INVALID',
+          'recordComments.read/create 必须为 true、false 或不重复的非空 capability 数组（最多20项）',
+          `${resourcePath}.recordComments`, 'true绑定本资源read；每项操作的能力需由同一成员全部持有。'));
       }
     }
     let recordPrintValid = true;
@@ -7307,7 +7336,7 @@ export function validateAppDeclaration(value: unknown): Diagnostic[] {
       return;
     }
     const declaredCodes = new Set<string>();
-    let materializable = auditValid && workflowHistoryValid && recordPrintValid;
+    let materializable = auditValid && workflowHistoryValid && recordPrintValid && recordCommentsValid;
     fields.forEach((rawField, fieldIndex) => {
       const field = object(rawField);
       const fieldPath = `${resourcePath}.fields[${fieldIndex}]`;

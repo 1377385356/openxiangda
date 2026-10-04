@@ -12,6 +12,7 @@ export interface GeneratedResourceDefinition {
   };
   workflowHistory?: { read: string[] };
   recordPrint?: { read: string[] };
+  recordComments?: { read: string[]; create: string[] };
   surface: DataResourceSurface;
 }
 

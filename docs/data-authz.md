@@ -188,6 +188,16 @@ publicSubtableFields: { items: ['sku', 'quantity'] },
 
 模型可显式声明 `recordPrint: { read: ['app:my-app:record:print'] }`，能力须在本应用 `authz.capabilities` 定义并授给适当职责。`read: true` 绑定本资源读取能力，`false` 关闭，缺省不提供打印。平台自动提供 `data.record-print@1.0.0`，无需初始化SQL或全局开关；应用打印许可仍由声明拥有。
 
+### 单记录评论
+
+`recordComments: { read: ['app:my-app:comments:read'], create: ['app:my-app:comments:create'] }` 分别声明评论读取与新增，能力在本应用定义并授给职责。`true` 绑定本资源read，`false`关闭对应操作，省略整个声明关闭评论。每组最多20项、全部满足；同一个成员须同时拥有资料read及相应评论能力，不能把ALL-read职责和本人评论职责拼成ALL评论。平台自动注册 `data.record-comments@1.0.0`，fresh/update通过正式SQL迁移建表，不需手动开关。
+
+标准资料详情提供懒加载评论面板；应用定制页面使用 `ResourceRecordComments`、`loadNativeRecordComments`、`createNativeRecordComment`、`loadNativeRecordCommentReceipt`（`openxiangda/react`），沿平台Runtime和导航保护Provider。读取跟随当前Perspective，新增和本人回执由原始当前用户角色并集与相同Native范围决定；界面能力初筛不代替服务端许可。正文为纯文本，4000字上限；分页默认20/最多50，使用返回的nextCursor，单记录最多2000条。
+
+新增前固定 `schemaVersion: 'openxiangda.data-record-comment-create/v1'`、body及idempotencyKey。网络或超时结果不确定时保留原请求，先查本人原键回执；仅 `OPENXIANGDA_NATIVE_RECORD_COMMENTS_RECEIPT_NOT_FOUND` 表明可显式重试原请求，同一键/正文只写一条，改变正文或目标返回409。未解决前标准面板阻止页内导航；刷新/关闭浏览器会提示，当前尚无跨刷新自动保存，需保留原键与正文后通过SDK核对。读评论不获得他人的提交键。
+
+评论属于平台附属数据，不修改申请revision/最后修改人、不推进流程或发业务updated事件，不授给匿名/应用联合主体。当前不含回复、附件、提及、编辑/删除、自动通知和旧评论导入；审批意见继续由Workflow拥有。源宜搭这些附加语义尚未运行核实，不能据COMMENT=y宣称完整等价。
+
 打印先筛选同一成员同时具备资料read及所有打印能力的资格，再沿原RLS、Perspective、字段读取与脱敏；不能把ALL-read职责和own-print职责合并成ALL-print。普通app-admin与平台超管分别验收。SDK `loadNativeRecordPrint(resourceCode, recordId, { viewCode? })` 只读当前单记录投影；公开 `ResourceRecordPrintPreview` 与生成Native详情中的“打印”入口共用它。字段权限仍使用页面/模型规则，不增加流程节点字段权限配置。
 
 预览显示读取时间、当前详情可见字段和分组。打印前重新读取当前授权数据，失败清除旧预览，身份/授权/Perspective变化和关闭淘汰过期请求。附件/图片只列名称及大小、富文本转安全文本，没有自动外部下载；系统打印取消不写业务资料。当前版本只支持主记录，详情包含可读子表返回409，超2MiB返回413，不静默漏项；专用PDF模板、签章与子表完整打印另行提供。独立权限保护平台的打印接口和标准入口，已读资料的截图/浏览器自行打印不属于可撤销许可。

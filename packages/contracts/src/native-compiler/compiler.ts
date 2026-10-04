@@ -577,6 +577,8 @@ export function compileRequiredPlatformCapabilitiesV3(
           },
         ]
       : []),
+    ...(resources.some(resource => resource.recordComments !== undefined)
+      ? [{ code: 'data.record-comments' as const, declaration: dataUsage }] : []),
     ...(resources.some(resource => resource.recordPrint !== undefined)
       ? [{ code: 'data.record-print' as const, declaration: dataUsage }] : []),
     ...(resources.some(resource => resource.workflowHistory !== undefined)
@@ -5448,6 +5450,15 @@ function validateAuthorizationReferences(
   config.data.resources.forEach((rawResource: unknown, index: number) => {
     const resourcePointer = `/config/data/resources/${index}`;
     const resource = object(rawResource, resourcePointer);
+    if (resource.recordComments !== undefined) {
+      for (const mode of ['read', 'create']) {
+        const pointer = `${resourcePointer}/recordComments/${mode}`;
+        for (const capability of resource.recordComments[mode]) {
+          capabilityCode(capability, pointer, config.appCode);
+          if (!capabilityCodes.has(capability)) fail('NATIVE_CAPABILITY_REFERENCE_MISSING', pointer);
+        }
+      }
+    }
     if (resource.recordPrint !== undefined) {
       const pointer = `${resourcePointer}/recordPrint/read`;
       for (const capability of resource.recordPrint.read) {
@@ -7391,6 +7402,7 @@ function validateResource(raw: any, pointer: string, appCode: string) {
       'uniqueKeys',
       'workflowHistory',
       'recordPrint',
+      'recordComments',
       'capabilities',
       'dataPolicyCode',
       'fieldPolicies',
@@ -7431,6 +7443,16 @@ function validateResource(raw: any, pointer: string, appCode: string) {
       fail(error.code, error.pointer);
     }
     throw error;
+  }
+  if (resource.recordComments !== undefined) {
+    const policy = object(resource.recordComments, `${pointer}/recordComments`);
+    exactKeys(policy, ['read', 'create'], `${pointer}/recordComments`);
+    for (const mode of ['read', 'create']) {
+      const list = policy[mode];
+      if (!Array.isArray(list) || list.length > 20 ||
+          list.some(value => typeof value !== 'string' || !value.trim()) || new Set(list).size !== list.length)
+        fail('NATIVE_RECORD_COMMENTS_POLICY_INVALID', `${pointer}/recordComments/${mode}`);
+    }
   }
   if (resource.recordPrint !== undefined) {
     const policy = object(resource.recordPrint, `${pointer}/recordPrint`);

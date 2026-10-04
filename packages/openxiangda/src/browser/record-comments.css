@@ -1,0 +1,14 @@
+.oxa-record-comments { display: grid; gap: 20px; }
+.oxa-record-comments-list { list-style: none; margin: 0; padding: 0; }
+.oxa-record-comments-list li { padding: 14px 0; border-bottom: 1px solid #e5e7eb; }
+.oxa-record-comments-list li > div { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; }
+.oxa-record-comments-list strong { font-size: 13px; overflow-wrap: anywhere; }
+.oxa-record-comments-list time { color: #64748b; font-size: 12px; }
+.oxa-record-comments-list p, .oxa-record-comments-pending { margin: 8px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.7; }
+.oxa-record-comments-empty { color: #64748b; padding: 12px 0; }
+.oxa-record-comments nav { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+.oxa-record-comments form { display: grid; gap: 12px; }
+.oxa-record-comments form > label { font-weight: 600; }
+.oxa-record-comments form > .ant-btn { justify-self: end; }
+.oxa-record-comments code { overflow-wrap: anywhere; }
+@media (max-width: 600px) { .oxa-record-comments form > .ant-btn { width: 100%; } }

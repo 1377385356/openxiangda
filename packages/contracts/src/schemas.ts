@@ -2641,6 +2641,13 @@ export const dataResourceSchema = {
     appCode: nonEmptyString,
     code: dataResourceCode,
     name: nonEmptyString,
+    recordComments: {
+      type: 'object', additionalProperties: false, required: ['read', 'create'],
+      properties: {
+        read: { type: 'array', maxItems: 20, uniqueItems: true, items: nonEmptyString },
+        create: { type: 'array', maxItems: 20, uniqueItems: true, items: nonEmptyString },
+      },
+    },
     recordPrint: {
       type: "object", additionalProperties: false, required: ["read"],
       properties: { read: { type: "array", maxItems: 20, uniqueItems: true, items: nonEmptyString } },

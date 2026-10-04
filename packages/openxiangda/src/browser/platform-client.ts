@@ -1614,6 +1614,57 @@ export async function loadNativeRecordPrint(code: string, recordId: string, opti
   return snapshot;
 }
 
+/** Comment reads retain current Perspective; writes/recovery use Native current-user authority. */
+export async function loadNativeRecordComments(code: string, recordId: string, options: { limit?: number; cursor?: string } = {}): Promise<import('openxiangda-contracts/browser').DataRecordCommentPage> {
+  const limit = options.limit ?? 20;
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 50 ||
+      (options.cursor !== undefined && (!/^[A-Za-z0-9_-]{1,256}$/.test(options.cursor))))
+    throw new Error('OPENXIANGDA_NATIVE_RECORD_COMMENTS_PAGE_INVALID');
+  const query = new URLSearchParams({ environmentKey: currentEnvironmentKey(), limit: String(limit),
+    ...(options.cursor === undefined ? {} : { cursor: options.cursor }) });
+  const page = await requestRead<import('openxiangda-contracts/browser').DataRecordCommentPage>(
+    `${dataBase(code)}/records/${encodeURIComponent(recordId)}/comments?${query}`);
+  if (page.schemaVersion !== 'openxiangda.data-record-comments/v1' || page.resourceCode !== code ||
+      page.recordId !== recordId || page.limit !== limit || !Array.isArray(page.items) || page.items.length > limit ||
+      !page.items.every(validRecordComment) || (page.nextCursor !== null &&
+        (typeof page.nextCursor !== 'string' || !/^[A-Za-z0-9_-]{1,256}$/.test(page.nextCursor))))
+    throw new Error('OPENXIANGDA_NATIVE_RECORD_COMMENTS_RESPONSE_INVALID');
+  return page;
+}
+
+function validRecordComment(value: unknown): value is import('openxiangda-contracts/browser').DataRecordComment {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const comment = value as import('openxiangda-contracts/browser').DataRecordComment;
+  return typeof comment.id === 'string' && typeof comment.body === 'string' && comment.body.length <= 4000 &&
+    typeof comment.authorUserId === 'string' && typeof comment.isOwn === 'boolean' &&
+    typeof comment.createdAt === 'string' && Number.isFinite(Date.parse(comment.createdAt)) &&
+    typeof comment.appVersionId === 'string' && Number.isSafeInteger(comment.environmentHeadRevision) && comment.environmentHeadRevision > 0;
+}
+
+function checkedRecordCommentReceipt(receipt: import('openxiangda-contracts/browser').DataRecordCommentReceipt, code: string, recordId: string, key: string) {
+  if (receipt.schemaVersion !== 'openxiangda.data-record-comment-receipt/v1' || receipt.resourceCode !== code ||
+      receipt.recordId !== recordId || receipt.idempotencyKey !== key || !validRecordComment(receipt.comment) ||
+      receipt.comment.isOwn !== true || typeof receipt.replayed !== 'boolean')
+    throw new Error('OPENXIANGDA_NATIVE_RECORD_COMMENTS_RESPONSE_INVALID');
+  return receipt;
+}
+
+/** Fix the mutation before sending; never generate a replacement key for an unknown result. */
+export async function createNativeRecordComment(code: string, recordId: string, input: import('openxiangda-contracts/browser').DataRecordCommentMutation) {
+  const receipt = await request<import('openxiangda-contracts/browser').DataRecordCommentReceipt>(
+    `${dataBase(code)}/records/${encodeURIComponent(recordId)}/comments`,
+    { method: 'POST', body: JSON.stringify({ ...input, environmentKey: currentEnvironmentKey() }) });
+  return checkedRecordCommentReceipt(receipt, code, recordId, input.idempotencyKey);
+}
+
+/** Author-only original-key recovery is re-authorized, even after a new application Head. */
+export async function loadNativeRecordCommentReceipt(code: string, recordId: string, idempotencyKey: string) {
+  const query = new URLSearchParams({ environmentKey: currentEnvironmentKey(), idempotencyKey });
+  const receipt = await requestRead<import('openxiangda-contracts/browser').DataRecordCommentReceipt>(
+    `${dataBase(code)}/records/${encodeURIComponent(recordId)}/comments/receipt?${query}`);
+  return checkedRecordCommentReceipt(receipt, code, recordId, idempotencyKey);
+}
+
 export function createNativeResourceClient(
   code: string,
   surface: DataResourceSurface,

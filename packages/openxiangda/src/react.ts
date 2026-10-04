@@ -47,6 +47,9 @@ export {
   loadSubjectReadSurface,
   loadWorkflowRecordHistory,
   loadNativeRecordPrint,
+  loadNativeRecordComments,
+  createNativeRecordComment,
+  loadNativeRecordCommentReceipt,
   logoutCurrentUser,
   type AnonymousPublicDraft,
   type AnonymousPublicRecord,
@@ -74,6 +77,7 @@ export type {
   UserCandidatePage,
 } from 'openxiangda-contracts/browser';
 export * from './browser/components/resource/GeneratedResourceCrud';
+export { ResourceRecordComments } from './browser/components/resource/ResourceRecordComments';
 export { ResourceRecordPrintPreview } from './browser/components/resource/ResourceRecordPrintPreview';
 export * from './browser/components/resource/ResourceBatchActions';
 export * from './browser/components/resource/StandardResourcePages';

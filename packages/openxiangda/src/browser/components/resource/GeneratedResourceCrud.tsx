@@ -81,6 +81,7 @@ import {
 
 import type { GeneratedResourceDefinition } from './generated-resource-definition';
 import { selectedSurfaceFields } from './resource-field-selection';
+import { ResourceRecordComments } from './ResourceRecordComments';
 import { ResourceRecordPrintPreview } from './ResourceRecordPrintPreview';
 import { isGeneratedDetailFieldVisible } from './detail-field-visibility';
 import { GeneratedResourceFormPage } from './GeneratedResourceForm';
@@ -998,6 +999,13 @@ function NativeResourceDetailPage({ definition, paths, variant, recordId, onDism
   );
   const [auditExpanded, setAuditExpanded] = useState(false);
   const [workflowHistoryExpanded, setWorkflowHistoryExpanded] = useState(false);
+  const [commentsExpanded, setCommentsExpanded] = useState(false);
+  const commentsRead = definition.recordComments?.read;
+  const commentsCreate = definition.recordComments?.create;
+  const canReadComments = Boolean(commentsRead?.length &&
+    (identity.isAppSuperAdmin || commentsRead.every(code => hasReadCapability(code))));
+  const canCreateComments = Boolean(commentsCreate?.length &&
+    (identity.isAppSuperAdmin || commentsCreate.every(code => hasCapability(code))));
   const [printing, setPrinting] = useState(false);
   const printRead = definition.recordPrint?.read;
   const printVisible = Boolean(record && printRead?.length &&
@@ -1043,6 +1051,9 @@ function NativeResourceDetailPage({ definition, paths, variant, recordId, onDism
           onChange={keys => setWorkflowHistoryExpanded((Array.isArray(keys) ? keys : [keys]).includes('history'))}
           items={[{ key: 'history', label: '流程办理记录', children: workflowHistoryExpanded
             ? <WorkflowRecordHistoryPanel resourceCode={definition.code} recordId={record.id} variant={variant} /> : null }]} />}
+        {(canReadComments || canCreateComments) && <Collapse className="oxa-record-comments-collapse" activeKey={commentsExpanded ? ['comments'] : []} expandIconPlacement="end"
+          onChange={keys => setCommentsExpanded((Array.isArray(keys) ? keys : [keys]).includes('comments'))}
+          items={[{ key: 'comments', label: '评论', children: <ResourceRecordComments resourceCode={definition.code} recordId={record.id} canRead={canReadComments} canCreate={canCreateComments} /> }]} />}
         {detailContributions.map(contribution => <Fragment key={contribution.code}>{contribution.render({ record, resource: definition.code, refresh: () => query.query.refetch() })}</Fragment>)}
       </>}
   </RecordDetailFrame>;

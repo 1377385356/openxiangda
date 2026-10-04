@@ -514,6 +514,15 @@ export function validateDataResource(value: unknown): Diagnostic[] {
     if (!(error instanceof NativeDecimalLifecycleContractError)) throw error;
     diagnostics.push(diagnostic(error.code, error.message, error.pointer.replace(/^\//, '').replace(/\//g, '.')));
   }
+  if (value.recordComments !== undefined) {
+    const policy = value.recordComments;
+    if (!isRecord(policy) || Object.keys(policy).some(key => !['read', 'create'].includes(key)) ||
+        ['read', 'create'].some(mode => !Array.isArray(policy[mode]) || policy[mode].length > 20 ||
+          policy[mode].some((code: unknown) => typeof code !== 'string' || !code.trim()) ||
+          new Set(policy[mode]).size !== policy[mode].length))
+      diagnostics.push(diagnostic('NATIVE_RECORD_COMMENTS_POLICY_INVALID',
+        'recordComments.read/create 必须为不重复的能力数组，空数组关闭对应操作', 'recordComments'));
+  }
   if (value.recordPrint !== undefined) {
     const policy = value.recordPrint;
     if (!isRecord(policy) || Object.keys(policy).some(key => key !== "read") ||

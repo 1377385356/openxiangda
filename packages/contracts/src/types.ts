@@ -1340,6 +1340,8 @@ export interface DataResource {
   workflowHistory?: { read: string[] };
   /** Independent same-membership record printing policy; omission disables it. */
   recordPrint?: { read: string[] };
+  /** Independent same-membership collaboration; omission disables comments. */
+  recordComments?: { read: string[]; create: string[] };
   /** Default UI metadata projected with the authoritative Data Resource. */
   surface?: DataResourceSurface;
   capabilities: {
@@ -1354,6 +1356,38 @@ export interface DataResource {
   revision?: number;
   createdAt?: IsoDateTime;
   updatedAt?: IsoDateTime;
+}
+
+/** Platform-owned append-only comment, independent of business edits and workflow opinions. */
+export interface DataRecordComment {
+  id: string;
+  body: string;
+  authorUserId: string;
+  isOwn: boolean;
+  createdAt: IsoDateTime;
+  appVersionId: string;
+  environmentHeadRevision: number;
+}
+export interface DataRecordCommentPage {
+  schemaVersion: 'openxiangda.data-record-comments/v1';
+  resourceCode: string;
+  recordId: string;
+  items: DataRecordComment[];
+  nextCursor: string | null;
+  limit: number;
+}
+export interface DataRecordCommentMutation {
+  schemaVersion: 'openxiangda.data-record-comment-create/v1';
+  body: string;
+  idempotencyKey: string;
+}
+export interface DataRecordCommentReceipt {
+  schemaVersion: 'openxiangda.data-record-comment-receipt/v1';
+  resourceCode: string;
+  recordId: string;
+  idempotencyKey: string;
+  comment: DataRecordComment;
+  replayed: boolean;
 }
 
 export type DataQueryOperator =

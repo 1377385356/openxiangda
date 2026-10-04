@@ -30,6 +30,7 @@ export const PLATFORM_CAPABILITY_CONTRACT_VERSIONS = {
   "events.native-data-actions": "1.0.0",
   "workflow-kernel-v2": "1.0.0",
   "data.record-print": "1.0.0",
+  "data.record-comments": "1.0.0",
   "workflow.record-history-read": "1.0.0",
   "workflow.rejection-notification": "1.0.0",
   "workflow.instance-cancellation-policy": "1.0.0",
