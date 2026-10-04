@@ -1224,7 +1224,9 @@ test('refreshes the task after definitive command-token expiry without a second 
   await page.getByRole('button', { name: '确认同意' }).click();
   // Current server message is technical; this local test verifies refusal safety,
   // not satisfaction of the separate friendly-message requirement.
-  await expect(page.getByText('WORKFLOW_V2_COMMAND_TOKEN_EXPIRED', { exact: true })).toBeVisible();
+  // The same error is also shown in a transient toast; assert the persistent
+  // refusal beside the retained input, without depending on toast timing.
+  await expect(page.getByRole('dialog', { name: '同意', exact: true }).getByText('WORKFLOW_V2_COMMAND_TOKEN_EXPIRED', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: /同\s*意/ })).toBeEnabled();
   expect(mock.requests.filter(request => request.method === 'POST' && request.path.endsWith('/commands/approve'))).toHaveLength(1);
   expect(mock.requests.filter(request => request.method === 'GET' && request.path.endsWith(`/workflow/tasks/${taskId}/surface`))).toHaveLength(1);
