@@ -77,6 +77,24 @@ test('ordinary workflow declarations retain their existing required capabilities
   assert.equal(requiredPlatformCapabilitiesFromConfiguration(output.config.value).some(item => item.code === 'workflow.business-data-command'), false);
 });
 
+test('optional rejection comments seal an opt-in capability with identical app and target policy', () => {
+  for (const commentRequired of [undefined, true, false]) {
+    const source = fixture();
+    const review = source.workflows!.definitions[0]!.definition.nodes.review;
+    assert.equal(review!.kind, 'approval');
+    if (review!.kind === 'approval' && commentRequired !== undefined) review.operationPolicy = { reject: { commentRequired } };
+    const output = compileApplicationSources(defineOpenXiangdaApp(source));
+    const target = compileNativeApplicationConfiguration({ appCode: 'command-review', configBytes: output.config.content,
+      expectedConfigDigest: output.config.digest, contractBytes: output.contracts.content, expectedContractDigest: output.contracts.digest });
+    assert.deepEqual(target.requiredPlatformCapabilities, requiredPlatformCapabilitiesFromConfiguration(output.config.value));
+    assert.equal(target.requiredPlatformCapabilities.find(item => item.code === 'workflow.optional-rejection-comment')?.contractVersion,
+      commentRequired === false ? '1.0.0' : undefined);
+    assert.deepEqual(output.config.value.workflows.definitions[0]!.definition.nodes.review, review);
+    const validate = new Ajv2020({ strict: false, validateFormats: false }).compile(workflowDefinitionSchema);
+    assert.equal(validate(output.config.value.workflows.definitions[0]!.definition), true, JSON.stringify(validate.errors));
+  }
+});
+
 test('browser invocation has an exact target/subject/CAS/token envelope', () => {
   const validate = new Ajv2020({ strict: false, validateFormats: false }).compile(workflowBusinessCommandInvocationSchema);
   const input = { workflowCode: 'request-approval', target: { kind: 'task', id: '11111111-1111-4111-8111-111111111111', command: 'approve' },

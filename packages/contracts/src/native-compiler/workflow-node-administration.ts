@@ -26,11 +26,16 @@ export function workflowNodeAllowedOperations(node: WorkflowAdministrationNodeSo
   return node.allowedOperations || [...WORKFLOW_CONFIGURABLE_OPERATIONS];
 }
 
+/** Frozen task policy wins; legacy rejection requires a comment when omitted. */
+export function workflowOperationCommentRequired(operation: string, policy?: WorkflowNodeOperationPolicy): boolean {
+  return policy?.commentRequired ?? operation === 'reject';
+}
+
 function policyValid(value: unknown, operation: string, defaults: WorkflowNodeOperationPolicy = {}, configurable = false): boolean {
   if (!record(value) || !Object.keys(value).length || !keys(value, configurable ? ['enabled', 'label', 'commentRequired'] : ['label', 'commentRequired'])) return false;
   if (value.label !== undefined && (typeof value.label !== 'string' || !value.label.trim() || value.label.length > 40 || /[\u0000-\u001f\u007f]/.test(value.label))) return false;
   if (value.enabled !== undefined && (typeof value.enabled !== 'boolean' || (['approve', 'reject'].includes(operation) && !value.enabled))) return false;
-  if (value.commentRequired !== undefined && (typeof value.commentRequired !== 'boolean' || !['approve', 'reject'].includes(operation) || ((operation === 'reject' || defaults.commentRequired) && !value.commentRequired))) return false;
+  if (value.commentRequired !== undefined && (typeof value.commentRequired !== 'boolean' || !['approve', 'reject'].includes(operation) || (configurable && workflowOperationCommentRequired(operation, defaults) && !value.commentRequired))) return false;
   return true;
 }
 

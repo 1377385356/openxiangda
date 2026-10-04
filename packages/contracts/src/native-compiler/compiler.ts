@@ -714,6 +714,8 @@ export function compileRequiredPlatformCapabilitiesV3(
         } }] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => item.definition.launchPreflight !== undefined)
       ? [{ code: 'workflow.launch-preflight' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => item.definition.launchPreflight !== undefined) }] : []),
+    ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.operationPolicy?.reject?.commentRequired === false))
+      ? [{ code: 'workflow.optional-rejection-comment' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.operationPolicy?.reject?.commentRequired === false)) }] : []),
     ...(namedInputSourceDefinitions.length
       ? [{ code: 'workflow.named-input-sources' as const, declaration: namedInputSourceDefinitions }]
       : []),

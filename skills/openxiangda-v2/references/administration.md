@@ -164,7 +164,7 @@ export function ReadableWorkflow({ workflowCode, version }: {
 
 开发者在审批节点的 `administration` 声明可维护的模式、人员来源和任务按钮。未声明这些项的节点保留名称、说明及原人员来源维护；拓扑、分支、范围计算仍由代码控制。使用新声明的应用需要平台 `workflow.node-administration@1.0.0`，编译与激活均检查该能力。
 
-模式为 `single/any/all/sequence` 的允许子集；可维护来源限 `fixed_users/app_role/app_role_in_scope`，范围角色必须已有代码声明的 scope。按钮 code 保持同意、拒绝、退回、转交、委托、加签的稳定语义；同意和拒绝不能关闭。只有同意/拒绝支持意见规则，拒绝或代码已有必填意见不能放宽。字段显隐、填写与必填行为由应用页面和代码维护，不提供流程节点的字段管理覆盖。可编译声明见 `examples/workflow-administration/declaration.ts`。
+模式为 `single/any/all/sequence` 的允许子集；可维护来源限 `fixed_users/app_role/app_role_in_scope`，范围角色必须已有代码声明的 scope。按钮 code 保持同意、拒绝、退回、转交、委托、加签的稳定语义；同意和拒绝不能关闭。只有同意/拒绝支持意见规则；拒绝默认必填，固定节点代码可用 operationPolicy.reject.commentRequired: false 显式选填。管理员可收紧选填规则，也可恢复代码明确允许的选填；不能放宽代码必填或未声明时的拒绝默认必填。已进入的任务保留冻结规则。字段显隐、填写与必填行为由应用页面和代码维护，不提供流程节点的字段管理覆盖。可编译声明见 `examples/workflow-administration/declaration.ts`。
 
 自动抄送节点仅开放名称、说明和显式声明的 `administration.assigneeProviders`；未开放时接收来源只读。共享编辑器显示“抄送人”，不显示审批方式或审批按钮，固定名单最多20人。`next`、空人策略和通知策略仍归代码；新配置只影响以后进入，过去抄送名单保持冻结。完整例子见 `examples/workflow-administration/automatic-cc.ts`，执行及读取边界见[自动抄送](workflow-events.md#automatic-cc)。
 

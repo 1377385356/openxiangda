@@ -640,6 +640,7 @@ approve/resubmit 携带 `form: { expectedRevision, values }` 时，Native 业务
 修订变化时对照最新已保存值和本人输入，核对前锁住字段与操作；可选择保留输入或采用最新值。
 拒绝后的读取失败明确提示本次未提交，锁住旧操作，恢复读取后再核对；未知结果仍只能恢复原请求。
 操作确认表单使用同一 Surface 的必填、字符数与非空白规则校验意见和原因。
+拒绝意见默认必填。固定节点显式设置 `operationPolicy.reject.commentRequired: false` 时允许省略或空意见，目标须具备 `workflow.optional-rejection-comment@1.0.0`；已进入任务使用冻结规则，后续配置不追溯。选填仍限制为最多4000字符的字符串，不写入假意见。
 `commentRequired` 只配置同意/拒绝的 `comment`；转交、委托、加签、退回与管理员改派
 继续使用原合同的必填 `reason`，不用再填写第二份意见。
 明确拒绝后，实例、任务版本及操作签名仍一致且操作仍可用时，对话框保留输入供人工核对；

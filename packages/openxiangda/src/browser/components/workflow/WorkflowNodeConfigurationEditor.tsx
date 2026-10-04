@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Alert, App, Button, Checkbox, Drawer, Empty, Form, Input, Radio, Select, Space, Tabs, Tag, Typography } from 'antd';
 import type { WorkflowNodeConfigurations, WorkflowNodeConfigurationPatch, WorkflowNodeConfigurationMutation, WorkflowNodeConfigurationReceipt } from 'openxiangda-contracts/browser';
-import { validateWorkflowNodeConfigurationPatch } from 'openxiangda-contracts/browser';
+import { validateWorkflowNodeConfigurationPatch, workflowOperationCommentRequired } from 'openxiangda-contracts/browser';
 import { PlatformDirectoryPicker } from '../platform-fields/PlatformDirectoryPicker';
 import { loadApplicationAdministrationContext, loadWorkflowNodeConfigurations, saveWorkflowNodeConfiguration } from '../../platform-client';
 
@@ -25,7 +25,7 @@ function initialValues(node: Node, principals: WorkflowNodeConfigurations['princ
     operations: Object.fromEntries((node.administration?.operations || []).map(operation => [operation, {
       enabled: node.effective.allowedOperations?.includes(operation) ?? true,
       label: node.effective.operationPolicy?.[operation]?.label || labels[operation],
-      commentRequired: operation === 'reject' || node.effective.operationPolicy?.[operation]?.commentRequired === true,
+      commentRequired: workflowOperationCommentRequired(operation, node.effective.operationPolicy?.[operation]),
     }])),
   };
 }
@@ -136,7 +136,7 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
           {(node.administration?.operations || []).map(operation => <section key={operation} className="oxa-workflow-operation-row">
             <div className="oxa-workflow-operation-heading"><b>{labels[operation]}</b>{!['approve', 'reject'].includes(operation) ? <Form.Item name={['operations', operation, 'enabled']} valuePropName="checked" noStyle><Checkbox>启用</Checkbox></Form.Item> : <Tag>始终启用</Tag>}</div>
             <Form.Item name={['operations', operation, 'label']} label={`${labels[operation]}按钮文字`} rules={[{ required: true, whitespace: true, max: 40 }]}><Input maxLength={40} /></Form.Item>
-            {['approve', 'reject'].includes(operation) ? <Form.Item name={['operations', operation, 'commentRequired']} valuePropName="checked"><Checkbox disabled={busy || uncertain || operation === 'reject' || node.defaults.operationPolicy?.[operation]?.commentRequired === true || operation === 'approve' && node.effective.initiatorApprovalPolicy === 'auto_approve'}>必须填写审批意见</Checkbox></Form.Item> : <small>操作时须填写原因。</small>}
+            {['approve', 'reject'].includes(operation) ? <Form.Item name={['operations', operation, 'commentRequired']} valuePropName="checked"><Checkbox disabled={busy || uncertain || workflowOperationCommentRequired(operation, node.defaults.operationPolicy?.[operation]) || operation === 'approve' && node.effective.initiatorApprovalPolicy === 'auto_approve'}>必须填写审批意见</Checkbox></Form.Item> : <small>操作时须填写原因。</small>}
           </section>)}
           {!node.administration?.operations?.length && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="此节点的按钮由开发者维护" />}
         </> },

@@ -2,6 +2,7 @@ import { DATA_SUBTABLE_MAX_ROWS, DATA_TRANSACTION_MAX_OPERATIONS, DATA_TRANSACTI
 import { nativeUniqueKeysJsonSchema } from './native-compiler/unique-keys.js';
 import { workflowAssignmentRoutingPolicySchema } from './native-compiler/workflow-assignment-routing.js';
 import { workflowBusinessCommandInvocationSchema } from './native-compiler/workflow-business-command.js';
+import { WORKFLOW_CONFIGURABLE_OPERATIONS } from './native-compiler/workflow-node-administration.js';
 import { DATA_AUDIT_METADATA_FIELDS } from './native-compiler/data-audit-access.js';
 import {
   CONFIGURATION_COMPATIBILITY_CAPABILITY,
@@ -5489,6 +5490,16 @@ const workflowNodeSchema = {
         onApprove: nonEmptyString,
         onReject: nonEmptyString,
         taskPageCode: { type: 'string', pattern: '^[A-Za-z][A-Za-z0-9_-]{0,63}$' },
+        operationPolicy: {
+          type: 'object', additionalProperties: false,
+          properties: Object.fromEntries(WORKFLOW_CONFIGURABLE_OPERATIONS.map(operation => [operation, {
+            type: 'object', additionalProperties: false, minProperties: 1,
+            properties: {
+              label: { type: 'string', minLength: 1, maxLength: 40, pattern: '^(?!.*[\\u0000-\\u001f\\u007f])(?=.*\\S).*$' },
+              ...(['approve', 'reject'].includes(operation) ? { commentRequired: { type: 'boolean' } } : {}),
+            },
+          }])),
+        },
         allowedOperations: {
           type: "array",
           uniqueItems: true,

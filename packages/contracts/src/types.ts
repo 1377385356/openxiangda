@@ -2402,7 +2402,7 @@ export type WorkflowConfigurableOperation = 'approve' | 'reject' | 'return' | 't
 export type WorkflowConfigurableAssigneeProvider = 'fixed_users' | 'app_role' | 'app_role_in_scope';
 export interface WorkflowNodeOperationPolicy {
   label?: string;
-  /** Only approve/reject have comments; existing required reasons stay required. */
+  /** Approve defaults to false, reject to true; explicit false is code-owned. Other required reasons stay required. */
   commentRequired?: boolean;
 }
 export interface WorkflowApprovalAdministration {

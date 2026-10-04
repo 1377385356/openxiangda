@@ -86,7 +86,7 @@ export * from './browser/platform-client';
 export type { WorkflowBusinessStepSummary, WorkflowBusinessStepRecoveryOptions, WorkflowBusinessStepRecoveryPreview } from 'openxiangda-contracts/browser';
 export { formatWorkflowExpression, projectWorkflowGraph } from 'openxiangda-contracts/browser';
 export type { WorkflowReadability, WorkflowGraphProjection, WorkflowGraphVariable, WorkflowGraphEdge, WorkflowGraphVisit, WorkflowGraphReadResult, WorkflowInstanceGraphReadResult } from 'openxiangda-contracts/browser';
-export { WORKFLOW_CONFIGURABLE_OPERATIONS, WORKFLOW_CONFIGURABLE_PROVIDERS, validateWorkflowNodeConfigurationPatch, projectWorkflowNodePolicy } from 'openxiangda-contracts/browser';
+export { WORKFLOW_CONFIGURABLE_OPERATIONS, WORKFLOW_CONFIGURABLE_PROVIDERS, validateWorkflowNodeConfigurationPatch, projectWorkflowNodePolicy, workflowOperationCommentRequired } from 'openxiangda-contracts/browser';
 export type { ApplicationAdministrationContext, WorkflowApprovalAdministration, WorkflowApprovalMode, WorkflowConfigurableOperation, WorkflowFieldPolicy, WorkflowNodeOperationPolicy, WorkflowNodeConfigurations, WorkflowNodeConfigurationPatch, WorkflowNodeConfigurationMutation, WorkflowNodeConfigurationReceipt } from 'openxiangda-contracts/browser';
 export { validateWorkflowAssignmentRoutingRules } from 'openxiangda-contracts/browser';
 export type { WorkflowAssignmentRoutingPolicy, WorkflowAssignmentRoutingRule, WorkflowAssignmentRoutingConfiguration, WorkflowAssignmentRoutingMutation, WorkflowAssignmentRoutingReceipt, WorkflowAssignmentRoutingCatalog, WorkflowAssignmentRoutingHistory } from 'openxiangda-contracts/browser';

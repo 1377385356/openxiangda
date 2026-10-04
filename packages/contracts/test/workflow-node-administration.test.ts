@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { projectWorkflowNodePolicy, validateWorkflowAdministration, validateWorkflowNodeConfigurationPatch } from '../src/native-compiler/workflow-node-administration.js';
+import { projectWorkflowNodePolicy, workflowOperationCommentRequired, validateWorkflowAdministration, validateWorkflowNodeConfigurationPatch } from '../src/native-compiler/workflow-node-administration.js';
 import type { WorkflowApprovalNode } from '../src/types.js';
 
 const node: WorkflowApprovalNode = {
@@ -33,7 +33,6 @@ test('declarations reject policy widening, invalid actions and field administrat
     { administration: { operations: ['admin_override'] } },
     { administration: { fields: { unknown: ['edit'] } } },
     { administration: { fields: { evidence: ['edit_required', 'hidden'] } } },
-    { operationPolicy: { reject: { commentRequired: false } } },
     { operationPolicy: { transfer: { commentRequired: true } } },
     { operationPolicy: { approve: { label: 'x'.repeat(41) } } },
   ]) assert.ok(validateWorkflowAdministration({ nodes: { review: { ...node, ...change } as any } }).length);
@@ -60,4 +59,22 @@ test('scope computation cannot be introduced by a configuration patch', () => {
   assert.ok(validateWorkflowAdministration({ nodes: { review: scoped } }, { bindings: { reviewers: binding } }).length);
   assert.ok(validateWorkflowNodeConfigurationPatch(scoped, binding, { assignee: { provider: 'app_role_in_scope', roleCode: 'reviewer' } }).length);
   assert.deepEqual(validateWorkflowNodeConfigurationPatch(scoped, { ...binding, scope: { dimension: 'department', valueFrom: 'departmentId' } }, { assignee: { provider: 'app_role_in_scope', roleCode: 'reviewer' } }), []);
+});
+
+test('fixed optional rejection policy can be tightened without relaxing a required code baseline', () => {
+  const optional = { ...node, operationPolicy: { reject: { commentRequired: false } } };
+  assert.deepEqual(validateWorkflowAdministration({ nodes: { review: optional } }), []);
+  for (const commentRequired of [false, true]) {
+    const patch = { operations: { reject: { commentRequired } } };
+    assert.deepEqual(validateWorkflowNodeConfigurationPatch(optional, binding, patch), []);
+    assert.equal(workflowOperationCommentRequired('reject', projectWorkflowNodePolicy(optional, patch).operationPolicy.reject), commentRequired);
+  }
+  for (const baseline of [undefined, { commentRequired: true }]) {
+    const required = { ...node, operationPolicy: { reject: baseline } };
+    assert.ok(validateWorkflowNodeConfigurationPatch(required, binding, { operations: { reject: { commentRequired: false } } }).length);
+    assert.equal(workflowOperationCommentRequired('reject', baseline), true);
+  }
+  assert.equal(workflowOperationCommentRequired('approve'), false);
+  assert.equal(workflowOperationCommentRequired('approve', { commentRequired: true }), true);
+  assert.equal(workflowOperationCommentRequired('reject', optional.operationPolicy.reject), false);
 });
