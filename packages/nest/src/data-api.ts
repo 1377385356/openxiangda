@@ -16,6 +16,9 @@ import type {
   DataRecord,
   DataTransactionRequest,
   DataTransactionResult,
+  DataBusinessCommandCommit,
+  DataBusinessCommandIdentity,
+  DataBusinessCommandResolution,
 } from 'openxiangda-contracts';
 import { SCHEMA_VERSIONS } from 'openxiangda-contracts';
 import { OpenXiangdaApplicationCredentials } from './application-credentials.js';
@@ -286,6 +289,27 @@ export class OpenXiangdaBusinessDataApiService {
     @Inject(OpenXiangdaPlatformClient)
     private readonly platform: OpenXiangdaPlatformClient
   ) {}
+
+  /** 原键提交；响应未知时先调用 resolveOriginalCommand，不自动重试写入。 */
+  async commitCommand(input: DataBusinessCommandCommit): Promise<DataBusinessCommandResolution> {
+    const context = this.commandContext();
+    assertOpenXiangdaRoleAssertions(this.request, input.data.guards);
+    return this.platform.commitDataBusinessCommand(context.authorization, input, context.action);
+  }
+
+  /** 只读观察原结果；not_observed 不是回滚证明。 */
+  async resolveOriginalCommand(input: DataBusinessCommandIdentity): Promise<DataBusinessCommandResolution> {
+    const context = this.commandContext();
+    return this.platform.resolveDataBusinessCommand(context.authorization, input, context.action);
+  }
+
+  private commandContext() {
+    const context = this.context();
+    if (this.request.openxiangda?.operation?.platformAccess?.dataCommands?.mode !== 'recoverable-native') {
+      throw new UnauthorizedException('OPENXIANGDA_DATA_COMMAND_NOT_DECLARED');
+    }
+    return context;
+  }
 
   async query<T extends Record<string, unknown>>(
     resourceCode: string,

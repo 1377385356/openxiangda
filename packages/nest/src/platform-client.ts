@@ -2,7 +2,9 @@ import type { WorkflowDelegationAdministration, WorkflowDelegationCatalog, Workf
 import { assertOutsideManagedExecution, managedExecution } from './managed-command-private.js';
 import type { ManagedCommandExecutionVerification } from 'openxiangda-contracts';
 const managedReadRequest = Symbol('managed-read');
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
+import { canonicalDataBusinessIntent, DATA_BUSINESS_COMMAND_SCHEMA, parseDataBusinessCommandResolution,
+  type DataBusinessCommandCommit, type DataBusinessCommandIdentity, type DataBusinessCommandResolution } from 'openxiangda-contracts';
 import { HttpException, Inject, Injectable, Optional } from "@nestjs/common";
 import type {
   DataPage,
@@ -553,6 +555,29 @@ export class OpenXiangdaPlatformClient {
         }),
       }
     );
+  }
+
+  async commitDataBusinessCommand(authorization: string, input: DataBusinessCommandCommit,
+    businessAction: OpenXiangdaBusinessActionContext): Promise<DataBusinessCommandResolution> {
+    return this.dataBusinessCommand('commit', authorization, input, businessAction);
+  }
+
+  async resolveDataBusinessCommand(authorization: string, input: DataBusinessCommandIdentity,
+    businessAction: OpenXiangdaBusinessActionContext): Promise<DataBusinessCommandResolution> {
+    return this.dataBusinessCommand('resolve', authorization, input, businessAction);
+  }
+
+  private async dataBusinessCommand(mode: 'commit' | 'resolve', authorization: string,
+    input: DataBusinessCommandIdentity | DataBusinessCommandCommit, businessAction: OpenXiangdaBusinessActionContext): Promise<DataBusinessCommandResolution> {
+    const intentDigest = createHash('sha256').update(canonicalDataBusinessIntent(input.intent)).digest('hex');
+    const value = await this.request<unknown>(`/openxiangda-api/v2/applications/${encodeURIComponent(this.options.appCode)}/native/data/business-commands/${mode}`, {
+      method: 'POST', headers: this.identityHeaders(authorization, null, businessAction),
+      body: JSON.stringify({ ...input, schemaVersion: DATA_BUSINESS_COMMAND_SCHEMA, environmentKey: this.options.environmentKey }),
+    });
+    return parseDataBusinessCommandResolution(value, {
+      appCode: this.options.appCode, environmentKey: this.options.environmentKey,
+      operationCode: businessAction.code, idempotencyKey: input.idempotencyKey, intentDigest,
+    }, mode === 'commit');
   }
 
   async commitBusinessProcess(

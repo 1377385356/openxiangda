@@ -535,6 +535,9 @@ export function compileRequiredPlatformCapabilitiesV3(
           declaration: resources.filter(resource => resource.decimalReservationLifecycle)
             .map(resource => ({ code: resource.code, decimalReservationLifecycle: resource.decimalReservationLifecycle })) }]
       : []),
+    ...(operations.some(operation => operation.platformAccess?.dataCommands)
+      ? [{ code: 'data.business-commands' as const, declaration: operations.filter(operation => operation.platformAccess?.dataCommands) }]
+      : []),
     ...(operations.some(operation => operation.platformAccess?.decimalReservation) ||
       config.events.subscriptions.some((subscription: any) => subscription.platformAccess?.decimalReservation)
       ? [{
@@ -2690,7 +2693,7 @@ function validateOperationPlatformAccess(
   const access = object(value, pointer);
   exactKeys(
     access,
-    ['directory', 'managedFiles', 'managedFileCopies', 'notification', 'workflow', 'roleAssertions', 'decimalReservation'],
+    ['directory', 'managedFiles', 'managedFileCopies', 'notification', 'workflow', 'roleAssertions', 'decimalReservation', 'dataCommands'],
     pointer,
     true
   );
@@ -2698,6 +2701,12 @@ function validateOperationPlatformAccess(
     fail('NATIVE_OPERATION_PLATFORM_ACCESS_EMPTY', pointer);
   }
   const result: JsonObject = {};
+  if (access.dataCommands !== undefined) {
+    const commands = object(access.dataCommands, `${pointer}/dataCommands`);
+    exactKeys(commands, ['mode'], `${pointer}/dataCommands`);
+    equal(commands.mode, 'recoverable-native', `${pointer}/dataCommands/mode`);
+    result.dataCommands = { mode: 'recoverable-native' };
+  }
   if (access.roleAssertions !== undefined) {
     const assertions = object(access.roleAssertions, `${pointer}/roleAssertions`);
     exactKeys(assertions, ['roleCodes'], `${pointer}/roleAssertions`);

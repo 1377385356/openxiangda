@@ -7411,6 +7411,10 @@ const appOperationPlatformAccessSchema = {
   additionalProperties: false,
   minProperties: 1,
   properties: {
+    dataCommands: {
+      type: 'object', additionalProperties: false, required: ['mode'],
+      properties: { mode: { const: 'recoverable-native' } },
+    },
     roleAssertions: {
       type: "object", additionalProperties: false, required: ["roleCodes"],
       properties: { roleCodes: {

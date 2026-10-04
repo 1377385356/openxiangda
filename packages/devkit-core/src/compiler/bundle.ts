@@ -1978,6 +1978,7 @@ function runtimeProtocolCapabilities(config: OpenXiangdaAppConfig) {
     )
       ? ['business-process.durable-command']
       : []),
+    ...(operations.some(operation => operation.platformAccess?.dataCommands) ? ['data.business-commands'] : []),
     ...(operations.some(operation => operation.platformAccess?.decimalReservation) ||
       config.events?.subscriptions.some(subscription => subscription.platformAccess?.decimalReservation)
       ? ['data.decimal-reservations']
