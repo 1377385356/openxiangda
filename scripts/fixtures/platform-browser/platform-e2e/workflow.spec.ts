@@ -1227,7 +1227,8 @@ test('refreshes the task after definitive command-token expiry without a second 
   // The same error is also shown in a transient toast; assert the persistent
   // refusal beside the retained input, without depending on toast timing.
   await expect(page.getByRole('dialog', { name: '同意', exact: true }).getByText('WORKFLOW_V2_COMMAND_TOKEN_EXPIRED', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: /同\s*意/ })).toBeEnabled();
+  await expect(page.getByRole('dialog', { name: '同意', exact: true }).getByLabel('审批意见')).toHaveValue('同意采购');
+  await expect(page.getByRole('button', { name: /^同\s*意$/ })).toBeEnabled();
   expect(mock.requests.filter(request => request.method === 'POST' && request.path.endsWith('/commands/approve'))).toHaveLength(1);
   expect(mock.requests.filter(request => request.method === 'GET' && request.path.endsWith(`/workflow/tasks/${taskId}/surface`))).toHaveLength(1);
   expect(await page.evaluate(() => Object.keys(sessionStorage).filter(key => key.startsWith('openxiangda:pending-task-command:v1:')).length)).toBe(0);
