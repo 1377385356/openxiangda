@@ -3,6 +3,40 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.55.0",
+      "status": "reviewed",
+      "title": "流程拒绝意见策略与受限资料编辑",
+      "summary": "流程定义可显式允许选填拒绝意见，保留旧流程必填默认和管理员收紧边界；同步主线的具名资料编辑支持固定字段及受限输入。",
+      "newFeatures": [
+        "固定审批节点可声明 operationPolicy.reject.commentRequired:false；省略时仍必填，新声明要求 workflow.optional-rejection-comment@1.0.0。",
+        "具名资料编辑可声明固定资源和字段，复用受限人员、字典和托管附件输入，PC 与移动页共用 Field Kit。"
+      ],
+      "fixes": [
+        "审批节点 JSON Schema 接受并有界校验正式 operationPolicy，Surface 和执行端使用同一冻结策略。",
+        "主线修正 dataCommands 在开发配置和产物投影中的遗漏。"
+      ],
+      "affectedUsers": [
+        "需要保留选填拒绝意见语义的 V2 流程，或使用具名动作编辑固定资料字段的应用。"
+      ],
+      "upgradeSteps": [
+        "完整升级同源 SDK 与目标平台；选填拒绝意见须启用支持该能力的平台，并以新不可变流程版本声明。",
+        "已有任务继续使用进入节点时冻结的规则，管理员不得放宽代码必填策略。"
+      ],
+      "knownLimitations": [
+        "当前用于本机开发配套，不代表 npm 或学校生产已发布；真实应用验收单独记录。",
+        "选填仅允许省略、空串或空白；已提供的非字符串及超过 4000 字符仍拒绝。",
+        "具名资料编辑仍受动作能力、行范围和原修订校验约束，不开放普通 UPDATE。"
+      ],
+      "issues": [],
+      "compatibility": {
+        "node": ">=24",
+        "platform": "显式选填要求 workflow.optional-rejection-comment@1.0.0；具名资料编辑按声明要求匹配平台能力"
+      },
+      "sha256": "c48e83ce9ccb01af7e8af97458fee0fb192e0945fc6a596b985ed1fffaf876a0",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.55.0"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.54.6",
       "status": "reviewed",
       "title": "业务提交前检查必需审批人",
