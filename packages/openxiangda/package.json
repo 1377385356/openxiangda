@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.54.0",
+  "version": "2.54.1",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -74,13 +74,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.75",
-    "openxiangda-contracts": "2.59.0",
-    "openxiangda-devkit-core": "2.47.0",
+    "openxiangda-cli": "2.6.76",
+    "openxiangda-contracts": "2.59.1",
+    "openxiangda-devkit-core": "2.47.1",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.93",
-    "openxiangda-nest": "2.13.22",
-    "openxiangda-skill-kit": "2.3.73",
+    "openxiangda-mcp": "2.0.94",
+    "openxiangda-nest": "2.13.23",
+    "openxiangda-skill-kit": "2.3.74",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -146,37 +146,31 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.54.0",
+    "version": "2.54.1",
     "status": "reviewed",
-    "title": "按资料权限受控删除关联流程",
-    "summary": "标准详情提供显式的资料删除影响预览与确认，沿同一成员的资料范围复用 Native 事务和 Workflow Kernel 的删除命令与回执。",
-    "newFeatures": [
-      "模型可选 recordDeletion.delete，声明自动派生 data.workflow-record-deletion@1.0.0，无需额外初始化开关。",
-      "同一成员须同时拥有资料 read、delete 和全部维护能力，保留原行权限，不授普通编辑或通用流程管理员权。",
-      "公开预览、执行、原回执 SDK 与标准详情弹层；未知结果固定原键、原因和预览，先恢复结果。",
-      "无关联实例沿 Native 事务，唯一关联实例沿 Kernel admin_delete；待启动、多实例及明细另有关联明确阻塞。"
+    "title": "业务动作模型的受控删除授权修正",
+    "summary": "显式开启资料维护删除的模型可以声明其 Native 删除范围能力，仍由受控入口执行删除。",
+    "newFeatures": [],
+    "fixes": [
+      "双编译器仅为非空 recordDeletion.delete 放行模型删除能力授予；普通创建、更新、删除和关闭维护入口的模型继续遵守原所有者约束。"
     ],
-    "fixes": [],
     "affectedUsers": [
-      "需要将资料维护权限与流程管理员权限分别授予的 V2 应用及平台维护者。"
+      "由业务动作维护申请数据、同时需要独立资料删除权的 V2 应用。"
     ],
     "upgradeSteps": [
-      "消费同源 SDK/contracts/devkit 与提供 data.workflow-record-deletion@1.0.0 的 Server。",
-      "显式声明 recordDeletion 与资料 read/delete、维护能力，沿同一成员的数据范围执行。",
-      "未知提交先核原回执；只有专用回执不存在且原预览有效时，显式用原请求重试。"
+      "使用同源本地 SDK2.54.1/contracts2.59.1/devkit2.47.1及完整配套包，重新生成契约并运行公开应用检查。"
     ],
     "knownLimitations": [
-      "本批仅本地包，无 npm 发布；真实应用六组权限与正式本地部署验收仍待共享平台验证窗口。",
-      "owned 删除上限100条、深度8；多个关联实例、待启动命令及明细关联其他实例不支持自动删除。",
-      "预览有效期五分钟，过期后仍可恢复原回执；原 CSRF 绑定保留在既有512条身份缓存中，容量淘汰、退出或刷新后不保证恢复。页面不跨刷新保存原请求。",
-      "合成组件及隔离数据库证据不代表103条源流程完整业务验收。"
+      "受控删除仍限零个或唯一根关联实例、owned100条及深度8；待启动、多流程和明细其他关联保持阻塞。",
+      "预览五分钟；未知提交先恢复原回执。原 CSRF 缓存有界，退出、刷新或容量淘汰后不保证恢复。",
+      "本批不发布 npm，真实应用权限及正式部署验收仍待执行；不代表103条源流程业务已完成。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
-      "platform": "data.workflow-record-deletion@1.0.0；复用既有 Native 与 Kernel 数据表及平台密钥，无新增初始化开关。未声明应用与1.x保持原行为。"
+      "platform": "data.workflow-record-deletion@1.0.0；普通 Native mutationOwner 授权边界保留，默认未声明不启用。"
     },
-    "sha256": "940ca30e5fa17c12f4e22f675879a02d5f316eee276108ff9ab8b6e000e167b1",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.54.0"
+    "sha256": "2e1de49c0dfe3b700f29e5a3bbb0e46f9923456878f8b9bece259fe26808d954",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.54.1"
   }
 }
