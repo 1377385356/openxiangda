@@ -3,6 +3,38 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.51.0",
+      "status": "reviewed",
+      "title": "固定流程支持通知最后业务修改人",
+      "summary": "申请被拒绝时，在原事务冻结最后成功业务写入者，通知队列沿原事实投递和恢复。",
+      "newFeatures": [
+        "流程定义新增固定 rejectionNotification 声明，源码与目标编译器导出相同能力闭包。",
+        "平台读取 Native updated_by 与当前资料 revision，固定一个有效用户或明确跳过原因。",
+        "通知中心复用标准模板、站内消息、导航和 outbox，不要求应用后端或自建订阅。"
+      ],
+      "fixes": [],
+      "affectedUsers": [
+        "需要向最后业务修改人发送拒绝通知的 V2 流程应用。"
+      ],
+      "upgradeSteps": [
+        "消费同源包和提供 workflow.rejection-notification@1.0.0 的 Server，再注册与激活新固定流程版本。",
+        "声明固定文案和 record_last_modifier 收件来源；初始化无需增加开关。"
+      ],
+      "knownLimitations": [
+        "尚未发布 npm、写学校或生产数据；本地应用运行验收待共享平台验证结束。",
+        "最后成功业务写入者是明确目标语义，宜搭 form_inst_modifier 的事件时点仍需另核。",
+        "修改人当前无法查看详情时，消息跳转按现有权限拒绝，不扩大授权。"
+      ],
+      "issues": [],
+      "compatibility": {
+        "node": ">=24",
+        "platform": "workflow.rejection-notification@1.0.0；未声明应用和旧固定实例继续原行为。"
+      },
+      "sha256": "598c4fd3660cbe3d50693da26488fa6b31f400ad71f330f4dda6382b97552a33",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.51.0"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.50.0",
       "status": "reviewed",
       "title": "按业务资料权限查看流程办理历史",
