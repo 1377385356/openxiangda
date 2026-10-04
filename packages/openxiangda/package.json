@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.51.0",
+  "version": "2.52.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -74,13 +74,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.72",
-    "openxiangda-contracts": "2.56.0",
-    "openxiangda-devkit-core": "2.44.0",
+    "openxiangda-cli": "2.6.73",
+    "openxiangda-contracts": "2.57.0",
+    "openxiangda-devkit-core": "2.45.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.90",
-    "openxiangda-nest": "2.13.19",
-    "openxiangda-skill-kit": "2.3.70",
+    "openxiangda-mcp": "2.0.91",
+    "openxiangda-nest": "2.13.20",
+    "openxiangda-skill-kit": "2.3.71",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -146,34 +146,36 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.51.0",
+    "version": "2.52.0",
     "status": "reviewed",
-    "title": "固定流程支持通知最后业务修改人",
-    "summary": "申请被拒绝时，在原事务冻结最后成功业务写入者，通知队列沿原事实投递和恢复。",
+    "title": "独立授权的单记录资料打印",
+    "summary": "标准资料详情提供PC与手机打印预览，读取和打印均使用当前身份的独立打印许可及原数据范围。",
     "newFeatures": [
-      "流程定义新增固定 rejectionNotification 声明，源码与目标编译器导出相同能力闭包。",
-      "平台读取 Native updated_by 与当前资料 revision，固定一个有效用户或明确跳过原因。",
-      "通知中心复用标准模板、站内消息、导航和 outbox，不要求应用后端或自建订阅。"
+      "模型新增可选 recordPrint 声明，编译器同源派生 data.record-print@1.0.0。",
+      "平台先筛选同一成员的资料读取和全部打印能力，再执行原RLS、Perspective、字段权限与脱敏。",
+      "公开 loadNativeRecordPrint 与 ResourceRecordPrintPreview，标准详情直接提供打印入口；打印前重新读取当前资料，失败和身份变化清除旧预览。",
+      "CLI模板随根包更新精确SDK依赖；平台能力自动注册，不增加初始化SQL、开关或数据表。"
     ],
     "fixes": [],
     "affectedUsers": [
-      "需要向最后业务修改人发送拒绝通知的 V2 流程应用。"
+      "需要为业务资料配置独立打印权限的V2应用及维护者。"
     ],
     "upgradeSteps": [
-      "消费同源包和提供 workflow.rejection-notification@1.0.0 的 Server，再注册与激活新固定流程版本。",
-      "声明固定文案和 record_last_modifier 收件来源；初始化无需增加开关。"
+      "消费同源SDK、contracts及devkit，使用提供 data.record-print@1.0.0 的Server。",
+      "声明 recordPrint.read、同应用能力及对应职责，沿既有资料范围和字段规则配置打印许可。"
     ],
     "knownLimitations": [
-      "尚未发布 npm、写学校或生产数据；本地应用运行验收待共享平台验证结束。",
-      "最后成功业务写入者是明确目标语义，宜搭 form_inst_modifier 的事件时点仍需另核。",
-      "修改人当前无法查看详情时，消息跳转按现有权限拒绝，不扩大授权。"
+      "尚未发布npm；真实应用六组权限和PC/390px浏览器验收待共享平台空闲。",
+      "当前只支持主记录；可读子表明确返回409，PDF模板、完整子表快照、签章和源打印模板等价另行实现。",
+      "附件及图片打印名称和大小，富文本转安全文本；不自动下载附件。",
+      "独立许可保护平台打印接口与标准入口；已读取资料的截图或浏览器自行打印不由平台阻止。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
-      "platform": "workflow.rejection-notification@1.0.0；未声明应用和旧固定实例继续原行为。"
+      "platform": "data.record-print@1.0.0；未声明应用继续原行为，已有流程定义及历史实例不迁绑。"
     },
-    "sha256": "598c4fd3660cbe3d50693da26488fa6b31f400ad71f330f4dda6382b97552a33",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.51.0"
+    "sha256": "d14d28435c971794fae5bc2b939600bf0cb29a77822ed54827817b45200f5b0e",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.52.0"
   }
 }
