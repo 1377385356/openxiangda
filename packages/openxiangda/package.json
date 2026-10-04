@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.55.1",
+  "version": "2.55.2",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -74,13 +74,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.83",
-    "openxiangda-contracts": "2.63.0",
-    "openxiangda-devkit-core": "2.48.2",
+    "openxiangda-cli": "2.6.84",
+    "openxiangda-contracts": "2.64.0",
+    "openxiangda-devkit-core": "2.48.3",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.101",
-    "openxiangda-nest": "2.14.3",
-    "openxiangda-skill-kit": "2.3.81",
+    "openxiangda-mcp": "2.0.102",
+    "openxiangda-nest": "2.14.4",
+    "openxiangda-skill-kit": "2.3.82",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -146,34 +146,33 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.55.1",
+    "version": "2.55.2",
     "status": "reviewed",
-    "title": "持久原结果恢复与流程字段策略修复",
-    "summary": "已受理命令的短读取超时不会提前终止原三十分钟观察；同步主线的条件必填错误清理和冻结的选填撤回原因策略。",
+    "title": "具名事务当前办理人操作与范围校验",
+    "summary": "增加显式 actor-authority 事务条件，将当前办理人的角色、动作能力和精确范围在平台事务内绑定为同一有效成员，并保留原目标成员断言。",
     "newFeatures": [
-      "固定流程定义支持 instanceCommands.withdraw.reasonRequired:false；省略仍必填，新声明要求 workflow.optional-withdrawal-reason@1.0.0。"
+      "具名业务动作可声明 roleAssertions.actorAuthority:true，自动派生 data.transaction-actor-authority@1.0.0。",
+      "共享 Schema、双编译器、ESM/CJS 纯规则与 Nest SDK 贯通严格有界的 anyOf 角色/范围条件。"
     ],
-    "fixes": [
-      "已受理 durable 原结果查询收到 SDK 明确标记可恢复的短读取预算耗尽后，在原绝对截止前按退避继续只读查询；不重放提交。",
-      "另一字段解除条件必填后清除 SDK 自己生成的旧必填错误，保留其他客户端、子表和服务端错误。"
-    ],
+    "fixes": [],
     "affectedUsers": [
-      "使用 durable 持久命令的热点报名应用和包含条件必填或撤回策略的 V2 流程。"
+      "需要将当前办理人管理范围和关键业务写入一起提交的 V2 应用；省略新声明的应用沿用原语义。"
     ],
     "upgradeSteps": [
-      "使用正式精确版本升级应用 SDK；原结果恢复无需更改服务端协议。",
-      "使用选填撤回原因时，平台必须具备对应能力；已有实例继续使用冻结版本。"
+      "完整同源升级 SDK 与平台合同实现；确认目标能力后，在对应具名动作显式声明允许角色和 actorAuthority。",
+      "使用平台当前 actor、动作能力与同成员范围；业务归属通过同一 Native 事务的记录 revision/CAS 守卫冻结。"
     ],
     "knownLimitations": [
-      "一次读取仍最多两分钟，总观察仍为原三十分钟；权限、依赖和普通网络错误不会被自动隐藏。",
-      "容量必须在目标硬件上独立测量；单元验证不能证明万人或浏览器洪峰已通过。"
+      "本轮仅授权本机源码和同源 SDK 验证，未进行 npm 或学校生产发布。",
+      "新守卫需要配套平台运行时；平台单元、真实 PostgreSQL 并发以及应用角色/页面验收分别记录，SDK 检查不替代业务验收。",
+      "应用源码托管、完整功能迁移和性能验收继续按各应用台账处理。"
     ],
-    "issues": [],
     "compatibility": {
-      "node": ">=24",
-      "platform": "durable 恢复沿用既有结果协议；显式选填撤回原因要求 workflow.optional-withdrawal-reason@1.0.0"
+      "node": ">=22，维护工具链使用 Node.js 24",
+      "platform": "data.transaction-actor-authority@1.0.0；普通调用、事件和队列不支持新条件"
     },
-    "sha256": "c6c0691f9fe9571dfe1c9078546a5db3f63645ba11a67a3f3d0d6324ba7713d1",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.55.1"
+    "issues": [],
+    "sha256": "1cd2fcb3281c735ad649a82112da7806635f7d016243fe7b5ba30d12be9ea90f",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.55.2"
   }
 }

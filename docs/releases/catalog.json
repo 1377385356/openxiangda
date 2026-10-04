@@ -3,6 +3,37 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.55.2",
+      "status": "reviewed",
+      "title": "具名事务当前办理人操作与范围校验",
+      "summary": "增加显式 actor-authority 事务条件，将当前办理人的角色、动作能力和精确范围在平台事务内绑定为同一有效成员，并保留原目标成员断言。",
+      "newFeatures": [
+        "具名业务动作可声明 roleAssertions.actorAuthority:true，自动派生 data.transaction-actor-authority@1.0.0。",
+        "共享 Schema、双编译器、ESM/CJS 纯规则与 Nest SDK 贯通严格有界的 anyOf 角色/范围条件。"
+      ],
+      "fixes": [],
+      "affectedUsers": [
+        "需要将当前办理人管理范围和关键业务写入一起提交的 V2 应用；省略新声明的应用沿用原语义。"
+      ],
+      "upgradeSteps": [
+        "完整同源升级 SDK 与平台合同实现；确认目标能力后，在对应具名动作显式声明允许角色和 actorAuthority。",
+        "使用平台当前 actor、动作能力与同成员范围；业务归属通过同一 Native 事务的记录 revision/CAS 守卫冻结。"
+      ],
+      "knownLimitations": [
+        "本轮仅授权本机源码和同源 SDK 验证，未进行 npm 或学校生产发布。",
+        "新守卫需要配套平台运行时；平台单元、真实 PostgreSQL 并发以及应用角色/页面验收分别记录，SDK 检查不替代业务验收。",
+        "应用源码托管、完整功能迁移和性能验收继续按各应用台账处理。"
+      ],
+      "compatibility": {
+        "node": ">=22，维护工具链使用 Node.js 24",
+        "platform": "data.transaction-actor-authority@1.0.0；普通调用、事件和队列不支持新条件"
+      },
+      "issues": [],
+      "sha256": "1cd2fcb3281c735ad649a82112da7806635f7d016243fe7b5ba30d12be9ea90f",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.55.2"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.55.1",
       "status": "reviewed",
       "title": "持久原结果恢复与流程字段策略修复",
