@@ -6079,6 +6079,8 @@ export const businessProcessCommitSchema = {
 
 export const businessProcessCommandWithDataSchema = {
   $id: SCHEMA_VERSIONS.businessProcessCommandWithData,
+  $defs: { dataWhere: dataWhereSchema },
+  'x-openxiangda-max-bytes': DATA_TRANSACTION_MAX_BYTES,
   type: 'object',
   additionalProperties: false,
   required: ['schemaVersion', 'environmentKey', 'workflow', 'subject', 'data', 'expectedTransition'],
