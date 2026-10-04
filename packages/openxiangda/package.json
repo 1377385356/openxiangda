@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.52.0",
+  "version": "2.53.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -74,13 +74,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.73",
-    "openxiangda-contracts": "2.57.0",
-    "openxiangda-devkit-core": "2.45.0",
+    "openxiangda-cli": "2.6.74",
+    "openxiangda-contracts": "2.58.0",
+    "openxiangda-devkit-core": "2.46.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.91",
-    "openxiangda-nest": "2.13.20",
-    "openxiangda-skill-kit": "2.3.71",
+    "openxiangda-mcp": "2.0.92",
+    "openxiangda-nest": "2.13.21",
+    "openxiangda-skill-kit": "2.3.72",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -146,36 +146,36 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.52.0",
+    "version": "2.53.0",
     "status": "reviewed",
-    "title": "独立授权的单记录资料打印",
-    "summary": "标准资料详情提供PC与手机打印预览，读取和打印均使用当前身份的独立打印许可及原数据范围。",
+    "title": "独立授权的单记录资料评论",
+    "summary": "标准详情提供单记录评论，读取和新增分别声明，同一成员的数据范围与当前用户授权控制服务端执行。",
     "newFeatures": [
-      "模型新增可选 recordPrint 声明，编译器同源派生 data.record-print@1.0.0。",
-      "平台先筛选同一成员的资料读取和全部打印能力，再执行原RLS、Perspective、字段权限与脱敏。",
-      "公开 loadNativeRecordPrint 与 ResourceRecordPrintPreview，标准详情直接提供打印入口；打印前重新读取当前资料，失败和身份变化清除旧预览。",
-      "CLI模板随根包更新精确SDK依赖；平台能力自动注册，不增加初始化SQL、开关或数据表。"
+      "模型可选recordComments分别配置read/create，编译器自动派生data.record-comments@1.0.0，fresh/update自动执行正式SQL迁移。",
+      "平台单记录有界分页、纯文本新增及本人原键回执接口，评论不修改主记录或工作流意见。",
+      "公开列表、新增、回执SDK及ResourceRecordComments标准面板，提交不确定时锁定原键并先核对结果。",
+      "记录锁与唯一约束保障并发容量及幂等，来源版本与评论回执原子保存。CLI模板随SDK精确升级。"
     ],
     "fixes": [],
     "affectedUsers": [
-      "需要为业务资料配置独立打印权限的V2应用及维护者。"
+      "需要独立资料评论权限的V2应用及平台维护者。"
     ],
     "upgradeSteps": [
-      "消费同源SDK、contracts及devkit，使用提供 data.record-print@1.0.0 的Server。",
-      "声明 recordPrint.read、同应用能力及对应职责，沿既有资料范围和字段规则配置打印许可。"
+      "消费同源SDK/contracts/devkit与提供data.record-comments@1.0.0的Server，走正式SQL迁移链。",
+      "声明recordComments、同应用能力与职责，保留原资料范围；应用不要为评论另建权限或绕开主记录mutationOwner。",
+      "未知结果保留原请求并查本人回执，仅回执不存在时显式同键重试。"
     ],
     "knownLimitations": [
-      "尚未发布npm；真实应用六组权限和PC/390px浏览器验收待共享平台空闲。",
-      "当前只支持主记录；可读子表明确返回409，PDF模板、完整子表快照、签章和源打印模板等价另行实现。",
-      "附件及图片打印名称和大小，富文本转安全文本；不自动下载附件。",
-      "独立许可保护平台打印接口与标准入口；已读取资料的截图或浏览器自行打印不由平台阻止。"
+      "未发布npm，实际六组应用授权、普通app-admin与PC/390px浏览器验收待共享平台空闲。",
+      "当前仅纯文本评论，不含回复、附件、提及、编辑/删除、通知及旧评论导入；源端附加语义尚未运行核实。",
+      "页内导航和关闭浏览器有未完成保护；当前不支持跨刷新自动续写，需保留原键和正文并通过SDK查询原结果。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
-      "platform": "data.record-print@1.0.0；未声明应用继续原行为，已有流程定义及历史实例不迁绑。"
+      "platform": "data.record-comments@1.0.0；正式expand SQL新增附属表，未声明应用与已有流程实例保持原行为。"
     },
-    "sha256": "d14d28435c971794fae5bc2b939600bf0cb29a77822ed54827817b45200f5b0e",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.52.0"
+    "sha256": "6f06443044f74eec12049a8e7c208a84a70a958be5f4495bbdc42e4e953a9184",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.53.0"
   }
 }
