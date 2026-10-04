@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.54.1",
+  "version": "2.54.2",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -74,13 +74,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.76",
-    "openxiangda-contracts": "2.59.1",
-    "openxiangda-devkit-core": "2.47.1",
+    "openxiangda-cli": "2.6.77",
+    "openxiangda-contracts": "2.59.2",
+    "openxiangda-devkit-core": "2.47.2",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.94",
-    "openxiangda-nest": "2.13.23",
-    "openxiangda-skill-kit": "2.3.74",
+    "openxiangda-mcp": "2.0.95",
+    "openxiangda-nest": "2.13.24",
+    "openxiangda-skill-kit": "2.3.75",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -146,31 +146,33 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.54.1",
+    "version": "2.54.2",
     "status": "reviewed",
-    "title": "业务动作模型的受控删除授权修正",
-    "summary": "显式开启资料维护删除的模型可以声明其 Native 删除范围能力，仍由受控入口执行删除。",
-    "newFeatures": [],
-    "fixes": [
-      "双编译器仅为非空 recordDeletion.delete 放行模型删除能力授予；普通创建、更新、删除和关闭维护入口的模型继续遵守原所有者约束。"
+    "title": "审批命令与业务数据原子提交契约",
+    "summary": "固定 Workflow 命令处理器可将审批或撤回交给已声明的受控业务动作，并在原工作流令牌和同一事务中提交 Native 数据变更。",
+    "newFeatures": [
+      "工作流定义可声明 approve、reject、withdraw 的固定 Named Action 处理器；双编译器校验操作、主体与能力引用并要求 workflow.business-data-command@1.0.0。",
+      "浏览器 SDK 从原 Workflow Surface 和当前操作目录分发固定动作，保留原令牌、命令 CSRF、幂等键及未知结果恢复语义；Nest SDK 透传已验证动作证明。"
     ],
+    "fixes": [],
     "affectedUsers": [
-      "由业务动作维护申请数据、同时需要独立资料删除权的 V2 应用。"
+      "需要审批、撤回与关联业务记录在同一事务完成的 OpenXiangda 2.0 应用。"
     ],
     "upgradeSteps": [
-      "使用同源本地 SDK2.54.1/contracts2.59.1/devkit2.47.1及完整配套包，重新生成契约并运行公开应用检查。"
+      "安装同一发行组合的 contracts、Devkit、Nest、根包和 CLI，重新生成应用契约；在支持 workflow.business-data-command@1.0.0 的平台上启用固定处理器。",
+      "应用为每个固定操作实现受控 Named Action，显式提交主体修订、Native 守卫与操作以及预期工作流结果，并按真实角色测试拒绝和撤回。"
     ],
     "knownLimitations": [
-      "受控删除仍限零个或唯一根关联实例、owned100条及深度8；待启动、多流程和明细其他关联保持阻塞。",
-      "预览五分钟；未知提交先恢复原回执。原 CSRF 缓存有界，退出、刷新或容量淘汰后不保证恢复。",
-      "本批不发布 npm，真实应用权限及正式部署验收仍待执行；不代表103条源流程业务已完成。"
+      "未声明处理器的工作流行为不变；固定处理器只支持 approve、reject 和 withdraw，其他会改变流程状态的逃逸操作在已绑定流程中受限。",
+      "能力依赖配套平台内核；仅有 SDK 或字段声明不能实现原子业务效果。现有流程实例不会自动迁移或补发效果。",
+      "本地候选的源码和契约测试不等于平台激活或应用业务验收。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
-      "platform": "data.workflow-record-deletion@1.0.0；普通 Native mutationOwner 授权边界保留，默认未声明不启用。"
+      "platform": "workflow.business-data-command@1.0.0；未实现该能力的服务器须拒绝绑定应用。"
     },
-    "sha256": "2e1de49c0dfe3b700f29e5a3bbb0e46f9923456878f8b9bece259fe26808d954",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.54.1"
+    "sha256": "daa3aaca13b0ca47157b033768abbfa7fea81c5a11af63e110bf074ed423f195",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.54.2"
   }
 }
