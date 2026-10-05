@@ -2442,8 +2442,10 @@ export type WorkflowConfigurableOperation = 'approve' | 'reject' | 'return' | 't
 export type WorkflowConfigurableAssigneeProvider = 'fixed_users' | 'app_role' | 'app_role_in_scope';
 export interface WorkflowNodeOperationPolicy {
   label?: string;
-  /** Approve defaults to false, reject to true; explicit false is code-owned. Other required reasons stay required. */
+  /** Approve defaults to false, reject to true; explicit false is code-owned. */
   commentRequired?: boolean;
+  /** Transfer/delegate/add_assignee/return default to true; administrators cannot loosen the code baseline. */
+  reasonRequired?: boolean;
 }
 export interface WorkflowApprovalAdministration {
   modes?: WorkflowApprovalMode[];

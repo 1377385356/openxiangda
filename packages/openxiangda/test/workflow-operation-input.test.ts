@@ -28,6 +28,16 @@ test('optional fields distinguish absence from a provided value that violates it
   assert.ok(workflowOperationStringError({ minLength: 3 }, 'ab', false, '说明'));
 });
 
+test('optional operation reasons accept blank input while retaining string and length bounds', () => {
+  const optional = { maxLength: 4000 };
+  for (const value of [undefined, '', ' \t\n ', '合成说明', 'a'.repeat(4000)]) {
+    assert.equal(workflowOperationStringError(optional, value, false, '原因'), null);
+  }
+  for (const value of [null, 123, {}, 'a'.repeat(4001)]) {
+    assert.ok(workflowOperationStringError(optional, value, false, '原因'));
+  }
+});
+
 test('platform patterns are enforced and an invalid pattern cannot silently enable submission', () => {
   assert.ok(workflowOperationStringError({ pattern: '^ABC$' }, 'ABD', true, '说明'));
   assert.equal(workflowOperationStringError({ pattern: '^ABC$' }, 'ABC', true, '说明'), null);

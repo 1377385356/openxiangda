@@ -89,7 +89,7 @@ export { formatWorkflowExpression, projectWorkflowGraph } from 'openxiangda-cont
 export { formatWorkflowCompletionDeadline } from 'openxiangda-contracts/browser';
 export type { WorkflowCompletionDeadline, WorkflowCompletionDeadlineState } from 'openxiangda-contracts/browser';
 export type { WorkflowReadability, WorkflowGraphProjection, WorkflowGraphVariable, WorkflowGraphEdge, WorkflowGraphVisit, WorkflowGraphReadResult, WorkflowInstanceGraphReadResult } from 'openxiangda-contracts/browser';
-export { WORKFLOW_CONFIGURABLE_OPERATIONS, WORKFLOW_CONFIGURABLE_PROVIDERS, validateWorkflowNodeConfigurationPatch, projectWorkflowNodePolicy, workflowOperationCommentRequired } from 'openxiangda-contracts/browser';
+export { WORKFLOW_CONFIGURABLE_OPERATIONS, WORKFLOW_CONFIGURABLE_PROVIDERS, validateWorkflowNodeConfigurationPatch, projectWorkflowNodePolicy, workflowOperationCommentRequired, workflowOperationReasonRequired } from 'openxiangda-contracts/browser';
 export type { ApplicationAdministrationContext, WorkflowApprovalAdministration, WorkflowApprovalMode, WorkflowConfigurableOperation, WorkflowFieldPolicy, WorkflowNodeOperationPolicy, WorkflowNodeConfigurations, WorkflowNodeConfigurationPatch, WorkflowNodeConfigurationMutation, WorkflowNodeConfigurationReceipt } from 'openxiangda-contracts/browser';
 export { validateWorkflowAssignmentRoutingRules } from 'openxiangda-contracts/browser';
 export type { WorkflowAssignmentRoutingPolicy, WorkflowAssignmentRoutingRule, WorkflowAssignmentRoutingConfiguration, WorkflowAssignmentRoutingMutation, WorkflowAssignmentRoutingReceipt, WorkflowAssignmentRoutingCatalog, WorkflowAssignmentRoutingHistory } from 'openxiangda-contracts/browser';

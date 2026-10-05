@@ -14,6 +14,26 @@ function input(config = JSON.parse(corpus.configuration.canonical)) {
   };
 }
 
+test('optional operation reasons require real platform support only when explicitly opted in, in ESM and CJS', () => {
+  for (const operation of ['transfer', 'delegate', 'add_assignee', 'return']) {
+    const config = JSON.parse(corpus.configuration.canonical);
+    const node = config.workflows.definitions[0].definition.nodes.review;
+    const compileInput = () => {
+      const contract = { ...JSON.parse(corpus.contract.canonical), configDigest: sha256Digest(config) };
+      return { ...input(config), contractBytes: canonicalJson(contract), expectedContractDigest: sha256Digest(contract) };
+    };
+    for (const reasonRequired of [undefined, true, false]) {
+      node.operationPolicy = reasonRequired === undefined ? {} : { [operation]: { reasonRequired } };
+      for (const implementation of [esm, cjs]) {
+        const feature = implementation.compileNativeApplicationConfiguration(compileInput()).requiredPlatformCapabilities.find(item => item.code === 'workflow.optional-operation-reason');
+        assert.equal(feature?.contractVersion, reasonRequired === false ? '1.0.0' : undefined);
+      }
+    }
+    node.operationPolicy = { approve: { reasonRequired: false } };
+    for (const implementation of [esm, cjs]) assert.throws(() => implementation.compileNativeApplicationConfiguration(compileInput()), /WORKFLOW_NODE_OPERATION_POLICY_INVALID|CONFIGURATION_SCHEMA_INVALID/);
+  }
+});
+
 test('completion deadline negotiates real server support in ESM and CJS', () => {
   const config = JSON.parse(corpus.configuration.canonical);
   const node = config.workflows.definitions[0].definition.nodes.review;

@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Alert, App, Button, Checkbox, Drawer, Empty, Form, Input, Radio, Select, Space, Tabs, Tag, Typography } from 'antd';
 import type { WorkflowNodeConfigurations, WorkflowNodeConfigurationPatch, WorkflowNodeConfigurationMutation, WorkflowNodeConfigurationReceipt } from 'openxiangda-contracts/browser';
-import { formatWorkflowCompletionDeadline, validateWorkflowNodeConfigurationPatch, workflowOperationCommentRequired } from 'openxiangda-contracts/browser';
+import { formatWorkflowCompletionDeadline, validateWorkflowNodeConfigurationPatch, workflowOperationCommentRequired, workflowOperationReasonRequired } from 'openxiangda-contracts/browser';
 import { PlatformDirectoryPicker } from '../platform-fields/PlatformDirectoryPicker';
 import { loadApplicationAdministrationContext, loadWorkflowNodeConfigurations, saveWorkflowNodeConfiguration } from '../../platform-client';
 
@@ -15,7 +15,7 @@ const labels: Record<string, string> = { approve: '同意', reject: '拒绝', re
 const modes: Record<string, string> = { single: '单人审批', any: '或签：一人通过即可', all: '会签：全部通过', sequence: '依次审批' };
 const modeDescriptions: Record<string, string> = { single: '只分派给一位审批人。', any: '任一审批人同意后，此节点完成。', all: '所有审批人同意后，此节点完成。', sequence: '按候选人顺序逐一处理。' };
 const providers: Record<string, string> = { fixed_users: '指定人员', app_role: '应用角色', app_role_in_scope: '范围内的应用角色' };
-const effect = '保存后，后续进入此节点的任务使用新配置。当前待办保留进入时的审批方式、人员和按钮。';
+const effect = '保存后，后续进入此节点的任务使用新配置。当前待办保留进入时的审批方式、人员、按钮和填写要求。';
 
 function initialValues(node: Node, principals: WorkflowNodeConfigurations['principals']): Partial<Values> {
   return {
@@ -25,7 +25,9 @@ function initialValues(node: Node, principals: WorkflowNodeConfigurations['princ
     operations: Object.fromEntries((node.administration?.operations || []).map(operation => [operation, {
       enabled: node.effective.allowedOperations?.includes(operation) ?? true,
       label: node.effective.operationPolicy?.[operation]?.label || labels[operation],
-      commentRequired: workflowOperationCommentRequired(operation, node.effective.operationPolicy?.[operation]),
+      ...(['approve', 'reject'].includes(operation)
+        ? { commentRequired: workflowOperationCommentRequired(operation, node.effective.operationPolicy?.[operation]) }
+        : { reasonRequired: workflowOperationReasonRequired(operation, node.effective.operationPolicy?.[operation]) }),
     }])),
   };
 }
@@ -62,7 +64,7 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
     }
     for (const operation of node.administration?.operations || []) {
       const changed: Record<string, unknown> = {};
-      for (const key of ['enabled', 'label', 'commentRequired'] as const) if (form.isFieldTouched(['operations', operation, key])) changed[key] = values.operations?.[operation]?.[key];
+      for (const key of ['enabled', 'label', 'commentRequired', 'reasonRequired'] as const) if (form.isFieldTouched(['operations', operation, key])) changed[key] = values.operations?.[operation]?.[key];
       if (Object.keys(changed).length) patch.operations = { ...patch.operations, [operation]: { ...patch.operations?.[operation], ...changed } };
     }
     return patch;
@@ -107,7 +109,7 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
       if (!latest || context.headRevision == null) throw new Error('当前定义已移除此节点或没有激活版本，请关闭后重新查看流程。');
       const values = initialValues(latest, configuration.principals);
       for (const key of ['title', 'description', 'mode', 'provider', 'users', 'roleCode'] as const) if (!form.isFieldTouched(key)) form.setFieldValue(key, values[key]);
-      for (const operation of latest.administration?.operations || []) for (const key of ['enabled', 'label', 'commentRequired'] as const) if (!form.isFieldTouched(['operations', operation, key])) form.setFieldValue(['operations', operation, key], values.operations?.[operation]?.[key]);
+      for (const operation of latest.administration?.operations || []) for (const key of ['enabled', 'label', 'commentRequired', 'reasonRequired'] as const) if (!form.isFieldTouched(['operations', operation, key])) form.setFieldValue(['operations', operation, key], values.operations?.[operation]?.[key]);
       basis.current = { expectedHeadRevision: context.headRevision, expectedRevision: latest.configuration.revision };
       setNode(latest); setPrincipals(configuration.principals); setConflict(false); frozen.current = null;
     } catch (failure) { setError((failure as Error).message); } finally { setBusy(false); }
@@ -134,11 +136,11 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
           {!isCc && (node.administration?.modes ? <Form.Item name="mode" label="审批方式" rules={[{ required: true }]}><Radio.Group className="oxa-workflow-mode-options" options={node.administration.modes.map(value => ({ value, label: <span><b>{modes[value]}</b><small>{modeDescriptions[value]}</small></span> }))} /></Form.Item> : <p className="oxa-workflow-config-help">审批方式：{modes[node.effective.mode || ''] || '由开发者维护'}</p>)}
         </> },
         { key: 'operations', label: '审批按钮', forceRender: true, children: <>
-          <p className="oxa-workflow-config-help">修改显示文字、开关和意见要求。同意与拒绝保持启用；拒绝必须填写意见。</p>
+          <p className="oxa-workflow-config-help">修改按钮文字、开关和填写要求。同意与拒绝保持启用；开发者要求必填的意见或原因保持必填。</p>
           {(node.administration?.operations || []).map(operation => <section key={operation} className="oxa-workflow-operation-row">
             <div className="oxa-workflow-operation-heading"><b>{labels[operation]}</b>{!['approve', 'reject'].includes(operation) ? <Form.Item name={['operations', operation, 'enabled']} valuePropName="checked" noStyle><Checkbox>启用</Checkbox></Form.Item> : <Tag>始终启用</Tag>}</div>
             <Form.Item name={['operations', operation, 'label']} label={`${labels[operation]}按钮文字`} rules={[{ required: true, whitespace: true, max: 40 }]}><Input maxLength={40} /></Form.Item>
-            {['approve', 'reject'].includes(operation) ? <Form.Item name={['operations', operation, 'commentRequired']} valuePropName="checked"><Checkbox disabled={busy || uncertain || workflowOperationCommentRequired(operation, node.defaults.operationPolicy?.[operation]) || operation === 'approve' && (node.effective.initiatorApprovalPolicy === 'auto_approve' || !!node.defaults.completionDeadline)}>必须填写审批意见</Checkbox></Form.Item> : <small>操作时须填写原因。</small>}
+            {['approve', 'reject'].includes(operation) ? <Form.Item name={['operations', operation, 'commentRequired']} valuePropName="checked"><Checkbox disabled={busy || uncertain || workflowOperationCommentRequired(operation, node.defaults.operationPolicy?.[operation]) || operation === 'approve' && (node.effective.initiatorApprovalPolicy === 'auto_approve' || !!node.defaults.completionDeadline)}>必须填写审批意见</Checkbox></Form.Item> : <Form.Item name={['operations', operation, 'reasonRequired']} valuePropName="checked"><Checkbox disabled={busy || uncertain || workflowOperationReasonRequired(operation, node.defaults.operationPolicy?.[operation])}>必须填写操作原因</Checkbox></Form.Item>}
           </section>)}
           {!node.administration?.operations?.length && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="此节点的按钮由开发者维护" />}
         </> },

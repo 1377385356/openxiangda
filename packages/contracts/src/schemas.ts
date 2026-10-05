@@ -5550,6 +5550,7 @@ const workflowNodeSchema = {
             properties: {
               label: { type: 'string', minLength: 1, maxLength: 40, pattern: '^(?!.*[\\u0000-\\u001f\\u007f])(?=.*\\S).*$' },
               ...(['approve', 'reject'].includes(operation) ? { commentRequired: { type: 'boolean' } } : {}),
+              ...(['transfer', 'delegate', 'add_assignee', 'return'].includes(operation) ? { reasonRequired: { type: 'boolean' } } : {}),
             },
           }])),
         },

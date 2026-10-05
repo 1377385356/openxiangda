@@ -34,6 +34,7 @@ export const PLATFORM_CAPABILITY_CONTRACT_VERSIONS = {
   "workflow.business-data-command": "1.0.0",
   "workflow.launch-preflight": "1.0.0",
   "workflow.optional-rejection-comment": "1.0.0",
+  "workflow.optional-operation-reason": "1.0.0",
   "workflow.optional-withdrawal-reason": "1.0.0",
   "data.transaction-actor-authority": "1.0.0",
   "data.authenticated-public-projection": "1.0.0",

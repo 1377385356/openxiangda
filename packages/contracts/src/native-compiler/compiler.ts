@@ -733,6 +733,8 @@ export function compileRequiredPlatformCapabilitiesV3(
       ? [{ code: 'workflow.launch-preflight' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => item.definition.launchPreflight !== undefined) }] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.operationPolicy?.reject?.commentRequired === false))
       ? [{ code: 'workflow.optional-rejection-comment' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.operationPolicy?.reject?.commentRequired === false)) }] : []),
+    ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => Object.values(node.operationPolicy || {}).some((policy: any) => policy.reasonRequired === false)))
+      ? [{ code: 'workflow.optional-operation-reason' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => Object.values(node.operationPolicy || {}).some((policy: any) => policy.reasonRequired === false))) }] : []),
     ...(namedInputSourceDefinitions.length
       ? [{ code: 'workflow.named-input-sources' as const, declaration: namedInputSourceDefinitions }]
       : []),

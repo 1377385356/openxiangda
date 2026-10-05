@@ -95,6 +95,30 @@ test('optional rejection comments seal an opt-in capability with identical app a
   }
 });
 
+test('operation reason policies preserve authoring and target capability closure and reject invalid placements', () => {
+  const validate = new Ajv2020({ strict: false, validateFormats: false }).compile(workflowDefinitionSchema);
+  for (const operation of ['transfer', 'delegate', 'add_assignee', 'return']) {
+    for (const reasonRequired of [undefined, true, false]) {
+      const source = fixture();
+      const review = source.workflows!.definitions[0]!.definition.nodes.review!;
+      assert.equal(review.kind, 'approval');
+      if (review.kind === 'approval' && reasonRequired !== undefined) review.operationPolicy = { [operation]: { reasonRequired } };
+      const output = compileApplicationSources(defineOpenXiangdaApp(source));
+      const target = compileNativeApplicationConfiguration({ appCode: 'command-review', configBytes: output.config.content,
+        expectedConfigDigest: output.config.digest, contractBytes: output.contracts.content, expectedContractDigest: output.contracts.digest });
+      assert.deepEqual(target.requiredPlatformCapabilities, requiredPlatformCapabilitiesFromConfiguration(output.config.value));
+      assert.equal(target.requiredPlatformCapabilities.find(item => item.code === 'workflow.optional-operation-reason')?.contractVersion, reasonRequired === false ? '1.0.0' : undefined);
+      assert.equal(validate(output.config.value.workflows.definitions[0]!.definition), true, JSON.stringify(validate.errors));
+    }
+  }
+  for (const operation of ['approve', 'reject', 'admin_reassign']) {
+    const source = fixture();
+    (source.workflows!.definitions[0]!.definition.nodes.review as any).operationPolicy = { [operation]: { reasonRequired: false } };
+    assert.equal(validate(source.workflows!.definitions[0]!.definition), false);
+    assert.throws(() => compileApplicationSources(defineOpenXiangdaApp(source)));
+  }
+});
+
 test('browser invocation has an exact target/subject/CAS/token envelope', () => {
   const validate = new Ajv2020({ strict: false, validateFormats: false }).compile(workflowBusinessCommandInvocationSchema);
   const input = { workflowCode: 'request-approval', target: { kind: 'task', id: '11111111-1111-4111-8111-111111111111', command: 'approve' },

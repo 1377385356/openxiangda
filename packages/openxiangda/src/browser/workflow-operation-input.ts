@@ -9,7 +9,7 @@ export interface WorkflowOperationStringSchema {
 export function workflowOperationStringError(
   schema: WorkflowOperationStringSchema, value: unknown, required: boolean, label: string,
 ): string | null {
-  if (value == null && !required) return null;
+  if (value === undefined && !required) return null;
   if (typeof value !== 'string' || (required && !value.trim())) return `请填写${label}，不能仅包含空格`;
   if (schema.minLength !== undefined && value.length < schema.minLength) return `${label}至少填写${schema.minLength}个字符`;
   if (schema.maxLength !== undefined && value.length > schema.maxLength) return `${label}最多填写${schema.maxLength}个字符`;

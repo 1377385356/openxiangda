@@ -32,11 +32,17 @@ export function workflowOperationCommentRequired(operation: string, policy?: Wor
   return policy?.commentRequired ?? operation === 'reject';
 }
 
+/** Omission preserves audited reasons; admin reassign always requires one. */
+export function workflowOperationReasonRequired(operation: string, policy?: WorkflowNodeOperationPolicy): boolean {
+  return !['transfer', 'delegate', 'add_assignee', 'return'].includes(operation) || policy?.reasonRequired !== false;
+}
+
 function policyValid(value: unknown, operation: string, defaults: WorkflowNodeOperationPolicy = {}, configurable = false): boolean {
-  if (!record(value) || !Object.keys(value).length || !keys(value, configurable ? ['enabled', 'label', 'commentRequired'] : ['label', 'commentRequired'])) return false;
+  if (!record(value) || !Object.keys(value).length || !keys(value, configurable ? ['enabled', 'label', 'commentRequired', 'reasonRequired'] : ['label', 'commentRequired', 'reasonRequired'])) return false;
   if (value.label !== undefined && (typeof value.label !== 'string' || !value.label.trim() || value.label.length > 40 || /[\u0000-\u001f\u007f]/.test(value.label))) return false;
   if (value.enabled !== undefined && (typeof value.enabled !== 'boolean' || (['approve', 'reject'].includes(operation) && !value.enabled))) return false;
   if (value.commentRequired !== undefined && (typeof value.commentRequired !== 'boolean' || !['approve', 'reject'].includes(operation) || (configurable && workflowOperationCommentRequired(operation, defaults) && !value.commentRequired))) return false;
+  if (value.reasonRequired !== undefined && (typeof value.reasonRequired !== 'boolean' || !['transfer', 'delegate', 'add_assignee', 'return'].includes(operation) || (configurable && workflowOperationReasonRequired(operation, defaults) && !value.reasonRequired))) return false;
   return true;
 }
 
@@ -98,7 +104,7 @@ export function projectWorkflowNodePolicy(node: WorkflowAdministrationNodeSource
   const operations = Object.fromEntries(workflowNodeAllowedOperations(node).flatMap(operation => {
     const code = operation as WorkflowConfigurableOperation;
     const configured = patch?.operations?.[code];
-    const policy = { ...node.operationPolicy?.[code], ...(configured?.label !== undefined ? { label: configured.label } : {}), ...(configured?.commentRequired !== undefined ? { commentRequired: configured.commentRequired } : {}) };
+    const policy = { ...node.operationPolicy?.[code], ...(configured?.label !== undefined ? { label: configured.label } : {}), ...(configured?.commentRequired !== undefined ? { commentRequired: configured.commentRequired } : {}), ...(configured?.reasonRequired !== undefined ? { reasonRequired: configured.reasonRequired } : {}) };
     return Object.keys(policy).length ? [[code, policy]] : [];
   })) as PolicyMap;
   return {

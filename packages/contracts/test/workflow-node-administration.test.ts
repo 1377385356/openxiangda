@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { projectWorkflowNodePolicy, workflowOperationCommentRequired, validateWorkflowAdministration, validateWorkflowNodeConfigurationPatch } from '../src/native-compiler/workflow-node-administration.js';
+import { projectWorkflowNodePolicy, workflowOperationCommentRequired, workflowOperationReasonRequired, validateWorkflowAdministration, validateWorkflowNodeConfigurationPatch } from '../src/native-compiler/workflow-node-administration.js';
 import type { WorkflowApprovalNode } from '../src/types.js';
 
 const node: WorkflowApprovalNode = {
@@ -77,4 +77,34 @@ test('fixed optional rejection policy can be tightened without relaxing a requir
   assert.equal(workflowOperationCommentRequired('approve'), false);
   assert.equal(workflowOperationCommentRequired('approve', { commentRequired: true }), true);
   assert.equal(workflowOperationCommentRequired('reject', optional.operationPolicy.reject), false);
+});
+
+for (const operation of ['transfer', 'delegate', 'add_assignee', 'return'] as const) {
+  test(`${operation} optional reasons can be tightened while legacy and code-required reasons cannot be relaxed`, () => {
+    const optional: WorkflowApprovalNode = { ...node, operationPolicy: { [operation]: { reasonRequired: false } }, administration: { operations: [operation] } };
+    assert.deepEqual(validateWorkflowAdministration({ nodes: { review: optional } }), []);
+    for (const reasonRequired of [false, true]) {
+      const patch = { operations: { [operation]: { reasonRequired } } };
+      assert.deepEqual(validateWorkflowNodeConfigurationPatch(optional, binding, patch), []);
+      const effective = projectWorkflowNodePolicy(optional, patch);
+      assert.equal(workflowOperationReasonRequired(operation, effective.operationPolicy[operation]), reasonRequired);
+      assert.equal(optional.operationPolicy?.[operation]?.reasonRequired, false);
+    }
+    for (const baseline of [undefined, { reasonRequired: true }]) {
+      const required = { ...optional, operationPolicy: { [operation]: baseline } };
+      assert.equal(workflowOperationReasonRequired(operation, baseline), true);
+      assert.ok(validateWorkflowNodeConfigurationPatch(required, binding, { operations: { [operation]: { reasonRequired: false } } }).length);
+    }
+    for (const reasonRequired of [null, 'false', 0]) {
+      assert.ok(validateWorkflowAdministration({ nodes: { review: { ...optional, operationPolicy: { [operation]: { reasonRequired } } } as any } }).length);
+      assert.ok(validateWorkflowNodeConfigurationPatch(optional, binding, { operations: { [operation]: { reasonRequired } } }).length);
+    }
+  });
+}
+
+test('reason policies cannot be placed on decision or administrative commands', () => {
+  for (const operation of ['approve', 'reject', 'admin_reassign']) {
+    assert.ok(validateWorkflowAdministration({ nodes: { review: { ...node, operationPolicy: { [operation]: { reasonRequired: false } } } } }).length);
+  }
+  assert.equal(workflowOperationReasonRequired('admin_reassign', { reasonRequired: false }), true);
 });
