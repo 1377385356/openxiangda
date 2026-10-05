@@ -5,6 +5,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY apps/server/package.json apps/server/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
 RUN node -e "const fs=require('node:fs'); const p=JSON.parse(fs.readFileSync('package.json','utf8')); delete p.devDependencies; fs.writeFileSync('package.json', JSON.stringify(p));"
+RUN --mount=type=bind,source=.,target=/source,readonly if [ -d /source/vendor ]; then cp -a /source/vendor /workspace/vendor; fi
 RUN pnpm --filter @app/server --filter @app/contracts install --no-frozen-lockfile --ignore-scripts
 COPY apps/server apps/server
 COPY packages/contracts packages/contracts

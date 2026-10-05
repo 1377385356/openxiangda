@@ -15,3 +15,12 @@ test('the clean server template only owns platform bootstrap', () => {
   assert.doesNotMatch(source, new RegExp(legacyMarkers.join('|')));
   assert.doesNotMatch(source, /createData|updateData|deleteData|queryData/);
 });
+
+test('backend dependency build accepts optional vendored archives without exposing build mounts at runtime', () => {
+  const source = readFileSync(new URL('../templates/backend/Dockerfile', import.meta.url), 'utf8');
+  const [build, runtime] = source.split(/FROM node:[^\n]+ AS runtime/);
+  assert.ok(build.indexOf('target=/source,readonly') < build.indexOf('install --no-frozen-lockfile'));
+  assert.match(build, /if \[ -d \/source\/vendor \]; then cp -a \/source\/vendor \/workspace\/vendor; fi/);
+  assert.doesNotMatch(runtime, /\/source|--mount/);
+  assert.match(runtime, /COPY --from=build --chown=1000:1000 \/output \/app/);
+});
