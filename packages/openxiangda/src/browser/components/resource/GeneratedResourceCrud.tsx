@@ -61,6 +61,7 @@ import {
 import {
   createNativeResourceClient,
   loadResourceListPreference,
+  platformReadErrorMessage,
   resetResourceListPreference,
   saveResourceListPreference,
   type GenericResourceQuery,
@@ -1044,7 +1045,7 @@ function NativeResourceDetailPage({ definition, paths, variant, recordId, onDism
       onBusyChange={setEditBusy} onDismiss={() => setEditing(false)} onSaved={() => { setEditing(false); void query.query.refetch(); }} /> : undefined}>
     {!hasReadCapability(definition.capabilities.read) ? <Result status="403" title="当前平台用户无此页面权限" />
       : query.query.isFetching && !record ? <Spin />
-      : query.query.isError || !record ? <Alert type="error" title="数据读取失败" description={query.query.error?.message || '记录不存在'} action={<Button onClick={() => void query.query.refetch()}>重试</Button>} />
+      : query.query.isError || !record ? <Alert type="error" title="数据读取失败" description={platformReadErrorMessage(query.query.error, '记录不存在，可能已被删除或当前账号无权查看。')} action={<Button onClick={() => void query.query.refetch()}>重试</Button>} />
       : <>
         <RecordDetailSections groups={fieldsBySection(definition.surface, 'detail').map(group => ({ ...group, fields: group.fields.filter(readable) }))}
           renderValue={field => field.type === 'subtable' ? <SubtableValueDisplay field={field} mobile={variant === 'mobile'} parentRecordId={record.id} />

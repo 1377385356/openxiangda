@@ -140,6 +140,25 @@ export class OpenXiangdaPlatformRequestError extends Error {
   }
 }
 
+/**
+ * Convert platform read failures into copy that is safe and useful for a user.
+ * Internal error codes remain available on the error object for diagnostics,
+ * but generated resource pages should not expose them as the primary message.
+ */
+export function platformReadErrorMessage(error: unknown, fallback = '请稍后重试') {
+  if (error instanceof OpenXiangdaPlatformRequestError) {
+    const path = error.request?.path || '';
+    if (error.status === 404 && /^\/[^/]+\/.*\/records\//.test(path)) {
+      return '记录不存在，可能已被删除或当前账号无权查看。';
+    }
+    if (error.status === 403 && /^\/[^/]+\/.*\/records\//.test(path)) {
+      return '当前账号无权查看该记录。';
+    }
+    return error.message || fallback;
+  }
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
 export interface PlatformRequestContext {
   requestId: string | null;
   method: string;

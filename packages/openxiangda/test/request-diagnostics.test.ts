@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { OpenXiangdaPlatformRequestError, platformRequestDiagnostic, requestApplicationApi, createNativeResourceClient } from '../src/browser/platform-client';
+import { OpenXiangdaPlatformRequestError, platformReadErrorMessage, platformRequestDiagnostic, requestApplicationApi, createNativeResourceClient } from '../src/browser/platform-client';
 import { platformRequestDiagnostic as publicDiagnostic } from '../src/react';
 
 async function fixture(work: () => Promise<void>) {
@@ -29,6 +29,15 @@ test('public diagnostics prefer the authoritative header and exclude query, body
   globalThis.fetch = async () => new Response(JSON.stringify({ code: 500, requestId: 'a'.repeat(129) }), { status: 500 });
   await assert.rejects(requestApplicationApi('/example'), error => { assert.equal(platformRequestDiagnostic(error)!.requestId, null); return true; });
 }));
+
+test('generated resource reads hide internal not-found and forbidden codes', async () => {
+  const request = { requestId: 'read-1', method: 'GET', path: '/service/openxiangda/v2/native/data/items/records/missing', observedAt: new Date().toISOString(), appCode: 'app', environmentKey: 'preproduction' };
+  const missing = new OpenXiangdaPlatformRequestError({ code: 'OPENXIANGDA_NATIVE_RECORD_NOT_FOUND', status: 404, message: 'OPENXIANGDA_NATIVE_RECORD_NOT_FOUND: missing', request });
+  const forbidden = new OpenXiangdaPlatformRequestError({ code: 'OPENXIANGDA_NATIVE_RECORD_READ_FORBIDDEN', status: 403, message: 'OPENXIANGDA_NATIVE_RECORD_READ_FORBIDDEN: denied', request });
+  assert.equal(platformReadErrorMessage(missing), '记录不存在，可能已被删除或当前账号无权查看。');
+  assert.equal(platformReadErrorMessage(forbidden), '当前账号无权查看该记录。');
+  assert.equal(platformReadErrorMessage(new Error('业务校验失败')), '业务校验失败');
+});
 
 test('unknown transport writes are sent once and do not leak the fetch exception; cancellation stays cancellation', async () => fixture(async () => {
   let calls = 0;

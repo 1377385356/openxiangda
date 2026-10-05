@@ -6,7 +6,7 @@ import { useHref, useNavigate, useParams } from 'react-router-dom';
 import { Button as MobileButton } from '../../mobile';
 import { useRuntime } from '../../runtime';
 import { useResourceDefinitions } from '../../resource-definitions';
-import { createNativeResourceClient, transactNativeData } from '../../platform-client';
+import { createNativeResourceClient, platformReadErrorMessage, transactNativeData } from '../../platform-client';
 import { normalizeFormValues, normalizeRecordForForm } from '../platform-fields/field-form-codec';
 import { SubtableField } from '../platform-fields/SubtableField';
 import type { SubtableDraftRow } from '../platform-fields/subtable-value';
@@ -233,7 +233,7 @@ export function GeneratedResourceFormPage({
     query.query.isFetching ? <div className="oxa-page-loading"><Spin /></div>
       : query.query.isError ? <Alert
         title="数据读取失败"
-        description={query.query.error instanceof Error ? query.query.error.message : '请稍后重试'}
+        description={platformReadErrorMessage(query.query.error)}
         type="error" showIcon
         action={<Button aria-label="重试" onClick={() => void query.query.refetch()}>重试</Button>}
       /> : <Result status="404" title="记录不存在或不在数据范围内" />
