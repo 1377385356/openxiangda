@@ -3,6 +3,38 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.55.6",
+      "status": "reviewed",
+      "title": "OpenXiangda 2.55.6：入口排队与身份加载连续性",
+      "summary": "修复平台入口等待期限与浏览器身份读取恢复期限不一致导致有效等待过早中断的问题。",
+      "newFeatures": [],
+      "fixes": [
+        "仅对有效平台入口回执接续身份等待，固定原期限并上限三十分钟，后续回执只能缩短。",
+        "入口身份读取遵循有界排队提示，普通请求、权限拒绝、投影重试和网络失败保持各自边界。"
+      ],
+      "affectedUsers": [
+        "启用 V2 平台入口排队并在拥挤时加载当前用户信息的应用。"
+      ],
+      "upgradeSteps": [
+        "安装同源 SDK 并重新构建应用，验证权限拒绝、入口期限、页面取消、原报名结果恢复及真实冷入口并发。"
+      ],
+      "knownLimitations": [
+        "本地测试不代表线上容量；r62 的 48 人中断仍保留，必须使用新隔离活动重新压测。",
+        "本次 HTTP 请求图不证明完整 SSO 或浏览器渲染上限。"
+      ],
+      "compatibility": {
+        "node": ">=24",
+        "platform": "V2 原入口回执协议；无数据库迁移",
+        "v1": "V1 引擎和应用不变"
+      },
+      "issues": [
+        "r62-entry-identity-interrupted"
+      ],
+      "sha256": "48803b23bb19feee37b60779064e03c2cb60c26a591f794755bcf4c2b5b887a7",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.55.6"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.55.5",
       "status": "reviewed",
       "title": "OpenXiangda 2.55.5：具名业务与读取视角的边界",
