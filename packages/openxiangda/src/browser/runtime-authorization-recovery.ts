@@ -11,7 +11,7 @@ interface ReadFailure {
   code?: string;
   retryable?: boolean;
   retryAfterMs?: number;
-  data?: { retryAfterMs?: number; remainingMs?: number; state?: string } | null;
+  data?: { retryAfterMs?: number; remainingMs?: number; recoveryBudgetMs?: number; state?: string } | null;
   name?: string;
 }
 
@@ -97,10 +97,16 @@ export async function recoverRuntimeAuthorizationRead<T>(
         const entryWait = busy && failure.code === 'CONCURRENCY_BOOTSTRAP_BUSY'
           && ['waiting', 'ready', 'active'].includes(failure.data?.state || '')
           && typeof remaining === 'number' && Number.isFinite(remaining) && remaining > 0;
-        if (entryWait) {
+        const recoveryBudget = failure?.data?.recoveryBudgetMs;
+        const unavailableWait = busy && failure.code === 'CONCURRENCY_BOOTSTRAP_BUSY'
+          && failure.data?.state === 'unavailable'
+          && typeof recoveryBudget === 'number' && Number.isFinite(recoveryBudget) && recoveryBudget > 0;
+        if (entryWait || unavailableWait) {
           // Receipt time is authoritative for this wait. Later responses may
           // shorten, never refresh, the original bounded entrance deadline.
-          const receiptDeadline = Math.min(started + ENTRY_BUDGET_MS, dependencies.now() + remaining);
+          const receiptDeadline = entryWait
+            ? Math.min(started + ENTRY_BUDGET_MS, dependencies.now() + remaining!)
+            : started + Math.min(ENTRY_BUDGET_MS, recoveryBudget!);
           entryDeadline = entryDeadline === undefined ? receiptDeadline : Math.min(entryDeadline, receiptDeadline);
           deadline = entryDeadline;
           clearTimeout(timer);
@@ -115,7 +121,7 @@ export async function recoverRuntimeAuthorizationRead<T>(
         const hint = Number(failure.retryAfterMs ?? failure.data?.retryAfterMs);
         const suggested = Number.isFinite(hint) && hint >= 0 ? hint : 0;
         const jitter = Math.min(1, Math.max(0, dependencies.random()));
-        const delay = entryWait
+        const delay = entryDeadline !== undefined
           ? Math.min(15_000, Math.max(2000, suggested)) * (1 + jitter * .2)
           : Math.max(suggested, Math.min(30_000, 2000 * 2 ** Math.min(backoff++, 4))) * (1 + jitter * .25);
         if (delay >= deadline - dependencies.now()) throw error;

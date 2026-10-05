@@ -188,3 +188,44 @@ test('invalid or unrelated metadata cannot extend identity recovery; terminal re
     assert.equal(calls, 1); assert.deepEqual(time.delays, []);
   }
 });
+
+
+test('unavailable recovery uses the configured original read budget beyond five minutes', async () => {
+  const time = clock(); let calls = 0;
+  const value = await recoverRuntimeAuthorizationRead(async () => {
+    calls++;
+    if (calls <= 35) throw failure(429, 'CONCURRENCY_BOOTSTRAP_BUSY', {
+      data: { state: 'unavailable', remainingMs: null, recoveryBudgetMs: 1_200_000, retryAfterMs: 15_000 },
+    });
+    return 'verified';
+  }, undefined, time.dependencies);
+  assert.equal(value, 'verified'); assert.equal(time.dependencies.now(), 525_000);
+});
+
+test('unavailable budget never refreshes original deadline and real receipts only shorten it', async () => {
+  for (const receipt of [false, true]) {
+    const time = clock(); let calls = 0;
+    await assert.rejects(recoverRuntimeAuthorizationRead(async () => {
+      calls++;
+      throw failure(429, 'CONCURRENCY_BOOTSTRAP_BUSY', { data: receipt && calls === 2
+        ? { state: 'waiting', remainingMs: 30_000, retryAfterMs: 15_000 }
+        : { state: 'unavailable', recoveryBudgetMs: calls === 1 ? 60_000 : 1_800_000, retryAfterMs: 15_000 } });
+    }, undefined, time.dependencies), { code: 'CONCURRENCY_BOOTSTRAP_BUSY' });
+    assert.equal(time.dependencies.now(), receipt ? 30_000 : 45_000);
+  }
+});
+
+test('invalid unavailable budget and unrelated busy never grant an extended read', async () => {
+  for (const budget of [undefined, '1200000', NaN, Infinity, 0, -1]) {
+    const time = clock();
+    await assert.rejects(recoverRuntimeAuthorizationRead(async () => {
+      throw failure(429, 'CONCURRENCY_BOOTSTRAP_BUSY', { data: { state: 'unavailable', recoveryBudgetMs: budget } });
+    }, undefined, time.dependencies), { code: 'CONCURRENCY_BOOTSTRAP_BUSY' });
+    assert.ok(time.dependencies.now() < 300_000);
+  }
+  const time = clock();
+  await assert.rejects(recoverRuntimeAuthorizationRead(async () => {
+    throw failure(429, 'CONCURRENCY_API_BUSY', { data: { state: 'unavailable', recoveryBudgetMs: 1_800_000 } });
+  }, undefined, time.dependencies), { code: 'CONCURRENCY_API_BUSY' });
+  assert.ok(time.dependencies.now() < 300_000);
+});
