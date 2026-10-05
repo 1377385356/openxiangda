@@ -4054,6 +4054,11 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
           const property = workflowInputProperties[factKey];
           const propertyRecord = isRecord(property) ? property : {};
           const propertyType = string(propertyRecord.type);
+          const nullableObject = Array.isArray(propertyRecord.type) &&
+            propertyRecord.type.length === 2 &&
+            new Set(propertyRecord.type).size === 2 &&
+            propertyRecord.type.includes('object') &&
+            propertyRecord.type.includes('null');
           const itemRecord = isRecord(propertyRecord.items)
             ? propertyRecord.items
             : {};
@@ -4066,14 +4071,14 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
             ? 'array（items.type=array，items.items.type=object）'
             : fieldType.endsWith('.multiple')
               ? 'array（items.type=object）'
-              : 'object';
+              : 'object 或 [object, null]';
           const shapeValid = fieldType === 'cascade.multiple'
             ? propertyType === 'array' &&
               itemType === 'array' &&
               nestedItemType === 'object'
             : fieldType.endsWith('.multiple')
               ? propertyType === 'array' && itemType === 'object'
-              : propertyType === 'object';
+              : propertyType === 'object' || nullableObject;
           if (!shapeValid) {
             diagnostics.push(
               diagnostic(

@@ -396,8 +396,10 @@ Workflow instance-scoped preview/content 路由，平台在每次文件读取时
 `/m/workflows/:workflowCode/start`。definition 必须显式声明
 `launch: { mode: 'standalone' | 'hidden-handoff' | ... }`，缺失会被编译器拒绝；
 factProjection 把 option/user/department/resource-ref/cascade 字段投影为
-`{ label, value }` 对象，对应 inputSchema 属性必须声明为 `type: 'object'`
-（multiple 类字段为 array + object items），条件表达式用 `path: '<fact>.value'`
+`{ label, value }` 对象，对应 inputSchema 属性声明为 `type: 'object'`；
+允许尚未填写的单值引用显式使用 `type: ['object', 'null']`，数组顺序无关。
+Native必填校验仍执行；multiple类字段保持array + object items（cascade.multiple
+为array + array + object）。条件表达式用 `path: '<fact>.value'`
 比较；声明成标量会在运行时 INPUT_SCHEMA_MISMATCH 并无限重试，编译器现已拦截。`standalone`/`hidden-handoff` 缺省使用同一个
 compiler-owned `processOperationCode`、subject declaration 和标准 process commit；平台在一个
 事务中写业务数据和 durable command。action-owned 资源改为声明
@@ -827,3 +829,31 @@ launchPreflight: { requiredApprovalNodes: ['departmentReview', 'finalReview'] }
 节点必须为实际 approval，最多20个且不能重复；本版只支持 fixed_users、initiator、app_role、app_role_in_scope，不能依赖未来任务补填、外部 provider 或候选字段。BusinessProcess.commit 在业务写入的同一事务内，按当前有效节点配置和真实成员/范围解析这些节点；空人、失效账号、超限或需要尚未提供的交互输入时整笔回滚。emptyPolicy:skip 不能绕过该准入。命中原提交回执时不会重新执行检查。
 
 这是提交准入，不预先冻结未来审批人；实际进入节点仍重新解析。声明要求目标具备 workflow.launch-preflight@1.0.0，未声明的流程保持原提交行为。实际角色与事务回滚需在目标平台验收。
+
+## 审批自动完成期限
+
+可选评价等允许不填写内容的审批节点，可以声明固定期限：
+
+```ts
+completionDeadline: { afterSeconds: 600, action: 'approve' }
+```
+
+此声明需要 `workflow.completion-deadline@1.0.0`。平台在正常任务进入事务中保存
+期限，以数据库创建时间计时，默认每30秒扫描，到期可能有扫描及排队延迟。
+期限支持1秒至30天，由应用代码拥有，管理员不能改变期限、条件或连接。
+没有声明的节点继续人工办理；退回补正和恢复源任务仍须人工处理。
+
+到期是整个节点自动完成，剩余审批席位取消，保留已提交内容与真实人工意见，
+历史标记“超时自动同意”，不会给申请人或未处理人员伪造审批票。
+只允许可选任务输入；必填字段、条件必填、子表必填、`edit_required`、同意意见
+必填和自定义 approve handler 与期限冲突，编译及平台注册都会拒绝。
+节点配置不能把此类节点改成必须填写同意意见。
+
+人工处理与后台执行共用实例锁，先完成者生效。任务离开、退回、撤回、终止或
+删除时，在同一事务取消期限。下游失败回滚整次流转，保存脱敏错误码并有界退避；
+最多12次失败后停止自动重试，保留人工办理。PC/手机任务详情显示截止时间或
+失败提示，管理流程图显示固定规则，实例轨迹显示实际自动完成证据。
+本批没有管理员重试或改期限入口。
+
+平台重启后继续处理原持久期限，无需额外启用开关。已有期限的版本回滚时，
+必须保留兼容的平台后台，或先完成/明确取消在途任务；不能删除期限与历史。

@@ -396,8 +396,10 @@ Workflow instance-scoped preview/content 路由，平台在每次文件读取时
 `/m/workflows/:workflowCode/start`。definition 必须显式声明
 `launch: { mode: 'standalone' | 'hidden-handoff' | ... }`，缺失会被编译器拒绝；
 factProjection 把 option/user/department/resource-ref/cascade 字段投影为
-`{ label, value }` 对象，对应 inputSchema 属性必须声明为 `type: 'object'`
-（multiple 类字段为 array + object items），条件表达式用 `path: '<fact>.value'`
+`{ label, value }` 对象，对应 inputSchema 属性声明为 `type: 'object'`；
+允许尚未填写的单值引用显式使用 `type: ['object', 'null']`，数组顺序无关。
+Native必填校验仍执行；multiple类字段保持array + object items（cascade.multiple
+为array + array + object）。条件表达式用 `path: '<fact>.value'`
 比较；声明成标量会在运行时 INPUT_SCHEMA_MISMATCH 并无限重试，编译器现已拦截。`standalone`/`hidden-handoff` 缺省使用同一个
 compiler-owned `processOperationCode`、subject declaration 和标准 process commit；平台在一个
 事务中写业务数据和 durable command。action-owned 资源改为声明

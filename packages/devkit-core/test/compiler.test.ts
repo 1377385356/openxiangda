@@ -834,6 +834,35 @@ test('matches workflow snapshot fact schemas to their stored value shapes', () =
   );
 });
 
+test('accepts explicit nullable singular snapshots without accepting scalar or malformed unions', () => {
+  const snapshotTypes = ['option.single', 'user.single', 'department.single', 'resource-ref.single'];
+  for (const fieldType of snapshotTypes) {
+    const app = structuredClone(sourceDeclaration) as any;
+    app.data.resources.push({ code: 'nullable-records', name: 'Nullable records', fields: [{ code: 'reviewer', type: fieldType, label: 'Later reviewer',
+      ...(fieldType === 'option.single' ? { options: [{ label: 'Known', value: 'known' }] } : {}),
+      ...(fieldType === 'resource-ref.single' ? { source: { kind: 'resource', resourceCode: 'instruments', labelField: 'name' } } : {}),
+    }] });
+    app.workflows = { definitions: [{ version: 1, launch: { mode: 'standalone' }, definition: {
+      schemaVersion: SCHEMA_VERSIONS.workflowDefinition, code: 'nullable-review', title: 'Later-stage snapshot', acceptedCommandDeactivationPolicy: 'finish-pinned',
+      subject: { resourceCode: 'nullable-records', factProjection: { reviewer: 'reviewer' } }, startAt: 'done',
+      inputSchema: { type: 'object', additionalProperties: false, properties: { reviewer: { type: ['object', 'null'] } } },
+      nodes: { done: { id: 'done', kind: 'end', title: 'Done', outcome: 'approved' } },
+    } }], bindings: [], activations: [] };
+    const normalized = defineOpenXiangdaApp(app) as any;
+    const shapeDiagnostics = () => validateAppConfig(normalized).filter(d => d.code === 'APP_CONFIG_WORKFLOW_FACT_PROJECTION_SHAPE_INVALID');
+    for (const type of ['object', ['object', 'null'], ['null', 'object']]) {
+      normalized.workflows.definitions[0].definition.inputSchema.properties.reviewer.type = type;
+      assert.deepEqual(shapeDiagnostics(), [], `${fieldType}:${JSON.stringify(type)}`);
+    }
+    for (const type of ['string', ['string', 'null'], ['object', 'null', 'string'], ['object', 'object'], ['object', 'null', 'null']]) {
+      normalized.workflows.definitions[0].definition.inputSchema.properties.reviewer.type = type;
+      assert.equal(shapeDiagnostics().length, 1, `${fieldType}:${JSON.stringify(type)}`);
+    }
+    app.data.resources.at(-1).fields[0].type = fieldType.replace('.single', '.multiple');
+    assert.throws(() => defineOpenXiangdaApp(app), error => diagnosticOf(error, 'APP_CONFIG_WORKFLOW_FACT_PROJECTION_SHAPE_INVALID', 'workflows.definitions[0].definition.inputSchema.properties.reviewer'), 'Plural snapshot still requires its array shape');
+  }
+});
+
 test('rejects workflow identifiers that the runtime provider cannot normalize', () => {
   const invalid = structuredClone(sourceDeclaration) as any;
   invalid.workflows = {
