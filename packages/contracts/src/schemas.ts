@@ -40,6 +40,8 @@ import {
   WORKFLOW_DETAIL_MAX_SUBTABLE_ROWS,
 } from "./workflow-detail.js";
 
+import { workflowRoleCodesSchema } from './native-compiler/workflow-role-union.js';
+
 const digest = { type: "string", pattern: "^[0-9a-f]{64}$" } as const;
 const prefixedDigest = {
   type: "string",
@@ -5816,6 +5818,9 @@ export const workflowBindingSchema = {
         additionalProperties: false,
         required: ["provider"],
         allOf: [{
+          if: { required: ['roleCodes'] },
+          then: { properties: { provider: { enum: ['app_role', 'app_role_in_scope'] } }, not: { anyOf: [{ required: ['roleCode'] }, { required: ['candidateField'] }] } },
+        }, {
           if: { required: ['candidateField'] },
           then: {
             required: ['inputPath'],
@@ -5846,6 +5851,7 @@ export const workflowBindingSchema = {
           level: { type: "integer", minimum: 1, maximum: 20 },
           fallbackToAncestorSupervisor: { type: "boolean" },
           roleCode: { type: "string" },
+          roleCodes: workflowRoleCodesSchema,
           scope: {
             type: "object",
             additionalProperties: false,

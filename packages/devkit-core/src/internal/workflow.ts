@@ -15,6 +15,7 @@ import {
   validateWorkflowBusinessSteps,
   validateWorkflowCompletionDeadlines,
   validateWorkflowAssignmentRoutingBindings,
+  validateWorkflowRoleUnion,
   type WorkflowApprovalMode,
   type WorkflowBinding,
   type WorkflowDelegation,
@@ -221,6 +222,7 @@ export function validateWorkflowBinding(
     diagnostics.push('WORKFLOW_BINDING_CODE_MISMATCH');
   }
   for (const [code, entry] of Object.entries(binding?.bindings || {})) {
+    diagnostics.push(...validateWorkflowRoleUnion(entry).map(error => `${error}:${code}`));
     if (entry.provider === 'fixed_users' && (!Array.isArray(entry.users) || !entry.users.length && !workflowBindingAllowsEmptyUsers(definition, code)))
       diagnostics.push(`WORKFLOW_BINDING_USERS_REQUIRED:${code}`);
     const minimum = entry.min === undefined ? 1 : entry.min;
@@ -252,7 +254,7 @@ export function validateWorkflowBinding(
       ['app_role', 'app_role_in_scope', 'initiator_select'].includes(
         entry.provider
       ) &&
-      !entry.roleCode
+      !entry.roleCode && entry.roleCodes === undefined
     ) {
       diagnostics.push(`WORKFLOW_BINDING_ROLE_REQUIRED:${node.binding}`);
     }

@@ -91,6 +91,28 @@ export function ResponsibilityMembers() {
 
 读取沿用原流程管理权限。仅获成员管理委托的用户可能可以维护角色，同时没有权限读取关联流程；组件单独呈现该拒绝。返回不含成员、实例标识或业务事实，每页最多 100 条；最多 1000 个版本组合、32 MiB 源 JSON、10000 节点/引用，超限明确拒绝。
 
+### 多职责成员合并
+
+审批或抄送的 `app_role` / `app_role_in_scope` 来源可用 `roleCodes` 声明 2–8 个不同职责，
+与单职责 `roleCode` 互斥。例如：
+
+```ts
+jointReviewers: {
+  provider: 'app_role',
+  roleCodes: ['student-office', 'organization'],
+}
+```
+
+节点进入时读取这些职责的当前有效成员；范围角色共用同一份代码计算的 `scope`。
+同一人员只占一个审批席位或抄送名额，解析解释保留各职责来源。
+职责顺序决定重叠人员席位使用哪个职责的代理规则：采用首个匹配职责，
+不会借用后续职责的代理。已有任务保持原人员快照。
+
+管理员仅在代码开放人员来源配置的节点中调整职责组合；单选仍保存 `roleCode`，
+多选保存 `roleCodes`。保存、版本激活均检查所有职责，任何职责失效或查询失败都不能
+变成部分名单。总候选最多 200 个成员身份；去重后的审批上限仍受原 binding 限制，
+自动抄送最多 20 人。声明自动协商 `workflow.role-union@1.0.0`，无需初始化开关。
+
 管理范围检索使用 `listRoleManagementScopeValues(dimensionCode, { keyword, limit, offset })`，返回 `NativeRoleManagementScopeValuePage` 的 `id/label` 与 `limit/offset`。它使用 `openxiangda.native-role-management-scope-value-page/v2`，与 Data 字段选择器的 `value/label/cursor` 协议分开。权限仍要求对成员的分配或更新能力；只读权限不因此扩张。
 
 ## 限时审批代理 {#workflow-delegations}

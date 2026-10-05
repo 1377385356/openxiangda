@@ -2573,6 +2573,8 @@ export interface WorkflowBindingEntry {
   fallbackToAncestorSupervisor?: boolean;
   roleCode?: string;
   scope?: { dimension: string; valueFrom?: string; value?: string };
+  /** 2–8 ordered roles, exclusive with roleCode. Overlapping users occupy one seat. */
+  roleCodes?: string[];
   relationCode?: string;
   resourceCode?: string;
   resourceIdFrom?: string;
@@ -2705,7 +2707,8 @@ export interface WorkflowNodeConfigurationPatch {
   operations?: Partial<Record<WorkflowConfigurableOperation, WorkflowNodeOperationPolicy & { enabled?: boolean }>>;
   assignee?:
     | { provider: "fixed_users"; users: string[] }
-    | { provider: "app_role" | "app_role_in_scope"; roleCode: string };
+    | { provider: "app_role" | "app_role_in_scope"; roleCode: string; roleCodes?: never }
+    | { provider: "app_role" | "app_role_in_scope"; roleCodes: string[]; roleCode?: never };
 }
 
 export interface WorkflowNodeConfigurationState {

@@ -21,6 +21,7 @@ import { validateWorkflowTaskPages } from './workflow-task-page.js';
 import { requiresExtendedOwnedSubtableCapacity } from './data-capacity.js';
 import { validateWorkflowBusinessSteps, compileWorkflowBusinessStepHandlers, validateWorkflowBusinessStepSubscriptions, WORKFLOW_BUSINESS_STEP_EVENT, WORKFLOW_BUSINESS_STEP_EVENTS } from './workflow-business-step.js';
 import { validateWorkflowAssignmentRoutingBindings, validateWorkflowAssignmentRoutingPolicy } from './workflow-assignment-routing.js';
+import { requiresWorkflowRoleUnion, validateWorkflowRoleUnion } from './workflow-role-union.js';
 import * as crypto from 'crypto';
 import {
   OPENXIANGDA_COMPILER_CONTRACT_VERSION as OPENXIANGDA_V2_COMPILER_CONTRACT_VERSION,
@@ -699,6 +700,8 @@ export function compileRequiredPlatformCapabilitiesV3(
     ...(config.data.resources.some((resource: JsonObject) => resource.schema.fields.some((field: JsonObject) => field.userCandidates !== undefined))
       ? [{ code: 'data.user-candidates' as const, declaration: config.data.resources.filter((resource: JsonObject) => resource.schema.fields.some((field: JsonObject) => field.userCandidates !== undefined)) }]
       : []),
+    ...(requiresWorkflowRoleUnion(config.workflows.bindings)
+      ? [{ code: 'workflow.role-union' as const, declaration: config.workflows.bindings.filter((item: JsonObject) => Object.values(item.binding.bindings).some((entry: any) => entry.roleCodes !== undefined)) }] : []),
     ...(requiresUserCandidateLaunchScope(config.data.resources)
       ? [{ code: 'data.user-candidate-launch-scope' as const, declaration: config.data.resources.filter((resource: any) => requiresUserCandidateLaunchScope([resource])) }]
       : []),
@@ -7290,6 +7293,8 @@ function validateWorkflowBinding(binding: JsonObject, pointer: string) {
   for (const [code, raw] of Object.entries(entries)) {
     workflowBindingCode(code, `${pointer}/bindings/${code}`);
     const entry = object(raw, `${pointer}/bindings/${code}`);
+    const unionErrors = validateWorkflowRoleUnion(entry);
+    if (unionErrors.length) fail(unionErrors[0]!, `${pointer}/bindings/${code}/roleCodes`);
     const provider = requiredString(
       entry.provider,
       `${pointer}/bindings/${code}/provider`,
@@ -7327,7 +7332,7 @@ function validateWorkflowBinding(binding: JsonObject, pointer: string) {
       );
     }
     if (
-      ['app_role', 'app_role_in_scope', 'initiator_select'].includes(provider)
+      ['app_role', 'app_role_in_scope', 'initiator_select'].includes(provider) && entry.roleCodes === undefined
     ) {
       stableCode(entry.roleCode, `${pointer}/bindings/${code}/roleCode`);
     }

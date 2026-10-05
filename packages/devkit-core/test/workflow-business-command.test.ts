@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Ajv2020 } from 'ajv/dist/2020.js';
-import { businessProcessCommandWithDataSchema, workflowBusinessCommandInvocationSchema, workflowDefinitionSchema, validateWorkflowCommandHandlers } from 'openxiangda-contracts';
+import { businessProcessCommandWithDataSchema, workflowBusinessCommandInvocationSchema, workflowDefinitionSchema, workflowBindingSchema, validateWorkflowCommandHandlers } from 'openxiangda-contracts';
 import { compileNativeApplicationConfiguration } from 'openxiangda-contracts/native-compiler';
 import { compileApplicationSources } from '../src/compiler/bundle.js';
 import { defineOpenXiangdaApp, type OpenXiangdaAppDeclaration } from '../src/compiler/config.js';
@@ -39,6 +39,25 @@ function fixture(): OpenXiangdaAppDeclaration {
     },
   };
 }
+
+test('role union is carried by both compilers and requires platform support', () => {
+  const value = fixture();
+  value.authz!.roles!.push({ code: 'second-reviewer', name: '复核职责', capabilities: [] });
+  value.workflows!.bindings![0]!.binding.bindings.reviewer = { provider: 'app_role', roleCodes: ['reviewer', 'second-reviewer'] };
+  const output = compileApplicationSources(defineOpenXiangdaApp(value));
+  const target = compileNativeApplicationConfiguration({ appCode: value.app.code, configBytes: output.config.content,
+    expectedConfigDigest: output.config.digest, contractBytes: output.contracts.content, expectedContractDigest: output.contracts.digest });
+  assert.deepEqual(target.requiredPlatformCapabilities, requiredPlatformCapabilitiesFromConfiguration(output.config.value));
+  assert.equal(target.requiredPlatformCapabilities.find(item => item.code === 'workflow.role-union')?.contractVersion, '1.0.0');
+  assert.deepEqual(output.config.value.workflows.bindings[0]!.binding.bindings.reviewer!.roleCodes, ['reviewer', 'second-reviewer']);
+  const schema = new Ajv2020({ strict: false, validateFormats: false }).compile(workflowBindingSchema);
+  assert.equal(schema(output.config.value.workflows.bindings[0]!.binding), true, JSON.stringify(schema.errors));
+  for (const bad of [[], ['same', 'same'], ['only'], Array.from({ length: 9 }, (_, i) => `role-${i}`)]) {
+    assert.equal(schema({ ...value.workflows!.bindings![0]!.binding, bindings: { reviewer: { provider: 'app_role', roleCodes: bad } } }), false);
+  }
+  value.workflows!.bindings![0]!.binding.bindings.reviewer!.roleCode = 'reviewer';
+  assert.throws(() => compileApplicationSources(defineOpenXiangdaApp(value)), /ROLE_UNION_INVALID/);
+});
 
 test('app/target compilers retain fixed handlers and command access with identical capability closure', () => {
   const output = compileApplicationSources(defineOpenXiangdaApp(fixture()));
