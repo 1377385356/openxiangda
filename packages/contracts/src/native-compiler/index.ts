@@ -50,3 +50,6 @@ export * from './user-candidates.js';
 
 /** The same view projection is consumed by the platform's CommonJS runtime. */
 export { projectDataResourceView } from './resource-view.js';
+
+// Shared with the platform's CommonJS configuration/Delivery runtime.
+export * from './development-configuration.js';

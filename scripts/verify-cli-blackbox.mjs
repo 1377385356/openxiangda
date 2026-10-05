@@ -35,6 +35,8 @@ let latestDeployment;
 let latestPackage;
 let latestDeploymentRequest;
 let revokeCount = 0;
+let developmentConfiguration = null;
+const developmentConfigurationRequests = [];
 let activeDev;
 let failProvision = false;
 let backendBuildAvailable = true;
@@ -164,6 +166,9 @@ try {
     }],
   `));
 
+  const writesBeforeDev = deploymentWriteCount();
+  const commandTextBeforeDev = existsSync(commandMarker) ? readFileSync(commandMarker, 'utf8') : '';
+  const devRequestsBefore = requests.length;
   const dev = spawn(
     process.execPath,
     [join(repositoryRoot, "packages", "cli", "bin", "run.js"), "dev", "--cwd", appRoot, "--no-open", "--json"],
@@ -191,6 +196,23 @@ try {
     // connected-dev readiness probe one event-loop turn to enter its steady
     // state before exercising graceful shutdown.
     await new Promise(resolveWait => setTimeout(resolveWait, 250));
+    assert.equal(developmentConfigurationRequests.length, 1);
+    const synchronized = developmentConfigurationRequests[0];
+    assert.equal(synchronized.environmentKey, 'preproduction');
+    assert.equal(synchronized.expectedHeadRevision, 1);
+    assert.equal(synchronized.configuration.appCode, 'instrument-center');
+    assert.equal(typeof synchronized.source.dirty, 'boolean');
+    const devRequests = requests.slice(devRequestsBefore);
+    const syncIndex = devRequests.findIndex(item => item.path.endsWith('/dev-sessions/configuration'));
+    const sessionIndex = devRequests.findIndex(item => item.path.endsWith('/dev-sessions'));
+    assert.ok(syncIndex >= 0 && sessionIndex > syncIndex);
+    assert.ok(devRequests.slice(syncIndex + 1, sessionIndex).some(item => item.path.endsWith('/environments')),
+      'must read the newly selected Native Head before creating the session');
+    assert.equal(deploymentWriteCount(), writesBeforeDev, 'dev must not create a formal deployment');
+    assert.equal(existsSync(dockerMarker), false);
+    const devCommandText = readFileSync(commandMarker, 'utf8').slice(commandTextBeforeDev.length);
+    assert.doesNotMatch(devCommandText, /"(?:build|pack|version|check|test)"/,
+      'source dev must not run application build or package lifecycle');
   } catch (error) {
     throw new Error(`${error.message}; requests=${JSON.stringify(requests)}; stdout=${devStdout}; stderr=${devStderr}`);
   }
@@ -554,19 +576,32 @@ async function handlePlatformRequest(request, response) {
     return envelope(response, {
       schemaVersion: "openxiangda.application-environments/v2",
       items: [{
-        id: "environment-test",
+        id: developmentConfiguration?.environmentId || "environment-test",
         environmentKey: "preproduction",
         environmentKind: "preproduction",
         status: "active",
         activeHead: {
-          activeAppVersionId: "version-1", activatedByDeploymentId: "test-run-1", revision: 1, revisions: { backend: null },
-          activeAppVersion: { id: "version-1", appCode: "instrument-center", version: "0.1.0-test-source" },
+          activeAppVersionId: developmentConfiguration?.appVersionId || "version-1", activatedByDeploymentId: developmentConfiguration?.configurationRunId || "test-run-1", revision: developmentConfiguration?.headRevision || 1, revisions: { backend: null },
+          activeAppVersion: { id: developmentConfiguration?.appVersionId || "version-1", appCode: "instrument-center", version: "0.1.0-test-source" },
         },
       }],
       total: 1,
     });
   }
+  if (method === "POST" && path.endsWith("/dev-sessions/configuration")) {
+    developmentConfigurationRequests.push(body);
+    developmentConfiguration = {
+      schemaVersion: "openxiangda.development-configuration/v1", appCode: "instrument-center", environmentKey: "preproduction",
+      environmentId: "11111111-1111-4111-8111-111111111111", appVersionId: "22222222-2222-4222-8222-222222222222",
+      configurationRunId: "33333333-3333-4333-8333-333333333333", headRevision: body.expectedHeadRevision + 1,
+      configDigest: body.configDigest, contractDigest: body.contractDigest, reused: false,
+      runtimeArtifactsDeployed: false, backendEventsAvailable: false,
+    };
+    return envelope(response, developmentConfiguration);
+  }
   if (method === "POST" && path.endsWith("/dev-sessions")) {
+    assert.equal(body.configuration, undefined, 'full configuration is synchronized before session creation');
+    assert.equal(body.manifestDigest, developmentConfiguration.configDigest);
     return envelope(response, {
       sessionId: "dev-session-1",
       sessionToken: "one-time-dev-token",
@@ -574,7 +609,7 @@ async function handlePlatformRequest(request, response) {
       mode: "published-resources",
       manifestOverlay: false,
       manifestDigest: body?.manifestDigest || null,
-      environment: { id: "environment-test", key: "preproduction", activeAppVersionId: "version-1", headRevision: 1 },
+      environment: { id: developmentConfiguration?.environmentId || "environment-test", key: "preproduction", activeAppVersionId: developmentConfiguration?.appVersionId || "version-1", headRevision: developmentConfiguration?.headRevision || 1 },
     });
   }
   if (method === "POST" && path.endsWith("/dev-sessions/current/revoke")) {
@@ -583,7 +618,7 @@ async function handlePlatformRequest(request, response) {
   }
   if (path === "/openxiangda-api/v2/capabilities") {
     const codes = [
-      "application-native-2", "authz.native-batch-explain", "authz.native-management",
+      "application-native-2", "application.development-configuration", "authz.native-batch-explain", "authz.native-management",
       "deployment.durable-runs", "deployment.platform-executor",
       "environment.on-demand-production", "environment.runtime-lifecycle", "data-api-v2", "directory-v2",
       "authentication.application-login-surface",

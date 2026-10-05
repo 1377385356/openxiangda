@@ -23,6 +23,7 @@ import {
   CURRENT_APPLICATION_CONTRACT,
   OPENXIANGDA_CONTRACT_VERSION,
   SCHEMA_VERSIONS,
+  DEVELOPMENT_CONFIGURATION_SCHEMA,
   RUNTIME_CAPACITY_PREFLIGHT_SCHEMA,
   canonicalJson,
   sha256Digest,
@@ -2609,10 +2610,10 @@ export class OpenXiangdaApplicationServices {
       baseUrl: developerSession.baseUrl,
       tokenProvider: developerSession,
     });
-    const environments = await client.applicationEnvironments(
+    let environments = await client.applicationEnvironments(
       workspace.config.app.code
     );
-    const environment = selectConnectedDevelopmentEnvironment(
+    let environment = selectConnectedDevelopmentEnvironment(
       environments.items
     );
     if (!environment) {
@@ -2624,14 +2625,33 @@ export class OpenXiangdaApplicationServices {
       workspace.config,
       this.toolchainVersion
     );
+    if (environment.environmentKey === 'preproduction') {
+      input.onStatus?.('同步test完整开发配置；不构建应用制品，后台事件和业务日期调度暂留正式批次验收');
+      const synchronized = await client.synchronizeDevelopmentConfiguration(workspace.config.app.code, {
+        schemaVersion: DEVELOPMENT_CONFIGURATION_SCHEMA, environmentKey: 'preproduction',
+        expectedHeadRevision: environment.activeHead!.revision,
+        configDigest: sources.config.digest, contractDigest: sources.contracts.digest,
+        configuration: sources.config.value, contract: sources.contracts.value,
+        source: { repository: null, commit: workspace.context.workspace.revision || null,
+          dirty: workspace.context.workspace.dirty === true || !workspace.context.workspace.revision },
+        toolchainVersion: this.toolchainVersion,
+      });
+      environments = await client.applicationEnvironments(workspace.config.app.code);
+      environment = environments.items.find(item => item.id === synchronized.environmentId);
+      if (!environment?.activeHead || environment.activeHead.activeAppVersionId !== synchronized.appVersionId ||
+        environment.activeHead.revision !== synchronized.headRevision) {
+        throw new Error('OPENXIANGDA_CONNECTED_DEV_CONFIGURATION_HEAD_CHANGED: 同步后环境已变化，请保留原配置运行记录');
+      }
+    }
+    const selectedEnvironment = environment;
     const remoteSession = {
       create: async () => {
         const value = await client.createConnectedDevelopmentSession(
           workspace.config.app.code,
           {
-            environmentKey: environment.environmentKey,
+            environmentKey: selectedEnvironment.environmentKey,
             manifestDigest: sources.config.digest,
-            configuration: sources.config.value,
+            ...(selectedEnvironment.environmentKey === 'production' ? { configuration: sources.config.value } : {}),
           }
         );
         return {
@@ -2680,7 +2700,7 @@ export class OpenXiangdaApplicationServices {
       },
     };
     input.onStatus?.(
-      "connected dev 已启用增量配置：已有资源上的可空新字段无需先部署 test"
+      "connected dev 使用平台当前完整配置，Web/Nest保持本地源码联调"
     );
     const connected = await runConnectedDevelopment({
       root: workspace.root,

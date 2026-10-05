@@ -1,8 +1,10 @@
 /** 纯编译器版本与能力契约；应用不能扩展此表，新增项必须有对应平台实现。 */
 export const OPENXIANGDA_COMPILER_CONTRACT_VERSION = "native-4" as const;
+export const OPENXIANGDA_CONTRACT_VERSION = "2.0.0-alpha.5" as const;
 
 export const PLATFORM_CAPABILITY_CONTRACT_VERSIONS = {
   "application-native-2": "1.0.0",
+  "application.development-configuration": "1.0.0",
   "authz.native-batch-explain": "1.0.0",
   "authz.native-management": "1.0.0",
   "authz.native-membership-batch": "1.0.0",

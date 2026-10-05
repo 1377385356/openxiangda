@@ -1,5 +1,5 @@
-import { OPENXIANGDA_COMPILER_CONTRACT_VERSION, PLATFORM_CAPABILITY_CONTRACT_VERSIONS } from "./native-version.js";
-export { OPENXIANGDA_COMPILER_CONTRACT_VERSION, PLATFORM_CAPABILITY_CONTRACT_VERSIONS } from "./native-version.js";
+import { OPENXIANGDA_COMPILER_CONTRACT_VERSION, PLATFORM_CAPABILITY_CONTRACT_VERSIONS, OPENXIANGDA_CONTRACT_VERSION } from "./native-version.js";
+export { OPENXIANGDA_COMPILER_CONTRACT_VERSION, PLATFORM_CAPABILITY_CONTRACT_VERSIONS, OPENXIANGDA_CONTRACT_VERSION } from "./native-version.js";
 import type { DataFieldSurface, DataResourceSurface } from "./surface.js";
 import type {
   CascadePathValue,
@@ -30,7 +30,6 @@ import {
   type CliProtocolCapabilities,
 } from "./cli.js";
 
-export const OPENXIANGDA_CONTRACT_VERSION = "2.0.0-alpha.5" as const;
 
 
 export const SCHEMA_VERSIONS = {

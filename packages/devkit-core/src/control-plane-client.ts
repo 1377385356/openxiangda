@@ -1,5 +1,7 @@
 import type { WorkflowDelegationAdministration, WorkflowDelegationCatalog, WorkflowDelegationCandidatePage, WorkflowDelegationCandidateQuery, WorkflowDelegationListQuery, WorkflowDelegationPage, WorkflowDelegationMutationPreview, WorkflowDelegationMutationReceipt, WorkflowDelegationMutationRequest } from "openxiangda-contracts";
 import type { DeploymentStrategy } from 'openxiangda-contracts';
+import { assertDevelopmentConfigurationResult, DEVELOPMENT_CONFIGURATION_ENDPOINT,
+  DEVELOPMENT_CONFIGURATION_FEATURE, type DevelopmentConfigurationInput } from 'openxiangda-contracts';
 import {
   describePlatformTransportFailure,
   preparePlatformRequest,
@@ -666,6 +668,18 @@ export class OpenXiangdaControlPlaneClient {
       this.connectedDevelopmentSessionsPath(appCode),
       { method: "POST", body: JSON.stringify(input) }
     );
+  }
+
+  async synchronizeDevelopmentConfiguration(appCode: string, input: DevelopmentConfigurationInput) {
+    const capability = (await this.capabilities()).features?.[DEVELOPMENT_CONFIGURATION_FEATURE];
+    if (capability?.status !== 'available' || capability.contractVersion !== '1.0.0') {
+      throw new ControlPlaneError(409, 'OPENXIANGDA_CONNECTED_DEV_CONFIGURATION_CAPABILITY_REQUIRED',
+        '目标平台尚未提供完整开发配置同步；请更新配套平台，不需要先打包发布应用');
+    }
+    const result = await this.json<unknown>(DEVELOPMENT_CONFIGURATION_ENDPOINT.replace('{appCode}', encodeURIComponent(appCode)), {
+      method: 'POST', body: JSON.stringify(input), signal: AbortSignal.timeout(120_000),
+    });
+    return assertDevelopmentConfigurationResult(result, appCode, input);
   }
 
   async preparePreproductionAcceptanceIdentities(
