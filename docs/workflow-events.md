@@ -559,6 +559,30 @@ outbox容量等事务故障会回滚，处理器按原键核对后重交，不�
 系统、流水号和隐藏字段不可作为补填入口。根附件、图片复用平台托管文件；
 签名和富文本同样保留 Native 字段协议；普通 owned 子行以固定页面白名单和行 CAS 提交。
 
+### 任务内的资源引用选择
+
+任务页面中的 `resource-ref.single` / `resource-ref.multiple` 自动使用当前任务的选择接口。
+当前办理人不需要业务资料的普通 `update` 权限，但必须拥有目标字典的 `read` 权限；
+字段来源、读取投影、行权限和有界分页继续由 Native Data 执行。
+仅当前固定 taskPage 中可见且可填写的根字段能够查询，隐藏、只读、条件尚未生效的字段
+和子表字段拒绝查询。字段显隐与填写规则仍归页面声明。
+
+自定义任务表单使用公开 `searchResource` 时传入当前 Surface 的 task ID、业务资料修订及
+任务版本；不能把 task 与普通 create、launch 或管理员 record edit 上下文混用：
+
+```ts
+await searchResource(resourceCode, fieldCode, {
+  operation: 'update', keyword: '司机',
+  task: { taskId, expectedRevision: businessDetail.sourceRevision, expectedTaskVersion: task.version },
+});
+```
+
+底层请求使用 `workflow-task-field-source-query/v2`，返回已有的
+`data-field-source-page/v2`。依赖字段的过滤仅使用声明的 bindings：当前可填写的依赖
+可取表单值，显式清空会返回空选项；只读或不在当前页面的依赖取已保存资料。
+游标绑定当前任务、版本、页面、定义和资料修订。409 时刷新任务并保留用户输入，
+403 时展示实际拒绝，不扩大普通 CRUD 权限。标准 PC 和移动任务组件自动传递这些上下文。
+
 ### 标准流程的主子表发起
 
 标准发起页复用 Field Kit 的 PC/手机子表，通过原 `standard-commands` 的

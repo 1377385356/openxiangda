@@ -357,6 +357,9 @@ export function SurfaceFieldControl({
   workflowFileBinding,
   renderers,
 }: SurfaceFieldEditContext & { renderers?: SurfaceFieldRenderers }) {
+  const taskSourceBinding = workflowCandidateBinding?.taskId && expectedRevision && workflowCandidateBinding.expectedTaskVersion
+    ? { taskId: workflowCandidateBinding.taskId, expectedRevision, expectedTaskVersion: workflowCandidateBinding.expectedTaskVersion }
+    : undefined;
   const subtableValidation = useMobileSubtableValidation();
   const rules = [...surfaceFieldValidationRules(field, false, disabled),
     ...(field.widget === 'subtable' && !disabled ? [{ validator: subtableValidation.validator }] : [])];
@@ -408,6 +411,7 @@ export function SurfaceFieldControl({
           operation={operation}
           launch={renderers?.referenceLaunch}
           action={renderers?.recordEditInput}
+          task={taskSourceBinding}
           resourceCode={resourceCode}
         />
       ) : (
@@ -448,6 +452,7 @@ export function SurfaceFieldControl({
           operation={operation}
           launch={renderers?.referenceLaunch}
           action={renderers?.recordEditInput}
+          task={taskSourceBinding}
           resourceCode={resourceCode}
         />
       );
@@ -565,6 +570,9 @@ export function MobileSurfaceFieldControl({
   workflowFileBinding,
   renderers,
 }: SurfaceFieldEditContext & { renderers?: SurfaceFieldRenderers }) {
+  const taskSourceBinding = workflowCandidateBinding?.taskId && expectedRevision && workflowCandidateBinding.expectedTaskVersion
+    ? { taskId: workflowCandidateBinding.taskId, expectedRevision, expectedTaskVersion: workflowCandidateBinding.expectedTaskVersion }
+    : undefined;
   const subtableValidation = useMobileSubtableValidation();
   const rules = [...surfaceFieldValidationRules(field, true, disabled),
     ...(field.widget === 'subtable' && !disabled ? [{ validator: subtableValidation.validator }] : [])];
@@ -604,6 +612,7 @@ export function MobileSurfaceFieldControl({
           operation={operation}
           launch={renderers?.referenceLaunch}
           action={renderers?.recordEditInput}
+          task={taskSourceBinding}
           resourceCode={resourceCode}
         />
       ) : (
@@ -646,6 +655,7 @@ export function MobileSurfaceFieldControl({
           operation={operation}
           launch={renderers?.referenceLaunch}
           action={renderers?.recordEditInput}
+          task={taskSourceBinding}
           resourceCode={resourceCode}
         />
       );

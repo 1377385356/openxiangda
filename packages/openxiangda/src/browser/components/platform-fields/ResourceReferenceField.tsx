@@ -4,6 +4,7 @@ import type {
   DataFieldSourceLaunchBinding,
   DataRecordEditInput,
   ResourceReferenceValue,
+  WorkflowTaskSourceBinding,
 } from 'openxiangda-contracts/browser';
 import { useRef } from 'react';
 import {
@@ -19,6 +20,7 @@ export function ResourceReferenceField({
   operation,
   launch,
   action,
+  task,
   disabled,
   mobile,
   value,
@@ -31,6 +33,7 @@ export function ResourceReferenceField({
   operation: 'create' | 'update';
   launch?: DataFieldSourceLaunchBinding;
   action?: DataRecordEditInput;
+  task?: WorkflowTaskSourceBinding;
   disabled?: boolean;
   mobile?: boolean;
   value?: ResourceReferenceValue | ResourceReferenceValue[];
@@ -76,6 +79,7 @@ export function ResourceReferenceField({
       operation={operation}
       launch={launch}
       action={action}
+      task={task}
       placeholder={`搜索并选择${field.label}`}
       resourceCode={resourceCode}
       source="resource"

@@ -86,6 +86,7 @@ export const SCHEMA_VERSIONS = {
     "openxiangda.native-scope-value-resolve-request/v2",
   nativeScopeValuePage: "openxiangda.native-scope-value-page/v2",
   dataFieldSourceQuery: "openxiangda.data-field-source-query/v2",
+  workflowTaskFieldSourceQuery: "openxiangda.workflow-task-field-source-query/v2",
   dataFieldSourcePage: "openxiangda.data-field-source-page/v2",
   userCandidatesQuery: "openxiangda.user-candidates-query/v2",
   userCandidatesPage: "openxiangda.user-candidates-page/v2",
@@ -1142,6 +1143,22 @@ export interface DataFieldSourceQuery {
   /** 正式流程发起意图；平台核验字段绑定和动作能力，目标仍按当前用户读取。 */
   launch?: DataFieldSourceLaunchBinding;
   action?: DataRecordEditInput;
+}
+
+/** 当前任务表单的资源引用输入上下文，不授予普通 CRUD 写入权限。 */
+export interface WorkflowTaskSourceBinding {
+  taskId: string;
+  expectedRevision: number;
+  expectedTaskVersion: number;
+}
+
+export interface WorkflowTaskFieldSourceQuery {
+  schemaVersion: typeof SCHEMA_VERSIONS.workflowTaskFieldSourceQuery;
+  expectedRevision: number;
+  expectedTaskVersion: number;
+  keyword?: string;
+  cursor?: string;
+  bindings?: Record<string, unknown>;
 }
 
 export interface DataFieldSourcePage {

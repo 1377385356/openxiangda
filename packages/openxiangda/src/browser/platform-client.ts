@@ -18,6 +18,8 @@ import {
   type DataFileUploadPlan,
   type DataFieldSourcePage,
   type DataFieldSourceQuery,
+  type WorkflowTaskFieldSourceQuery,
+  type WorkflowTaskSourceBinding,
   type DataFieldUserCandidateQuery,
   type WorkflowTaskUserCandidateQuery,
   type UserCandidatePage,
@@ -1360,8 +1362,24 @@ export async function searchResource(
     bindings?: Record<string, unknown>;
     launch?: DataFieldSourceQuery['launch'];
     action?: DataFieldSourceQuery['action'];
+    task?: WorkflowTaskSourceBinding;
   },
 ) {
+  if (options.task) {
+    if (options.operation !== 'update' || options.launch || options.action)
+      throw new Error('WORKFLOW_TASK_FIELD_SOURCE_CONTEXT_INVALID');
+    const input: WorkflowTaskFieldSourceQuery = {
+      schemaVersion: SCHEMA_VERSIONS.workflowTaskFieldSourceQuery,
+      expectedRevision: options.task.expectedRevision,
+      expectedTaskVersion: options.task.expectedTaskVersion,
+      ...(options.keyword.trim() ? { keyword: options.keyword.trim() } : {}),
+      ...(options.cursor ? { cursor: options.cursor } : {}),
+      ...(options.bindings ? { bindings: options.bindings } : {}),
+    };
+    return requestRead<DataFieldSourcePage>(
+      `${workflowBase()}/tasks/${encodeURIComponent(options.task.taskId)}/fields/${encodeURIComponent(fieldCode)}/source/query`,
+      { method: 'POST', body: JSON.stringify(input) });
+  }
   const query: DataFieldSourceQuery = {
     schemaVersion: SCHEMA_VERSIONS.dataFieldSourceQuery,
     operation: options.operation,

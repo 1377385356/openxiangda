@@ -2079,6 +2079,21 @@ export const dataFieldSourceQuerySchema = {
   },
 } as const;
 
+export const workflowTaskFieldSourceQuerySchema = {
+  $id: SCHEMA_VERSIONS.workflowTaskFieldSourceQuery,
+  type: 'object',
+  additionalProperties: false,
+  required: ['schemaVersion', 'expectedRevision', 'expectedTaskVersion'],
+  properties: {
+    schemaVersion: { const: SCHEMA_VERSIONS.workflowTaskFieldSourceQuery },
+    expectedRevision: { type: 'integer', minimum: 1, maximum: Number.MAX_SAFE_INTEGER },
+    expectedTaskVersion: { type: 'integer', minimum: 1, maximum: Number.MAX_SAFE_INTEGER },
+    keyword: dataFieldSourceQuerySchema.properties.keyword,
+    cursor: dataFieldSourceQuerySchema.properties.cursor,
+    bindings: dataFieldSourceQuerySchema.properties.bindings,
+  },
+} as const;
+
 export const dataFieldSourcePageSchema = {
   $id: SCHEMA_VERSIONS.dataFieldSourcePage,
   type: "object",
@@ -9186,6 +9201,7 @@ export const contractSchemas = {
   nativeScopeValueResolveRequest: nativeScopeValueResolveRequestSchema,
   nativeScopeValuePage: nativeScopeValuePageSchema,
   dataFieldSourceQuery: dataFieldSourceQuerySchema,
+  workflowTaskFieldSourceQuery: workflowTaskFieldSourceQuerySchema,
   dataFieldSourcePage: dataFieldSourcePageSchema,
   userCandidatesQuery: userCandidatesQuerySchema,
   userCandidatesPage: userCandidatesPageSchema,
