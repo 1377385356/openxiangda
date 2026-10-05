@@ -3,6 +3,41 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.57.0",
+      "status": "reviewed",
+      "title": "审批任务支持字典选项与后续阶段空引用",
+      "summary": "任务中的资源引用按当前办理权限读取字典，后续才补填的单值引用可以在提交时为空。",
+      "newFeatures": [
+        "PC和手机任务选择器自动绑定当前任务、任务版本与资料修订，保留目标字典读取权限和行权限。"
+      ],
+      "fixes": [
+        "审批办理选择字典不再误要求主体资料的普通CRUD更新权限。",
+        "工作流单值快照允许显式object/null，保持Native必填校验及多值数组形状。",
+        "可选vendor目录纳入只读后端构建输入，完整本地SDK归档无需回落到registry。"
+      ],
+      "affectedUsers": [
+        "使用action-owned资料、审批补填字典或本地SDK归档的V2应用开发者。"
+      ],
+      "upgradeSteps": [
+        "升级完整同源SDK，并使用实现workflow task field source/query接口的Server。",
+        "使用标准任务表单会自动传递上下文；自定义表单按工作流文档提供两份当前修订。"
+      ],
+      "knownLimitations": [
+        "本批仅用于本地分发与合成业务验收，未发布npm、学校或生产。",
+        "仅当前任务页面可见且可填写的根引用字段可以查询；子表引用字段继续不支持。",
+        "字段显隐和流转逻辑仍由应用代码确定，管理员不通过节点配置改写这些规则。"
+      ],
+      "issues": [],
+      "compatibility": {
+        "node": ">=24",
+        "platform": "当前任务资源引用接口及Native读取授权/RLS",
+        "v1": "V1应用不消费新增V2任务接口"
+      },
+      "sha256": "7014a7421c5060105ecfd98f773703bdff704866e1f1892caaddd430acdd72f3",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.57.0"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.56.0",
       "status": "reviewed",
       "title": "审批支持持久自动完成期限",

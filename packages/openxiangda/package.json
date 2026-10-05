@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.56.0",
+  "version": "2.57.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -74,13 +74,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.89",
-    "openxiangda-contracts": "2.66.0",
-    "openxiangda-devkit-core": "2.49.0",
+    "openxiangda-cli": "2.6.90",
+    "openxiangda-contracts": "2.67.0",
+    "openxiangda-devkit-core": "2.49.1",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.104",
-    "openxiangda-nest": "2.14.7",
-    "openxiangda-skill-kit": "2.3.85",
+    "openxiangda-mcp": "2.0.105",
+    "openxiangda-nest": "2.14.8",
+    "openxiangda-skill-kit": "2.3.86",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -146,34 +146,37 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.56.0",
+    "version": "2.57.0",
     "status": "reviewed",
-    "title": "审批支持持久自动完成期限",
-    "summary": "可选评价等节点可以在固定期限后自动完成，平台持久计时并显示实际规则与历史。",
+    "title": "审批任务支持字典选项与后续阶段空引用",
+    "summary": "任务中的资源引用按当前办理权限读取字典，后续才补填的单值引用可以在提交时为空。",
     "newFeatures": [
-      "审批声明completionDeadline及能力协商，拒绝必填输入和自定义同意处理器冲突。",
-      "公开任务期限状态、固定图规则及PC/手机截止时间提示，管理员配置保留代码规则。"
+      "PC和手机任务选择器自动绑定当前任务、任务版本与资料修订，保留目标字典读取权限和行权限。"
     ],
-    "fixes": [],
+    "fixes": [
+      "审批办理选择字典不再误要求主体资料的普通CRUD更新权限。",
+      "工作流单值快照允许显式object/null，保持Native必填校验及多值数组形状。",
+      "可选vendor目录纳入只读后端构建输入，完整本地SDK归档无需回落到registry。"
+    ],
     "affectedUsers": [
-      "需要限时自动完成可选审批节点的V2应用。"
+      "使用action-owned资料、审批补填字典或本地SDK归档的V2应用开发者。"
     ],
     "upgradeSteps": [
-      "升级完整同源SDK并使用支持workflow.completion-deadline@1.0.0的Server。",
-      "由代码声明afterSeconds和approve，不需要打开额外功能开关。"
+      "升级完整同源SDK，并使用实现workflow task field source/query接口的Server。",
+      "使用标准任务表单会自动传递上下文；自定义表单按工作流文档提供两份当前修订。"
     ],
     "knownLimitations": [
-      "本轮仅本地分发，未发布npm、学校或生产。",
-      "自动完成整节点，不产生未处理人的同意票；补正/恢复任务继续人工处理。",
-      "30秒扫描可能有排队延迟；12次失败后保留人工处理，管理员重试入口后续实现。"
+      "本批仅用于本地分发与合成业务验收，未发布npm、学校或生产。",
+      "仅当前任务页面可见且可填写的根引用字段可以查询；子表引用字段继续不支持。",
+      "字段显隐和流转逻辑仍由应用代码确定，管理员不通过节点配置改写这些规则。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
-      "platform": "workflow.completion-deadline@1.0.0，正式SQL迁移及持久worker",
-      "v1": "V1应用不消费此声明"
+      "platform": "当前任务资源引用接口及Native读取授权/RLS",
+      "v1": "V1应用不消费新增V2任务接口"
     },
-    "sha256": "dacaddf6a4b812e45256e8b42b4cef4ea0db767ee17fa85995ee7e437e2b574c",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.56.0"
+    "sha256": "7014a7421c5060105ecfd98f773703bdff704866e1f1892caaddd430acdd72f3",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.57.0"
   }
 }
