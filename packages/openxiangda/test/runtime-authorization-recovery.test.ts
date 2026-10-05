@@ -132,3 +132,59 @@ test('the 300-second deadline also cancels an outstanding busy sleep', async t =
   }), { code: 'OPENXIANGDA_RUNTIME_AUTHORIZATION_RECOVERY_EXHAUSTED' });
   await settle(); t.mock.timers.tick(300_000); await rejected; assert.equal(calls, 1);
 });
+
+test('an original entrance receipt can finish identity after five minutes with bounded polling', async () => {
+  const time = clock(1); let calls = 0;
+  const value = await recoverRuntimeAuthorizationRead(async () => {
+    calls++;
+    if (calls <= 35) throw failure(429, 'CONCURRENCY_BOOTSTRAP_BUSY', {
+      retryable: true, data: { state: 'waiting', remainingMs: 1_200_000 - time.dependencies.now(), retryAfterMs: 15_000 },
+    });
+    return 'verified';
+  }, undefined, time.dependencies);
+  assert.equal(value, 'verified'); assert.equal(calls, 36);
+  assert.equal(time.dependencies.now(), 630_000);
+  assert.ok(time.delays.every(ms => ms === 18_000), 'receipt polling stays inside the twenty-second wave');
+});
+
+test('later receipt hints cannot refresh the original entrance deadline', async () => {
+  const time = clock(); let calls = 0;
+  await assert.rejects(recoverRuntimeAuthorizationRead(async () => {
+    calls++;
+    throw failure(429, 'CONCURRENCY_BOOTSTRAP_BUSY', { data: {
+      state: 'waiting', remainingMs: calls === 1 ? 60_000 : 1_800_000, retryAfterMs: 15_000,
+    } });
+  }, undefined, time.dependencies), { code: 'CONCURRENCY_BOOTSTRAP_BUSY' });
+  assert.equal(calls, 4); assert.equal(time.dependencies.now(), 45_000);
+});
+
+test('entrance waiting caps inflated receipt duration at thirty minutes from the original start', async () => {
+  const time = clock(); let calls = 0;
+  await assert.rejects(recoverRuntimeAuthorizationRead(async () => {
+    calls++;
+    throw failure(429, 'CONCURRENCY_BOOTSTRAP_BUSY', {
+      data: { state: 'waiting', remainingMs: Number.MAX_SAFE_INTEGER, retryAfterMs: 15_000 },
+    });
+  }, undefined, time.dependencies), { code: 'CONCURRENCY_BOOTSTRAP_BUSY' });
+  assert.equal(calls, 120); assert.equal(time.dependencies.now(), 1_785_000);
+});
+
+test('invalid or unrelated metadata cannot extend identity recovery; terminal receipt never retries', async () => {
+  for (const data of [null, { state: 'waiting', remainingMs: '1200000' }, { state: 'waiting', remainingMs: NaN },
+    { state: 'waiting', remainingMs: -1 }, { state: 'unavailable', remainingMs: 1_200_000 }]) {
+    const time = clock(); let calls = 0;
+    await assert.rejects(recoverRuntimeAuthorizationRead(async () => {
+      calls++; throw failure(429, 'CONCURRENCY_BOOTSTRAP_BUSY', { data });
+    }, undefined, time.dependencies), { code: 'CONCURRENCY_BOOTSTRAP_BUSY' });
+    assert.ok(time.dependencies.now() < 300_000); assert.ok(calls < 120);
+  }
+  for (const state of ['expired', 'full']) {
+    const time = clock(); let calls = 0;
+    await assert.rejects(recoverRuntimeAuthorizationRead(async () => {
+      calls++; throw failure(429, 'CONCURRENCY_BOOTSTRAP_BUSY', {
+        retryable: false, data: { state, remainingMs: 1_200_000 },
+      });
+    }, undefined, time.dependencies), { code: 'CONCURRENCY_BOOTSTRAP_BUSY' });
+    assert.equal(calls, 1); assert.deepEqual(time.delays, []);
+  }
+});

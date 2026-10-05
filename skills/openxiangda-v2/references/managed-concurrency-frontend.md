@@ -243,3 +243,9 @@ refresh 有本地原键时先薄查询原 key；找到已受理非终态后不�
 不要在 mount 发现历史 succeeded 时自动跳成功页或永久禁用提交。它可能已经被管理员取消，需结合当前业务记录展示。只有用户明确再次点击 submit，且原请求已有终态，SDK 才创建新的 requestKey；活跃请求或未知应答始终恢复原 key。平台明确返回未受理的参数错误（400 + CONCURRENCY_INPUT_INVALID 等约定错误）时，SDK 才清除被拒输入，允许修正后再提交；未知 400、409、429、5xx 和网络错误仍保留原意图。成功提示以 receipt.state==='succeeded' 和 receipt.result 为准，accepted/executing 只显示「已登记，处理中」。
 
 permit 的 ManagedCommandGate 仍只用于 admitted 短确认，不用于 durable。durable 不能套任意前端 onSubmit 冒充后台事务，真正业务必须由已声明的 backend-plan handler 返回受管计划。
+
+### 入口等待与身份加载连续性
+
+平台启用入口排队时，SDK 的当前用户读取只对明确的入口繁忙响应接续等待：HTTP 429、`CONCURRENCY_BOOTSTRAP_BUSY`、可重试以及有效的等待状态与 `remainingMs`。第一次有效回执固定等待截止，后续回执只能缩短，最长不超过首次读取开始后的三十分钟。按平台排队提示每 2–15 秒查询，加最多 20% 抖动；不会因普通繁忙或网络错误无限延长。普通身份读取仍使用五分钟恢复预算；权限拒绝、版本变化、入口过期和满额终止恢复。单次读取、投影和网络失败的限制保持独立。
+
+该行为只读取平台身份，不替应用发起或重放报名，也不改变已经受理命令的原始请求键与结果截止。上线容量需在使用该 SDK 的实际应用制品上重新验证。
