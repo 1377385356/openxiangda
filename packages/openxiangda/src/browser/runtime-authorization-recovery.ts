@@ -1,5 +1,7 @@
 const BUDGET_MS = 300_000;
 const MAX_ATTEMPTS = 120;
+const ENTRY_BUDGET_MS = 1_800_000;
+const ENTRY_MAX_ATTEMPTS = 900;
 const READ_TIMEOUT_MS = 10_000;
 const PROJECTION_DELAYS = [250, 750, 1500];
 const BUSY_CODES = new Set(['CONCURRENCY_BOOTSTRAP_BUSY', 'CONCURRENCY_API_BUSY']);
@@ -9,7 +11,7 @@ interface ReadFailure {
   code?: string;
   retryable?: boolean;
   retryAfterMs?: number;
-  data?: { retryAfterMs?: number } | null;
+  data?: { retryAfterMs?: number; remainingMs?: number; state?: string } | null;
   name?: string;
 }
 
@@ -55,15 +57,17 @@ export async function recoverRuntimeAuthorizationRead<T>(
   dependencies = { now: () => performance.now(), random: Math.random, sleep },
 ): Promise<T> {
   if (signal?.aborted) throw abortReason(signal);
-  const deadline = dependencies.now() + BUDGET_MS;
+  const started = dependencies.now();
+  let deadline = started + BUDGET_MS;
+  let entryDeadline: number | undefined;
   const controller = new AbortController();
   const abort = () => controller.abort(signal && abortReason(signal));
   signal?.addEventListener('abort', abort, { once: true });
-  const timer = setTimeout(() => controller.abort(exhausted()), BUDGET_MS);
+  let timer = setTimeout(() => controller.abort(exhausted()), BUDGET_MS);
   let projectionRetries = 0, projectionDeadline = 0, transportFailures = 0, backoff = 0;
   let lastError: unknown;
   try {
-    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    for (let attempt = 0; attempt < (entryDeadline === undefined ? MAX_ATTEMPTS : ENTRY_MAX_ATTEMPTS); attempt++) {
       if (controller.signal.aborted) throw abortReason(controller.signal);
       if (dependencies.now() >= deadline) throw exhausted();
       if (projectionRetries === 0) projectionDeadline = dependencies.now() + READ_TIMEOUT_MS;
@@ -76,7 +80,6 @@ export async function recoverRuntimeAuthorizationRead<T>(
       } catch (error) {
         if (controller.signal.aborted) throw abortReason(controller.signal);
         lastError = error;
-        if (attempt + 1 >= MAX_ATTEMPTS) throw error;
         const failure = error as ReadFailure;
         if (failure?.status === 503 && failure.code === 'OPENXIANGDA_AUTHORIZATION_PROJECTION_NOT_READY') {
           const delay = PROJECTION_DELAYS[projectionRetries];
@@ -90,6 +93,20 @@ export async function recoverRuntimeAuthorizationRead<T>(
         if (projectionRetries > 0 && failure?.name === 'TimeoutError') throw error;
         projectionRetries = 0;
         const busy = failure?.status === 429 && BUSY_CODES.has(failure.code || '') && failure.retryable !== false;
+        const remaining = failure?.data?.remainingMs;
+        const entryWait = busy && failure.code === 'CONCURRENCY_BOOTSTRAP_BUSY'
+          && ['waiting', 'ready', 'active'].includes(failure.data?.state || '')
+          && typeof remaining === 'number' && Number.isFinite(remaining) && remaining > 0;
+        if (entryWait) {
+          // Receipt time is authoritative for this wait. Later responses may
+          // shorten, never refresh, the original bounded entrance deadline.
+          const receiptDeadline = Math.min(started + ENTRY_BUDGET_MS, dependencies.now() + remaining);
+          entryDeadline = entryDeadline === undefined ? receiptDeadline : Math.min(entryDeadline, receiptDeadline);
+          deadline = entryDeadline;
+          clearTimeout(timer);
+          timer = setTimeout(() => controller.abort(exhausted()), Math.max(0, deadline - dependencies.now()));
+        }
+        if (attempt + 1 >= (entryDeadline === undefined ? MAX_ATTEMPTS : ENTRY_MAX_ATTEMPTS)) throw error;
         const transport = failure?.retryable !== false &&
           (failure?.status === 503 && failure.code === 'PLATFORM_TRANSPORT_UNAVAILABLE' ||
             failure?.status === undefined && failure?.name === 'TimeoutError');
@@ -98,7 +115,9 @@ export async function recoverRuntimeAuthorizationRead<T>(
         const hint = Number(failure.retryAfterMs ?? failure.data?.retryAfterMs);
         const suggested = Number.isFinite(hint) && hint >= 0 ? hint : 0;
         const jitter = Math.min(1, Math.max(0, dependencies.random()));
-        const delay = Math.max(suggested, Math.min(30_000, 2000 * 2 ** Math.min(backoff++, 4))) * (1 + jitter * .25);
+        const delay = entryWait
+          ? Math.min(15_000, Math.max(2000, suggested)) * (1 + jitter * .2)
+          : Math.max(suggested, Math.min(30_000, 2000 * 2 ** Math.min(backoff++, 4))) * (1 + jitter * .25);
         if (delay >= deadline - dependencies.now()) throw error;
         await dependencies.sleep(delay, controller.signal);
       }

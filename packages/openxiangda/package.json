@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.55.5",
+  "version": "2.55.6",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -74,7 +74,7 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.87",
+    "openxiangda-cli": "2.6.88",
     "openxiangda-contracts": "2.65.0",
     "openxiangda-devkit-core": "2.48.4",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
@@ -146,32 +146,34 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.55.5",
+    "version": "2.55.6",
     "status": "reviewed",
-    "title": "OpenXiangda 2.55.5：具名业务与读取视角的边界",
-    "summary": "修复管理页面的读取 Perspective 被转发到受信业务 Data API 而导致合法业务提交拒绝的问题。",
+    "title": "OpenXiangda 2.55.6：入口排队与身份加载连续性",
+    "summary": "修复平台入口等待期限与浏览器身份读取恢复期限不一致导致有效等待过早中断的问题。",
     "newFeatures": [],
     "fixes": [
-      "Nest 具名业务 Data API 派生无读取视角的下游上下文，保留固定动作证明与原请求；普通 Data API 继续继承读取 Perspective。"
+      "仅对有效平台入口回执接续身份等待，固定原期限并上限三十分钟，后续回执只能缩短。",
+      "入口身份读取遵循有界排队提示，普通请求、权限拒绝、投影重试和网络失败保持各自边界。"
     ],
     "affectedUsers": [
-      "从已选择管理读取 Perspective 的页面调用 V2 Nest 具名业务动作的应用。"
+      "启用 V2 平台入口排队并在拥挤时加载当前用户信息的应用。"
     ],
     "upgradeSteps": [
-      "安装完整同源 SDK，执行应用 check，并分别验收合法提交、普通读取范围、当前成员事务守卫及原结果恢复。"
+      "安装同源 SDK 并重新构建应用，验证权限拒绝、入口期限、页面取消、原报名结果恢复及真实冷入口并发。"
     ],
     "knownLimitations": [
-      "SDK HTTP 边界验收不代替真实角色和页面业务验收；本轮仅本机分发，不发布 npm。"
+      "本地测试不代表线上容量；r62 的 48 人中断仍保留，必须使用新隔离活动重新压测。",
+      "本次 HTTP 请求图不证明完整 SSO 或浏览器渲染上限。"
     ],
     "compatibility": {
       "node": ">=24",
-      "platform": "native-4；保持 Native 服务主体读取视角拒绝检查",
-      "v1": "V1 引擎与应用不变"
+      "platform": "V2 原入口回执协议；无数据库迁移",
+      "v1": "V1 引擎和应用不变"
     },
     "issues": [
-      "PLT-033"
+      "r62-entry-identity-interrupted"
     ],
-    "sha256": "d8174bbf5684326c34ac3f467a3e2fdc12ef00f101edf442008ee59519a41e2d",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.55.5"
+    "sha256": "48803b23bb19feee37b60779064e03c2cb60c26a591f794755bcf4c2b5b887a7",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.55.6"
   }
 }
