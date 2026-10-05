@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
 import { spawnSync } from 'node:child_process';
@@ -138,9 +139,16 @@ test("root package owns the only installed developer bin", () => {
     ),
     false
   );
-  const version = spawnSync(process.execPath, [resolve(import.meta.dirname, '../../openxiangda/bin/run.js'), 'version', '--json'], {
-    cwd: resolve(import.meta.dirname, '../../..'), encoding: 'utf8',
-  });
+  // The real launcher must not discover a host application's ancestor markers.
+  const isolated = mkdtempSync(join(tmpdir(), 'openxiangda-cli-identity-'));
+  let version;
+  try {
+    version = spawnSync(process.execPath, [resolve(import.meta.dirname, '../../openxiangda/bin/run.js'), 'version', '--json'], {
+      cwd: isolated, encoding: 'utf8',
+    });
+  } finally {
+    rmSync(isolated, { recursive: true, force: true });
+  }
   assert.equal(version.status, 0, version.stderr);
   const identity = JSON.parse(version.stdout).data;
   assert.equal(identity.productVersion, rootPackageJson.version);
