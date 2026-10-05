@@ -8,7 +8,7 @@ export interface WorkflowCandidateBinding {
 }
 
 export type UserCandidateFieldContext =
-  | { kind: 'native'; resourceCode: string; fieldCode: string; operation: 'create'; launch?: DataFieldSourceLaunchBinding }
+  | { kind: 'native'; resourceCode: string; fieldCode: string; operation: 'create'; launch?: DataFieldSourceLaunchBinding; scopeValue?: string }
   | { kind: 'native'; resourceCode: string; fieldCode: string; operation: 'update'; recordId: string; expectedRevision: number; action?: DataRecordEditInput; launch?: DataFieldSourceLaunchBinding }
   | { kind: 'workflow-task'; taskId: string; fieldCode: string; expectedRevision: number; expectedTaskVersion: number };
 
@@ -18,6 +18,7 @@ export function userCandidateFieldContext(input: {
   resourceCode?: string; fieldCode: string; operation: 'create' | 'update';
   recordId?: string; expectedRevision?: number; workflowCandidateBinding?: WorkflowCandidateBinding;
   action?: DataRecordEditInput; launch?: DataFieldSourceLaunchBinding; requiresSavedScope?: boolean;
+  prospectiveScope?: boolean; scopeValue?: unknown;
 }): { context?: UserCandidateFieldContext; error?: string } {
   if (input.action && (input.operation !== 'update' || input.launch || input.workflowCandidateBinding ||
       input.action.recordId !== input.recordId || input.action.expectedRevision !== input.expectedRevision))
@@ -31,9 +32,17 @@ export function userCandidateFieldContext(input: {
   }
   if (!input.resourceCode) return { error: '当前字段缺少选人上下文，请重新打开页面。' };
   if (input.operation === 'create') {
-    if (input.requiresSavedScope) return { error: '请先保存资料，再选择人员。' };
+    let scopeValue: string | undefined;
+    if (input.requiresSavedScope) {
+      if (!input.prospectiveScope || !input.launch) return { error: '请先保存资料，再选择人员。' };
+      const raw = input.scopeValue && typeof input.scopeValue === 'object' && !Array.isArray(input.scopeValue)
+        ? (input.scopeValue as { value?: unknown }).value : input.scopeValue;
+      if (typeof raw !== 'string' || !raw || raw.trim() !== raw || raw.length > 255)
+        return { error: '请先完成所属范围资料，再选择人员。' };
+      scopeValue = raw;
+    }
     return { context: { kind: 'native', operation: 'create', resourceCode: input.resourceCode,
-      fieldCode: input.fieldCode, ...(input.launch ? { launch: input.launch } : {}) } };
+      fieldCode: input.fieldCode, ...(input.launch ? { launch: input.launch } : {}), ...(scopeValue ? { scopeValue } : {}) } };
   }
   if (!input.recordId || !revision(input.expectedRevision)) return { error: '请刷新已保存的资料后再选择人员，当前输入已保留。' };
   return { context: { kind: 'native', operation: 'update', resourceCode: input.resourceCode,
@@ -50,7 +59,7 @@ export function queryUserCandidateField(context: UserCandidateFieldContext, sear
     ...query, expectedRevision: context.expectedRevision, expectedTaskVersion: context.expectedTaskVersion,
   });
   return queryFieldUserCandidates(context.resourceCode, context.fieldCode, context.operation === 'create'
-    ? { ...query, operation: 'create', ...(context.launch ? { launch: context.launch } : {}) }
+    ? { ...query, operation: 'create', ...(context.launch ? { launch: context.launch } : {}), ...(context.scopeValue ? { scopeValue: context.scopeValue } : {}) }
     : { ...query, operation: 'update', recordId: context.recordId, expectedRevision: context.expectedRevision,
         ...(context.action ? { action: context.action } : {}),
         ...(context.launch ? { launch: context.launch } : {}) });

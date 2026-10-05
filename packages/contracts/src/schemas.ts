@@ -2145,6 +2145,7 @@ export const userCandidatesQuerySchema = {
       properties: {
         ...userCandidateSearchProperties, operation: { const: 'create' },
         launch: dataFieldSourceQuerySchema.properties.launch,
+        scopeValue: { type: 'string', minLength: 1, maxLength: 255, pattern: '^\\S(?:[\\s\\S]*\\S)?$' },
       },
     },
     {
@@ -2291,8 +2292,9 @@ export const dataFieldUserCandidatesSchema = {
         dimensionCode: { type: 'string', minLength: 1, maxLength: 128, pattern: '^[a-z][a-z0-9]*(?:[-_.][a-z0-9]+)*$' },
         operation: { type: 'string', minLength: 1, maxLength: 64, pattern: '^[a-z][a-z0-9]*(?:[-_.][a-z0-9]+)*$' },
         field: dataFieldCode, value: { type: 'string', minLength: 1, maxLength: 255, pattern: '^\\S(?:[\\s\\S]*\\S)?$' },
+        creation: { const: 'prospective' },
       },
-      oneOf: [{ required: ['field'], not: { required: ['value'] } }, { required: ['value'], not: { required: ['field'] } }],
+      oneOf: [{ required: ['field'], not: { required: ['value'] } }, { required: ['value'], not: { anyOf: [{ required: ['field'] }, { required: ['creation'] }] } }],
     },
   },
 } as const;

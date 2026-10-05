@@ -160,10 +160,23 @@ import { AttachmentFileList } from 'openxiangda/field-kit';
 ```
 
 职责和范围维度必须在同包声明。`pageSize` 为1–50，默认20；范围使用代码常量 `value`，
-或同资源的 `text.short`、`uuid`、`option.single` 字段 `field`，两者互斥。
+或同资源的 `text.short`、`uuid`、`option.single`、`resource-ref.single` 字段 `field`，两者互斥。
 单选范围取稳定的 `.value`，不按显示标签决定身份。记录范围必须来自已授权、已保存的记录或当前任务，
 首版新建不接受非空的记录范围选人。修改范围须清空相依选择并保存，再按新范围重选。
 候选显示失败不能当作空名单；旧选择失效须保留显示快照并提示重选。
+
+具名流程原子创建申请时，可显式声明 `scope: { dimensionCode, operation, field,
+creation: 'prospective' }`。编译器自动要求 `data.user-candidate-launch-scope@1.0.0`。
+维度必须使用uuid的Native资源来源；资源引用范围字段指向同一来源。发起候选查询
+使用`scopeValue`，平台先核验具名发起绑定及范围记录的read权限、RLS和enabled。
+查询值仅为搜索意图；服务端业务操作从可信资料重新取得实际范围，并在原写事务
+重新核验职责成员、规范化姓名。普通Native创建和无平台业务证明的Application
+写入不能消费此模式。已有字段不加`creation`时保持原已保存范围要求。
+
+标准`WorkflowSubmissionPage`从正在填写的字段取得范围；范围来自可信准备资料、
+未绑定为可提交输入时，使用`formOptions.candidateScopeValues`提供。该参数不进入
+提交或草稿。自定义Field Kit通过`renderers.candidateScopeValues`提供相同搜索上下文。
+更新和任务候选仍从平台已保存资料取范围，不能传`scopeValue`覆盖。
 
 流程使用 `{ provider: 'form_field_users', inputPath: 'leaders', candidateField: 'unitLeaders' }`，
 其中 `subject.factProjection.leaders` 必须精确指向 `unitLeaders`，范围字段也须有唯一事实投影。

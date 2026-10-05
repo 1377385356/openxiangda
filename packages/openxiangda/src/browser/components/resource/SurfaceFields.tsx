@@ -134,6 +134,8 @@ export interface SurfaceFieldValueContext {
 
 export interface SurfaceFieldRenderers {
   referenceLaunch?: DataFieldSourceLaunchBinding;
+  /** Search intent only; never part of a Native write or workflow payload. */
+  candidateScopeValues?: Readonly<Record<string, unknown>>;
   recordEditInput?: DataRecordEditInput;
   renderExtra?: (context: SurfaceFieldEditContext) => ReactNode;
   renderScope?: (context: SurfaceFieldEditContext) => ReactNode;
@@ -153,7 +155,9 @@ function CandidateFieldControl({ field, mobile, disabled, operation, resourceCod
   SurfaceFieldEditContext & Pick<ConstrainedUserFieldProps, 'value' | 'onChange' | 'id'> & { mobile?: boolean; renderers?: SurfaceFieldRenderers }) {
   const result = userCandidateFieldContext({ resourceCode, fieldCode: field.key, operation, recordId,
     expectedRevision, workflowCandidateBinding, launch: renderers?.referenceLaunch, action: renderers?.recordEditInput,
-    requiresSavedScope: Boolean(field.userCandidates?.scope?.field) });
+    requiresSavedScope: Boolean(field.userCandidates?.scope?.field),
+    prospectiveScope: field.userCandidates?.scope?.creation === 'prospective',
+    scopeValue: field.userCandidates?.scope?.field ? renderers?.candidateScopeValues?.[field.userCandidates.scope.field] : undefined });
   return <ConstrainedUserField mobile={mobile} disabled={disabled} multiple={field.type.endsWith('.multiple')}
     placeholder={`选择${field.label}`} context={result.context} unavailableReason={result.error} value={value} onChange={onChange} id={id} />;
 }

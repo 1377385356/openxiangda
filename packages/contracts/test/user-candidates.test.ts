@@ -72,6 +72,7 @@ function fixture(scope?: {
   operation: string;
   field?: string;
   value?: string;
+  creation?: 'prospective';
 }) {
   const config = JSON.parse(corpus.configuration.canonical);
   const resource = config.data.resources[0];
@@ -158,6 +159,7 @@ for (const [distribution, implementation] of [
       undefined,
       { dimensionCode: 'college', operation: 'approve', value: 'arts' },
       { dimensionCode: 'college', operation: 'approve', field: 'name' },
+      { dimensionCode: 'college', operation: 'approve', field: 'name', creation: 'prospective' as const },
     ]) {
       const { config, resource, binding } = fixture(scope);
       assert.equal(
@@ -176,6 +178,8 @@ for (const [distribution, implementation] of [
         )?.contractVersion,
         '1.0.0'
       );
+      assert.equal(compile(implementation, config).requiredPlatformCapabilities.some(
+        item => item.code === 'data.user-candidate-launch-scope'), scope?.creation === 'prospective');
       const parsed = implementation.parseNativeDataFieldsV2(
         resource.schema.fields,
         '/fields'
@@ -343,6 +347,21 @@ for (const [distribution, implementation] of [
           implementation.userCandidateScopeValue(source, { college: value }),
         /SCOPE_VALUE_REQUIRED/
       );
+  });
+}
+
+for (const [distribution, implementation] of [['esm', esm], ['cjs', cjs]] as const) {
+  test(`${distribution}: prospective scope is opt-in, field-only and uses resource identities`, () => {
+    const scope = { dimensionCode: 'college', operation: 'approve', field: 'college', creation: 'prospective' as const };
+    const source = { ...roleSource, scope };
+    assert.deepEqual(implementation.parseDataFieldUserCandidates(source, 'user.single', '/field'), source);
+    for (const bad of [{ ...scope, creation: 'saved' }, { ...scope, field: undefined, value: 'a' }, { dimensionCode: 'college', operation: 'approve', value: 'a', creation: 'prospective' }])
+      assert.throws(() => implementation.parseDataFieldUserCandidates({ ...source, scope: bad }, 'user.single', '/field'), /SCOPE/);
+    const fields = [{ code: 'college', type: 'resource-ref.single' }, { code: 'reviewer', type: 'user.single', userCandidates: source }];
+    implementation.validateUserCandidateReferences(fields, new Set(['reviewer']), new Set(['college']), '/fields');
+    assert.equal(implementation.userCandidateScopeValue(source, { college: { resourceCode: 'colleges', value: 'a', label: 'Wrong label' } }), 'a');
+    assert.equal(implementation.requiresUserCandidateLaunchScope([{ schema: { fields } }]), true);
+    assert.equal(implementation.requiresUserCandidateLaunchScope([{ schema: { fields: [] } }]), false);
   });
 }
 

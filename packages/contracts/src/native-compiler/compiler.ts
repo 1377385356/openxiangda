@@ -1,5 +1,5 @@
 import { validateAuthenticatedPublicRead, AuthenticatedPublicReadContractError } from './authenticated-public-read.js';
-import { validateUserCandidateReferences, validateWorkflowUserCandidateBindings, UserCandidateContractError } from './user-candidates.js';
+import { validateUserCandidateReferences, validateWorkflowUserCandidateBindings, UserCandidateContractError, requiresUserCandidateLaunchScope } from './user-candidates.js';
 import { NativeUniqueKeyContractError, parseNativeUniqueKeys, nativeUniqueKeysContractVersion } from './unique-keys.js';
 import { validateManagedConcurrency, ManagedConcurrencyContractError } from './managed-concurrency.js';
 import { normalizeDecimalReservationEventDeclaration, decimalReservationEventContext } from './decimal-reservation.js';
@@ -698,6 +698,9 @@ export function compileRequiredPlatformCapabilitiesV3(
       ? [{ code: 'data.extended-owned-subtable-capacity' as const, declaration: config.data.resources.filter((resource: any) => requiresExtendedOwnedSubtableCapacity([resource])) }] : []),
     ...(config.data.resources.some((resource: JsonObject) => resource.schema.fields.some((field: JsonObject) => field.userCandidates !== undefined))
       ? [{ code: 'data.user-candidates' as const, declaration: config.data.resources.filter((resource: JsonObject) => resource.schema.fields.some((field: JsonObject) => field.userCandidates !== undefined)) }]
+      : []),
+    ...(requiresUserCandidateLaunchScope(config.data.resources)
+      ? [{ code: 'data.user-candidate-launch-scope' as const, declaration: config.data.resources.filter((resource: any) => requiresUserCandidateLaunchScope([resource])) }]
       : []),
     ...(config.workflows.activations.length
       ? [

@@ -1184,8 +1184,8 @@ export type DataFieldUserCandidateQuery = UserCandidateSearch & {
   launch?: DataFieldSourceLaunchBinding;
   action?: DataRecordEditInput;
 } & (
-  | { operation: 'create'; recordId?: never; expectedRevision?: never }
-  | { operation: 'update'; recordId: string; expectedRevision: number }
+  | { operation: 'create'; recordId?: never; expectedRevision?: never; scopeValue?: string }
+  | { operation: 'update'; recordId: string; expectedRevision: number; scopeValue?: never }
 );
 
 export interface WorkflowTaskUserCandidateQuery extends UserCandidateSearch {

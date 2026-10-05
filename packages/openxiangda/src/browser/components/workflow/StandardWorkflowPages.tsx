@@ -2125,6 +2125,9 @@ async function workflowContextPrefillValue(
 export interface WorkflowSubmissionFormOptions {
   /** Canonical values for the matched launch inputs, applied once to untouched fields. */
   initialValues?: JsonObject;
+  /** Pre-save candidate search context, including trusted preparation facts that
+   * are not bound launch inputs. Never inserted into form submission/drafts. */
+  candidateScopeValues?: Readonly<JsonObject>;
   fieldState?: (values: Readonly<JsonObject>) => WorkflowSubmissionFieldStates;
   intro?: ReactNode;
   /** Blocks only a new form; original submission recovery always takes priority. */
@@ -2898,6 +2901,7 @@ export function WorkflowSubmissionPage({
         ...(!namedIntent ? { renderSubtable: ({ field, disabled, operation, recordId }: Parameters<NonNullable<SurfaceFieldRenderers['renderSubtable']>>[0]) =>
           <SubtableField field={field} disabled={disabled} operation={operation} parentRecordId={recordId} mobile={variant === 'mobile'} /> } : {}),
         ...(namedIntent ? { referenceLaunch: { workflowCode: definition.code, operationCode: namedIntent.operationCode } } : {}),
+        candidateScopeValues: { ...formOptions?.candidateScopeValues, ...formProjection.values },
         upload: async (field, file) =>
           await uploadOperationManagedFile({
             operationCode: uploadOperationCode,

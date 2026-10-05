@@ -29,6 +29,17 @@ test('selected inspection uses stable IDs, retains stale labels and preserves ch
   assert.match(userCandidateError(new Error('network')), /失败/);
 });
 
+test('prospective candidate context requires explicit opt-in, named launch and a bounded scope value', () => {
+  const launch = { workflowCode: 'apply', operationCode: 'apply.submit' };
+  const base = { resourceCode: 'requests', fieldCode: 'leader', operation: 'create' as const,
+    requiresSavedScope: true, prospectiveScope: true, launch, scopeValue: { value: 'dept-a', label: 'Other name' } };
+  assert.deepEqual(userCandidateFieldContext(base).context, { kind: 'native', resourceCode: 'requests', fieldCode: 'leader', operation: 'create', launch, scopeValue: 'dept-a' });
+  for (const override of [{ launch: undefined }, { prospectiveScope: false }, { scopeValue: undefined }, { scopeValue: ' a' }, { scopeValue: 'a'.repeat(256) }])
+    assert.equal(userCandidateFieldContext({ ...base, ...override }).context, undefined);
+  const updated = userCandidateFieldContext({ ...base, operation: 'update', recordId: 'saved-1', expectedRevision: 2 }).context!;
+  assert.ok(!('scopeValue' in updated), 'saved scope remains owned by the platform');
+});
+
 test('record edit candidates reject mixed owners and stale record revisions', () => {
   const action = { operationCode: 'record.edit', recordId: 'saved-1', expectedRevision: 8 };
   const base = { resourceCode: 'requests', fieldCode: 'leaders', operation: 'update' as const,

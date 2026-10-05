@@ -3,8 +3,8 @@ export interface DataFieldUserCandidates {
   kind: 'app-role';
   roleCode: string;
   scope?: { dimensionCode: string; operation: string } & (
-    | { value: string; field?: never }
-    | { field: string; value?: never }
+    | { value: string; field?: never; creation?: never }
+    | { field: string; value?: never; creation?: 'prospective' }
   );
   pageSize?: number;
 }
@@ -14,6 +14,7 @@ export const USER_CANDIDATE_SCOPE_FIELD_TYPES = [
   'text.short',
   'uuid',
   'option.single',
+  'resource-ref.single',
 ] as const;
 
 type Field = {
@@ -93,7 +94,7 @@ export function parseDataFieldUserCandidates(
     const raw = value.scope;
     if (
       !record(raw) ||
-      !exact(raw, ['dimensionCode', 'operation', 'field', 'value']) ||
+      !exact(raw, ['dimensionCode', 'operation', 'field', 'value', 'creation']) ||
       !text(raw.dimensionCode, 128) ||
       !code.test(String(raw.dimensionCode)) ||
       !text(raw.operation, 64) ||
@@ -101,6 +102,9 @@ export function parseDataFieldUserCandidates(
       Object.hasOwn(raw, 'field') === Object.hasOwn(raw, 'value')
     )
       fail('DATA_USER_CANDIDATES_SCOPE_INVALID', `${pointer}/scope`);
+    if (raw.creation !== undefined &&
+        (raw.creation !== 'prospective' || !Object.hasOwn(raw, 'field')))
+      fail('DATA_USER_CANDIDATES_SCOPE_INVALID', `${pointer}/scope/creation`);
     if (Object.hasOwn(raw, 'field')) {
       if (
         !text(raw.field, 63) ||
@@ -115,6 +119,7 @@ export function parseDataFieldUserCandidates(
         dimensionCode: String(raw.dimensionCode),
         operation: String(raw.operation),
         field: String(raw.field),
+        ...(raw.creation === 'prospective' ? { creation: 'prospective' as const } : {}),
       };
     } else {
       if (!text(raw.value, 255))
@@ -137,6 +142,17 @@ export function parseDataFieldUserCandidates(
       ? {}
       : { pageSize: Number(value.pageSize) }),
   };
+}
+
+/** Additive runtime negotiation for pre-save scopes and resource identities. */
+export function requiresUserCandidateLaunchScope(resources: readonly {
+  schema: { fields: readonly Field[] };
+}[]): boolean {
+  return resources.some(resource => resource.schema.fields.some(field => {
+    const scope = field.userCandidates?.scope;
+    return scope?.creation === 'prospective' || Boolean(scope?.field &&
+      resource.schema.fields.find(dependency => dependency.code === scope.field)?.type === 'resource-ref.single');
+  }));
 }
 
 export function validateUserCandidateReferences(
