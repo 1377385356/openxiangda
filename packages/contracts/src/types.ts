@@ -1917,7 +1917,17 @@ export interface DataTransactionActorAuthorityGuard {
   errorCode: string;
 }
 
+export interface DataTransactionRecordSetMatchGuard {
+  /** Verify every readable record and its explicit revision in one bounded set. */
+  kind: 'record-set-match';
+  resourceCode: string;
+  errorCode: string;
+  records: { id: string; expectedRevision: number }[];
+  where?: DataWhere;
+}
+
 export type DataTransactionGuard = DataTransactionActorAuthorityGuard
+  | DataTransactionRecordSetMatchGuard
   | {
       /** Compare an actual create/update datetime with database acceptance time plus offset. */
       kind: "operation-time";

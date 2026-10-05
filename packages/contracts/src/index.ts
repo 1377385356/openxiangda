@@ -43,6 +43,7 @@ export * from './application-diagnostics.js';
 export * from './native-compiler/unique-keys.js';
 export * from './native-compiler/role-membership-batch.js';
 export * from './native-compiler/actor-authority.js';
+export * from './native-compiler/record-set-guard.js';
 
 export * from './native-compiler/workflow-business-step-identity.js';
 

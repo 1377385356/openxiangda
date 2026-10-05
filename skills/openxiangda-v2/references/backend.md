@@ -113,7 +113,14 @@ return committed.receipt;
 重、不自行加锁、不在重试时重新生成业务时间。
 
 只读前置条件使用 `record-exists` 或 `record-match`，它们不要求同记录 mutation，
-但仍执行 read capability、字段权限与行级授权。需要与数据库当前时间比较时使用
+但仍执行 read capability、字段权限与行级授权。多行申请引用同一类主数据时使用
+`record-set-match`：`resourceCode`、`errorCode`、`records: [{ id, expectedRevision }]`
+及可选公共 `where`。每组1–500个不同UUID，所有组累计最多500条，守卫总数仍最多20条。
+同一资源只能使用一条集合守卫，应合并选择集合以保持资源及记录的固定锁序。
+例如国家选择可用 `where: { field: 'enabled', operator: 'eq', value: true }`；
+平台先确认全部记录有read授权，再锁定集合并重读，任一记录缺失、失权、停用或版本
+改变均原子拒绝。它不授予update，也不替代increment所需的record-assert。原成功回执
+恢复优先于主数据重新核验。需要与数据库当前时间比较时使用
 `databaseNowAssertion('publishAt', 'lte')`；平台在守卫行锁及写入前校验完成后，
 用一次 PostgreSQL `clock_timestamp()` 完成所有动态断言，并把该接受时刻作为
 `evaluatedAt` 存入幂等回执。它不是最终提交时刻。相同幂等键重放不会重新

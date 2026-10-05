@@ -1,5 +1,6 @@
 import { DATA_TRANSACTION_MAX_BYTES, DATA_TRANSACTION_MAX_OPERATIONS, serializedDataBytes } from './native-compiler/data-capacity.js';
 import { isDataTransactionActorAuthorityGuard } from './native-compiler/actor-authority.js';
+import { DATA_TRANSACTION_RECORD_SET_MAX_RECORDS, isDataTransactionRecordSetMatchGuard } from './native-compiler/record-set-guard.js';
 import {
   validateDataResourceDraftStates,
   validateDataResourceViews,
@@ -974,6 +975,16 @@ export function validateDataTransactionRequest(
       }
       return;
     }
+    if (guard.kind === 'record-set-match') {
+      if (!isDataTransactionRecordSetMatchGuard(guard)) {
+        diagnostics.push(diagnostic('DATA_TRANSACTION_RECORD_SET_INVALID',
+          `${path} 需要1–500个不同UUID及有效版本，不能提交身份或SQL`, path));
+      }
+      if (Object.hasOwn(guard, 'where')) {
+        appendDataWhereDiagnostics(guard.where, `${path}.where`, diagnostics, { maxPredicates: 20 });
+      }
+      return;
+    }
     if (
       ![
         'query-empty',
@@ -1162,6 +1173,15 @@ export function validateDataTransactionRequest(
       );
     }
   });
+  const recordSetCount = guards.reduce((total, guard) => total +
+    (isRecord(guard) && guard.kind === 'record-set-match' && Array.isArray(guard.records) ? guard.records.length : 0), 0);
+  if (recordSetCount > DATA_TRANSACTION_RECORD_SET_MAX_RECORDS) {
+    diagnostics.push(diagnostic('DATA_TRANSACTION_RECORD_SET_LIMIT', '所有集合守卫合计最多500条记录', 'guards'));
+  }
+  const recordSetResources = guards.flatMap(guard => isRecord(guard) && guard.kind === 'record-set-match' ? [guard.resourceCode] : []);
+  if (new Set(recordSetResources).size !== recordSetResources.length) {
+    diagnostics.push(diagnostic('DATA_TRANSACTION_RECORD_SET_RESOURCE_DUPLICATED', '同一资源只能使用一条集合守卫，合并记录以保持固定锁序', 'guards'));
+  }
   const operations = Array.isArray(value.operations) ? value.operations : [];
   if (value.decimalReservation !== undefined) {
     const reservation = isRecord(value.decimalReservation) ? value.decimalReservation : {};

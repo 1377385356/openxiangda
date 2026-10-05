@@ -3689,6 +3689,26 @@ const dataTransactionGuard = {
   oneOf: [
     {
       type: 'object', additionalProperties: false,
+      required: ['kind', 'resourceCode', 'errorCode', 'records'],
+      properties: {
+        kind: { const: 'record-set-match' },
+        resourceCode: dataResourceCode,
+        errorCode: { type: 'string', pattern: '^OPENXIANGDA_[A-Z0-9_]{1,96}$' },
+        records: {
+          type: 'array', minItems: 1, maxItems: 500, uniqueItems: true,
+          items: {
+            type: 'object', additionalProperties: false, required: ['id', 'expectedRevision'],
+            properties: {
+              id: { type: 'string', pattern: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$' },
+              expectedRevision: { type: 'integer', minimum: 1, maximum: Number.MAX_SAFE_INTEGER },
+            },
+          },
+        },
+        where: { $ref: '#/$defs/dataWhere' },
+      },
+    },
+    {
+      type: 'object', additionalProperties: false,
       required: ['kind', 'errorCode', 'anyOf'],
       properties: {
         kind: { const: 'actor-authority' },
