@@ -1,7 +1,7 @@
 import { compileNativeEventAction } from 'openxiangda-contracts/native-compiler';
 import { compileWorkflowBusinessStepHandlers, validateWorkflowBusinessStepSubscriptions, WORKFLOW_BUSINESS_STEP_EVENTS } from 'openxiangda-contracts/native-compiler';
 import { parseNativeUniqueKeys, parseDecimalReservationLifecycle } from 'openxiangda-contracts/native-compiler';
-import { DATA_AUDIT_METADATA_FIELDS, isDataAuditMetadataField, projectDataResourceView } from 'openxiangda-contracts';
+import { DATA_AUDIT_METADATA_FIELDS, isDataAuditMetadataField, projectDataResourceView, requiresExtendedOwnedSubtableCapacity } from 'openxiangda-contracts';
 import { nativeFieldRequiresCreateInputV2 } from 'openxiangda-contracts/native-compiler';
 import { createHash } from 'node:crypto';
 import {
@@ -1964,6 +1964,7 @@ function runtimeProtocolCapabilities(config: OpenXiangdaAppConfig) {
     ...(config.events?.capturePolicies?.length ? ['events.capture-policy'] : []),
     ...(config.events?.subscriptions?.some(item => item.execution) ? ['events.native-data-actions'] : []),
     ...(config.data?.resources.length ? ['data-api-v2'] : []),
+    ...(requiresExtendedOwnedSubtableCapacity(config.data?.resources || []) ? ['data.extended-owned-subtable-capacity'] : []),
     ...(usesDirectory ? ['directory-v2'] : []),
     ...(operations.some(operation=>operation.platformAccess?.directory?.mode==='selected-user') ? ['directory.selected-user'] : []),
     ...(operations.some(operation => operation.platformAccess?.directory?.mode === 'current-initiator' && operation.platformAccess.directory.fields.includes('phone')) ||

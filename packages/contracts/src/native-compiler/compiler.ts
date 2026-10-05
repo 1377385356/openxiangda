@@ -18,6 +18,7 @@ import { validateWorkflowRejectionNotification } from './workflow-rejection-noti
 import { validateWorkflowCommandHandlers } from './workflow-business-command.js';
 import { validateWorkflowLaunchPreflight } from './workflow-launch-preflight.js';
 import { validateWorkflowTaskPages } from './workflow-task-page.js';
+import { requiresExtendedOwnedSubtableCapacity } from './data-capacity.js';
 import { validateWorkflowBusinessSteps, compileWorkflowBusinessStepHandlers, validateWorkflowBusinessStepSubscriptions, WORKFLOW_BUSINESS_STEP_EVENT, WORKFLOW_BUSINESS_STEP_EVENTS } from './workflow-business-step.js';
 import { validateWorkflowAssignmentRoutingBindings, validateWorkflowAssignmentRoutingPolicy } from './workflow-assignment-routing.js';
 import * as crypto from 'crypto';
@@ -693,6 +694,8 @@ export function compileRequiredPlatformCapabilitiesV3(
           },
         ]
       : []),
+    ...(requiresExtendedOwnedSubtableCapacity(config.data.resources)
+      ? [{ code: 'data.extended-owned-subtable-capacity' as const, declaration: config.data.resources.filter((resource: any) => requiresExtendedOwnedSubtableCapacity([resource])) }] : []),
     ...(config.data.resources.some((resource: JsonObject) => resource.schema.fields.some((field: JsonObject) => field.userCandidates !== undefined))
       ? [{ code: 'data.user-candidates' as const, declaration: config.data.resources.filter((resource: JsonObject) => resource.schema.fields.some((field: JsonObject) => field.userCandidates !== undefined)) }]
       : []),

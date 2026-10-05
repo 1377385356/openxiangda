@@ -77,6 +77,26 @@ test('ordinary workflow declarations retain their existing required capabilities
   assert.equal(requiredPlatformCapabilitiesFromConfiguration(output.config.value).some(item => item.code === 'workflow.business-data-command'), false);
 });
 
+test('500-row declarations and aggregate expansion negotiate identical authoring and target capabilities', () => {
+  for (const [tableCount, maxRows, required] of [[1, 20, false], [1, 100, false], [7, 50, false], [5, 100, true], [1, 500, true]] as const) {
+    const source = fixture();
+    for (let index = 0; index < tableCount; index++) {
+      const code = `items${index}`;
+      source.data!.resources![0]!.fields!.push({ code, label: code, type: 'subtable', subtable: { resourceCode: code, foreignKey: 'parentId', orderField: 'position', maxRows } });
+      source.data!.resources!.push({ code, name: code, fields: [
+        { code: 'parentId', label: '所属申请', type: 'uuid', required: true },
+        { code: 'position', label: '顺序', type: 'number.integer', required: true },
+        { code: 'name', label: '名称', type: 'text.short' },
+      ] });
+    }
+    const output = compileApplicationSources(defineOpenXiangdaApp(source));
+    const target = compileNativeApplicationConfiguration({ appCode: 'command-review', configBytes: output.config.content,
+      expectedConfigDigest: output.config.digest, contractBytes: output.contracts.content, expectedContractDigest: output.contracts.digest });
+    assert.deepEqual(target.requiredPlatformCapabilities, requiredPlatformCapabilitiesFromConfiguration(output.config.value));
+    assert.equal(target.requiredPlatformCapabilities.find(item => item.code === 'data.extended-owned-subtable-capacity')?.contractVersion, required ? '1.0.0' : undefined);
+  }
+});
+
 test('optional rejection comments seal an opt-in capability with identical app and target policy', () => {
   for (const commentRequired of [undefined, true, false]) {
     const source = fixture();
