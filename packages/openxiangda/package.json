@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.55.4",
+  "version": "2.55.5",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -74,13 +74,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.86",
+    "openxiangda-cli": "2.6.87",
     "openxiangda-contracts": "2.65.0",
     "openxiangda-devkit-core": "2.48.4",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
     "openxiangda-mcp": "2.0.103",
-    "openxiangda-nest": "2.14.5",
-    "openxiangda-skill-kit": "2.3.83",
+    "openxiangda-nest": "2.14.6",
+    "openxiangda-skill-kit": "2.3.84",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -146,32 +146,32 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.55.4",
+    "version": "2.55.5",
     "status": "reviewed",
-    "title": "OpenXiangda 2.55.4：生成管理视图的只读类型",
-    "summary": "公共 React perspectives 输入接受编译器生成的非空嵌套只读声明，运行时授权语义不变。",
+    "title": "OpenXiangda 2.55.5：具名业务与读取视角的边界",
+    "summary": "修复管理页面的读取 Perspective 被转发到受信业务 Data API 而导致合法业务提交拒绝的问题。",
     "newFeatures": [],
     "fixes": [
-      "RuntimePerspective 复用 DeepReadonly，修复 appPerspectives as const 不能直接传入 OpenXiangdaApplication 的类型错误。"
+      "Nest 具名业务 Data API 派生无读取视角的下游上下文，保留固定动作证明与原请求；普通 Data API 继续继承读取 Perspective。"
     ],
     "affectedUsers": [
-      "声明非空管理读取 Perspective 的 V2 React 应用。"
+      "从已选择管理读取 Perspective 的页面调用 V2 Nest 具名业务动作的应用。"
     ],
     "upgradeSteps": [
-      "安装完整同源 SDK，保留官方生成契约，重新执行 check 并验证真实页面。"
+      "安装完整同源 SDK，执行应用 check，并分别验收合法提交、普通读取范围、当前成员事务守卫及原结果恢复。"
     ],
     "knownLimitations": [
-      "类型验收不代替真实角色与行/字段范围验收；本轮仅本机分发，不发布 npm。"
+      "SDK HTTP 边界验收不代替真实角色和页面业务验收；本轮仅本机分发，不发布 npm。"
     ],
     "compatibility": {
       "node": ">=24",
-      "platform": "native-4；无需新增平台协议",
+      "platform": "native-4；保持 Native 服务主体读取视角拒绝检查",
       "v1": "V1 引擎与应用不变"
     },
     "issues": [
-      "PLT-032"
+      "PLT-033"
     ],
-    "sha256": "da27687ca41f4d3d6dd0e728a2fcffff6c08a0b129f8d0959ce2407ca3e5c6fa",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.55.4"
+    "sha256": "d8174bbf5684326c34ac3f467a3e2fdc12ef00f101edf442008ee59519a41e2d",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.55.5"
   }
 }
