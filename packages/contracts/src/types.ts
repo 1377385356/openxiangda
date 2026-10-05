@@ -2403,6 +2403,8 @@ export interface WorkflowApprovalNode {
   emptyPolicy?: "block" | "skip";
   /** Code-owned. Only a direct active initiator seat can be automatically approved. */
   initiatorApprovalPolicy?: "manual" | "auto_approve";
+  /** Code-owned deadline for whole-node completion; optional inputs only. */
+  completionDeadline?: import('./native-compiler/workflow-completion-deadline.js').WorkflowCompletionDeadline;
   onApprove: string;
   onReject: string;
   allowedOperations?: WorkflowCommand[];
@@ -2709,6 +2711,7 @@ export interface WorkflowNodeConfigurations {
       mode?: WorkflowApprovalMode;
       emptyPolicy?: "block" | "skip";
       initiatorApprovalPolicy?: "manual" | "auto_approve";
+      completionDeadline?: import('./native-compiler/workflow-completion-deadline.js').WorkflowCompletionDeadline;
       allowedOperations?: WorkflowCommand[];
       operationPolicy?: Partial<Record<WorkflowConfigurableOperation, WorkflowNodeOperationPolicy>>;
       fieldPolicy?: WorkflowApprovalNode['fieldPolicy'];
@@ -2724,6 +2727,7 @@ export interface WorkflowNodeConfigurations {
       mode?: WorkflowApprovalMode;
       emptyPolicy?: "block" | "skip";
       initiatorApprovalPolicy?: "manual" | "auto_approve";
+      completionDeadline?: import('./native-compiler/workflow-completion-deadline.js').WorkflowCompletionDeadline;
       allowedOperations?: WorkflowCommand[];
       operationPolicy?: Partial<Record<WorkflowConfigurableOperation, WorkflowNodeOperationPolicy>>;
       fieldPolicy?: WorkflowApprovalNode['fieldPolicy'];
@@ -3161,6 +3165,7 @@ export interface WorkflowTask {
   dataRef: Record<string, unknown>;
   createdAt: IsoDateTime;
   updatedAt: IsoDateTime;
+  completionDeadline?: import('./native-compiler/workflow-completion-deadline.js').WorkflowCompletionDeadlineState;
 }
 
 export interface WorkflowDetailNavigation {

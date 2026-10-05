@@ -13,6 +13,7 @@ import { validateWorkflowAdministration, type WorkflowAdministrationNodeSource }
 import { validateWorkflowAutomaticCc } from './workflow-automatic-cc.js';
 import { validateWorkflowApprovalEmptyPolicy, workflowBindingAllowsEmptyUsers } from './workflow-approval-empty.js';
 import { validateWorkflowInitiatorApprovalPolicy } from './workflow-initiator-approval.js';
+import { validateWorkflowCompletionDeadlines } from './workflow-completion-deadline.js';
 import { validateWorkflowRejectionNotification } from './workflow-rejection-notification.js';
 import { validateWorkflowCommandHandlers } from './workflow-business-command.js';
 import { validateWorkflowLaunchPreflight } from './workflow-launch-preflight.js';
@@ -740,6 +741,9 @@ export function compileRequiredPlatformCapabilitiesV3(
       : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'approval' && node.emptyPolicy !== undefined))
       ? [{ code: 'workflow.approval-empty-policy' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'approval' && node.emptyPolicy !== undefined)) }]
+      : []),
+    ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.completionDeadline !== undefined))
+      ? [{ code: 'workflow.completion-deadline' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.completionDeadline !== undefined)) }]
       : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.initiatorApprovalPolicy !== undefined))
       ? [{ code: 'workflow.initiator-approval-policy' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.initiatorApprovalPolicy !== undefined)) }]
@@ -7113,6 +7117,8 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
   if (emptyPolicyErrors.length) fail(emptyPolicyErrors[0]!, `${pointer}/nodes`);
   const initiatorPolicyErrors = validateWorkflowInitiatorApprovalPolicy(definition as any);
   if (initiatorPolicyErrors.length) fail(initiatorPolicyErrors[0]!, `${pointer}/nodes`);
+  const deadlineErrors = validateWorkflowCompletionDeadlines(definition as any);
+  if (deadlineErrors.length) fail(deadlineErrors[0]!, `${pointer}/nodes`);
   const rejectionNotificationErrors = validateWorkflowRejectionNotification(definition as any);
   if (rejectionNotificationErrors.length) fail(rejectionNotificationErrors[0]!, `${pointer}/rejectionNotification`);
   const ccErrors = validateWorkflowAutomaticCc(definition as any);

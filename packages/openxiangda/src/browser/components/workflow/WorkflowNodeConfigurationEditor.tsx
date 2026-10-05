@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Alert, App, Button, Checkbox, Drawer, Empty, Form, Input, Radio, Select, Space, Tabs, Tag, Typography } from 'antd';
 import type { WorkflowNodeConfigurations, WorkflowNodeConfigurationPatch, WorkflowNodeConfigurationMutation, WorkflowNodeConfigurationReceipt } from 'openxiangda-contracts/browser';
-import { validateWorkflowNodeConfigurationPatch, workflowOperationCommentRequired } from 'openxiangda-contracts/browser';
+import { formatWorkflowCompletionDeadline, validateWorkflowNodeConfigurationPatch, workflowOperationCommentRequired } from 'openxiangda-contracts/browser';
 import { PlatformDirectoryPicker } from '../platform-fields/PlatformDirectoryPicker';
 import { loadApplicationAdministrationContext, loadWorkflowNodeConfigurations, saveWorkflowNodeConfiguration } from '../../platform-client';
 
@@ -80,6 +80,7 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
         kind: node.kind, mode: node.defaults.mode, administration: node.administration,
         allowedOperations: node.defaults.allowedOperations, operationPolicy: node.defaults.operationPolicy,
         fieldPolicy: node.defaults.fieldPolicy,
+        completionDeadline: node.defaults.completionDeadline,
       }, binding, patch);
       if (errors.length) { setError(errors.join('；')); return; }
       frozen.current = { ...basis.current, patch, reason: values.reason, operationId: crypto.randomUUID() };
@@ -129,6 +130,7 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
           {binding?.scope && <p className="oxa-workflow-config-scope">范围来源：{binding.scope.dimension} · {binding.scope.valueFrom || binding.scope.value}<br />范围计算由流程代码维护。</p>}
           {!isCc && <p className="oxa-workflow-config-help">无审批人时：{node.effective.emptyPolicy === 'skip' ? '成功解析为空后自动跳过' : '阻塞，等待人员配置修复'}。此规则由流程代码确定。</p>}
           {!isCc && <p className="oxa-workflow-config-help">发起人参与审批：{node.effective.initiatorApprovalPolicy === 'auto_approve' ? '轮到发起人本人的直接审批席位时自动同意；代理、转交、加签和补正仍需人工办理' : '由本人手动办理'}。此规则由流程代码确定。</p>}
+          {node.defaults.completionDeadline && <p className="oxa-workflow-config-help">{formatWorkflowCompletionDeadline(node.defaults.completionDeadline)}。期限由流程代码确定，补正仍需人工办理。</p>}
           {!isCc && (node.administration?.modes ? <Form.Item name="mode" label="审批方式" rules={[{ required: true }]}><Radio.Group className="oxa-workflow-mode-options" options={node.administration.modes.map(value => ({ value, label: <span><b>{modes[value]}</b><small>{modeDescriptions[value]}</small></span> }))} /></Form.Item> : <p className="oxa-workflow-config-help">审批方式：{modes[node.effective.mode || ''] || '由开发者维护'}</p>)}
         </> },
         { key: 'operations', label: '审批按钮', forceRender: true, children: <>
@@ -136,7 +138,7 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
           {(node.administration?.operations || []).map(operation => <section key={operation} className="oxa-workflow-operation-row">
             <div className="oxa-workflow-operation-heading"><b>{labels[operation]}</b>{!['approve', 'reject'].includes(operation) ? <Form.Item name={['operations', operation, 'enabled']} valuePropName="checked" noStyle><Checkbox>启用</Checkbox></Form.Item> : <Tag>始终启用</Tag>}</div>
             <Form.Item name={['operations', operation, 'label']} label={`${labels[operation]}按钮文字`} rules={[{ required: true, whitespace: true, max: 40 }]}><Input maxLength={40} /></Form.Item>
-            {['approve', 'reject'].includes(operation) ? <Form.Item name={['operations', operation, 'commentRequired']} valuePropName="checked"><Checkbox disabled={busy || uncertain || workflowOperationCommentRequired(operation, node.defaults.operationPolicy?.[operation]) || operation === 'approve' && node.effective.initiatorApprovalPolicy === 'auto_approve'}>必须填写审批意见</Checkbox></Form.Item> : <small>操作时须填写原因。</small>}
+            {['approve', 'reject'].includes(operation) ? <Form.Item name={['operations', operation, 'commentRequired']} valuePropName="checked"><Checkbox disabled={busy || uncertain || workflowOperationCommentRequired(operation, node.defaults.operationPolicy?.[operation]) || operation === 'approve' && (node.effective.initiatorApprovalPolicy === 'auto_approve' || !!node.defaults.completionDeadline)}>必须填写审批意见</Checkbox></Form.Item> : <small>操作时须填写原因。</small>}
           </section>)}
           {!node.administration?.operations?.length && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="此节点的按钮由开发者维护" />}
         </> },
