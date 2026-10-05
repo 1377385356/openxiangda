@@ -5521,6 +5521,10 @@ const workflowNodeSchema = {
         mode: { enum: ["single", "any", "all", "sequence"] },
         emptyPolicy: { enum: ["block", "skip"] },
         initiatorApprovalPolicy: { enum: ["manual", "auto_approve"] },
+        completionDeadline: {
+          type: 'object', additionalProperties: false, required: ['afterSeconds', 'action'],
+          properties: { afterSeconds: { type: 'integer', minimum: 1, maximum: 2592000 }, action: { const: 'approve' } },
+        },
         onApprove: nonEmptyString,
         onReject: nonEmptyString,
         taskPageCode: { type: 'string', pattern: '^[A-Za-z][A-Za-z0-9_-]{0,63}$' },

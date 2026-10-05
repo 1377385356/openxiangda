@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.56.0",
+  "status": "reviewed",
+  "title": "审批支持持久自动完成期限",
+  "summary": "可选评价等节点可以在固定期限后自动完成，平台持久计时并显示实际规则与历史。",
+  "newFeatures": [
+    "审批声明completionDeadline及能力协商，拒绝必填输入和自定义同意处理器冲突。",
+    "公开任务期限状态、固定图规则及PC/手机截止时间提示，管理员配置保留代码规则。"
+  ],
+  "fixes": [],
+  "affectedUsers": [
+    "需要限时自动完成可选审批节点的V2应用。"
+  ],
+  "upgradeSteps": [
+    "升级完整同源SDK并使用支持workflow.completion-deadline@1.0.0的Server。",
+    "由代码声明afterSeconds和approve，不需要打开额外功能开关。"
+  ],
+  "knownLimitations": [
+    "本轮仅本地分发，未发布npm、学校或生产。",
+    "自动完成整节点，不产生未处理人的同意票；补正/恢复任务继续人工处理。",
+    "30秒扫描可能有排队延迟；12次失败后保留人工处理，管理员重试入口后续实现。"
+  ],
+  "issues": [],
+  "compatibility": {
+    "node": ">=24",
+    "platform": "workflow.completion-deadline@1.0.0，正式SQL迁移及持久worker",
+    "v1": "V1应用不消费此声明"
+  }
+}

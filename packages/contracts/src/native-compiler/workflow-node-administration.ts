@@ -9,6 +9,7 @@ export interface WorkflowAdministrationNodeSource {
   kind: string;
   emptyPolicy?: string;
   initiatorApprovalPolicy?: 'manual' | 'auto_approve';
+  completionDeadline?: import('./workflow-completion-deadline.js').WorkflowCompletionDeadline;
   taskPageCode?: string;
   mode?: string;
   binding?: string;
@@ -88,6 +89,7 @@ export function validateWorkflowNodeConfigurationPatch(node: WorkflowAdministrat
     } else if (!keys(value, ['provider', 'roleCode']) || typeof value.roleCode !== 'string' || !/^[a-z][a-z0-9_-]{0,127}$/.test(value.roleCode)) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_ROLE_INVALID');
   }
   errors.push(...validateWorkflowInitiatorApprovalPolicy({ nodes: { node: { ...node, operationPolicy: projectWorkflowNodePolicy(node, patch).operationPolicy } } }));
+  if (node.completionDeadline && projectWorkflowNodePolicy(node, patch).operationPolicy.approve?.commentRequired === true) errors.push('WORKFLOW_COMPLETION_DEADLINE_INPUT_REQUIRED:node');
   return errors;
 }
 

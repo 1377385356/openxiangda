@@ -1679,6 +1679,7 @@ function StandardWorkflowDetailRenderer({ surface, timeline, warning, operations
   const timeZone = usePresentationTimeZone();
   const [tab, setTab] = useState('application');
   const instance = surfaceInstance(surface);
+  const deadline = surfaceTask(surface)?.completionDeadline;
   const business = surfaceBusinessDetail(surface);
   const summary = surface.presentation.summary;
   const titleField = workflowDetailGroups(business).flatMap(group => group.fields).find(field => field.type === 'text.short');
@@ -1701,6 +1702,9 @@ function StandardWorkflowDetailRenderer({ surface, timeline, warning, operations
     {warning && <Alert description={warning} showIcon type="warning" />}
     {!workflowHasEnded(instance) && activeNode && <div className={`oxa-workflow-current-node is-${bannerTone}`} role="status"><span><ClockCircleOutlined />当前节点：{activeNode.title}</span>
       {people && <span>等待{people}处理</span>}</div>}
+    {deadline && !workflowHasEnded(instance) && ['pending', 'failed'].includes(deadline.status) && <Alert showIcon type={deadline.status === 'failed' ? 'warning' : 'info'}
+      title={deadline.status === 'failed' ? '到期自动处理未成功' : `未提前完成时，将于 ${detailTime(deadline.deadlineAt, timeZone)} 自动同意`}
+      description={deadline.status === 'failed' ? '流程仍可人工办理。自动处理已停止，请联系流程管理员查看执行记录。' : '可以在此之前填写可选内容并手动提交；自动处理不会代替任何人记录审批意见。'} /> }
     <Tabs activeKey={tab} onChange={setTab} items={[
       { key: 'application', label: '申请内容', children: <WorkflowBusinessDetailSections surface={surface} variant={variant} /> },
       { key: 'history', label: '审批历史', children: <WorkflowTimelineSection timeline={timeline} /> },

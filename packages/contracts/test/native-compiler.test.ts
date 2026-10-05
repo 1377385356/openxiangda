@@ -14,6 +14,21 @@ function input(config = JSON.parse(corpus.configuration.canonical)) {
   };
 }
 
+test('completion deadline negotiates real server support in ESM and CJS', () => {
+  const config = JSON.parse(corpus.configuration.canonical);
+  const node = config.workflows.definitions[0].definition.nodes.review;
+  node.completionDeadline = { afterSeconds: 600, action: 'approve' };
+  const compileInput = () => {
+    const contract = { ...JSON.parse(corpus.contract.canonical), configDigest: sha256Digest(config) };
+    return { ...input(config), contractBytes: canonicalJson(contract), expectedContractDigest: sha256Digest(contract) };
+  };
+  for (const implementation of [esm, cjs]) {
+    assert.equal(implementation.compileNativeApplicationConfiguration(compileInput()).requiredPlatformCapabilities.find(item => item.code === 'workflow.completion-deadline')?.contractVersion, '1.0.0');
+  }
+  node.operationPolicy = { approve: { commentRequired: true } };
+  for (const implementation of [esm, cjs]) assert.throws(() => implementation.compileNativeApplicationConfiguration(compileInput()), /WORKFLOW_COMPLETION_DEADLINE_INPUT_REQUIRED/);
+});
+
 test('fixed task pages automatically require submission and private drafts in ESM and CJS', () => {
   const config = JSON.parse(corpus.configuration.canonical);
   const definition = config.workflows.definitions[0].definition;

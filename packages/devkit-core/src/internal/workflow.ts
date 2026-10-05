@@ -13,6 +13,7 @@ import {
   validateWorkflowCommandHandlers,
   validateWorkflowLaunchPreflight,
   validateWorkflowBusinessSteps,
+  validateWorkflowCompletionDeadlines,
   validateWorkflowAssignmentRoutingBindings,
   type WorkflowApprovalMode,
   type WorkflowBinding,
@@ -124,6 +125,7 @@ export function validateWorkflowDefinition(definition: WorkflowDefinition) {
   if (definition?.schemaVersion !== SCHEMA_VERSIONS.workflowDefinition) {
     diagnostics.push('WORKFLOW_DEFINITION_SCHEMA_INVALID');
   }
+  diagnostics.push(...validateWorkflowCompletionDeadlines(definition));
   if (!/^[A-Za-z][A-Za-z0-9_-]{0,127}$/.test(definition?.code || '')) {
     diagnostics.push('WORKFLOW_CODE_INVALID');
   }
