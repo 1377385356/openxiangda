@@ -230,6 +230,65 @@ const sourceDeclaration: OpenXiangdaAppDeclaration = {
   },
 };
 const source = defineOpenXiangdaApp(sourceDeclaration);
+
+test('named owned creates negotiate one immutable child closure and reject relation, field, file, and budget escapes', () => {
+  const fixture = (): any => ({
+    ...structuredClone(sourceDeclaration),
+    data: { resources: [
+      ...structuredClone(sourceDeclaration.data!.resources!).map(resource => resource.code === 'instruments' ? { ...resource, fields: [...resource.fields,
+        { code: 'items', label: '明细', type: 'subtable', subtable: { resourceCode: 'items', foreignKey: 'parentId', orderField: 'position', maxRows: 50 } },
+      ] } : resource),
+      { code: 'items', name: '明细', mutationOwner: 'action', fields: [
+        { code: 'parentId', label: '主体', type: 'uuid', required: true },
+        { code: 'position', label: '顺序', type: 'number.integer', required: true },
+        { code: 'name', label: '名称', type: 'text.short' },
+        { code: 'date', label: '日期', type: 'date' },
+        { code: 'evidence', label: '材料', type: 'file' },
+      ] },
+    ] },
+    backend: { ...sourceDeclaration.backend, operations: [{
+      code: 'items.create-submit', method: 'POST', path: '/api/items/submit',
+      capability: 'app:reference-app:data:instruments:create',
+      requestSchema: { type: 'object', additionalProperties: false, required: ['idempotencyKey'], properties: {
+        idempotencyKey: { type: 'string' }, items: { type: 'array', items: { type: 'object' } },
+      } },
+      responseSchema: { type: 'object', properties: { id: { type: 'string' } } },
+      platformAccess: { workflow: { codes: ['owned-create'] }, ownedSubject: { mode: 'create', resourceCode: 'instruments', subtables: [{ fieldCode: 'items', fieldCodes: ['name', 'date', 'evidence'] }] },
+        managedFiles: [{ resourceCode: 'items', fieldCodes: ['evidence'], intents: ['create'] }] },
+    }] },
+    workflows: { definitions: [{ version: 1, definition: {
+      schemaVersion: SCHEMA_VERSIONS.workflowDefinition, code: 'owned-create', title: '主子申请', acceptedCommandDeactivationPolicy: 'finish-pinned',
+      subject: { resourceCode: 'instruments', factProjection: { name: 'name' } },
+      inputSchema: { type: 'object', additionalProperties: false, properties: { name: { type: 'string' } } },
+      startAt: 'done', nodes: { done: { id: 'done', kind: 'end', title: '完成', outcome: 'approved' } },
+    }, launch: { mode: 'standalone', submission: { kind: 'named-operation', create: {
+      operationCode: 'items.create-submit', inputs: { idempotencyKey: { source: 'idempotency-key' }, items: { source: 'field', fieldCode: 'items' } }, output: { subjectId: 'id' },
+    } } } }], bindings: [{ version: 1, binding: { schemaVersion: SCHEMA_VERSIONS.workflowBinding, workflowCode: 'owned-create', bindings: {} } }],
+      activations: [{ workflowCode: 'owned-create', definitionVersion: 1, bindingVersion: 1, acceptedCommandDeactivationPolicy: 'finish-pinned' }] },
+  });
+  const compile = (declaration: any) => {
+    const sources = compileApplicationSources(defineOpenXiangdaApp(declaration));
+    return compileNativeApplicationConfiguration({ appCode: 'reference-app', configBytes: sources.config.content,
+      contractBytes: sources.contracts.content, expectedConfigDigest: sources.config.digest, expectedContractDigest: sources.contracts.digest });
+  };
+  assert.equal(compile(fixture()).requiredPlatformCapabilities.find(item => item.code === 'workflow.named-owned-create')?.contractVersion, '1.0.0');
+  const cases: [(value: any) => void, string][] = [
+    [value => { delete value.backend.operations[0].platformAccess.ownedSubject; }, 'OWNED_SUBJECT_LAUNCH_REQUIRED'],
+    [value => { value.backend.operations[0].platformAccess.ownedSubject.resourceCode = 'colleges'; }, 'OWNED_SUBJECT_RELATION_INVALID'],
+    [value => { value.backend.operations[0].platformAccess.ownedSubject.subtables[0].fieldCodes.push('parentId'); }, 'OWNED_SUBJECT_FIELD_INVALID'],
+    [value => { value.backend.operations[0].platformAccess.ownedSubject.subtables[0].fieldCodes.push('unknown'); }, 'OWNED_SUBJECT_FIELD_INVALID'],
+    [value => { delete value.backend.operations[0].platformAccess.managedFiles; }, 'OWNED_SUBJECT_FILE_ACCESS_REQUIRED'],
+    [value => { value.backend.operations[0].platformAccess.ownedSubject.subtables.push({ fieldCode: 'items', fieldCodes: ['name'] }); }, 'PLATFORM_ACCESS_INVALID|OWNED_SUBJECT_INVALID'],
+    [value => { value.data.resources[0].fields.push({ code: 'other', type: 'subtable', label: '其他', subtable: { resourceCode: 'other-items', foreignKey: 'parentId', orderField: 'position', maxRows: 1 } });
+      value.data.resources[0].fields.find((field: any) => field.code === 'items').subtable.maxRows = 500;
+      value.data.resources.push({ ...structuredClone(value.data.resources.at(-1)), code: 'other-items' });
+      value.backend.operations[0].platformAccess.ownedSubject.subtables.push({ fieldCode: 'other', fieldCodes: ['name'] }); }, 'OWNED_SUBJECT_BUDGET_EXCEEDED|maxRows 总和不能超过 500'],
+  ];
+  for (const [mutate, pattern] of cases) {
+    const value = fixture(); mutate(value);
+    assert.throws(() => compile(value), error => new RegExp(pattern).test(JSON.stringify(error, Object.getOwnPropertyNames(error as object))));
+  }
+});
 const sharedFieldCapability =
   'app:reference-app:instrument:protected-update';
 

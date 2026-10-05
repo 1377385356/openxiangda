@@ -74,6 +74,11 @@ export interface SubtableFieldProps {
   view?: 'form' | 'detail';
   /** Absolute visible-row position supplied by the task's complete validation. */
   revealRow?: { index: number };
+  /** Sealed named create intent: new local rows only, with operation uploads. */
+  launch?: {
+    fieldCodes: readonly string[];
+    upload: NonNullable<SurfaceFieldRenderers['upload']>;
+  };
   /** Already qualified task projection. Never use ordinary child CRUD here. */
   task?: { surface: DataResourceSurface; page: WorkflowTaskSubtablePage; binding?: WorkflowFileBinding;
     rows?: Array<Record<string, unknown>>; uploadEnabled?: boolean;
@@ -92,6 +97,7 @@ export function SubtableField({
   view = 'form',
   revealRow,
   task,
+  launch,
 }: SubtableFieldProps) {
   const definitions = useResourceDefinitions() as Record<
     string,
@@ -124,7 +130,7 @@ export function SubtableField({
   rowsRef.current = rows;
   const page = subtablePage(rows, requestedPage);
   const visibleRows = page.visible;
-  const navigationBlocked = Boolean((task && disabled) || importing || uploads || pendingEdits.size);
+  const navigationBlocked = Boolean(((task || launch) && disabled) || importing || uploads || pendingEdits.size);
   useEffect(() => { setRequestedPage(current => Math.min(current, page.pages)); }, [page.pages]);
   useEffect(() => { if (revealRow) setRequestedPage(Math.floor(revealRow.index / SUBTABLE_PAGE_SIZE) + 1); }, [revealRow]);
   const childFields = useMemo(
@@ -137,17 +143,17 @@ export function SubtableField({
   const canCreate = Boolean(
     definition &&
       !disabled &&
-      (task ? task.page.create === true : identity.isAppSuperAdmin || hasCapability(definition.capabilities.create))
+      (launch ? operation === 'create' && !task : task ? task.page.create === true : identity.isAppSuperAdmin || hasCapability(definition.capabilities.create))
   );
   const canUpdate = Boolean(
     definition &&
       !disabled &&
-      (task ? true : identity.isAppSuperAdmin || hasCapability(definition.capabilities.update))
+      (launch ? false : task ? true : identity.isAppSuperAdmin || hasCapability(definition.capabilities.update))
   );
   const canDelete = Boolean(
     definition &&
       !disabled &&
-      (task ? task.page.delete === true : identity.isAppSuperAdmin || hasCapability(definition.capabilities.delete))
+      (launch ? false : task ? task.page.delete === true : identity.isAppSuperAdmin || hasCapability(definition.capabilities.delete))
   );
 
   const emit = (next: SubtableDraftRow[]) => {
@@ -163,14 +169,20 @@ export function SubtableField({
     }));
     return stateCache.get(row.key)!.find(state => state.code === child.key);
   };
-  const canReadField = (child: SurfaceField, row?: SubtableDraftRow) => task ? !row || taskState(child, row)?.visible === true : fieldReadable(child, hasReadCapability, identity.isAppSuperAdmin);
-  const canWriteField = (child: SurfaceField, operation: 'create' | 'update', row?: SubtableDraftRow) => task
+  const canReadField = (child: SurfaceField, row?: SubtableDraftRow) => launch
+    ? launch.fieldCodes.includes(child.key) && (!row || row.state === 'created')
+    : task ? !row || taskState(child, row)?.visible === true : fieldReadable(child, hasReadCapability, identity.isAppSuperAdmin);
+  const canWriteField = (child: SurfaceField, operation: 'create' | 'update', row?: SubtableDraftRow) => launch
+    ? operation === 'create' && (!row || row.state === 'created') && launch.fieldCodes.includes(child.key) && child.widget !== 'readonly' && !child.hidden && !child.system
+    : task
     ? (!row ? task.page.fields.some(item => item.code === child.key && !item.readonly) : Boolean(taskState(child, row)?.visible && !taskState(child, row)?.readonly))
     : fieldWritable(child, operation, hasCapability, identity.isAppSuperAdmin);
   const uploadFor = (row: SubtableDraftRow): NonNullable<SurfaceFieldRenderers['upload']> => async (current, file, recordId, onRecovered) => {
     setUploads(count => count + 1);
     try {
-      return await (task
+      return await (launch
+        ? launch.upload(current, file, undefined, onRecovered)
+        : task
         ? task.upload ? task.upload(row.key, current, file, recordId, onRecovered) : Promise.reject(new Error('当前任务未提供子行上传能力'))
         : createNativeResourceClient(definition!.code, definition!.surface).upload(current.key, file, recordId));
     } finally { setUploads(count => count - 1); }
@@ -199,7 +211,7 @@ export function SubtableField({
   }));
 
   useEffect(() => {
-    if (task) return;
+    if (task || launch) return;
     if (!parentRecordId || !definition || !config) {
       if (operation === 'create' && value === undefined && internalRows.length === 0) {
         onChange?.([]);
@@ -262,7 +274,7 @@ export function SubtableField({
     );
   };
   const moveRow = (index: number, direction: -1 | 1) => {
-    if (navigationBlocked || (task && !task.page.reorder)) return;
+    if (navigationBlocked || launch || (task && !task.page.reorder)) return;
     emit(moveSubtableRow(rowsRef.current, index, direction));
     setRequestedPage(Math.floor((index + direction) / SUBTABLE_PAGE_SIZE) + 1);
   };
@@ -326,8 +338,8 @@ export function SubtableField({
           onChange={data => changeRow(row, data)}
           workflowFileBinding={rowBinding(row)} upload={uploadFor(row)} signer={task?.signer} uploadBlocked={child => uploadBlocked(child, row)} hint={child => requiredHint(child, row)}
           actions={<Space size={0}>
-            <Button type="text" aria-label={`上移第${index + 1}项`} disabled={navigationBlocked || index === 0 || !writable || Boolean(task && !task.page.reorder)} icon={<UpOutlined />} onClick={() => moveRow(index, -1)} />
-            <Button type="text" aria-label={`下移第${index + 1}项`} disabled={navigationBlocked || index === visibleRows.length - 1 || !writable || Boolean(task && !task.page.reorder)} icon={<DownOutlined />} onClick={() => moveRow(index, 1)} />
+            {!launch && <Button type="text" aria-label={`上移第${index + 1}项`} disabled={navigationBlocked || index === 0 || !writable || Boolean(task && !task.page.reorder)} icon={<UpOutlined />} onClick={() => moveRow(index, -1)} />}
+            {!launch && <Button type="text" aria-label={`下移第${index + 1}项`} disabled={navigationBlocked || index === visibleRows.length - 1 || !writable || Boolean(task && !task.page.reorder)} icon={<DownOutlined />} onClick={() => moveRow(index, 1)} />}
             <Button type="link" danger disabled={navigationBlocked || (row.state === 'persisted' ? !canDelete : !canCreate)} onClick={() => removeRow(row)}>删除</Button>
           </Space>} />;
       })}{!loading && !visibleRows.length && <tr><td colSpan={fields.length + 2}><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无明细" /></td></tr>}</tbody>

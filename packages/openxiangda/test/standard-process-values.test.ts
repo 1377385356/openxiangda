@@ -1,7 +1,22 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import dayjs from 'dayjs';
-import { standardProcessFormValues } from '../src/browser/components/workflow/standard-process-values.js';
+import { namedProcessFormValues, standardProcessFormValues } from '../src/browser/components/workflow/standard-process-values.js';
+
+test('named create encodes only its own child whitelist even when no ordinary child field is writable', () => {
+  const child: any = { fields: { date: { type: 'date', widget: 'date' }, score: { type: 'number.integer', widget: 'number' },
+    evidence: { type: 'file', widget: 'file' }, initialScore: { type: 'number.integer', widget: 'number' }, parentId: { type: 'uuid' }, position: { type: 'number.integer' } } };
+  const parent: any = { fields: { items: { type: 'subtable', subtable: { resourceCode: 'items', foreignKey: 'parentId', orderField: 'position' } } } };
+  const grant = { mode: 'create' as const, resourceCode: 'requests', subtables: [{ fieldCode: 'items', fieldCodes: ['date', 'score', 'evidence'] }] };
+  const file = { id: 'file-id', name: 'example.pdf', size: 10, contentType: 'application/pdf' };
+  const row = { key: 'row-id', state: 'created' as const, data: { date: dayjs('2026-10-06'), score: 0, evidence: [file], initialScore: 100, parentId: 'injected', position: 99 } };
+  assert.deepEqual(namedProcessFormValues({ items: [row] }, parent, { items: { surface: child } }, grant), {
+    items: [{ key: 'row-id', state: 'created', data: { date: '2026-10-06', score: 0, evidence: [file] } }],
+  });
+  assert.throws(() => namedProcessFormValues({ items: [row] }, parent, { items: { surface: child } }), /NAMED_OWNED_CREATE_REQUIRED/);
+  for (const extra of [{ state: 'persisted', id: 'foreign', revision: 1 }, { state: 'deleted' }, { id: 'foreign' }])
+    assert.throws(() => namedProcessFormValues({ items: [{ ...row, ...extra }] }, parent, { items: { surface: child } }, grant), /NAMED_OWNED_CREATE_REQUIRED/);
+});
 
 test('standard launch encodes all child dates and zero values without sending snapshots or forbidden fields', () => {
   const child: any = { fields: {

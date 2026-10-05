@@ -597,7 +597,32 @@ await searchResource(resourceCode, fieldCode, {
 每表最多500/累计500、完整意图双倍、整请求2MiB及展开后1016操作与 Native 预算一致。
 超过原单表100或累计400的声明自动要求 `data.extended-owned-subtable-capacity@1.0.0`；
 较小声明及默认20行不自动扩容，新能力由支持的Server自动开启。
-普通显式 Named Action 的16个业务操作预算不变；其自定义子表提交仍按自身合同实现。
+普通显式 Named Action 的16个业务操作预算不变。
+
+具名发起操作需要标准页填写一层子表时，在该操作声明固定的创建闭包：
+
+```ts
+platformAccess: {
+  workflow: { codes: ['expense-approval'] },
+  ownedSubject: {
+    mode: 'create', resourceCode: 'expense-requests',
+    subtables: [{ fieldCode: 'items', fieldCodes: ['description', 'amount', 'evidence'] }],
+  },
+  managedFiles: [{ resourceCode: 'expense-items', fieldCodes: ['evidence'], intents: ['create'] }],
+}
+```
+
+`items` 必须是主体模型声明的一层 owned 关系。子字段清单不含外键、排序字段、嵌套子表或序号。
+含文件、图片、签名或富文本的字段同时声明该操作的 `managedFiles` 创建权限。平台自动核验
+`workflow.named-owned-create@1.0.0` 能力，无需手动开关。
+
+标准 PC/移动页从发起 Surface 读取此闭包，填写新的子行，上传通过原具名操作执行。
+申请人不需要子资源的普通 create/update/delete 权限。应用后端完成业务校验后，
+`BusinessProcess.commit` 只传一个主体 create，其 `data` 包含上述行结构，subject 指向此操作。
+平台在同一 Native 事务内展开子行、维护外键与顺序并接受流程命令；原回执恢复先于子行规划。
+这一契约只支持新建，拒绝 existing/update、混合显式操作以及 decimal reservation；
+原有不声明 `ownedSubject` 的具名操作继续使用显式事务。最多16张子表、合计500行，
+仍执行原事务字节、字段、文件与授权检查。
 
 ### 任务 owned 子表
 

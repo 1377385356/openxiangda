@@ -1,4 +1,5 @@
 import { compileNativeEventAction } from 'openxiangda-contracts/native-compiler';
+import { normalizeWorkflowOwnedSubjectCreate } from 'openxiangda-contracts/native-compiler';
 import { compileWorkflowBusinessStepHandlers, validateWorkflowBusinessStepSubscriptions, WORKFLOW_BUSINESS_STEP_EVENTS } from 'openxiangda-contracts/native-compiler';
 import { parseNativeUniqueKeys, parseDecimalReservationLifecycle } from 'openxiangda-contracts/native-compiler';
 import { DATA_AUDIT_METADATA_FIELDS, isDataAuditMetadataField, projectDataResourceView, requiresExtendedOwnedSubtableCapacity } from 'openxiangda-contracts';
@@ -394,6 +395,7 @@ export function normalizeConfiguration(
           ...(operation.platformAccess
             ? {
                 platformAccess: {
+                  ...(operation.platformAccess.ownedSubject ? { ownedSubject: normalizeWorkflowOwnedSubjectCreate(operation.platformAccess.ownedSubject) } : {}),
                   ...(operation.platformAccess.dataCommands ? { dataCommands: { mode: operation.platformAccess.dataCommands.mode } } : {}),
                   ...(operation.platformAccess.recordEdit ? { recordEdit: {
                     resourceCode: operation.platformAccess.recordEdit.resourceCode,
@@ -1756,6 +1758,7 @@ function compileOperations(config: OpenXiangdaAppConfig) {
       ...(operation.platformAccess
         ? {
             platformAccess: {
+              ...(operation.platformAccess.ownedSubject ? { ownedSubject: normalizeWorkflowOwnedSubjectCreate(operation.platformAccess.ownedSubject) } : {}),
               ...(operation.platformAccess.dataCommands ? { dataCommands: { mode: operation.platformAccess.dataCommands.mode } } : {}),
                   ...(operation.platformAccess.recordEdit ? { recordEdit: {
                     resourceCode: operation.platformAccess.recordEdit.resourceCode,
@@ -1996,6 +1999,7 @@ function runtimeProtocolCapabilities(config: OpenXiangdaAppConfig) {
     ...(operations.some(operation => operation.platformAccess?.dataCommands) ? ['data.business-commands'] : []),
     ...(operations.some(operation => operation.platformAccess?.roleAssertions?.actorAuthority) ? ['data.transaction-actor-authority'] : []),
     ...(operations.some(operation => operation.platformAccess?.recordEdit) ? ['data.record-edit'] : []),
+    ...(operations.some(operation => operation.platformAccess?.ownedSubject) ? ['workflow.named-owned-create'] : []),
     ...(operations.some(operation => operation.platformAccess?.decimalReservation) ||
       config.events?.subscriptions.some(subscription => subscription.platformAccess?.decimalReservation)
       ? ['data.decimal-reservations']

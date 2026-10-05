@@ -263,6 +263,8 @@ export type AppOperationDirectoryField =
   | 'phone';
 
 export interface AppOperationPlatformAccessDeclaration {
+  /** Named create-submit owns these one-level subtables in the original Native transaction. */
+  ownedSubject?: import('./native-compiler/workflow-owned-subject.js').WorkflowOwnedSubjectCreate;
   /** 使用 Native 原事务回执恢复具名业务动作；不授予用户通用写入权限。 */
   dataCommands?: { mode: 'recoverable-native' };
   /** Fixed business fields edited through this action; ordinary UPDATE remains closed. */

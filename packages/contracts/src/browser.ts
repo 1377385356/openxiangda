@@ -15,6 +15,7 @@ export * from './native-compiler/workflow-delegation-administration.js';
 export * from './native-compiler/workflow-graph.js';
 export * from './native-compiler/workflow-node-administration.js';
 export * from './native-compiler/workflow-role-union.js';
+export * from './native-compiler/workflow-owned-subject.js';
 export * from './native-compiler/workflow-automatic-cc.js';
 export * from './native-compiler/workflow-approval-empty.js';
 export * from './native-compiler/workflow-initiator-approval.js';

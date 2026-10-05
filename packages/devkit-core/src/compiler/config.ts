@@ -1,6 +1,7 @@
 import { validateAuthenticatedPublicRead, AuthenticatedPublicReadContractError } from 'openxiangda-contracts/native-compiler';
 import { validateUserCandidateReferences, validateWorkflowUserCandidateBindings, UserCandidateContractError } from 'openxiangda-contracts';
 import { parseNativeUniqueKeys, DATA_SUBTABLE_MAX_TOTAL_ROWS } from 'openxiangda-contracts';
+import { assertWorkflowOwnedSubjectCreate } from 'openxiangda-contracts';
 import type { ManagedConcurrencyDeclaration } from 'openxiangda-contracts';
 import { validateManagedConcurrency } from 'openxiangda-contracts/native-compiler';
 import { normalizeDecimalReservationEventDeclaration, decimalReservationEventContext } from 'openxiangda-contracts';
@@ -4700,11 +4701,17 @@ function validateBackendOperations(
         'decimalReservation',
         'dataCommands',
         'recordEdit',
+        'ownedSubject',
       ]);
       let invalid =
         !isRecord(operation.platformAccess) ||
         Object.keys(access).length === 0 ||
         Object.keys(access).some(key => !allowedAccessKeys.has(key));
+      if (access.ownedSubject !== undefined) {
+        try { assertWorkflowOwnedSubjectCreate(access.ownedSubject); }
+        catch { invalid = true; }
+        invalid ||= access.workflow === undefined || access.decimalReservation !== undefined;
+      }
       if (access.dataCommands !== undefined) {
         const commands = object(access.dataCommands);
         invalid ||= commands.mode !== 'recoverable-native' || Object.keys(commands).some(key => key !== 'mode');

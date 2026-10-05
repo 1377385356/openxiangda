@@ -129,7 +129,7 @@ import { ResourceFormContent, type ResourceFormDrawerState } from '../resource/R
 import { WorkflowRecordEditor } from './WorkflowRecordEditor';
 import { PlatformAvatar } from '../PlatformAvatar';
 import { SubtableField } from '../platform-fields/SubtableField';
-import { standardProcessFormValues } from './standard-process-values';
+import { namedProcessFormValues, standardProcessFormValues } from './standard-process-values';
 import { fieldWritable } from '../resource/resource-page-helpers';
 import { workflowSubmissionFormProjection, workflowSubmissionPrefill, type WorkflowSubmissionFieldStates } from './workflow-submission-form';
 export type { WorkflowSubmissionFieldState, WorkflowSubmissionFieldStates } from './workflow-submission-form';
@@ -2688,12 +2688,13 @@ export function WorkflowSubmissionPage({
     return frame(<Result status="500" title="标准流程合同不完整" />);
   }
 
-  if (!commandId && namedIntent && fields.some(field => field.type === 'subtable')) {
+  if (!commandId && namedIntent && fields.some(field => field.type === 'subtable' &&
+      (submissionMode !== 'create' || namedIntent.ownedSubject?.resourceCode !== subjectDefinition.code || !namedIntent.ownedSubject.subtables.some(table => table.fieldCode === field.key)))) {
     return frame(
       <Result
         status="error"
-        title="标准流程不支持包含可写子表的主体表单"
-        subTitle="当前标准提交 Surface 尚未声明可写子表渲染器。"
+        title="子表提交配置不完整"
+        subTitle="请联系应用管理员检查发起配置。"
       />,
     );
   }
@@ -2712,7 +2713,7 @@ export function WorkflowSubmissionPage({
       setPendingSubmission(dispatched); setRecoveryError(null); setRecoveryObservedAbsent(false);
     };
     try {
-      const encoded = namedIntent ? normalizeFormValues(values, subjectDefinition.surface)
+      const encoded = namedIntent ? namedProcessFormValues(values, subjectDefinition.surface, resources, namedIntent.ownedSubject)
         : standardProcessFormValues(values, subjectDefinition.surface, resources,
           (field, mode) => fieldWritable(field, mode === 'create' ? 'create' : 'edit', hasCapability, identity.isAppSuperAdmin));
       const data = workflowSubmissionFormProjection(fields, encoded, formOptions?.fieldState?.(encoded)).values;
@@ -2898,8 +2899,16 @@ export function WorkflowSubmissionPage({
     namedIntent?.operationCode || definition.processOperationCode;
   const fieldRenderers: SurfaceFieldRenderers | undefined = uploadOperationCode
     ? {
-        ...(!namedIntent ? { renderSubtable: ({ field, disabled, operation, recordId }: Parameters<NonNullable<SurfaceFieldRenderers['renderSubtable']>>[0]) =>
-          <SubtableField field={field} disabled={disabled} operation={operation} parentRecordId={recordId} mobile={variant === 'mobile'} /> } : {}),
+        renderSubtable: ({ field, disabled, operation, recordId }) => {
+          const grant = namedIntent?.ownedSubject?.subtables.find(table => table.fieldCode === field.key);
+          return <SubtableField field={field} disabled={disabled} operation={operation} parentRecordId={recordId} mobile={variant === 'mobile'}
+            {...(namedIntent && grant ? { launch: { fieldCodes: grant.fieldCodes,
+              upload: (childField, file) => uploadOperationManagedFile({
+                operationCode: uploadOperationCode, resourceCode: field.subtable!.resourceCode,
+                fieldCode: childField.key, intent: 'create', file,
+              }),
+            } } : {})} />;
+        },
         ...(namedIntent ? { referenceLaunch: { workflowCode: definition.code, operationCode: namedIntent.operationCode } } : {}),
         candidateScopeValues: { ...formOptions?.candidateScopeValues, ...formProjection.values },
         upload: async (field, file) =>

@@ -22,6 +22,7 @@ import { requiresExtendedOwnedSubtableCapacity } from './data-capacity.js';
 import { validateWorkflowBusinessSteps, compileWorkflowBusinessStepHandlers, validateWorkflowBusinessStepSubscriptions, WORKFLOW_BUSINESS_STEP_EVENT, WORKFLOW_BUSINESS_STEP_EVENTS } from './workflow-business-step.js';
 import { validateWorkflowAssignmentRoutingBindings, validateWorkflowAssignmentRoutingPolicy } from './workflow-assignment-routing.js';
 import { requiresWorkflowRoleUnion, validateWorkflowRoleUnion } from './workflow-role-union.js';
+import { assertWorkflowOwnedSubjectCreate, assertWorkflowOwnedSubjectCreateResources } from './workflow-owned-subject.js';
 import * as crypto from 'crypto';
 import {
   OPENXIANGDA_COMPILER_CONTRACT_VERSION as OPENXIANGDA_V2_COMPILER_CONTRACT_VERSION,
@@ -702,6 +703,8 @@ export function compileRequiredPlatformCapabilitiesV3(
       : []),
     ...(requiresWorkflowRoleUnion(config.workflows.bindings)
       ? [{ code: 'workflow.role-union' as const, declaration: config.workflows.bindings.filter((item: JsonObject) => Object.values(item.binding.bindings).some((entry: any) => entry.roleCodes !== undefined)) }] : []),
+    ...(config.backend.operations.some((item: JsonObject) => item.platformAccess?.ownedSubject)
+      ? [{ code: 'workflow.named-owned-create' as const, declaration: config.backend.operations.filter((item: JsonObject) => item.platformAccess?.ownedSubject) }] : []),
     ...(requiresUserCandidateLaunchScope(config.data.resources)
       ? [{ code: 'data.user-candidate-launch-scope' as const, declaration: config.data.resources.filter((resource: any) => requiresUserCandidateLaunchScope([resource])) }]
       : []),
@@ -2734,7 +2737,7 @@ function validateOperationPlatformAccess(
   const access = object(value, pointer);
   exactKeys(
     access,
-    ['directory', 'managedFiles', 'managedFileCopies', 'notification', 'workflow', 'roleAssertions', 'decimalReservation', 'dataCommands', 'recordEdit'],
+    ['directory', 'managedFiles', 'managedFileCopies', 'notification', 'workflow', 'roleAssertions', 'decimalReservation', 'dataCommands', 'recordEdit', 'ownedSubject'],
     pointer,
     true
   );
@@ -2963,6 +2966,19 @@ function validateOperationPlatformAccess(
       fail('NATIVE_OPERATION_WORKFLOW_BUSINESS_COMMAND_INVALID', `${pointer}/workflow/businessCommands`);
     }
     result.workflow = { codes: uniqueSorted(codes), ...(businessCommands ? { businessCommands: uniqueSorted(businessCommands) } : {}) };
+  }
+  if (access.ownedSubject !== undefined) {
+    const entryPointer = `${pointer}/ownedSubject`;
+    const grant = access.ownedSubject;
+    try { assertWorkflowOwnedSubjectCreate(grant); }
+    catch { fail('NATIVE_WORKFLOW_OWNED_SUBJECT_INVALID', entryPointer); }
+    if (!result.workflow || access.decimalReservation !== undefined)
+      fail('NATIVE_WORKFLOW_OWNED_SUBJECT_INVALID', entryPointer);
+    try { assertWorkflowOwnedSubjectCreateResources(grant, declaredResourceFields, result.managedFiles || []); }
+    catch (error) { fail(`NATIVE_${(error as Error).message}`, entryPointer); }
+    result.ownedSubject = { mode: 'create', resourceCode: grant.resourceCode, subtables: sorted(grant.subtables.map(table => ({
+      fieldCode: table.fieldCode, fieldCodes: uniqueSorted([...table.fieldCodes]),
+    })), table => table.fieldCode) };
   }
   if (access.decimalReservation !== undefined) {
     const reservationPointer = `${pointer}/decimalReservation`;
@@ -5331,6 +5347,9 @@ function compileWorkflowLaunchContract(
     const fieldCodes = new Set<string>();
     const sourceCounts = new Map<string, number>();
     const normalizedInputs: JsonObject = {};
+    const ownedSubject = operationContract.platformAccess?.ownedSubject;
+    if (ownedSubject && (intentKind !== 'create' || ownedSubject.resourceCode !== subjectResourceCode))
+      fail('NATIVE_WORKFLOW_OWNED_SUBJECT_LAUNCH_MISMATCH', intentPointer);
     for (const [inputCode, rawBinding] of inputEntries) {
       if (
         !PROPERTY_CODE_PATTERN.test(inputCode) ||
@@ -5379,6 +5398,9 @@ function compileWorkflowLaunchContract(
           );
         }
         fieldCodes.add(fieldCode);
+        const field = subjectResource.schema.fields.find((item: JsonObject) => item.code === fieldCode);
+        if (field?.type === 'subtable' && (!ownedSubject || !ownedSubject.subtables.some((table: JsonObject) => table.fieldCode === fieldCode)))
+          fail('NATIVE_WORKFLOW_OWNED_SUBJECT_LAUNCH_REQUIRED', bindingPointer);
         normalizedInputs[inputCode] = { source, fieldCode };
       } else {
         normalizedInputs[inputCode] = { source };

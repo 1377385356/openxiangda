@@ -3424,6 +3424,8 @@ export interface WorkflowLaunchSurface {
 }
 
 export interface WorkflowNamedOperationLaunchIntent {
+  /** Projected from the sealed operation, never editable launch input. */
+  ownedSubject?: import('./native-compiler/workflow-owned-subject.js').WorkflowOwnedSubjectCreate;
   operationCode: string;
   method: "POST";
   href: string;

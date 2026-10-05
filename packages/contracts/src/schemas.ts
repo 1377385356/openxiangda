@@ -41,6 +41,7 @@ import {
 } from "./workflow-detail.js";
 
 import { workflowRoleCodesSchema } from './native-compiler/workflow-role-union.js';
+import { workflowOwnedSubjectCreateSchema } from './native-compiler/workflow-owned-subject.js';
 
 const digest = { type: "string", pattern: "^[0-9a-f]{64}$" } as const;
 const prefixedDigest = {
@@ -7001,6 +7002,7 @@ const workflowNamedOperationLaunchIntentSchema = {
     "output",
   ],
   properties: {
+    ownedSubject: workflowOwnedSubjectCreateSchema,
     operationCode: {
       type: "string",
       pattern: "^[A-Za-z][A-Za-z0-9_.:-]{0,254}$",
@@ -7485,6 +7487,7 @@ const appOperationPlatformAccessSchema = {
   additionalProperties: false,
   minProperties: 1,
   properties: {
+    ownedSubject: workflowOwnedSubjectCreateSchema,
     recordEdit: {
       type: 'object', additionalProperties: false, required: ['resourceCode', 'fieldCodes'],
       properties: { resourceCode: dataResourceCode, fieldCodes: { type: 'array', minItems: 1, maxItems: 200, uniqueItems: true, items: dataFieldCode } },

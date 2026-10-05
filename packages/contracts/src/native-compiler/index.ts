@@ -23,6 +23,7 @@ export * from './workflow-business-command.js';
 export * from './workflow-launch-preflight.js';
 export * from './workflow-assignment-routing.js';
 export * from './workflow-role-union.js';
+export * from './workflow-owned-subject.js';
 export type { WorkflowAssignmentRoutingPolicy, WorkflowAssignmentRoutingRule } from '../types.js';
 export type { WorkflowInstanceCommandPolicies } from '../types.js';
 export type { RequiredPlatformCapabilityContract, PlatformCapabilityCode } from '../types.js';
