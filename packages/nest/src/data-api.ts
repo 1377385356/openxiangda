@@ -504,7 +504,13 @@ export class OpenXiangdaBusinessDataApiService {
   }
 
   private context() {
-    return requireOpenXiangdaBusinessActionContext(this.request);
+    // A named action executes with its verified operation proof. User read
+    // projections cannot be applied to the trusted Native business principal.
+    // Keep the original request intact for ordinary user reads in this action.
+    return {
+      ...requireOpenXiangdaBusinessActionContext(this.request),
+      perspectiveCode: null,
+    };
   }
 }
 

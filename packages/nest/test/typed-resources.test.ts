@@ -41,10 +41,11 @@ for (const kind of ['user', 'business', 'application'] as const) {
     assert.equal(calls.length, 5);
     for (const call of calls) {
       assert.equal(call[1], kind === 'application' ? 'verified-application' : 'verified-user');
-      assert.equal(call[2], kind === 'application' ? null : 'own');
+      assert.equal(call[2], kind === 'user' ? 'own' : null);
       assert.equal(call[3], 'requests');
       if (kind === 'business') assert.deepEqual(call.at(-1), { code: 'submit', requiredCapability: 'submit' });
     }
+    assert.equal(request.openxiangda!.perspectiveCode, 'own');
     resourceCode = 'other-resource';
     await assert.rejects(() => client.get('record-1'), /RESOURCE_RESPONSE_MISMATCH/);
     if (kind !== 'application') {

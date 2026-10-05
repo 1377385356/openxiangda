@@ -4,6 +4,8 @@
 
 平台网关验证当前用户完整的应用角色并集，并把经平台重验的角色、capability 与可选 Perspective 交给 Nest SDK。业务 controller 使用生成的 operation 合同和 capability 装饰器；平台仍是身份与授权的唯一所有者。请求作用域 `OpenXiangdaDataApiService` 自动继承 Perspective 读取投影；绕过 Data API 的自定义读取才使用 `@CurrentPerspective()` 显式投影。应用代码不替换身份、不保存平台凭据，也不建立第二套用户或权限状态。
 
+`OpenXiangdaBusinessDataApiService` 的跨模型读写使用固定 operation 的受信业务证明，不向 Native 转发用户读取 Perspective。原请求的视角保持，普通 Data API 读取仍收窄；业务动作继续按当前用户角色并集授权，并在平台事务内核验当前成员范围、状态和 revision。不要通过清除浏览器所有请求的 Perspective 来修复业务提交，也不要把业务 facade 当作任意读取接口。
+
 ```bash
 pnpm openxiangda dev
 pnpm openxiangda check

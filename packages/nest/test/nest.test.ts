@@ -2006,7 +2006,7 @@ test("business action Data API requires immutable operation metadata and forward
   });
   assert.deepEqual(platform.transactData.mock.calls[0]!.arguments, [
     "Bearer invocation-token",
-    "instrument-admin",
+    null,
     {
       schemaVersion: SCHEMA_VERSIONS.dataTransactionRequest,
       idempotencyKey: "action-1",
@@ -2018,6 +2018,7 @@ test("business action Data API requires immutable operation metadata and forward
       requestId: 'request-action-1',
     },
   ]);
+  assert.equal(request.openxiangda.perspectiveCode, "instrument-admin");
 
   delete (request.openxiangda as any).operation;
   await assert.rejects(
@@ -2027,6 +2028,99 @@ test("business action Data API requires immutable operation metadata and forward
     }),
     /OPENXIANGDA_BUSINESS_ACTION_OPERATION_REQUIRED/u
   );
+});
+
+test("business Data HTTP preserves action proof and guards while ordinary reads keep Perspective", async () => {
+  for (const connectedDevelopment of [false, true]) {
+    const requests: Array<{ url: string; headers: Headers; body: any }> = [];
+    const client = new OpenXiangdaPlatformClient(options(async (input, init) => {
+      const headers = new Headers(init?.headers);
+      const body = JSON.parse(String(init?.body));
+      requests.push({ url: String(input), headers, body });
+      if (headers.has('X-OpenXiangda-Business-Action-Code') && headers.has('X-OpenXiangda-Perspective')) {
+        return new Response(JSON.stringify({ code: 403, errorCode: 'OPENXIANGDA_PERSPECTIVE_USER_REQUIRED' }), { status: 403 });
+      }
+      return response(String(input).endsWith('/transactions')
+        ? { schemaVersion: SCHEMA_VERSIONS.dataTransactionResult, idempotencyKey: body.idempotencyKey, replayed: false, items: [] }
+        : { schemaVersion: SCHEMA_VERSIONS.dataPage, resourceCode: 'instruments', items: [], total: 0, limit: 20, offset: 0 });
+    }));
+    const operation = {
+      code: 'instrument.maintain', method: 'POST' as const, path: '/api/maintenance',
+      requiredCapability: 'app:reference-app:maintenance:submit',
+      requestSchemaDigest: 'a'.repeat(64), responseSchemaDigest: 'b'.repeat(64),
+      platformAccess: { roleAssertions: { roleCodes: ['college-admin'], actorAuthority: true } },
+    };
+    const verified = Object.freeze({
+      principal: connectedDevelopment ? { ...roleUnionPrincipal, principalType: 'developer' as const } : roleUnionPrincipal,
+      authorization: 'Bearer invocation-token', perspectiveCode: 'maintenance-management', operation,
+      ...(connectedDevelopment ? { connectedDevelopmentSessionToken: 'bounded-development-proof' } : {}),
+    });
+    const request = { headers: { 'x-request-id': 'request-perspective-boundary-1' }, openxiangda: verified };
+    const business = new OpenXiangdaBusinessDataApiService(request, client);
+    const query = { schemaVersion: SCHEMA_VERSIONS.dataQuery, limit: 20 };
+    const transaction = {
+      schemaVersion: SCHEMA_VERSIONS.dataTransactionRequest, idempotencyKey: 'original-maintenance-key',
+      guards: [{ kind: 'actor-authority' as const, anyOf: [{ roleCode: 'college-admin',
+        scope: { dimensionCode: 'college', value: 'college-1', operation: 'manage' as const } }], errorCode: 'OPENXIANGDA_SCOPE_DENIED' }],
+      operations: [{ operation: 'update' as const, resourceCode: 'instruments', id: 'instrument-1', expectedRevision: 7, data: { status: 'maintenance' } }],
+    };
+    await business.query('instruments', query);
+    await business.transaction(transaction);
+    assert.equal(requests.length, 2);
+    assert.deepEqual(requests[0]!.body, { ...query, environmentKey: 'preproduction' });
+    assert.deepEqual(requests[1]!.body, { ...transaction, environmentKey: 'preproduction' });
+    assert.equal(requests[0]!.url, 'https://platform.example/openxiangda-api/v2/applications/reference-app/native/data/instruments/query');
+    assert.equal(requests[1]!.url, 'https://platform.example/openxiangda-api/v2/applications/reference-app/native/data/transactions');
+    for (const { headers } of requests) {
+      assert.equal(headers.get('X-OpenXiangda-Perspective'), null);
+      assert.equal(headers.get('Authorization'), 'Bearer invocation-token');
+      assert.equal(headers.get('X-OpenXiangda-Business-Action-Code'), operation.code);
+      assert.equal(headers.get('X-OpenXiangda-Business-Action-Capability'), operation.requiredCapability);
+      assert.equal(headers.get('X-Request-ID'), 'request-perspective-boundary-1');
+      assert.equal(headers.get('X-OpenXiangda-Dev-Session'), connectedDevelopment ? 'bounded-development-proof' : null);
+    }
+    await new OpenXiangdaDataApiService(request, client).query('instruments', query);
+    assert.equal(requests.length, 3);
+    assert.equal(requests[2]!.headers.get('X-OpenXiangda-Perspective'), 'maintenance-management');
+    assert.equal(requests[2]!.headers.get('X-OpenXiangda-Business-Action-Code'), null);
+    assert.equal(request.openxiangda, verified);
+    assert.equal(verified.perspectiveCode, 'maintenance-management');
+    assert.equal(verified.operation, operation);
+
+    // Explicit misuse at the low-level boundary still receives Native rejection.
+    await assert.rejects(client.queryData(verified.authorization, verified.perspectiveCode, 'instruments', query,
+      { code: operation.code, requiredCapability: operation.requiredCapability }),
+      (error: unknown) => error instanceof OpenXiangdaPlatformError && error.httpStatus === 403 && error.code === 'OPENXIANGDA_PERSPECTIVE_USER_REQUIRED');
+    assert.equal(requests.length, 4);
+  }
+});
+
+test("business Data HTTP propagates original scope rejection without retry or request mutation", async () => {
+  let calls = 0;
+  const client = new OpenXiangdaPlatformClient(options(async (_input, init) => {
+    calls++;
+    assert.equal(new Headers(init?.headers).get('X-OpenXiangda-Perspective'), null);
+    return new Response(JSON.stringify({ code: 409, errorCode: 'OPENXIANGDA_SCOPE_DENIED', data: { pointer: '/guards/0' } }), { status: 409 });
+  }));
+  const operation = { code: 'instrument.maintain', method: 'POST' as const, path: '/api/maintenance',
+    requiredCapability: 'app:reference-app:maintenance:submit', requestSchemaDigest: 'a'.repeat(64), responseSchemaDigest: 'b'.repeat(64) };
+  const request = { headers: { 'x-request-id': 'original-request-1' }, openxiangda: {
+    principal: roleUnionPrincipal, authorization: 'Bearer invocation-token', perspectiveCode: 'maintenance-management', operation,
+  } };
+  const business = new OpenXiangdaBusinessDataApiService(request, client);
+  await assert.rejects(business.transaction({ schemaVersion: SCHEMA_VERSIONS.dataTransactionRequest,
+    idempotencyKey: 'original-key', operations: [] }),
+    (error: unknown) => error instanceof OpenXiangdaPlatformError && error.code === 'OPENXIANGDA_SCOPE_DENIED'
+      && error.httpStatus === 409 && error.request?.requestId === 'original-request-1'
+      && (error.data as any)?.pointer === '/guards/0');
+  assert.equal(calls, 1);
+  assert.equal(request.openxiangda.perspectiveCode, 'maintenance-management');
+  await assert.rejects(new OpenXiangdaBusinessDataApiService({ ...request, openxiangda: { ...request.openxiangda, operation: undefined } }, client)
+    .query('instruments', { schemaVersion: SCHEMA_VERSIONS.dataQuery, limit: 20 }), /OPENXIANGDA_BUSINESS_ACTION_OPERATION_REQUIRED/);
+  await assert.rejects(new OpenXiangdaBusinessDataApiService({ ...request, openxiangda: {
+    ...request.openxiangda, principal: { ...roleUnionPrincipal, principalType: 'application' } as any } }, client)
+    .query('instruments', { schemaVersion: SCHEMA_VERSIONS.dataQuery, limit: 20 }), /OPENXIANGDA_BUSINESS_ACTION_USER_CONTEXT_REQUIRED/);
+  assert.equal(calls, 1);
 });
 
 test("business directory resolves only the initiator bound to the verified Named Action", async () => {
