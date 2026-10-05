@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.55.6",
+  "version": "2.56.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -74,13 +74,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.88",
-    "openxiangda-contracts": "2.65.0",
-    "openxiangda-devkit-core": "2.48.4",
+    "openxiangda-cli": "2.6.89",
+    "openxiangda-contracts": "2.66.0",
+    "openxiangda-devkit-core": "2.49.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.103",
-    "openxiangda-nest": "2.14.6",
-    "openxiangda-skill-kit": "2.3.84",
+    "openxiangda-mcp": "2.0.104",
+    "openxiangda-nest": "2.14.7",
+    "openxiangda-skill-kit": "2.3.85",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -146,34 +146,34 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.55.6",
+    "version": "2.56.0",
     "status": "reviewed",
-    "title": "OpenXiangda 2.55.6：入口排队与身份加载连续性",
-    "summary": "修复平台入口等待期限与浏览器身份读取恢复期限不一致导致有效等待过早中断的问题。",
-    "newFeatures": [],
-    "fixes": [
-      "仅对有效平台入口回执接续身份等待，固定原期限并上限三十分钟，后续回执只能缩短。",
-      "入口身份读取遵循有界排队提示，普通请求、权限拒绝、投影重试和网络失败保持各自边界。"
+    "title": "审批支持持久自动完成期限",
+    "summary": "可选评价等节点可以在固定期限后自动完成，平台持久计时并显示实际规则与历史。",
+    "newFeatures": [
+      "审批声明completionDeadline及能力协商，拒绝必填输入和自定义同意处理器冲突。",
+      "公开任务期限状态、固定图规则及PC/手机截止时间提示，管理员配置保留代码规则。"
     ],
+    "fixes": [],
     "affectedUsers": [
-      "启用 V2 平台入口排队并在拥挤时加载当前用户信息的应用。"
+      "需要限时自动完成可选审批节点的V2应用。"
     ],
     "upgradeSteps": [
-      "安装同源 SDK 并重新构建应用，验证权限拒绝、入口期限、页面取消、原报名结果恢复及真实冷入口并发。"
+      "升级完整同源SDK并使用支持workflow.completion-deadline@1.0.0的Server。",
+      "由代码声明afterSeconds和approve，不需要打开额外功能开关。"
     ],
     "knownLimitations": [
-      "本地测试不代表线上容量；r62 的 48 人中断仍保留，必须使用新隔离活动重新压测。",
-      "本次 HTTP 请求图不证明完整 SSO 或浏览器渲染上限。"
+      "本轮仅本地分发，未发布npm、学校或生产。",
+      "自动完成整节点，不产生未处理人的同意票；补正/恢复任务继续人工处理。",
+      "30秒扫描可能有排队延迟；12次失败后保留人工处理，管理员重试入口后续实现。"
     ],
+    "issues": [],
     "compatibility": {
       "node": ">=24",
-      "platform": "V2 原入口回执协议；无数据库迁移",
-      "v1": "V1 引擎和应用不变"
+      "platform": "workflow.completion-deadline@1.0.0，正式SQL迁移及持久worker",
+      "v1": "V1应用不消费此声明"
     },
-    "issues": [
-      "r62-entry-identity-interrupted"
-    ],
-    "sha256": "48803b23bb19feee37b60779064e03c2cb60c26a591f794755bcf4c2b5b887a7",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.55.6"
+    "sha256": "dacaddf6a4b812e45256e8b42b4cef4ea0db767ee17fa85995ee7e437e2b574c",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.56.0"
   }
 }
