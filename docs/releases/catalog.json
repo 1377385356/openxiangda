@@ -3,6 +3,37 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.57.1",
+      "status": "reviewed",
+      "title": "身份入口暂不可用时保留固定恢复期限",
+      "summary": "启用入口等待的平台可声明有界读取恢复预算，SDK继续恢复身份而不刷新原截止。",
+      "newFeatures": [],
+      "fixes": [
+        "修复入口429 unavailable无票据剩余时间时回落普通五分钟恢复的问题。",
+        "后续票据回执只能缩短截止；保留权限拒绝、失效、取消及写操作约束。"
+      ],
+      "affectedUsers": [
+        "使用高并发入口等待与runtime身份读取的V2应用。"
+      ],
+      "upgradeSteps": [
+        "同时使用提供recoveryBudgetMs的Server及同源SDK；无该元数据时维持原五分钟恢复。",
+        "完整分发组合通过正式门禁后部署，保留原压测失败与期限。"
+      ],
+      "knownLimitations": [
+        "本批尚未完成公开npm发行和学校站点部署，源码测试不代表线上验收。",
+        "恢复预算只用于读取重试，不提供身份或队列位置，不延长Redis票据。"
+      ],
+      "issues": [],
+      "compatibility": {
+        "node": ">=24",
+        "platform": "native-4、可选入口unavailable recoveryBudgetMs",
+        "v1": "V1不消费该恢复接口"
+      },
+      "sha256": "d797d800560e8e24b276c6674fa2ea303f89b844cf1f5ee7b1199543180174c4",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.57.1"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.57.0",
       "status": "reviewed",
       "title": "审批任务支持字典选项与后续阶段空引用",
