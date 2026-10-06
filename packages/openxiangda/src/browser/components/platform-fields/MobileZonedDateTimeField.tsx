@@ -4,7 +4,7 @@ import { ConfigProvider, PickerView, Popup, zhCN } from '../../mobile';
 import { MobileFieldTrigger, MobileSheetHeader } from './MobileFieldLayout';
 import type { FieldProps } from './MobileFieldControls';
 import { rangeValueValidationMessage } from './field-form-codec';
-import { dateOptions, instantToWall, nowWall, validateDateTimeConstraints,
+import { dateOptions, fieldDateTimeConstraints, instantToWall, nowWall, validateDateTimeConstraints,
   zonedInputResult, type DateTimeConstraints } from './zoned-date-time';
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -13,7 +13,7 @@ const seconds = Array.from({ length: 60 }, (_, n) => ({ label: `${n}秒`, value:
 
 export function MobileZonedDateTimeField({ field, value, disabled, id, onChange,
   timeZone, min, max, minuteStep }: FieldProps & DateTimeConstraints & { timeZone: string }) {
-  const constraints = validateDateTimeConstraints({ timeZone, min, max, minuteStep });
+  const constraints = validateDateTimeConstraints(fieldDateTimeConstraints(field, { timeZone, min, max, minuteStep }));
   const root = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<'start' | 'end'>('start');

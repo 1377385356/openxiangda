@@ -4,7 +4,7 @@ import dayjsGenerateConfig from '@rc-component/picker/lib/generate/dayjs';
 import { useEffect, useMemo, useState } from 'react';
 import type { DataFieldSurface } from 'openxiangda-contracts/browser';
 import { rangeValueValidationMessage } from './field-form-codec';
-import { carrierWall, disabledZonedTime, instantText, instantToWall, nowWall, validateDateTimeConstraints,
+import { carrierWall, disabledZonedTime, fieldDateTimeConstraints, instantText, instantToWall, nowWall, validateDateTimeConstraints,
   wallCarrier, zonedInputResult, type DateTimeConstraints } from './zoned-date-time';
 
 export function ZonedDateTimeField({ field, value, onChange, disabled, mobile, filter,
@@ -12,7 +12,7 @@ export function ZonedDateTimeField({ field, value, onChange, disabled, mobile, f
   field: DataFieldSurface; value?: unknown; onChange?: (value: unknown) => void;
   disabled?: boolean; mobile?: boolean; filter?: boolean; timeZone: string;
 }) {
-  const constraints = validateDateTimeConstraints({ timeZone, min, max, minuteStep });
+  const constraints = validateDateTimeConstraints(fieldDateTimeConstraints(field, { timeZone, min, max, minuteStep }));
   const range = field.type === 'datetime-range';
   const Picker = useMemo(() => DatePicker.generatePicker<Dayjs>({
     ...dayjsGenerateConfig,

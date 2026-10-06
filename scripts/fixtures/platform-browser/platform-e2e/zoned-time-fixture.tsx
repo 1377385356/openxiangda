@@ -9,10 +9,11 @@ import 'openxiangda/mobile/styles.css';
 
 const params = new URLSearchParams(location.search);
 const field = { key: 'startsAt', type: 'datetime', widget: 'datetime', label: '会议开始',
+  ...(params.get('precision') === 'minute' ? { timePrecision: 'minute' as const } : {}),
   readCapabilities: [], createCapabilities: [], updateCapabilities: [] } as DataFieldSurface & { key: string };
 const initial = params.get('value') || '2026-03-07T18:15:00.000Z';
 const zone = params.get('zone') || 'Asia/Shanghai';
-const step = params.has('seconds') ? undefined : 15;
+const step = params.has('seconds') || params.has('precision') ? undefined : 15;
 function Fixture() {
   const [value, setValue] = useState<unknown>(initial);
   const [range, setRange] = useState<unknown>({ start: initial, end: '2026-03-07T19:15:00.000Z' });

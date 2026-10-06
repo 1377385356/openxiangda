@@ -41,6 +41,7 @@ import {
   NativeDataFieldContractV2Error,
   NativeDataFieldV2,
   nativeFieldRequiresCreateInputV2,
+  requiresDateTimeMinutePrecision,
   parseNativeDataFieldsV2,
   parseNativeDataResourceInvariantsV2,
   validateNativeDataResourceReferencesV2,
@@ -731,6 +732,9 @@ export function compileRequiredPlatformCapabilitiesV3(
       ? [{ code: 'workflow.named-owned-create' as const, declaration: config.backend.operations.filter((item: JsonObject) => item.platformAccess?.ownedSubject) }] : []),
     ...(requiresUserCandidateLaunchScope(config.data.resources)
       ? [{ code: 'data.user-candidate-launch-scope' as const, declaration: config.data.resources.filter((resource: any) => requiresUserCandidateLaunchScope([resource])) }]
+      : []),
+    ...(requiresDateTimeMinutePrecision(config.data.resources)
+      ? [{ code: 'data.datetime-minute-precision' as const, declaration: config.data.resources.filter((resource: any) => requiresDateTimeMinutePrecision([resource])) }]
       : []),
     ...(config.workflows.activations.length
       ? [

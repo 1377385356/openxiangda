@@ -42,6 +42,14 @@ export type NativeDataFieldTypeV2 =
 
 export type NativeDataRangeBoundaryV2 = 'closed' | 'half-open';
 
+/** Includes owned resources; field declarations have already been validated. */
+export function requiresDateTimeMinutePrecision(resources: readonly {
+  schema: { fields: readonly { type: string; timePrecision?: string }[] };
+}[]): boolean {
+  return resources.some(resource => resource.schema.fields.some(field =>
+    (field.type === 'datetime' || field.type === 'datetime-range') && field.timePrecision === 'minute'));
+}
+
 const FIELD_TYPE_SET = new Set<string>(OPENXIANGDA_NATIVE_DATA_FIELD_TYPES_V2);
 const MULTI_TYPES = new Set<NativeDataFieldTypeV2>([
   'option.multiple',
@@ -863,7 +871,7 @@ function parseScalarConfiguration(
   }
   if (field.timePrecision !== undefined) {
     if (
-      type !== 'time' ||
+      !['time', 'datetime', 'datetime-range'].includes(type) ||
       !['minute', 'second'].includes(field.timePrecision)
     ) {
       issue(

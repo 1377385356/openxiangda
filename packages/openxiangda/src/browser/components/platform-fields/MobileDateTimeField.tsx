@@ -3,7 +3,7 @@ import { useRef, useState } from 'react';
 import { Button, Calendar, ConfigProvider, Popup, zhCN } from '../../mobile';
 import type { FieldProps } from './MobileFieldControls';
 import { usePresentationTimeZone } from '../../presentation-time';
-import type { DateTimeConstraints } from './zoned-date-time';
+import { fieldDateTimeConstraints, type DateTimeConstraints } from './zoned-date-time';
 import { MobileZonedDateTimeField } from './MobileZonedDateTimeField';
 import { MobileFieldTrigger, MobileSheetHeader } from './MobileFieldLayout';
 import {
@@ -18,10 +18,11 @@ import {
 /** Calendar/time switching and staged range steps adapted from 1.x Date fields. */
 export function MobileDateTimeField(props: FieldProps & DateTimeConstraints) {
   const inherited = usePresentationTimeZone(props.timeZone);
+  const effective = { ...props, ...fieldDateTimeConstraints(props.field, props) };
   const zoned = props.field.type === 'datetime' || props.field.type === 'datetime-range';
-  if (zoned && (inherited || props.min !== undefined || props.max !== undefined || props.minuteStep !== undefined))
-    return <MobileZonedDateTimeField {...props} timeZone={inherited ?? Intl.DateTimeFormat().resolvedOptions().timeZone} />;
-  return <LocalMobileDateTimeField {...props} />;
+  if (zoned && (inherited || props.min !== undefined || props.max !== undefined || effective.minuteStep !== undefined))
+    return <MobileZonedDateTimeField {...effective} timeZone={inherited ?? Intl.DateTimeFormat().resolvedOptions().timeZone} />;
+  return <LocalMobileDateTimeField {...effective} />;
 }
 
 function LocalMobileDateTimeField({

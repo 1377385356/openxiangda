@@ -17,6 +17,23 @@ import {
   type DataResource,
 } from '../src/index.js';
 
+test('time precision applies to datetime instants and ranges but never to plain dates', () => {
+  for (const type of ['time', 'datetime', 'datetime-range'] as const) {
+    for (const timePrecision of ['minute', 'second'] as const) {
+      const field = { code: 'startsAt', type, timePrecision,
+        ...(type === 'datetime-range' ? { rangeBoundary: 'half-open' as const } : {}) };
+      assert.deepEqual(validateField(field), [], `${type}/${timePrecision}`);
+    }
+  }
+  for (const type of ['date', 'date-range'] as const) {
+    assert.ok(validateField({ code: 'day', type, timePrecision: 'minute',
+      ...(type === 'date-range' ? { rangeBoundary: 'closed' as const } : {}) })
+      .some(item => item.code === 'DATA_RESOURCE_FIELD_TIME_PRECISION_INVALID'));
+  }
+  assert.ok(validateField({ code: 'startsAt', type: 'datetime', timePrecision: 'hour' })
+    .some(item => item.code === 'DATA_RESOURCE_FIELD_TIME_PRECISION_INVALID'));
+});
+
 test('defines location as exact DingTalk/browser coordinates', () => {
   const schema = FIELD_VALUE_SCHEMAS.location as {
     required: readonly string[];

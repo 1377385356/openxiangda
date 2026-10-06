@@ -7,7 +7,11 @@ import type { DataFieldSurface } from 'openxiangda-contracts/browser';
 import { fieldValueForData, fieldValueForForm } from './field-form-codec';
 import { PresentationTime, usePresentationTimeZone } from '../../presentation-time';
 import { ZonedDateTimeField } from './ZonedDateTimeField';
-import type { DateTimeConstraints } from './zoned-date-time';
+import { fieldDateTimeConstraints, type DateTimeConstraints } from './zoned-date-time';
+
+const minuteDisplayOptions: Intl.DateTimeFormatOptions = {
+  year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
+};
 
 function rangeEndPlaceholder(field: DataFieldSurface) {
   if (field.rangeBoundary === 'closed') return `结束${field.label}（含）`;
@@ -20,10 +24,11 @@ export function DateTimeField(props: DateTimeConstraints & {
   value?: unknown; onChange?: (value: unknown) => void;
 }) {
   const inherited = usePresentationTimeZone(props.timeZone);
+  const effective = { ...props, ...fieldDateTimeConstraints(props.field, props) };
   const zoned = props.field.type === 'datetime' || props.field.type === 'datetime-range';
-  if (zoned && (inherited || props.min !== undefined || props.max !== undefined || props.minuteStep !== undefined))
-    return <ZonedDateTimeField {...props} timeZone={inherited ?? Intl.DateTimeFormat().resolvedOptions().timeZone} />;
-  return <LocalDateTimeField {...props} />;
+  if (zoned && (inherited || props.min !== undefined || props.max !== undefined || effective.minuteStep !== undefined))
+    return <ZonedDateTimeField {...effective} timeZone={inherited ?? Intl.DateTimeFormat().resolvedOptions().timeZone} />;
+  return <LocalDateTimeField {...effective} />;
 }
 
 function LocalDateTimeField({
@@ -124,6 +129,7 @@ export function DateTimeValueDisplay({
   value: unknown;
   timeZone?: string;
 }) {
+  const options = field.timePrecision === 'minute' ? minuteDisplayOptions : undefined;
   if (field.type === 'date-range' || field.type === 'datetime-range') {
     const range = value as { start?: unknown; end?: unknown };
     const suffix = field.rangeBoundary === 'closed'
@@ -132,7 +138,7 @@ export function DateTimeValueDisplay({
         ? '（不含结束）'
         : '';
     return <>{range?.start && range?.end ? field.type === 'datetime-range'
-      ? <><PresentationTime value={range.start} timeZone={timeZone} /> 至 <PresentationTime value={range.end} timeZone={timeZone} />{suffix}</>
+      ? <><PresentationTime value={range.start} timeZone={timeZone} options={options} /> 至 <PresentationTime value={range.end} timeZone={timeZone} options={options} />{suffix}</>
       : `${range.start} 至 ${range.end}${suffix}` : '-'}</>;
   }
   if (field.type === 'time') {
@@ -140,7 +146,7 @@ export function DateTimeValueDisplay({
     return <>{field.timePrecision === 'minute' ? time.slice(0, 5) : time}</>;
   }
   if (field.type === 'datetime') {
-    return <PresentationTime value={value} timeZone={timeZone} />;
+    return <PresentationTime value={value} timeZone={timeZone} options={options} />;
   }
   return <Typography.Text>{String(value)}</Typography.Text>;
 }
@@ -149,10 +155,11 @@ export function DateTimeFilter(props: DateTimeConstraints & {
   field: DataFieldSurface; value: unknown; onChange: (value: unknown) => void;
 }) {
   const inherited = usePresentationTimeZone(props.timeZone);
+  const effective = { ...props, ...fieldDateTimeConstraints(props.field, props) };
   const zoned = props.field.type === 'datetime' || props.field.type === 'datetime-range';
-  if (zoned && (inherited || props.min !== undefined || props.max !== undefined || props.minuteStep !== undefined))
-    return <ZonedDateTimeField {...props} filter timeZone={inherited ?? Intl.DateTimeFormat().resolvedOptions().timeZone} />;
-  return <LocalDateTimeFilter {...props} />;
+  if (zoned && (inherited || props.min !== undefined || props.max !== undefined || effective.minuteStep !== undefined))
+    return <ZonedDateTimeField {...effective} filter timeZone={inherited ?? Intl.DateTimeFormat().resolvedOptions().timeZone} />;
+  return <LocalDateTimeFilter {...effective} />;
 }
 
 function LocalDateTimeFilter({

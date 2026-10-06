@@ -34,6 +34,32 @@ function diagnosticOf(error: unknown, code: string, path: string) {
   );
 }
 
+test('sealed and target capability closure requires precise datetime saves only for minute declarations', () => {
+  for (const type of ['time', 'datetime', 'datetime-range'] as const) {
+    for (const timePrecision of [undefined, 'second', 'minute'] as const) {
+      const app = defineOpenXiangdaApp({ ...sourceDeclaration, data: {
+        ...sourceDeclaration.data,
+        resources: sourceDeclaration.data!.resources.map(resource => resource.code !== 'instruments' ? resource : {
+          ...resource, fields: [...resource.fields, { code: 'startsAt', label: '开始时间', type,
+            ...(timePrecision ? { timePrecision } : {}),
+            ...(type === 'datetime-range' ? { rangeBoundary: 'half-open' as const } : {}) }],
+        }),
+      } });
+      const sources = compileApplicationSources(app);
+      const target = compileNativeApplicationConfiguration({ appCode: app.app.code,
+        configBytes: sources.config.content, contractBytes: sources.contracts.content,
+        expectedConfigDigest: sources.config.digest, expectedContractDigest: sources.contracts.digest });
+      const sealed = compileAppPackage({ config: app, version: '0.1.0',
+        source: { repository: 'https://example.invalid/lab.git', commit: 'a'.repeat(40), dirty: false },
+        toolchainVersion: '2.39.0', artifacts: [], manifests: {}, minimumPlatformVersion: '2.39.0' });
+      assert.deepEqual(sealed.manifest.compatibility.requiredPlatformCapabilities, target.requiredPlatformCapabilities);
+      const feature = target.requiredPlatformCapabilities.find(item => item.code === 'data.datetime-minute-precision');
+      assert.equal(feature?.contractVersion, type !== 'time' && timePrecision === 'minute' ? '1.0.0' : undefined);
+      assert.deepEqual(requiredPlatformCapabilities(app), target.requiredPlatformCapabilities);
+    }
+  }
+});
+
 test('sealed package and target preflight share the exact automatic cc capability closure', () => {
   const definition = {
     schemaVersion: SCHEMA_VERSIONS.workflowDefinition,

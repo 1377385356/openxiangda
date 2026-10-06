@@ -14,6 +14,27 @@ function input(config = JSON.parse(corpus.configuration.canonical)) {
   };
 }
 
+test('minute datetime precision has the same declaration semantics in ESM and CJS', () => {
+  for (const implementation of [esm, cjs]) {
+    for (const type of ['time', 'datetime', 'datetime-range']) {
+      for (const timePrecision of ['minute', 'second']) {
+        const field = { code: 'startsAt', type, timePrecision,
+          ...(type === 'datetime-range' ? { rangeBoundary: 'half-open' } : {}) };
+        const parsed = implementation.parseNativeDataFieldsV2([field], '/fields');
+        assert.equal(parsed[0]!.timePrecision, timePrecision);
+        assert.equal(implementation.requiresDateTimeMinutePrecision([{ schema: { fields: parsed } }]),
+          type !== 'time' && timePrecision === 'minute');
+      }
+    }
+    for (const type of ['date', 'date-range']) {
+      assert.throws(() => implementation.parseNativeDataFieldsV2([{ code: 'day', type, timePrecision: 'minute',
+        ...(type === 'date-range' ? { rangeBoundary: 'closed' } : {}) }], '/fields'), /NATIVE_DATA_FIELD_TIME_PRECISION_INVALID/);
+    }
+    assert.throws(() => implementation.parseNativeDataFieldsV2([{ code: 'startsAt', type: 'datetime', timePrecision: 'hour' }], '/fields'),
+      /NATIVE_DATA_FIELD_TIME_PRECISION_INVALID/);
+  }
+});
+
 test('both native compiler formats preserve explicit reference binding reset and reject non-booleans', () => {
   const field = { code: 'items', type: 'resource-ref.multiple', source: { kind: 'resource', resourceCode: 'choices', labelField: 'name',
     filters: [{ field: 'scope', operator: 'eq', binding: { kind: 'field', field: 'scope' } }] } };

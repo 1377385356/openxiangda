@@ -2,9 +2,36 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Temporal } from '@js-temporal/polyfill';
 import dayjs from 'dayjs';
-import { carrierWall, dateOptions, disabledZonedTime, instantToWall, validateDateTimeConstraints,
+import { carrierWall, dateOptions, disabledZonedTime, fieldDateTimeConstraints, instantToWall, validateDateTimeConstraints,
   wallCarrier, zonedInputResult } from '../src/browser/components/platform-fields/zoned-date-time';
 import { validatePresentationTimeZone, formatPresentationTime } from '../src/browser/presentation-time';
+
+test('declared minute precision preserves exact instants and stricter caller steps', () => {
+  for (const type of ['datetime', 'datetime-range'] as const) {
+    const constraints = fieldDateTimeConstraints({ type, timePrecision: 'minute' }, {});
+    for (const zone of ['Asia/Shanghai', 'UTC', 'America/Los_Angeles']) {
+      const instant = '2026-10-07T01:16:00.000Z';
+      assert.equal(zonedInputResult(instantToWall(instant, zone), zone, constraints).value, instant);
+      for (const suffix of ['01', '00.001', '00.000000001']) {
+        assert.ok(zonedInputResult(instantToWall(`2026-10-07T01:16:${suffix}Z`, zone), zone, constraints).error);
+      }
+    }
+    const stricter = fieldDateTimeConstraints({ type, timePrecision: 'minute' }, { minuteStep: 15 });
+    assert.match(zonedInputResult(Temporal.PlainDateTime.from('2026-10-07T09:16'), 'Asia/Shanghai', stricter).error!, /整 15/);
+  }
+  for (const timePrecision of [undefined, 'second'] as const) {
+    assert.equal(fieldDateTimeConstraints({ type: 'datetime', timePrecision }, {}).minuteStep, undefined);
+  }
+});
+
+test('historical second offsets cannot silently produce non-minute instants', () => {
+  const constraints = fieldDateTimeConstraints({ type: 'datetime', timePrecision: 'minute' }, {});
+  const wall = Temporal.PlainDateTime.from('1900-01-01T09:15');
+  assert.match(zonedInputResult(wall, 'Asia/Shanghai', constraints).error!, /精确整分钟/);
+  assert.equal(disabledZonedTime(wall.toPlainDate(), 'Asia/Shanghai', constraints).disabledHours().length, 24);
+  // Existing caller-only wall steps retain their original semantics.
+  assert.ok(zonedInputResult(wall, 'Asia/Shanghai', { minuteStep: 15 }).value);
+});
 
 test('IANA wall conversion preserves canonical instants and generated Dayjs form values', () => {
   const instant = '2026-09-08T01:15:00.000Z';

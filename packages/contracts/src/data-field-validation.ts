@@ -585,12 +585,12 @@ function validateScalarConfig(
   }
   if (
     field.timePrecision !== undefined &&
-    (type !== 'time' || !['minute', 'second'].includes(String(field.timePrecision)))
+    (!['time', 'datetime', 'datetime-range'].includes(type) || !['minute', 'second'].includes(String(field.timePrecision)))
   ) {
     diagnostics.push(
       diagnostic(
         'DATA_RESOURCE_FIELD_TIME_PRECISION_INVALID',
-        `${path}.timePrecision 只能用于 time`,
+        `${path}.timePrecision 只能用于 time、datetime 或 datetime-range`,
         `${path}.timePrecision`
       )
     );

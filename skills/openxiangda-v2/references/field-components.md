@@ -209,7 +209,15 @@ creation: 'prospective' }`。编译器自动要求 `data.user-candidate-launch-s
 ```ts
 { code: 'reminderMinute', type: 'time', label: '提醒时间', timePrecision: 'minute' }
 { code: 'checkpointSecond', type: 'time', label: '检查时间', timePrecision: 'second' }
+{ code: 'meetingStart', type: 'datetime', label: '会议开始', timePrecision: 'minute' }
+{ code: 'usageTimes', type: 'datetime-range', label: '使用时间', rangeBoundary: 'closed', timePrecision: 'minute' }
 ```
+
+`datetime`和`datetime-range`也可声明`timePrecision`。分钟声明同时驱动PC/手机
+输入、筛选和只读显示；保存仍为ISO instant，秒及小数秒非零时服务端拒绝，
+不会自动截断原值。区间的精度应用于两端，闭/半开边界分别保留。直接组件已有
+`minuteStep`时继续使用更严格步长；无需在每个页面重复设置步长。未声明或声明
+`second`沿用既有日期时间保存行为。`date`与`date-range`不使用时间精度。
 
 定位只支持钉钉定位或浏览器 Geolocation 采集 WGS84 经纬度。组件没有地址输入、
 手工定位或地图选点；服务商返回的地址/POI 只能作为该坐标的只读显示快照。

@@ -3,6 +3,7 @@ import dayjs, { type Dayjs } from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { validatePresentationTimeZone } from '../../presentation-time';
+import type { DataFieldSurface } from 'openxiangda-contracts/browser';
 
 dayjs.extend(utc);
 dayjs.extend(customParseFormat);
@@ -12,6 +13,15 @@ export interface DateTimeConstraints {
   min?: string;
   max?: string;
   minuteStep?: number;
+  /** Derived from the field declaration, independent of the wall-time step. */
+  instantPrecision?: 'minute';
+}
+
+export function fieldDateTimeConstraints(field: Pick<DataFieldSurface, 'type' | 'timePrecision'>,
+  input: DateTimeConstraints): DateTimeConstraints {
+  const minute = ['datetime', 'datetime-range'].includes(field.type) && field.timePrecision === 'minute';
+  return { ...input, minuteStep: input.minuteStep ?? (minute ? 1 : undefined),
+    ...(minute ? { instantPrecision: 'minute' as const } : {}) };
 }
 
 export function instantText(value: unknown): string {
@@ -62,6 +72,8 @@ export function zonedInputResult(value: Temporal.PlainDateTime, timeZone: string
       value.microsecond !== 0 || value.nanosecond !== 0)) {
     return { error: `请选择整 ${constraints.minuteStep} 分钟的时间` };
   }
+  if (constraints.instantPrecision === 'minute' && instant.epochNanoseconds % 60_000_000_000n !== 0n)
+    return { error: '此时区的时间不能表示精确整分钟，请选择其他日期或时区' };
   if (constraints.min && Temporal.Instant.compare(instant, Temporal.Instant.from(constraints.min)) < 0)
     return { error: '时间早于允许的最早时间' };
   if (constraints.max && Temporal.Instant.compare(instant, Temporal.Instant.from(constraints.max)) > 0)
@@ -94,7 +106,8 @@ export function disabledZonedTime(day: Temporal.PlainDate, zone: string, constra
     if (constraints.minuteStep === undefined || minute % constraints.minuteStep === 0) {
       try {
         const at = wallToInstant(day.toPlainDateTime({ hour, minute }), zone).epochNanoseconds;
-        result = [Math.max(0, min === undefined ? -Infinity : Math.ceil(Number(min - at) / 1e9)), Math.min(constraints.minuteStep === undefined ? 59 : 0, max === undefined ? Infinity : Math.floor(Number(max - at) / 1e9))];
+        if (constraints.instantPrecision !== 'minute' || at % 60_000_000_000n === 0n)
+          result = [Math.max(0, min === undefined ? -Infinity : Math.ceil(Number(min - at) / 1e9)), Math.min(constraints.minuteStep === undefined ? 59 : 0, max === undefined ? Infinity : Math.floor(Number(max - at) / 1e9))];
       } catch { /* A DST gap or repeated minute is not selectable. */ }
     }
     cache.set(key, result);

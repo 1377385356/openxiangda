@@ -26,6 +26,7 @@ export const PLATFORM_CAPABILITY_CONTRACT_VERSIONS = {
   "data.unique-keys": "1.1.0",
   "data.user-candidates": "1.0.0",
   "data.user-candidate-launch-scope": "1.0.0",
+  "data.datetime-minute-precision": "1.0.0",
   "data.managed-concurrency": "1.0.0",
   "data.managed-concurrency.durable": "1.0.0",
   "workflow.named-input-sources": "1.0.0",
