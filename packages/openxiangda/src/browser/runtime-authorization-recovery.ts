@@ -64,7 +64,7 @@ export async function recoverRuntimeAuthorizationRead<T>(
   const abort = () => controller.abort(signal && abortReason(signal));
   signal?.addEventListener('abort', abort, { once: true });
   let timer = setTimeout(() => controller.abort(exhausted()), BUDGET_MS);
-  let projectionRetries = 0, projectionDeadline = 0, transportFailures = 0, backoff = 0;
+  let projectionRetries = 0, projectionDeadline = 0, backoff = 0, transportBackoff = 0;
   let lastError: unknown;
   try {
     for (let attempt = 0; attempt < (entryDeadline === undefined ? MAX_ATTEMPTS : ENTRY_MAX_ATTEMPTS); attempt++) {
@@ -117,11 +117,12 @@ export async function recoverRuntimeAuthorizationRead<T>(
           (failure?.status === 503 && failure.code === 'PLATFORM_TRANSPORT_UNAVAILABLE' ||
             failure?.status === undefined && failure?.name === 'TimeoutError');
         if (!busy && !transport) throw error;
-        if (transport && ++transportFailures >= 3) throw error;
         const hint = Number(failure.retryAfterMs ?? failure.data?.retryAfterMs);
         const suggested = Number.isFinite(hint) && hint >= 0 ? hint : 0;
         const jitter = Math.min(1, Math.max(0, dependencies.random()));
-        const delay = entryDeadline !== undefined
+        const delay = transport
+          ? Math.max(suggested, Math.min(30_000, 2000 * 2 ** Math.min(transportBackoff++, 4))) * (1 + jitter * .25)
+          : entryDeadline !== undefined
           ? Math.min(15_000, Math.max(2000, suggested)) * (1 + jitter * .2)
           : Math.max(suggested, Math.min(30_000, 2000 * 2 ** Math.min(backoff++, 4))) * (1 + jitter * .25);
         if (delay >= deadline - dependencies.now()) throw error;
