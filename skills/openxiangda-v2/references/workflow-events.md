@@ -442,6 +442,14 @@ return <WorkflowSubmissionPage workflowCode="reinstatement" variant="mobile" for
 及已接受命令的展示优先于该提示。应用应始终挂载标准页，避免当前资格变化遮蔽原结果恢复。
 这些规则属于应用代码，不能通过管理员节点配置修改；服务器仍独立校验实际业务资格与字段。
 
+`valueLinkage(changed, values)`在用户输入后同步返回canonical字段patch，例如
+`Object.hasOwn(changed, 'owner') ? { specialist: values.owner ?? null } : {}`。
+改负责人复制专员，手改专员保留；再次改负责人重新复制，清空用null。回调只能改当前
+可见、可编辑且匹配launch的字段，不能改系统/只读/隐藏字段或返回Promise。输入是副本，
+写回沿用codec并标记已触碰，迟到预填不会覆盖联动值。预填、草稿、恢复、程序写回不触发
+联动；PC/手机规则一致。异常保留输入并阻断新提交，下一次成功输入可恢复，原提交结果
+查询及已接受命令仍优先。异步资料读取放准备阶段，服务器仍校验资格和业务不变量。
+
 通用应用待办页通过 `frontend.user.applicationTodoCenter: true` 启用，平台同时提供
 `/todos` 和 `/m/todos`。它只投影当前登录用户的 Notification Hub 收件人数据，
 `查看详情` 使用上述统一导航解析；待办页不常驻业务详情，审批命令仍在目标 Workflow

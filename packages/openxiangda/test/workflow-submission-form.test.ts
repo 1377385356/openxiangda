@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { SurfaceField } from '../src/browser/components/resource/SurfaceFields.js';
-import { workflowSubmissionFormProjection, workflowSubmissionPrefill } from '../src/browser/components/workflow/workflow-submission-form.js';
+import { workflowSubmissionFormProjection, workflowSubmissionPrefill, workflowSubmissionValueLinkage } from '../src/browser/components/workflow/workflow-submission-form.js';
 import { normalizeFormValues, normalizeRecordForForm } from '../src/browser/components/platform-fields/field-form-codec.js';
 
 const field = (key: string, requiredHint = false): SurfaceField => ({ key, label: key, type: 'text.short', widget: 'text',
@@ -46,4 +46,49 @@ test('prefill and field conditions consume canonical closed date ranges through 
 });
 test('hidden optional fields without a replacement are excluded from submission', () => {
   assert.deepEqual(workflowSubmissionFormProjection(fields, { reviewer: 'stale' }, { reviewer: { visible: false } }).values, {});
+});
+
+test('a linked assignee copies on owner edits while independent edits and explicit clear are preserved', () => {
+  const people = [field('owner'), field('specialist')];
+  const link = (changed: Readonly<Record<string, unknown>>, values: Readonly<Record<string, unknown>>) =>
+    Object.hasOwn(changed, 'owner') ? { specialist: values.owner ?? null } : {};
+  const a = { value: 'a', label: '甲' }, b = { value: 'b', label: '乙' };
+  assert.deepEqual(workflowSubmissionValueLinkage(people, { owner: a }, { owner: a }, link), { specialist: a });
+  assert.deepEqual(workflowSubmissionValueLinkage(people, { specialist: b }, { owner: a, specialist: b }, link), {});
+  assert.deepEqual(workflowSubmissionValueLinkage(people, { owner: b }, { owner: b, specialist: a }, link), { specialist: b });
+  assert.deepEqual(workflowSubmissionValueLinkage(people, { owner: null }, { owner: null }, link), { specialist: null });
+});
+test('linkage has no access to unmatched fields and cannot mutate original canonical objects', () => {
+  const values = { reason: 'personal', reviewer: { value: 'original', label: '原人' }, identity: 'private' };
+  const changed = { reviewer: values.reviewer };
+  const patch = workflowSubmissionValueLinkage(fields, changed, values, (input, all) => {
+    assert.equal(Object.hasOwn(all, 'identity'), false);
+    (input.reviewer as { label: string }).label = 'changed';
+    return { reviewer: input.reviewer! };
+  });
+  assert.equal(values.reviewer.label, '原人');
+  assert.equal((patch.reviewer as { label: string }).label, 'changed');
+});
+test('the entire linkage patch rejects hidden, readonly, system and unmatched targets before applying', () => {
+  const projected = workflowSubmissionFormProjection(fields, {}, { reviewer: { visible: false } }).fields;
+  for (const [active, key] of [[projected, 'reviewer'], [[{ ...field('reviewer'), widget: 'readonly' }], 'reviewer'],
+    [[{ ...field('reviewer'), system: true }], 'reviewer'], [fields, 'applicant']] as const) {
+    assert.throws(() => workflowSubmissionValueLinkage(active as SurfaceField[], {}, {}, () => ({ reason: 'changed', [key]: 'forged' })), /FIELD_UNAVAILABLE/);
+  }
+});
+test('async, thenable, array and throwing callbacks fail without replacing entered values', () => {
+  const values = { reason: 'entered' };
+  for (const result of [Promise.resolve({ reason: 'later' }), { then: () => {} }, []]) {
+    assert.throws(() => workflowSubmissionValueLinkage(fields, {}, values, (() => result) as any), /LINKAGE_INVALID/);
+  }
+  assert.throws(() => workflowSubmissionValueLinkage(fields, {}, values, () => { throw new Error('business-rule'); }), /business-rule/);
+  assert.deepEqual(values, { reason: 'entered' });
+  assert.deepEqual(workflowSubmissionValueLinkage(fields, {}, values), {});
+});
+test('linked canonical ranges survive the shared codec and touched protection against late prefill', () => {
+  const range = { ...field('period'), type: 'date-range', widget: 'date-range', rangeBoundary: 'closed' } as SurfaceField;
+  const surface = { fields: { period: range } };
+  const patch = workflowSubmissionValueLinkage([range], {}, {}, () => ({ period: { start: '2026-10-01', end: '2026-10-06' } }));
+  assert.deepEqual(normalizeFormValues(normalizeRecordForForm(patch, surface), surface), patch);
+  assert.deepEqual(workflowSubmissionPrefill([range], { period: { start: '2026-01-01', end: '2026-02-01' } }, new Set(), key => Object.hasOwn(patch, key)), {});
 });

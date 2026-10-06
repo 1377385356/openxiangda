@@ -26,7 +26,7 @@ export function ResourceFormContent({
   actions?: ReactNode;
   canWriteField: (field: SurfaceField) => boolean;
   renderers?: SurfaceFieldRenderers;
-  onValuesChange?: () => void;
+  onValuesChange?: (changed: Record<string, unknown>, values: Record<string, unknown>) => void;
   onSubmit: (values: Record<string, unknown>) => void;
 }) {
   const errorRef = useRef<HTMLDivElement>(null);

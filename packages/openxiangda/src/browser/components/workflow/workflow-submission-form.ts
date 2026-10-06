@@ -1,4 +1,5 @@
 import type { SurfaceField } from '../resource/SurfaceFields';
+type JsonObject = Record<string, unknown>;
 
 /** Presentation rules supplied by application code; never an authorization grant. */
 export interface WorkflowSubmissionFieldState {
@@ -55,4 +56,28 @@ export function workflowSubmissionPrefill(
     if (!touched(key)) result[key] = value;
   }
   return result;
+}
+
+/** User input only; a presentation patch never expands the launch contract. */
+export function workflowSubmissionValueLinkage(
+  fields: readonly SurfaceField[],
+  changed: Readonly<JsonObject>,
+  values: Readonly<JsonObject>,
+  linkage?: (changed: Readonly<JsonObject>, values: Readonly<JsonObject>) => JsonObject,
+): JsonObject {
+  if (!linkage) return {};
+  const allowed = new Set(fields.filter(field => !field.system && field.widget !== 'readonly').map(field => field.key));
+  if (Object.keys(changed).some(key => !allowed.has(key))) throw new Error('OPENXIANGDA_WORKFLOW_FORM_FIELD_UNAVAILABLE');
+  const select = (input: Readonly<JsonObject>): JsonObject => structuredClone(Object.fromEntries(
+    Object.entries(input).filter(([key]) => allowed.has(key)),
+  ));
+  const patch = linkage(select(changed), select(values));
+  if (!patch || typeof patch !== 'object' || Array.isArray(patch) ||
+      ![Object.prototype, null].includes(Object.getPrototypeOf(patch)) || Object.hasOwn(patch, 'then')) {
+    // An accidentally async callback must not leave an unhandled rejection.
+    if (patch instanceof Promise) void patch.catch(() => {});
+    throw new Error('OPENXIANGDA_WORKFLOW_FORM_LINKAGE_INVALID');
+  }
+  if (Object.keys(patch).some(key => !allowed.has(key))) throw new Error('OPENXIANGDA_WORKFLOW_FORM_FIELD_UNAVAILABLE');
+  return structuredClone(patch);
 }

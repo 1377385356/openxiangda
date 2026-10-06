@@ -131,7 +131,7 @@ import { PlatformAvatar } from '../PlatformAvatar';
 import { SubtableField } from '../platform-fields/SubtableField';
 import { namedProcessFormValues, standardProcessFormValues } from './standard-process-values';
 import { fieldWritable } from '../resource/resource-page-helpers';
-import { workflowSubmissionFormProjection, workflowSubmissionPrefill, type WorkflowSubmissionFieldStates } from './workflow-submission-form';
+import { workflowSubmissionFormProjection, workflowSubmissionPrefill, workflowSubmissionValueLinkage, type WorkflowSubmissionFieldStates } from './workflow-submission-form';
 export type { WorkflowSubmissionFieldState, WorkflowSubmissionFieldStates } from './workflow-submission-form';
 
 type PageVariant = 'desktop' | 'mobile';
@@ -2129,6 +2129,8 @@ export interface WorkflowSubmissionFormOptions {
    * are not bound launch inputs. Never inserted into form submission/drafts. */
   candidateScopeValues?: Readonly<JsonObject>;
   fieldState?: (values: Readonly<JsonObject>) => WorkflowSubmissionFieldStates;
+  /** Synchronous canonical patch after user input, limited to editable launch fields. */
+  valueLinkage?: (changed: Readonly<JsonObject>, values: Readonly<JsonObject>) => JsonObject;
   intro?: ReactNode;
   /** Blocks only a new form; original submission recovery always takes priority. */
   preparation?: ReactNode;
@@ -2161,6 +2163,7 @@ export function WorkflowSubmissionPage({
   const [requirementForm] = Form.useForm<JsonObject>();
   const watchedFormValues = Form.useWatch([], { form: subjectForm, preserve: true }) as JsonObject | undefined;
   const [prefillError, setPrefillError] = useState(false);
+  const [linkageError, setLinkageError] = useState(false);
   const prefill = useRef({ context: '', applied: new Set<string>() });
   const [loading, setLoading] = useState(false);
   const [launchSurface, setLaunchSurface] =
@@ -2269,6 +2272,19 @@ export function WorkflowSubmissionPage({
     }
   }, [fields, formOptions?.fieldState, subjectDefinition, watchedFormValues]);
   const prefillContext = JSON.stringify([recoveryScope, identity.environment.activeAppVersionId, submissionMode, subjectId]);
+  useEffect(() => { setLinkageError(false); }, [prefillContext]);
+  const onValuesChange = (changed: Record<string, unknown>, values: Record<string, unknown>) => {
+    if (!formOptions?.valueLinkage || loading || commandId || pendingSubmission || !subjectDefinition) return;
+    try {
+      const canonical = normalizeFormValues(values, subjectDefinition.surface) as JsonObject;
+      const visible = workflowSubmissionFormProjection(fields, canonical, formOptions.fieldState?.(canonical)).fields;
+      const patch = workflowSubmissionValueLinkage(visible,
+        normalizeFormValues(changed, subjectDefinition.surface) as JsonObject, canonical, formOptions.valueLinkage);
+      const normalized = normalizeRecordForForm(patch, subjectDefinition.surface);
+      subjectForm.setFields(Object.entries(normalized).map(([name, value]) => ({ name, value, touched: true, errors: [] })));
+      setLinkageError(false);
+    } catch { setLinkageError(true); }
+  };
   useEffect(() => {
     if (!launchSurface || commandId || pendingSubmission || formOptions?.preparation || mutationMode !== 'create' || !subjectDefinition ||
       launchSurface.environmentId !== identity.environment.id || (generatedNamedSubmission && !namedIntent)) return;
@@ -2700,7 +2716,7 @@ export function WorkflowSubmissionPage({
   }
 
   const submit = async (values: JsonObject) => {
-    if (submitInFlight.current || commandId || completion || !launchSurface || formOptions?.preparation || prefillError || formProjection.error) return;
+    if (submitInFlight.current || commandId || completion || !launchSurface || formOptions?.preparation || prefillError || linkageError || formProjection.error) return;
     const unresolved = readPendingWorkflowSubmission(submissionLocatorStorage(), recoveryScope);
     if (pendingSubmission || unresolved) { if (unresolved) setPendingSubmission(unresolved); return; }
     submitInFlight.current = true;
@@ -2957,11 +2973,12 @@ export function WorkflowSubmissionPage({
     embedded: Boolean(onDismiss),
     fieldRenderers,
     formIntro: formOptions?.intro,
-    formError: prefillError || formProjection.error ? '表单规则暂不可用，请联系管理员。' : undefined,
+    formError: prefillError || linkageError || formProjection.error ? '表单规则暂不可用，请联系管理员。' : undefined,
     recordId: mutationMode === 'update' ? subjectId : undefined,
     expectedRevision: mutationMode === 'update' ? loadedSubjectRevision : undefined,
     onBack: onDismiss ? dismissDrawer : () => navigate(-1),
     onSubmit: submit,
+    onValuesChange,
     onAnswer: answer,
     onRetry: retry,
     onRefresh: () => { setProcessError(null); setProcessRefreshAttempt(value => value + 1); },
@@ -2998,6 +3015,7 @@ interface ProcessSubmissionRendererProps {
   expectedRevision?: number;
   onBack: () => void;
   onSubmit: (values: JsonObject) => Promise<void>;
+  onValuesChange: (changed: Record<string, unknown>, values: Record<string, unknown>) => void;
   onAnswer: (answers: JsonObject) => Promise<void>;
   onRetry: () => Promise<void>;
   onRefresh: () => void;
@@ -3086,7 +3104,7 @@ function StandardProcessSubmissionRenderer(props: ProcessSubmissionRendererProps
       submitDisabled={props.submitted || Boolean(props.formError)} submitLabel="提交审批" canWriteField={() => true} renderers={props.fieldRenderers}
       feedback={<>{props.formIntro}{props.launchControls}{props.formError && <Alert type="error" showIcon title={props.formError} />}
         {props.processing && <Alert type="info" showIcon title="正在提交申请，请稍候…" />}</>}
-      onSubmit={values => void props.onSubmit(values)} />
+      onValuesChange={props.onValuesChange} onSubmit={values => void props.onSubmit(values)} />
     <ProcessCommandPanel error={props.processError} form={props.requirementForm} loading={props.loading}
       onAnswer={props.onAnswer} onRetry={props.onRetry} onRefresh={props.onRefresh} surface={props.processSurface} />
   </div>;
