@@ -5,6 +5,11 @@ export default class Dev extends OpenXiangdaCommand {
   static flags = {
     ...eventWorkspaceFlags,
     'no-open': Flags.boolean({ summary: '就绪后不自动打开浏览器' }),
+    identity: Flags.string({
+      summary: '浏览器使用开发者身份或应用登录验证普通用户',
+      options: ['developer', 'browser'],
+      default: 'developer',
+    }),
     'web-port': Flags.integer({
       summary: '固定本地 Web 端口（自动化验证使用）',
       min: 1,
@@ -18,6 +23,7 @@ export default class Dev extends OpenXiangdaCommand {
     return this.present(
       await this.services.dev(flags.cwd, {
         noOpen: flags['no-open'],
+        identityMode: flags.identity as 'developer' | 'browser',
         ...(flags['web-port'] === undefined
           ? {}
           : { webPort: flags['web-port'] }),

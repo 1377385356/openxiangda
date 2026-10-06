@@ -55,6 +55,8 @@ export interface ConnectedDevelopmentOptions {
    */
   operationPaths?: readonly string[];
   noOpen?: boolean;
+  /** Browser mode uses application login and never injects a developer actor. */
+  identityMode?: 'developer' | 'browser';
   webPort?: number;
   onStatus?: (message: string) => void;
   readinessTimeoutMs?: number;
@@ -86,6 +88,7 @@ export interface ConnectedDevelopmentSession {
   };
   publishedResourcesOnly: boolean;
   manifestOverlay: boolean;
+  identityMode: 'developer' | 'browser';
 }
 
 export interface ConnectedDevelopmentResult {
@@ -147,6 +150,7 @@ export async function runConnectedDevelopment(
     ports: { web: webPort, app: appPort, proxy: proxyPort },
     publishedResourcesOnly: true,
     manifestOverlay: false,
+    identityMode: input.identityMode ?? 'developer',
   };
 
   let grant = await input.remoteSession.create();
@@ -206,6 +210,7 @@ export async function runConnectedDevelopment(
     developerSession: input.developerSession,
     sessionHeaders,
     operationPaths,
+    identityMode: input.identityMode ?? 'developer',
   });
 
   try {
@@ -273,6 +278,7 @@ export async function runConnectedDevelopment(
     refreshTimer.unref();
 
     input.onStatus?.(`正在启动连接式开发：${urls.web}`);
+    if (input.identityMode === 'browser') input.onStatus?.('使用应用登录验证当前用户；浏览器请求不会注入开发者身份');
     if (productionData) {
       input.onStatus?.("警告：当前连接 production，页面使用正式业务数据");
     } else {
@@ -335,6 +341,7 @@ function createConnectedProxy(input: {
   developerSession: OpenXiangdaDeveloperSession;
   sessionHeaders: () => Promise<Record<string, string>>;
   operationPaths: ReadonlySet<string>;
+  identityMode: 'developer' | 'browser';
 }) {
   return createHttpServer((request, response) => {
     void (async () => {
@@ -357,21 +364,26 @@ function createConnectedProxy(input: {
         response.end(JSON.stringify({ code: "OPENXIANGDA_CONNECTED_BACKEND_DISABLED", message: "当前应用未声明本地后端" }));
         return;
       }
-      const authorization = `Bearer ${await input.developerSession.getAccessToken()}`;
       const headers = forwardedHeaders(request.headers);
       const explicitAuthorization = request.headers.authorization;
       delete headers['x-openxiangda-dev-session'];
       delete headers['x-openxiangda-connected-dev'];
-      // Application OAuth and other explicit callers retain their real identity.
-      // The platform validates it; the proxy never interprets or grants a role.
-      if (route.kind === 'remote' && explicitAuthorization && explicitAuthorization !== authorization) {
-        headers.authorization = explicitAuthorization;
-      } else {
-        headers.authorization = authorization;
+      const browserIdentity = input.identityMode === 'browser' ||
+        hasApplicationBrowserCookie(request.headers.cookie) ||
+        isApplicationAuthenticationRequest(request.url || '/', input.appCode);
+      // Cookie presence is routing only. The platform validates even empty or
+      // expired cookies; rejection must never fall back to the developer.
+      const authorization = browserIdentity ? undefined :
+        `Bearer ${await input.developerSession.getAccessToken()}`;
+      const ordinaryIdentity = browserIdentity || !!(explicitAuthorization && explicitAuthorization !== authorization);
+      if (!ordinaryIdentity) {
+        headers.authorization = authorization!;
         Object.assign(headers, await input.sessionHeaders());
         if (route.kind === 'local') headers["x-openxiangda-connected-dev"] = "1";
       }
-      await forward(request, response, route.url, headers);
+      // Ordinary application operations require gateway-issued invocation proof,
+      // never the local Nest developer shortcut.
+      await forward(request, response, ordinaryIdentity && route.kind === 'local' ? route.platformUrl : route.url, headers);
     })().catch(error => {
       if (response.headersSent) response.destroy(error as Error);
       else {
@@ -395,30 +407,46 @@ function proxyRoute(
   operationPaths: ReadonlySet<string>
 ) {
   const incoming = new URL(requestUrl, "http://connected.local");
+  const base = platformBaseUrl.endsWith('/') ? platformBaseUrl : `${platformBaseUrl}/`;
+  const appApiPrefix = `/openxiangda-app-api/v2/${encodeURIComponent(appCode)}/${encodeURIComponent(environmentKey)}/`;
+  const localRoute = (path: string, platformPath = `${appApiPrefix}${path.replace(/^\/+/, '')}`) => {
+    if (!localAppBaseUrl) return { kind: 'disabled' as const };
+    return { kind: 'local' as const,
+      url: new URL(`${path}${incoming.search}`, `${localAppBaseUrl}/`),
+      platformUrl: new URL(`${platformPath.replace(/^\/+/, '')}${incoming.search}`, base) };
+  };
   // Bare declared operation path (no runtime mount metadata in connected dev):
   // forward to the local backend exactly as the mounted app-api branch would.
   if (operationPaths.has(incoming.pathname.replace(/\/+$/, "") || "/")) {
-    if (!localAppBaseUrl) return { kind: "disabled" as const };
-    return { kind: "local" as const, url: new URL(`${incoming.pathname}${incoming.search}`, `${localAppBaseUrl}/`) };
+    return localRoute(incoming.pathname);
   }
   if (incoming.pathname === "/api" || incoming.pathname.startsWith("/api/")) {
-    if (!localAppBaseUrl) return { kind: "disabled" as const };
-    return { kind: "local" as const, url: new URL(`${incoming.pathname}${incoming.search}`, `${localAppBaseUrl}/`) };
+    return localRoute(incoming.pathname);
   }
   if (incoming.pathname !== "/service" && !incoming.pathname.startsWith("/service/")) return null;
   const servicePath = incoming.pathname.slice("/service".length) || "/";
-  const appApiPrefix = `/openxiangda-app-api/v2/${encodeURIComponent(appCode)}/${encodeURIComponent(environmentKey)}/`;
   if (servicePath.startsWith(appApiPrefix)) {
     const runtimePath = servicePath.slice(appApiPrefix.length);
     if (!runtimePath || runtimePath.split("/").some(part => !part || part === "." || part === "..")) {
       throw new Error("OPENXIANGDA_CONNECTED_APP_API_PATH_INVALID");
     }
     const decoded = runtimePath.split("/").map(part => decodeURIComponent(part)).join("/");
-    if (!localAppBaseUrl) return { kind: "disabled" as const };
-    return { kind: "local" as const, url: new URL(`/${decoded}${incoming.search}`, `${localAppBaseUrl}/`) };
+    return localRoute(`/${decoded}`, servicePath);
   }
-  const base = platformBaseUrl.endsWith("/") ? platformBaseUrl : `${platformBaseUrl}/`;
   return { kind: "remote" as const, url: new URL(`${servicePath.replace(/^\/+/, "")}${incoming.search}`, base) };
+}
+
+function hasApplicationBrowserCookie(cookie: string | undefined): boolean {
+  return (cookie || '').split(';').some(part => {
+    const name = part.split('=', 1)[0]?.trim();
+    return name === 'openxiangda-browser' || name === '__Host-openxiangda-browser';
+  });
+}
+
+function isApplicationAuthenticationRequest(requestUrl: string, appCode: string): boolean {
+  const path = new URL(requestUrl, 'http://connected.local').pathname;
+  const auth = `/service/openxiangda-api/v2/applications/${encodeURIComponent(appCode)}/auth`;
+  return path === auth || path.startsWith(`${auth}/`);
 }
 
 function connectedBackendRoot(workspaceRoot: string, backendRoot: string): string {

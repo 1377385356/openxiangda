@@ -2538,6 +2538,7 @@ export class OpenXiangdaApplicationServices {
     root?: string,
     input: {
       noOpen?: boolean;
+      identityMode?: 'developer' | 'browser';
       /** @internal Used by the packaged browser verification harness. */
       webPort?: number;
       onStatus?: (message: string) => void;
@@ -2719,6 +2720,7 @@ export class OpenXiangdaApplicationServices {
       remoteSession,
       ...(backendRuntimeRequired(workspace.config) ? { backendRoot: workspace.config.backend.root } : {}),
       operationPaths: (workspace.config.backend?.operations ?? []).map(operation => operation.path),
+      ...(input.identityMode === undefined ? {} : { identityMode: input.identityMode }),
       ...(input.noOpen === undefined ? {} : { noOpen: input.noOpen }),
       ...(input.webPort === undefined ? {} : { webPort: input.webPort }),
       ...(input.onStatus ? { onStatus: input.onStatus } : {}),

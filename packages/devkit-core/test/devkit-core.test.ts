@@ -121,7 +121,7 @@ test("connected development prefers test and falls back to published production"
   );
 });
 
-test("connected development proxies remote data and local Nest without Docker or credential leakage", async () => {
+for (const identityMode of ['developer', 'browser'] as const) test(`connected development preserves ${identityMode} identity without Docker or credential leakage`, async () => {
   const root = mkdtempSync(join(tmpdir(), "openxiangda-connected-dev-"));
   const bin = join(root, "bin");
   const pidPath = join(root, "child-pids.txt");
@@ -174,9 +174,12 @@ server.listen(port, "127.0.0.1");
     const platformBaseUrl = `http://127.0.0.1:${remoteAddress.port}/service`;
     const secretDeveloperToken = "developer-token-must-not-leak";
     const secretSessionToken = "dev-session-token-must-not-leak";
+    let developerReads = 0;
     const result = await runConnectedDevelopment({
       root,
       backendRoot: "services/api",
+      identityMode,
+      operationPaths: ['/business/probe'],
       appCode: "reference-app",
       platformBaseUrl,
       environment: {
@@ -192,7 +195,7 @@ server.listen(port, "127.0.0.1");
         },
       } as any,
       developerSession: {
-        getAccessToken: async () => secretDeveloperToken,
+        getAccessToken: async () => { developerReads++; return secretDeveloperToken; },
       } as any,
       remoteSession: {
         create: async () => ({
@@ -236,19 +239,73 @@ server.listen(port, "127.0.0.1");
         }
         const localResponse = await fetch(`${session.urls.proxy}/api/probe`);
         const local = await localResponse.json() as any;
-        assert.equal(local.script, "dev");
-        assert.equal(local.headers["x-openxiangda-connected-dev"], "1");
-        assert.equal(local.headers.authorization, `Bearer ${secretDeveloperToken}`);
-        assert.equal(
-          local.headers["x-openxiangda-dev-session"],
-          secretSessionToken
-        );
+        if (identityMode === 'developer') {
+          assert.equal(local.script, "dev");
+          assert.equal(local.headers["x-openxiangda-connected-dev"], "1");
+          assert.equal(local.headers.authorization, `Bearer ${secretDeveloperToken}`);
+          assert.equal(local.headers["x-openxiangda-dev-session"], secretSessionToken);
+        } else assert.deepEqual(local, { ok: true });
         const appApiResponse = await fetch(
           `${session.urls.proxy}/service/openxiangda-app-api/v2/reference-app/preproduction/api/probe`
         );
         const appApi = await appApiResponse.json() as any;
-        assert.equal(appApi.script, "dev");
-        assert.equal(appApi.url, "/api/probe");
+        if (identityMode === 'developer') {
+          assert.equal(appApi.script, "dev");
+          assert.equal(appApi.url, "/api/probe");
+        } else assert.deepEqual(appApi, { ok: true });
+        const ordinaryStart = remoteRequests.length;
+        const csrf = 'ordinary-csrf';
+        // Real socket requests exercise the proxy, not a copy of its selector.
+        for (const cookie of ['openxiangda-browser=ordinary', '__Host-openxiangda-browser=ordinary',
+          'theme=compact; openxiangda-browser=expired', 'openxiangda-browser=']) {
+          const reads = developerReads;
+          for (const path of ['/service/openxiangda-api/v2/probe', '/api/probe', '/business/probe',
+            '/service/openxiangda-app-api/v2/reference-app/preproduction/api/probe']) {
+            await fetch(`${session.urls.proxy}${path}?input=a%2Bb`, {
+              method: 'POST', body: '{}', headers: { Cookie: cookie,
+                'x-openxiangda-csrf-token': csrf, 'x-openxiangda-dev-session': 'forged-session',
+                'x-openxiangda-connected-dev': '1' },
+            });
+            const request = remoteRequests.at(-1)!;
+            assert.equal(request.headers.cookie, cookie);
+            assert.equal(request.headers['x-openxiangda-csrf-token'], csrf);
+            assert.equal(request.headers.authorization, undefined);
+            assert.match(request.url, /\?input=a%2Bb$/);
+            if (!path.includes('openxiangda-api/v2/probe')) assert.match(request.url,
+              /^\/service\/openxiangda-app-api\/v2\/reference-app\/preproduction\/(api|business)\/probe\?/);
+          }
+          assert.equal(developerReads, reads, 'browser cookies must not read developer credentials');
+        }
+        for (const action of ['login', 'logout', 'surface']) {
+          const reads = developerReads;
+          await fetch(`${session.urls.proxy}/service/openxiangda-api/v2/applications/reference-app/auth/${action}`, {
+            method: 'POST', headers: { 'x-openxiangda-csrf-token': csrf,
+              'x-openxiangda-dev-session': 'forged-session', 'x-openxiangda-connected-dev': '1' },
+          });
+          assert.equal(remoteRequests.at(-1)!.headers.authorization, undefined);
+          assert.equal(remoteRequests.at(-1)!.headers['x-openxiangda-csrf-token'], csrf);
+          assert.equal(developerReads, reads);
+        }
+        for (const token of ['application-oauth-token', 'untrusted-token']) {
+          for (const path of ['/api/probe', '/business/probe',
+            '/service/openxiangda-app-api/v2/reference-app/preproduction/api/probe']) {
+            await fetch(`${session.urls.proxy}${path}`, { headers: { Authorization: `Bearer ${token}`,
+              'x-openxiangda-dev-session': 'forged-session', 'x-openxiangda-connected-dev': '1' } });
+            assert.equal(remoteRequests.at(-1)!.headers.authorization, `Bearer ${token}`);
+          }
+        }
+        for (const request of remoteRequests.slice(ordinaryStart)) {
+          assert.equal(request.headers['x-openxiangda-dev-session'], undefined);
+          assert.equal(request.headers['x-openxiangda-connected-dev'], undefined);
+        }
+        const unrelated = await fetch(`${session.urls.proxy}/api/probe`, { headers: { Cookie: 'theme=compact' } });
+        const unrelatedBody = await unrelated.json() as any;
+        if (identityMode === 'developer') assert.equal(unrelatedBody.headers['x-openxiangda-connected-dev'], '1');
+        else {
+          assert.deepEqual(unrelatedBody, { ok: true });
+          assert.equal(remoteRequests.at(-1)!.headers.authorization, undefined);
+          assert.equal(developerReads, 0, 'browser mode must remain ordinary even without a cookie');
+        }
         await fetch(`${session.urls.web}/__test/stop`);
       },
     });
@@ -257,9 +314,10 @@ server.listen(port, "127.0.0.1");
     assert.equal(result.session.publishedResourcesOnly, false);
     assert.equal(result.session.manifestOverlay, true);
     assert.equal(existsSync(dockerMarker), false);
-    assert.equal(remoteRequests.length, 3);
-    assert.equal(remoteRequests[0]?.headers.authorization, `Bearer ${secretDeveloperToken}`);
-    assert.equal(remoteRequests[0]?.headers["x-openxiangda-dev-session"], secretSessionToken);
+    assert.equal(result.session.identityMode, identityMode);
+    assert.equal(remoteRequests.length, identityMode === 'developer' ? 28 : 31);
+    assert.equal(remoteRequests[0]?.headers.authorization, identityMode === 'developer' ? `Bearer ${secretDeveloperToken}` : undefined);
+    assert.equal(remoteRequests[0]?.headers["x-openxiangda-dev-session"], identityMode === 'developer' ? secretSessionToken : undefined);
     assert.equal(remoteRequests[1]?.headers.authorization, 'Bearer application-oauth-token');
     assert.equal(remoteRequests[2]?.headers.authorization, 'Bearer untrusted-token');
     for (const request of remoteRequests.slice(1)) {

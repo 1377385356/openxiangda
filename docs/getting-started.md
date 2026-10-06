@@ -257,6 +257,18 @@ openxiangda link rebind --base-url https://platform-b.example.com   # 显式换�
 幂等初始化处暴露，随时可以再次 rebind 修正。详细决策记录见仓库
 `docs/architecture-decisions/workspace-platform-rebind.md`。
 
+### 普通角色与应用登录联调
+
+`pnpm openxiangda dev --identity browser` 使用应用自身的登录入口验证普通用户；
+退出后仍保持应用登录模式。默认的 `developer` 模式方便开发者联调，但已携带应用
+浏览器 cookie 或不同显式 Bearer 的请求保留原身份。失效 cookie 由平台拒绝，不会
+回退开发者身份。登录、退出和 CSRF 均由平台处理。
+
+普通用户的 Data API 和业务操作经过平台授权；业务操作仍通过当前正式后端执行。
+开发配置 Head 暂无正式后端时，普通业务操作会返回
+`APPLICATION_V2_BACKEND_NOT_AVAILABLE`。此入口可验证源码前端和平台数据行为，
+暂不代表普通身份的本地 Nest 源码调用已支持。批次正式后端激活后再做完整业务验收。
+
 ## 检查与交付 {#delivery}
 
 只检查时运行 `pnpm openxiangda check`。需要部署测试环境时直接运行 `pnpm openxiangda deploy`，它已包含检查、测试和构建；无需再连续重复运行全部脚本。
