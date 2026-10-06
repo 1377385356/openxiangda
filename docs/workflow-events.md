@@ -94,6 +94,60 @@ events: {
 时长，十年内，如 `-PT1H` 表示提前一小时）到达时触发。适合到期提醒、超期升级等场景；
 同一条记录的字段更新后按新值重算。`code` 唯一，`eventType` 同样引用已声明应用事件。
 
+日期事件自动带上 `triggerCode`、`resourceCode`、`recordId`、`recordRevision`、`field`
+和 `dueAt`；`payload` 显式写普通对象（无自定义内容时写 `{}`），不能覆盖这些字段或
+`projection`。需要申请人、提醒正文等记录资料时，复用订阅的 `payload.fields`：平台
+取同一事件修订中、事件类型及资源匹配的字段并集，和日期、记录修订一起读取真实
+Native 值，写入事件 `projection`。每个消费者收到的投影再按自身字段声明裁剪。
+
+例如，应用代码为 `reference-app`、资源 `bookings` 包含 `owner`（user.single）、
+`reminderText`（text.long）、`expiresAt`（datetime）时，可以声明：
+
+```ts
+events: {
+  schemas: [{
+    eventType: 'reference-app.booking.expiry.v1', dataSchemaVersion: '1.0.0',
+    jsonSchema: {
+      type: 'object', additionalProperties: false,
+      required: ['triggerCode', 'resourceCode', 'recordId', 'recordRevision', 'field', 'dueAt', 'projection'],
+      properties: {
+        triggerCode: { const: 'booking-expiry' }, resourceCode: { const: 'bookings' },
+        recordId: { type: 'string', format: 'uuid' }, recordRevision: { type: 'integer', minimum: 1 },
+        field: { const: 'expiresAt' }, dueAt: { type: 'string', format: 'date-time' },
+        projection: {
+          type: 'object', additionalProperties: false, required: ['owner', 'reminderText'],
+          properties: {
+            owner: { type: 'object', additionalProperties: false, required: ['value', 'label'],
+              properties: { value: { type: 'string', format: 'uuid' }, label: { type: 'string' } } },
+            reminderText: { type: 'string', minLength: 1, maxLength: 2000 },
+          },
+        },
+      },
+    },
+  }],
+  dateTriggers: [{ code: 'booking-expiry', resourceCode: 'bookings', field: 'expiresAt',
+    offset: '-PT1H', eventType: 'reference-app.booking.expiry.v1', payload: {} }],
+  subscriptions: [{ code: 'booking-expiry-notice', eventTypes: ['reference-app.booking.expiry.v1'],
+    filter: { resourceCodes: ['bookings'] }, payload: { includeChanges: false, fields: ['owner', 'reminderText'] },
+    platformAccess: { notification: { mode: 'business-standard' } },
+  }],
+},
+```
+
+订阅处理器照常实现。通知的 `sendFromEvent` 使用 `recipientPaths: ['projection.owner.value']`
+等路径，由平台从已认证事件取得收件人；应用不在发送请求中复制人员 ID。
+
+投影只接受资源声明的顶层字段，禁止子表、路径/SQL表达式及 `mask: 'omit'` 的敏感字段。
+单订阅最多32字段，同事件投影并集最多64字段，扫描最多100订阅，完整事件不超过
+64 KiB。投影 JSON Schema 必须是关闭额外属性的 object、声明全部已选字段，不能
+要求未投影字段。编译阶段检查固定日期封套和结构，运行时才校验真实资料的类型、
+必填、长度等约束；不生成虚构人员让编译检查通过。资料不满足 schema、来源版本
+漂移或字段不合法时，该调度意图取消并保留错误，不发送不完整提醒。
+
+有资料投影的日期声明要求平台能力 `events.date-source-projection:1.0.0`；连接旧平台
+会在能力协商时拒绝。无字段投影的既有日期事件保持原形态及原能力要求。日期事件
+不自动筛选批准状态；要限定业务状态，应显式设计条件，不能从审批名称推断。
+
 两类触发器各最多 100 条。事件 Schema 用 `events.schemas` 声明
 （`{ eventType, dataSchemaVersion, jsonSchema, sensitiveFields? }`），`eventType` 遵循
 `xxx.yyy.v1` 版本后缀模式；触发器只发事件，不直接写数据或调用流程。

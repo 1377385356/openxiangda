@@ -19,6 +19,7 @@ import { validateWorkflowCommandHandlers } from './workflow-business-command.js'
 import { validateWorkflowLaunchPreflight } from './workflow-launch-preflight.js';
 import { validateWorkflowApprovedDelegation } from './workflow-approved-delegation.js';
 import { validateWorkflowCorrections } from './workflow-correction.js';
+import { dateEventProjectionFieldsV2 } from './date-event-projection.js';
 import { validateWorkflowTaskPages } from './workflow-task-page.js';
 import { requiresExtendedOwnedSubtableCapacity } from './data-capacity.js';
 import { validateWorkflowBusinessSteps, compileWorkflowBusinessStepHandlers, validateWorkflowBusinessStepSubscriptions, WORKFLOW_BUSINESS_STEP_EVENT, WORKFLOW_BUSINESS_STEP_EVENTS } from './workflow-business-step.js';
@@ -695,6 +696,13 @@ export function compileRequiredPlatformCapabilitiesV3(
       : []),
     ...(config.events.capturePolicies?.length
       ? [{ code: 'events.capture-policy' as const, declaration: config.events.capturePolicies }]
+      : []),
+    ...(config.events.dateTriggers.some((trigger: JsonObject) => dateEventProjectionFieldsV2(
+      trigger.resourceCode,
+      config.events.subscriptions.filter((subscription: JsonObject) => subscription.eventTypes.includes(trigger.eventType)),
+      config.data.resources.find((resource: JsonObject) => resource.code === trigger.resourceCode)
+    ).length > 0)
+      ? [{ code: 'events.date-source-projection' as const, declaration: { triggers: config.events.dateTriggers, subscriptions: config.events.subscriptions } }]
       : []),
     ...(usesEvents
       ? [

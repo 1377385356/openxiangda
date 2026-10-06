@@ -5103,3 +5103,39 @@ test('authenticated public read is explicit, scoped private reads remain and bot
       expectedConfigDigest: sha256Digest(canonical), expectedContractDigest: sha256Digest(contract) }), new RegExp(code), code);
   }
 });
+
+test('date source projection keeps the immutable source schema and negotiates identical sealed/native capability requirements', () => {
+  const declaration = {
+    ...sourceDeclaration,
+    data: { ...sourceDeclaration.data, resources: sourceDeclaration.data!.resources!.map(resource => resource.code === 'instruments' ? {
+      ...resource, fields: [...resource.fields, { code: 'reminderAt', label: 'Reminder', type: 'datetime' as const }],
+    } : resource) },
+    events: {
+      schemas: [{ eventType: 'reference-app.instrument.expiry.v1', dataSchemaVersion: '1.0.0', jsonSchema: {
+        type: 'object' as const, additionalProperties: false, required: ['triggerCode', 'resourceCode', 'recordId', 'recordRevision', 'field', 'dueAt', 'projection'],
+        properties: { triggerCode: { const: 'instrument-expiry' }, resourceCode: { const: 'instruments' }, recordId: { type: 'string' }, recordRevision: { type: 'integer', minimum: 1 }, field: { const: 'reminderAt' }, dueAt: { type: 'string' },
+          projection: { type: 'object', additionalProperties: false, required: ['owner', 'name'], properties: {
+            owner: { type: 'object', required: ['value', 'label'], properties: { value: { type: 'string' }, label: { type: 'string' } } }, name: { type: 'string', minLength: 1 },
+          } },
+        },
+      } }],
+      subscriptions: [{ code: 'expiry-notice', eventTypes: ['reference-app.instrument.expiry.v1'], filter: { resourceCodes: ['instruments'] }, payload: { includeChanges: false, fields: ['owner', 'name'] } }],
+      dateTriggers: [{ code: 'instrument-expiry', resourceCode: 'instruments', field: 'reminderAt', offset: 'PT0S', eventType: 'reference-app.instrument.expiry.v1', payload: {} }],
+    },
+  };
+  const app = defineOpenXiangdaApp(declaration), sources = compileApplicationSources(app);
+  const native = compileNativeApplicationConfiguration({ appCode: app.app.code, configBytes: sources.config.content, contractBytes: sources.contracts.content,
+    expectedConfigDigest: sources.config.digest, expectedContractDigest: sources.contracts.digest });
+  const required = requiredPlatformCapabilities(app);
+  assert.deepEqual(required, native.requiredPlatformCapabilities);
+  assert.ok(required.some(item => item.code === 'events.date-source-projection' && item.contractVersion === '1.0.0'));
+  assert.deepEqual(sources.config.value.events.schemas[0]!.jsonSchema, declaration.events.schemas[0]!.jsonSchema, 'Actual source constraints are never relaxed in emitted contract');
+  for (const field of ['missing', 'owner.value']) {
+    const bad = structuredClone(declaration); bad.events.subscriptions[0]!.payload.fields = [field];
+    assert.throws(() => defineOpenXiangdaApp(bad), (error: any) => error.diagnostics.some((d: any) => d.code === 'APP_CONFIG_DATE_TRIGGER_PROJECTION_INVALID'));
+  }
+  const requiredUnknown = structuredClone(declaration); requiredUnknown.events.schemas[0]!.jsonSchema.properties.projection.required.push('absent');
+  assert.throws(() => defineOpenXiangdaApp(requiredUnknown), (error: any) => error.diagnostics.some((d: any) => d.code === 'APP_CONFIG_DATE_TRIGGER_PROJECTION_INVALID'));
+  const spoofed = structuredClone(declaration); (spoofed.events.dateTriggers[0]!.payload as any).projection = { owner: { value: 'attacker' } };
+  assert.throws(() => defineOpenXiangdaApp(spoofed), (error: any) => error.diagnostics.some((d: any) => d.code === 'APP_CONFIG_DATE_TRIGGER_INVALID'));
+});

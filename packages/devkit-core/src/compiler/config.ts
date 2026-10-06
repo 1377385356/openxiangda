@@ -1,4 +1,5 @@
 import { validateAuthenticatedPublicRead, AuthenticatedPublicReadContractError } from 'openxiangda-contracts/native-compiler';
+import { DATE_EVENT_RESERVED_DATA_FIELDS_V2, dateEventProjectionFieldsV2, dateEventProjectionEnvelopeSchemaV2 } from 'openxiangda-contracts/native-compiler';
 import { validateUserCandidateReferences, validateWorkflowUserCandidateBindings, UserCandidateContractError } from 'openxiangda-contracts';
 import { parseNativeUniqueKeys, DATA_SUBTABLE_MAX_TOTAL_ROWS } from 'openxiangda-contracts';
 import { assertWorkflowOwnedSubjectCreate } from 'openxiangda-contracts';
@@ -112,14 +113,7 @@ import {
   validateWorkflowDefinition,
 } from '../internal/workflow.js';
 
-const DATE_TRIGGER_RESERVED_DATA_FIELDS = new Set([
-  'triggerCode',
-  'resourceCode',
-  'recordId',
-  'recordRevision',
-  'field',
-  'dueAt',
-]);
+const DATE_TRIGGER_RESERVED_DATA_FIELDS = new Set<string>(DATE_EVENT_RESERVED_DATA_FIELDS_V2);
 
 export type EventSubscriptionDeclaration = Pick<
   EventSubscription,
@@ -3434,6 +3428,17 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
       const field = string(trigger.field);
       const fieldType = eventResourceFields.get(resourceCode)?.get(field);
       const payload = object(trigger.payload);
+      let projectionFields: string[] = [];
+      let generatedSchema = applicationEventSchemas.get(string(trigger.eventType));
+      try {
+        projectionFields = dateEventProjectionFieldsV2(resourceCode,
+          (Array.isArray(events.subscriptions) ? events.subscriptions : []).map(object)
+            .filter(subscription => Array.isArray(subscription.eventTypes) && subscription.eventTypes.includes(trigger.eventType)),
+          eventDataResources.map(object).find(resource => resource.code === resourceCode));
+        generatedSchema = dateEventProjectionEnvelopeSchemaV2(generatedSchema, projectionFields);
+      } catch (error) {
+        diagnostics.push(diagnostic('APP_CONFIG_DATE_TRIGGER_PROJECTION_INVALID', `日期事件资料投影无效：${error instanceof Error ? error.message : 'invalid'}`, path));
+      }
       let payloadBytes = Number.POSITIVE_INFINITY;
       try {
         payloadBytes = Buffer.byteLength(
@@ -3458,7 +3463,7 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
           DATE_TRIGGER_RESERVED_DATA_FIELDS.has(key)
         ) ||
         !eventDataMatchesSchema(
-          applicationEventSchemas.get(string(trigger.eventType)),
+          generatedSchema,
           {
             ...payload,
             triggerCode: code,
@@ -3467,6 +3472,7 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
             recordRevision: 1,
             field,
             dueAt: '2026-01-01T00:00:00.000Z',
+            ...(projectionFields.length ? { projection: {} } : {}),
           }
         )
       ) {
