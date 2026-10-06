@@ -1,6 +1,6 @@
 import type { WorkflowDelegationAdministration, WorkflowDelegationCatalog, WorkflowDelegationCandidatePage, WorkflowDelegationCandidateQuery, WorkflowDelegationListQuery, WorkflowDelegationPage, WorkflowDelegationMutationPreview, WorkflowDelegationMutationReceipt, WorkflowDelegationMutationRequest } from "openxiangda-contracts";
 import type { DeploymentStrategy } from 'openxiangda-contracts';
-import { DEVELOPMENT_BACKEND_FEATURE, type DevelopmentBackendBootstrap,
+import { DEVELOPMENT_BACKEND_FEATURE, DEVELOPMENT_BACKEND_INVOCATION_FEATURE, DEVELOPMENT_BACKEND_INVOCATION_SCHEMA, type DevelopmentBackendBootstrap,
   type DevelopmentBackendRequest, type DevelopmentBackendResponse } from 'openxiangda-contracts';
 import { assertDevelopmentConfigurationResult, DEVELOPMENT_CONFIGURATION_ENDPOINT,
   DEVELOPMENT_CONFIGURATION_FEATURE, type DevelopmentConfigurationInput } from 'openxiangda-contracts';
@@ -758,11 +758,14 @@ export class OpenXiangdaControlPlaneClient {
   }
 
   async bootstrapDevelopmentBackend(appCode: string, token: string): Promise<DevelopmentBackendBootstrap> {
-    const feature = (await this.capabilities()).features?.[DEVELOPMENT_BACKEND_FEATURE];
+    const capabilities = await this.capabilities();
+    const feature = capabilities.features?.[DEVELOPMENT_BACKEND_FEATURE];
     if (feature?.status !== 'available' || feature.contractVersion !== '1.0.0')
       throw new ControlPlaneError(409, 'OPENXIANGDA_CONNECTED_DEV_BACKEND_CAPABILITY_REQUIRED',
         '目标平台尚未提供后台源码事件投递，请更新配套平台');
-    return await this.developmentBackendRequest(appCode, token, 'bootstrap');
+    const invocation = capabilities.features?.[DEVELOPMENT_BACKEND_INVOCATION_FEATURE];
+    return await this.developmentBackendRequest(appCode, token, 'bootstrap', invocation?.status === 'available' && invocation.contractVersion === '1.0.0'
+      ? { invocationContract: DEVELOPMENT_BACKEND_INVOCATION_SCHEMA } : {});
   }
 
   async nextDevelopmentBackendRequest(appCode: string, token: string, signal?: AbortSignal): Promise<DevelopmentBackendRequest | null> {

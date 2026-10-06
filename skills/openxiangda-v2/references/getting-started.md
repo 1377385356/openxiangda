@@ -264,10 +264,17 @@ openxiangda link rebind --base-url https://platform-b.example.com   # 显式换�
 浏览器 cookie 或不同显式 Bearer 的请求保留原身份。失效 cookie 由平台拒绝，不会
 回退开发者身份。登录、退出和 CSRF 均由平台处理。
 
-普通用户的 Data API 和业务操作经过平台授权；业务操作仍通过当前正式后端执行。
-开发配置 Head 暂无正式后端时，普通业务操作会返回
-`APPLICATION_V2_BACKEND_NOT_AVAILABLE`。此入口可验证源码前端和平台数据行为，
-暂不代表普通身份的本地 Nest 源码调用已支持。批次正式后端激活后再做完整业务验收。
+普通用户的 Data API 和业务操作经过平台授权。预发布开发配置已激活、平台支持
+`application.development-backend-invocations` 且当前 CLI 连接存活时，已声明的业务
+operation 通过平台网关进入本地 Nest 源码；浏览器身份、CSRF 和原幂等键保持不变。
+平台在派发和 Nest 验证时重查身份、角色与当前版本，浏览器不会取得开发者凭据。
+
+这条联调路径支持有限缓冲 HTTP：请求最多 256 KiB，响应最多 1 MiB，每环境事件与
+业务调用共用 8 个运输槽，普通调用最多等待 30 秒；SSE 明确拒绝，托管文件使用平台
+文件接口。关闭或撤销连接、停止环境、切换 Head 都使旧调用失效。回执丢失沿原
+意图查询或恢复，不生成第二次业务提交。正式部署仍走已激活的正式后端。
+旧平台与事件专用连接不支持此路径；启用后端的 `--identity browser` 会提示配套升级。
+源码测试与批次正式构建、激活、普通角色验收分别记录。
 
 ## 检查与交付 {#delivery}
 

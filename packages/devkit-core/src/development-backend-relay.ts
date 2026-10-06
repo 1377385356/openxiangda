@@ -3,6 +3,8 @@ import {
   DEVELOPMENT_BACKEND_SCHEMA, DEVELOPMENT_BACKEND_MAX_INFLIGHT,
   DEVELOPMENT_BACKEND_MAX_REQUEST_BYTES, DEVELOPMENT_BACKEND_MAX_RESPONSE_BYTES,
   DEVELOPMENT_BACKEND_ENDPOINT_PATTERN,
+  DEVELOPMENT_BACKEND_INVOCATION_SCHEMA, DEVELOPMENT_BACKEND_INVOCATION_MAX_RESPONSE_BYTES,
+  developmentBackendInvocationRequestValid, developmentBackendInvocationHeadersValid,
   type DevelopmentBackendBootstrap, type DevelopmentBackendRequest, type DevelopmentBackendResponse,
 } from 'openxiangda-contracts';
 
@@ -18,6 +20,7 @@ export function assertDevelopmentBackendBootstrap(
   expected: { sessionId: string; environmentId: string; appVersionId: string; headRevision: number }
 ): void {
   if (!bootstrap || bootstrap.schemaVersion !== DEVELOPMENT_BACKEND_SCHEMA ||
+    (bootstrap.invocationContract !== undefined && bootstrap.invocationContract !== DEVELOPMENT_BACKEND_INVOCATION_SCHEMA) ||
     Object.entries(expected).some(([key, value]) => bootstrap[key as keyof typeof expected] !== value) ||
     !bootstrap.secretEnvironment || typeof bootstrap.secretEnvironment !== 'object' || Array.isArray(bootstrap.secretEnvironment) ||
     Object.entries(bootstrap.secretEnvironment).some(([key, value]) =>
@@ -77,11 +80,18 @@ export function startDevelopmentBackendRelay(input: {
             let response: DevelopmentBackendResponse;
             try {
               response = await forwardDevelopmentBackendRequest(input.localAppBaseUrl, request, abort.signal);
-            } catch {
+            } catch (error) {
               if (abort.signal.aborted) return;
               // Never expose a local exception, response content or credentials.
               response = { requestId: request.requestId, status: 502,
                 body: JSON.stringify({ code: 'OPENXIANGDA_CONNECTED_DEV_BACKEND_HANDLER_UNAVAILABLE' }) };
+              if (request.schemaVersion === DEVELOPMENT_BACKEND_INVOCATION_SCHEMA) {
+                const failure = String((error as Error)?.message || '');
+                const code = /^OPENXIANGDA_CONNECTED_DEV_BACKEND_(?:STREAM_UNSUPPORTED|RESPONSE_TOO_LARGE)$/.test(failure)
+                  ? failure : 'OPENXIANGDA_CONNECTED_DEV_BACKEND_HANDLER_UNAVAILABLE';
+                response = { requestId: request.requestId, status: 502, schemaVersion: DEVELOPMENT_BACKEND_INVOCATION_SCHEMA,
+                  headers: { 'content-type': 'application/json; charset=utf-8' }, body: Buffer.from(JSON.stringify({ code })).toString('base64') };
+              }
             }
             if (!abort.signal.aborted) await recover(
               signal => input.api.respond(input.token(), response, signal), abort.signal, Date.parse(request.expiresAt));
@@ -126,14 +136,17 @@ function safeFailureCode(error: unknown): string {
 }
 
 function assertRequest(request: DevelopmentBackendRequest, bootstrap: DevelopmentBackendBootstrap) {
-  if (request.schemaVersion !== DEVELOPMENT_BACKEND_SCHEMA || request.sessionId !== bootstrap.sessionId ||
+  const invocation = request.schemaVersion === DEVELOPMENT_BACKEND_INVOCATION_SCHEMA;
+  if ((invocation ? bootstrap.invocationContract !== DEVELOPMENT_BACKEND_INVOCATION_SCHEMA || !developmentBackendInvocationRequestValid(request)
+    : request.schemaVersion !== DEVELOPMENT_BACKEND_SCHEMA || !DEVELOPMENT_BACKEND_ENDPOINT_PATTERN.test(request.endpointPath) ||
+      typeof request.body !== 'string' || Buffer.byteLength(request.body) > DEVELOPMENT_BACKEND_MAX_REQUEST_BYTES ||
+      !request.headers || Object.keys(request.headers).length > 24 ||
+      Object.entries(request.headers).some(([key, value]) =>
+        !/^(?:content-type|x-openxiangda-[a-z-]+)$/i.test(key) || typeof value !== 'string' || value.length > 8192 || /[\r\n]/.test(value))) ||
+    request.sessionId !== bootstrap.sessionId ||
     request.appVersionId !== bootstrap.appVersionId || request.headRevision !== bootstrap.headRevision ||
-    !/^[a-f0-9-]{36}$/.test(request.requestId) || !DEVELOPMENT_BACKEND_ENDPOINT_PATTERN.test(request.endpointPath) ||
-    typeof request.body !== 'string' || Buffer.byteLength(request.body) > DEVELOPMENT_BACKEND_MAX_REQUEST_BYTES ||
-    !request.headers || Object.keys(request.headers).length > 24 ||
-    Object.entries(request.headers).some(([key, value]) =>
-      !/^(?:content-type|x-openxiangda-[a-z-]+)$/i.test(key) || typeof value !== 'string' || value.length > 8192 || /[\r\n]/.test(value)) ||
-    !Number.isSafeInteger(request.timeoutMs) || request.timeoutMs < 1 || request.timeoutMs > 60_000 ||
+    !/^[a-f0-9-]{36}$/.test(request.requestId) ||
+    !Number.isSafeInteger(request.timeoutMs) || request.timeoutMs < 1 || request.timeoutMs > (invocation ? 30_000 : 60_000) ||
     !Number.isFinite(Date.parse(request.expiresAt)) || Date.parse(request.expiresAt) <= Date.now())
     throw new Error('OPENXIANGDA_CONNECTED_DEV_BACKEND_REQUEST_INVALID');
 }
@@ -142,23 +155,29 @@ export async function forwardDevelopmentBackendRequest(
   localAppBaseUrl: string, request: DevelopmentBackendRequest, signal?: AbortSignal
 ): Promise<DevelopmentBackendResponse> {
   const base = new URL(localAppBaseUrl);
+  const invocation = request.schemaVersion === DEVELOPMENT_BACKEND_INVOCATION_SCHEMA;
   if (base.protocol !== 'http:' || base.hostname !== '127.0.0.1' || !base.port ||
     base.username || base.password || base.search || base.hash || base.pathname !== '/' ||
-    !DEVELOPMENT_BACKEND_ENDPOINT_PATTERN.test(request.endpointPath))
+    (invocation ? !developmentBackendInvocationRequestValid(request) : !DEVELOPMENT_BACKEND_ENDPOINT_PATTERN.test(request.endpointPath)))
     throw new Error('OPENXIANGDA_CONNECTED_DEV_BACKEND_TARGET_INVALID');
   const timeoutMs = Math.min(request.timeoutMs, Date.parse(request.expiresAt) - Date.now());
   if (timeoutMs <= 0) throw new Error('OPENXIANGDA_CONNECTED_DEV_BACKEND_REQUEST_EXPIRED');
   return await new Promise((resolve, reject) => {
-    const outgoing = httpRequest(new URL(request.endpointPath, base), {
-      method: 'POST', headers: request.headers,
+    const path = `${request.endpointPath}${invocation && request.canonicalQuery ? `?${request.canonicalQuery}` : ''}`;
+    const outgoing = httpRequest(new URL(path, base), {
+      method: invocation ? request.method : 'POST', headers: request.headers,
       signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)]) : AbortSignal.timeout(timeoutMs),
     }, incoming => {
       // Node's HTTP client does not follow redirects.
+      if (invocation && /^text\/event-stream(?:\s*;|$)/i.test(String(incoming.headers['content-type'] || ''))) {
+        outgoing.destroy(new Error('OPENXIANGDA_CONNECTED_DEV_BACKEND_STREAM_UNSUPPORTED'));
+        incoming.destroy(); return;
+      }
       const chunks: Buffer[] = [];
       let bytes = 0;
       incoming.on('data', (chunk: Buffer) => {
         bytes += chunk.length;
-        if (bytes > DEVELOPMENT_BACKEND_MAX_RESPONSE_BYTES) {
+        if (bytes > (invocation ? DEVELOPMENT_BACKEND_INVOCATION_MAX_RESPONSE_BYTES : DEVELOPMENT_BACKEND_MAX_RESPONSE_BYTES)) {
           outgoing.destroy(new Error('OPENXIANGDA_CONNECTED_DEV_BACKEND_RESPONSE_TOO_LARGE'));
           return;
         }
@@ -166,11 +185,16 @@ export async function forwardDevelopmentBackendRequest(
       });
       incoming.once('error', reject);
       incoming.once('aborted', () => reject(new Error('OPENXIANGDA_CONNECTED_DEV_BACKEND_RESPONSE_ABORTED')));
-      incoming.once('end', () => resolve({ requestId: request.requestId,
-        status: incoming.statusCode || 502, body: Buffer.concat(chunks).toString('utf8') }));
+      incoming.once('end', () => {
+        const headers = Object.fromEntries(Object.entries(incoming.headers).filter(([key, value]) =>
+          developmentBackendInvocationHeadersValid({ [key]: value }, true)));
+        resolve({ requestId: request.requestId, status: incoming.statusCode || 502,
+          body: Buffer.concat(chunks).toString(invocation ? 'base64' : 'utf8'),
+          ...(invocation ? { schemaVersion: DEVELOPMENT_BACKEND_INVOCATION_SCHEMA, headers: headers as Record<string, string> } : {}) });
+      });
     });
     outgoing.once('error', reject);
-    outgoing.end(request.body);
+    outgoing.end(invocation ? Buffer.from(request.body, 'base64') : request.body);
   });
 }
 

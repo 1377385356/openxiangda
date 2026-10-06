@@ -9,6 +9,7 @@ import type { AddressInfo } from "node:net";
 import type { ApplicationEnvironment, DeploymentEnvironment, DevelopmentBackendBootstrap } from "openxiangda-contracts";
 import type { OpenXiangdaDeveloperSession } from "./session.js";
 import { assertDevelopmentBackendBootstrap, startDevelopmentBackendRelay, type DevelopmentBackendRelayApi } from './development-backend-relay.js';
+import { DEVELOPMENT_BACKEND_INVOCATION_SCHEMA, developmentBackendInvocationRevision } from 'openxiangda-contracts';
 
 const LOOPBACK_HOST = "127.0.0.1";
 const DEFAULT_WEB_PORT = 5173;
@@ -227,6 +228,8 @@ export async function runConnectedDevelopment(
         sessionId: grant.id, environmentId: input.environment.id,
         appVersionId: activeHead!.activeAppVersionId, headRevision: activeHead!.revision,
       });
+      if (input.identityMode === 'browser' && backendBootstrap.invocationContract !== DEVELOPMENT_BACKEND_INVOCATION_SCHEMA)
+        throw new Error('OPENXIANGDA_CONNECTED_DEV_BACKEND_INVOCATION_CAPABILITY_REQUIRED: 普通用户本地后台联调需要配套平台的 application.development-backend-invocations 1.0.0');
     }
     const environment = {
       ...process.env,
@@ -246,7 +249,7 @@ export async function runConnectedDevelopment(
       OPENXIANGDA_DEPLOYMENT_RUN_ID: activeHead?.activatedByDeploymentId || "",
       OPENXIANGDA_ENVIRONMENT_HEAD_REVISION: activeHead ? String(activeHead.revision) : "",
       // Local edited source is never represented as a deployed backend artifact.
-      OPENXIANGDA_BACKEND_REVISION_ID: backendRoot ? `connected-development:${grant.id}` : "",
+      OPENXIANGDA_BACKEND_REVISION_ID: backendRoot ? developmentBackendInvocationRevision(grant.id) : "",
       OPENXIANGDA_RUNTIME_MODE: environmentKey,
       OPENXIANGDA_UI_ONLY: "false",
     };

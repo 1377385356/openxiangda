@@ -18,7 +18,11 @@ operation、事件消费者、人员提供器，然后运行 `pnpm openxiangda c
 
 依赖安装失败会保留新源码并报告 `OPENXIANGDA_BACKEND_INSTALL_FAILED`；重试相同命令
 即可继续。关闭 backend 不自动删除用户源码。仅删除已经确认不用的后端目录和其依赖。
-本地 `/api` 经过 connected proxy 进入 Nest；发布态由同源应用网关转发。
+开发者本地 `/api` 经过 connected proxy 进入 Nest；普通浏览器身份经过平台实时授权，
+在支持 `application.development-backend-invocations` 的预发布开发配置上通过当前
+CLI 反向连接到本地 Nest。仅开放已声明 operation，保持短 invocation、请求断言和
+原业务幂等键。有限缓冲 HTTP 的预算与关闭/版本失效规则见
+[普通角色与应用登录联调](getting-started.md#普通角色与应用登录联调)。发布态由同源应用网关转发。
 
 | 需求 | 使用的 SDK | 权威边界 |
 | --- | --- | --- |
