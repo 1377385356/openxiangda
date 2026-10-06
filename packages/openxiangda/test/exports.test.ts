@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
@@ -72,6 +73,28 @@ import {
 } from '../src/react';
 import { OpenXiangdaPlatformRequestError } from '../src/browser/platform-client';
 import * as nest from '../src/nest';
+test('loads shared expressions through public package exports in native Node ESM', () => {
+  // Do not inherit the test runner's tsx/style loaders: production Node resolves
+  // the actual built package, including every transitive ESM import.
+  execFileSync(process.execPath, ['--input-type=module', '--eval', `
+    import assert from 'node:assert/strict';
+    import * as expressions from 'openxiangda/expressions';
+    assert.deepEqual(Object.keys(expressions), ['evaluateWorkflowTaskPageExpression']);
+    assert.equal(typeof document, 'undefined');
+    assert.equal(typeof window, 'undefined');
+    const evaluate = expressions.evaluateWorkflowTaskPageExpression;
+    const context = { amount: 1500, roles: ['teacher'], applicant: { eligible: true } };
+    const amount = { op: 'path', path: 'values.amount' };
+    assert.equal(evaluate({ op: 'gt', left: amount, right: { op: 'literal', value: 1000 } }, context), true);
+    assert.equal(evaluate({ op: 'gt', left: amount, right: { op: 'literal', value: 2000 } }, context), false);
+    assert.equal(evaluate({ op: 'exists', value: { op: 'path', path: 'values.missing.value' } }, context), false);
+    assert.equal(evaluate({ op: 'and', values: [
+      { op: 'path', path: 'values.applicant.eligible' },
+      { op: 'contains', left: { op: 'path', path: 'values.roles' }, right: { op: 'literal', value: 'teacher' } }
+    ] }, context), true);
+    process.stdout.write('native-esm-expressions: passed');
+  `], { cwd: new URL('../', import.meta.url), encoding: 'utf8', timeout: 10000 });
+});
 test('exposes the unified version line and browser-safe entrypoints', () => {
   assert.equal(OPENXIANGDA_VERSION_LINE, 2);
   assert.equal(

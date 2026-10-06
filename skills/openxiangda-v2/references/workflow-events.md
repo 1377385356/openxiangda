@@ -583,6 +583,26 @@ await searchResource(resourceCode, fieldCode, {
 游标绑定当前任务、版本、页面、定义和资料修订。409 时刷新任务并保留用户输入，
 403 时展示实际拒绝，不扩大普通 CRUD 权限。标准 PC 和移动任务组件自动传递这些上下文。
 
+### 前后端共享的表达式计算
+
+PC、手机与 Nest 共用的业务模块从纯入口导入，应用仍只声明统一根包精确依赖：
+
+```ts
+import { evaluateWorkflowTaskPageExpression, type WorkflowExpression } from 'openxiangda/expressions';
+
+const when: WorkflowExpression = {
+  op: 'gt',
+  left: { op: 'path', path: 'values.amount' },
+  right: { op: 'literal', value: 1000 },
+};
+const needsReview = Boolean(evaluateWorkflowTaskPageExpression(when, { amount: 1500 }));
+```
+
+路径以 `values.` 开始，第二参数直接传字段值对象。此入口复用原任务页计算器，
+支持浏览器打包器和原生 Node ESM；共享模块不要导入浏览器传输入口
+`openxiangda/core`，也不直接依赖内部物理包。计算结果不授予审批或数据权限，
+真实流转和写入继续由平台固定定义与当前用户授权核验。
+
 ### 标准流程的主子表发起
 
 标准发起页复用 Field Kit 的 PC/手机子表，通过原 `standard-commands` 的

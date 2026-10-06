@@ -18,6 +18,7 @@ pnpm openxiangda dev
 | --- | --- |
 | `openxiangda/config` | 模型、任务页、权限与应用声明 |
 | `openxiangda/core` | 数据客户端与契约 |
+| `openxiangda/expressions` | PC、手机与 Node 后端共享的纯流程表达式计算 |
 | `openxiangda/react` | PC 页面、管理入口与标准组件 |
 | `openxiangda/mobile` | 手机端组件 |
 | `openxiangda/field-kit` | 字段、表单与详情 |
