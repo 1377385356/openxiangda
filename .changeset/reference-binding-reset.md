@@ -2,6 +2,7 @@
 "openxiangda": patch
 "openxiangda-contracts": patch
 "openxiangda-devkit-core": patch
+"openxiangda-skill-kit": patch
 ---
 
 资源关联字段可显式设置 source.clearOnBindingChange。标准表单、任务和子表的用户
