@@ -126,11 +126,10 @@ const WORKFLOW_OPERATIONS = new Set([
   'admin_override',
   'retry_resolution',
 ]);
-const MAX_CONFIG_BYTES = 4 * 1024 * 1024;
-const MAX_CONTRACT_BYTES = 8 * 1024 * 1024;
-const MAX_DEPTH = 40;
-const MAX_NODES = 100000;
-const MAX_STRING_BYTES = 1024 * 1024;
+const MAX_CONFIG_BYTES = NATIVE_ARTIFACT_CAPACITY_V2.configBytes;
+const MAX_CONTRACT_BYTES = NATIVE_ARTIFACT_CAPACITY_V2.contractBytes;
+const MAX_DEPTH = NATIVE_ARTIFACT_CAPACITY_V2.depth;
+const MAX_STRING_BYTES = NATIVE_ARTIFACT_CAPACITY_V2.stringBytes;
 const EVENT_HANDLER_MANIFEST_SCHEMA = 'openxiangda.event-handler-manifest/v2';
 const ROUTE_MANIFEST_SCHEMA = 'openxiangda.application-route-manifest/v3';
 const EVENT_CAPTURE_FIELD_LIMIT = 64;
@@ -144,6 +143,8 @@ const EVENT_AUTHORIZATION_SYSTEM_FIELDS = new Set([
 ]);
 export { NATIVE_CONTRACT_CAPACITY_V2, requiresExtendedDeclarationCapacity, generatedCrudCapabilityOperations } from './declaration-capacity.js';
 import { NATIVE_CONTRACT_CAPACITY_V2, requiresExtendedDeclarationCapacity } from './declaration-capacity.js';
+export { NATIVE_ARTIFACT_CAPACITY_V2, requiresExtendedArtifactCapacity } from './artifact-capacity.js';
+import { NATIVE_ARTIFACT_CAPACITY_V2, requiresExtendedArtifactCapacity } from './artifact-capacity.js';
 export const DATA_EVENT_TYPES_V2 = [
   'openxiangda.data.record.created.v2',
   'openxiangda.data.record.updated.v2',
@@ -301,8 +302,13 @@ export function compileNativeApplicationConfiguration(
     'NATIVE_CONTRACT_JSON_INVALID',
     'NATIVE_CONTRACT_NOT_CANONICAL'
   );
-  inspectJsonBudget(parsedConfig, '/config');
-  inspectJsonBudget(parsedContract, '/contracts');
+  // First enforce all global safety bounds before deriving an extension from
+  // untrusted input. The sealed configuration alone selects the larger budget.
+  inspectJsonBudget(parsedConfig, '/config', NATIVE_ARTIFACT_CAPACITY_V2.extendedNodes);
+  inspectJsonBudget(parsedContract, '/contracts', NATIVE_ARTIFACT_CAPACITY_V2.extendedNodes);
+  if (!requiresExtendedArtifactCapacity(parsedConfig)) {
+    inspectJsonBudget(parsedContract, '/contracts', NATIVE_ARTIFACT_CAPACITY_V2.legacyNodes);
+  }
   const config = parsedConfig;
   const contract = parsedContract;
   validateConfigurationEnvelope(config, appCode);
@@ -527,6 +533,9 @@ export function compileRequiredPlatformCapabilitiesV3(
     code: OpenXiangdaPlatformCapabilityCode;
     declaration: unknown;
   }> = [
+    ...(requiresExtendedArtifactCapacity(config)
+      ? [{ code: 'application.extended-artifact-capacity' as const,
+          declaration: NATIVE_ARTIFACT_CAPACITY_V2 }] : []),
     ...(requiresExtendedDeclarationCapacity(config)
       ? [{ code: 'application.extended-declaration-capacity' as const, declaration: {
           resources: config.data.resources.length, policies: config.authz.dataPolicies.length,
@@ -7767,11 +7776,11 @@ function parseCanonicalArtifact(
   return result;
 }
 
-function inspectJsonBudget(value: unknown, pointer: string) {
+function inspectJsonBudget(value: unknown, pointer: string, maxNodes: number) {
   let nodes = 0;
   const visit = (current: unknown, path: string, depth: number) => {
     nodes += 1;
-    if (nodes > MAX_NODES) fail('NATIVE_ARTIFACT_NODE_LIMIT_EXCEEDED', path);
+    if (nodes > maxNodes) fail('NATIVE_ARTIFACT_NODE_LIMIT_EXCEEDED', path);
     if (depth > MAX_DEPTH) fail('NATIVE_ARTIFACT_DEPTH_LIMIT_EXCEEDED', path);
     if (typeof current === 'string') {
       if (Buffer.byteLength(current) > MAX_STRING_BYTES) {

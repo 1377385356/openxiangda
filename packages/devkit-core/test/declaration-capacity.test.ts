@@ -10,9 +10,10 @@ import type { PlatformCapabilities } from 'openxiangda-contracts';
 import { compileApplicationSources, defineOpenXiangdaApp, adminNavigationGroup, adminResourcePage, defineAdminNavigation } from '../src/index.js';
 
 const cjs = createRequire(import.meta.url)('openxiangda-contracts/native-compiler') as typeof esm;
-function declaration() {
+function declaration(fieldCount = 1) {
   const resources = Array.from({ length: 128 }, (_, i) => ({ code: `records-${i}`, name: `Records ${i}`, dataPolicyCode: `owner-${i}`,
-    fields: [{ code: 'name', type: 'text.short' as const, required: true, label: 'Name' }] }));
+    fields: Array.from({ length: fieldCount }, (_, field) => ({ code: field ? `field_${field}` : 'name',
+      type: 'text.short' as const, required: field === 0, label: field ? `Field ${field}` : 'Name' })) }));
   const definitions = Array.from({ length: 103 }, (_, i) => ({ version: 1, launch: { mode: 'work-center-only' as const }, definition: {
     schemaVersion: 'openxiangda.workflow-definition/v2' as const, code: `process-${i}`, title: `Process ${i}`, acceptedCommandDeactivationPolicy: 'finish-pinned' as const,
     subject: { resourceCode: `records-${i}`, factProjection: { name: 'name' } }, startAt: 'done',
@@ -39,6 +40,7 @@ test('small sealed corpus remains byte-identical and gains no large-application 
     const result = compiler.compileNativeApplicationConfiguration(input(JSON.parse(corpus.configuration.canonical), JSON.parse(corpus.contract.canonical)));
     assert.deepEqual(result.requiredPlatformCapabilities, corpus.requiredPlatformCapabilities);
     assert.equal(result.requiredPlatformCapabilities.some(item => item.code === 'application.extended-declaration-capacity'), false);
+    assert.equal(result.requiredPlatformCapabilities.some(item => item.code === 'application.extended-artifact-capacity'), false);
   }
 });
 test('128 resources/row policies, 101 roles and 103 workflows compile equally in both formats and public schemas', () => {
@@ -87,10 +89,56 @@ test('large declarations retain global byte and JSON-node budgets and real polic
     const config = JSON.parse(corpus.configuration.canonical), contract = JSON.parse(corpus.contract.canonical);
     config.extra = 'x'.repeat(4 * 1024 * 1024);
     assert.throws(() => compiler.compileNativeApplicationConfiguration(input(config, contract)), /NATIVE_CONFIG_ARTIFACT_TOO_LARGE/);
-    config.extra = Array.from({ length: 100_001 }, () => null);
+    config.extra = Array.from({ length: esm.NATIVE_ARTIFACT_CAPACITY_V2.extendedNodes + 1 }, () => null);
     assert.throws(() => compiler.compileNativeApplicationConfiguration(input(config, contract)), /NATIVE_ARTIFACT_NODE_LIMIT_EXCEEDED/);
   }
   const sources = compileApplicationSources(declaration()), config = JSON.parse(sources.config.content), contract = JSON.parse(sources.contracts.content);
   config.authz.dataPolicies[0].matchMode = 'unsafe';
   for (const compiler of [esm, cjs]) assert.throws(() => compiler.compileNativeApplicationConfiguration(input(config, contract)), /NATIVE_DATA_POLICY_MATCH_MODE_INVALID/);
+});
+
+test('a complete large field/workflow closure negotiates artifact capacity identically in ESM and CJS', () => {
+  const sources = compileApplicationSources(declaration(48));
+  const config = JSON.parse(sources.config.content), contract = JSON.parse(sources.contracts.content);
+  assert.equal(esm.requiresExtendedArtifactCapacity(config), true);
+  const result = esm.compileNativeApplicationConfiguration(input(config, contract));
+  assert.deepEqual(cjs.compileNativeApplicationConfiguration(input(config, contract)), result);
+  const requirement = result.requiredPlatformCapabilities.filter(item => item.code === 'application.extended-artifact-capacity');
+  assert.equal(requirement.length, 1);
+  assert.equal(requirement[0]!.contractVersion, '1.0.0');
+  assert.equal(config.runtime.protocolCapabilities.includes('application.extended-artifact-capacity'), true);
+  const features = (status?: string) => ({ features: status ? {
+    'application.extended-artifact-capacity': { status, contractVersion: '1.0.0' },
+  } : {} }) as PlatformCapabilities;
+  assert.doesNotThrow(() => assertRequiredCapabilitiesAvailable(features('available'), requirement));
+  for (const target of [features(), features('disabled')]) assert.throws(
+    () => assertRequiredCapabilitiesAvailable(target, requirement),
+    (error: any) => error.code === 'OPENXIANGDA_REQUIRED_CAPABILITY_UNAVAILABLE');
+});
+
+test('artifact extension retains precise global limits and cannot be asserted by a contract', () => {
+  const count = (value: unknown): number => 1 + (value && typeof value === 'object'
+    ? Object.values(value).reduce<number>((sum, child) => sum + count(child), 0) : 0);
+  for (const compiler of [esm, cjs]) {
+    const config = JSON.parse(corpus.configuration.canonical), contract = JSON.parse(corpus.contract.canonical);
+    const maximum = compiler.NATIVE_ARTIFACT_CAPACITY_V2.extendedNodes;
+    config.extra = [];
+    config.extra = Array.from({ length: maximum - count(config) }, () => null);
+    // At the exact global budget the unrelated extra key reaches semantic
+    // validation, rather than failing budget inspection.
+    assert.throws(() => compiler.compileNativeApplicationConfiguration(input(config, contract)),
+      (error: any) => error.code !== 'NATIVE_ARTIFACT_NODE_LIMIT_EXCEEDED');
+    config.extra.push(null);
+    assert.throws(() => compiler.compileNativeApplicationConfiguration(input(config, contract)),
+      (error: any) => error.code === 'NATIVE_ARTIFACT_NODE_LIMIT_EXCEEDED' && error.pointer.startsWith('/config/'));
+    delete config.extra;
+    contract.extra = Array.from({ length: compiler.NATIVE_ARTIFACT_CAPACITY_V2.legacyNodes }, () => null);
+    assert.throws(() => compiler.compileNativeApplicationConfiguration(input(config, contract)),
+      (error: any) => error.code === 'NATIVE_ARTIFACT_NODE_LIMIT_EXCEEDED' && error.pointer.startsWith('/contracts/'));
+    delete contract.extra;
+    config.extra = 'x'.repeat(compiler.NATIVE_ARTIFACT_CAPACITY_V2.stringBytes + 1);
+    assert.throws(() => compiler.compileNativeApplicationConfiguration(input(config, contract)), /NATIVE_ARTIFACT_STRING_LIMIT_EXCEEDED/);
+    config.extra = Array.from({ length: compiler.NATIVE_ARTIFACT_CAPACITY_V2.depth + 1 }).reduce(value => ({ child: value }), null);
+    assert.throws(() => compiler.compileNativeApplicationConfiguration(input(config, contract)), /NATIVE_ARTIFACT_DEPTH_LIMIT_EXCEEDED/);
+  }
 });
