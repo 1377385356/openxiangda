@@ -27,4 +27,6 @@ export interface DataFieldResourceSource {
   filters?: DataFieldResourceSourceFilter[];
   pageSize?: number;
   loadMode?: 'search' | 'all';
+  /** Clear old selections only when users change a declared form binding. */
+  clearOnBindingChange?: boolean;
 }

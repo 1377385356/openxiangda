@@ -637,6 +637,19 @@ function referenceDeclaration(field: AppDataFieldDeclaration) {
   return declaration;
 }
 
+test('preserves explicit binding reset in authored fields and generated resource surfaces', () => {
+  for (const enabled of [undefined, false, true]) {
+    const field = dynamicReference('resource-ref.multiple', 'checkbox', 'all');
+    if (enabled !== undefined) field.source!.clearOnBindingChange = enabled;
+    const declared = defineOpenXiangdaApp(referenceDeclaration(field));
+    const compiled = compileApplicationSources(declared);
+    assert.equal(compiled.config.value.data.resources[0]!.schema.fields[0]!.source?.clearOnBindingChange, enabled);
+    const surfaces = JSON.parse(compiled.contracts.typescript.match(/export const resourceSurfaces = ([\s\S]*?) as const;/)![1]!);
+    const host = Object.values(surfaces).find((surface: any) => surface.fields.lookup) as any;
+    assert.equal(host.fields.lookup.source.clearOnBindingChange, enabled);
+  }
+});
+
 function dynamicReference(
   type: 'resource-ref.single' | 'resource-ref.multiple',
   widget: 'radio' | 'checkbox',

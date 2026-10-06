@@ -345,6 +345,7 @@ function validateSource(
     'filters',
     'pageSize',
     'loadMode',
+    'clearOnBindingChange',
   ]);
   for (const key of Object.keys(source)) {
     if (!allowed.has(key)) {
@@ -412,6 +413,18 @@ function validateSource(
         'DATA_RESOURCE_FIELD_SOURCE_LOAD_MODE_INVALID',
         `${path}.source.loadMode 只支持 search/all`,
         `${path}.source.loadMode`
+      )
+    );
+  }
+  if (
+    source.clearOnBindingChange !== undefined &&
+    typeof source.clearOnBindingChange !== 'boolean'
+  ) {
+    diagnostics.push(
+      diagnostic(
+        'DATA_RESOURCE_FIELD_SOURCE_CLEAR_ON_BINDING_CHANGE_INVALID',
+        `${path}.source.clearOnBindingChange 必须是布尔值`,
+        `${path}.source.clearOnBindingChange`
       )
     );
   }

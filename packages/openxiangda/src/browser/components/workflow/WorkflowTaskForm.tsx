@@ -11,6 +11,7 @@ import type { WorkflowFileBinding } from '../../platform-client';
 import { useWorkflowTaskFiles, WorkflowTaskFileRecovery } from './WorkflowTaskFiles';
 import { WorkflowTaskDraftPanel } from './WorkflowTaskDraftPanel';
 import { SubtableField } from '../platform-fields/SubtableField';
+import { resourceReferenceBindingPatch } from '../platform-fields/reference-binding-change';
 import { rebaseWorkflowTaskSubtable, workflowTaskSubtableDataRows, workflowTaskSubtableFormRows } from './workflow-task-subtable';
 import { workflowTaskRequiredErrorUpdates } from './workflow-task-required-errors';
 
@@ -185,7 +186,13 @@ export function WorkflowTaskForm({ controller, disabled, draftDisabled = disable
       <Button disabled={disabled} onClick={() => review(true)}>保留输入并核对</Button>
       <Button disabled={disabled} onClick={() => review(false)}>采用最新资料</Button>
     </Space>} />}
-    <Form form={form} layout="vertical" initialValues={formValues(source)} disabled={disabled || stale}>
+    <Form form={form} layout="vertical" initialValues={formValues(source)} disabled={disabled || stale}
+      onValuesChange={(changed, values) => {
+        const fields = workflowTaskPageFieldState(source.page, current).filter(state => state.visible && !state.readonly)
+          .map(state => ({ ...source.fields[state.code]!, key: state.code }));
+        const patch = resourceReferenceBindingPatch(fields, changed, values, current);
+        form.setFields(Object.entries(patch).map(([name, value]) => ({ name, value, touched: true, errors: [] })));
+      }}>
       {workflowTaskPageFieldState(source.page, current).filter(state => state.visible).map(state => {
         const field = { ...source.fields[state.code]!, key: state.code, requiredHint: false };
         const uploadNeedsSave = ['file', 'image', 'signature', 'text.rich'].includes(field.type) &&

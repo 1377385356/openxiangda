@@ -2351,6 +2351,7 @@ const dataFieldResourceSourceSchema = {
     },
     pageSize: { type: "integer", minimum: 1, maximum: 100 },
     loadMode: { enum: ["search", "all"] },
+    clearOnBindingChange: { type: 'boolean' },
   },
 } as const;
 

@@ -3,6 +3,7 @@ import { Alert, Button, Drawer, Form, Space, Tooltip, type FormInstance } from '
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Button as MobileButton } from '../../mobile';
 import { MobileSurfaceFieldControl, SurfaceFieldControl, type SurfaceField, type SurfaceFieldRenderers } from './SurfaceFields';
+import { resourceReferenceBindingPatch } from '../platform-fields/reference-binding-change';
 
 /** Shared presentation only; each platform owner supplies its existing load/save lifecycle. */
 export function ResourceFormContent({
@@ -29,14 +30,24 @@ export function ResourceFormContent({
   onValuesChange?: (changed: Record<string, unknown>, values: Record<string, unknown>) => void;
   onSubmit: (values: Record<string, unknown>) => void;
 }) {
+  const [effectiveForm] = Form.useForm(form);
+  const watched = Form.useWatch([], { form: effectiveForm, preserve: true }) as Record<string, unknown> | undefined;
+  const previous = useRef<Record<string, unknown>>({});
+  previous.current = watched || initialValues || {};
+  const changeValues = (changed: Record<string, unknown>, values: Record<string, unknown>) => {
+    const patch = resourceReferenceBindingPatch(groups.flatMap(group => group.fields).filter(canWriteField), changed, values, previous.current);
+    effectiveForm.setFields(Object.entries(patch).map(([name, value]) => ({ name, value, touched: true, errors: [] })));
+    previous.current = { ...values, ...patch };
+    onValuesChange?.({ ...changed, ...patch }, previous.current);
+  };
   const errorRef = useRef<HTMLDivElement>(null);
   useEffect(() => { if (error) errorRef.current?.focus(); }, [error]);
   const grouped = groups.length > 1 || groups.some(group => group.section !== 'default');
   const FieldControl = variant === 'mobile' ? MobileSurfaceFieldControl : SurfaceFieldControl;
   return <Form
     className={variant === 'mobile' ? 'oxa-mobile-form' : 'oxa-form-full'}
-    disabled={busy} form={form} initialValues={initialValues} layout="vertical"
-    onValuesChange={onValuesChange} onFinish={onSubmit} scrollToFirstError={{ focus: true }}
+    disabled={busy} form={effectiveForm} initialValues={initialValues} layout="vertical"
+    onValuesChange={changeValues} onFinish={onSubmit} scrollToFirstError={{ focus: true }}
   >
     <div className="oxa-form-scroll">
       {feedback}

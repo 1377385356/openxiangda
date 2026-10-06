@@ -90,6 +90,7 @@ export interface NativeDataFieldResourceSourceV2 {
   filters?: NativeDataFieldSourceFilterV2[];
   pageSize?: number;
   loadMode?: 'search' | 'all';
+  clearOnBindingChange?: boolean;
 }
 
 export interface NativeDataFieldV2 {
@@ -686,6 +687,7 @@ function parseSource(
       'filters',
       'pageSize',
       'loadMode',
+      'clearOnBindingChange',
     ],
     pointer
   );
@@ -733,6 +735,9 @@ function parseSource(
     loadMode = source.loadMode as 'search' | 'all';
   }
   const filters = parseSourceFilters(source.filters, `${pointer}/filters`);
+  if (source.clearOnBindingChange !== undefined && typeof source.clearOnBindingChange !== 'boolean') {
+    issue('NATIVE_DATA_FIELD_SOURCE_BINDING_RESET_INVALID', `${pointer}/clearOnBindingChange`);
+  }
   return {
     kind: 'resource',
     resourceCode,
@@ -743,6 +748,7 @@ function parseSource(
     ...(filters ? { filters } : {}),
     ...(pageSize === undefined ? {} : { pageSize }),
     ...(loadMode ? { loadMode } : {}),
+    ...(source.clearOnBindingChange === undefined ? {} : { clearOnBindingChange: source.clearOnBindingChange as boolean }),
   };
 }
 

@@ -51,6 +51,7 @@ import {
 import type { SubtableDraftRow } from './subtable-value';
 import { buildResourceImportTemplate, parseResourceImportFile } from '../resource/resource-import';
 import { selectedSurfaceFields } from '../resource/resource-field-selection';
+import { resourceReferenceBindingPatch } from './reference-binding-change';
 
 interface GeneratedDefinition {
   code: string;
@@ -398,7 +399,12 @@ function DesktopSubtableRow({ row, index, fields, operation, resourceCode, disab
     catch { throw new Error(`请完善子表单第 ${index + 1} 项`); }
   }), [form, index, registerValidation, row.key]);
   useEffect(() => { form.setFieldsValue(row.data); }, [form, row.data]);
-  return <Form component={false} layout="vertical" name={`subtable-${row.key}`} form={form} initialValues={row.data} onValuesChange={(_changed, all) => onChange(all)}>
+  const changeValues = (changed: Record<string, unknown>, all: Record<string, unknown>) => {
+    const patch = resourceReferenceBindingPatch(fields.filter(canWrite), changed, all, row.data);
+    form.setFields(Object.entries(patch).map(([name, value]) => ({ name, value, touched: true, errors: [] })));
+    onChange({ ...all, ...patch });
+  };
+  return <Form component={false} layout="vertical" name={`subtable-${row.key}`} form={form} initialValues={row.data} onValuesChange={changeValues}>
     <tr><td className="oxa-subtable-number">{index + 1}</td>{fields.map(field => <td key={field.key}>
       {canWrite(field) ? <><SurfaceFieldControl field={field} disabled={Boolean(disabled || uploadBlocked?.(field))} operation={operation} recordId={row.id} expectedRevision={row.revision} resourceCode={resourceCode} workflowFileBinding={workflowFileBinding && { ...workflowFileBinding, fieldCode: field.key }} renderers={{ upload, signer, ...references }} />{uploadBlocked?.(field) && <Typography.Text type="secondary">请先保存补填，让该附件字段生效，再上传文件。</Typography.Text>}{hint?.(field)}</>
         : canRead(field) ? <SurfaceFieldValue field={field} resourceCode={resourceCode} workflowFileBinding={workflowFileBinding && { ...workflowFileBinding, fieldCode: field.key }} value={rowDisplayValue(row, field, taskMode)} /> : '—'}
@@ -539,13 +545,18 @@ function MobileSubtableRow({ row, index, fields, operation, resourceCode, canWri
     catch { setExpanded(true); throw new Error(`请完善子表单第 ${index + 1} 项`); }
   }), [form, index, registerValidation, row.key]);
   useEffect(() => { form.setFieldsValue(row.data); }, [form, row.data]);
+  const changeValues = (changed: Record<string, unknown>, all: Record<string, unknown>) => {
+    const patch = resourceReferenceBindingPatch(fields.filter(canWrite), changed, all, row.data);
+    form.setFields(Object.entries(patch).map(([name, value]) => ({ name, value, touched: true, errors: [] })));
+    onChange({ ...all, ...patch });
+  };
   return <div className="oxa-mobile-subtable-card">
     <header><MobileButton fill="none" aria-label={`${expanded ? '折叠' : '展开'}第${index + 1}项`} aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? '▾' : '▸'} {index + 1}</MobileButton>
       {canDelete && <MobileButton fill="none" onClick={onRemove}>删除</MobileButton>}
       {actions}
     </header>
     <div hidden={!expanded} style={!expanded ? { display: 'none' } : undefined}>
-      <Form component={false} layout="vertical" name={`subtable-${row.key}`} form={form} initialValues={row.data} onValuesChange={(_changed, all) => onChange(all)}>
+      <Form component={false} layout="vertical" name={`subtable-${row.key}`} form={form} initialValues={row.data} onValuesChange={changeValues}>
         {fields.map(field => canWrite(field) || !taskMode
           ? <div key={field.key}><MobileSurfaceFieldControl field={field} disabled={Boolean(disabled || !canWrite(field) || uploadBlocked?.(field))} operation={operation} recordId={row.id} expectedRevision={row.revision} resourceCode={resourceCode} workflowFileBinding={workflowFileBinding && { ...workflowFileBinding, fieldCode: field.key }} renderers={{ upload, signer, ...references }} />{uploadBlocked?.(field) && <Typography.Text type="secondary">请先保存补填，让该附件字段生效，再上传文件。</Typography.Text>}{hint?.(field)}</div>
           : <div key={field.key}><Typography.Text type="secondary">{field.label}</Typography.Text><SurfaceFieldValue field={field} resourceCode={resourceCode} workflowFileBinding={workflowFileBinding && { ...workflowFileBinding, fieldCode: field.key }} mobile value={rowDisplayValue(row, field, taskMode)} /></div>)}

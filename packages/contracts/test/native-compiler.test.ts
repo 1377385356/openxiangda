@@ -14,6 +14,20 @@ function input(config = JSON.parse(corpus.configuration.canonical)) {
   };
 }
 
+test('both native compiler formats preserve explicit reference binding reset and reject non-booleans', () => {
+  const field = { code: 'items', type: 'resource-ref.multiple', source: { kind: 'resource', resourceCode: 'choices', labelField: 'name',
+    filters: [{ field: 'scope', operator: 'eq', binding: { kind: 'field', field: 'scope' } }] } };
+  for (const implementation of [esm, cjs]) {
+    for (const value of [undefined, false, true]) {
+      const candidate = { ...field, source: { ...field.source, ...(value === undefined ? {} : { clearOnBindingChange: value }) } };
+      const parsed = implementation.parseNativeDataFieldsV2([candidate], '/fields');
+      assert.equal(parsed[0]!.source!.clearOnBindingChange, value);
+    }
+    assert.throws(() => implementation.parseNativeDataFieldsV2([{ ...field, source: { ...field.source, clearOnBindingChange: 'true' } }], '/fields'),
+      /NATIVE_DATA_FIELD_SOURCE_BINDING_RESET_INVALID/);
+  }
+});
+
 test('optional operation reasons require real platform support only when explicitly opted in, in ESM and CJS', () => {
   for (const operation of ['transfer', 'delegate', 'add_assignee', 'return']) {
     const config = JSON.parse(corpus.configuration.canonical);

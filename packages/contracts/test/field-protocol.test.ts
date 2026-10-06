@@ -323,6 +323,23 @@ test('accepts static snapshots and dynamic resource snapshot sources', () => {
   );
 });
 
+test('accepts optional binding reset and rejects non-boolean values in authored sources', () => {
+  const field = {
+    code: 'lookup', type: 'resource-ref.single' as const,
+    source: { kind: 'resource' as const, resourceCode: 'lookups', labelField: 'name' },
+  };
+  for (const enabled of [undefined, false, true]) {
+    assert.doesNotThrow(() => assertDataResource(resource([
+      { ...field, source: { ...field.source, ...(enabled === undefined ? {} : { clearOnBindingChange: enabled }) } },
+    ])));
+  }
+  for (const value of [null, 0, 1, 'true', [], {}]) {
+    const diagnostics: Diagnostic[] = [];
+    validateDataFieldDefinition({ ...field, source: { ...field.source, clearOnBindingChange: value } }, 'field', diagnostics);
+    assert.ok(diagnostics.some(item => item.code === 'DATA_RESOURCE_FIELD_SOURCE_CLEAR_ON_BINDING_CHANGE_INVALID'));
+  }
+});
+
 test('rejects old physical types, reference flags and ambiguous multiplicity', () => {
   assert.throws(
     () =>

@@ -2731,6 +2731,7 @@ function normalizeDataFieldSource(
       : {}),
     ...(source.pageSize !== undefined ? { pageSize: source.pageSize } : {}),
     ...(source.loadMode ? { loadMode: source.loadMode } : {}),
+    ...(source.clearOnBindingChange === undefined ? {} : { clearOnBindingChange: source.clearOnBindingChange }),
   };
 }
 
