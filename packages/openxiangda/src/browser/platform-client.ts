@@ -421,7 +421,12 @@ export async function requestApplicationApi<T>(
   path: string,
   init?: RequestInit,
 ) {
-  return await request<T>(applicationApiPath(path), init);
+  const headers = new Headers(init?.headers);
+  if (!['GET', 'HEAD', 'OPTIONS'].includes((init?.method || 'GET').toUpperCase()) &&
+      !headers.has('x-openxiangda-csrf-token')) {
+    headers.set('x-openxiangda-csrf-token', await workflowCsrfToken());
+  }
+  return await request<T>(applicationApiPath(path), { ...init, headers });
 }
 
 export interface RuntimeIdentity {

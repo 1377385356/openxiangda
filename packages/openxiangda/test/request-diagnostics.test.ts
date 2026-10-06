@@ -13,7 +13,7 @@ const failed = (id: string, status = 503, code = 'PLATFORM_REQUEST_FAILED') => n
 
 test('public diagnostics prefer the authoritative header and exclude query, body, data and message', async () => fixture(async () => {
   globalThis.fetch = async () => failed('gateway-request-1');
-  await assert.rejects(requestApplicationApi('/example?token=secret', { method: 'POST', body: JSON.stringify({ private: 'request-secret' }) }), error => {
+  await assert.rejects(requestApplicationApi('/example?token=secret', { method: 'POST', headers: { 'x-openxiangda-csrf-token': 'bound-test-csrf' }, body: JSON.stringify({ private: 'request-secret' }) }), error => {
     assert.ok(error instanceof OpenXiangdaPlatformRequestError);
     const diagnostic = publicDiagnostic(error)!;
     assert.equal(diagnostic.requestId, 'gateway-request-1');
@@ -42,7 +42,7 @@ test('generated resource reads hide internal not-found and forbidden codes', asy
 test('unknown transport writes are sent once and do not leak the fetch exception; cancellation stays cancellation', async () => fixture(async () => {
   let calls = 0;
   globalThis.fetch = async () => { calls++; throw new TypeError('https://user:secret@private/?token=hidden'); };
-  await assert.rejects(requestApplicationApi('/write', { method: 'POST', body: '{}' }), error => {
+  await assert.rejects(requestApplicationApi('/write', { method: 'POST', headers: { 'x-openxiangda-csrf-token': 'bound-test-csrf' }, body: '{}' }), error => {
     const value = platformRequestDiagnostic(error)!;
     assert.equal(value.code, 'PLATFORM_TRANSPORT_UNAVAILABLE'); assert.equal(value.requestId, null);
     assert.doesNotMatch(String(error), /user:|secret|hidden|private/); return true;
