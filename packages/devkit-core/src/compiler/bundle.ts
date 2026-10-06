@@ -1,4 +1,4 @@
-import { compileNativeEventAction } from 'openxiangda-contracts/native-compiler';
+import { compileNativeEventAction, requiresExtendedDeclarationCapacity } from 'openxiangda-contracts/native-compiler';
 import { normalizeWorkflowOwnedSubjectCreate } from 'openxiangda-contracts/native-compiler';
 import { compileWorkflowBusinessStepHandlers, validateWorkflowBusinessStepSubscriptions, WORKFLOW_BUSINESS_STEP_EVENTS } from 'openxiangda-contracts/native-compiler';
 import { parseNativeUniqueKeys, parseDecimalReservationLifecycle } from 'openxiangda-contracts/native-compiler';
@@ -1961,6 +1961,7 @@ function runtimeProtocolCapabilities(config: OpenXiangdaAppConfig) {
     ) || operations.some(operation => operation.platformAccess?.directory);
   return uniqueSorted([
     'application-native-2',
+    ...(requiresExtendedDeclarationCapacity(config) ? ['application.extended-declaration-capacity'] : []),
     'authz.batch-explain',
     'deployment.durable-runs',
     'deployment.platform-executor',

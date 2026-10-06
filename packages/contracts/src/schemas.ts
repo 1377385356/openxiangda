@@ -1,3 +1,4 @@
+import { NATIVE_CONTRACT_CAPACITY_V2 } from './native-compiler/declaration-capacity.js';
 import { DATA_SUBTABLE_MAX_ROWS, DATA_TRANSACTION_MAX_OPERATIONS, DATA_TRANSACTION_MAX_BYTES } from './native-compiler/data-capacity.js';
 import { nativeUniqueKeysJsonSchema } from './native-compiler/unique-keys.js';
 import { workflowAssignmentRoutingPolicySchema } from './native-compiler/workflow-assignment-routing.js';
@@ -8819,10 +8820,10 @@ export const configurationBundleSchema = {
         authenticatedUserRoleCode: stableCode,
         capabilities: {
           type: "array",
-          maxItems: 2000,
+          maxItems: NATIVE_CONTRACT_CAPACITY_V2.capabilities,
           items: appCapabilityDeclarationSchema,
         },
-        roles: { type: "array", maxItems: 100, items: appRoleDeclarationSchema },
+        roles: { type: "array", maxItems: NATIVE_CONTRACT_CAPACITY_V2.roles, items: appRoleDeclarationSchema },
         scopeDimensions: {
           type: "array",
           maxItems: 100,
@@ -8845,7 +8846,7 @@ export const configurationBundleSchema = {
         },
         dataPolicies: {
           type: "array",
-          maxItems: 100,
+          maxItems: NATIVE_CONTRACT_CAPACITY_V2.dataPolicies,
           items: appDataPolicyDeclarationSchema,
         },
         authorizationTransitions: {
@@ -8875,7 +8876,7 @@ export const configurationBundleSchema = {
       properties: {
         resources: {
           type: "array",
-          maxItems: 100,
+          maxItems: NATIVE_CONTRACT_CAPACITY_V2.resources,
           items: { $ref: SCHEMA_VERSIONS.dataResource },
         },
         concurrency: { type: "object" },
@@ -8925,9 +8926,9 @@ export const configurationBundleSchema = {
         "editableParameters",
       ],
       properties: {
-        definitions: { type: "array", maxItems: 100, items: { type: "object" } },
-        bindings: { type: "array", maxItems: 100, items: { type: "object" } },
-        activations: { type: "array", maxItems: 100, items: { type: "object" } },
+        definitions: { type: "array", maxItems: NATIVE_CONTRACT_CAPACITY_V2.workflows, items: { type: "object" } },
+        bindings: { type: "array", maxItems: NATIVE_CONTRACT_CAPACITY_V2.workflows, items: { type: "object" } },
+        activations: { type: "array", maxItems: NATIVE_CONTRACT_CAPACITY_V2.workflows, items: { type: "object" } },
         providers: { type: "array", maxItems: 100, items: { type: "object" } },
         editableParameters: {
           type: "array",
@@ -8941,7 +8942,7 @@ export const configurationBundleSchema = {
       additionalProperties: false,
       required: ["routes", "user", "admin", "devicePolicy"],
       properties: {
-        routes: { type: "array", maxItems: 500, items: appRouteDeclarationSchema },
+        routes: { type: "array", maxItems: NATIVE_CONTRACT_CAPACITY_V2.routes, items: appRouteDeclarationSchema },
         user: {
           type: "object",
           additionalProperties: false,
@@ -9110,7 +9111,7 @@ export const applicationRouteManifestSchema = {
     },
     routes: {
       type: "array",
-      maxItems: 512,
+      maxItems: NATIVE_CONTRACT_CAPACITY_V2.routes,
       items: appRouteManifestEntrySchema,
     },
     digest,
@@ -9155,14 +9156,14 @@ export const contractBundleSchema = {
       maxItems: 100,
       items: appPerspectiveContractSchema,
     },
-    resources: { type: "array", maxItems: 100, items: { type: "object" } },
+    resources: { type: "array", maxItems: NATIVE_CONTRACT_CAPACITY_V2.resources, items: { type: "object" } },
     concurrency: { type: "object" },
     subjectReadSurfaces: {
       type: "array",
       maxItems: 50,
       items: subjectReadSurfaceDeclarationSchema,
     },
-    capabilities: { type: "array", maxItems: 2000, items: { type: "object" } },
+    capabilities: { type: "array", maxItems: NATIVE_CONTRACT_CAPACITY_V2.capabilities, items: { type: "object" } },
     operations: { type: "array", maxItems: 500, items: { type: "object" } },
     eventConsumers: { type: "array", maxItems: 100, items: { type: "object" } },
     eventProducers: { type: "array", maxItems: 1000, items: { type: "object" } },
@@ -9173,8 +9174,8 @@ export const contractBundleSchema = {
     },
     eventHandlerManifest: eventHandlerManifestSchema,
     eventTypes: { type: "array", maxItems: 500, items: nonEmptyString },
-    workflows: { type: "array", maxItems: 100, items: { type: "object" } },
-    routes: { type: "array", maxItems: 500, items: appRouteContractSchema },
+    workflows: { type: "array", maxItems: NATIVE_CONTRACT_CAPACITY_V2.workflows, items: { type: "object" } },
+    routes: { type: "array", maxItems: NATIVE_CONTRACT_CAPACITY_V2.routes, items: appRouteContractSchema },
     authentication: {
       anyOf: [{ type: "null" }, applicationAuthenticationSchema],
     },
@@ -9185,7 +9186,7 @@ export const contractBundleSchema = {
     adminAccess: appRouteAccessSchema,
     adminPages: {
       type: "array",
-      maxItems: 500,
+      maxItems: NATIVE_CONTRACT_CAPACITY_V2.adminPages,
       items: appAdminPageContractSchema,
     },
     adminNavigation: appAdminNavigationContractSchema,

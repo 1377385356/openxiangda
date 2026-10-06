@@ -141,22 +141,8 @@ const EVENT_AUTHORIZATION_SYSTEM_FIELDS = new Set([
   'created_at',
   'updated_at',
 ]);
-export const NATIVE_CONTRACT_CAPACITY_V2 = Object.freeze({
-  perspectives: 100,
-  resources: 100,
-  subjectReadSurfaces: 50,
-  capabilities: 2000,
-  operations: 500,
-  eventConsumers: 100,
-  eventProducers: 1000,
-  eventSchemas: 100,
-  eventTypes: 500,
-  workflows: 100,
-  routes: 500,
-  adminPages: 500,
-  adminNavigationGroups: 100,
-  adminNavigationItems: 500,
-} as const);
+export { NATIVE_CONTRACT_CAPACITY_V2, requiresExtendedDeclarationCapacity, generatedCrudCapabilityOperations } from './declaration-capacity.js';
+import { NATIVE_CONTRACT_CAPACITY_V2, requiresExtendedDeclarationCapacity } from './declaration-capacity.js';
 export const DATA_EVENT_TYPES_V2 = [
   'openxiangda.data.record.created.v2',
   'openxiangda.data.record.updated.v2',
@@ -540,6 +526,14 @@ export function compileRequiredPlatformCapabilitiesV3(
     code: OpenXiangdaPlatformCapabilityCode;
     declaration: unknown;
   }> = [
+    ...(requiresExtendedDeclarationCapacity(config)
+      ? [{ code: 'application.extended-declaration-capacity' as const, declaration: {
+          resources: config.data.resources.length, policies: config.authz.dataPolicies.length,
+          roles: config.authz.roles.length, capabilities: config.authz.capabilities.length,
+          definitions: config.workflows.definitions.length, bindings: config.workflows.bindings.length,
+          activations: config.workflows.activations.length, routes: config.frontend.routes.length,
+          navigationItems: config.frontend.admin.navigation.reduce((count: number, group: JsonObject) => count + group.items.length, 0),
+        } }] : []),
     ...(resources.some(resource => resource.uniqueKeys?.length)
       ? [{ code: 'data.unique-keys' as const, declaration: resources.filter(resource => resource.uniqueKeys?.length)
           .map(resource => ({ code: resource.code, uniqueKeys: resource.uniqueKeys })) }] : []),
@@ -1167,8 +1161,8 @@ function validateConfigurationEnvelope(config: JsonObject, appCode: string) {
     '/config/authz',
     ['authenticatedUserRoleCode']
   );
-  boundedArray(authz.capabilities, '/config/authz/capabilities', 2000);
-  boundedArray(authz.roles, '/config/authz/roles', 100);
+  boundedArray(authz.capabilities, '/config/authz/capabilities', NATIVE_CONTRACT_CAPACITY_V2.capabilities);
+  boundedArray(authz.roles, '/config/authz/roles', NATIVE_CONTRACT_CAPACITY_V2.roles);
   boundedArray(authz.scopeDimensions, '/config/authz/scopeDimensions', 100);
   boundedArray(authz.scopeSources, '/config/authz/scopeSources', 100);
   boundedArray(
@@ -1181,7 +1175,7 @@ function validateConfigurationEnvelope(config: JsonObject, appCode: string) {
     '/config/authz/relationshipGrantSources',
     100
   );
-  boundedArray(authz.dataPolicies, '/config/authz/dataPolicies', 100);
+  boundedArray(authz.dataPolicies, '/config/authz/dataPolicies', NATIVE_CONTRACT_CAPACITY_V2.dataPolicies);
   boundedArray(
     authz.authorizationTransitions,
     '/config/authz/authorizationTransitions',
@@ -1200,7 +1194,7 @@ function validateConfigurationEnvelope(config: JsonObject, appCode: string) {
     'subjectReadSurfaces',
     'concurrency',
   ]);
-  boundedArray(data.resources, '/config/data/resources', 100);
+  boundedArray(data.resources, '/config/data/resources', NATIVE_CONTRACT_CAPACITY_V2.resources);
   if (data.subjectReadSurfaces !== undefined) {
     boundedArray(
       data.subjectReadSurfaces,
@@ -1240,9 +1234,9 @@ function validateConfigurationEnvelope(config: JsonObject, appCode: string) {
     ],
     '/config/workflows'
   );
-  boundedArray(workflows.definitions, '/config/workflows/definitions', 100);
-  boundedArray(workflows.bindings, '/config/workflows/bindings', 100);
-  boundedArray(workflows.activations, '/config/workflows/activations', 100);
+  boundedArray(workflows.definitions, '/config/workflows/definitions', NATIVE_CONTRACT_CAPACITY_V2.workflows);
+  boundedArray(workflows.bindings, '/config/workflows/bindings', NATIVE_CONTRACT_CAPACITY_V2.workflows);
+  boundedArray(workflows.activations, '/config/workflows/activations', NATIVE_CONTRACT_CAPACITY_V2.workflows);
   boundedArray(workflows.providers, '/config/workflows/providers', 100);
   boundedArray(
     workflows.editableParameters,
@@ -1257,7 +1251,7 @@ function validateConfigurationEnvelope(config: JsonObject, appCode: string) {
     '/config/frontend',
     ['authentication', 'publicAccess']
   );
-  boundedArray(frontend.routes, '/config/frontend/routes', 500);
+  boundedArray(frontend.routes, '/config/frontend/routes', NATIVE_CONTRACT_CAPACITY_V2.routes);
   const user = object(frontend.user, '/config/frontend/user');
   exactKeys(user, ['applicationTodoCenter'], '/config/frontend/user');
   boolean(
@@ -4359,6 +4353,8 @@ function validateAdminNavigationDeclaration(value: unknown, pointer: string) {
     pointer,
     NATIVE_CONTRACT_CAPACITY_V2.adminNavigationGroups
   );
+  if (groups.reduce((count, group) => count + (Array.isArray(group?.items) ? group.items.length : 0), 0) > NATIVE_CONTRACT_CAPACITY_V2.adminNavigationItems)
+    fail('NATIVE_ARRAY_LIMIT_EXCEEDED', pointer);
   let itemCount = 0;
   groups.forEach((rawGroup, groupIndex) => {
     const groupPointer = `${pointer}/${groupIndex}`;
@@ -4528,6 +4524,8 @@ function validateAdminNavigationContracts(value: unknown, pointer: string) {
     pointer,
     NATIVE_CONTRACT_CAPACITY_V2.adminNavigationGroups
   );
+  if (groups.reduce((count, group) => count + (Array.isArray(group?.items) ? group.items.length : 0), 0) > NATIVE_CONTRACT_CAPACITY_V2.adminNavigationItems)
+    fail('NATIVE_ARRAY_LIMIT_EXCEEDED', pointer);
   let itemCount = 0;
   groups.forEach((rawGroup, groupIndex) => {
     const groupPointer = `${pointer}/${groupIndex}`;
@@ -7467,7 +7465,7 @@ function mergeUserSurfaceRoutes(
   for (const raw of boundedArray(
     config.data?.resources,
     '/config/data/resources',
-    100
+    NATIVE_CONTRACT_CAPACITY_V2.resources
   )) {
     const resource = object(raw, '/config/data/resources');
     resources.set(String(resource.code || ''), resource);
@@ -7476,14 +7474,14 @@ function mergeUserSurfaceRoutes(
     boundedArray(
       expectedManifest.routes,
       '/contracts/routeManifest/routes',
-      1000
+      NATIVE_CONTRACT_CAPACITY_V2.routes
     ).map(entry => String(object(entry, '/contracts/routeManifest/routes').code || ''))
   );
   const accepted: JsonObject[] = [];
   for (const rawEntry of boundedArray(
     manifest.routes,
     '/contracts/routeManifest/routes',
-    1000
+    NATIVE_CONTRACT_CAPACITY_V2.routes
   )) {
     const entry = object(rawEntry, '/contracts/routeManifest/routes');
     const kind = String(entry.kind || '');

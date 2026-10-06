@@ -3,6 +3,7 @@ import {
   type Diagnostic,
 } from "./types.js";
 import { fieldValueSchemaForDefinition, type FieldValueSchemaDefinition } from "./field-value-schemas.js";
+import { NATIVE_CONTRACT_CAPACITY_V2 } from "./native-compiler/declaration-capacity.js";
 
 export type AiJsonSchema = Record<string, unknown>;
 
@@ -167,11 +168,11 @@ export function validateAiCapabilityCatalog(value: unknown): Diagnostic[] {
   const capabilities = Array.isArray(value.capabilities)
     ? value.capabilities
     : [];
-  if (!Array.isArray(value.capabilities) || capabilities.length > 500) {
+  if (!Array.isArray(value.capabilities) || capabilities.length > NATIVE_CONTRACT_CAPACITY_V2.capabilities) {
     diagnostics.push(
       diagnostic(
         "AI_CATALOG_CAPABILITIES_INVALID",
-        "capabilities 必须是最多 500 项的数组",
+        `capabilities 必须是最多 ${NATIVE_CONTRACT_CAPACITY_V2.capabilities} 项的数组`,
         "capabilities"
       )
     );
@@ -557,7 +558,7 @@ export const aiCapabilityCatalogSchema = {
     sourceConfigDigest: { type: "string", pattern: "^[0-9a-f]{64}$" },
     capabilities: {
       type: "array",
-      maxItems: 500,
+      maxItems: NATIVE_CONTRACT_CAPACITY_V2.capabilities,
       items: {
         type: "object",
         additionalProperties: false,

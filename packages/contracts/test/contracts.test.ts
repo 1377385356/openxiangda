@@ -281,7 +281,7 @@ test('publishes the digest-bound desktop/mobile standard route manifest contract
     'digest',
   ]);
   assert.equal(manifest.additionalProperties, false);
-  assert.equal(manifest.properties.routes.maxItems, 512);
+  assert.equal(manifest.properties.routes.maxItems, 2048);
   const entry = manifest.properties.routes.items;
   assert.equal(entry.additionalProperties, false);
   assert.deepEqual(entry.required, ['code', 'kind', 'desktop', 'mobile']);

@@ -1,3 +1,4 @@
+import { generatedCrudCapabilityOperations } from 'openxiangda-contracts/native-compiler';
 import {
   SCHEMA_VERSIONS,
   aiJsonSchemaForField,
@@ -410,15 +411,7 @@ export function compileAiCapabilityCatalog(
   const capabilities = resources
     .filter(resource => resource.status !== "retired")
     .flatMap(resource =>
-      (["query", "get", "create", "update", "delete"] as const)
-        .filter(operation => {
-          const generated = resource.surface?.generated;
-          const native =
-            (resource.surface?.mutationOwner || "native") === "native";
-          if (operation === "query") return generated?.list ?? true;
-          if (operation === "get") return generated?.detail ?? true;
-          return generated?.[operation] ?? native;
-        })
+      generatedCrudCapabilityOperations(resource)
         .map(operation => generatedCapability(resource, operation))
     )
     .concat(
