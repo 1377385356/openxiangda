@@ -1124,6 +1124,8 @@ export interface NativeScopeValuePage {
 export interface DataFieldSourceLaunchBinding {
   workflowCode: string;
   operationCode: string;
+  /** Named create's owned root subtable; host resource is its child. */
+  subtableFieldCode?: string;
 }
 
 export interface DataRecordEditInput {
@@ -1149,6 +1151,7 @@ export interface WorkflowTaskSourceBinding {
   taskId: string;
   expectedRevision: number;
   expectedTaskVersion: number;
+  subtable?: WorkflowTaskFieldSourceQuery['subtable'];
 }
 
 export interface WorkflowTaskFieldSourceQuery {
@@ -1158,6 +1161,11 @@ export interface WorkflowTaskFieldSourceQuery {
   keyword?: string;
   cursor?: string;
   bindings?: Record<string, unknown>;
+  /** Current owned row, qualified by the fixed task page; never child CRUD. */
+  subtable?: {
+    fieldCode: string;
+    row: { kind: 'persisted'; id: string; expectedRevision: number } | { kind: 'new'; key: string };
+  };
 }
 
 export interface DataFieldSourcePage {

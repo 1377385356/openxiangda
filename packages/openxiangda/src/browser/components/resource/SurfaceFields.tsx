@@ -34,6 +34,7 @@ import type {
   StableLocationValue,
   StableSignatureValue,
   UserReferenceValue,
+  WorkflowTaskSourceBinding,
 } from 'openxiangda-contracts/browser';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
@@ -134,6 +135,7 @@ export interface SurfaceFieldValueContext {
 
 export interface SurfaceFieldRenderers {
   referenceLaunch?: DataFieldSourceLaunchBinding;
+  referenceTask?: WorkflowTaskSourceBinding;
   /** Search intent only; never part of a Native write or workflow payload. */
   candidateScopeValues?: Readonly<Record<string, unknown>>;
   recordEditInput?: DataRecordEditInput;
@@ -361,9 +363,9 @@ export function SurfaceFieldControl({
   workflowFileBinding,
   renderers,
 }: SurfaceFieldEditContext & { renderers?: SurfaceFieldRenderers }) {
-  const taskSourceBinding = workflowCandidateBinding?.taskId && expectedRevision && workflowCandidateBinding.expectedTaskVersion
+  const taskSourceBinding = renderers?.referenceTask || (workflowCandidateBinding?.taskId && expectedRevision && workflowCandidateBinding.expectedTaskVersion
     ? { taskId: workflowCandidateBinding.taskId, expectedRevision, expectedTaskVersion: workflowCandidateBinding.expectedTaskVersion }
-    : undefined;
+    : undefined);
   const subtableValidation = useMobileSubtableValidation();
   const rules = [...surfaceFieldValidationRules(field, false, disabled),
     ...(field.widget === 'subtable' && !disabled ? [{ validator: subtableValidation.validator }] : [])];
@@ -412,7 +414,7 @@ export function SurfaceFieldControl({
           disabled={disabled}
           field={field}
           fieldCode={field.key}
-          operation={operation}
+          operation={taskSourceBinding ? 'update' : operation}
           launch={renderers?.referenceLaunch}
           action={renderers?.recordEditInput}
           task={taskSourceBinding}
@@ -453,7 +455,7 @@ export function SurfaceFieldControl({
           disabled={disabled}
           field={field}
           fieldCode={field.key}
-          operation={operation}
+          operation={taskSourceBinding ? 'update' : operation}
           launch={renderers?.referenceLaunch}
           action={renderers?.recordEditInput}
           task={taskSourceBinding}
@@ -574,9 +576,9 @@ export function MobileSurfaceFieldControl({
   workflowFileBinding,
   renderers,
 }: SurfaceFieldEditContext & { renderers?: SurfaceFieldRenderers }) {
-  const taskSourceBinding = workflowCandidateBinding?.taskId && expectedRevision && workflowCandidateBinding.expectedTaskVersion
+  const taskSourceBinding = renderers?.referenceTask || (workflowCandidateBinding?.taskId && expectedRevision && workflowCandidateBinding.expectedTaskVersion
     ? { taskId: workflowCandidateBinding.taskId, expectedRevision, expectedTaskVersion: workflowCandidateBinding.expectedTaskVersion }
-    : undefined;
+    : undefined);
   const subtableValidation = useMobileSubtableValidation();
   const rules = [...surfaceFieldValidationRules(field, true, disabled),
     ...(field.widget === 'subtable' && !disabled ? [{ validator: subtableValidation.validator }] : [])];
@@ -613,7 +615,7 @@ export function MobileSurfaceFieldControl({
           field={field}
           fieldCode={field.key}
           mobile
-          operation={operation}
+          operation={taskSourceBinding ? 'update' : operation}
           launch={renderers?.referenceLaunch}
           action={renderers?.recordEditInput}
           task={taskSourceBinding}
@@ -656,7 +658,7 @@ export function MobileSurfaceFieldControl({
           field={field}
           fieldCode={field.key}
           mobile
-          operation={operation}
+          operation={taskSourceBinding ? 'update' : operation}
           launch={renderers?.referenceLaunch}
           action={renderers?.recordEditInput}
           task={taskSourceBinding}

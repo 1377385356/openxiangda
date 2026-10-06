@@ -2919,6 +2919,7 @@ export function WorkflowSubmissionPage({
           const grant = namedIntent?.ownedSubject?.subtables.find(table => table.fieldCode === field.key);
           return <SubtableField field={field} disabled={disabled} operation={operation} parentRecordId={recordId} mobile={variant === 'mobile'}
             {...(namedIntent && grant ? { launch: { fieldCodes: grant.fieldCodes,
+              reference: { workflowCode: definition.code, operationCode: namedIntent.operationCode, subtableFieldCode: field.key },
               upload: (childField, file) => uploadOperationManagedFile({
                 operationCode: uploadOperationCode, resourceCode: field.subtable!.resourceCode,
                 fieldCode: childField.key, intent: 'create', file,

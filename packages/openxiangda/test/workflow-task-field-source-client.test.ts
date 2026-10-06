@@ -28,6 +28,14 @@ test('task selectors use current task revisions without granting ordinary Native
     await searchResource('orders', 'customer', { operation: 'update', keyword: '', bindings: { college: 'c1' } });
     assert.ok(calls[1]!.url.includes('/native/data-resources/orders/fields/customer/source/query'));
     assert.equal(JSON.parse(String(calls[1]!.init!.body)).schemaVersion, 'openxiangda.data-field-source-query/v2');
+    const subtable = { fieldCode: 'custodians', row: { kind: 'new' as const, key: 'new-row-1' } };
+    await searchResource('owned-rows', 'reviewer', { ...options, task: { ...options.task, subtable } });
+    assert.ok(calls[2]!.url.endsWith('/workflow/tasks/current-task/fields/reviewer/source/query'));
+    assert.deepEqual(JSON.parse(String(calls[2]!.init!.body)).subtable, subtable);
+    const launch = { workflowCode: 'approval', operationCode: 'create-submit', subtableFieldCode: 'items' };
+    await searchResource('owned-rows', 'scope', { operation: 'create', keyword: '', launch });
+    assert.ok(calls[3]!.url.includes('/native/data-resources/owned-rows/fields/scope/source/query'));
+    assert.deepEqual(JSON.parse(String(calls[3]!.init!.body)).launch, launch);
   } finally {
     globalThis.fetch = previousFetch;
     if (previousDocument === undefined) delete (globalThis as any).document; else globalThis.document = previousDocument;

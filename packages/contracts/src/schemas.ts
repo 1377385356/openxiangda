@@ -2067,6 +2067,7 @@ export const dataFieldSourceQuerySchema = {
       properties: {
         workflowCode: { type: "string", minLength: 1, maxLength: 128 },
         operationCode: { type: "string", minLength: 1, maxLength: 255 },
+        subtableFieldCode: { type: 'string', pattern: '^[A-Za-z][A-Za-z0-9_]{0,62}$' },
       },
     },
     keyword: { type: "string", maxLength: 500 },
@@ -2094,6 +2095,21 @@ export const workflowTaskFieldSourceQuerySchema = {
     keyword: dataFieldSourceQuerySchema.properties.keyword,
     cursor: dataFieldSourceQuerySchema.properties.cursor,
     bindings: dataFieldSourceQuerySchema.properties.bindings,
+    subtable: {
+      type: 'object', additionalProperties: false, required: ['fieldCode', 'row'],
+      properties: {
+        fieldCode: { type: 'string', pattern: '^[A-Za-z][A-Za-z0-9_]{0,62}$' },
+        row: { oneOf: [
+          { type: 'object', additionalProperties: false, required: ['kind', 'id', 'expectedRevision'], properties: {
+            kind: { const: 'persisted' }, id: { type: 'string', format: 'uuid' },
+            expectedRevision: { type: 'integer', minimum: 1, maximum: Number.MAX_SAFE_INTEGER },
+          } },
+          { type: 'object', additionalProperties: false, required: ['kind', 'key'], properties: {
+            kind: { const: 'new' }, key: { type: 'string', pattern: '^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$' },
+          } },
+        ] },
+      },
+    },
   },
 } as const;
 

@@ -1372,6 +1372,7 @@ export async function searchResource(
       schemaVersion: SCHEMA_VERSIONS.workflowTaskFieldSourceQuery,
       expectedRevision: options.task.expectedRevision,
       expectedTaskVersion: options.task.expectedTaskVersion,
+      ...(options.task.subtable ? { subtable: options.task.subtable } : {}),
       ...(options.keyword.trim() ? { keyword: options.keyword.trim() } : {}),
       ...(options.cursor ? { cursor: options.cursor } : {}),
       ...(options.bindings ? { bindings: options.bindings } : {}),

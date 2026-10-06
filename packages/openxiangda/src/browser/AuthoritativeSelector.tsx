@@ -112,8 +112,9 @@ function selectedValue(
 }
 
 function useStableSourceLaunch(input?: DataFieldSourceLaunchBinding) {
-  return useMemo(() => input ? { workflowCode: input.workflowCode, operationCode: input.operationCode } : undefined,
-    [input?.workflowCode, input?.operationCode]);
+  return useMemo(() => input ? { workflowCode: input.workflowCode, operationCode: input.operationCode,
+    ...(input.subtableFieldCode ? { subtableFieldCode: input.subtableFieldCode } : {}) } : undefined,
+    [input?.workflowCode, input?.operationCode, input?.subtableFieldCode]);
 }
 
 function useStableRecordEdit(input?: DataRecordEditInput) {
@@ -122,9 +123,10 @@ function useStableRecordEdit(input?: DataRecordEditInput) {
 }
 
 function useStableTaskSource(input?: WorkflowTaskSourceBinding) {
+  const subtableKey = JSON.stringify(input?.subtable);
   return useMemo(() => input ? { taskId: input.taskId, expectedRevision: input.expectedRevision,
-    expectedTaskVersion: input.expectedTaskVersion } : undefined,
-  [input?.taskId, input?.expectedRevision, input?.expectedTaskVersion]);
+    expectedTaskVersion: input.expectedTaskVersion, ...(input.subtable ? { subtable: input.subtable } : {}) } : undefined,
+  [input?.taskId, input?.expectedRevision, input?.expectedTaskVersion, subtableKey]);
 }
 
 async function searchSource(

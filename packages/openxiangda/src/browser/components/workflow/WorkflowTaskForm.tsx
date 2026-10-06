@@ -204,6 +204,7 @@ export function WorkflowTaskForm({ controller, disabled, draftDisabled = disable
                     return <SubtableField field={context.field} disabled={context.disabled} mobile={variant === 'mobile'} operation="update" parentRecordId={recordId}
                       revealRow={controller.subtableError?.field === state.code ? controller.subtableError : undefined}
                       task={{ page: source.page.fields.find(field => field.code === state.code)!.subtable!, binding: binding(state.code),
+                        reference: taskId && taskVersion ? { taskId, expectedRevision: source.expectedRevision, expectedTaskVersion: taskVersion } : undefined,
                         rows: child.rows,
                         uploadEnabled: workflowTaskPageFieldState((latest || source).page, (latest || source).values).some(saved => saved.code === state.code && saved.visible && !saved.readonly),
                         upload: (rowKey, childField, file, childRecordId, onRecovered) => files.upload(childField, file, childRecordId, onRecovered, { subtableFieldCode: state.code, rowKey }),
