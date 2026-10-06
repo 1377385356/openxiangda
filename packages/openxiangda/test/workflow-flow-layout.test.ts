@@ -41,3 +41,25 @@ for (const [name, source] of [
     assert.ok(x.x + x.width <= y.x || y.x + y.width <= x.x || x.y + x.height <= y.y || y.y + y.height <= x.y, 'nodes overlap');
   }
 });
+
+
+test('correction outside lanes preserve forward ranks and orthogonal endpoints', async () => {
+  const forward = graph([{ id: 'route', kind: 'condition', title: '分支' }, { id: 'review', kind: 'approval', title: '审核' }, { id: 'end', kind: 'end', title: '结束' }],
+    [edge('route', 'review', 'branch'), edge('review', 'end')]);
+  const before = await workflowFlowLayout(forward);
+  const correction = { id: 'correct', kind: 'correction', title: '本人补正' };
+  const returns: WorkflowGraphProjection['edges'] = [
+    { id: 'review:return:correct', from: 'review', to: 'correct', kind: 'return', label: '退回补正', variablePaths: [] },
+    { id: 'correct:resubmit', from: 'correct', to: 'route', kind: 'resubmit', label: '重新流转', variablePaths: [] },
+  ];
+  const result = await workflowFlowLayout({ ...forward, nodes: [...forward.nodes, correction], edges: [...forward.edges, ...returns] });
+  for (const node of forward.nodes) assert.equal(result.nodes.get(node.id)!.y, before.nodes.get(node.id)!.y);
+  for (const input of returns) {
+    const points = result.edges.get(input.id)!.points;
+    const source = result.nodes.get(input.from)!, target = result.nodes.get(input.to)!;
+    assert.equal(points[0]!.x, source.x + source.outputs.find(port => port.id === `out:${input.id}`)!.x);
+    assert.deepEqual(points.at(-1), { x: target.x + target.input.x, y: target.y });
+    for (let i = 1; i < points.length; i++) assert.ok(points[i]!.x === points[i - 1]!.x || points[i]!.y === points[i - 1]!.y);
+  }
+  assert.ok(result.nodes.get('correct')!.x > Math.max(...forward.nodes.map(node => { const p = result.nodes.get(node.id)!; return p.x + p.width; })));
+});

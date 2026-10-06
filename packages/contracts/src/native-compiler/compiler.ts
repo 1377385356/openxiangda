@@ -18,6 +18,7 @@ import { validateWorkflowRejectionNotification } from './workflow-rejection-noti
 import { validateWorkflowCommandHandlers } from './workflow-business-command.js';
 import { validateWorkflowLaunchPreflight } from './workflow-launch-preflight.js';
 import { validateWorkflowApprovedDelegation } from './workflow-approved-delegation.js';
+import { validateWorkflowCorrections } from './workflow-correction.js';
 import { validateWorkflowTaskPages } from './workflow-task-page.js';
 import { requiresExtendedOwnedSubtableCapacity } from './data-capacity.js';
 import { validateWorkflowBusinessSteps, compileWorkflowBusinessStepHandlers, validateWorkflowBusinessStepSubscriptions, WORKFLOW_BUSINESS_STEP_EVENT, WORKFLOW_BUSINESS_STEP_EVENTS } from './workflow-business-step.js';
@@ -755,6 +756,8 @@ export function compileRequiredPlatformCapabilitiesV3(
       ? [{ code: 'workflow.approved-delegation' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => item.definition.approvedDelegation !== undefined) }] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => workflowUsesOwnedInitialFacts(item.definition, config.data.resources))
       ? [{ code: 'workflow.owned-initial-facts' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => workflowUsesOwnedInitialFacts(item.definition, config.data.resources)) }] : []),
+    ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'correction'))
+      ? [{ code: 'workflow.initiator-correction' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'correction')) }] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.operationPolicy?.reject?.commentRequired === false))
       ? [{ code: 'workflow.optional-rejection-comment' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.operationPolicy?.reject?.commentRequired === false)) }] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => Object.values(node.operationPolicy || {}).some((policy: any) => policy.reasonRequired === false)))
@@ -7181,7 +7184,7 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
     const nodePointer = `${pointer}/nodes/${nodeId}`;
     const node = object(rawNode, nodePointer);
     equal(node.id, nodeId, `${nodePointer}/id`);
-    if (!['approval', 'condition', 'end', 'cc', 'action'].includes(node.kind)) {
+    if (!['approval', 'condition', 'end', 'cc', 'action', 'correction'].includes(node.kind)) {
       fail('NATIVE_WORKFLOW_NODE_KIND_INVALID', `${nodePointer}/kind`);
     }
     const targets: string[] = [];
@@ -7219,6 +7222,9 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
           );
         }
       }
+    } else if (node.kind === 'correction') {
+      const errors = validateWorkflowCorrections(definition as any);
+      if (errors.length) fail(errors[0]!, nodePointer);
     } else if (node.kind === 'action') {
       targets.push(requiredString(node.next, `${nodePointer}/next`, 128));
     } else if (node.kind === 'cc') {
@@ -7273,6 +7279,11 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
     visiting.delete(nodeId);
   };
   walk(startAt);
+  for (const id of [...reachable]) {
+    const current = nodes[id];
+    if (current?.kind === 'approval') for (const target of current.returnTargets || [])
+      if (nodes[target]?.kind === 'correction') reachable.add(target);
+  }
   if (reachable.size !== nodeIds.length) {
     fail('NATIVE_WORKFLOW_NODE_UNREACHABLE', `${pointer}/nodes`);
   }

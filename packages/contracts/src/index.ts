@@ -27,6 +27,7 @@ export * from './native-compiler/workflow-business-step.js';
 export * from './native-compiler/workflow-business-command.js';
 export * from './native-compiler/workflow-launch-preflight.js';
 export * from './native-compiler/workflow-approved-delegation.js';
+export * from './native-compiler/workflow-correction.js';
 export * from './native-compiler/workflow-task-page.js';
 export * from './native-compiler/data-capacity.js';
 export * from './native-compiler/data-business-command.js';

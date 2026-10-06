@@ -5657,6 +5657,9 @@ const workflowNodeSchema = {
     },
     workflowCcNodeSchema,
     workflowBusinessStepNodeSchema,
+    { type: 'object', additionalProperties: false, required: ['id', 'kind', 'title', 'taskPageCode', 'next'],
+      properties: { id: nonEmptyString, kind: { const: 'correction' }, title: nonEmptyString,
+        taskPageCode: { type: 'string', pattern: '^[A-Za-z][A-Za-z0-9_-]{0,63}$' }, next: nonEmptyString } },
   ],
 } as const;
 

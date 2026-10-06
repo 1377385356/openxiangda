@@ -1,12 +1,12 @@
 import type { Ref } from 'react';
-import { BranchesOutlined, CheckCircleOutlined, CodeOutlined, CopyOutlined, UserOutlined } from '@ant-design/icons';
+import { BranchesOutlined, CheckCircleOutlined, CodeOutlined, CopyOutlined, UserOutlined, FormOutlined } from '@ant-design/icons';
 import { formatWorkflowCompletionDeadline, type WorkflowGraphProjection, type WorkflowGraphVisit } from 'openxiangda-contracts/browser';
 
 export const workflowNodeModes: Record<string, string> = { single: '单人审批', any: '或签 · 任一人通过', all: '会签 · 全部通过', sequence: '依次审批' };
-const kinds: Record<string, string> = { approval: '审批', condition: '条件分支', end: '结束', cc: '抄送', action: '业务步骤' };
+const kinds: Record<string, string> = { approval: '审批', condition: '条件分支', end: '结束', cc: '抄送', action: '业务步骤', correction: '发起人补正' };
 const statuses: Record<string, string> = { active: '处理中', waiting: '等待中', completed: '已完成', approved: '已同意', rejected: '已拒绝', error: '异常', cancelled: '已取消', returned: '已退回', running: '处理中' };
 const outcomes: Record<string, string> = { approved: '审批通过', rejected: '审批拒绝', terminated: '流程终止', withdrawn: '已撤回' };
-const icons = { approval: UserOutlined, condition: BranchesOutlined, end: CheckCircleOutlined, cc: CopyOutlined, action: CodeOutlined };
+const icons = { approval: UserOutlined, condition: BranchesOutlined, end: CheckCircleOutlined, cc: CopyOutlined, action: CodeOutlined, correction: FormOutlined };
 
 export function WorkflowNodeCard({ node, title, summary, selected, start, visit, onClick, onNavigate, buttonRef }: {
   node: WorkflowGraphProjection['nodes'][number]; title: string; summary?: string; selected: boolean; start: boolean;
@@ -21,7 +21,7 @@ export function WorkflowNodeCard({ node, title, summary, selected, start, visit,
     aria-pressed={selected} aria-label={`${title}，${kinds[node.kind] || node.kind}${visit ? `，${stateLabel}` : ''}`}
     onClick={onClick} onKeyDown={event => { if (onNavigate(node.id, event.key)) event.preventDefault(); }}>
     <span className="oxa-workflow-node-icon"><Icon /></span><span className="oxa-workflow-node-copy"><span className="oxa-workflow-node-kind">{start ? '起点 · ' : ''}{kinds[node.kind] || node.kind}</span>
-      <strong title={title}>{title}</strong><small title={deadlineSummary || summary || stepSummary}>{deadlineSummary || summary || stepSummary || (node.mode ? `${workflowNodeModes[node.mode] || node.mode}${node.emptyPolicy === 'skip' ? ' · 无人时跳过' : ''}${node.initiatorApprovalPolicy === 'auto_approve' ? ' · 发起人自动同意' : ''}` : node.kind === 'cc' ? `${node.emptyPolicy === 'skip' ? '无人时跳过' : '必须有接收人'} · ${node.notify === false ? '仅抄送记录' : '通知接收人'}` : node.kind === 'condition' ? '按顺序首次命中' : outcomes[node.outcome || ''] || node.id)}</small></span>
+      <strong title={title}>{title}</strong><small title={deadlineSummary || summary || stepSummary}>{deadlineSummary || summary || stepSummary || (node.mode ? `${workflowNodeModes[node.mode] || node.mode}${node.emptyPolicy === 'skip' ? ' · 无人时跳过' : ''}${node.initiatorApprovalPolicy === 'auto_approve' ? ' · 发起人自动同意' : ''}` : node.kind === 'cc' ? `${node.emptyPolicy === 'skip' ? '无人时跳过' : '必须有接收人'} · ${node.notify === false ? '仅抄送记录' : '通知接收人'}` : node.kind === 'correction' ? '本人补正 · 重提后重新流转' : node.kind === 'condition' ? '按顺序首次命中' : outcomes[node.outcome || ''] || node.id)}</small></span>
     {visit && <span className={`oxa-workflow-node-status status-${stepStatus === 'result_ready' ? 'error' : visit.status}`}>{stateLabel}</span>}
   </button>;
 }

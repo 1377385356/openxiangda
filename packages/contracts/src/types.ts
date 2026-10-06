@@ -2502,6 +2502,7 @@ export type WorkflowNode =
   | WorkflowConditionNode
   | WorkflowEndNode
   | WorkflowCcNode
+  | import('./native-compiler/workflow-correction.js').WorkflowCorrectionNode
   | WorkflowBusinessStepNode;
 
 export interface WorkflowDefinition {

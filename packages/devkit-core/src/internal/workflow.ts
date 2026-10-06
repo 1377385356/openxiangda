@@ -13,6 +13,7 @@ import {
   validateWorkflowCommandHandlers,
   validateWorkflowLaunchPreflight,
   validateWorkflowApprovedDelegation,
+  validateWorkflowCorrections,
   validateWorkflowBusinessSteps,
   validateWorkflowCompletionDeadlines,
   validateWorkflowAssignmentRoutingBindings,
@@ -181,7 +182,7 @@ export function validateWorkflowDefinition(definition: WorkflowDefinition) {
   if (!nodes[definition?.startAt]) diagnostics.push('WORKFLOW_START_NODE_NOT_FOUND');
   for (const [id, node] of Object.entries(nodes)) {
     if (node.id !== id) diagnostics.push(`WORKFLOW_NODE_ID_MISMATCH:${id}`);
-    if (!['approval', 'condition', 'end', 'cc', 'action'].includes(node.kind)) {
+    if (!['approval', 'condition', 'end', 'cc', 'action', 'correction'].includes(node.kind)) {
       diagnostics.push(`WORKFLOW_NODE_KIND_INVALID:${id}`);
       continue;
     }
@@ -205,11 +206,16 @@ export function validateWorkflowDefinition(definition: WorkflowDefinition) {
     const reachable = new Set<string>();
     const visiting = new Set<string>();
     walk(definition.startAt, nodes, reachable, visiting, diagnostics);
+    for (const id of [...reachable]) {
+      const current = nodes[id];
+      if (current?.kind === 'approval') for (const target of current.returnTargets || [])
+        if (nodes[target]?.kind === 'correction') reachable.add(target);
+    }
     for (const id of Object.keys(nodes)) {
       if (!reachable.has(id)) diagnostics.push(`WORKFLOW_NODE_UNREACHABLE:${id}`);
     }
   }
-  return [...new Set(diagnostics)];
+  return [...new Set([...diagnostics, ...validateWorkflowCorrections(definition)])];
 }
 
 export function validateWorkflowBinding(
@@ -298,6 +304,9 @@ export function planWorkflow(
     if (node.kind === 'approval') {
       steps.push({ nodeId, kind: node.kind });
       return { steps, activeNode: node };
+    }
+    if (node.kind === 'correction') {
+      throw new WorkflowCompilationError(['WORKFLOW_CORRECTION_FORWARD_ENTRY_FORBIDDEN']);
     }
     if (node.kind === 'action') {
       steps.push({ nodeId, kind: node.kind });
@@ -565,7 +574,7 @@ function walk(
   const node = nodes[nodeId];
   if (!node) return;
   reachable.add(nodeId);
-  if (node.kind === 'end') return;
+  if (node.kind === 'end' || node.kind === 'correction') return;
   visiting.add(nodeId);
   for (const target of targets(node)) walk(target, nodes, reachable, visiting, diagnostics);
   visiting.delete(nodeId);

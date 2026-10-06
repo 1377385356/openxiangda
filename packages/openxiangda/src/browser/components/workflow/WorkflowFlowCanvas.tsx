@@ -36,7 +36,8 @@ function orthogonalPath(points: Point[]) {
 
 function DiagramEdge({ id, data, markerEnd }: EdgeProps<FlowEdge>) {
   if (!data) return null;
-  return <><BaseEdge id={id} path={orthogonalPath(data.points)} markerEnd={markerEnd} interactionWidth={22} style={{ stroke: data.actual ? 'var(--ant-color-success, #389e0d)' : data.highlighted ? 'var(--ant-color-primary, #1677ff)' : '#aab4c1', strokeWidth: data.actual || data.highlighted ? 2 : 1.5 }} />
+  return <><BaseEdge id={id} path={orthogonalPath(data.points)} markerEnd={markerEnd} interactionWidth={22} style={{ stroke: data.actual ? 'var(--ant-color-success, #389e0d)' : data.highlighted ? 'var(--ant-color-primary, #1677ff)' : '#aab4c1', strokeWidth: data.actual || data.highlighted ? 2 : 1.5,
+    strokeDasharray: data.edge.kind === 'return' || data.edge.kind === 'resubmit' ? '6 4' : undefined }} />
     <EdgeLabelRenderer><button type="button" className={`oxa-workflow-edge-label nodrag nopan ${data.actual ? 'executed' : ''} ${data.highlighted ? 'selected' : ''} ${data.edge.kind === 'branch' ? 'branch' : ''}`}
       style={{ transform: `translate(-50%, -50%) translate(${data.label.x}px, ${data.label.y}px)` }}
       title={`${data.edge.label}${data.expression ? `：${data.expression}` : ''}`} aria-pressed={data.selected} aria-label={`分支：${data.edge.priority ? `顺序 ${data.edge.priority}，` : ''}${data.edge.label}${data.expression ? `，${data.expression}` : ''}`} onClick={data.onSelect}>

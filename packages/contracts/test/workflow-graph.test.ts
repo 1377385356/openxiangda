@@ -86,3 +86,14 @@ test('metadata and expression budgets fail without unbounded traversal', () => {
   assert.ok(workflowExpressionPaths(expression).errors.includes('WORKFLOW_EXPRESSION_BUDGET_EXCEEDED'));
   assert.ok(workflowExpressionPaths({ op: 'path', path: 'reason.constructor' }).errors.includes('WORKFLOW_EXPRESSION_PATH_INVALID'));
 });
+
+
+test('correction graph shows fixed return/replay paths without inventing approvals', () => {
+  const definition = fixture(); definition.nodes.high!.returnTargets = ['correct'];
+  definition.nodes.correct = { id: 'correct', kind: 'correction', title: '发起人补正', next: definition.startAt };
+  const graph = projectWorkflowGraph(definition, sha256Digest(definition));
+  assert.equal(graph.nodes.find(node => node.id === 'correct')!.kind, 'correction');
+  assert.deepEqual(graph.edges.filter(edge => ['return', 'resubmit'].includes(edge.kind)).map(edge => [edge.id, edge.from, edge.to]),
+    [['high:return:correct', 'high', 'correct'], ['correct:resubmit', 'correct', 'route']]);
+  assert.equal(graph.edges.filter(edge => edge.from === 'correct' && edge.kind === 'approve').length, 0);
+});

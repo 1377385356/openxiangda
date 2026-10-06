@@ -11,15 +11,16 @@ const emptyVisits: readonly WorkflowGraphVisit[] = [];
 const emptyTitles: Record<string, string> = {};
 
 function displayNodeOrder(graph: WorkflowGraphProjection) {
+  const forwardEdges = graph.edges.filter(edge => edge.kind !== 'return' && edge.kind !== 'resubmit');
   const incoming = new Map(graph.nodes.map(node => [node.id, 0]));
-  for (const edge of graph.edges) incoming.set(edge.to, (incoming.get(edge.to) || 0) + 1);
+  for (const edge of forwardEdges) incoming.set(edge.to, (incoming.get(edge.to) || 0) + 1);
   const ready = graph.nodes.filter(node => incoming.get(node.id) === 0);
   ready.sort((left, right) => Number(right.id === graph.startAt) - Number(left.id === graph.startAt));
   const ordered: WorkflowGraphProjection['nodes'] = [];
   while (ready.length) {
     const node = ready.shift()!;
     ordered.push(node);
-    for (const edge of graph.edges.filter(item => item.from === node.id)) {
+    for (const edge of forwardEdges.filter(item => item.from === node.id)) {
       incoming.set(edge.to, incoming.get(edge.to)! - 1);
       if (incoming.get(edge.to) === 0) {
         const target = graph.nodes.find(item => item.id === edge.to);
@@ -74,6 +75,7 @@ export function WorkflowDiagram({ graph, selectedNodeId, onSelectNode, titles = 
   const visited = useMemo(() => new Set(visits.map(visit => visit.nodeId)), [visits]);
   const executedEdges = useMemo(() => new Set(visits.flatMap(visit => {
     if (visit.matchedBranch !== undefined) return [`${visit.nodeId}:${visit.matchedBranch < 0 ? 'default' : `branch:${visit.matchedBranch}`}`];
+    if (visit.transition === 'return') return [`${visit.nodeId}:return:${visit.target}`];
     return visit.transition ? [`${visit.nodeId}:${visit.transition}`] : [];
   })), [visits]);
   const shownGraph = useMemo(() => {

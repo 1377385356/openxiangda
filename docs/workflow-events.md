@@ -948,3 +948,33 @@ completionDeadline: { afterSeconds: 600, action: 'approve' }
 
 平台重启后继续处理原持久期限，无需额外启用开关。已有期限的版本回滚时，
 必须保留兼容的平台后台，或先完成/明确取消在途任务；不能删除期限与历史。
+
+
+## 退回发起人补正 {#initiator-correction}
+
+数据更正使用独立的固定节点，不作为本人审批票：
+
+```ts
+startAt: 'calculate',
+taskPages: { correction: { title: '补正申请', fields: [{ code: 'amount', required: true }] } },
+nodes: {
+  // calculate 和 review 沿应用已声明的代码步骤及审批节点。
+  correct: { id: 'correct', kind: 'correction', title: '发起人补正',
+    taskPageCode: 'correction', next: 'calculate' },
+  // review.returnTargets 声明 ['correct']；其他正向边不能进入 correct。
+},
+```
+
+`next` 必须等于固定 `startAt`。该节点只能由声明的审批退回进入，包括第一个审批节点；
+退回到其他审批节点仍需真实人工办理历史。补正沿当前任务页、Native授权和资料修订，
+仅原发起人直接办理，只有保存补填和重新提交，不代理、转交、加签或管理员代填。
+原职责失效或修订改变时拒绝，不换身份继续。
+
+保存不推进。重新提交在同一事务更新标量资料与事实、关闭补正任务及退回会话，
+从固定起点重新执行条件与代码步骤。补正重提记录 `resubmitted`，不产生同意票或
+代理申请的人工批准确认。只支持 `replay`，请求 `resume_current` 明确拒绝。
+初期补正页不支持 owned 子表；创建时的 owned 事实快照不能代替补正后的事实刷新。
+
+图显示旁侧补正节点、直角虚线退回/重提路径，正向分支的层级保持；拓扑和代码仍固定。
+声明自动要求 `workflow.initiator-correction@1.0.0`，无需增加默认关闭的开关。
+结果未知使用当前任务原命令回执恢复，不重建申请；数据、任务或事件失败一起回滚。

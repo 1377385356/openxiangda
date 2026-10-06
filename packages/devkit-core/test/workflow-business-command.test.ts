@@ -257,3 +257,23 @@ test('launch preflight rejects invalid references, cardinality and providers bef
     assert.throws(() => compileApplicationSources(defineOpenXiangdaApp(source)), provider);
   }
 });
+
+
+test('fixed initiator correction compiles across authoring/schema/target and negotiates support', () => {
+  const source = fixture(); const definition: any = source.workflows!.definitions![0]!.definition;
+  delete definition.commandHandlers;
+  definition.subject.summaryFields = [];
+  definition.taskPages = { correction: { title: '补正信息', fields: [{ code: 'amount', required: true }] } };
+  definition.nodes.correct = { id: 'correct', kind: 'correction', title: '发起人补正', taskPageCode: 'correction', next: definition.startAt };
+  definition.nodes.review.returnTargets = ['correct'];
+  const output = compileApplicationSources(defineOpenXiangdaApp(source));
+  const target = compileNativeApplicationConfiguration({ appCode: source.app.code, configBytes: output.config.content,
+    expectedConfigDigest: output.config.digest, contractBytes: output.contracts.content, expectedContractDigest: output.contracts.digest });
+  assert.deepEqual(target.requiredPlatformCapabilities, requiredPlatformCapabilitiesFromConfiguration(output.config.value));
+  assert.equal(target.requiredPlatformCapabilities.find(item => item.code === 'workflow.initiator-correction')?.contractVersion, '1.0.0');
+  const schema = new Ajv2020({ strict: false, validateFormats: false }).compile(workflowDefinitionSchema);
+  assert.equal(schema(definition), true, JSON.stringify(schema.errors));
+  definition.nodes.correct.binding = 'reviewer';
+  assert.equal(schema(definition), false);
+  assert.throws(() => compileApplicationSources(defineOpenXiangdaApp(source)), /WORKFLOW_CORRECTION_NODE_INVALID/);
+});

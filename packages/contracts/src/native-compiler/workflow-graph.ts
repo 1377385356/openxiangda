@@ -39,6 +39,7 @@ export interface WorkflowGraphDefinitionSource {
     mode?: string;
     onApprove?: string;
     onReject?: string;
+    returnTargets?: string[];
     branches?: Array<{ when: WorkflowGraphExpression; target: string; label?: string }>;
     otherwise?: string;
     next?: string;
@@ -68,7 +69,7 @@ export interface WorkflowGraphEdge {
   id: string;
   from: string;
   to: string;
-  kind: 'approve' | 'reject' | 'branch' | 'default' | 'next';
+  kind: 'approve' | 'reject' | 'branch' | 'default' | 'next' | 'return' | 'resubmit';
   label: string;
   priority?: number;
   expression?: WorkflowGraphExpression;
@@ -99,7 +100,7 @@ export interface WorkflowGraphVisit {
   matchedBranch?: number;
   target?: string;
   /** Recorded terminal decision; chronological adjacency alone is not execution evidence. */
-  transition?: 'approve' | 'reject' | 'next';
+  transition?: 'approve' | 'reject' | 'next' | 'return' | 'resubmit';
   skipped?: boolean;
   automaticApprovals?: Array<{ participantId: string; assignmentId: string; initiatorUserId: string; roleSubjectKey: string | null }>;
   completionDeadline?: { deadlineId: string; deadlineAt: string; rule: WorkflowCompletionDeadline };
@@ -230,6 +231,12 @@ export function projectWorkflowGraph(definition: WorkflowGraphDefinitionSource, 
       for (const [kind, target, label] of [['approve', node.onApprove, '同意'], ['reject', node.onReject, '拒绝']] as const)
         if (target) edges.push({ id: `${node.id}:${kind}`, from: node.id, to: target, kind, label, variablePaths: [] });
     }
+    if (node.kind === 'approval') for (const target of new Set(node.returnTargets || [])) {
+      if (definition.nodes[target]?.kind === 'correction')
+        edges.push({ id: `${node.id}:return:${target}`, from: node.id, to: target, kind: 'return', label: '退回发起人补正', variablePaths: [] });
+    }
+    if (node.kind === 'correction' && node.next)
+      edges.push({ id: `${node.id}:resubmit`, from: node.id, to: node.next, kind: 'resubmit', label: '重新提交，从起点重算', variablePaths: [] });
     if (node.kind === 'cc' && node.next) edges.push({ id: `${node.id}:next`, from: node.id, to: node.next, kind: 'next', label: '抄送后继续', variablePaths: [] });
     if (node.kind === 'action' && node.next) {
       const paths = Object.values(node.inputs || {}).flatMap(input => input.source === 'fact' ? [input.path] : []);
