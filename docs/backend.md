@@ -451,6 +451,13 @@ import {
 用户动作 send 的 schemaVersion 使用 OPENXIANGDA_NOTIFICATION_BUSINESS_SEND_V2；事件处理 sendFromEvent 使用 OPENXIANGDA_NOTIFICATION_EVENT_SEND_V2。二者的调用上下文和收件人来源不同，不能混用。
 ## 外部处理受控文件
 
+证明等业务动作需要核对真实审批状态时，可调用
+`workflow.recordHistory(resourceCode, recordId, { instanceId?, limit: 1 })`（注入
+`OpenXiangdaWorkflowService`）。它沿当前用户的 Native 读取和流程历史权限，返回实际
+`recordRevision` 与 `instance.status`；不能用流程命令的执行成功推断审批已批准。
+记录修订不一致应重新核对；403/404/409 直接拒绝，不回退业务字段或应用缓存。
+此读取不授予任务办理或服务身份权限，offset 上限500、limit 上限100。
+
 需要水印或归档处理时，Nest DataApi 可签发短期对象下载地址。不要把要求登录态的 content URL 或用户 Cookie 交给外部服务。
 
 ```ts

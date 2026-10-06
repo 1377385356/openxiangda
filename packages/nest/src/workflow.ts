@@ -150,6 +150,11 @@ export class OpenXiangdaWorkflowService {
     );
   }
 
+  /** Current Native read/RLS and history policy; this grants no handling authority. */
+  async recordHistory(resourceCode: string, recordId: string, options: { instanceId?: string; limit?: number; offset?: number } = {}) {
+    return this.platform.workflowRecordHistory(this.context().authorization, resourceCode, recordId, options);
+  }
+
   async assignmentExplain(taskId: string) {
     const context = this.context();
     return await this.platform.workflowAssignmentExplain(

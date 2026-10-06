@@ -59,6 +59,7 @@ import type {
   WorkflowWorkCenterItem,
   WorkflowWorkCenterView,
   WorkflowTimeline,
+  WorkflowRecordHistory,
   BusinessProcessAnswer,
   BusinessProcessCommand,
   BusinessProcessCommandQuery,
@@ -947,6 +948,27 @@ export class OpenXiangdaPlatformClient {
       }
     );
     return { ...detail, surface: normalizeWorkflowSurface(detail.surface) };
+  }
+
+  async workflowRecordHistory(
+    authorization: string,
+    resourceCode: string,
+    recordId: string,
+    options: { instanceId?: string; limit?: number; offset?: number } = {}
+  ): Promise<WorkflowRecordHistory> {
+    const limit = options.limit ?? 20;
+    const offset = options.offset ?? 0;
+    if (Object.keys(options).some(key => !['instanceId', 'limit', 'offset'].includes(key)) ||
+        !Number.isSafeInteger(limit) || limit < 1 || limit > 100 ||
+        !Number.isSafeInteger(offset) || offset < 0 || offset > 500) {
+      throw new Error('WORKFLOW_V2_RECORD_HISTORY_PAGE_INVALID');
+    }
+    const query = new URLSearchParams({ environmentKey: this.options.environmentKey, limit: String(limit), offset: String(offset) });
+    if (options.instanceId) query.set('instanceId', options.instanceId);
+    return this.request<WorkflowRecordHistory>(
+      `${this.workflowPath()}/records/${encodeURIComponent(resourceCode)}/${encodeURIComponent(recordId)}/history?${query}`,
+      { headers: this.identityHeaders(authorization) }
+    );
   }
 
   async workflowTimeline(
