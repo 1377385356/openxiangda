@@ -44,21 +44,22 @@ test('runtime refuses dependency, authorization, version and unknown busy errors
   }
 });
 
-test('read transport recovery allows at most three failures and busy does not reset that allowance', async () => {
+test('read transport recovery survives three failures within its fixed deadline', async () => {
   const time = clock();
   const error = failure(503, 'PLATFORM_TRANSPORT_UNAVAILABLE');
   let calls = 0;
-  await assert.rejects(recoverRuntimeAuthorizationRead(async () => {
+  const value = await recoverRuntimeAuthorizationRead(async () => {
     calls++;
+    if (calls === 7) return 'recovered';
     if (calls % 2 === 0) throw failure(429, 'CONCURRENCY_API_BUSY');
     throw error;
-  }, undefined, time.dependencies), received => received === error);
-  assert.equal(calls, 5, 'three transport failures and two explicit busy responses');
-  assert.deepEqual(time.delays, [2000, 4000, 8000, 16_000]);
+  }, undefined, time.dependencies);
+  assert.equal(value, 'recovered'); assert.equal(calls, 7);
+  assert.deepEqual(time.delays, [2000, 2000, 4000, 4000, 8000, 8000]);
   calls = 0;
   await assert.rejects(recoverRuntimeAuthorizationRead(async () => { calls++; throw error; }, undefined, clock().dependencies),
     received => received === error);
-  assert.equal(calls, 3);
+  assert.ok(calls > 3 && calls <= 120);
 });
 
 test('projection recovery preserves the three delays and the original ten-second chain', async () => {
@@ -111,17 +112,17 @@ test('abort stops runtime waiting and pending transport, including a transport t
   assert.equal(calls, 0);
 });
 
-test('hung current transport stops after three ten-second attempts', async t => {
+test('hung current transport remains bounded by the original five-minute deadline', async t => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
   t.mock.method(Math, 'random', () => 0);
   let calls = 0;
   const signals: AbortSignal[] = [];
   const rejected = assert.rejects(recoverRuntimeAuthorizationRead(async signal => {
     calls++; signals.push(signal); return new Promise<never>(() => {});
-  }), { name: 'TimeoutError' });
+  }), { code: 'OPENXIANGDA_RUNTIME_AUTHORIZATION_RECOVERY_EXHAUSTED' });
   await settle();
-  for (const delay of [10_000, 2000, 10_000, 4000, 10_000]) { t.mock.timers.tick(delay); await settle(); }
-  await rejected; assert.equal(calls, 3); assert.ok(signals.every(signal => signal.aborted));
+  for (let i = 0; i < 30; i++) { t.mock.timers.tick(10_000); await settle(); }
+  await rejected; assert.ok(calls > 3 && calls <= 30); assert.ok(signals.every(signal => signal.aborted));
 });
 
 test('the 300-second deadline also cancels an outstanding busy sleep', async t => {
@@ -200,6 +201,20 @@ test('unavailable recovery uses the configured original read budget beyond five 
     return 'verified';
   }, undefined, time.dependencies);
   assert.equal(value, 'verified'); assert.equal(time.dependencies.now(), 525_000);
+});
+
+test('an entrance receipt survives repeated network failures without resetting its original budget', async () => {
+  const time = clock(); let calls = 0;
+  const value = await recoverRuntimeAuthorizationRead(async () => {
+    calls++;
+    if (calls === 1) throw failure(429, 'CONCURRENCY_BOOTSTRAP_BUSY', {
+      data: { state: 'waiting', remainingMs: 600000, retryAfterMs: 15000 } });
+    if (calls < 6) { time.advance(10000); throw failure(503, 'PLATFORM_TRANSPORT_UNAVAILABLE'); }
+    return 'verified';
+  }, undefined, time.dependencies);
+  assert.equal(value, 'verified'); assert.equal(calls, 6);
+  assert.ok(time.dependencies.now() < 600000);
+  assert.deepEqual(time.delays, [15000, 2000, 4000, 8000, 16000]);
 });
 
 test('unavailable budget never refreshes original deadline and real receipts only shorten it', async () => {
