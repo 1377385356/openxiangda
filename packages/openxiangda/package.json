@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.57.1",
+  "version": "2.58.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -74,13 +74,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.6.91",
-    "openxiangda-contracts": "2.67.0",
-    "openxiangda-devkit-core": "2.49.1",
+    "openxiangda-cli": "2.6.92",
+    "openxiangda-contracts": "2.68.0",
+    "openxiangda-devkit-core": "2.50.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.105",
-    "openxiangda-nest": "2.14.8",
-    "openxiangda-skill-kit": "2.3.86",
+    "openxiangda-mcp": "2.0.106",
+    "openxiangda-nest": "2.14.9",
+    "openxiangda-skill-kit": "2.3.87",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -146,33 +146,39 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.57.1",
+    "version": "2.58.0",
     "status": "reviewed",
-    "title": "身份入口暂不可用时保留固定恢复期限",
-    "summary": "启用入口等待的平台可声明有界读取恢复预算，SDK继续恢复身份而不刷新原截止。",
-    "newFeatures": [],
+    "title": "有界入口读取恢复与流程、开发配置能力更新",
+    "summary": "身份读取在原期限内恢复短暂网络失败；同时交付主线已合入的流程范围、主子事务和开发配置能力。",
+    "newFeatures": [
+      "具名流程支持保存前范围候选与一层 owned 主子创建闭包，仍由平台按实际资料及职责校验。",
+      "流程节点支持有界职责成员并集及可选操作原因，任务使用进入节点时冻结的规则。",
+      "显式 owned 子表支持最多500行及有界记录集合事务守卫，保留 CAS、字节与文件限额。",
+      "预发布开发配置可同步真实 Native 配置而不构建 Web/Nest 制品，不能晋级生产。",
+      "连接开发支持从源码接收有界后端事件交付，保留真实平台租约和确认边界。"
+    ],
     "fixes": [
-      "修复入口429 unavailable无票据剩余时间时回落普通五分钟恢复的问题。",
-      "后续票据回执只能缩短截止；保留权限拒绝、失效、取消及写操作约束。"
+      "身份 GET 不再因第三次短暂传输失败提前退出；采用有界指数退避，保留原恢复截止、单次超时、取消与明确权限拒绝。"
     ],
     "affectedUsers": [
-      "使用高并发入口等待与runtime身份读取的V2应用。"
+      "使用 V2 入口等待、具名流程、owned 子表或预发布开发配置的应用。"
     ],
     "upgradeSteps": [
-      "同时使用提供recoveryBudgetMs的Server及同源SDK；无该元数据时维持原五分钟恢复。",
-      "完整分发组合通过正式门禁后部署，保留原压测失败与期限。"
+      "消费同源完整发行组合，并按声明协商目标平台能力。",
+      "入口预约、身份回执恢复和结果查询提示需配套平台更新；更新后重新校准真实页面请求图及性能测试。"
     ],
     "knownLimitations": [
-      "本批尚未完成公开npm发行和学校站点部署，源码测试不代表线上验收。",
-      "恢复预算只用于读取重试，不提供身份或队列位置，不延长Redis票据。"
+      "本轮尚未完成客户站点部署及新版本容量验收；源码验证不代表线上通过。",
+      "入口恢复仅重试读取，不自动重放报名等业务写操作，不续期原 Redis 票据。",
+      "此前8000人实验有7989人客户端30分钟内读回，最高完整通过仍5000人；实验不含SSO，不能代替首秒8000人完整浏览器容量结论。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
-      "platform": "native-4、可选入口unavailable recoveryBudgetMs",
-      "v1": "V1不消费该恢复接口"
+      "platform": "按声明协商对应 Native 与流程能力；入口恢复配套平台回执",
+      "v1": "V1不消费该V2接口"
     },
-    "sha256": "d797d800560e8e24b276c6674fa2ea303f89b844cf1f5ee7b1199543180174c4",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.57.1"
+    "sha256": "ac8676f79afa9bc596508c7ca897ec60ffadf79f86ca36429dc1a279df23cf09",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.58.0"
   }
 }
