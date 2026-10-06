@@ -978,3 +978,27 @@ nodes: {
 图显示旁侧补正节点、直角虚线退回/重提路径，正向分支的层级保持；拓扑和代码仍固定。
 声明自动要求 `workflow.initiator-correction@1.0.0`，无需增加默认关闭的开关。
 结果未知使用当前任务原命令回执恢复，不重建申请；数据、任务或事件失败一起回滚。
+
+### 补正重提的业务校验 {#correction-business-command}
+
+补正涉及年限资格、培训日期、报销上限或当前主数据时，字段 Schema 之外还要重新执行
+业务规则。在固定定义声明 `commandHandlers.resubmit: { operationCode: 'requests.resubmit' }`，
+把该操作的 `platformAccess.workflow` 声明为
+`{ codes: ['request-approval'], businessCommands: ['resubmit'] }`。
+操作必须是受控、强制幂等的 POST，绑定同一父资源的 `recordId`；请求 Schema 使用
+`openxiangda/config` 导出的 `workflowBusinessCommandInvocationSchema`。
+响应使用完整、闭合的实际结果 Schema，不能以开放的顶层对象绕过受控操作检查。
+
+标准 PC/手机任务页根据当前 Surface 调用该具名操作；应用不复制审批流转或预测下游
+动态人员。处理器先调用 `businessProcess.resolveOriginalTaskCommand(invocation)` 查询原结果，
+再合并受限任务字段、重验当前业务规则和资料，最后调用 `commandWithData`，
+使用 `expectedTransition: { kind: 'correction-replay' }`。平台验证真实本人补正、原任务与
+资料修订，在同一事务保存字段、刷新事实、核验 Native guards、关闭退回会话并重新计算。
+业务 mutation 仅写非事实的可信快照或审计字段，不能直接改变 `factProjection` 字段。
+
+`save_form` 仍可保存未填完的资料；只有通过业务重校验才能重提。直接调用原 Workflow
+重提入口会被拒绝，管理员不能替原发起人绕过该处理器。仅声明 resubmit 的流程可保留
+普通审批的退回和自动策略；包含 approve/reject/withdraw 业务 handler 的既有限制不变。
+自动协商 `workflow.correction-business-command@1.0.0`，无需额外开启功能。
+本人标量补正支持 Native 写入，owned 子表补正仍不支持；原已成功结果先于当前资料重验
+恢复，不因日期推移或资料后来停用而被误报为失败。接入方法见[后端](backend.md#correction-business-command)。

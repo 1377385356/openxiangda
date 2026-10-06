@@ -850,6 +850,12 @@ export class OpenXiangdaPlatformClient {
     return { ...detail, surface: normalizeWorkflowSurface(detail.surface) };
   }
 
+  async workflowTaskCommandReceipt(authorization: string, taskId: string, idempotencyKey: string): Promise<import('openxiangda-contracts').WorkflowTaskCommandReceipt> {
+    return this.request(`${this.workflowPath()}/tasks/${encodeURIComponent(taskId)}/commands/original?idempotencyKey=${encodeURIComponent(idempotencyKey)}`, {
+      headers: this.identityHeaders(authorization),
+    });
+  }
+
   async executeWorkflowTaskCommand(
     authorization: string,
     taskId: string,

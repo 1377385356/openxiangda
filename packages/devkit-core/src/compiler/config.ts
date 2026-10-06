@@ -2,6 +2,7 @@ import { validateAuthenticatedPublicRead, AuthenticatedPublicReadContractError }
 import { validateUserCandidateReferences, validateWorkflowUserCandidateBindings, UserCandidateContractError } from 'openxiangda-contracts';
 import { parseNativeUniqueKeys, DATA_SUBTABLE_MAX_TOTAL_ROWS } from 'openxiangda-contracts';
 import { assertWorkflowOwnedSubjectCreate } from 'openxiangda-contracts';
+export { workflowBusinessCommandInvocationSchema } from 'openxiangda-contracts';
 import type { ManagedConcurrencyDeclaration } from 'openxiangda-contracts';
 import { validateManagedConcurrency } from 'openxiangda-contracts/native-compiler';
 import { normalizeDecimalReservationEventDeclaration, decimalReservationEventContext } from 'openxiangda-contracts';
@@ -4853,8 +4854,8 @@ function validateBackendOperations(
           Object.keys(workflow).some(key => !['codes', 'businessCommands'].includes(key));
         if (workflow.businessCommands !== undefined) {
           const commands = workflow.businessCommands;
-          invalid ||= !Array.isArray(commands) || commands.length === 0 || commands.length > 3 ||
-            new Set(commands).size !== commands.length || commands.some(command => !['approve', 'reject', 'withdraw'].includes(command));
+          invalid ||= !Array.isArray(commands) || commands.length === 0 || commands.length > 4 ||
+            new Set(commands).size !== commands.length || commands.some(command => !['approve', 'reject', 'withdraw', 'resubmit'].includes(command));
         }
       }
       if (access.decimalReservation !== undefined) {

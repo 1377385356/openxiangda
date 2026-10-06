@@ -85,6 +85,11 @@ export class OpenXiangdaWorkflowService {
     );
   }
 
+  /** Read the current user's original receipt before business revalidation. */
+  async taskCommandReceipt(taskId: string, idempotencyKey: string) {
+    return this.platform.workflowTaskCommandReceipt(this.context().authorization, taskId, idempotencyKey);
+  }
+
   async taskCommand(
     taskId: string,
     command: WorkflowCommand,

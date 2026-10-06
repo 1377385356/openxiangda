@@ -52,6 +52,41 @@ operationCode、idempotencyKey；SDK 绑定当前环境并核验返回关联。N
 标准 PC/移动发起页在响应未知时保留原操作定位信息，刷新可继续查询；同一页面、原身份和
 版本内可手动重试冻结的标准输入，绝不自动重发或悄悄换键。
 
+### 补正重提的业务操作 {#correction-business-command}
+
+使用固定 Workflow 的 resubmit handler 执行业务重校验；请求是生成操作契约的
+`WorkflowBusinessCommandInvocation`，身份、环境与具名动作由网关和请求作用域 SDK 验证。
+禁止接受页面自报的申请人、资格快照或下游节点。
+
+```ts
+// 必须在当前资料读取和业务校验之前恢复同一用户的原任务结果。
+const original = await businessProcess.resolveOriginalTaskCommand(invocation);
+if (original.status === 'succeeded') return original.result;
+if (original.status === 'failed') throw new Error(original.errorCode || 'WORKFLOW_COMMAND_FAILED');
+
+// 合并当前申请与 task form 的受限字段，重验业务规则并准备当前资料的 guards。
+// form.expectedRevision 与 invocation.expectedRevision 保持一致，不给系统字段赋客户端值。
+return businessProcess.commandWithData({
+  workflow: invocation,
+  subject: { fromOperation: 'request' },
+  data: {
+    guards,
+    operations: [{ key: 'request', kind: 'update', resourceCode: 'requests',
+      id: invocation.recordId, expectedRevision: invocation.expectedRevision,
+      data: { lastValidatedAt: platformResolvedAt } }],
+  },
+  expectedTransition: { kind: 'correction-replay' },
+});
+```
+
+`lastValidatedAt` 为本例应用声明的非路由审计字段。任务 form 由平台在同一事务先应用，
+平台自动衔接其产生的主体 revision；业务 mutation 不能改写固定事实映射。
+守卫、字段、资格、下游解析或流转失败时，Native 更新与任务、会话、事件一起回滚。
+原结果查询使用既有 `/workflow/tasks/:id/commands/original`，核对当前 operation、任务、
+原键、命令、流程、业务记录和原用户输入摘要，不新建恢复表或自动换键重试。
+`not_observed` 仅表示尚未看到确定回执；保留原输入、原 token 和原键，按用户显式操作恢复。
+声明及限制见[工作流](workflow-events.md#correction-business-command)。
+
 ### 数据修改的原结果恢复 {#data-business-commands}
 
 仅修改业务资料的具名动作，在 `platformAccess` 声明

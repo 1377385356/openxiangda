@@ -750,6 +750,11 @@ export function compileRequiredPlatformCapabilitiesV3(
           definitions: config.workflows.definitions.filter((item: JsonObject) => item.definition.commandHandlers !== undefined),
           operations: operations.filter(operation => operation.platformAccess?.workflow?.businessCommands),
         } }] : []),
+    ...(config.workflows.definitions.some((item: JsonObject) => item.definition.commandHandlers?.resubmit) || operations.some(operation => operation.platformAccess?.workflow?.businessCommands?.includes('resubmit'))
+      ? [{ code: 'workflow.correction-business-command' as const, declaration: {
+          definitions: config.workflows.definitions.filter((item: JsonObject) => item.definition.commandHandlers?.resubmit),
+          operations: operations.filter(operation => operation.platformAccess?.workflow?.businessCommands?.includes('resubmit')),
+        } }] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => item.definition.launchPreflight !== undefined)
       ? [{ code: 'workflow.launch-preflight' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => item.definition.launchPreflight !== undefined) }] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => item.definition.approvedDelegation !== undefined)
@@ -2976,8 +2981,8 @@ function validateOperationPlatformAccess(
         `${pointer}/workflow/codes`
       );
     }
-    const businessCommands = workflow.businessCommands === undefined ? undefined : uniqueStrings(workflow.businessCommands, `${pointer}/workflow/businessCommands`, 3);
-    if (businessCommands && (!businessCommands.length || businessCommands.some(command => !['approve', 'reject', 'withdraw'].includes(command)))) {
+    const businessCommands = workflow.businessCommands === undefined ? undefined : uniqueStrings(workflow.businessCommands, `${pointer}/workflow/businessCommands`, 4);
+    if (businessCommands && (!businessCommands.length || businessCommands.some(command => !['approve', 'reject', 'withdraw', 'resubmit'].includes(command)))) {
       fail('NATIVE_OPERATION_WORKFLOW_BUSINESS_COMMAND_INVALID', `${pointer}/workflow/businessCommands`);
     }
     result.workflow = { codes: uniqueSorted(codes), ...(businessCommands ? { businessCommands: uniqueSorted(businessCommands) } : {}) };

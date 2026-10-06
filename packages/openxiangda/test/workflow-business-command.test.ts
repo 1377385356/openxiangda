@@ -41,9 +41,15 @@ test('fixed handler dispatch preserves the original Workflow CSRF, subject and u
     assert.equal(result.dataRevision, 4); assert.deepEqual(bodies[0], bodies[1]);
     assert.deepEqual(bodies[0].input, { workflowCode: 'request-approval', target: { kind: 'task', id: 'task', command: 'approve' },
       recordId: 'record', expectedRevision: 3, commandToken: token, idempotencyKey: 'original', input });
+    surface.operations[0]!.key = 'resubmit';
+    const correctionInput = { form: { expectedRevision: 3, values: { leader: 'changed-leader' } } };
+    await executeWorkflowOperation(surface, surface.operations[0]!, correctionInput, { idempotencyKey: 'original-correction' });
+    assert.deepEqual(bodies[2].input.target, { kind: 'task', id: 'task', command: 'resubmit' });
+    assert.equal(bodies[2].input.idempotencyKey, 'original-correction');
+    assert.deepEqual(bodies[2].input.input, correctionInput);
     deny = true;
     await assert.rejects(() => executeWorkflowOperation(surface, surface.operations[0]!, input, { idempotencyKey: 'original' }), /BUSINESS_OPERATION_UNAVAILABLE/);
-    assert.equal(writes, 2, 'missing action must not fall back to a standard Workflow command');
+    assert.equal(writes, 3, 'missing action must not fall back to a standard Workflow command');
     await logoutCurrentUser();
   } finally {
     globalThis.fetch = originalFetch;

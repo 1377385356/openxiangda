@@ -114,6 +114,7 @@ export type WorkflowTaskCommandReceipt =
   | { status: 'not_observed' | 'expired_unconsumed'; taskId: string; idempotencyKey: string }
   | { status: 'succeeded' | 'failed'; taskId: string; idempotencyKey: string;
       commandId: string; command: string; requestDigest: string;
+      businessCommand?: { operationCode: string; inputDigest: string; workflowCode: string; recordId: string };
       result: import('../types.js').WorkflowCommandResult | null; errorCode: string | null };
 
 type Definition = {

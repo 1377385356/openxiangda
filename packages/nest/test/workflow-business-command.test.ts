@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { OpenXiangdaBusinessProcessService } from '../src/business-process.js';
+import { sha256Digest } from 'openxiangda-contracts';
 
 test('business command SDK forwards verified action and original CSRF and refuses undeclared commands before HTTP', async () => {
   const request: any = { headers: { 'x-openxiangda-csrf-token': 'issued-csrf' }, openxiangda: {
@@ -25,4 +26,22 @@ test('business command SDK forwards verified action and original CSRF and refuse
   request.openxiangda.principal.principalType = 'application';
   await assert.rejects(() => service.commandWithData(input), /USER_CONTEXT_REQUIRED/);
   assert.equal(calls.length, 1);
+});
+
+test('original correction receipt is checked before current data and cannot restore another operation or input', async () => {
+  const request: any = { headers: {}, openxiangda: { authorization:'Bearer user', perspectiveCode:null,
+    principal:{principalType:'user',userId:'applicant',environmentKey:'preproduction'},
+    operation:{code:'revalidate',requiredCapability:'request:submit',platformAccess:{workflow:{codes:['request-approval'],businessCommands:['resubmit']}}} } };
+  const input: any = {workflowCode:'request-approval',target:{kind:'task',id:'task',command:'resubmit'},recordId:'record',expectedRevision:1,idempotencyKey:'original',commandToken:'old',input:{form:{expectedRevision:1,values:{amount:100}}}};
+  const receipt: any = {status:'succeeded',taskId:'task',idempotencyKey:'original',command:'resubmit',result:{status:'running'},
+    businessCommand:{operationCode:'revalidate',workflowCode:'request-approval',recordId:'record',inputDigest:sha256Digest(input.input)}};
+  const calls: any[] = [];
+  const platform: any = {workflowTaskCommandReceipt:async (...args:any[])=>{calls.push(args);return receipt;}};
+  const service=new OpenXiangdaBusinessProcessService(request,platform);
+  assert.equal((await service.resolveOriginalTaskCommand(input)).status,'succeeded');
+  assert.deepEqual(calls[0],['Bearer user','task','original']);
+  for (const changed of [{...input,recordId:'other'}, {...input,input:{form:{expectedRevision:1,values:{amount:200}}}}])
+    await assert.rejects(()=>service.resolveOriginalTaskCommand(changed),/RECEIPT_INPUT_MISMATCH/);
+  receipt.businessCommand.operationCode='other';
+  await assert.rejects(()=>service.resolveOriginalTaskCommand(input),/RECEIPT_INPUT_MISMATCH/);
 });

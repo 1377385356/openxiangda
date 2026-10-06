@@ -5698,7 +5698,7 @@ export const workflowDefinitionSchema = {
     },
     commandHandlers: {
       type: 'object', additionalProperties: false, minProperties: 1,
-      properties: Object.fromEntries(['approve', 'reject', 'withdraw'].map(command => [command, {
+      properties: Object.fromEntries(['approve', 'reject', 'withdraw', 'resubmit'].map(command => [command, {
         type: 'object', additionalProperties: false, required: ['operationCode'],
         properties: { operationCode: { type: 'string', pattern: '^[a-z][a-z0-9]*(?:[-_.][a-z0-9]+)*$' } },
       }])),
@@ -6197,6 +6197,10 @@ export const businessProcessCommandWithDataSchema = {
   type: 'object',
   additionalProperties: false,
   required: ['schemaVersion', 'environmentKey', 'workflow', 'subject', 'data', 'expectedTransition'],
+  allOf: [{
+    if: { properties: { expectedTransition: { required: ['kind'], properties: { kind: { const: 'correction-replay' } } } } },
+    then: { properties: { workflow: { properties: { target: { properties: { kind: { const: 'task' }, command: { const: 'resubmit' } } } } } } },
+  }],
   properties: {
     schemaVersion: { const: SCHEMA_VERSIONS.businessProcessCommandWithData },
     environmentKey: { enum: DEPLOYMENT_ENVIRONMENTS },
@@ -6206,7 +6210,7 @@ export const businessProcessCommandWithDataSchema = {
       properties: { fromOperation: { type: 'string', minLength: 1, maxLength: 128 } },
     },
     data: businessProcessCommitSchema.properties.data,
-    expectedTransition: {
+    expectedTransition: { oneOf: [{
       type: 'object', additionalProperties: false,
       required: ['status', 'outcome', 'currentNodeId'],
       properties: {
@@ -6214,7 +6218,7 @@ export const businessProcessCommandWithDataSchema = {
         outcome: { type: ['string', 'null'], maxLength: 128 },
         currentNodeId: { type: ['string', 'null'], minLength: 1, maxLength: 128 },
       },
-    },
+    }, { type: 'object', additionalProperties: false, required: ['kind'], properties: { kind: { const: 'correction-replay' } } }] },
   },
 } as const;
 
@@ -7613,7 +7617,7 @@ const appOperationPlatformAccessSchema = {
           uniqueItems: true,
           items: stableCode,
         },
-        businessCommands: { type: 'array', minItems: 1, maxItems: 3, uniqueItems: true, items: { enum: ['approve', 'reject', 'withdraw'] } },
+        businessCommands: { type: 'array', minItems: 1, maxItems: 4, uniqueItems: true, items: { enum: ['approve', 'reject', 'withdraw', 'resubmit'] } },
       },
     },
     decimalReservation: {

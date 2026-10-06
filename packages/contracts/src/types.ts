@@ -3352,7 +3352,7 @@ export interface WorkflowCommandInput {
 /** Original Workflow authority and exact subject CAS from the shared Surface client. */
 export interface WorkflowBusinessCommandInvocation extends WorkflowCommandInput {
   workflowCode: string;
-  target: { kind: 'task'; id: string; command: 'approve' | 'reject' } | { kind: 'instance'; id: string; command: 'withdraw' };
+  target: { kind: 'task'; id: string; command: 'approve' | 'reject' | 'resubmit' } | { kind: 'instance'; id: string; command: 'withdraw' };
   recordId: string;
   expectedRevision: number;
 }
@@ -3364,7 +3364,8 @@ export interface BusinessProcessCommandWithData {
   workflow: WorkflowBusinessCommandInvocation;
   subject: { fromOperation: string };
   data: BusinessProcessCommit['data'];
-  expectedTransition: { status: 'running' | 'approved' | 'rejected' | 'withdrawn'; outcome: string | null; currentNodeId: string | null };
+  expectedTransition: { status: 'running' | 'approved' | 'rejected' | 'withdrawn'; outcome: string | null; currentNodeId: string | null }
+    | { kind: 'correction-replay' };
 }
 
 /**

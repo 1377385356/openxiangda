@@ -3205,7 +3205,7 @@ export async function executeWorkflowOperation(
     const expectedRevision = surface.taskForm?.expectedRevision || detail?.sourceRevision;
     if (!recordId || !resourceCode || resourceCode !== action.subject.resourceCode ||
         !Number.isSafeInteger(expectedRevision) || Number(expectedRevision) < 1 ||
-        !['approve', 'reject', 'withdraw'].includes(operation.key)) throw new Error('OPENXIANGDA_WORKFLOW_BUSINESS_SUBJECT_UNAVAILABLE');
+        !['approve', 'reject', 'withdraw', 'resubmit'].includes(operation.key)) throw new Error('OPENXIANGDA_WORKFLOW_BUSINESS_SUBJECT_UNAVAILABLE');
     const target = operation.key === 'withdraw'
       ? { kind: 'instance', id: String(instance.id), command: 'withdraw' }
       : { kind: 'task', id: String(surface.task?.id || ''), command: operation.key };

@@ -1,5 +1,5 @@
 /** Opt-in, fixed-definition dispatch; Workflow continues to own the decision. */
-export type WorkflowBusinessCommand = 'approve' | 'reject' | 'withdraw';
+export type WorkflowBusinessCommand = 'approve' | 'reject' | 'withdraw' | 'resubmit';
 export type WorkflowCommandHandlers = Partial<Record<WorkflowBusinessCommand, { operationCode: string }>>;
 
 type Definition = {
@@ -19,8 +19,11 @@ export function validateWorkflowCommandHandlers(definition: Definition, operatio
   const handlers = definition.commandHandlers;
   if (handlers === undefined) return [];
   if (!handlers || typeof handlers !== 'object' || Array.isArray(handlers) || !Object.keys(handlers).length ||
-      Object.keys(handlers).some(key => !['approve', 'reject', 'withdraw'].includes(key))) return ['WORKFLOW_BUSINESS_COMMAND_HANDLERS_INVALID'];
+      Object.keys(handlers).some(key => !['approve', 'reject', 'withdraw', 'resubmit'].includes(key))) return ['WORKFLOW_BUSINESS_COMMAND_HANDLERS_INVALID'];
   const errors: string[] = [];
+  if (handlers.resubmit && !Object.values(definition.nodes || {}).some(node => node.kind === 'correction')) {
+    errors.push('WORKFLOW_BUSINESS_CORRECTION_REQUIRED');
+  }
   for (const [command, handler] of Object.entries(handlers)) {
     if (!handler || typeof handler !== 'object' || Array.isArray(handler) || Object.keys(handler).join(',') !== 'operationCode' ||
         !/^[a-z][a-z0-9]*(?:[-_.][a-z0-9]+)*$/.test(handler.operationCode || '')) {
@@ -38,7 +41,8 @@ export function validateWorkflowCommandHandlers(definition: Definition, operatio
       errors.push('WORKFLOW_BUSINESS_COMMAND_OPERATION_INVALID');
     }
   }
-  if (Object.values(definition.nodes || {}).some(node => node.kind === 'approval' &&
+  if (['approve', 'reject', 'withdraw'].some(command => Object.hasOwn(handlers, command)) &&
+      Object.values(definition.nodes || {}).some(node => node.kind === 'approval' &&
       (node.emptyPolicy === 'skip' || node.initiatorApprovalPolicy === 'auto_approve'))) errors.push('WORKFLOW_BUSINESS_COMMAND_AUTOMATIC_DECISION_FORBIDDEN');
   return [...new Set(errors)];
 }
@@ -52,7 +56,7 @@ export const workflowBusinessCommandInvocationSchema = {
     target: {
       oneOf: [
         { type: 'object', additionalProperties: false, required: ['kind', 'id', 'command'], properties: {
-          kind: { const: 'task' }, id: { type: 'string', format: 'uuid' }, command: { enum: ['approve', 'reject'] },
+          kind: { const: 'task' }, id: { type: 'string', format: 'uuid' }, command: { enum: ['approve', 'reject', 'resubmit'] },
         } },
         { type: 'object', additionalProperties: false, required: ['kind', 'id', 'command'], properties: {
           kind: { const: 'instance' }, id: { type: 'string', format: 'uuid' }, command: { const: 'withdraw' },

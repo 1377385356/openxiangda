@@ -46,3 +46,4 @@ export type {
   ManagedConcurrencyDeclaration, ManagedReadDeclaration, QueuedCommandDeclaration,
   IntegerQuotaDeclaration, AdmissionPolicy, ConcurrencyBinding, ConcurrencyParameter,
 } from 'openxiangda-contracts';
+export { workflowBusinessCommandInvocationSchema } from 'openxiangda-contracts';

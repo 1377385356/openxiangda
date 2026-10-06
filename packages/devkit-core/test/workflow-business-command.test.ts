@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import { businessProcessCommandWithDataSchema, workflowBusinessCommandInvocationSchema, workflowDefinitionSchema, workflowBindingSchema, validateWorkflowCommandHandlers } from 'openxiangda-contracts';
@@ -7,6 +10,7 @@ import { compileApplicationSources } from '../src/compiler/bundle.js';
 import { defineOpenXiangdaApp, type OpenXiangdaAppDeclaration } from '../src/compiler/config.js';
 import { resourceRecordSchema } from '../src/compiler/schema-composition.js';
 import { requiredPlatformCapabilitiesFromConfiguration } from '../src/compiler/package-compiler.js';
+import { loadAppConfig } from '../src/workspace-loader.js';
 
 function fixture(): OpenXiangdaAppDeclaration {
   const capability = 'app:command-review:request:decide';
@@ -40,6 +44,23 @@ function fixture(): OpenXiangdaAppDeclaration {
     },
   };
 }
+
+test('workspace declaration imports the public command schema without a private contracts dependency', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'openxiangda-business-command-config-'));
+  try {
+    const path = join(root, 'openxiangda.config.ts');
+    writeFileSync(path, `import { defineOpenXiangdaApp, workflowBusinessCommandInvocationSchema } from 'openxiangda/config';
+const app = ${JSON.stringify(fixture())};
+app.backend.operations[0].requestSchema = workflowBusinessCommandInvocationSchema;
+export default defineOpenXiangdaApp(app);`);
+    const loaded = await loadAppConfig(path);
+    assert.deepEqual(loaded.backend!.operations![0]!.requestSchema, workflowBusinessCommandInvocationSchema);
+    const output = compileApplicationSources(loaded);
+    assert.equal(requiredPlatformCapabilitiesFromConfiguration(output.config.value).some(item => item.code === 'workflow.business-data-command'), true);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 test('role union is carried by both compilers and requires platform support', () => {
   const value = fixture();
@@ -95,6 +116,28 @@ test('ordinary workflow declarations retain their existing required capabilities
   delete source.backend!.operations[0]!.platformAccess!.workflow!.businessCommands;
   const output = compileApplicationSources(defineOpenXiangdaApp(source));
   assert.equal(requiredPlatformCapabilitiesFromConfiguration(output.config.value).some(item => item.code === 'workflow.business-data-command'), false);
+});
+
+test('correction revalidation compiles through both boundaries without changing ordinary approval automation', () => {
+  const source = fixture();
+  const definition: any = source.workflows!.definitions[0]!.definition;
+  definition.commandHandlers = { resubmit: { operationCode: 'decide-request' } };
+  definition.subject.summaryFields = [];
+  definition.taskPages = { correct: { title: '更正申请', fields: [{ code: 'amount', required: true }] } };
+  definition.nodes.correct = { id: 'correct', kind: 'correction', title: '本人补正', taskPageCode: 'correct', next: definition.startAt };
+  definition.nodes.review.returnTargets = ['correct'];
+  definition.nodes.review.emptyPolicy = 'skip';
+  definition.nodes.review.initiatorApprovalPolicy = 'auto_approve';
+  source.backend!.operations[0]!.platformAccess!.workflow!.businessCommands = ['resubmit'];
+  const output = compileApplicationSources(defineOpenXiangdaApp(source));
+  const target = compileNativeApplicationConfiguration({ appCode: source.app.code, configBytes: output.config.content,
+    expectedConfigDigest: output.config.digest, contractBytes: output.contracts.content, expectedContractDigest: output.contracts.digest });
+  assert.deepEqual(target.requiredPlatformCapabilities, requiredPlatformCapabilitiesFromConfiguration(output.config.value));
+  assert.equal(target.requiredPlatformCapabilities.find(item => item.code === 'workflow.correction-business-command')?.contractVersion, '1.0.0');
+  assert.equal((output.config.value.workflows.definitions[0]!.definition.nodes.review as any).emptyPolicy, 'skip');
+  assert.equal(validateWorkflowCommandHandlers(definition, source.backend!.operations).length, 0);
+  delete definition.nodes.correct;
+  assert.throws(() => compileApplicationSources(defineOpenXiangdaApp(source)), /WORKFLOW_BUSINESS_CORRECTION_REQUIRED|WORKFLOW_CORRECTION_RETURN/);
 });
 
 test('approved delegation is preserved by app and target compilers and requires support only when declared', () => {
@@ -230,6 +273,9 @@ test('browser invocation has an exact target/subject/CAS/token envelope', () => 
   }
   assert.equal(validateCommand({ ...command, expectedTransition: { ...command.expectedTransition, status: 'completed' } }), false);
   assert.equal(validateCommand({ ...command, workflow: { ...input, command: 'forged' } }), false);
+  const replay = { ...command, workflow: { ...input, target: { ...input.target, command: 'resubmit' } }, expectedTransition: { kind: 'correction-replay' } };
+  assert.equal(validateCommand(replay), true, JSON.stringify(validateCommand.errors));
+  assert.equal(validateCommand({ ...replay, workflow: input }), false);
 });
 
 test('launch preflight seals required approval nodes and identical opt-in capability closure', () => {

@@ -86,6 +86,8 @@ export type {
 export * from './browser/platform-client';
 export type { WorkflowBusinessStepSummary, WorkflowBusinessStepRecoveryOptions, WorkflowBusinessStepRecoveryPreview } from 'openxiangda-contracts/browser';
 export { formatWorkflowExpression, projectWorkflowGraph } from 'openxiangda-contracts/browser';
+export { evaluateWorkflowTaskPageExpression } from 'openxiangda-contracts/browser';
+export type { WorkflowExpression, WorkflowTaskPage as WorkflowTaskPageDeclaration } from 'openxiangda-contracts/browser';
 export { formatWorkflowCompletionDeadline } from 'openxiangda-contracts/browser';
 export type { WorkflowCompletionDeadline, WorkflowCompletionDeadlineState } from 'openxiangda-contracts/browser';
 export type { WorkflowReadability, WorkflowGraphProjection, WorkflowGraphVariable, WorkflowGraphEdge, WorkflowGraphVisit, WorkflowGraphReadResult, WorkflowInstanceGraphReadResult } from 'openxiangda-contracts/browser';

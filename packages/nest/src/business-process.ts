@@ -2,6 +2,7 @@ import { Inject, Injectable, Scope, UnauthorizedException } from '@nestjs/common
 import { REQUEST } from '@nestjs/core';
 import {
   SCHEMA_VERSIONS,
+  sha256Digest,
   type BusinessProcessAnswer,
   type BusinessProcessCommand,
   type BusinessProcessCommandQuery,
@@ -14,6 +15,7 @@ import {
   type BusinessProcessResolution,
   type BusinessProcessRetry,
   type ProcessCommandSurface,
+  type WorkflowBusinessCommandInvocation,
 } from 'openxiangda-contracts';
 import { assertOpenXiangdaRoleAssertions, requireOpenXiangdaBusinessActionContext } from './business-action-context.js';
 import { OpenXiangdaPlatformClient } from './platform-client.js';
@@ -67,6 +69,24 @@ export class OpenXiangdaBusinessProcessService {
     return this.platform.commandBusinessProcessWithData(context.authorization, {
       ...input, schemaVersion: SCHEMA_VERSIONS.businessProcessCommandWithData, environmentKey: context.environmentKey,
     }, context.action, csrfToken);
+  }
+
+  /** Read the same user's original task receipt before querying changed business data. */
+  async resolveOriginalTaskCommand(input: WorkflowBusinessCommandInvocation) {
+    const context = this.context(input.workflowCode);
+    if (input.target.kind !== 'task' || !this.request.openxiangda!.operation!.platformAccess?.workflow?.businessCommands?.includes(input.target.command))
+      throw new UnauthorizedException('OPENXIANGDA_BUSINESS_PROCESS_COMMAND_NOT_DECLARED');
+    const receipt = await this.platform.workflowTaskCommandReceipt(context.authorization, input.target.id, input.idempotencyKey);
+    if (receipt.taskId !== input.target.id || receipt.idempotencyKey !== input.idempotencyKey)
+      throw new UnauthorizedException('WORKFLOW_RECEIPT_SCOPE_MISMATCH');
+    if (receipt.status === 'succeeded' || receipt.status === 'failed') {
+      const business = receipt.businessCommand;
+      if (receipt.command !== input.target.command || !business || business.operationCode !== context.action.code ||
+          business.workflowCode !== input.workflowCode || business.recordId !== input.recordId ||
+          business.inputDigest !== sha256Digest(input.input || {}))
+        throw new UnauthorizedException('WORKFLOW_RECEIPT_INPUT_MISMATCH');
+    }
+    return receipt;
   }
 
   async list(

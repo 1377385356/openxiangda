@@ -2019,6 +2019,8 @@ function runtimeProtocolCapabilities(config: OpenXiangdaAppConfig) {
       : []),
     ...((config.workflows?.definitions || []).some(item => item.definition.commandHandlers !== undefined) || operations.some(operation => operation.platformAccess?.workflow?.businessCommands)
       ? ['workflow.business-data-command'] : []),
+    ...((config.workflows?.definitions || []).some(item => item.definition.commandHandlers?.resubmit) || operations.some(operation => operation.platformAccess?.workflow?.businessCommands?.includes('resubmit'))
+      ? ['workflow.correction-business-command'] : []),
     ...((config.workflows?.definitions || []).some(item => item.definition.launchPreflight !== undefined)
       ? ['workflow.launch-preflight'] : []),
     ...((config.workflows?.definitions || []).some(item => item.definition.instanceCommands !== undefined)
