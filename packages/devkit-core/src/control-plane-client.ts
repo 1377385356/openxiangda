@@ -1,5 +1,7 @@
 import type { WorkflowDelegationAdministration, WorkflowDelegationCatalog, WorkflowDelegationCandidatePage, WorkflowDelegationCandidateQuery, WorkflowDelegationListQuery, WorkflowDelegationPage, WorkflowDelegationMutationPreview, WorkflowDelegationMutationReceipt, WorkflowDelegationMutationRequest } from "openxiangda-contracts";
 import type { DeploymentStrategy } from 'openxiangda-contracts';
+import { DEVELOPMENT_BACKEND_FEATURE, type DevelopmentBackendBootstrap,
+  type DevelopmentBackendRequest, type DevelopmentBackendResponse } from 'openxiangda-contracts';
 import { assertDevelopmentConfigurationResult, DEVELOPMENT_CONFIGURATION_ENDPOINT,
   DEVELOPMENT_CONFIGURATION_FEATURE, type DevelopmentConfigurationInput } from 'openxiangda-contracts';
 import {
@@ -753,6 +755,34 @@ export class OpenXiangdaControlPlaneClient {
         headers: this.connectedDevelopmentSessionHeaders(sessionToken),
       }
     );
+  }
+
+  async bootstrapDevelopmentBackend(appCode: string, token: string): Promise<DevelopmentBackendBootstrap> {
+    const feature = (await this.capabilities()).features?.[DEVELOPMENT_BACKEND_FEATURE];
+    if (feature?.status !== 'available' || feature.contractVersion !== '1.0.0')
+      throw new ControlPlaneError(409, 'OPENXIANGDA_CONNECTED_DEV_BACKEND_CAPABILITY_REQUIRED',
+        '目标平台尚未提供后台源码事件投递，请更新配套平台');
+    return await this.developmentBackendRequest(appCode, token, 'bootstrap');
+  }
+
+  async nextDevelopmentBackendRequest(appCode: string, token: string, signal?: AbortSignal): Promise<DevelopmentBackendRequest | null> {
+    return await this.developmentBackendRequest(appCode, token, 'next', {}, signal);
+  }
+
+  async respondDevelopmentBackendRequest(appCode: string, token: string, response: DevelopmentBackendResponse, signal?: AbortSignal): Promise<void> {
+    await this.developmentBackendRequest(appCode, token, 'respond', response, signal);
+  }
+
+  async closeDevelopmentBackend(appCode: string, token: string, signal?: AbortSignal): Promise<void> {
+    await this.developmentBackendRequest(appCode, token, 'close', {}, signal);
+  }
+
+  private async developmentBackendRequest<T>(appCode: string, token: string,
+    action: 'bootstrap' | 'next' | 'respond' | 'close', body: unknown = {}, signal?: AbortSignal): Promise<T> {
+    return await this.json<T>(`${this.connectedDevelopmentSessionsPath(appCode)}/current/backend/${action}`, {
+      method: 'POST', body: JSON.stringify(body),
+      headers: this.connectedDevelopmentSessionHeaders(token), ...(signal ? { signal } : {}),
+    });
   }
 
   async oauthClients(appCode: string): Promise<{

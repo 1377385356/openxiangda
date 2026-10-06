@@ -24,6 +24,7 @@ import {
   OPENXIANGDA_CONTRACT_VERSION,
   SCHEMA_VERSIONS,
   DEVELOPMENT_CONFIGURATION_SCHEMA,
+  requiresDevelopmentBackendCredential,
   RUNTIME_CAPACITY_PREFLIGHT_SCHEMA,
   canonicalJson,
   sha256Digest,
@@ -2698,6 +2699,13 @@ export class OpenXiangdaApplicationServices {
           token
         );
       },
+      ...(requiresDevelopmentBackendCredential(sources.config.value as any) ? { backend: {
+        bootstrap: (token: string) => client.bootstrapDevelopmentBackend(workspace.config.app.code, token),
+        next: (token: string, signal?: AbortSignal) => client.nextDevelopmentBackendRequest(workspace.config.app.code, token, signal),
+        respond: (token: string, response: import('openxiangda-contracts').DevelopmentBackendResponse, signal?: AbortSignal) =>
+          client.respondDevelopmentBackendRequest(workspace.config.app.code, token, response, signal),
+        close: (token: string, signal?: AbortSignal) => client.closeDevelopmentBackend(workspace.config.app.code, token, signal),
+      } } : {}),
     };
     input.onStatus?.(
       "connected dev 使用平台当前完整配置，Web/Nest保持本地源码联调"

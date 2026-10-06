@@ -228,6 +228,12 @@ server.listen(port, "127.0.0.1");
       onReady: async session => {
         const remoteResponse = await fetch(`${session.urls.proxy}/service/openxiangda-api/v2/probe`);
         assert.equal(remoteResponse.status, 200);
+        for (const token of ['application-oauth-token', 'untrusted-token']) {
+          await fetch(`${session.urls.proxy}/service/openxiangda-api/v2/probe`, {
+            headers: { Authorization: `Bearer ${token}`, 'x-openxiangda-dev-session': 'forged-session',
+              'x-openxiangda-connected-dev': '1' },
+          });
+        }
         const localResponse = await fetch(`${session.urls.proxy}/api/probe`);
         const local = await localResponse.json() as any;
         assert.equal(local.script, "dev");
@@ -251,9 +257,15 @@ server.listen(port, "127.0.0.1");
     assert.equal(result.session.publishedResourcesOnly, false);
     assert.equal(result.session.manifestOverlay, true);
     assert.equal(existsSync(dockerMarker), false);
-    assert.equal(remoteRequests.length, 1);
+    assert.equal(remoteRequests.length, 3);
     assert.equal(remoteRequests[0]?.headers.authorization, `Bearer ${secretDeveloperToken}`);
     assert.equal(remoteRequests[0]?.headers["x-openxiangda-dev-session"], secretSessionToken);
+    assert.equal(remoteRequests[1]?.headers.authorization, 'Bearer application-oauth-token');
+    assert.equal(remoteRequests[2]?.headers.authorization, 'Bearer untrusted-token');
+    for (const request of remoteRequests.slice(1)) {
+      assert.equal(request.headers['x-openxiangda-dev-session'], undefined);
+      assert.equal(request.headers['x-openxiangda-connected-dev'], undefined);
+    }
     assert.deepEqual(revoked, [secretSessionToken]);
     assert.doesNotMatch(JSON.stringify(result), /must-not-leak/);
     for (const pid of readFileSync(pidPath, "utf8").trim().split("\n").map(Number)) {

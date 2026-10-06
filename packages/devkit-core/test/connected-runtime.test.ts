@@ -101,6 +101,52 @@ await sdk.bootstrapOpenXiangdaApplication(TestModule);
   }
 });
 
+test('connected event bootstrap injects application secrets only into Nest and closes the transport', async () => {
+  const f = fixture();
+  const backendRoot = join(f.root, 'services/business');
+  mkdirSync(backendRoot, { recursive: true });
+  writeFileSync(join(backendRoot, 'package.json'), JSON.stringify({ private: true, scripts: { dev: 'node main.cjs' } }));
+  writeFileSync(join(f.root, 'web.cjs'), `
+const http = require('node:http');
+if (JSON.stringify(process.env).includes('private-backend-marker')) process.exit(91);
+const server = http.createServer((req,res)=>res.end('web ready'));
+for(const sig of ['SIGINT','SIGTERM']) process.on(sig,()=>server.close(()=>process.exit(0)));
+server.listen(Number(process.env.OPENXIANGDA_WEB_PORT),'127.0.0.1');
+`);
+  writeFileSync(join(backendRoot, 'main.cjs'), `
+const http = require('node:http');
+if (process.env.OPENXIANGDA_OAUTH_CLIENT_SECRET !== 'private-backend-marker') process.exit(92);
+const server = http.createServer((req,res)=>res.end('{}'));
+for(const sig of ['SIGINT','SIGTERM']) process.on(sig,()=>server.close(()=>process.exit(0)));
+server.listen(Number(process.env.OPENXIANGDA_APP_PORT),'127.0.0.1');
+`);
+  let polls = 0, closed = false;
+  const termListeners = process.listenerCount('SIGTERM');
+  const status: string[] = [];
+  const bootstrap = { schemaVersion: 'openxiangda.development-backend/v1' as const, sessionId: f.grant.id,
+    environmentId: target.id, appVersionId: target.activeAppVersionId, headRevision: target.headRevision,
+    secretEnvironment: { OPENXIANGDA_OAUTH_CLIENT_ID: 'client', OPENXIANGDA_OAUTH_CLIENT_SECRET: 'private-backend-marker' } };
+  try {
+    const result = await runConnectedDevelopment({ ...f.options, backendRoot: 'services/business',
+      remoteSession: { ...f.options.remoteSession, backend: {
+        bootstrap: async () => bootstrap, next: async () => { polls++; return null; },
+        respond: async () => undefined, close: async () => {
+          assert.equal(process.listenerCount('SIGTERM'), termListeners + 1);
+          process.emit('SIGTERM');
+          assert.equal(process.listenerCount('SIGTERM'), termListeners + 1);
+          closed = true;
+        },
+      } }, onStatus: value => status.push(value), onReady: async () => {
+        process.emit('SIGTERM'); process.emit('SIGTERM');
+      },
+    });
+    assert.equal(result.exitCode, 0); assert.ok(polls > 0); assert.equal(closed, true);
+    assert.deepEqual(bootstrap.secretEnvironment, {});
+    assert.doesNotMatch(JSON.stringify({ result, status }), /private-backend-marker/);
+    assert.equal(process.listenerCount('SIGTERM'), termListeners);
+  } finally { f.close(); }
+});
+
 test('frontend-only connected development starts no Nest and rejects application API routes', async () => {
   const f = fixture();
   try {

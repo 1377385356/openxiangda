@@ -6,8 +6,9 @@ import { platform } from "node:os";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import { lstatSync } from "node:fs";
 import type { AddressInfo } from "node:net";
-import type { ApplicationEnvironment, DeploymentEnvironment } from "openxiangda-contracts";
+import type { ApplicationEnvironment, DeploymentEnvironment, DevelopmentBackendBootstrap } from "openxiangda-contracts";
 import type { OpenXiangdaDeveloperSession } from "./session.js";
+import { assertDevelopmentBackendBootstrap, startDevelopmentBackendRelay, type DevelopmentBackendRelayApi } from './development-backend-relay.js';
 
 const LOOPBACK_HOST = "127.0.0.1";
 const DEFAULT_WEB_PORT = 5173;
@@ -34,6 +35,7 @@ export interface ConnectedDevelopmentSessionApi {
   current(token: string): Promise<Omit<ConnectedDevelopmentGrant, "token">>;
   refresh(token: string): Promise<Omit<ConnectedDevelopmentGrant, "token">>;
   revoke(token: string): Promise<void>;
+  backend?: DevelopmentBackendRelayApi;
 }
 
 export interface ConnectedDevelopmentOptions {
@@ -156,10 +158,14 @@ export async function runConnectedDevelopment(
   let refreshInFlight: Promise<void> | undefined;
   let refreshTimer: NodeJS.Timeout | undefined;
   let refreshError: unknown;
+  let backendBootstrap: DevelopmentBackendBootstrap | undefined;
+  let backendRelay: ReturnType<typeof startDevelopmentBackendRelay> | undefined;
   const stop = (signal: NodeJS.Signals = "SIGTERM", fromSignal = false) => {
     if (stopping) return;
     stopping = true;
     interrupted = fromSignal;
+    // Stop receiving work immediately, while the local child processes exit.
+    void backendRelay?.stop();
     terminateChildren(children, signal);
   };
   const refreshGrant = async () => {
@@ -210,6 +216,13 @@ export async function runConnectedDevelopment(
     session.publishedResourcesOnly = !grant.manifestOverlay;
     session.manifestOverlay = grant.manifestOverlay;
     await listen(proxy, proxyPort);
+    if (backendRoot && environmentKey === 'preproduction' && input.remoteSession.backend) {
+      backendBootstrap = await input.remoteSession.backend.bootstrap(grant.token);
+      assertDevelopmentBackendBootstrap(backendBootstrap, {
+        sessionId: grant.id, environmentId: input.environment.id,
+        appVersionId: activeHead!.activeAppVersionId, headRevision: activeHead!.revision,
+      });
+    }
     const environment = {
       ...process.env,
       OPENXIANGDA_APP_CODE: input.appCode,
@@ -245,6 +258,7 @@ export async function runConnectedDevelopment(
     };
     spawnManaged(["run", "dev:web"], { HOST: LOOPBACK_HOST, PORT: String(webPort) });
     if (backendRoot) spawnManaged(["--dir", backendRoot, "run", "dev"], {
+      ...backendBootstrap?.secretEnvironment,
       PORT: String(appPort),
       // The compiler just generated src contracts. Production imports dist,
       // while connected dev must resolve the current declared source exports.
@@ -253,7 +267,7 @@ export async function runConnectedDevelopment(
     for (const signal of ["SIGINT", "SIGTERM"] as const) {
       const handler = () => stop(signal, true);
       signalHandlers.set(signal, handler);
-      process.once(signal, handler);
+      process.on(signal, handler);
     }
     refreshTimer = setInterval(() => void refreshGrant().catch(() => undefined), 10 * 60_000);
     refreshTimer.unref();
@@ -271,6 +285,15 @@ export async function runConnectedDevelopment(
       }),
     ]);
     void startup;
+    if (backendBootstrap && input.remoteSession.backend && urls.app) {
+      backendRelay = startDevelopmentBackendRelay({
+        api: input.remoteSession.backend, token: () => grant.token,
+        bootstrap: backendBootstrap, localAppBaseUrl: urls.app,
+        onError: error => { refreshError = error; stop(); },
+        onConnectionStatus: status => input.onStatus?.(status === 'reconnecting'
+          ? '后台源码连接暂时中断，正在恢复原连接' : '后台源码连接已恢复'),
+      });
+    }
     input.onStatus?.(`连接式开发已就绪：${urls.web}`);
     await input.onReady?.(session);
     if (!input.noOpen) openBrowser(urls.web);
@@ -285,11 +308,22 @@ export async function runConnectedDevelopment(
     return { exitCode, session };
   } finally {
     if (refreshTimer) clearInterval(refreshTimer);
-    for (const [signal, handler] of signalHandlers) process.off(signal, handler);
-    terminateChildren(children, "SIGTERM");
-    await terminateAndWait(children, exits);
-    await close(proxy);
-    await input.remoteSession.revoke(grant.token).catch(() => undefined);
+    // pnpm and the terminal may both forward Ctrl+C. Keep the idempotent signal
+    // handlers installed until remote close/revoke finishes, including cleanup.
+    try {
+      terminateChildren(children, "SIGTERM");
+      if (backendRelay) await backendRelay.stop();
+      else if (backendBootstrap && input.remoteSession.backend)
+        await input.remoteSession.backend.close(grant.token, AbortSignal.timeout(5000)).catch(() => undefined);
+      if (backendBootstrap) Object.keys(backendBootstrap.secretEnvironment).forEach(
+        name => delete backendBootstrap!.secretEnvironment[name]
+      );
+      await terminateAndWait(children, exits);
+      await close(proxy);
+      await input.remoteSession.revoke(grant.token).catch(() => undefined);
+    } finally {
+      for (const [signal, handler] of signalHandlers) process.off(signal, handler);
+    }
   }
 }
 
@@ -325,12 +359,17 @@ function createConnectedProxy(input: {
       }
       const authorization = `Bearer ${await input.developerSession.getAccessToken()}`;
       const headers = forwardedHeaders(request.headers);
-      headers.authorization = authorization;
-      if (route.kind === "remote") {
-        Object.assign(headers, await input.sessionHeaders());
+      const explicitAuthorization = request.headers.authorization;
+      delete headers['x-openxiangda-dev-session'];
+      delete headers['x-openxiangda-connected-dev'];
+      // Application OAuth and other explicit callers retain their real identity.
+      // The platform validates it; the proxy never interprets or grants a role.
+      if (route.kind === 'remote' && explicitAuthorization && explicitAuthorization !== authorization) {
+        headers.authorization = explicitAuthorization;
       } else {
+        headers.authorization = authorization;
         Object.assign(headers, await input.sessionHeaders());
-        headers["x-openxiangda-connected-dev"] = "1";
+        if (route.kind === 'local') headers["x-openxiangda-connected-dev"] = "1";
       }
       await forward(request, response, route.url, headers);
     })().catch(error => {
