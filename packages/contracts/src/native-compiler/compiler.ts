@@ -17,6 +17,7 @@ import { validateWorkflowCompletionDeadlines } from './workflow-completion-deadl
 import { validateWorkflowRejectionNotification } from './workflow-rejection-notification.js';
 import { validateWorkflowCommandHandlers } from './workflow-business-command.js';
 import { validateWorkflowLaunchPreflight } from './workflow-launch-preflight.js';
+import { validateWorkflowApprovedDelegation } from './workflow-approved-delegation.js';
 import { validateWorkflowTaskPages } from './workflow-task-page.js';
 import { requiresExtendedOwnedSubtableCapacity } from './data-capacity.js';
 import { validateWorkflowBusinessSteps, compileWorkflowBusinessStepHandlers, validateWorkflowBusinessStepSubscriptions, WORKFLOW_BUSINESS_STEP_EVENT, WORKFLOW_BUSINESS_STEP_EVENTS } from './workflow-business-step.js';
@@ -743,6 +744,8 @@ export function compileRequiredPlatformCapabilitiesV3(
         } }] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => item.definition.launchPreflight !== undefined)
       ? [{ code: 'workflow.launch-preflight' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => item.definition.launchPreflight !== undefined) }] : []),
+    ...(config.workflows.definitions.some((item: JsonObject) => item.definition.approvedDelegation !== undefined)
+      ? [{ code: 'workflow.approved-delegation' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => item.definition.approvedDelegation !== undefined) }] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.operationPolicy?.reject?.commentRequired === false))
       ? [{ code: 'workflow.optional-rejection-comment' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.operationPolicy?.reject?.commentRequired === false)) }] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => Object.values(node.operationPolicy || {}).some((policy: any) => policy.reasonRequired === false)))
@@ -6730,6 +6733,8 @@ function validateWorkflowReferences(config: JsonObject) {
     validateWorkflowDefinition(definition, `${pointer}/definition`);
     const preflightErrors = validateWorkflowLaunchPreflight(definition as any);
     if (preflightErrors.length) fail(preflightErrors[0]!, `${pointer}/definition/launchPreflight`);
+    const delegationErrors = validateWorkflowApprovedDelegation(definition as any);
+    if (delegationErrors.length) fail(delegationErrors[0]!, `${pointer}/definition/approvedDelegation`);
     const businessCommandErrors = validateWorkflowCommandHandlers(definition as any, config.backend.operations);
     if (businessCommandErrors.length) fail(businessCommandErrors[0]!, `${pointer}/definition/commandHandlers`);
     validateWorkflowSubject(
@@ -7117,7 +7122,7 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
       'nodes',
     ],
     pointer,
-    ['organizationContext', 'instanceCommands', 'readability', 'taskPages', 'rejectionNotification', 'commandHandlers', 'launchPreflight']
+    ['organizationContext', 'instanceCommands', 'readability', 'taskPages', 'rejectionNotification', 'commandHandlers', 'launchPreflight', 'approvedDelegation']
   );
   equal(
     definition.schemaVersion,

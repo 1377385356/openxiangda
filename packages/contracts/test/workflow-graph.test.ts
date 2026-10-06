@@ -16,6 +16,25 @@ function fixture(): WorkflowGraphDefinitionSource {
     low: { id: 'low', kind: 'approval', title: '普通审批', mode: 'single', onApprove: 'end', onReject: 'end' }, end: { id: 'end', kind: 'end', title: '结束' } } };
 }
 
+test('graph exposes the declared Kernel grant and request source even without app-authored explanation', () => {
+  const definition = fixture(); delete definition.readability;
+  definition.approvedDelegation = { confirmationNodeId: 'high', confirmer: 'delegate', requestsField: 'requests', maxRequests: 500 };
+  (definition.inputSchema.properties as Record<string, unknown>).requests = { type: 'array', maxItems: 500, items: { type: 'object' } };
+  definition.subject!.factProjection.requests = 'delegationRequests';
+  const before = JSON.stringify(definition);
+  const graph = projectWorkflowGraph(definition, sha256Digest(definition));
+  assert.equal(graph.logic.length, 1);
+  assert.equal(graph.logic[0]!.phase, 'completion');
+  assert.match(graph.logic[0]!.description, /所选代理人.*当前退回周期.*人工确认/);
+  assert.match(graph.logic[0]!.description, /任一行失败.*一起回滚/);
+  assert.deepEqual(graph.variables.find(item => item.path === 'requests')!.source,
+    { kind: 'subject_field', resourceCode: 'requests', fieldPath: 'delegationRequests' });
+  assert.equal(graph.nodes.length, Object.keys(definition.nodes).length);
+  assert.equal(JSON.stringify(definition), before);
+  definition.readability = { logic: [{ code: 'kernel-approved-delegation', title: '伪说明', description: '不能覆盖平台真实逻辑', phase: 'completion', inputPaths: ['requests'] }] };
+  assert.ok(validateWorkflowReadability(definition).includes('WORKFLOW_LOGIC_PLATFORM_CODE_RESERVED'));
+});
+
 test('graph preserves executable branch priority/default and cannot create annotation nodes', () => {
   const definition = fixture();
   definition.readability!.logic = [{ code: 'submission-validation', title: '核验申请', description: '提交校验，不会在流转途中再次执行', phase: 'submission', inputPaths: ['amount'] }];

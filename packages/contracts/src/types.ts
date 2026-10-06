@@ -2514,6 +2514,8 @@ export interface WorkflowDefinition {
   subject: WorkflowSubjectDefinition;
   commandHandlers?: import('./native-compiler/workflow-business-command.js').WorkflowCommandHandlers;
   launchPreflight?: import('./native-compiler/workflow-launch-preflight.js').WorkflowLaunchPreflight;
+  /** Atomic approval effect; requires current-cycle direct human confirmation. */
+  approvedDelegation?: import('./native-compiler/workflow-approved-delegation.js').WorkflowApprovedDelegationPolicy;
   instanceCommands?: WorkflowInstanceCommandPolicies;
   /** Code-owned, frozen at rejection using the subject's last successful business writer. */
   rejectionNotification?: import('./native-compiler/workflow-rejection-notification.js').WorkflowRejectionNotification;

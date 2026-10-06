@@ -827,6 +827,34 @@ append 处理签名或 HTML。当前任务、实例、记录或字段改变时�
 
 退回补正（return_review）必须有人实际处理，不能靠空人跳过；重提后的正常 replay/resume 流转继续采用原节点策略。使用此声明时，生成契约要求目标平台支持 `workflow.approval-empty-policy@1.0.0`，缺少该能力的旧服务端不能接收。
 
+## 审批通过后整批授权代理 {#approved-delegation}
+
+代理申请使用固定定义的 `approvedDelegation`：
+
+```ts
+approvedDelegation: {
+  confirmationNodeId: 'confirm',
+  confirmer: 'delegate', // 或 initiator：由发起人本人确认
+  requestsField: 'requests',
+  maxRequests: 500,
+},
+```
+
+`requests` 必须是 Native 主体投影到实例的闭合、有界明细数组；只读取固定实例
+`fact_snapshot.data`，每行采用 `WorkflowApprovedDelegationRequest`，保存本人和代理人的
+职责键及修订、代理人引用、流程/可选节点范围、起止时间与原因。最多500行、整批256KiB。
+代理人确认的整批必须为同一代理人；同一流程不同节点的明细分别保留。
+
+所有批准路径必须经过声明的单人、人工、非空确认节点。自动处理、超时、管理员跳过、
+转交和代理确认不能产生确认证据；明细变化或再次退回后必须在当前周期重新确认。
+最终批准在同一事务核验真实人工任务和双方当前账号、职责、窗口、修订与冲突，
+然后调用已有平台代理所有者整批授权。任一行失败时，批准、全部授权和批次回执一起回滚。
+创建、审核中、拒绝、退回和撤回不授权；原命令恢复不重新创建或激活已撤销的授权。
+
+声明自动要求 `workflow.approved-delegation@1.0.0`，无需增加默认关闭的开关。
+不提供 HTTP/system 代建入口，不授予代理人额外资料权限。图通过 `readability.logic`
+说明确认、当前职责核验及授权处理；这些逻辑和连线由代码固定。
+
 ## 按业务资料权限查看办理历史 {#record-history-read}
 
 发起人、审批人、抄送人使用既有 Workflow 详情。业务查看人员需要根据当前资料范围读取办理记录时，模型可显式声明：

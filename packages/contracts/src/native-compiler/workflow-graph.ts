@@ -1,5 +1,6 @@
 /** Pure read projection. It never evaluates expressions, executes code or edits topology. */
 import type { WorkflowCompletionDeadline } from './workflow-completion-deadline.js';
+import type { WorkflowApprovedDelegationPolicy } from './workflow-approved-delegation.js';
 import { workflowBusinessStepFactSchema, type WorkflowBusinessStepInput } from './workflow-business-step.js';
 export interface WorkflowReadability {
   variables?: Record<string, { label: string; unit?: string; description?: string }>;
@@ -29,6 +30,7 @@ export interface WorkflowGraphDefinitionSource {
   inputSchema: Record<string, unknown>;
   subject?: { resourceCode: string; factProjection: Record<string, string> };
   readability?: WorkflowReadability;
+  approvedDelegation?: WorkflowApprovedDelegationPolicy;
   nodes: Record<string, {
     id: string;
     kind: string;
@@ -187,6 +189,7 @@ export function validateWorkflowReadability(definition: WorkflowGraphDefinitionS
   const codes = new Set<string>();
   for (const value of Array.isArray(logic) ? logic.slice(0, 32) : []) {
     const item = record(value), code = String(item.code || '');
+    if (definition.approvedDelegation && code === 'kernel-approved-delegation') errors.push('WORKFLOW_LOGIC_PLATFORM_CODE_RESERVED');
     if (!/^[a-z][a-z0-9-]{2,63}$/.test(code) || codes.has(code) || !text(item.title, 160) || !text(item.description, 4000) ||
       Object.keys(item).some(key => !['code', 'title', 'description', 'phase', 'nodeId', 'inputPaths', 'outputPaths', 'source'].includes(key))) errors.push(`WORKFLOW_LOGIC_METADATA_INVALID:${code}`);
     codes.add(code);
@@ -243,7 +246,15 @@ export function projectWorkflowGraph(definition: WorkflowGraphDefinitionSource, 
       if (node.otherwise) edges.push({ id: `${node.id}:default`, from: node.id, to: node.otherwise, kind: 'default', label: '均不满足时', variablePaths: [] });
     }
   }
-  const variablePaths = new Set([...used.keys(), ...Object.keys(definition.readability?.variables || {}), ...(definition.readability?.logic || []).flatMap(item => [...item.inputPaths, ...item.outputPaths || []])]);
+  const logic: NonNullable<WorkflowReadability['logic']> = [...definition.readability?.logic || []];
+  if (definition.approvedDelegation) {
+    const policy = definition.approvedDelegation;
+    const confirmer = policy.confirmer === 'initiator' ? '申请人本人' : '所选代理人';
+    logic.push({ code: 'kernel-approved-delegation', title: '批准后整批授权代理', phase: 'completion',
+      inputPaths: [policy.requestsField],
+      description: `批准时核验${confirmer}在当前退回周期完成“${definition.nodes[policy.confirmationNodeId]?.title || policy.confirmationNodeId}”的人工确认；随后重新核验双方当前账号、职责、修订、范围与完整有效期，整批授权（最多${policy.maxRequests}行）。任一行失败，批准与全部授权一起回滚；原命令恢复不重新激活已撤销授权。` });
+  }
+  const variablePaths = new Set([...used.keys(), ...Object.keys(definition.readability?.variables || {}), ...logic.flatMap(item => [...item.inputPaths, ...item.outputPaths || []])]);
   const variables = [...variablePaths].slice(0, 128).map(path => {
     const resolved = schemaPath(factsSchema, path), metadata = definition.readability?.variables?.[path];
     const segments = path.split('.'), field = definition.subject?.factProjection[segments[0]!];
@@ -259,7 +270,7 @@ export function projectWorkflowGraph(definition: WorkflowGraphDefinitionSource, 
       ...(node.kind === 'cc' ? { emptyPolicy: node.emptyPolicy, notify: node.notify !== false } : {}),
       ...(node.kind === 'approval' ? { emptyPolicy: node.emptyPolicy || 'block', initiatorApprovalPolicy: node.initiatorApprovalPolicy || 'manual', ...(node.completionDeadline ? { completionDeadline: { ...node.completionDeadline } } : {}) } : {}),
       ...(node.kind === 'action' && node.handler ? { businessStep: { handler: node.handler, inputs: node.inputs || {}, outputPaths: Object.keys(record(node.outputSchema).properties || {}).map(key => `steps.${node.id}.${key}`) } } : {}) })), edges, variables,
-    logic: definition.readability?.logic || [], diagnostics };
+    logic, diagnostics };
 }
 
 export function formatWorkflowExpression(expression: WorkflowGraphExpression, variables: readonly WorkflowGraphVariable[] = [], depth = 0): string {

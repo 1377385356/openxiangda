@@ -5683,6 +5683,16 @@ export const workflowDefinitionSchema = {
       properties: { requiredApprovalNodes: { type: 'array', minItems: 1, maxItems: 20, uniqueItems: true,
         items: { type: 'string', pattern: '^[A-Za-z][A-Za-z0-9_-]{0,127}$' } } },
     },
+    approvedDelegation: {
+      type: 'object', additionalProperties: false,
+      required: ['confirmationNodeId', 'confirmer', 'requestsField', 'maxRequests'],
+      properties: {
+        confirmationNodeId: { type: 'string', pattern: '^[A-Za-z][A-Za-z0-9_-]{0,127}$' },
+        confirmer: { enum: ['initiator', 'delegate'] },
+        requestsField: { type: 'string', pattern: '^[A-Za-z][A-Za-z0-9_]{0,62}$' },
+        maxRequests: { type: 'integer', minimum: 1, maximum: 500 },
+      },
+    },
     commandHandlers: {
       type: 'object', additionalProperties: false, minProperties: 1,
       properties: Object.fromEntries(['approve', 'reject', 'withdraw'].map(command => [command, {

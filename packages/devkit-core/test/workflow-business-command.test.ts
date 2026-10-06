@@ -5,6 +5,7 @@ import { businessProcessCommandWithDataSchema, workflowBusinessCommandInvocation
 import { compileNativeApplicationConfiguration } from 'openxiangda-contracts/native-compiler';
 import { compileApplicationSources } from '../src/compiler/bundle.js';
 import { defineOpenXiangdaApp, type OpenXiangdaAppDeclaration } from '../src/compiler/config.js';
+import { resourceRecordSchema } from '../src/compiler/schema-composition.js';
 import { requiredPlatformCapabilitiesFromConfiguration } from '../src/compiler/package-compiler.js';
 
 function fixture(): OpenXiangdaAppDeclaration {
@@ -94,6 +95,52 @@ test('ordinary workflow declarations retain their existing required capabilities
   delete source.backend!.operations[0]!.platformAccess!.workflow!.businessCommands;
   const output = compileApplicationSources(defineOpenXiangdaApp(source));
   assert.equal(requiredPlatformCapabilitiesFromConfiguration(output.config.value).some(item => item.code === 'workflow.business-data-command'), false);
+});
+
+test('approved delegation is preserved by app and target compilers and requires support only when declared', () => {
+  const source = fixture();
+  const lines: NonNullable<NonNullable<OpenXiangdaAppDeclaration['data']>['resources']>[number] = {
+    code: 'delegation-lines', name: '代理明细', fields: [
+      { code: 'parentId', label: '所属申请', type: 'uuid', required: true },
+      { code: 'position', label: '顺序', type: 'number.integer', required: true },
+      { code: 'delegatorRoleSubjectKey', label: '本人职责', type: 'text.short', required: true },
+      { code: 'delegatorRoleSubjectRevision', label: '本人职责修订', type: 'number.integer', required: true },
+      { code: 'delegate', label: '代理人', type: 'user.single', required: true },
+      { code: 'delegateRoleSubjectKey', label: '代理职责', type: 'text.short', required: true },
+      { code: 'expectedDelegateRevision', label: '代理职责修订', type: 'number.integer', required: true },
+      { code: 'workflowCode', label: '流程', type: 'text.short' },
+      { code: 'nodeId', label: '节点', type: 'text.short' },
+      { code: 'validFrom', label: '开始', type: 'datetime', required: true },
+      { code: 'validTo', label: '结束', type: 'datetime', required: true },
+      { code: 'reason', label: '原因', type: 'text.long', required: true },
+    ],
+  };
+  source.data!.resources![0]!.fields!.push({ code: 'delegations', label: '代理请求', type: 'subtable',
+    subtable: { resourceCode: lines.code, foreignKey: 'parentId', orderField: 'position', maxRows: 500 } });
+  source.data!.resources!.push(lines);
+  const definition = source.workflows!.definitions[0]!.definition;
+  definition.subject.factProjection.delegations = 'delegations';
+  const schema = resourceRecordSchema(lines, { fields: lines.fields!.filter(field => !['parentId', 'position'].includes(field.code)).map(field => field.code) });
+  definition.inputSchema.properties!.delegations = { type: 'array', minItems: 1, maxItems: 500,
+    items: { ...schema, additionalProperties: false, properties: { ...schema.properties, key: { type: 'string' } } } };
+  for (const confirmer of ['initiator', 'delegate'] as const) {
+    definition.approvedDelegation = { confirmationNodeId: 'review', confirmer, requestsField: 'delegations', maxRequests: 500 };
+    const output = compileApplicationSources(defineOpenXiangdaApp(source));
+    const target = compileNativeApplicationConfiguration({ appCode: source.app.code, configBytes: output.config.content,
+      expectedConfigDigest: output.config.digest, contractBytes: output.contracts.content, expectedContractDigest: output.contracts.digest });
+    assert.deepEqual(target.requiredPlatformCapabilities, requiredPlatformCapabilitiesFromConfiguration(output.config.value));
+    assert.equal(target.requiredPlatformCapabilities.find(item => item.code === 'workflow.approved-delegation')?.contractVersion, '1.0.0');
+    const published = output.config.value.workflows.definitions[0]!.definition;
+    assert.deepEqual(published.approvedDelegation, definition.approvedDelegation);
+    const validate = new Ajv2020({ strict: false, validateFormats: false }).compile(workflowDefinitionSchema);
+    assert.equal(validate(published), true, JSON.stringify(validate.errors));
+  }
+  definition.nodes.review!.kind === 'approval' && (definition.nodes.review.emptyPolicy = 'skip');
+  assert.throws(() => compileApplicationSources(defineOpenXiangdaApp(source)), /WORKFLOW_APPROVED_DELEGATION_CONFIRMATION_INVALID/);
+  delete definition.approvedDelegation;
+  delete (definition.nodes.review as any).emptyPolicy;
+  const ordinary = compileApplicationSources(defineOpenXiangdaApp(source));
+  assert.equal(requiredPlatformCapabilitiesFromConfiguration(ordinary.config.value).some(item => item.code === 'workflow.approved-delegation'), false);
 });
 
 test('500-row declarations and aggregate expansion negotiate identical authoring and target capabilities', () => {

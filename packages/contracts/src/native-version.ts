@@ -27,6 +27,7 @@ export const PLATFORM_CAPABILITY_CONTRACT_VERSIONS = {
   "data.managed-concurrency": "1.0.0",
   "data.managed-concurrency.durable": "1.0.0",
   "workflow.named-input-sources": "1.0.0",
+  "workflow.approved-delegation": "1.0.0",
   "directory-v2": "1.0.0",
   "directory.selected-user": "1.0.0",
   "directory.current-initiator-phone": "1.0.0",

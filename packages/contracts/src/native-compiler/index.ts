@@ -54,3 +54,4 @@ export { projectDataResourceView } from './resource-view.js';
 // Shared with the platform's CommonJS configuration/Delivery runtime.
 export * from './development-configuration.js';
 export * from './development-backend.js';
+export * from './workflow-approved-delegation.js';
