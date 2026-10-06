@@ -1,3 +1,4 @@
+import { assertWorkflowNativeStageGuard, assertWorkflowNativeStageSourceGuard } from 'openxiangda-contracts';
 import { Inject, Injectable, Scope, UnauthorizedException } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
 import type {
@@ -294,6 +295,12 @@ export class OpenXiangdaBusinessDataApiService {
   async commitCommand(input: DataBusinessCommandCommit): Promise<DataBusinessCommandResolution> {
     const context = this.commandContext();
     assertOpenXiangdaRoleAssertions(this.request, input.data.guards);
+    const stagePolicy = this.request.openxiangda?.operation?.platformAccess?.workflowStage;
+    if (stagePolicy) {
+      assertWorkflowNativeStageGuard(input.data.workflowStage);
+      assertWorkflowNativeStageSourceGuard(stagePolicy, input.data.workflowStage, input.data.guards);
+      if (input.data.decimalReservation !== undefined) throw new UnauthorizedException('OPENXIANGDA_WORKFLOW_STAGE_CONTEXT_CONFLICT');
+    } else if (input.data.workflowStage !== undefined) throw new UnauthorizedException('OPENXIANGDA_WORKFLOW_STAGE_NOT_DECLARED');
     return this.platform.commitDataBusinessCommand(context.authorization, input, context.action);
   }
 

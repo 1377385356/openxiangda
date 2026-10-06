@@ -1,3 +1,4 @@
+import { assertWorkflowNativeStagePolicy } from './workflow-native-stage.js';
 import { validateAuthenticatedPublicRead, AuthenticatedPublicReadContractError } from './authenticated-public-read.js';
 import { validateUserCandidateReferences, validateWorkflowUserCandidateBindings, UserCandidateContractError, requiresUserCandidateLaunchScope } from './user-candidates.js';
 import { NativeUniqueKeyContractError, parseNativeUniqueKeys, nativeUniqueKeysContractVersion } from './unique-keys.js';
@@ -554,6 +555,9 @@ export function compileRequiredPlatformCapabilitiesV3(
     ...(operations.some(operation => operation.platformAccess?.roleAssertions?.actorAuthority)
       ? [{ code: 'data.transaction-actor-authority' as const,
           declaration: operations.filter(operation => operation.platformAccess?.roleAssertions?.actorAuthority) }]
+      : []),
+    ...(operations.some(operation => operation.platformAccess?.workflowStage)
+      ? [{ code: 'workflow.native-stage-guard' as const, declaration: operations.filter(operation => operation.platformAccess?.workflowStage) }]
       : []),
     ...(operations.some(operation => operation.platformAccess?.recordEdit)
       ? [{ code: 'data.record-edit' as const, declaration: operations.filter(operation => operation.platformAccess?.recordEdit) }]
@@ -2380,6 +2384,12 @@ function compileOperations(config: JsonObject) {
         declaredWorkflowCodes,
         new Set<string>(config.authz.roles.map((role: JsonObject) => String(role.code)))
       );
+      if (platformAccess?.workflowStage) {
+        const stage = platformAccess.workflowStage;
+        const workflow = config.workflows.definitions.find((entry: JsonObject) => entry.definition.code === stage.workflowCode);
+        if (!workflow || workflow.definition.subject?.resourceCode !== stage.resourceCode || stage.runningNodeIds.some((id: string) => !workflow.definition.nodes[id]))
+          fail('NATIVE_WORKFLOW_STAGE_NODE_INVALID', `${pointer}/platformAccess/workflowStage/runningNodeIds`);
+      }
       if (platformAccess?.recordEdit) {
         const owner = config.data.resources.find((item: JsonObject) => item.code === platformAccess.recordEdit.resourceCode);
         if (owner?.surface?.mutationOwner !== 'action') fail('NATIVE_RECORD_EDIT_ACTION_OWNER_REQUIRED', `${pointer}/platformAccess/recordEdit`);
@@ -2759,7 +2769,7 @@ function validateOperationPlatformAccess(
   const access = object(value, pointer);
   exactKeys(
     access,
-    ['directory', 'managedFiles', 'managedFileCopies', 'notification', 'workflow', 'roleAssertions', 'decimalReservation', 'dataCommands', 'recordEdit', 'ownedSubject'],
+    ['directory', 'managedFiles', 'managedFileCopies', 'notification', 'workflow', 'roleAssertions', 'decimalReservation', 'dataCommands', 'recordEdit', 'ownedSubject', 'workflowStage'],
     pointer,
     true
   );
@@ -2772,6 +2782,15 @@ function validateOperationPlatformAccess(
     exactKeys(commands, ['mode'], `${pointer}/dataCommands`);
     equal(commands.mode, 'recoverable-native', `${pointer}/dataCommands/mode`);
     result.dataCommands = { mode: 'recoverable-native' };
+  }
+  if (access.workflowStage !== undefined) {
+    try { assertWorkflowNativeStagePolicy(access.workflowStage); }
+    catch { fail('NATIVE_WORKFLOW_STAGE_DECLARATION_INVALID', `${pointer}/workflowStage`); }
+    const stage = access.workflowStage;
+    if (!result.dataCommands || access.decimalReservation !== undefined || !declaredResources.has(stage.resourceCode) ||
+      !declaredWorkflowCodes.has(stage.workflowCode) || !access.workflow?.codes?.includes(stage.workflowCode))
+      fail('NATIVE_WORKFLOW_STAGE_DECLARATION_INVALID', `${pointer}/workflowStage`);
+    result.workflowStage = { ...stage, runningNodeIds: uniqueSorted([...stage.runningNodeIds]), allowedStatuses: uniqueSorted([...stage.allowedStatuses]) };
   }
   if (access.recordEdit !== undefined) {
     const entryPointer = `${pointer}/recordEdit`;

@@ -267,6 +267,8 @@ export interface AppOperationPlatformAccessDeclaration {
   ownedSubject?: import('./native-compiler/workflow-owned-subject.js').WorkflowOwnedSubjectCreate;
   /** 使用 Native 原事务回执恢复具名业务动作；不授予用户通用写入权限。 */
   dataCommands?: { mode: 'recoverable-native' };
+  /** Kernel stage and Native mutation are checked under one transaction and lock. */
+  workflowStage?: import('./native-compiler/workflow-native-stage.js').WorkflowNativeStagePolicy;
   /** Fixed business fields edited through this action; ordinary UPDATE remains closed. */
   recordEdit?: { resourceCode: string; fieldCodes: readonly string[] };
   /** 在业务事务内核对目标用户的已声明角色；不授予成员管理权限。 */

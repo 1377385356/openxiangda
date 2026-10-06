@@ -1,3 +1,4 @@
+import { assertWorkflowNativeStagePolicy } from 'openxiangda-contracts';
 import { validateAuthenticatedPublicRead, AuthenticatedPublicReadContractError } from 'openxiangda-contracts/native-compiler';
 import { DATE_EVENT_RESERVED_DATA_FIELDS_V2, dateEventProjectionFieldsV2, dateEventProjectionEnvelopeSchemaV2 } from 'openxiangda-contracts/native-compiler';
 import { validateUserCandidateReferences, validateWorkflowUserCandidateBindings, UserCandidateContractError } from 'openxiangda-contracts';
@@ -4707,6 +4708,7 @@ function validateBackendOperations(
         'roleAssertions',
         'decimalReservation',
         'dataCommands',
+        'workflowStage',
         'recordEdit',
         'ownedSubject',
       ]);
@@ -4722,6 +4724,13 @@ function validateBackendOperations(
       if (access.dataCommands !== undefined) {
         const commands = object(access.dataCommands);
         invalid ||= commands.mode !== 'recoverable-native' || Object.keys(commands).some(key => key !== 'mode');
+      }
+      if (access.workflowStage !== undefined) {
+        try { assertWorkflowNativeStagePolicy(access.workflowStage); } catch { invalid = true; }
+        const stage = object(access.workflowStage);
+        invalid ||= object(access.dataCommands).mode !== 'recoverable-native' || access.decimalReservation !== undefined ||
+          !declaredResources.has(string(stage.resourceCode)) || !declaredWorkflowCodes.has(string(stage.workflowCode)) ||
+          !Array.isArray(object(access.workflow).codes) || !(object(access.workflow).codes as unknown[]).includes(stage.workflowCode);
       }
       if (access.recordEdit !== undefined) {
         const edit = object(access.recordEdit);

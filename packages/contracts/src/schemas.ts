@@ -7538,12 +7538,14 @@ const appPerspectiveContractSchema = {
   },
 } as const;
 
+import { workflowNativeStagePolicySchema } from './native-compiler/workflow-native-stage.js';
 const appOperationPlatformAccessSchema = {
   type: "object",
   additionalProperties: false,
   minProperties: 1,
   properties: {
     ownedSubject: workflowOwnedSubjectCreateSchema,
+    workflowStage: workflowNativeStagePolicySchema,
     recordEdit: {
       type: 'object', additionalProperties: false, required: ['resourceCode', 'fieldCodes'],
       properties: { resourceCode: dataResourceCode, fieldCodes: { type: 'array', minItems: 1, maxItems: 200, uniqueItems: true, items: dataFieldCode } },

@@ -11,7 +11,9 @@ export interface DataBusinessCommandIdentity {
 }
 
 export interface DataBusinessCommandCommit extends DataBusinessCommandIdentity {
-  data: Omit<DataTransactionRequest, 'schemaVersion' | 'idempotencyKey'>;
+  data: Omit<DataTransactionRequest, 'schemaVersion' | 'idempotencyKey'> & {
+    workflowStage?: import('./workflow-native-stage.js').WorkflowNativeStageGuard;
+  };
 }
 
 export interface DataBusinessCommandReceipt {

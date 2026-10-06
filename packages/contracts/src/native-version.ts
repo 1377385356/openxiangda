@@ -39,6 +39,7 @@ export const PLATFORM_CAPABILITY_CONTRACT_VERSIONS = {
   "events.native-data-actions": "1.0.0",
   "workflow-kernel-v2": "1.0.0",
   "workflow.business-data-command": "1.0.0",
+  "workflow.native-stage-guard": "1.0.0",
   "workflow.launch-preflight": "1.0.0",
   "workflow.optional-rejection-comment": "1.0.0",
   "workflow.optional-operation-reason": "1.0.0",

@@ -35,6 +35,22 @@ function harness(reply: () => unknown | Promise<unknown>) {
   return { service: new OpenXiangdaBusinessDataApiService(req, platform), req, calls };
 }
 
+test('a declared stage needs its observed instance and matching source guard; no caller may opt out or inject a stage', async () => {
+  const h = harness(() => resolution(true));
+  const policy = { workflowCode: 'approval', resourceCode: 'requests', actor: 'initiator', runningNodeIds: ['confirm'], allowedStatuses: ['approved'] };
+  h.req.openxiangda.operation.platformAccess.workflowStage = policy;
+  await assert.rejects(() => h.service.commitCommand(input), /GUARD_INVALID/);
+  const guarded: any = { ...input, data: { ...input.data, workflowStage: { instanceId: id, subjectRecordId: id, expectedInstanceSequence: 2 } } };
+  await assert.rejects(() => h.service.commitCommand(guarded), /SOURCE_GUARD_REQUIRED/);
+  guarded.data.guards = [{ kind: 'record-match', resourceCode: 'requests', id, lockKey: 'subject', errorCode: 'SUBJECT_CHANGED',
+    assertions: [{ kind: 'value', field: 'revision', operator: 'eq', value: 2 }] }];
+  await h.service.commitCommand(guarded);
+  assert.deepEqual(JSON.parse(h.calls[0].init.body).data.workflowStage, guarded.data.workflowStage);
+  delete h.req.openxiangda.operation.platformAccess.workflowStage;
+  await assert.rejects(() => h.service.commitCommand(guarded), /NOT_DECLARED/);
+  assert.equal(h.calls.length, 1);
+});
+
 test('commit/resolve inherit the original proof and key; resolve sends no data and no second write', async () => {
   let committed = true;
   const h = harness(() => resolution(committed));

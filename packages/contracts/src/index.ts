@@ -31,6 +31,7 @@ export * from './native-compiler/workflow-correction.js';
 export * from './native-compiler/workflow-task-page.js';
 export * from './native-compiler/data-capacity.js';
 export * from './native-compiler/data-business-command.js';
+export * from './native-compiler/workflow-native-stage.js';
 export * from './native-compiler/workflow-assignment-routing.js';
 export * from './native-compiler/workflow-role-union.js';
 export * from './native-compiler/workflow-owned-subject.js';

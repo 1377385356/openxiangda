@@ -134,6 +134,36 @@ return committed.receipt;
 服务端只持久保存意图和公开键的摘要，复用原 Native 回执，不建立第二份状态表。
 结果仅返回可信应用后端，应用按已声明的 responseSchema 向用户投影。
 
+### 数据写入的流程阶段前置条件 {#workflow-native-stage-guard}
+
+证明生成等具名动作需要把当前流程阶段与 Native 写入放在同一事务中时，声明固定条件：
+
+```ts
+platformAccess: {
+  dataCommands: { mode: 'recoverable-native' },
+  workflow: { codes: ['certificate'] },
+  workflowStage: {
+    workflowCode: 'certificate', resourceCode: 'requests', actor: 'initiator',
+    runningNodeIds: ['applicant-confirm'], allowedStatuses: ['approved'],
+  },
+}
+```
+
+编译器核对固定流程、来源资源与节点，并要求 `workflow.native-stage-guard` 1.0.0。
+声明后每次 `commitCommand` 必须在 `data.workflowStage` 传入所观测的
+`instanceId`、`subjectRecordId`、`expectedInstanceSequence`；同时传入该来源记录的
+`record-match` 或 `record-assert` guard，包含 `revision eq 原版本`。
+这些值由动作代码从授权读取结果组装，不允许用户指定可用阶段或替换策略。
+`runningNodeIds` 限定运行中的主节点；`allowedStatuses` 明确列出其他允许状态，
+包括需要保留的 returned，未列出的状态拒绝。
+`actor: 'reader'` 复用 Kernel 的实例读取权限；动作能力与 Native 数据范围仍独立核对。
+
+平台先恢复已提交的原回执，再获取 Kernel 实例锁、重验当前身份和阶段，然后持锁
+执行来源版本守卫、数据修改及回执提交。阶段、来源或序号变化明确拒绝；锁冲突返回
+可重试错误，保留原业务意图和键。已提交结果可在后续阶段或同环境新 Head 下恢复。
+此条件不属于通用 Data API guard，也不能与 decimalReservation 合并使用。
+上传准备仍在事务外：失败后不得关联文件，未关联上传由既有托管文件清理机制处理。
+
 自定义表单页若先用 `createResourceFormDraftClient` 保存认证草稿，并由 Named Action
 提交业务记录和流程，则在同一次 `OpenXiangdaBusinessProcessService.commit` 中传入
 `formDraft: { resourceCode, id, expectedRevision, mode, recordId?, viewCode? }`。草稿必须

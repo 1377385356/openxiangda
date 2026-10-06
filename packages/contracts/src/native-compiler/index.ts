@@ -41,6 +41,7 @@ export * from './workflow-business-step-identity.js';
 export * from './workflow-task-page.js';
 export * from './data-capacity.js';
 export * from './data-business-command.js';
+export * from './workflow-native-stage.js';
 export * from './actor-authority.js';
 export * from './record-set-guard.js';
 export * from './authenticated-public-read.js';

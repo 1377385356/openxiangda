@@ -397,6 +397,10 @@ export function normalizeConfiguration(
                 platformAccess: {
                   ...(operation.platformAccess.ownedSubject ? { ownedSubject: normalizeWorkflowOwnedSubjectCreate(operation.platformAccess.ownedSubject) } : {}),
                   ...(operation.platformAccess.dataCommands ? { dataCommands: { mode: operation.platformAccess.dataCommands.mode } } : {}),
+                  ...(operation.platformAccess.workflowStage ? { workflowStage: { ...operation.platformAccess.workflowStage,
+                    runningNodeIds: uniqueSorted(operation.platformAccess.workflowStage.runningNodeIds),
+                    allowedStatuses: uniqueSorted(operation.platformAccess.workflowStage.allowedStatuses),
+                  } } : {}),
                   ...(operation.platformAccess.recordEdit ? { recordEdit: {
                     resourceCode: operation.platformAccess.recordEdit.resourceCode,
                     fieldCodes: uniqueSorted(operation.platformAccess.recordEdit.fieldCodes),
@@ -1760,6 +1764,10 @@ function compileOperations(config: OpenXiangdaAppConfig) {
             platformAccess: {
               ...(operation.platformAccess.ownedSubject ? { ownedSubject: normalizeWorkflowOwnedSubjectCreate(operation.platformAccess.ownedSubject) } : {}),
               ...(operation.platformAccess.dataCommands ? { dataCommands: { mode: operation.platformAccess.dataCommands.mode } } : {}),
+                  ...(operation.platformAccess.workflowStage ? { workflowStage: { ...operation.platformAccess.workflowStage,
+                    runningNodeIds: uniqueSorted(operation.platformAccess.workflowStage.runningNodeIds),
+                    allowedStatuses: uniqueSorted(operation.platformAccess.workflowStage.allowedStatuses),
+                  } } : {}),
                   ...(operation.platformAccess.recordEdit ? { recordEdit: {
                     resourceCode: operation.platformAccess.recordEdit.resourceCode,
                     fieldCodes: uniqueSorted(operation.platformAccess.recordEdit.fieldCodes),
@@ -1998,6 +2006,7 @@ function runtimeProtocolCapabilities(config: OpenXiangdaAppConfig) {
       ? ['business-process.durable-command']
       : []),
     ...(operations.some(operation => operation.platformAccess?.dataCommands) ? ['data.business-commands'] : []),
+    ...(operations.some(operation => operation.platformAccess?.workflowStage) ? ['workflow.native-stage-guard'] : []),
     ...(operations.some(operation => operation.platformAccess?.roleAssertions?.actorAuthority) ? ['data.transaction-actor-authority'] : []),
     ...(operations.some(operation => operation.platformAccess?.recordEdit) ? ['data.record-edit'] : []),
     ...(operations.some(operation => operation.platformAccess?.ownedSubject) ? ['workflow.named-owned-create'] : []),
