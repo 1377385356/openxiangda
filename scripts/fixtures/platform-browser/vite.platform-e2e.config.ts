@@ -11,6 +11,7 @@ export default mergeConfig(applicationConfig, {
       'mobile-reference.e2e.html',
       'resource-experience.e2e.html',
       'workflow-experience.e2e.html',
+      'workflow-delegation.e2e.html',
       'workflow-entry.e2e.html',
       'login-return.e2e.html',
       'session-switch.e2e.html',
