@@ -53,6 +53,7 @@ export const PLATFORM_CAPABILITY_CONTRACT_VERSIONS = {
   "workflow.assignment-routing": "1.0.0",
   "workflow.role-union": "1.0.0",
   "workflow.named-owned-create": "1.0.0",
+  "workflow.owned-initial-facts": "1.0.0",
   "workflow.role-references": "1.0.0",
   "workflow.delegation-management": "1.0.0",
   "workflow.automatic-cc": "1.0.0",

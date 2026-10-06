@@ -130,6 +130,7 @@ test('approved delegation is preserved by app and target compilers and requires 
       expectedConfigDigest: output.config.digest, contractBytes: output.contracts.content, expectedContractDigest: output.contracts.digest });
     assert.deepEqual(target.requiredPlatformCapabilities, requiredPlatformCapabilitiesFromConfiguration(output.config.value));
     assert.equal(target.requiredPlatformCapabilities.find(item => item.code === 'workflow.approved-delegation')?.contractVersion, '1.0.0');
+    assert.equal(target.requiredPlatformCapabilities.find(item => item.code === 'workflow.owned-initial-facts')?.contractVersion, '1.0.0');
     const published = output.config.value.workflows.definitions[0]!.definition;
     assert.deepEqual(published.approvedDelegation, definition.approvedDelegation);
     const validate = new Ajv2020({ strict: false, validateFormats: false }).compile(workflowDefinitionSchema);
@@ -141,6 +142,10 @@ test('approved delegation is preserved by app and target compilers and requires 
   delete (definition.nodes.review as any).emptyPolicy;
   const ordinary = compileApplicationSources(defineOpenXiangdaApp(source));
   assert.equal(requiredPlatformCapabilitiesFromConfiguration(ordinary.config.value).some(item => item.code === 'workflow.approved-delegation'), false);
+  assert.equal(requiredPlatformCapabilitiesFromConfiguration(ordinary.config.value).some(item => item.code === 'workflow.owned-initial-facts'), true);
+  delete definition.subject.factProjection.delegations;
+  const scalar = compileApplicationSources(defineOpenXiangdaApp(source));
+  assert.equal(requiredPlatformCapabilitiesFromConfiguration(scalar.config.value).some(item => item.code === 'workflow.owned-initial-facts'), false);
 });
 
 test('500-row declarations and aggregate expansion negotiate identical authoring and target capabilities', () => {

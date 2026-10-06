@@ -415,6 +415,13 @@ export function compileNativeApplicationConfiguration(
  * Derives the platform capability usage closure from the normalized, sealed
  * ConfigurationBundleV3. Manifest declarations are deliberately not an input.
  */
+function workflowUsesOwnedInitialFacts(definition: JsonObject, resources: JsonObject[]): boolean {
+  const subject = definition.subject;
+  const resource = resources.find(value => value.code === subject?.resourceCode);
+  const projected = new Set(Object.values(subject?.factProjection || {}));
+  return Boolean(resource?.schema?.fields?.some((field: JsonObject) => field.type === 'subtable' && projected.has(field.code)));
+}
+
 export function compileRequiredPlatformCapabilitiesV3(
   config: JsonObject
 ): OpenXiangdaRequiredPlatformCapabilityV3[] {
@@ -746,6 +753,8 @@ export function compileRequiredPlatformCapabilitiesV3(
       ? [{ code: 'workflow.launch-preflight' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => item.definition.launchPreflight !== undefined) }] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => item.definition.approvedDelegation !== undefined)
       ? [{ code: 'workflow.approved-delegation' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => item.definition.approvedDelegation !== undefined) }] : []),
+    ...(config.workflows.definitions.some((item: JsonObject) => workflowUsesOwnedInitialFacts(item.definition, config.data.resources))
+      ? [{ code: 'workflow.owned-initial-facts' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => workflowUsesOwnedInitialFacts(item.definition, config.data.resources)) }] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.operationPolicy?.reject?.commentRequired === false))
       ? [{ code: 'workflow.optional-rejection-comment' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.operationPolicy?.reject?.commentRequired === false)) }] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => Object.values(node.operationPolicy || {}).some((policy: any) => policy.reasonRequired === false)))
