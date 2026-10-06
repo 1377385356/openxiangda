@@ -169,7 +169,7 @@ importers:
         specifier: 0.12.0
         version: 0.12.0
       openxiangda-cli:
-        specifier: 2.6.92
+        specifier: 2.6.93
         version: link:../cli
       openxiangda-contracts:
         specifier: 2.68.0
@@ -184,7 +184,7 @@ importers:
         specifier: 2.0.106
         version: link:../mcp
       openxiangda-nest:
-        specifier: 2.14.9
+        specifier: 2.14.10
         version: link:../nest
       openxiangda-skill-kit:
         specifier: 2.3.87
