@@ -137,9 +137,11 @@ export function useWorkflowTaskForm(latest?: WorkflowTaskFormSurface) {
   return { form, source, latest, current, subtableError, dirty, unsaved, stale, draft, draftNeedsSave, build, reviewLatest, committed, adoptDraft, savedDraft, removedDraft };
 }
 
-export function WorkflowTaskForm({ controller, disabled, draftDisabled = disabled, taskId, taskVersion, onDraftBusyChange, onFileBusyChange, onRefresh, variant, resourceCode, recordId }: {
+export function WorkflowTaskForm({ controller, disabled, operationPending = disabled, draftDisabled = disabled, taskId, taskVersion, onDraftBusyChange, onFileBusyChange, onRefresh, variant, resourceCode, recordId }: {
   controller: ReturnType<typeof useWorkflowTaskForm>;
   disabled: boolean;
+  /** Protect pending writes; a confirmed command's read failure only disables controls. */
+  operationPending?: boolean;
   draftDisabled?: boolean;
   taskId?: string;
   taskVersion?: number;
@@ -155,14 +157,14 @@ export function WorkflowTaskForm({ controller, disabled, draftDisabled = disable
   const binding = (fieldCode: string): WorkflowFileBinding | undefined => taskId && resourceCode && recordId
     ? { taskId, resourceCode, recordId, fieldCode } : undefined;
   const { form, source, latest, current, unsaved, stale } = controller;
-  useUnsavedChangesGuard({ when: unsaved || disabled, preventNavigation: disabled,
-    message: disabled ? '资料操作结果尚待确认，请先确认原操作结果。' : '当前输入尚未提交或保存私有草稿，离开后将丢失。' });
+  useUnsavedChangesGuard({ when: unsaved || operationPending, preventNavigation: operationPending,
+    message: operationPending ? '资料操作结果尚待确认，请先确认原操作结果。' : '当前输入尚未提交或保存私有草稿，离开后将丢失。' });
   useEffect(() => {
-    if (!unsaved && !disabled) return;
+    if (!unsaved && !operationPending) return;
     const handler = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [unsaved, disabled]);
+  }, [unsaved, operationPending]);
   if (!source) return null;
   const Control = variant === 'mobile' ? MobileSurfaceFieldControl : SurfaceFieldControl;
   const review = (keep: boolean) => modal.confirm({ title: keep ? '核对最新资料后保留输入？' : '采用最新资料？',

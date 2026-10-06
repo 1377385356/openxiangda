@@ -140,6 +140,12 @@ type JsonObject = Record<string, unknown>;
 
 export type WorkflowSurfaceKind = 'task' | 'instance';
 
+/** Read context after an unchanged, confirmed platform command result. */
+export interface WorkflowCommandCompletionContext {
+  /** The actor can no longer read the old task, although the instance may continue. */
+  taskSurfaceUnavailable: boolean;
+}
+
 /**
  * An advanced task command has completed the current task and may have
  * created a new task. Reading the old task Surface in that case is expected
@@ -166,6 +172,7 @@ export async function completeWorkflowCommand(
     refresh: () => Promise<WorkflowSurface | null>;
     onCommandCompleted?: (
       result: WorkflowCommandResult,
+      context?: WorkflowCommandCompletionContext,
     ) => void | Promise<void>;
     onCompleted?: (
       surface: WorkflowSurface,
@@ -178,9 +185,14 @@ export async function completeWorkflowCommand(
   let refreshFailure: unknown;
   try { nextSurface = refreshSurface ? await options.refresh() : null; }
   catch (error) { refreshFailure = error; }
-  await options.onCommandCompleted?.(result);
+  const failure = refreshFailure as { code?: string; status?: number } | undefined;
+  const taskSurfaceUnavailable = kind === 'task' && (
+    (failure?.status === 403 && failure.code === 'WORKFLOW_V2_TASK_FORBIDDEN') ||
+    (failure?.status === 404 && failure.code === 'WORKFLOW_V2_TASK_NOT_FOUND')
+  );
+  await options.onCommandCompleted?.(result, { taskSurfaceUnavailable });
   if (nextSurface) await options.onCompleted?.(nextSurface, result);
-  if (refreshFailure) throw refreshFailure;
+  if (refreshFailure && !(taskSurfaceUnavailable && options.onCommandCompleted)) throw refreshFailure;
   return nextSurface;
 }
 
@@ -1059,6 +1071,7 @@ function WorkflowOperations({
         title="请刷新操作后继续办理" description="页面停留较久，需重新确认当前办理权限。刷新会保留尚未保存的输入。"
         action={<Button disabled={locked} loading={submitting} onClick={() => void refreshConfirmed()}>刷新操作</Button>} />}
       {surface.taskForm && <WorkflowTaskForm controller={taskForm} disabled={locked} variant={variant}
+        operationPending={submitting || unknown || Boolean(pendingLocator) || draftLocked || fileLocked}
         taskVersion={surface.task?.version ? Number(surface.task.version) : undefined}
         taskId={surface.task?.id ? String(surface.task.id) : undefined} draftDisabled={commandLocked} onRefresh={onRefresh}
         onDraftBusyChange={busy => { setDraftLocked(busy); onBusyChange(busy || fileLocked || busyRef.current); }}
@@ -1141,6 +1154,7 @@ interface WorkflowOperationsPanelProps {
   ) => void | Promise<void>;
   onCommandCompleted?: (
     result: WorkflowCommandResult,
+    context?: WorkflowCommandCompletionContext,
   ) => void | Promise<void>;
   loadSurface: (identifier: string) => Promise<WorkflowSurface>;
   matchesSurface: (
@@ -1188,6 +1202,7 @@ function WorkflowOperationsPanel({
   const [writing, setWriting] = useState(false);
   const [settlement, setSettlement] = useState<{ key: string; result: WorkflowCommandResult | null } | null>(null);
   const [confirmedReadFailure, setConfirmedReadFailure] = useState<{ result: WorkflowCommandResult; message: string } | null>(null);
+  const [taskCommandSettled, setTaskCommandSettled] = useState(false);
   const locator = locatorState.scope === locatorScope ? locatorState.value : null;
   useEffect(() => {
     setLocatorState({ scope: locatorScope, value: locatorScope ? readPendingWorkflowTaskCommand(submissionLocatorStorage(), locatorScope) : null });
@@ -1327,6 +1342,7 @@ function WorkflowOperationsPanel({
 
   useEffect(() => {
     activeRef.current = true;
+    setTaskCommandSettled(false);
     requestSequence.current += 1;
     if (!normalizedIdentifier) {
       setSurface(null);
@@ -1413,11 +1429,19 @@ function WorkflowOperationsPanel({
           ? nextSurface
           : null;
       },
-      onCommandCompleted: async (commandResult) => {
+      onCommandCompleted: async (commandResult, context) => {
         if (!isCurrentGeneration(identifierAtStart, generationAtStart)) {
           return;
         }
-        await onCommandCompletedRef.current?.(commandResult);
+        if (context?.taskSurfaceUnavailable) {
+          setSurface(null);
+          setSurfaceIdentifier(identifierAtStart);
+          setLoading(false);
+          setLoadingIdentifier(null);
+          setErrorState(null);
+          setTaskCommandSettled(true);
+        }
+        await onCommandCompletedRef.current?.(commandResult, context);
       },
       onCompleted: async (nextSurface, commandResult) => {
         if (!isCurrentGeneration(identifierAtStart, generationAtStart)) {
@@ -1500,7 +1524,9 @@ function WorkflowOperationsPanel({
       </>
     ) });
   }
-  if (!renderSurface) return layout({ content: receipt || confirmedWarning ? <>{receipt}{confirmedWarning}</> : null, actions: null });
+  if (!renderSurface) return layout({ content: receipt || confirmedWarning || taskCommandSettled ? <>{receipt}{confirmedWarning}
+    {taskCommandSettled && !confirmedWarning && <Alert type="success" showIcon title="任务操作已成功"
+      description="你的本次办理已完成，流程可能仍在等待其他处理人。" />}</> : null, actions: null });
   return (
       <WorkflowOperations
         key={`${normalizedIdentifier}:${locatorScope}:${runtime?.identityEpoch || 0}`}
@@ -1541,6 +1567,7 @@ export interface WorkflowTaskOperationsPanelProps {
   /** Called with the platform command result after successful completion. */
   onCommandCompleted?: (
     result: WorkflowCommandResult,
+    context?: WorkflowCommandCompletionContext,
   ) => void | Promise<void>;
   /** Places content/actions and reads the actual current Surface without another controller. */
   renderLayout?: (parts: { content: ReactNode; actions: ReactNode; surface?: WorkflowSurface }) => ReactNode;
@@ -1597,6 +1624,7 @@ export interface WorkflowInstanceOperationsPanelProps {
   /** Called with the platform command result after successful completion. */
   onCommandCompleted?: (
     result: WorkflowCommandResult,
+    context?: WorkflowCommandCompletionContext,
   ) => void | Promise<void>;
 }
 
@@ -1807,6 +1835,15 @@ function WorkflowDetailPage({ kind, variant, resourceCode, recordId, onDismiss, 
   const id = recordId || String(kind === 'task' ? params.taskId || '' : kind === 'record' ? params.id || '' : params.instanceId || '');
   const navigate = useNavigate();
   const { identity } = useRuntime();
+  const commandHostKey = `${identity.identityScope}:${identity.environment.id}:${kind}:${id}`;
+  const commandHostRef = useRef<{ key: string } | null>(null);
+  useEffect(() => {
+    const host = { key: commandHostKey };
+    commandHostRef.current = host;
+    return () => {
+      if (commandHostRef.current === host) commandHostRef.current = null;
+    };
+  }, [commandHostKey]);
   const [editing, setEditing] = useState(false);
   const [editBusy, setEditBusy] = useState(false);
   const { detail, surface, timeline, loading, error, refresh } = useWorkflowDetail({ kind, id, resourceCode });
@@ -1816,11 +1853,14 @@ function WorkflowDetailPage({ kind, variant, resourceCode, recordId, onDismiss, 
   const detailPath = surface ? (variant === 'mobile' ? surface.detailNavigation.mobilePath : surface.detailNavigation.desktopPath) : '';
   const newPageHref = useHref(detailPath || '.');
   const close = onDismiss || (() => navigate(returnPath || (detail ? variant === 'mobile' ? detail.navigationContext.mobileReturnPath : detail.navigationContext.desktopReturnPath : variant === 'mobile' ? '/m/work-center' : '/work-center')));
-  const onCommandCompleted = async (result: WorkflowCommandResult) => {
-    if (kind === 'task' && result.advanced === true) {
-      const nextId = String(result.instanceId || '').trim();
-      if (!nextId) return;
+  const onCommandCompleted = async (result: WorkflowCommandResult, context?: WorkflowCommandCompletionContext) => {
+    const host = commandHostRef.current;
+    if (!host || host.key !== commandHostKey) return;
+    if (kind === 'task' && (result.advanced === true || context?.taskSurfaceUnavailable)) {
+      const nextId = String(result.instanceId || surface?.instance.id || '').trim();
+      if (!nextId) throw new Error('WORKFLOW_INSTANCE_ID_REQUIRED_AFTER_COMMAND');
       const next = await loadWorkflowInstanceDetail(nextId);
+      if (commandHostRef.current !== host) return;
       navigate(variant === 'mobile' ? next.surface.detailNavigation.mobilePath : next.surface.detailNavigation.desktopPath, { replace: true });
     } else await refresh();
   };

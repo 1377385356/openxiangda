@@ -162,3 +162,66 @@ test('command completion forwards the result instanceId without an instance Surf
 
   assert.equal(callbackResult?.instanceId, 'instance-1');
 });
+
+test('a confirmed all-mode first vote hands off an unreadable task without changing the platform result', async () => {
+  const result = Object.freeze({ taskId: 'task-1', status: 'assigned', advanced: false });
+  const calls: string[] = [];
+  let context: unknown;
+  const returned = await completeWorkflowCommand('task', result, {
+    refresh: async () => {
+      calls.push('task');
+      throw Object.assign(new Error('WORKFLOW_V2_TASK_FORBIDDEN'), { status: 403, code: 'WORKFLOW_V2_TASK_FORBIDDEN' });
+    },
+    onCommandCompleted: (received, readContext) => {
+      assert.equal(received, result);
+      assert.equal(received.advanced, false);
+      context = readContext;
+      calls.push('authorized-instance-host');
+    },
+    onCompleted: () => { throw new Error('No task Surface was read'); },
+  });
+  assert.equal(returned, null);
+  assert.deepEqual(context, { taskSurfaceUnavailable: true });
+  assert.deepEqual(calls, ['task', 'authorized-instance-host']);
+  assert.deepEqual(result, { taskId: 'task-1', status: 'assigned', advanced: false });
+});
+
+test('a confirmed command can hand off a missing task, but no host means the read failure remains visible', async () => {
+  const result = { taskId: 'task-1', status: 'assigned', advanced: false };
+  const error = Object.assign(new Error('missing task'), { status: 404, code: 'WORKFLOW_V2_TASK_NOT_FOUND' });
+  await assert.rejects(completeWorkflowCommand('task', result, { refresh: async () => { throw error; } }), error);
+  let context: unknown;
+  await completeWorkflowCommand('task', result, {
+    refresh: async () => { throw error; },
+    onCommandCompleted: (_, value) => { context = value; },
+  });
+  assert.deepEqual(context, { taskSurfaceUnavailable: true });
+});
+
+test('network errors, identity failures, unrelated denials and instance reads do not become task handoffs', async () => {
+  const result = { taskId: 'task-1', status: 'assigned', advanced: false };
+  for (const [kind, status, code] of [
+    ['task', 502, 'UPSTREAM_UNAVAILABLE'], ['task', 401, 'WORKFLOW_V2_TASK_FORBIDDEN'],
+    ['task', 403, 'APP_SCOPE_FORBIDDEN'], ['instance', 403, 'WORKFLOW_V2_TASK_FORBIDDEN'],
+  ] as const) {
+    const error = Object.assign(new Error(code), { status, code });
+    let context: unknown;
+    await assert.rejects(completeWorkflowCommand(kind, result, {
+      refresh: async () => { throw error; },
+      onCommandCompleted: (received, value) => { assert.equal(received, result); context = value; },
+    }), error);
+    assert.deepEqual(context, { taskSurfaceUnavailable: false });
+  }
+});
+
+test('failure to read the resulting instance is reported after the write remains confirmed', async () => {
+  const result = { taskId: 'task-1', status: 'assigned', advanced: false };
+  const instanceError = Object.assign(new Error('instance access denied'), { status: 403, code: 'WORKFLOW_V2_INSTANCE_FORBIDDEN' });
+  await assert.rejects(completeWorkflowCommand('task', result, {
+    refresh: async () => { throw Object.assign(new Error('old task forbidden'), { status: 403, code: 'WORKFLOW_V2_TASK_FORBIDDEN' }); },
+    onCommandCompleted: (received, context) => {
+      assert.equal(received, result); assert.equal(context?.taskSurfaceUnavailable, true);
+      throw instanceError;
+    },
+  }), instanceError);
+});

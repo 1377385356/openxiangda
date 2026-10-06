@@ -160,6 +160,13 @@ events: {
 
 标准任务和实例详情的“返回”由应用 Router 使用同一份 route manifest 中对应设备的流程中心路径；没有中心条目时返回已声明门户。普通用户无需管理后台权限。应用独立消费 `WorkflowTaskPage` 或 `WorkflowInstancePage` 时，可以传入本应用已声明的 `returnPath`，例如 `<WorkflowInstancePage variant="mobile" returnPath="/m/work-center" />`。抽屉的 `onDismiss` 仍负责关闭当前抽屉；返回导航不授予目标页面权限。
 
+会签第一票或转交成功后，节点可能继续等待其他人，但原用户的办理席位已经结束。
+标准页面确认旧任务不可读时重新核验实例访问，再显示当前进度；不重投原命令。
+嵌入任务面板的 `onCommandCompleted(result, context)` 保留原平台结果，第二参数
+`taskSurfaceUnavailable` 为 SDK 的成功后读取事实，供宿主关闭旧办理面并读取实例。
+通用网络错误或无关权限拒绝仍显示读取失败；已确认成功的读取失败允许返回，
+未知写入继续要求先查询原结果。`advanced` 仍只表示流程推进，不表示个人席位状态。
+
 抄送由动态 Surface 提供 `cc` 操作，使用 `user_select` 多选组件收集 1 至 20 位人员。任务 Surface 可以正式包含实例抄送命令；前端按 `operation.execute.href` 和该 Surface 的 token 提交，不另造任务命令或 token。公共事件为 `openxiangda.workflow.instance.cc_added.v2`。
 
 ## 钉钉卡片已读查询
