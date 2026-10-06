@@ -260,6 +260,10 @@ openxiangda link rebind --base-url https://platform-b.example.com   # 显式换�
 ### 普通角色与应用登录联调
 
 `pnpm openxiangda dev --identity browser` 使用应用自身的登录入口验证普通用户；
+新模板已接入开发模式挂载插件。既有 Vite 应用在 `vite.config.ts` 中从
+`openxiangda/config` 导入 `createConnectedDevelopmentVitePlugin`，加入 `plugins`。
+插件只在 CLI 的普通身份连接开发模式下提供标准运行时挂载信息；正式构建及
+默认开发者模式不受影响，登录、Cookie、CSRF 与实时角色仍由平台管理。
 退出后仍保持应用登录模式。默认的 `developer` 模式方便开发者联调，但已携带应用
 浏览器 cookie 或不同显式 Bearer 的请求保留原身份。失效 cookie 由平台拒绝，不会
 回退开发者身份。登录、退出和 CSRF 均由平台处理。

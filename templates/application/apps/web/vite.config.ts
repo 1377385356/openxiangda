@@ -1,13 +1,14 @@
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
+import { createConnectedDevelopmentVitePlugin } from 'openxiangda/config';
 
 const connectedProxy =
   process.env.OPENXIANGDA_DEV_PROXY?.trim() || 'http://127.0.0.1:7001';
 const port = Number(process.env.OPENXIANGDA_WEB_PORT || 5173);
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), createConnectedDevelopmentVitePlugin()],
   base: './',
   optimizeDeps: {
     entries: ['index.html'],

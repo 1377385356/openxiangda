@@ -1,6 +1,7 @@
 export * from './application-services.js';
 export * from './app-spec.js';
 export * from './connected-development.js';
+export * from './connected-development-vite.js';
 export * from './compiler/bundle.js';
 export * from './compiler/permission-review.js';
 export * from './command-registry.js';

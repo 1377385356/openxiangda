@@ -241,6 +241,7 @@ export async function runConnectedDevelopment(
       OPENXIANGDA_PLATFORM_BASE_URL: `${urls.proxy}/service`,
       OPENXIANGDA_DEV_HOST: LOOPBACK_HOST,
       OPENXIANGDA_CONNECTED_DEV: "true",
+      OPENXIANGDA_CONNECTED_DEV_IDENTITY: input.identityMode ?? 'developer',
       OPENXIANGDA_CONNECTED_DEV_ENVIRONMENT_LABEL: environmentLabel,
       OPENXIANGDA_ENVIRONMENT_KEY: environmentKey,
       OPENXIANGDA_ENVIRONMENT_ID: input.environment.id,
