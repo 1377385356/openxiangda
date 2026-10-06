@@ -208,6 +208,7 @@ export async function runConnectedDevelopment(
     environmentKey,
     platformBaseUrl: input.platformBaseUrl,
     localAppBaseUrl: urls.app,
+    localWebBaseUrl: urls.web,
     developerSession: input.developerSession,
     sessionHeaders,
     operationPaths,
@@ -342,6 +343,7 @@ function createConnectedProxy(input: {
   environmentKey: DeploymentEnvironment;
   platformBaseUrl: string;
   localAppBaseUrl: string | null;
+  localWebBaseUrl: string;
   developerSession: OpenXiangdaDeveloperSession;
   sessionHeaders: () => Promise<Record<string, string>>;
   operationPaths: ReadonlySet<string>;
@@ -380,6 +382,14 @@ function createConnectedProxy(input: {
       const authorization = browserIdentity ? undefined :
         `Bearer ${await input.developerSession.getAccessToken()}`;
       const ordinaryIdentity = browserIdentity || !!(explicitAuthorization && explicitAuthorization !== authorization);
+      // The platform still verifies a same-origin auth request and double-submit
+      // CSRF. Translate only the exact CLI-owned, same-origin Vite proxy hop.
+      const localWeb = new URL(input.localWebBaseUrl);
+      if (isApplicationAuthenticationRequest(request.url || '/', input.appCode) &&
+          request.headers.origin === localWeb.origin && request.headers.host === localWeb.host &&
+          request.headers['sec-fetch-site'] === 'same-origin') {
+        headers.origin = new URL(input.platformBaseUrl).origin;
+      }
       if (!ordinaryIdentity) {
         headers.authorization = authorization!;
         Object.assign(headers, await input.sessionHeaders());

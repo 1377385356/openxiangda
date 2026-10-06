@@ -2,7 +2,7 @@ import { writeDevelopmentFixture, writeVerificationFixture } from "../../../scri
 import { NATIVE_CONFIGURATION_VALIDATOR_DIGEST } from 'openxiangda-contracts/native-compiler';
 import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
-import { createServer as createHttpServer } from "node:http";
+import { createServer as createHttpServer, request as httpRequest } from "node:http";
 import { createHash } from "node:crypto";
 import {
   chmodSync,
@@ -286,6 +286,28 @@ server.listen(port, "127.0.0.1");
           assert.equal(remoteRequests.at(-1)!.headers['x-openxiangda-csrf-token'], csrf);
           assert.equal(developerReads, reads);
         }
+        const authPath = '/service/openxiangda-api/v2/applications/reference-app/auth/transactions';
+        const localWeb = new URL(session.urls.web);
+        for (const patch of [{}, { origin: 'https://foreign.test' },
+          { host: 'foreign.test' }, { 'sec-fetch-site': 'cross-site' }]) {
+          const headers = { origin: localWeb.origin, host: localWeb.host,
+            'sec-fetch-site': 'same-origin', cookie: 'openxiangda-browser=ordinary',
+            'x-openxiangda-csrf-token': csrf, ...patch };
+          // Node fetch rewrites Host. A raw HTTP request represents the real
+          // Vite changeOrigin:false hop and its three mismatches faithfully.
+          await new Promise<void>((resolve, reject) => {
+            const request = httpRequest(`${session.urls.proxy}${authPath}`, { method: 'POST', headers }, response => {
+              response.resume(); response.once('end', resolve); response.once('error', reject);
+            });
+            request.once('error', reject); request.end('{}');
+          });
+          const actual = remoteRequests.at(-1)!;
+          const exactHop = Object.keys(patch).length === 0;
+          assert.equal(actual.headers.origin, exactHop ? new URL(session.urls.platform).origin : headers.origin);
+          assert.equal(actual.headers.cookie, headers.cookie);
+          assert.equal(actual.headers['x-openxiangda-csrf-token'], csrf);
+          assert.equal(actual.headers.authorization, undefined);
+        }
         for (const token of ['application-oauth-token', 'untrusted-token']) {
           for (const path of ['/api/probe', '/business/probe',
             '/service/openxiangda-app-api/v2/reference-app/preproduction/api/probe']) {
@@ -315,7 +337,7 @@ server.listen(port, "127.0.0.1");
     assert.equal(result.session.manifestOverlay, true);
     assert.equal(existsSync(dockerMarker), false);
     assert.equal(result.session.identityMode, identityMode);
-    assert.equal(remoteRequests.length, identityMode === 'developer' ? 28 : 31);
+    assert.equal(remoteRequests.length, identityMode === 'developer' ? 32 : 35);
     assert.equal(remoteRequests[0]?.headers.authorization, identityMode === 'developer' ? `Bearer ${secretDeveloperToken}` : undefined);
     assert.equal(remoteRequests[0]?.headers["x-openxiangda-dev-session"], identityMode === 'developer' ? secretSessionToken : undefined);
     assert.equal(remoteRequests[1]?.headers.authorization, 'Bearer application-oauth-token');
