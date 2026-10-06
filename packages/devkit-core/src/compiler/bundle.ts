@@ -3,7 +3,7 @@ import { normalizeWorkflowOwnedSubjectCreate } from 'openxiangda-contracts/nativ
 import { compileWorkflowBusinessStepHandlers, validateWorkflowBusinessStepSubscriptions, WORKFLOW_BUSINESS_STEP_EVENTS } from 'openxiangda-contracts/native-compiler';
 import { parseNativeUniqueKeys, parseDecimalReservationLifecycle } from 'openxiangda-contracts/native-compiler';
 import { DATA_AUDIT_METADATA_FIELDS, isDataAuditMetadataField, projectDataResourceView, requiresExtendedOwnedSubtableCapacity } from 'openxiangda-contracts';
-import { nativeFieldRequiresCreateInputV2, requiresDateTimeMinutePrecision, requiresUserCandidateLaunchScope, requiresWorkflowRoleUnion } from 'openxiangda-contracts/native-compiler';
+import { nativeFieldRequiresCreateInputV2, requiresOwnedSubtableMinimumRows, requiresDateTimeMinutePrecision, requiresUserCandidateLaunchScope, requiresWorkflowRoleUnion } from 'openxiangda-contracts/native-compiler';
 import { createHash } from 'node:crypto';
 import {
   canonicalJson,
@@ -1981,6 +1981,7 @@ function runtimeProtocolCapabilities(config: OpenXiangdaAppConfig) {
     ...(requiresWorkflowRoleUnion(config.workflows?.bindings || []) ? ['workflow.role-union'] : []),
     ...(requiresUserCandidateLaunchScope(config.data?.resources || []) ? ['data.user-candidate-launch-scope'] : []),
     ...(requiresDateTimeMinutePrecision(config.data?.resources || []) ? ['data.datetime-minute-precision'] : []),
+    ...(requiresOwnedSubtableMinimumRows(config.data?.resources || []) ? ['data.subtable-minimum-rows'] : []),
     ...(usesDirectory ? ['directory-v2'] : []),
     ...(operations.some(operation=>operation.platformAccess?.directory?.mode==='selected-user') ? ['directory.selected-user'] : []),
     ...(operations.some(operation => operation.platformAccess?.directory?.mode === 'current-initiator' && operation.platformAccess.directory.fields.includes('phone')) ||

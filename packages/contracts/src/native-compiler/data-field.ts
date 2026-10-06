@@ -50,6 +50,14 @@ export function requiresDateTimeMinutePrecision(resources: readonly {
     (field.type === 'datetime' || field.type === 'datetime-range') && field.timePrecision === 'minute'));
 }
 
+/** A positive bound needs the Native planner, not only a new field parser. */
+export function requiresOwnedSubtableMinimumRows(resources: readonly {
+  schema: { fields: readonly { type: string; subtable?: { minRows?: number } }[] };
+}[]): boolean {
+  return resources.some(resource => resource.schema.fields.some(field =>
+    field.type === 'subtable' && (field.subtable?.minRows ?? 0) > 0));
+}
+
 const FIELD_TYPE_SET = new Set<string>(OPENXIANGDA_NATIVE_DATA_FIELD_TYPES_V2);
 const MULTI_TYPES = new Set<NativeDataFieldTypeV2>([
   'option.multiple',
@@ -138,6 +146,7 @@ export interface NativeDataFieldV2 {
     resourceCode: string;
     foreignKey: string;
     orderField: string;
+    minRows?: number;
     maxRows?: number;
   };
 }
@@ -976,7 +985,7 @@ function parseSubtable(
   const subtable = record(value, pointer);
   exactKeys(
     subtable,
-    ['resourceCode', 'foreignKey', 'orderField', 'maxRows'],
+    ['resourceCode', 'foreignKey', 'orderField', 'minRows', 'maxRows'],
     pointer
   );
   const resourceCode = requiredString(
@@ -1001,10 +1010,14 @@ function parseSubtable(
     1,
     DATA_SUBTABLE_MAX_ROWS
   );
+  const minRows = optionalInteger(subtable.minRows, `${pointer}/minRows`, 0, DATA_SUBTABLE_MAX_ROWS);
+  if ((minRows ?? 0) > (maxRows ?? 20))
+    issue('NATIVE_DATA_FIELD_SUBTABLE_MIN_ROWS_INVALID', `${pointer}/minRows`);
   return {
     resourceCode,
     foreignKey,
     orderField,
+    ...(minRows === undefined ? {} : { minRows }),
     ...(maxRows === undefined ? {} : { maxRows }),
   };
 }

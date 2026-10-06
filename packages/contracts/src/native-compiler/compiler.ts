@@ -42,6 +42,7 @@ import {
   NativeDataFieldV2,
   nativeFieldRequiresCreateInputV2,
   requiresDateTimeMinutePrecision,
+  requiresOwnedSubtableMinimumRows,
   parseNativeDataFieldsV2,
   parseNativeDataResourceInvariantsV2,
   validateNativeDataResourceReferencesV2,
@@ -733,6 +734,8 @@ export function compileRequiredPlatformCapabilitiesV3(
     ...(requiresUserCandidateLaunchScope(config.data.resources)
       ? [{ code: 'data.user-candidate-launch-scope' as const, declaration: config.data.resources.filter((resource: any) => requiresUserCandidateLaunchScope([resource])) }]
       : []),
+    ...(requiresOwnedSubtableMinimumRows(config.data.resources)
+      ? [{ code: 'data.subtable-minimum-rows' as const, declaration: config.data.resources.filter((resource: any) => requiresOwnedSubtableMinimumRows([resource])) }] : []),
     ...(requiresDateTimeMinutePrecision(config.data.resources)
       ? [{ code: 'data.datetime-minute-precision' as const, declaration: config.data.resources.filter((resource: any) => requiresDateTimeMinutePrecision([resource])) }]
       : []),

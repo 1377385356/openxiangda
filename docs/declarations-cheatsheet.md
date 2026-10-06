@@ -30,7 +30,7 @@
 | `labelField` 必须指向目标资源的 `text.short` / `text.long` 字段 | 不要用流水号/选项字段当 label |
 | 列表可排序列用视图级 `sortableFields` 表达（`defaultSort.field` 隐式可排序）；平台审计列（如 `created_at`）同样合法 | `list: { sortableFields: ['capacity'], defaultSort: { field: 'name', order: 'asc' } }`；`defaultSort: { field: 'created_at', order: 'desc' }` |
 | 每个字段都必须带中文/业务 `label`（含子表外键与排序字段） | `{ code: 'requestId', type: 'uuid', label: '所属申请', required: true }` |
-| 子表 `subtable` 的外键是子资源的 **uuid** 字段，排序字段是**可写 number.integer** | 子资源：`{ code: 'requestId', type: 'uuid', required: true }` + `{ code: 'sortOrder', type: 'number.integer', required: true }`；父表：`subtable: { resourceCode: 'repair-items', foreignKey: 'requestId', orderField: 'sortOrder', maxRows: 20 }` |
+| 子表 `subtable` 的外键是子资源的 **uuid** 字段，排序字段是**可写 number.integer** | 子资源：`{ code: 'requestId', type: 'uuid', required: true }` + `{ code: 'sortOrder', type: 'number.integer', required: true }`；父表：`subtable: { resourceCode: 'repair-items', foreignKey: 'requestId', orderField: 'sortOrder', minRows: 1, maxRows: 20 }`；minRows默认0、不能超过maxRows |
 | 图片/附件的 `file` 限定数量与大小 | `file: { maxCount: 3, maxSizeMb: 10, accept: ['image/png', 'image/jpeg'] }` |
 
 ## 权限声明

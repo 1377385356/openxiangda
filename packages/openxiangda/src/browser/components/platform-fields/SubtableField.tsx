@@ -130,6 +130,7 @@ export function SubtableField({
   const loadedKey = useRef('');
   const rows = value ?? internalRows;
   const maxRows = config?.maxRows ?? 20;
+  const minRows = config?.minRows ?? 0;
   const rowsRef = useRef(rows);
   rowsRef.current = rows;
   const page = subtablePage(rows, requestedPage);
@@ -210,6 +211,7 @@ export function SubtableField({
   useEffect(() => registerValidation?.(`all:${field.key}`, async () => {
     if (disabled) return;
     if (uploads || pendingEdits.size) throw new Error('请先完成当前页的编辑或处理待上传文件');
+    if (!task && visibleRows.length < minRows) throw new Error(`${field.label}至少保留${minRows}项`);
     try {
       await validateSubtableRows(rows, row => {
         const operation = row.state === 'persisted' ? 'update' : 'create';
@@ -277,6 +279,7 @@ export function SubtableField({
   }
 
   const removeRow = (target: SubtableDraftRow) => {
+    if (!task && subtablePage(rowsRef.current, 1).visible.length <= minRows) return;
     emit(
       target.state === 'created'
         ? rows.filter(row => row.key !== target.key)
@@ -294,6 +297,7 @@ export function SubtableField({
     ? { ...current, data: { ...current.data, ...data }, snapshot: { ...current.snapshot, ...Object.fromEntries(Object.entries(data).map(([key, item]) => [key, fieldValueForData(definition.surface.fields[key], item)])) } } : current));
   const pagination = <div className="oxa-subtable-pagination" aria-label={`${field.label}分页`}>
     <span role="status">{visibleRows.length ? `${page.start + 1}–${Math.min(page.start + SUBTABLE_PAGE_SIZE, visibleRows.length)} / ${visibleRows.length} 项` : '0 项'}</span>
+    {minRows > 0 && <span>{task ? '完成任务前' : ''}至少保留{minRows}项</span>}
     {page.pages > 1 && (mobile ? <Space>
       <MobileButton fill="outline" aria-label={`${field.label}上一页`} disabled={navigationBlocked || page.page === 1} onClick={() => setRequestedPage(page.page - 1)}>上一页</MobileButton>
       <span>{page.page} / {page.pages}</span>
@@ -312,7 +316,7 @@ export function SubtableField({
       return <MobileSubtableRow key={row.key} row={row} index={index} fields={fields} disabled={disabled}
         resourceCode={definition.code} operation={rowOperation}
         canWrite={child => writable && canWriteField(child, rowOperation, row)}
-        canDelete={!navigationBlocked && (row.state === 'persisted' ? canDelete : canCreate)} onRemove={() => removeRow(row)}
+        canDelete={!navigationBlocked && (Boolean(task) || visibleRows.length > minRows) && (row.state === 'persisted' ? canDelete : canCreate)} onRemove={() => removeRow(row)}
         onChange={data => changeRow(row, data)}
         references={rowReferences(row)} workflowFileBinding={rowBinding(row)} upload={uploadFor(row)} signer={task?.signer} uploadBlocked={child => uploadBlocked(child, row)} taskMode={Boolean(task)} hint={child => requiredHint(child, row)}
         actions={task?.page.reorder && <Space><MobileButton fill="none" disabled={navigationBlocked || index === 0} aria-label={`上移第${index + 1}项`} onClick={() => moveRow(index, -1)}>上移</MobileButton><MobileButton fill="none" disabled={navigationBlocked || index === visibleRows.length - 1} aria-label={`下移第${index + 1}项`} onClick={() => moveRow(index, 1)}>下移</MobileButton></Space>} />;
@@ -352,7 +356,7 @@ export function SubtableField({
           actions={<Space size={0}>
             {!launch && <Button type="text" aria-label={`上移第${index + 1}项`} disabled={navigationBlocked || index === 0 || !writable || Boolean(task && !task.page.reorder)} icon={<UpOutlined />} onClick={() => moveRow(index, -1)} />}
             {!launch && <Button type="text" aria-label={`下移第${index + 1}项`} disabled={navigationBlocked || index === visibleRows.length - 1 || !writable || Boolean(task && !task.page.reorder)} icon={<DownOutlined />} onClick={() => moveRow(index, 1)} />}
-            <Button type="link" danger disabled={navigationBlocked || (row.state === 'persisted' ? !canDelete : !canCreate)} onClick={() => removeRow(row)}>删除</Button>
+            <Button type="link" danger disabled={navigationBlocked || (!task && visibleRows.length <= minRows) || (row.state === 'persisted' ? !canDelete : !canCreate)} onClick={() => removeRow(row)}>删除</Button>
           </Space>} />;
       })}{!loading && !visibleRows.length && <tr><td colSpan={fields.length + 2}><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无明细" /></td></tr>}</tbody>
     </table></div>

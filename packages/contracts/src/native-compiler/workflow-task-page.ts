@@ -28,6 +28,7 @@ export interface WorkflowTaskSubtableSurface {
   resourceCode: string;
   foreignKey: string;
   orderField: string;
+  minRows?: number;
   maxRows: number;
   fields: Record<string, DataFieldSurface>;
   rows: Array<Record<string, unknown>>;
@@ -256,10 +257,10 @@ export function workflowTaskSubtableRows(page: WorkflowTaskSubtablePage, records
 }
 
 /** Shared intent validation; Native still owns semantic field values and physical CAS. */
-export function applyWorkflowTaskSubtableRows(field: WorkflowTaskPageField, maximum: number, current: Array<Record<string, unknown>>, input: unknown, required: boolean, checkRevisions = true): WorkflowTaskSubtableRow[] {
+export function applyWorkflowTaskSubtableRows(field: WorkflowTaskPageField, maximum: number, current: Array<Record<string, unknown>>, input: unknown, required: boolean, checkRevisions = true, minimum = 0): WorkflowTaskSubtableRow[] {
   const page = field.subtable;
   const fail = (code: string): never => { throw new WorkflowTaskPageError(code, field.code); };
-  if (!page || !Number.isSafeInteger(maximum) || maximum < 1 || maximum > WORKFLOW_TASK_SUBTABLE_MAX_ROWS || !Array.isArray(input) || input.length > 2 * maximum || bytes(input) > WORKFLOW_TASK_PAGE_MAX_BYTES || !boundedValues(input)) return fail('WORKFLOW_TASK_SUBTABLE_VALUES_INVALID');
+  if (!page || !Number.isSafeInteger(maximum) || maximum < 1 || maximum > WORKFLOW_TASK_SUBTABLE_MAX_ROWS || !Number.isSafeInteger(minimum) || minimum < 0 || minimum > maximum || !Array.isArray(input) || input.length > 2 * maximum || bytes(input) > WORKFLOW_TASK_PAGE_MAX_BYTES || !boundedValues(input)) return fail('WORKFLOW_TASK_SUBTABLE_VALUES_INVALID');
   const records = new Map(current.map(record => [String(record.id), record]));
   const keys = new Set<string>();
   const ids = new Set<string>();
@@ -290,6 +291,7 @@ export function applyWorkflowTaskSubtableRows(field: WorkflowTaskPageField, maxi
   }
   if (ids.size !== records.size) return fail('WORKFLOW_TASK_SUBTABLE_SCOPE_CONFLICT');
   if (visible.length > maximum) return fail('WORKFLOW_TASK_SUBTABLE_MAX_ROWS_EXCEEDED');
+  if (required && visible.length < minimum) return fail('WORKFLOW_TASK_SUBTABLE_MIN_ROWS_NOT_MET');
   if (!page.reorder) {
     const retained = current.filter(record => visible.some(row => row.id === String(record.id))).map(record => String(record.id));
     const submitted = visible.filter(row => row.state === 'persisted').map(row => row.id!);

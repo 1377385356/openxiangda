@@ -55,3 +55,15 @@ test('code-disabled create delete and reorder remain disabled with direct API in
 test('row payload rejects non-JSON prototype oversized and fabricated fields', () => {
   for (const value of [[{ ...intents()[0], values: { name: 'x'.repeat(1024 * 1024) } }], [{ ...intents()[0], key: '__proto__' }], new Array(50).fill(intents()[0]), [{ ...intents()[0], values: { quantity: Infinity } }]]) assert.throws(() => applyWorkflowTaskSubtableRows(field, 20, current, value, false), /INVALID/);
 });
+
+test('minimum counts final live rows, permits incomplete saves and preserves all observed CAS', () => {
+  const deleted = intents().map(row => ({ ...row, state: 'deleted', values: {} }));
+  assert.equal(applyWorkflowTaskSubtableRows(field, 20, current, deleted, false, true, 1).length, 2);
+  assert.throws(() => applyWorkflowTaskSubtableRows(field, 20, current, deleted, true, true, 1), /MIN_ROWS_NOT_MET/);
+  const replacement = [...deleted, { key: added, state: 'created', values: { name: 'replacement', quantity: 0 } }];
+  assert.equal(applyWorkflowTaskSubtableRows(field, 20, current, replacement, true, true, 1).length, 3);
+  assert.throws(() => applyWorkflowTaskSubtableRows(field, 20, current, replacement, true, true, 2), /MIN_ROWS_NOT_MET/);
+  assert.throws(() => applyWorkflowTaskSubtableRows(field, 20, current, replacement.slice(1), false, true, 1), /SCOPE_CONFLICT/);
+  assert.throws(() => applyWorkflowTaskSubtableRows(field, 20, current, replacement.map((row, i) => i === 0 ? { ...row, revision: 1 } : row), false, true, 1), /REVISION_CONFLICT/);
+  assert.equal(applyWorkflowTaskSubtableRows(field, 20, current, deleted, true).length, 2);
+});

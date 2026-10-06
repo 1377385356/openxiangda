@@ -179,6 +179,9 @@ function projectFieldValueSchema(
       field.subtable.maxRows
     );
   }
+  if (field.type === 'subtable' && field.subtable?.minRows !== undefined && isArraySchema(schema)) {
+    schema.minItems = Math.max(typeof schema.minItems === 'number' ? schema.minItems : 0, field.subtable.minRows);
+  }
   if (field.type === 'resource-ref.single' && field.source) {
     constrainResourceCode(schema, field.source.resourceCode);
   }

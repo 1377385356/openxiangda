@@ -83,6 +83,7 @@ export interface DataFieldSurface {
     resourceCode: string;
     foreignKey: string;
     orderField: string;
+    minRows?: number;
     maxRows?: number;
   };
 }

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { compileNativeApplicationConfiguration } from 'openxiangda-contracts/native-compiler';
 import {
   DATA_FIELD_TYPES,
   type DataFieldDefinition,
@@ -8,6 +9,7 @@ import {
 } from 'openxiangda-contracts';
 import {
   compileApplicationSources,
+  resourceRecordSchema,
   defineOpenXiangdaApp,
   type AppDataFieldDeclaration,
   type OpenXiangdaAppDeclaration,
@@ -773,3 +775,25 @@ function interfaceBody(source: string, name: string) {
 function escape(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
+
+test('a bounded subtable minimum reaches generated schemas, Surface and Native negotiation', () => {
+  for (const minRows of [undefined, 0, 1, 20]) {
+    const declaration = allFieldDeclaration();
+    const field = declaration.data!.resources[0]!.fields.find(field => field.type === 'subtable')!;
+    if (minRows !== undefined) field.subtable!.minRows = minRows;
+    const app = defineOpenXiangdaApp(declaration);
+    const sources = compileApplicationSources(app);
+    const native = compileNativeApplicationConfiguration({ appCode: app.app.code,
+      configBytes: sources.config.content, contractBytes: sources.contracts.content,
+      expectedConfigDigest: sources.config.digest, expectedContractDigest: sources.contracts.digest });
+    assert.equal(native.requiredPlatformCapabilities.some(capability => capability.code === 'data.subtable-minimum-rows'), (minRows ?? 0) > 0);
+    assert.match(sources.contracts.typescript, minRows === undefined ? /"maxRows": 20/ : new RegExp(`"minRows": ${minRows}`));
+    const recordSchema = resourceRecordSchema(declaration.data!.resources[0]!) as any;
+    assert.equal(recordSchema.properties.subtable.minItems, minRows);
+  }
+  for (const minRows of [-1, 0.5, 21]) {
+    const declaration = allFieldDeclaration();
+    declaration.data!.resources[0]!.fields.find(field => field.type === 'subtable')!.subtable!.minRows = minRows;
+    assert.throws(() => defineOpenXiangdaApp(declaration));
+  }
+});

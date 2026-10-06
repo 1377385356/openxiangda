@@ -7742,6 +7742,12 @@ export function validateAppDeclaration(value: unknown): Diagnostic[] {
       if (field.type !== 'subtable') return;
       const path = `data.resources[${declaration.resourceIndex}].fields[${fieldIndex}].subtable`;
       const subtable = object(field.subtable);
+      if (subtable.minRows !== undefined &&
+          (!Number.isSafeInteger(subtable.minRows) || Number(subtable.minRows) < 0 ||
+            Number(subtable.minRows) > Number(subtable.maxRows ?? 20))) {
+        diagnostics.push(diagnostic('APP_CONFIG_DATA_SUBTABLE_MIN_ROWS_INVALID',
+          '子表 minRows 必须是非负整数且不能超过 maxRows（默认20）', `${path}.minRows`));
+      }
       const targetCode = string(subtable.resourceCode);
       const target = declaredResources.get(targetCode);
       if (!target || targetCode === resourceCode) {

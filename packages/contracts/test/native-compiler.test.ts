@@ -310,3 +310,21 @@ test('native ESM and server CJS enforce the same annotated variable sources', ()
       error.code === 'WORKFLOW_VARIABLE_SOURCE_UNKNOWN:missing' && error.pointer.endsWith('/readability'),
   );
 });
+
+test('owned minima agree in ESM/CJS and reject malformed or contradictory ranges', () => {
+  const relation = { resourceCode: 'items', foreignKey: 'parentId', orderField: 'position' };
+  for (const implementation of [esm, cjs]) {
+    for (const minRows of [undefined, 0, 1, 20]) {
+      const fields = implementation.parseNativeDataFieldsV2([{ code: 'items', type: 'subtable',
+        subtable: { ...relation, ...(minRows === undefined ? {} : { minRows }) } }], '/fields');
+      assert.equal(fields[0]!.subtable!.minRows, minRows);
+      assert.equal(implementation.requiresOwnedSubtableMinimumRows([{ schema: { fields } }]), (minRows ?? 0) > 0);
+    }
+    for (const minRows of [-1, 0.5, 21, '1', null]) assert.throws(() => implementation.parseNativeDataFieldsV2([
+      { code: 'items', type: 'subtable', subtable: { ...relation, minRows } }], '/fields'));
+    assert.throws(() => implementation.parseNativeDataFieldsV2([{ code: 'items', type: 'subtable',
+      subtable: { ...relation, minRows: 2, maxRows: 1 } }], '/fields'), /SUBTABLE_MIN_ROWS_INVALID/);
+    assert.equal(implementation.parseNativeDataFieldsV2([{ code: 'items', type: 'subtable',
+      subtable: { ...relation, minRows: 500, maxRows: 500 } }], '/fields')[0]!.subtable!.minRows, 500);
+  }
+});

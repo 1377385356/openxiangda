@@ -83,14 +83,16 @@ export function useWorkflowTaskForm(latest?: WorkflowTaskFormSurface) {
         const field = source.page.fields.find(field => field.code === state.code)!;
         const child = source.subtables?.[state.code];
         if (field.subtable && child) applyWorkflowTaskSubtableRows(field, child.maxRows, child.rows,
-          Object.hasOwn(input.values, state.code) ? input.values[state.code] : source.values[state.code], complete);
+          Object.hasOwn(input.values, state.code) ? input.values[state.code] : source.values[state.code], complete, true, child.minRows ?? 0);
       }
     }
     catch (error) {
       const { code, field, rowIndex, childField } = error as { code?: string; field?: string; rowIndex?: number; childField?: string };
       const label = field && source.fields[field]?.label;
       const childLabel = field && childField && source.subtables?.[field]?.fields[childField]?.label;
-      const text = rowIndex !== undefined ? `${label || field}第${rowIndex + 1}项：请填写或选择${childLabel || childField}` : label ? `请填写或选择${label}` : '请核对补填资料';
+      const text = code === 'WORKFLOW_TASK_SUBTABLE_MIN_ROWS_NOT_MET'
+        ? `${label || field}至少保留${source.subtables?.[field || '']?.minRows ?? 0}项`
+        : rowIndex !== undefined ? `${label || field}第${rowIndex + 1}项：请填写或选择${childLabel || childField}` : label ? `请填写或选择${label}` : '请核对补填资料';
       if (field && rowIndex !== undefined) setSubtableError({ field, index: rowIndex });
       if (field) {
         if (code === 'WORKFLOW_TASK_FORM_REQUIRED' && rowIndex === undefined) requiredErrors.current.set(field, text);
