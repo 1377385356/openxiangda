@@ -66,7 +66,7 @@ export function WorkflowDelegationManager({initialAll=false,refreshKey=0,onDraft
       pagination={{current:page,pageSize:20,total:rows.data?.total,showSizeChanger:false,disabled:blocked,onChange:setPage}}
       columns={[
         {title:'审批职责与人员',width:240,render:(_,row)=><><b>{row.delegatorDisplayName} → {row.delegateDisplayName}</b><div className="oxa-workflow-config-help">{row.roleName}</div></>},
-        {title:'流程范围',width:160,render:(_,row)=>row.workflowCode?catalog.data?.workflows.find(flow=>flow.code===row.workflowCode)?.title||row.workflowCode:'全部适用流程'},
+        {title:'流程与节点范围',width:190,render:(_,row)=><><div>{row.workflowCode?catalog.data?.workflows.find(flow=>flow.code===row.workflowCode)?.title||row.workflowCode:'全部适用流程'}</div><div className="oxa-workflow-config-help">{row.nodeId?catalog.data?.sources.flatMap(source=>source.nodeScopes||[]).find(node=>node.workflowCode===row.workflowCode&&node.nodeId===row.nodeId)?.title||row.nodeId:'全部适用节点'}</div></>},
         {title:'有效时间',width:190,render:(_,row)=><><div>{time(row.validFrom)}</div><div className="oxa-workflow-config-help">至 {time(row.validTo)}</div></>},
         {title:'当前状态',width:120,render:(_,row)=><Tag color={row.effectiveState==='active'?'green':row.effectiveState==='ineligible'?'error':undefined}>{stateNames[row.effectiveState]}</Tag>},
         {title:'操作',width:110,render:(_,row)=>row.canRevoke?<Button type="link" danger disabled={blocked} onClick={()=>setEdit({operation:'revoke',row,catalog:catalog.data!})}>撤销规则</Button>:'—'},
@@ -77,6 +77,7 @@ export function WorkflowDelegationManager({initialAll=false,refreshKey=0,onDraft
 }
 function DelegationDetails({row}:{row:WorkflowDelegationAdministration}) {
   return <Descriptions size="small" column={1} items={[
+    {key:'node',label:'审批节点',children:row.nodeId || '全部适用节点'},
     {key:'reason',label:'设置原因',children:row.reason},
     {key:'revision',label:'规则修订',children:`r${row.revision}`},
     {key:'duties',label:'冻结的职责修订',children:`${row.delegatorDisplayName} r${row.delegatorRoleSubjectRevision} / ${row.delegateDisplayName} r${row.delegateRoleSubjectRevision}`},
@@ -85,7 +86,7 @@ function DelegationDetails({row}:{row:WorkflowDelegationAdministration}) {
     ...(row.revokedAt?[{key:'revoke',label:'撤销记录',children:`${time(row.revokedAt)} · ${row.revokeReason||'—'}`}]:[]),
   ]} />;
 }
-type Values={source:string;workflowCode?:string;validFrom:dayjs.Dayjs;validTo:dayjs.Dayjs;reason:string};
+type Values={source:string;workflowCode?:string;nodeId?:string;validFrom:dayjs.Dayjs;validTo:dayjs.Dayjs;reason:string};
 function DelegationEditor({edit,catalog,onClose,onChanged,onDraftStateChange}:{edit:Edit;catalog:WorkflowDelegationCatalog;onClose:()=>void;onChanged:()=>void;onDraftStateChange?:WorkflowDelegationManagerProps['onDraftStateChange']}) {
   const {modal}=App.useApp(); const [form]=Form.useForm<Values>();
   const [row,setRow]=useState(edit.operation==='revoke'?edit.row:undefined),[selected,setSelected]=useState<WorkflowDelegationCandidate>();
@@ -93,10 +94,11 @@ function DelegationEditor({edit,catalog,onClose,onChanged,onDraftStateChange}:{e
   const [proposal,setProposal]=useState<WorkflowDelegationMutationRequest>(),[preview,setPreview]=useState<WorkflowDelegationMutationPreview>(),[receipt,setReceipt]=useState<WorkflowDelegationMutationReceipt>();
   const [busy,setBusy]=useState(false),[unknown,setUnknown]=useState(false),[error,setError]=useState(''),[rejected,setRejected]=useState(false);
   const [term,setTerm]=useState(''),[search,setSearch]=useState(''),[candidatePage,setCandidatePage]=useState(1),[candidateRefresh,setCandidateRefresh]=useState(0);
-  const source=Form.useWatch('source',form),from=Form.useWatch('validFrom',form),to=Form.useWatch('validTo',form),workflowCode=Form.useWatch('workflowCode',form);
+  const source=Form.useWatch('source',form),from=Form.useWatch('validFrom',form),to=Form.useWatch('validTo',form),workflowCode=Form.useWatch('workflowCode',form),nodeId=Form.useWatch('nodeId',form);
+  const nodeScopes=sources.find(item=>item.roleSubjectKey===source)?.nodeScopes?.filter(item=>item.workflowCode===workflowCode)||[];
   const windowReady=source&&from&&to&&to.isAfter(from), locked=busy||unknown||Boolean(receipt);
-  const reader=useRead<WorkflowDelegationCandidatePage>(edit.operation==='create'&&windowReady?JSON.stringify([catalog.actorUserId,source,from.toISOString(),to.toISOString(),workflowCode,search,candidatePage,candidateRefresh]):undefined,
-    ()=>listWorkflowDelegationCandidates({delegatorRoleSubjectKey:source,validFrom:from.toISOString(),validTo:to.toISOString(),...(workflowCode?{workflowCode}:{}),keyword:search,limit:20,offset:(candidatePage-1)*20}));
+  const reader=useRead<WorkflowDelegationCandidatePage>(edit.operation==='create'&&windowReady?JSON.stringify([catalog.actorUserId,source,from.toISOString(),to.toISOString(),workflowCode,nodeId,search,candidatePage,candidateRefresh]):undefined,
+    ()=>listWorkflowDelegationCandidates({delegatorRoleSubjectKey:source,validFrom:from.toISOString(),validTo:to.toISOString(),...(workflowCode?{workflowCode}:{}),...(nodeId?{nodeId}:{}),keyword:search,limit:20,offset:(candidatePage-1)*20}));
   useEffect(()=>{const timer=setTimeout(()=>{setSearch(term.trim());setCandidatePage(1);},250);return()=>clearTimeout(timer);},[term]);
   const dirty=!receipt;
   useEffect(()=>{onDraftStateChange?.({dirty,busy,unknown});return()=>onDraftStateChange?.({dirty:false,busy:false,unknown:false});},[dirty,busy,unknown,onDraftStateChange]);
@@ -117,7 +119,8 @@ function DelegationEditor({edit,catalog,onClose,onChanged,onDraftStateChange}:{e
       if(edit.operation==='create') {
         const binding=sources.find(item=>item.roleSubjectKey===values.source);
         if(!binding||!selected)throw new Error('请选择审批职责和符合资格的代理人');
-        request={...base,operation:'create',workflowCode:values.workflowCode||null,delegatorRoleSubjectKey:values.source,expectedDelegatorRevision:binding.roleSubjectRevision,
+        if(values.nodeId&&(!values.workflowCode||!nodeScopes.some(item=>item.nodeId===values.nodeId)))throw new Error('原审批节点已不适用，请保留输入并重新选择');
+        request={...base,operation:'create',workflowCode:values.workflowCode||null,...(values.nodeId?{nodeId:values.nodeId}:{}),delegatorRoleSubjectKey:values.source,expectedDelegatorRevision:binding.roleSubjectRevision,
           delegateUserId:selected.userId,delegateRoleSubjectKey:selected.roleSubjectKey,expectedDelegateRevision:selected.roleSubjectRevision,validFrom:values.validFrom.toISOString(),validTo:values.validTo.toISOString()};
       } else request={...base,operation:'revoke',delegationId:row!.id,expectedRevision:row!.revision};
       setProposal(request);setPreview(undefined);setRejected(false);
@@ -156,7 +159,7 @@ function DelegationEditor({edit,catalog,onClose,onChanged,onDraftStateChange}:{e
         const fresh=await loadWorkflowDelegationCatalog();
         if(!fresh.sources.some(item=>item.roleSubjectKey===source))throw new Error('原审批职责已失效，请关闭草稿后重新选择');
         setSources(fresh.sources);
-        if(selected){const current=await listWorkflowDelegationCandidates({delegatorRoleSubjectKey:source,validFrom:from.toISOString(),validTo:to.toISOString(),...(workflowCode?{workflowCode}:{}),keyword:selected.displayName,limit:50,offset:0});
+        if(selected){const current=await listWorkflowDelegationCandidates({delegatorRoleSubjectKey:source,validFrom:from.toISOString(),validTo:to.toISOString(),...(workflowCode?{workflowCode}:{}),...(nodeId?{nodeId}:{}),keyword:selected.displayName,limit:50,offset:0});
           const target=current.items.find(item=>item.roleSubjectKey===selected.roleSubjectKey);if(!target)throw new Error('原代理人不再符合资格，请保留输入并重新选择');setSelected(target);}
         setCandidateRefresh(value=>value+1);
       }
@@ -174,10 +177,11 @@ function DelegationEditor({edit,catalog,onClose,onChanged,onDraftStateChange}:{e
     <Alert showIcon type="info" title="只影响后续分派" description="已有待办保留创建时的原审批人、代理人和时间快照；到期及人员资格仍在办理时复核。" />
     {row&&<><p><b>{row.delegatorDisplayName} → {row.delegateDisplayName}</b> · {row.roleName} · r{row.revision}</p><DelegationDetails row={row} /></>}
     <Form form={form} layout="vertical" disabled={locked} initialValues={{source:catalog.sources[0]?.roleSubjectKey,validFrom:dayjs(catalog.evaluatedAt),validTo:dayjs(catalog.evaluatedAt).add(1,'day')}}
-      onValuesChange={values=>{changed();if('source' in values||'workflowCode' in values||'validFrom' in values||'validTo' in values){setSelected(undefined);setCandidatePage(1);}}}>
+      onValuesChange={values=>{changed();if('source' in values||'workflowCode' in values)form.setFieldValue('nodeId',undefined);if('source' in values||'workflowCode' in values||'nodeId' in values||'validFrom' in values||'validTo' in values){setSelected(undefined);setCandidatePage(1);}}}>
       {edit.operation==='create'&&<>
         <Form.Item name="source" label="委托的审批职责" rules={[{required:true,message:'请选择本人的审批职责'}]}><Select aria-label="委托的审批职责" options={sources.map(item=>({value:item.roleSubjectKey,label:item.roleName}))} /></Form.Item>
         <Form.Item name="workflowCode" label="限定流程"><Select aria-label="设置代理的限定流程" allowClear placeholder="全部适用流程" showSearch optionFilterProp="label" options={catalog.workflows.map(flow=>({value:flow.code,label:flow.title}))} /></Form.Item>
+        <Form.Item name="nodeId" label="限定审批节点" extra="可以只委托当前职责在某个节点的审批；不选择则覆盖该流程内全部适用节点。"><Select aria-label="设置代理的限定审批节点" disabled={locked||!workflowCode} allowClear placeholder={workflowCode?'全部适用节点':'先选择流程'} showSearch optionFilterProp="label" options={nodeScopes.map(node=>({value:node.nodeId,label:node.title}))} /></Form.Item>
         <div className="oxa-delegation-dates"><Form.Item name="validFrom" label="开始时间" rules={[{required:true,message:'请选择开始时间'}]}><DatePicker aria-label="代理开始时间" showTime format="YYYY-MM-DD HH:mm:ss" /></Form.Item>
           <Form.Item name="validTo" label="结束时间" rules={[{required:true,message:'请选择结束时间'},{validator:async(_,value)=>{if(value&&from&&!value.isAfter(from))throw new Error('结束时间必须晚于开始时间');}}]}><DatePicker aria-label="代理结束时间" showTime format="YYYY-MM-DD HH:mm:ss" /></Form.Item></div>
         <Form.Item label="代理人" required extra="只列出同一职责、范围和有效期兼容的人员。到结束时间自动失效。">
@@ -194,6 +198,7 @@ function DelegationEditor({edit,catalog,onClose,onChanged,onDraftStateChange}:{e
     </Form>
     {error&&<Alert type={unknown?'warning':'error'} showIcon title={unknown?'提交结果待确认':'操作未完成'} description={error} />}
     {preview&&!receipt&&<div className="oxa-delegation-preview"><h3>核对本次变更</h3><p>{preview.after.delegatorDisplayName} → {preview.after.delegateDisplayName} · {preview.after.roleName}</p>
+      <p>流程：{catalog.workflows.find(flow=>flow.code===preview.after.workflowCode)?.title||preview.after.workflowCode||'全部适用流程'} · 节点：{nodeScopes.find(node=>node.nodeId===preview.after.nodeId)?.title||preview.after.nodeId||'全部适用节点'}</p>
       <p>{edit.operation==='create'?`${time(preview.after.validFrom)} 至 ${time(preview.after.validTo)}`:`规则 r${preview.before?.revision} → r${preview.after.revision}，状态变为已撤销`}</p><p>{preview.after.reason}</p>
       {proposal?.operation==='revoke'&&<p>撤销原因：{proposal.reason}</p>}<p className="oxa-workflow-config-help">提交前会再次验证当前资格及修订。</p></div>}
     {unknown&&proposal&&<p className="oxa-workflow-config-help">原操作编号：<code>{proposal.operationId}</code>。核对未找到回执时，不代表尚未提交。</p>}

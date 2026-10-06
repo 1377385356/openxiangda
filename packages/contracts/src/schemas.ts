@@ -7254,6 +7254,7 @@ export const workflowDelegationSchema = {
     appCode: nonEmptyString,
     environmentKey: nonEmptyString,
     workflowCode: { type: ["string", "null"] },
+    nodeId: { type: ["string", "null"], pattern: "^[A-Za-z0-9._:-]{1,128}$" },
     delegatorUserId: nonEmptyString,
     delegateUserId: nonEmptyString,
     delegatorRoleSubjectKey: nonEmptyString,

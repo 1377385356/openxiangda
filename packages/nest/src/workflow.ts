@@ -43,6 +43,7 @@ export class OpenXiangdaWorkflowService {
     validTo: string;
     reason: string;
   }) {
+    if (Object.hasOwn(input, 'nodeId')) throw new Error('WORKFLOW_DELEGATION_NODE_SCOPE_REQUIRES_MUTATION');
     const context = this.context();
     return await this.platform.createWorkflowDelegation(
       context.authorization,

@@ -3634,6 +3634,8 @@ export interface WorkflowDelegation {
   appCode: string;
   environmentKey: string;
   workflowCode: string | null;
+  /** Omitted/null covers all applicable approval nodes in the workflow scope. */
+  nodeId?: string | null;
   delegatorUserId: string;
   delegateUserId: string;
   delegatorRoleSubjectKey: string;

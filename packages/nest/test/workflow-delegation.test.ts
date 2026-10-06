@@ -30,6 +30,17 @@ test('request-scoped delegation SDK retains verified actor context, bound enviro
   assert.equal(calls[calls.length-1]!.init.body,first.init.body);
   assert.deepEqual(JSON.parse(String(first.init.body)),{...mutation,environmentKey:'preproduction'});
   assert.ok(calls.every(call=>new Headers(call.init.headers).get('authorization')==='Bearer verified-fixture'));
+  await service.delegationCandidates({delegatorRoleSubjectKey:'membership:9aad8f64-d7b6-4488-9f37-9c9cafb7746c',workflowCode:'one',nodeId:'final',validFrom:'2026-10-02T00:00:00Z',validTo:'2026-10-03T00:00:00Z'});
+  assert.equal(new URL(calls.at(-1)!.url).searchParams.get('nodeId'),'final');
+  const scoped:WorkflowDelegationMutationIntent={schemaVersion:mutation.schemaVersion,operation:'create',operationId:'86013ba0-3cd7-433a-874e-310fdd62e858',reason:'合成节点代理',workflowCode:'one',nodeId:'final',delegatorRoleSubjectKey:'membership:9aad8f64-d7b6-4488-9f37-9c9cafb7746c',expectedDelegatorRevision:1,delegateUserId:'delegate',delegateRoleSubjectKey:'membership:442e91ba-5a51-43a1-9ac4-94dc655f1e49',expectedDelegateRevision:1,validFrom:'2026-10-02T00:00:00Z',validTo:'2026-10-03T00:00:00Z'};
+  await service.executeDelegationMutation(scoped);
+  const scopedBody=calls.at(-1)!.init.body;
+  await service.executeDelegationMutation(scoped);
+  assert.equal(calls.at(-1)!.init.body,scopedBody);
+  assert.equal(JSON.parse(String(scopedBody)).nodeId,'final');
+  const beforeLegacy=calls.length;
+  await assert.rejects(service.createDelegation(scoped as any),/NODE_SCOPE_REQUIRES_MUTATION/);
+  assert.equal(calls.length,beforeLegacy,'legacy create cannot silently discard a node restriction');
   delete request.openxiangda;
   const total=calls.length;
   await assert.rejects(service.delegationCatalog(),/CONTEXT/); assert.equal(calls.length,total);

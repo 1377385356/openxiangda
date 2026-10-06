@@ -775,6 +775,7 @@ export class OpenXiangdaPlatformClient {
       reason: string;
     }
   ): Promise<WorkflowDelegation> {
+    if (Object.hasOwn(input, 'nodeId')) throw new Error('WORKFLOW_DELEGATION_NODE_SCOPE_REQUIRES_MUTATION');
     return await this.request<WorkflowDelegation>(
       `${this.workflowPath()}/delegations`,
       {

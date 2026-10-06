@@ -42,6 +42,15 @@ test('delegation SDK binds reads and writes to the mounted environment and prese
     status=409;
     await assert.rejects(executeWorkflowDelegationMutation(input),(error:any)=>error.status===409);
     assert.equal(writes().length,3,'explicit CAS rejection never auto-retries');
+    status=200;
+    await listWorkflowDelegationCandidates({delegatorRoleSubjectKey:'membership:9aad8f64-d7b6-4488-9f37-9c9cafb7746c',workflowCode:'one',nodeId:'final',validFrom:'2026-10-02T00:00:00Z',validTo:'2026-10-03T00:00:00Z'});
+    assert.equal(new URL(calls.at(-1)!.url,'http://fixture.local').searchParams.get('nodeId'),'final');
+    const scoped:WorkflowDelegationMutationRequest={schemaVersion:input.schemaVersion,environmentKey:input.environmentKey,operation:'create',operationId:'86013ba0-3cd7-433a-874e-310fdd62e858',reason:'合成节点代理',workflowCode:'one',nodeId:'final',delegatorRoleSubjectKey:'membership:9aad8f64-d7b6-4488-9f37-9c9cafb7746c',expectedDelegatorRevision:1,delegateUserId:'delegate',delegateRoleSubjectKey:'membership:442e91ba-5a51-43a1-9ac4-94dc655f1e49',expectedDelegateRevision:1,validFrom:'2026-10-02T00:00:00Z',validTo:'2026-10-03T00:00:00Z'};
+    await executeWorkflowDelegationMutation(scoped);
+    const scopedBody=calls.at(-1)!.init!.body;
+    await executeWorkflowDelegationMutation(scoped);
+    assert.equal(calls.at(-1)!.init!.body,scopedBody,'node scope survives explicit original-request recovery');
+    assert.equal(JSON.parse(String(scopedBody)).nodeId,'final');
     assert.ok(calls.every(call=>call.init?.credentials==='include'));
   } finally {
     globalThis.fetch=oldFetch;
