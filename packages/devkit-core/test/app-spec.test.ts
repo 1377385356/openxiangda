@@ -461,3 +461,38 @@ function completeHandoff(root: string, id: string) {
   const content = readFileSync(path, "utf8").replace("## 验证与发布", "## 验证与发布\n\n本次完成文案检查，尚未部署，线上验收不适用。").replace("## 交接", "## 交接\n\n当前规格已经按实际规则更新，后续读取能力记录。");
   writeFileSync(path, content);
 }
+
+test('retains 133 real design records and the 512-document bound for a large application', () => {
+  const root = workspace();
+  try {
+    initializeAppSpec({ root, appCode: contract.appCode, appName: '大型流程应用' });
+    const folders = ['capabilities', 'product', 'design', 'reviews'];
+    const add = (index: number, body = '') => {
+      const folder = folders[index % folders.length]!;
+      const directory = join(root, 'appspec', folder);
+      mkdirSync(directory, { recursive: true });
+      const schema = folder === 'capabilities' ? APP_SPEC_SCHEMAS_FOR_TEST.capability : APP_SPEC_SCHEMAS_FOR_TEST.design;
+      writeFileSync(join(directory, `record-${index}.md`), `---\nschema: ${schema}\nid: DOC-${index}\ntitle: 批次记录${index}\nstatus: active\n---\n# 业务记录\n${body}\n`);
+    };
+    for (let index = 0; index < 132; index++) add(index);
+    const first = inspectAppSpec(root, contract);
+    assert.equal(first.stats.files, 133);
+    assert.ok(!first.diagnostics.some(item => item.code === 'APPSPEC_FILE_LIMIT_EXCEEDED'));
+    for (let index = 132; index < 511; index++) add(index);
+    const exact = inspectAppSpec(root, contract);
+    assert.equal(exact.stats.files, 512);
+    assert.ok(!exact.diagnostics.some(item => item.code === 'APPSPEC_FILE_LIMIT_EXCEEDED'));
+    add(511);
+    const overflow = inspectAppSpec(root, contract);
+    assert.ok(overflow.diagnostics.some(item => item.code === 'APPSPEC_FILE_LIMIT_EXCEEDED'));
+    assert.equal(overflow.stats.files, 512);
+    assert.ok(overflow.contextBudget.contentBytes <= APP_SPEC_LIMITS.maximumContextBytes);
+    // More small files are allowed; their collective bytes remain bounded.
+    for (let index = 0; index < 132; index++) add(index, 'x'.repeat(17000));
+    const bytes = inspectAppSpec(root, contract);
+    assert.ok(bytes.diagnostics.some(item => item.code === 'APPSPEC_TOTAL_SIZE_EXCEEDED'));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+const APP_SPEC_SCHEMAS_FOR_TEST = { capability: 'openxiangda.appspec/capability/v1', design: 'openxiangda.appspec/design/v1' };
