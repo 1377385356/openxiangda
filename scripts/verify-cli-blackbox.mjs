@@ -808,7 +808,7 @@ function runCli(args, cwd, env, expectedStatus = 0) {
     child.stdout.on("data", chunk => { stdout += chunk; });
     child.stderr.on("data", chunk => { stderr += chunk; });
     child.once("error", reject);
-    child.once("exit", code => {
+    child.once("close", code => {
       try {
         assert.equal(code, expectedStatus, `${args.join(" ")}\n${stdout}\n${stderr}`);
         if (['check', 'deploy'].includes(args[0]) && !args.includes('--json-events')) {

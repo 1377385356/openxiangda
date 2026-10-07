@@ -300,7 +300,9 @@ function runCommand(command, args, cwd, env, expectedStatus) {
       stderr += chunk;
     });
     child.once("error", reject);
-    child.once("exit", code => {
+    // exit does not guarantee that piped stdout/stderr have finished. Assert
+    // the machine envelope only after close has drained both streams.
+    child.once("close", code => {
       try {
         assert.equal(
           code,
