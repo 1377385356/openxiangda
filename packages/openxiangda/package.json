@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.59.3",
+  "version": "2.59.4",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -78,7 +78,7 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.8.0",
+    "openxiangda-cli": "2.8.1",
     "openxiangda-contracts": "2.71.0",
     "openxiangda-devkit-core": "2.53.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
@@ -150,7 +150,7 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.59.3",
+    "version": "2.59.4",
     "status": "reviewed",
     "title": "开发者AI应用自助操作与主线工具组合",
     "summary": "让AI沿用当前应用权限直接诊断事件、复用加密环境凭据、配置通知和恢复指定投递；发行同源主线已评审的流程及编译契约。",
@@ -162,7 +162,9 @@
     "fixes": [
       "当前能力目录完整合法闭包不再受旧64项上限误拒绝；未知代码、重复项及制品绑定仍拒绝。",
       "补正可编辑未参与流转事实投影的一层owned子表；固定子表条件隐藏采用当前表单值。",
-      "流程画布就绪后才开放导航，用户导航不再被迟到初始化覆盖；大型AppSpec支持512文件并保留原字节界限。"
+      "流程画布就绪后才开放导航，用户导航不再被迟到初始化覆盖；大型AppSpec支持512文件并保留原字节界限。",
+      "流程提交遵循当前声明的隐藏字段保留或清空策略，并保留提交字段白名单。",
+      "冻结发行允许权威主线后续前进；源提交必须仍在主线，制品及参考应用证据必须保持原样。"
     ],
     "affectedUsers": [
       "使用V2开发者CLI/MCP进行应用运维，或使用本批流程/编译增强的应用。稳定V1独立维护。"
@@ -181,7 +183,7 @@
       "platform": "共享纯校验器同源配对；新增角色选人声明要求workflow.role-input-selection@1.0.0",
       "v1": "V1不消费本批V2契约或运行时"
     },
-    "sha256": "b09fb5780d5ceea6c72a61c174952039396debc774d9b4249aef79794308bb72",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.59.3"
+    "sha256": "24320b39c5220c3acaf513b68532629801d3fc90f70f65659efcc69e1c7d616c",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.59.4"
   }
 }
