@@ -3,7 +3,7 @@ import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { Ajv2020 } from 'ajv/dist/2020.js';
-import { canonicalJson, sha256Digest, contractSchemas } from 'openxiangda-contracts';
+import { canonicalJson, sha256Digest, contractSchemas, workflowDefinitionSchema } from 'openxiangda-contracts';
 import * as esm from 'openxiangda-contracts/native-compiler';
 import { assertRequiredCapabilitiesAvailable } from '../src/deployment.js';
 import type { PlatformCapabilities } from 'openxiangda-contracts';
@@ -35,6 +35,15 @@ function input(config: any, contract: any) {
   return { appCode: config.appCode, configBytes: canonicalJson(config), contractBytes: canonicalJson(contract), expectedConfigDigest: sha256Digest(config), expectedContractDigest: sha256Digest(contract) };
 }
 const corpus = JSON.parse(readFileSync(new URL('../../contracts/test/fixtures/configuration-compatibility-corpus.json', import.meta.url), 'utf8'));
+test('public workflow definition schema accepts the same 200-field task boundary as the compiler', () => {
+  const definition = compileApplicationSources(declaration()).config.value.workflows.definitions[0]!.definition;
+  definition.taskPages = { budget: { title: '完整预算', fields: Array.from({ length: 200 }, (_, i) => ({ code: `value${i}` })) } };
+  const validate = new Ajv2020({ strict: false, validateFormats: false }).compile(workflowDefinitionSchema);
+  assert.equal(validate(definition), true, JSON.stringify(validate.errors));
+  definition.taskPages.budget!.fields.push({ code: 'overflow' });
+  assert.equal(validate(definition), false);
+  assert.ok(validate.errors?.some(error => error.instancePath === '/taskPages/budget/fields' && error.keyword === 'maxItems'));
+});
 test('small sealed corpus remains byte-identical and gains no large-application requirement', () => {
   for (const compiler of [esm, cjs]) {
     const result = compiler.compileNativeApplicationConfiguration(input(JSON.parse(corpus.configuration.canonical), JSON.parse(corpus.contract.canonical)));

@@ -5736,7 +5736,7 @@ export const workflowDefinitionSchema = {
         properties: {
           title: { type: 'string', minLength: 1, maxLength: 160 },
           fields: {
-            type: 'array', minItems: 1, maxItems: 64,
+            type: 'array', minItems: 1, maxItems: DATA_RESOURCE_MAX_FIELDS,
             items: {
               type: 'object', additionalProperties: false, required: ['code'],
               properties: {
