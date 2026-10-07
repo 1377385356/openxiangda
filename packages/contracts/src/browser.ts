@@ -1,4 +1,5 @@
 /** Browser-safe contract surface. Node-only canonical hashing stays on the root export. */
+export { NATIVE_CONTRACT_CAPACITY_V2 } from './native-compiler/declaration-capacity.js';
 export * from './concurrency.js';
 export * from './field-values.js';
 export * from './event-catalog.js';
