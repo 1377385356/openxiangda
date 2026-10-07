@@ -1,6 +1,7 @@
 import { assertDeploymentPrerequisites } from './deployment-prerequisites.js';
 import { collectTargetReadiness } from './target-readiness.js';
 import type { DeploymentStrategy } from 'openxiangda-contracts';
+import { APPLICATION_OPERATIONS, applicationOperationCatalog, parseApplicationOperation } from './application-operations.js';
 import { cloneSourceGit, initializeSourceGit, installSourceCredential, pushSourceGit } from './source-git.js';
 import { randomUUID } from "node:crypto";
 import { publishedDeliverySource, DeliverySourceError } from './delivery-source.js';
@@ -202,7 +203,7 @@ export class OpenXiangdaApplicationServices {
           ...lifecycle.context.index.capabilities, ...lifecycle.context.index.activeChanges,
           ...lifecycle.context.index.decisions, ...lifecycle.context.index.designs, ...lifecycle.context.index.history,
         ].map(({ id, title, status, path, kind }) => ({ id, title, status, path, kind })),
-      } }
+      } }, [{ code: 'admin.operations', label: 'AI 自助诊断事件、复用环境密钥与配置通知', command: 'openxiangda admin operations --json' }]
     );
   }
 
@@ -498,6 +499,22 @@ export class OpenXiangdaApplicationServices {
       workspace.context.workspace,
       capabilities
     );
+  }
+
+  async applicationOperations(root?: string) {
+    const workspace = await this.workspace(root);
+    return this.ok('admin.operations', workspace.context.workspace, applicationOperationCatalog());
+  }
+
+  async applicationOperation(root: string | undefined, input: unknown) {
+    const request = parseApplicationOperation(input);
+    const workspace = await this.workspace(root);
+    const client = await this.client(workspace.root);
+    const data = await client.applicationOperation(workspace.config.app.code, request);
+    return this.ok(`admin.${request.operation}`, workspace.context.workspace, {
+      environment: request.environment, result: data,
+      guidance: { documentation: 'application-operations', recovery: APPLICATION_OPERATIONS.find(item => item.operation === request.operation)!.recovery },
+    }, [{ code: 'admin.operations', label: '读取应用自助操作与恢复条件', command: 'openxiangda admin operations --json' }]);
   }
 
   async administrationContext(root: string | undefined, environmentKey = "preproduction") {
