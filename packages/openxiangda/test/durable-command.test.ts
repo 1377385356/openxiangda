@@ -162,7 +162,7 @@ test('busy result recovery remains bounded by the original deadline, without enq
   assert.equal(c.snapshot().errorCode,'CONCURRENCY_RESULT_OBSERVATION_EXHAUSTED');
 });
 
-test('real result dependency, permission and transport failures stop automatic observation',async()=>{
+test('real result dependency, permission and unmarked transport failures stop automatic observation',async()=>{
   for(const error of [Object.assign(new Error('database'),{status:503,code:'CONCURRENCY_DATABASE_UNAVAILABLE'}),Object.assign(new Error('cache'),{status:503,code:'CONCURRENCY_CACHE_UNAVAILABLE'}),Object.assign(new Error('denied'),{status:403,code:'CONCURRENCY_CAPABILITY_REQUIRED'}),new TypeError('offline')]) {
     let reads=0,writes=0;
     const f=fixture({enqueue:async(_c,_i,key)=>{writes++;return receipt(key,'accepted');},result:async()=>{reads++;throw error;}});
@@ -170,6 +170,34 @@ test('real result dependency, permission and transport failures stop automatic o
     assert.equal(reads,1);assert.equal(writes,1);assert.equal(f.controller.snapshot().state,'error');
     assert.equal(f.controller.snapshot().receipt?.state,'accepted');assert.ok(f.controller.snapshot().requestKey);
   }
+});
+
+test('marked result transport failure recovers the original operation without another write',async t=>{
+  let now=6100000,reads=0,writes=0; t.mock.method(Date,'now',()=>now);
+  const inputs:unknown[]=[],delays:number[]=[];
+  const f=fixture({enqueue:async(_c,_i,key)=>{writes++;return receipt(key,'accepted');},result:async(input)=>{
+    inputs.push(input);
+    if(++reads===1)throw Object.assign(new Error('socket reset'),{status:503,code:'PLATFORM_TRANSPORT_UNAVAILABLE'});
+    return receipt(c.snapshot().requestKey);
+  }});
+  const c=new DurableCommandController({client:f.client,command:'claim',resourceKey:'offer',storage:f.storage,
+    random:()=>0,sleep:async ms=>{delays.push(ms);now+=ms;}});
+  await c.submit({id:'offer'});while(c.snapshot().isObserving)await Promise.resolve();
+  assert.equal(c.snapshot().state,'succeeded');assert.equal(writes,1);assert.equal(reads,2);
+  assert.deepEqual(inputs,[{operationId:'operation'},{operationId:'operation'}]);assert.deepEqual(delays,[6000,10000]);
+});
+
+test('persistent marked transport failures cannot renew the original result deadline',async t=>{
+  let now=6200000,reads=0,writes=0; t.mock.method(Date,'now',()=>now);
+  const f=fixture({enqueue:async(_c,_i,key)=>{writes++;return receipt(key,'accepted');},result:async(_input,_signal,recovery)=>{
+    reads++;now+=recovery!.budgetMs!;
+    throw Object.assign(new Error('offline'),{status:503,code:'PLATFORM_TRANSPORT_UNAVAILABLE'});
+  }});
+  const c=new DurableCommandController({client:f.client,command:'claim',resourceKey:'offer',storage:f.storage,
+    random:()=>0,sleep:async ms=>{now+=ms;}});
+  await c.submit({id:'offer'});while(c.snapshot().isObserving)await Promise.resolve();
+  assert.ok(reads>1);assert.ok(now<=8000000);assert.equal(writes,1);assert.equal(c.snapshot().acceptanceConfirmed,true);
+  assert.equal(c.snapshot().errorCode,'CONCURRENCY_RESULT_OBSERVATION_EXHAUSTED');
 });
 
 test('a short accepted-result read expiry resumes the original result without another submit',async t=>{
