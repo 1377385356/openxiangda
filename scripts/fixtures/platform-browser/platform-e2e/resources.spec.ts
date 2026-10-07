@@ -283,25 +283,26 @@ test('uses the complete current-user role union when no Perspective is selected'
 
 test('updates the current user avatar through the platform-owned profile contract', async ({ page }) => {
   const platform = await mockPlatform(page);
+  const avatarPng = Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d4944415478da6360e878f71f0004780276ff88cd2c0000000049454e44ae426082', 'hex');
+  await page.route('https://cdn.example.test/avatar/new.png', route =>
+    route.fulfill({ contentType: 'image/png', body: avatarPng })
+  );
   await page.goto(`${runtimeBase}/admin`);
   await page.locator('.oxa-current-user').click();
   await page.locator('.oxa-user-dropdown input[type="file"]').first().setInputFiles({
     name: 'avatar.png',
     mimeType: 'image/png',
-    buffer: Buffer.from(
-      '89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c6360f8cff00000040101005fe245400000000049454e44ae426082',
-      'hex'
-    ),
+    buffer: avatarPng,
   });
   await expect(page.getByText('头像已更新', { exact: true })).toBeVisible();
   await expect.poll(() => platform.avatarCompletes).toBe(1);
-  // 上传完成后运行时会刷新个人资料并重渲染用户组件；冷 runner 上该链路
-  // 可能超过默认 5 秒（2026-09-14 CI 偶发 element not found），显式放宽。
+  // 校验原上传回执和真正解码的受控图片，避免依赖外部 CDN 响应时序。
   await expect(page.locator('.oxa-current-user img')).toHaveAttribute(
     'src',
     'https://cdn.example.test/avatar/new.png',
     { timeout: 20_000 }
   );
+  await expect(page.locator('.oxa-current-user img')).toHaveJSProperty('naturalWidth', 1);
 });
 
 test('preserves the left menu scroll position when switching resource pages', async ({ page }) => {
