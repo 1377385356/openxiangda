@@ -10,10 +10,10 @@ import type { PlatformCapabilities } from 'openxiangda-contracts';
 import { compileApplicationSources, defineOpenXiangdaApp, adminNavigationGroup, adminResourcePage, defineAdminNavigation } from '../src/index.js';
 
 const cjs = createRequire(import.meta.url)('openxiangda-contracts/native-compiler') as typeof esm;
-function declaration(fieldCount = 1) {
+function declaration(fieldCount = 1, label?: string) {
   const resources = Array.from({ length: 128 }, (_, i) => ({ code: `records-${i}`, name: `Records ${i}`, dataPolicyCode: `owner-${i}`,
     fields: Array.from({ length: fieldCount }, (_, field) => ({ code: field ? `field_${field}` : 'name',
-      type: 'text.short' as const, required: field === 0, label: field ? `Field ${field}` : 'Name' })) }));
+      type: 'text.short' as const, required: field === 0, label: label ?? (field ? `Field ${field}` : 'Name') })) }));
   const definitions = Array.from({ length: 103 }, (_, i) => ({ version: 1, launch: { mode: 'work-center-only' as const }, definition: {
     schemaVersion: 'openxiangda.workflow-definition/v2' as const, code: `process-${i}`, title: `Process ${i}`, acceptedCommandDeactivationPolicy: 'finish-pinned' as const,
     subject: { resourceCode: `records-${i}`, factProjection: { name: 'name' } }, startAt: 'done',
@@ -41,6 +41,7 @@ test('small sealed corpus remains byte-identical and gains no large-application 
     assert.deepEqual(result.requiredPlatformCapabilities, corpus.requiredPlatformCapabilities);
     assert.equal(result.requiredPlatformCapabilities.some(item => item.code === 'application.extended-declaration-capacity'), false);
     assert.equal(result.requiredPlatformCapabilities.some(item => item.code === 'application.extended-artifact-capacity'), false);
+    assert.equal(result.requiredPlatformCapabilities.some(item => item.code === 'application.extended-configuration-bytes'), false);
   }
 });
 test('128 resources/row policies, 101 roles and 103 workflows compile equally in both formats and public schemas', () => {
@@ -87,7 +88,7 @@ test('exact declaration and contract limit+1 still fail at the bounded collectio
 test('large declarations retain global byte and JSON-node budgets and real policy validation', () => {
   for (const compiler of [esm, cjs]) {
     const config = JSON.parse(corpus.configuration.canonical), contract = JSON.parse(corpus.contract.canonical);
-    config.extra = 'x'.repeat(4 * 1024 * 1024);
+    config.extra = 'x'.repeat(esm.NATIVE_ARTIFACT_CAPACITY_V2.configBytes);
     assert.throws(() => compiler.compileNativeApplicationConfiguration(input(config, contract)), /NATIVE_CONFIG_ARTIFACT_TOO_LARGE/);
     config.extra = Array.from({ length: esm.NATIVE_ARTIFACT_CAPACITY_V2.extendedNodes + 1 }, () => null);
     assert.throws(() => compiler.compileNativeApplicationConfiguration(input(config, contract)), /NATIVE_ARTIFACT_NODE_LIMIT_EXCEEDED/);
@@ -95,6 +96,50 @@ test('large declarations retain global byte and JSON-node budgets and real polic
   const sources = compileApplicationSources(declaration()), config = JSON.parse(sources.config.content), contract = JSON.parse(sources.contracts.content);
   config.authz.dataPolicies[0].matchMode = 'unsafe';
   for (const compiler of [esm, cjs]) assert.throws(() => compiler.compileNativeApplicationConfiguration(input(config, contract)), /NATIVE_DATA_POLICY_MATCH_MODE_INVALID/);
+});
+
+test('canonical configuration bytes negotiate an independent capability in both compiler formats', () => {
+  const app = declaration(32, '文'.repeat(350));
+  const sources = compileApplicationSources(app);
+  assert.ok(sources.config.artifact.size > esm.NATIVE_ARTIFACT_CAPACITY_V2.legacyConfigBytes);
+  assert.ok(sources.config.artifact.size < esm.NATIVE_ARTIFACT_CAPACITY_V2.configBytes);
+  const result = esm.compileNativeApplicationConfiguration(input(sources.config.value, sources.contracts.value));
+  assert.deepEqual(cjs.compileNativeApplicationConfiguration(input(sources.config.value, sources.contracts.value)), result);
+  const requirement = result.requiredPlatformCapabilities.filter(item => item.code === 'application.extended-configuration-bytes');
+  assert.equal(requirement.length, 1);
+  assert.equal(requirement[0]!.contractVersion, '1.0.0');
+  assert.ok(sources.config.value.runtime.protocolCapabilities.includes('application.extended-configuration-bytes'));
+  const features = (status?: string, contractVersion = '1.0.0') => ({ features: status ? {
+    'application.extended-configuration-bytes': { status, contractVersion },
+  } : {} }) as PlatformCapabilities;
+  assert.doesNotThrow(() => assertRequiredCapabilitiesAvailable(features('available'), requirement));
+  for (const target of [features(), features('disabled'), features('available', '0.9.0')]) {
+    assert.throws(() => assertRequiredCapabilitiesAvailable(target, requirement),
+      (error: any) => error.code === 'OPENXIANGDA_REQUIRED_CAPABILITY_UNAVAILABLE');
+  }
+});
+
+test('UTF-8 configuration boundary is inclusive and does not expand single-string or contract budgets', () => {
+  const base = { padding: '' };
+  const overhead = Buffer.byteLength(canonicalJson(base));
+  for (const compiler of [esm, cjs]) {
+    base.padding = '文'.repeat(Math.floor((compiler.NATIVE_ARTIFACT_CAPACITY_V2.legacyConfigBytes - overhead) / 3));
+    base.padding += 'a'.repeat(compiler.NATIVE_ARTIFACT_CAPACITY_V2.legacyConfigBytes - Buffer.byteLength(canonicalJson(base)));
+    assert.equal(compiler.requiresExtendedConfigurationBytes(base), false);
+    base.padding += 'a';
+    assert.equal(compiler.requiresExtendedConfigurationBytes(base), true);
+    const config = JSON.parse(corpus.configuration.canonical), contract = JSON.parse(corpus.contract.canonical);
+    config.extra = Array.from({ length: 7 }, () => 'a'.repeat(compiler.NATIVE_ARTIFACT_CAPACITY_V2.stringBytes));
+    config.extra.push('');
+    config.extra[7] = 'a'.repeat(compiler.NATIVE_ARTIFACT_CAPACITY_V2.configBytes - Buffer.byteLength(canonicalJson(config)));
+    assert.equal(Buffer.byteLength(canonicalJson(config)), compiler.NATIVE_ARTIFACT_CAPACITY_V2.configBytes);
+    assert.throws(() => compiler.compileNativeApplicationConfiguration(input(config, contract)),
+      (error: any) => !['NATIVE_CONFIG_ARTIFACT_TOO_LARGE', 'NATIVE_ARTIFACT_STRING_LIMIT_EXCEEDED'].includes(error.code));
+    config.extra[7] += 'a';
+    assert.throws(() => compiler.compileNativeApplicationConfiguration(input(config, contract)),
+      (error: any) => error.code === 'NATIVE_CONFIG_ARTIFACT_TOO_LARGE' && error.pointer === '/configBytes');
+  }
+  assert.equal(esm.NATIVE_ARTIFACT_CAPACITY_V2.contractBytes, 8 * 1024 * 1024);
 });
 
 test('a complete large field/workflow closure negotiates artifact capacity identically in ESM and CJS', () => {

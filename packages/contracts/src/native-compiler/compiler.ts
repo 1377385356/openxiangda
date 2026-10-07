@@ -146,8 +146,8 @@ const EVENT_AUTHORIZATION_SYSTEM_FIELDS = new Set([
 ]);
 export { NATIVE_CONTRACT_CAPACITY_V2, requiresExtendedDeclarationCapacity, generatedCrudCapabilityOperations } from './declaration-capacity.js';
 import { NATIVE_CONTRACT_CAPACITY_V2, requiresExtendedDeclarationCapacity } from './declaration-capacity.js';
-export { NATIVE_ARTIFACT_CAPACITY_V2, requiresExtendedArtifactCapacity } from './artifact-capacity.js';
-import { NATIVE_ARTIFACT_CAPACITY_V2, requiresExtendedArtifactCapacity } from './artifact-capacity.js';
+export { NATIVE_ARTIFACT_CAPACITY_V2, requiresExtendedArtifactCapacity, requiresExtendedConfigurationBytes } from './artifact-capacity.js';
+import { NATIVE_ARTIFACT_CAPACITY_V2, requiresExtendedArtifactCapacity, requiresExtendedConfigurationBytes } from './artifact-capacity.js';
 export const DATA_EVENT_TYPES_V2 = [
   'openxiangda.data.record.created.v2',
   'openxiangda.data.record.updated.v2',
@@ -536,6 +536,10 @@ export function compileRequiredPlatformCapabilitiesV3(
     code: OpenXiangdaPlatformCapabilityCode;
     declaration: unknown;
   }> = [
+    ...(requiresExtendedConfigurationBytes(config)
+      ? [{ code: 'application.extended-configuration-bytes' as const,
+          declaration: { legacyConfigBytes: NATIVE_ARTIFACT_CAPACITY_V2.legacyConfigBytes,
+            configBytes: NATIVE_ARTIFACT_CAPACITY_V2.configBytes } }] : []),
     ...(requiresExtendedArtifactCapacity(config)
       ? [{ code: 'application.extended-artifact-capacity' as const,
           declaration: NATIVE_ARTIFACT_CAPACITY_V2 }] : []),

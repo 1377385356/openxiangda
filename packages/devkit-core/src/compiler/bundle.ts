@@ -1,4 +1,4 @@
-import { compileNativeEventAction, requiresExtendedDeclarationCapacity, requiresExtendedArtifactCapacity } from 'openxiangda-contracts/native-compiler';
+import { compileNativeEventAction, requiresExtendedDeclarationCapacity, requiresExtendedArtifactCapacity, requiresExtendedConfigurationBytes } from 'openxiangda-contracts/native-compiler';
 import { normalizeWorkflowOwnedSubjectCreate } from 'openxiangda-contracts/native-compiler';
 import { compileWorkflowBusinessStepHandlers, validateWorkflowBusinessStepSubscriptions, WORKFLOW_BUSINESS_STEP_EVENTS } from 'openxiangda-contracts/native-compiler';
 import { parseNativeUniqueKeys, parseDecimalReservationLifecycle } from 'openxiangda-contracts/native-compiler';
@@ -221,7 +221,7 @@ export function compileApplicationSources(
 export function normalizeConfiguration(
   config: OpenXiangdaAppConfig
 ): ConfigurationBundleV3 {
-  return {
+  const normalized: ConfigurationBundleV3 = {
     schemaVersion: CONFIG_BUNDLE_SCHEMA,
     compilerContractVersion: COMPILER_CONTRACT_VERSION,
     appCode: config.app.code,
@@ -780,6 +780,13 @@ export function normalizeConfiguration(
       },
     },
   };
+  if (requiresExtendedConfigurationBytes(normalized)) {
+    normalized.runtime.protocolCapabilities = uniqueSorted([
+      ...normalized.runtime.protocolCapabilities,
+      'application.extended-configuration-bytes',
+    ]);
+  }
+  return normalized;
 }
 
 function normalizeAuthorizationTransition(
