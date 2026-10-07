@@ -12,6 +12,18 @@ export interface WorkflowSubmissionFieldState {
 
 export type WorkflowSubmissionFieldStates = Readonly<Record<string, WorkflowSubmissionFieldState>>;
 
+/** onFinish contains mounted controls only; retained values still obey the launch allowlist. */
+export function workflowSubmissionFormInput(
+  fields: readonly SurfaceField[],
+  stored: Readonly<Record<string, unknown>>,
+  submitted: Readonly<Record<string, unknown>>,
+) {
+  const entered = { ...stored, ...submitted };
+  return Object.fromEntries(fields
+    .filter(field => !field.system && field.widget !== 'readonly' && Object.hasOwn(entered, field.key))
+    .map(field => [field.key, entered[field.key]]));
+}
+
 export function workflowSubmissionFormProjection(
   fields: readonly SurfaceField[],
   values: Readonly<Record<string, unknown>>,

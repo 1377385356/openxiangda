@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { SurfaceField } from '../src/browser/components/resource/SurfaceFields.js';
-import { workflowSubmissionFormProjection, workflowSubmissionPrefill, workflowSubmissionValueLinkage } from '../src/browser/components/workflow/workflow-submission-form.js';
+import { workflowSubmissionFormInput, workflowSubmissionFormProjection, workflowSubmissionPrefill, workflowSubmissionValueLinkage } from '../src/browser/components/workflow/workflow-submission-form.js';
 import { normalizeFormValues, normalizeRecordForForm } from '../src/browser/components/platform-fields/field-form-codec.js';
 
 const field = (key: string, requiredHint = false): SurfaceField => ({ key, label: key, type: 'text.short', widget: 'text',
@@ -55,6 +55,27 @@ test('prefill and field conditions consume canonical closed date ranges through 
 });
 test('hidden optional fields without a replacement are excluded from submission', () => {
   assert.deepEqual(workflowSubmissionFormProjection(fields, { reviewer: 'stale' }, { reviewer: { visible: false } }).values, {});
+});
+
+test('mounted submit controls retain allowlisted hidden text and file values through canonical projection', () => {
+  const inputs = [field('reason', true), field('other'), { ...field('evidence'), type: 'file', widget: 'file' } as SurfaceField];
+  const material = [{ schemaVersion: 'openxiangda.data-file-ref/v2', id: '00000000-0000-4000-8000-000000000001', name: 'retained.pdf', contentType: 'application/pdf', size: 32 }];
+  const stored = { reason: 'old', other: 'retained text', evidence: material, identity: 'unavailable' };
+  const entered = workflowSubmissionFormInput(inputs, stored, { reason: 'edited' });
+  const encoded = normalizeFormValues(entered, { fields: Object.fromEntries(inputs.map(input => [input.key, input])) });
+  const result = workflowSubmissionFormProjection(inputs, encoded, {
+    other: { visible: false, hiddenValue: encoded.other }, evidence: { visible: false, hiddenValue: encoded.evidence },
+  });
+  assert.deepEqual(result.values, { reason: 'edited', other: 'retained text', evidence: material });
+  assert.deepEqual(result.fields.map(input => input.key), ['reason']);
+  assert.equal(stored.reason, 'old');
+});
+
+test('retained controller values cannot bypass explicit clearing or introduce readonly/system/unmatched input', () => {
+  const inputs = [...fields, { ...field('readonly'), widget: 'readonly' }, { ...field('system'), system: true }];
+  const entered = workflowSubmissionFormInput(inputs, { reason: 'entered', evidence: [{ id: 'old' }], reviewer: { value: 'old' }, readonly: 'private', system: 'private', identity: 'private' }, { reason: '', identity: 'forged' });
+  assert.deepEqual(workflowSubmissionFormProjection(inputs, entered, { evidence: { visible: false, hiddenValue: [] }, reviewer: { visible: false, hiddenValue: null } }).values, { reason: '', evidence: [], reviewer: null });
+  assert.deepEqual(workflowSubmissionFormProjection(fields, entered, { evidence: { visible: false }, reviewer: { visible: false } }).values, { reason: '' });
 });
 
 test('a linked assignee copies on owner edits while independent edits and explicit clear are preserved', () => {

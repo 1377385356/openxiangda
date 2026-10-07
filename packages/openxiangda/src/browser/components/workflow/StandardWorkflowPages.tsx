@@ -131,7 +131,7 @@ import { PlatformAvatar } from '../PlatformAvatar';
 import { SubtableField } from '../platform-fields/SubtableField';
 import { assertNamedSubtableReadonlyFields, namedProcessFormValues, standardProcessFormValues } from './standard-process-values';
 import { fieldWritable } from '../resource/resource-page-helpers';
-import { workflowSubmissionFormProjection, workflowSubmissionPrefill, workflowSubmissionValueLinkage, type WorkflowSubmissionFieldStates } from './workflow-submission-form';
+import { workflowSubmissionFormInput, workflowSubmissionFormProjection, workflowSubmissionPrefill, workflowSubmissionValueLinkage, type WorkflowSubmissionFieldStates } from './workflow-submission-form';
 export type { WorkflowSubmissionFieldState, WorkflowSubmissionFieldStates } from './workflow-submission-form';
 
 type PageVariant = 'desktop' | 'mobile';
@@ -2788,8 +2788,9 @@ export function WorkflowSubmissionPage({
       setPendingSubmission(dispatched); setRecoveryError(null); setRecoveryObservedAbsent(false);
     };
     try {
-      const encoded = namedIntent ? namedProcessFormValues(values, subjectDefinition.surface, resources, namedIntent.ownedSubject, formOptions?.subtableReadonlyFields, formOptions?.subtableReadonlyInputFields)
-        : standardProcessFormValues(values, subjectDefinition.surface, resources,
+      const entered = workflowSubmissionFormInput(fields, subjectForm.getFieldsValue(true), values);
+      const encoded = namedIntent ? namedProcessFormValues(entered, subjectDefinition.surface, resources, namedIntent.ownedSubject, formOptions?.subtableReadonlyFields, formOptions?.subtableReadonlyInputFields)
+        : standardProcessFormValues(entered, subjectDefinition.surface, resources,
           (field, mode) => fieldWritable(field, mode === 'create' ? 'create' : 'edit', hasCapability, identity.isAppSuperAdmin));
       const data = workflowSubmissionFormProjection(fields, encoded, formOptions?.fieldState?.(encoded)).values;
       const signature = JSON.stringify({ workflowCode, subjectId, environmentKey: identity.environment.key, submissionMode, data });
