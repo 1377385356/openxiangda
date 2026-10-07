@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.59.1",
+  "version": "2.59.2",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -78,13 +78,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.7.1",
-    "openxiangda-contracts": "2.69.1",
-    "openxiangda-devkit-core": "2.51.1",
+    "openxiangda-cli": "2.7.2",
+    "openxiangda-contracts": "2.70.0",
+    "openxiangda-devkit-core": "2.52.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.0.108",
-    "openxiangda-nest": "2.15.1",
-    "openxiangda-skill-kit": "2.3.89",
+    "openxiangda-mcp": "2.0.109",
+    "openxiangda-nest": "2.16.0",
+    "openxiangda-skill-kit": "2.3.90",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -150,39 +150,35 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.59.1",
+    "version": "2.59.2",
     "status": "reviewed",
-    "title": "同源托管断连恢复与声明生成修复",
-    "summary": "发布同源托管只读断连恢复及主线已评审能力，并补齐大型资源类型生成和自动审批只读详情的修复。",
+    "title": "入口排队观察节奏与同源契约升级",
+    "summary": "尊重服务器入口排队查询间隔，并发行主线已评审的owned聚合容量及固定工作流阶段事务能力。",
     "newFeatures": [
-      "流程支持发起人补正、具名业务补正命令、审批节点代理范围、批准后代理和原子Native阶段条件；新能力通过目标平台协商。",
-      "owned子表支持最少行数、可信初始流程事实、具名只读展示和任务字段来源；资源关联支持显式绑定变化清空。",
-      "日期字段支持分钟精度，日期事件支持可信来源投影；大型应用声明与JSON节点预算可显式协商扩展。",
-      "连接开发支持普通浏览器登录身份与平台可信后台调用；新增纯表达式入口供浏览器和Node共享流程表达式。"
+      "模型可声明最高1000行的owned聚合容量，缺省500行、单子表500行与原子编辑边界不变。",
+      "固定且已协调的工作流阶段可显式启用一次阶段绑定的Native数据事务，并恢复原事务回执。"
     ],
     "fixes": [
-      "read、mine、result、allocation的已标记连接中断与繁忙共用固定预算、尝试上限、退避及取消边界；已受理观察继续原结果，不延长首次提交截止。",
-      "修复受控子表字段联动、审批已确认任务转交后的页面继续和普通浏览器业务API的CSRF传递。",
-      "大型资源目录使用命名条目与精确只读类型，避免TypeScript序列化上限；自动发起人审批允许已解析的完全只读详情，保留可编辑席位人工办理。"
+      "入口身份读取不再把60秒服务端查询提示压缩为15秒，保留最低间隔、抖动、原截止、取消及权限拒绝边界。",
+      "CLI模板使用本次根SDK精确版本，保证新建应用与发行能力一致。"
     ],
     "affectedUsers": [
-      "使用托管并发查询、标准流程表单、owned子表或普通角色连接开发的V2应用。"
+      "启用入口等待的V2应用，以及使用新增可选owned容量或工作流阶段事务声明的应用。"
     ],
     "upgradeSteps": [
-      "通过精确版本安装完整同源发行组合；启用新声明前核验目标平台能力。托管高并发应用需在真实浏览器与隔离压测中重新校准恢复行为。"
+      "精确安装完整同源发行组合；新增契约需匹配平台能力。高并发应用在真实页面和隔离HTTP请求图中校准查询节奏。"
     ],
     "knownLimitations": [
-      "客户上一档万人HTTP请求图有29人结果观察被断连中断；后台全部终结但该档仍未完整通过。本版本的新万人复测尚未完成，既有最高完整通过为8000人HTTP请求图。",
-      "不自动重放业务写入，不将断连认定为已受理，不覆盖集中SSO登录或浏览器JS渲染容量；权限、依赖及未标记错误继续拒绝。",
-      "新增可选流程及普通角色源码调用需要配套平台能力；旧平台不能启用未支持的声明。"
+      "本次客户万人复测尚未执行。上轮已登录万人HTTP图30分钟客户端与数据对账通过，严格网关对账仍保留18条已dispatch缺行。",
+      "不自动重放业务写入，不扩大权限或刷新原截止；不证明集中SSO、万人同秒提交、浏览器渲染容量或硬件绝对上限。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
-      "platform": "托管断连恢复复用现有接口；新增声明按目标平台能力协商",
+      "platform": "新增声明按目标平台能力协商；共享契约须消费同源版本",
       "v1": "V1不消费本批V2运行时能力"
     },
-    "sha256": "3a9716eafe5e14bfe5eda8b2482393e4aad28155fde5933f3fe759a6a98c5972",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.59.1"
+    "sha256": "f6d7b5a8d416ba728f598cd0e24680fb13ffab779a5ad568d306e02c0e77f5bf",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.59.2"
   }
 }
