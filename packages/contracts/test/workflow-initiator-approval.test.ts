@@ -7,6 +7,25 @@ import { projectWorkflowGraph } from '../src/native-compiler/workflow-graph.js';
 const node = { kind: 'approval', initiatorApprovalPolicy: 'auto_approve' as const, mode: 'all', administration: { modes: ['all', 'sequence'] as any, operations: ['approve'] as any } };
 const seat = { user_id: 'applicant', status: 'active', participant_kind: 'primary', source: 'resolution' };
 
+test('readonly detail pages retain automatic direct seats without permitting editable input', () => {
+  const display = { ...node, taskPageCode: 'details' };
+  const pages = { details: { fields: [{ code: 'phone', readonly: true, required: true }, { code: 'people', subtable: { create: false, delete: false, reorder: false, fields: [{ code: 'bank', readonly: true }] } }] } };
+  assert.deepEqual(validateWorkflowInitiatorApprovalPolicy({ nodes: { review: display }, taskPages: pages }), []);
+  assert.equal(workflowInitiatorApprovalCanComplete(display, 'normal', 'applicant', seat, pages), true);
+  assert.equal(workflowInitiatorApprovalCanComplete(display, 'normal', 'applicant', seat), false);
+  assert.equal(workflowInitiatorApprovalCanComplete(display, 'return_review', 'applicant', seat, pages), false);
+  assert.equal(workflowInitiatorApprovalCanComplete(display, 'normal', 'applicant', { ...seat, source: 'transfer' }, pages), false);
+  assert.deepEqual(validateWorkflowNodeConfigurationPatch(display, undefined, { mode: 'sequence' }, pages), []);
+  assert.ok(validateWorkflowNodeConfigurationPatch(display, undefined, { operations: { approve: { commentRequired: true } } }, pages).length);
+  for (const field of [{ code: 'phone' }, { code: 'phone', readonly: false }, { code: 'phone', readonly: true, readonlyWhen: { op: 'literal', value: true } },
+    { code: 'people', subtable: { create: true, delete: false, reorder: false, fields: [{ code: 'bank', readonly: true }] } },
+    { code: 'people', subtable: { create: false, delete: false, reorder: false, fields: [{ code: 'bank' }] } }]) {
+    const unsafe = { details: { fields: [field] } };
+    assert.ok(validateWorkflowInitiatorApprovalPolicy({ nodes: { review: display }, taskPages: unsafe }).length);
+    assert.equal(workflowInitiatorApprovalCanComplete(display, 'normal', 'applicant', seat, unsafe), false);
+  }
+});
+
 test('automatic approval cannot bypass task input or required approval comments', () => {
   assert.deepEqual(validateWorkflowInitiatorApprovalPolicy({ nodes: { review: node } }), []);
   for (const patch of [{ kind: 'cc' }, { initiatorApprovalPolicy: 'skip' }, { initiatorApprovalPolicy: null },

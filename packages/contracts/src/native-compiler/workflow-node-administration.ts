@@ -1,5 +1,5 @@
 import type { WorkflowApprovalAdministration, WorkflowConfigurableOperation, WorkflowNodeConfigurationPatch, WorkflowNodeOperationPolicy } from '../types.js';
-import { validateWorkflowInitiatorApprovalPolicy } from './workflow-initiator-approval.js';
+import { validateWorkflowInitiatorApprovalPolicy, type WorkflowInitiatorApprovalPages } from './workflow-initiator-approval.js';
 import { validateWorkflowRoleUnion } from './workflow-role-union.js';
 
 export const WORKFLOW_CONFIGURABLE_OPERATIONS = ['approve', 'reject', 'return', 'transfer', 'delegate', 'add_assignee'] as const;
@@ -79,7 +79,7 @@ export function validateWorkflowAdministration(definition: { nodes?: Record<stri
   return errors;
 }
 
-export function validateWorkflowNodeConfigurationPatch(node: WorkflowAdministrationNodeSource | undefined, binding: BindingSource | undefined, input: unknown): string[] {
+export function validateWorkflowNodeConfigurationPatch(node: WorkflowAdministrationNodeSource | undefined, binding: BindingSource | undefined, input: unknown, taskPages?: WorkflowInitiatorApprovalPages): string[] {
   const errors: string[] = [];
   if (!node || !record(input) || !Object.keys(input).length || !keys(input, ['title', 'description', 'assignee', 'mode', 'operations'])) return ['WORKFLOW_V2_NODE_CONFIGURATION_PATCH_INVALID'];
   const patch = input as WorkflowNodeConfigurationPatch;
@@ -97,7 +97,7 @@ export function validateWorkflowNodeConfigurationPatch(node: WorkflowAdministrat
       if (!keys(value, ['provider', 'roleCodes']) || validateWorkflowRoleUnion({ ...value, ...(value.provider === 'app_role_in_scope' ? { scope: binding?.scope } : {}) }).length) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_ROLE_INVALID');
     } else if (!keys(value, ['provider', 'roleCode']) || typeof value.roleCode !== 'string' || !/^[a-z][a-z0-9_-]{0,127}$/.test(value.roleCode)) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_ROLE_INVALID');
   }
-  errors.push(...validateWorkflowInitiatorApprovalPolicy({ nodes: { node: { ...node, operationPolicy: projectWorkflowNodePolicy(node, patch).operationPolicy } } }));
+  errors.push(...validateWorkflowInitiatorApprovalPolicy({ nodes: { node: { ...node, operationPolicy: projectWorkflowNodePolicy(node, patch).operationPolicy } }, ...(taskPages ? { taskPages } : {}) }));
   if (node.completionDeadline && projectWorkflowNodePolicy(node, patch).operationPolicy.approve?.commentRequired === true) errors.push('WORKFLOW_COMPLETION_DEADLINE_INPUT_REQUIRED:node');
   return errors;
 }
