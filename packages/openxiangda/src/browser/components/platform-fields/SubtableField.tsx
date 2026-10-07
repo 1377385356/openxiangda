@@ -402,7 +402,8 @@ function DesktopSubtableRow({ row, index, fields, operation, resourceCode, disab
     try { await form.validateFields(); }
     catch { throw new Error(`请完善子表单第 ${index + 1} 项`); }
   }), [form, index, registerValidation, row.key]);
-  useEffect(() => { form.setFieldsValue(row.data); }, [form, row.data]);
+  // Each parent-controlled value replaces the complete field, including removed snapshot properties.
+  useEffect(() => { form.setFields(Object.entries(row.data).map(([name, value]) => ({ name, value }))); }, [form, row.data]);
   const changeValues = (changed: Record<string, unknown>, all: Record<string, unknown>) => {
     const patch = resourceReferenceBindingPatch(fields.filter(canWrite), changed, all, row.data);
     form.setFields(Object.entries(patch).map(([name, value]) => ({ name, value, touched: true, errors: [] })));
@@ -548,7 +549,7 @@ function MobileSubtableRow({ row, index, fields, operation, resourceCode, canWri
     try { await form.validateFields(); }
     catch { setExpanded(true); throw new Error(`请完善子表单第 ${index + 1} 项`); }
   }), [form, index, registerValidation, row.key]);
-  useEffect(() => { form.setFieldsValue(row.data); }, [form, row.data]);
+  useEffect(() => { form.setFields(Object.entries(row.data).map(([name, value]) => ({ name, value }))); }, [form, row.data]);
   const changeValues = (changed: Record<string, unknown>, all: Record<string, unknown>) => {
     const patch = resourceReferenceBindingPatch(fields.filter(canWrite), changed, all, row.data);
     form.setFields(Object.entries(patch).map(([name, value]) => ({ name, value, touched: true, errors: [] })));

@@ -42,7 +42,7 @@ export function ResourceReferenceField({
   ) => void;
 }) {
   const form = Form.useFormInstance();
-  const formValues = Form.useWatch([], form) as
+  const formValues = Form.useWatch([], { form, preserve: true }) as
     | Record<string, unknown>
     | undefined;
   const nextBindings = Object.fromEntries(
