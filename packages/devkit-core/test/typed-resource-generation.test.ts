@@ -62,3 +62,48 @@ await requests.query({ schemaVersion: ${JSON.stringify(SCHEMA_VERSIONS.dataQuery
     }));
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
+
+test('large generated resource catalogs emit declarations while keeping literal keys and field types', async () => {
+  const generated = compileApplicationSources(defineOpenXiangdaApp({
+    schemaVersion: 3, app: { code: 'large-typed', name: 'Large typed catalog' },
+    frontend: { root: 'apps/web' }, backend: { root: 'apps/server', runtime: 'node', framework: 'nestjs' }, platform: { root: 'platform' },
+    data: { resources: Array.from({ length: 180 }, (_, index) => ({ code: `resource-${index}`, name: `Resource ${index}`,
+      fields: Array.from({ length: 45 }, (_, field) => ({ code: `field${field}`, type: 'text.short' as const, label: `Field ${field}`, required: field === 0 })) })) },
+  })).contracts.typescript;
+  const directory = await mkdtemp(path.join(tmpdir(), 'oxa-large-typed-'));
+  try {
+    await writeFile(path.join(directory, 'package.json'), '{"type":"module"}');
+    await writeFile(path.join(directory, 'generated.ts'), generated);
+    const consumerSource = `
+import { resourceDefinitions, resourceSurfaces } from './generated.js';
+export const code: 'resource-179' = resourceDefinitions['resource-179'].code;
+export const capability: 'app:large-typed:data:resource-179:read' = resourceDefinitions['resource-179'].capabilities.read;
+export const field: 'text.short' = resourceSurfaces['resource-179'].fields.field0.type;
+// @ts-expect-error keys remain closed
+resourceDefinitions.missing;
+// @ts-expect-error values remain readonly
+resourceDefinitions['resource-179'].code = 'resource-179';
+`;
+    await writeFile(path.join(directory, 'consumer.ts'), consumerSource);
+    const program = ts.createProgram([path.join(directory, 'consumer.ts')], { strict: true, skipLibCheck: true,
+      declaration: true, emitDeclarationOnly: true, target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.NodeNext, moduleResolution: ts.ModuleResolutionKind.NodeNext });
+    const emitted = new Map<string, string>();
+    const result = program.emit(undefined, (file, content) => emitted.set(path.basename(file), content));
+    const diagnostics = [...ts.getPreEmitDiagnostics(program), ...result.diagnostics];
+    assert.equal(diagnostics.length, 0, ts.formatDiagnosticsWithColorAndContext(diagnostics, {
+      getCanonicalFileName: name => name, getCurrentDirectory: () => directory, getNewLine: () => '\n',
+    }));
+    assert.equal(result.emitSkipped, false); assert.ok(emitted.get('generated.d.ts'));
+    const consumer = emitted.get('consumer.d.ts'); assert.ok(consumer?.includes('"resource-179"') || consumer?.includes("'resource-179'"));
+    await writeFile(path.join(directory, 'published.d.ts'), emitted.get('generated.d.ts')!);
+    await writeFile(path.join(directory, 'published-consumer.ts'), consumerSource.replace('./generated.js', './published.js'));
+    const published = ts.createProgram([path.join(directory, 'published-consumer.ts')], {
+      strict: true, noEmit: true, target: ts.ScriptTarget.ES2022,
+      module: ts.ModuleKind.NodeNext, moduleResolution: ts.ModuleResolutionKind.NodeNext,
+    });
+    const publishedDiagnostics = ts.getPreEmitDiagnostics(published);
+    assert.equal(publishedDiagnostics.length, 0, ts.formatDiagnosticsWithColorAndContext(publishedDiagnostics, {
+      getCanonicalFileName: name => name, getCurrentDirectory: () => directory, getNewLine: () => '\n',
+    }));
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});

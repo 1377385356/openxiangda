@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { generatedSurfaces } from './generated-surfaces.js';
 import { compileNativeApplicationConfiguration } from 'openxiangda-contracts/native-compiler';
 import {
   DATA_FIELD_TYPES,
@@ -344,7 +345,7 @@ test('rejects incompatible widgets and unplanned list capabilities', () => {
 test('rating is an integer presentation with the existing numeric storage contract', () => {
   const declaration = defineOpenXiangdaApp(baseDeclaration([{ code: 'score', type: 'number.integer', label: '评分', widget: 'rating', min: 0, max: 5 }]));
   const compiled = compileApplicationSources(declaration).contracts.typescript;
-  const surfaces = JSON.parse(compiled.match(/export const resourceSurfaces = ([\s\S]*?) as const;/)![1]!);
+  const surfaces = generatedSurfaces(compiled);
   assert.equal(surfaces['all-fields'].fields.score.widget, 'rating');
   assert.equal(surfaces['all-fields'].fields.score.type, 'number.integer');
   assert.equal(surfaces['all-fields'].fields.score.max, 5);
@@ -452,9 +453,7 @@ test('projects authoritative field bounds into the standard Surface', () => {
     defineOpenXiangdaApp(allFieldDeclaration())
   );
   const compiled = sources.contracts.typescript;
-  const surfaces = JSON.parse(
-    compiled.match(/export const resourceSurfaces = ([\s\S]*?) as const;/)![1]!
-  );
+  const surfaces = generatedSurfaces(compiled);
   const fields = surfaces['all-fields'].fields;
   assert.equal(fields.text_short.maxLength, 120);
   assert.equal(fields.number_decimal.precision, 12);
@@ -594,7 +593,7 @@ test('constrained users retain one source in storage, generated surfaces and nor
   const resource = compiled.config.value.data.resources[0]!;
   assert.deepEqual(resource.schema.fields.find(field => field.code === 'approvers')?.userCandidates, userCandidates);
   assert.deepEqual(resource.surface?.fields.approvers?.userCandidates, userCandidates);
-  const surfaces = JSON.parse(compiled.contracts.typescript.match(/export const resourceSurfaces = ([\s\S]*?) as const;/)![1]!);
+  const surfaces = generatedSurfaces(compiled.contracts.typescript);
   assert.deepEqual(surfaces['all-fields'].fields.approvers.userCandidates, userCandidates);
 
   for (const invalidSource of [null, false, 0, '', { ...userCandidates, pageSize: 51 }]) {
@@ -646,7 +645,7 @@ test('preserves explicit binding reset in authored fields and generated resource
     const declared = defineOpenXiangdaApp(referenceDeclaration(field));
     const compiled = compileApplicationSources(declared);
     assert.equal(compiled.config.value.data.resources[0]!.schema.fields[0]!.source?.clearOnBindingChange, enabled);
-    const surfaces = JSON.parse(compiled.contracts.typescript.match(/export const resourceSurfaces = ([\s\S]*?) as const;/)![1]!);
+    const surfaces = generatedSurfaces(compiled.contracts.typescript);
     const host = Object.values(surfaces).find((surface: any) => surface.fields.lookup) as any;
     assert.equal(host.fields.lookup.source.clearOnBindingChange, enabled);
   }

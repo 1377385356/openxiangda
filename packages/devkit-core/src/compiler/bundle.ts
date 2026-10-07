@@ -2289,12 +2289,10 @@ export function renderGeneratedContracts(
       ),
     ])
   );
-  const resourceDefinitions = `{${
-    resourceCodes.length
-      ? `\n${sorted(config.data?.resources || [], item => item.code)
-          .map(
-            item =>
-              `  ${JSON.stringify(item.code)}: {\n` +
+  const resourceDefinitionEntries: Array<readonly [string, string]> =
+    sorted(config.data?.resources || [], item => item.code).map(item => [
+      item.code,
+              `{\n` +
               `    code: ${JSON.stringify(item.code)},\n` +
               `    name: ${JSON.stringify(item.name)},\n` +
               (item.detailRouteCode
@@ -2309,11 +2307,8 @@ export function renderGeneratedContracts(
               (item.recordComments !== undefined ? `    recordComments: ${JSON.stringify(item.recordComments)},\n` : '') +
               (item.recordDeletion !== undefined ? `    recordDeletion: ${JSON.stringify(item.recordDeletion)},\n` : '') +
               `    surface: resourceSurfaces[${JSON.stringify(item.code)}],\n` +
-              '  }'
-          )
-          .join(',\n')}\n`
-      : ''
-  }}`;
+              '  }',
+    ] as const);
   const operationEntries: Array<readonly [string, unknown]> =
     contract.operations.map(operation => [
       camel(operation.code),
@@ -2366,8 +2361,8 @@ export function renderGeneratedContracts(
     `export const appName = ${JSON.stringify(config.app.name)} as const;`,
     `export const appPerspectives = ${JSON.stringify(contract.perspectives, null, 2)} as const;`,
     `export const resourceCodes = ${JSON.stringify(resourceCodes, null, 2)} as const;`,
-    `export const resourceSurfaces = ${JSON.stringify(resourceSurfaces, null, 2)} as const;`,
-    `export const resourceDefinitions = ${resourceDefinitions} as const;`,
+    renderTypedRecord('resourceSurfaces', Object.entries(resourceSurfaces).map(([key, value]) => [key, JSON.stringify(value, null, 2)] as const)),
+    renderTypedRecord('resourceDefinitions', resourceDefinitionEntries),
     `export const capabilities = ${JSON.stringify(capabilities, null, 2)} as const;`,
     `export const appOperations = ${renderEntries(operationEntries)} as const;`,
     `export const appRoutes = ${renderEntries(routeEntries)} as const;`,
@@ -2792,6 +2787,21 @@ function renderEntries(entries: Array<readonly [string, unknown]>) {
     .map(([key, value]) => `  ${safeProperty(key)}: ${JSON.stringify(value, null, 2).replace(/\n/g, '\n  ')}`)
     .join(',\n');
   return `{\n${body}\n}`;
+}
+
+function renderTypedRecord(name: string, entries: Array<readonly [string, string]>) {
+  if (entries.length === 0) return `export const ${name} = {} as const;`;
+  // Named entries keep declaration emit below TypeScript's aggregate inference limit.
+  const declarations = entries.map(([, value], index) =>
+    `const ${name}Item${index} = ${value} as const;`
+  );
+  const types = entries.map(([key], index) =>
+    `  readonly ${JSON.stringify(key)}: typeof ${name}Item${index};`
+  );
+  const values = entries.map(([key], index) =>
+    `  ${JSON.stringify(key)}: ${name}Item${index}`
+  );
+  return [...declarations, `export const ${name}: {\n${types.join('\n')}\n} = {\n${values.join(',\n')}\n};`].join('\n');
 }
 
 function safeProperty(value: string) {

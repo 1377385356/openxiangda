@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { generatedSurfaces } from './generated-surfaces.js';
 import { compileNativeApplicationConfiguration } from 'openxiangda-contracts/native-compiler';
 import {
   canonicalJson,
@@ -1794,11 +1795,7 @@ test('materializes one field declaration into platform schema, Surface and acces
   const resource = compiled.config.value.data.resources.find(
     item => item.code === 'instruments'
   )!;
-  const surface = JSON.parse(
-    compiled.contracts.typescript.match(
-      /export const resourceSurfaces = ([\s\S]*?) as const;/
-    )![1]!
-  ).instruments;
+  const surface = generatedSurfaces(compiled.contracts.typescript).instruments;
   assert.deepEqual(resource.schema.fields[0], {
     code: 'name',
     type: 'text.short',
@@ -2295,10 +2292,7 @@ test('default surface maps every native field type to the standard control kit',
     data: { resources: [resource] },
     authz: { capabilities: [], roles: [], scopeDimensions: [], scopeSources: [], dataPolicies: [] },
   });
-  const surfaces = compiled.contracts.typescript.slice(
-    compiled.contracts.typescript.indexOf('export const resourceSurfaces'),
-    compiled.contracts.typescript.indexOf('export const resourceDefinitions'),
-  );
+  const surface = generatedSurfaces(compiled.contracts.typescript)['surface-mapping'];
   for (const [field, widget] of [
     ['title', 'text'],
     ['notes', 'textarea'],
@@ -2311,9 +2305,9 @@ test('default surface maps every native field type to the standard control kit',
     ['metadata', 'json'],
     ['ownerId', 'directory-user'],
   ]) {
-    assert.match(surfaces, new RegExp(`"${field}"[\\s\\S]*?"widget": "${widget}"`));
+    assert.equal(surface.fields[field].widget, widget);
   }
-  assert.match(surfaces, /"attachment"[\s\S]*?"maxCount": 3/);
+  assert.equal(surface.fields.attachment.maxCount, 3);
 });
 
 test('authored resource fields resolve every standard widget before rendering', () => {
@@ -2359,11 +2353,7 @@ test('authored resource fields resolve every standard widget before rendering', 
     },
   });
   const compiled = compileApplicationSources(application);
-  const surfaces = JSON.parse(
-    compiled.contracts.typescript.match(
-      /export const resourceSurfaces = ([\s\S]*?) as const;/
-    )![1]!
-  );
+  const surfaces = generatedSurfaces(compiled.contracts.typescript);
   const surface = surfaces['authored-surface-mapping'];
   assert.deepEqual(
     Object.fromEntries(
