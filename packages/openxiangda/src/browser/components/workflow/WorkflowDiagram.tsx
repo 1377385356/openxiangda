@@ -129,6 +129,27 @@ export function WorkflowDiagram({ graph, selectedNodeId, onSelectNode, titles = 
       {visits.length > 0 && <Space size="small"><Switch size="small" checked={actualOnly} onChange={setActualOnly} aria-label="只看已执行节点" /><span>已执行路径</span></Space>}
       <span className="oxa-workflow-readonly"><LockOutlined /> 结构只读</span>
     </div>
+    {graph.logic.length > 0 && <details className="oxa-workflow-logic" aria-label="固定代码逻辑说明">
+      <summary>代码逻辑说明 <span>{graph.logic.length}</span></summary>
+      <div className="oxa-workflow-logic-content">
+        <p className="oxa-workflow-logic-help">按处理阶段查看开发者提供的代码说明。实际执行记录请查看办理历史。</p>
+        {(['submission', 'node_input', 'completion'] as const).map(phase => {
+          const items = graph.logic.filter(item => item.phase === phase);
+          if (!items.length) return null;
+          return <section key={phase} aria-label={phase === 'submission' ? '提交前代码逻辑' : phase === 'node_input' ? '进入节点前代码逻辑' : '结束后代码逻辑'}>
+            <h3>{phase === 'submission' ? '提交前' : phase === 'node_input' ? '进入节点前' : '结束后'}</h3>
+            {items.map(item => <article key={item.code} className="oxa-workflow-logic-card">
+              <header><strong>{item.title}</strong>{item.nodeId && graph.nodes.some(node => node.id === item.nodeId) &&
+                <Button size="small" type="link" disabled={!shownGraph.nodes.some(node => node.id === item.nodeId)} onClick={() => locate(item.nodeId!)} aria-label={`定位代码逻辑节点：${title(item.nodeId)}`}>{title(item.nodeId)}</Button>}</header>
+              <p>{item.description}</p>
+              <dl>{item.inputPaths.length > 0 && <><dt>读取</dt><dd>{item.inputPaths.map(path => <code key={path}>{graph.variables.find(variable => variable.path === path)?.label || path}</code>)}</dd></>}
+                {!!item.outputPaths?.length && <><dt>产生</dt><dd>{item.outputPaths.map(path => <code key={path}>{graph.variables.find(variable => variable.path === path)?.label || path}</code>)}</dd></>}</dl>
+              {item.source && <details className="oxa-workflow-logic-source"><summary>代码来源</summary><p><code>{item.source.path}</code>{item.source.symbol && <> · <code>{item.source.symbol}</code></>}</p><p>摘要：<code>{item.source.digest}</code></p></details>}
+            </article>)}
+          </section>;
+        })}
+      </div>
+    </details>}
     {effectiveView === 'graph' ? <div className="oxa-workflow-canvas">
       {!shownGraph.nodes.length ? <Empty description="尚无已执行节点" /> : <CanvasBoundary onList={() => setView('list')}><Suspense fallback={<div className="oxa-workflow-canvas-loading"><Skeleton active title paragraph={{ rows: 4 }} /></div>}>
         <FlowCanvas graph={shownGraph} selectedNodeId={selectedNodeId} selectedEdgeId={selectedEdgeId || localEdge} onSelectNode={onSelectNode} onSelectEdge={selectEdge} titles={titles} summaries={nodeSummaries} visits={visits} executedEdges={executedEdges} onNavigate={navigate} onReady={value => setCanvas(value ? { graph: shownGraph, controller: value } : null)} onZoom={setZoom} />

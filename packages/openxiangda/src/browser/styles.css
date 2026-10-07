@@ -2947,6 +2947,23 @@
 .oxa-workflow-node-search > .ant-input-search { width: 190px; }
 .oxa-workflow-node-search > .ant-select { flex: 1; min-width: 130px; }
 .oxa-workflow-readonly { margin-left: auto; color: var(--ant-color-text-secondary, #748092); white-space: nowrap; display: flex; align-items: center; gap: 5px; }
+.oxa-workflow-logic { flex-shrink: 0; max-height: min(320px, 38dvh); overflow: auto; border-bottom: 1px solid var(--ant-color-border-secondary, #e8edf2); font-size: 12px; scrollbar-width: thin; }
+.oxa-workflow-logic > summary { position: sticky; top: 0; padding: 10px 16px; cursor: pointer; background: var(--ant-color-bg-container, #fff); color: var(--ant-color-text, #263446); z-index: 1; }
+.oxa-workflow-logic summary:focus-visible { outline: 2px solid var(--ant-color-primary, #1677ff); outline-offset: -2px; }
+.oxa-workflow-logic > summary > span { margin-left: 6px; padding: 1px 6px; border-radius: 4px; background: var(--ant-color-fill-tertiary, #f1f4f8); color: var(--ant-color-text-secondary, #748092); }
+.oxa-workflow-logic-content { padding: 0 16px 14px; }
+.oxa-workflow-logic-help { margin: 0 0 12px; color: var(--ant-color-text-secondary, #748092); line-height: 1.7; }
+.oxa-workflow-logic-content h3 { margin: 14px 0 8px; color: var(--ant-color-text-secondary, #748092); font-size: 12px; font-weight: 500; }
+.oxa-workflow-logic-card { margin-top: 8px; padding: 12px; border: 1px solid var(--ant-color-border-secondary, #e8edf2); border-radius: 6px; color: var(--ant-color-text, #263446); }
+.oxa-workflow-logic-card header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.oxa-workflow-logic-card strong { font-size: 13px; }
+.oxa-workflow-logic-card p { margin: 8px 0; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
+.oxa-workflow-logic-card dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 10px; margin: 0; line-height: 1.8; }
+.oxa-workflow-logic-card dt { color: var(--ant-color-text-secondary, #748092); }
+.oxa-workflow-logic-card dd { display: flex; flex-wrap: wrap; gap: 4px 8px; margin: 0; }
+.oxa-workflow-logic-card code { overflow-wrap: anywhere; font-size: 11px; }
+.oxa-workflow-logic-source { margin-top: 8px; color: var(--ant-color-text-secondary, #748092); }
+.oxa-workflow-logic-source summary { cursor: pointer; }
 .oxa-workflow-canvas { position: relative; flex: 1; min-height: 440px; height: clamp(440px, 64dvh, 850px); background: #f5f7fa; }
 .oxa-workflow-reactflow { width: 100%; height: 100%; }
 .oxa-workflow-canvas-loading { max-width: 340px; margin: 90px auto; padding: 24px; }
@@ -2990,6 +3007,8 @@
   .oxa-workflow-node-search { width: 100%; max-width: none; flex-basis: 100%; }
   .oxa-workflow-node-search > .ant-input-search { width: 45%; }
   .oxa-workflow-readonly { font-size: 11px; }
+  .oxa-workflow-logic > summary { padding: 10px 12px; }
+  .oxa-workflow-logic-content { padding: 0 12px 12px; }
 }
 .oxa-workflow-config .ant-drawer-body { padding: 20px 24px; }
 .oxa-workflow-config-context { margin-bottom: 16px; }
