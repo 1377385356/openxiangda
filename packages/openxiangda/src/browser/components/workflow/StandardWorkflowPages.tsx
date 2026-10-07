@@ -349,7 +349,9 @@ function WorkflowSubtableValue({
   const order = subtable.surface.detail?.fieldOrder || [];
   const fields = order.flatMap((key) => {
     const item = subtable.surface.fields[key];
-    return item && item.system !== true
+    return item && item.system !== true && item.hidden !== true &&
+      item.type !== 'subtable' && key !== field.subtable?.foreignKey &&
+      key !== field.subtable?.orderField
       ? [{ key, ...item } as SurfaceField]
       : [];
   });

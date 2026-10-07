@@ -194,6 +194,47 @@ function render(
   );
 }
 
+test('workflow subtable detail keeps selected business values and hides structural fields on both devices', () => {
+  const detailSurface = structuredClone(surface);
+  const detail = detailSurface.presentation.businessDetail;
+  const field = (label: string, extra = {}) => ({
+    label, type: 'text.short', widget: 'text',
+    readCapabilities: [], createCapabilities: [], updateCapabilities: [], ...extra,
+  });
+  detail.surface.fields.lines = field('申请明细', {
+    type: 'subtable', widget: 'subtable',
+    subtable: { resourceCode: 'application-lines', foreignKey: 'parent', orderField: 'position' },
+  });
+  detail.surface.detail.fieldOrder.push('lines');
+  detail.subtables.lines = {
+    resourceCode: 'application-lines',
+    total: 1,
+    surface: {
+      fields: {
+        parent: field('内部所属申请'), position: field('内部行序号'),
+        name: field('同行人姓名'), phone: field('手填手机号码'),
+        hidden: field('隐藏字段', { hidden: true }),
+        system: field('系统字段', { system: true }),
+        unselected: field('未选字段'),
+        nested: field('嵌套子表', { type: 'subtable', widget: 'subtable' }),
+      },
+      detail: { fieldOrder: ['parent', 'position', 'phone', 'name', 'hidden', 'system', 'nested'] },
+    },
+    rows: [{
+      id: 'line-1', parent: 'internal-parent-uuid', position: 27,
+      name: '同行示例', phone: '13900139000', hidden: 'hidden-value',
+      system: 'system-value', unselected: 'unselected-value', nested: [],
+    }],
+  };
+  for (const renderer of [DesktopWorkflowDetailRenderer, MobileWorkflowDetailRenderer]) {
+    const markup = render(renderer, detailSurface);
+    for (const value of ['手填手机号码', '13900139000', '同行人姓名', '同行示例'])
+      assert.ok(markup.includes(value), value);
+    assert.ok(markup.indexOf('手填手机号码') < markup.indexOf('同行人姓名'));
+    assert.doesNotMatch(markup, /内部所属申请|内部行序号|internal-parent-uuid|隐藏字段|hidden-value|系统字段|system-value|未选字段|unselected-value|嵌套子表/);
+  }
+});
+
 test('desktop and mobile share the detail frame and keep approval history in its own tab', () => {
   const desktop = render(DesktopWorkflowDetailRenderer);
   const mobile = render(MobileWorkflowDetailRenderer);
