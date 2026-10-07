@@ -25,7 +25,7 @@ import { validateWorkflowTaskPages } from './workflow-task-page.js';
 import { requiresExtendedOwnedSubtableCapacity, requiresAggregateOwnedSubtableCapacity, dataOwnedRowLimit, isDataOwnedRowLimit } from './data-capacity.js';
 import { validateWorkflowBusinessSteps, compileWorkflowBusinessStepHandlers, validateWorkflowBusinessStepSubscriptions, WORKFLOW_BUSINESS_STEP_EVENT, WORKFLOW_BUSINESS_STEP_EVENTS } from './workflow-business-step.js';
 import { validateWorkflowAssignmentRoutingBindings, validateWorkflowAssignmentRoutingPolicy } from './workflow-assignment-routing.js';
-import { requiresWorkflowRoleUnion, validateWorkflowRoleUnion } from './workflow-role-union.js';
+import { requiresWorkflowRoleUnion, validateWorkflowRoleUnion, requiresWorkflowRoleInputSelection, validateWorkflowRoleInputSelection } from './workflow-role-union.js';
 import { assertWorkflowOwnedSubjectCreate, assertWorkflowOwnedSubjectCreateResources } from './workflow-owned-subject.js';
 import * as crypto from 'crypto';
 import {
@@ -729,6 +729,8 @@ export function compileRequiredPlatformCapabilitiesV3(
     ...(config.data.resources.some((resource: JsonObject) => resource.schema.fields.some((field: JsonObject) => field.userCandidates !== undefined))
       ? [{ code: 'data.user-candidates' as const, declaration: config.data.resources.filter((resource: JsonObject) => resource.schema.fields.some((field: JsonObject) => field.userCandidates !== undefined)) }]
       : []),
+    ...(requiresWorkflowRoleInputSelection(config.workflows.bindings)
+      ? [{ code: 'workflow.role-input-selection' as const, declaration: config.workflows.bindings.filter((item: JsonObject) => Object.values(item.binding.bindings).some((entry: any) => entry.selectedInputPath !== undefined)) }] : []),
     ...(requiresWorkflowRoleUnion(config.workflows.bindings)
       ? [{ code: 'workflow.role-union' as const, declaration: config.workflows.bindings.filter((item: JsonObject) => Object.values(item.binding.bindings).some((entry: any) => entry.roleCodes !== undefined)) }] : []),
     ...(config.backend.operations.some((item: JsonObject) => item.platformAccess?.ownedSubject)
@@ -7391,6 +7393,8 @@ function validateWorkflowBinding(binding: JsonObject, pointer: string) {
   for (const [code, raw] of Object.entries(entries)) {
     workflowBindingCode(code, `${pointer}/bindings/${code}`);
     const entry = object(raw, `${pointer}/bindings/${code}`);
+    const selectionErrors = validateWorkflowRoleInputSelection(entry);
+    if (selectionErrors.length) fail(selectionErrors[0]!, `${pointer}/bindings/${code}/selectedInputPath`);
     const unionErrors = validateWorkflowRoleUnion(entry);
     if (unionErrors.length) fail(unionErrors[0]!, `${pointer}/bindings/${code}/roleCodes`);
     const provider = requiredString(

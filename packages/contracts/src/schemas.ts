@@ -5884,6 +5884,11 @@ export const workflowBindingSchema = {
             properties: { provider: { const: 'form_field_users' } },
             not: { anyOf: [{ required: ['roleCode'] }, { required: ['scope'] }, { required: ['routing'] }] },
           },
+        }, {
+          if: { required: ['selectedInputPath'] },
+          then: { properties: { provider: { enum: ['app_role', 'app_role_in_scope'] } },
+            anyOf: [{ required: ['roleCode'] }, { required: ['roleCodes'] }],
+            not: { anyOf: [{ required: ['candidateField'] }, { required: ['inputPath'] }, { required: ['routing'] }] } },
         }],
         properties: {
           provider: {
@@ -5903,6 +5908,7 @@ export const workflowBindingSchema = {
           },
           users: { type: "array", uniqueItems: true, items: nonEmptyString },
           inputPath: { type: "string" },
+          selectedInputPath: { type: "string", maxLength: 255, pattern: "^[A-Za-z][A-Za-z0-9_-]*(?:\\.[A-Za-z][A-Za-z0-9_-]*)*$" },
           candidateField: dataFieldCode,
           departmentIdFrom: { type: "string" },
           level: { type: "integer", minimum: 1, maximum: 20 },

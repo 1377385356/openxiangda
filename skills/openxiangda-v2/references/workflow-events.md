@@ -1130,3 +1130,5 @@ nodes: {
 恢复，不因日期推移或资料后来停用而被误报为失败。接入方法见[后端](backend.md#correction-business-command)。
 
 具名来源行需要展示原资源的材料时，表单可提供 `fileResourceCodes: { [fileId]: resourceCode }`。PC/手机按来源选择 Native 附件读取入口；这是展示提示，平台仍检查当前用户对每个原文件的权限。新上传保留声明的目标资源，提交后台仍须验证来源并使用原复制回执，不能直接绑定另一资源文件。
+
+角色绑定 `app_role` / `app_role_in_scope` 可声明 `selectedInputPath`，从固定代码步骤输出或流程事实中读取人员数组（用户ID或 `{ value, label }`）。平台按当前角色和范围重新核验，再按输入顺序保留其职责出处。越权、失效或重复人员整体拒绝；缺值阻断，只有显式 `[]` 可以消费节点已声明的无人策略。不可与 `routing`、`candidateField`、`inputPath` 混用。编译器要求 `workflow.role-input-selection@1.0.0`；该路径属于代码定义，不是管理员可改的连接或条件。

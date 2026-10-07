@@ -19,7 +19,7 @@ export interface WorkflowAdministrationNodeSource {
   administration?: WorkflowApprovalAdministration;
   fieldPolicy?: { default?: string; fields?: Record<string, string> };
 }
-type BindingSource = { provider: string; scope?: { dimension: string; value?: string; valueFrom?: string } };
+type BindingSource = { provider: string; selectedInputPath?: string; scope?: { dimension: string; value?: string; valueFrom?: string } };
 const record = (value: unknown): value is Record<string, any> => !!value && typeof value === 'object' && !Array.isArray(value);
 const keys = (value: object, allowed: readonly string[]) => Object.keys(value).every(key => allowed.includes(key));
 const boundedList = (value: unknown, allowed: readonly string[], limit: number) => Array.isArray(value) && value.length > 0 && value.length <= limit && new Set(value).size === value.length && value.every(item => typeof item === 'string' && allowed.includes(item));
@@ -90,6 +90,7 @@ export function validateWorkflowNodeConfigurationPatch(node: WorkflowAdministrat
   if (patch.assignee !== undefined) {
     const value = patch.assignee;
     const allowed = admin?.assigneeProviders || (node.kind === 'approval' && binding && WORKFLOW_CONFIGURABLE_PROVIDERS.includes(binding.provider as any) ? [binding.provider] : []);
+    if (binding?.selectedInputPath && !['app_role', 'app_role_in_scope'].includes(value?.provider || '')) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_PROVIDER_READONLY');
     if (!record(value) || !['approval', 'cc'].includes(node.kind) || !allowed.includes(value.provider) || (value.provider === 'app_role_in_scope' && !binding?.scope)) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_PROVIDER_READONLY');
     else if (value.provider === 'fixed_users') {
       if (!keys(value, ['provider', 'users']) || !Array.isArray(value.users) || (value.users.length < 1 && !(node.kind === 'approval' && node.emptyPolicy === 'skip')) || value.users.length > (node.kind === 'cc' ? 20 : 200) || new Set(value.users).size !== value.users.length || value.users.some(id => typeof id !== 'string' || !id.trim() || id.length > 255)) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_USERS_INVALID');
