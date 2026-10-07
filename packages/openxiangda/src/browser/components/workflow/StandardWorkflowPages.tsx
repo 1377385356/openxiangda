@@ -2173,6 +2173,12 @@ export interface WorkflowSubmissionFormOptions {
   valueLinkage?: (changed: Readonly<JsonObject>, values: Readonly<JsonObject>) => JsonObject;
   /** Display derived owned-child values without including them in named create input. */
   subtableReadonlyFields?: Readonly<Record<string, readonly string[]>>;
+  /** Keep loaded source rows; their values remain editable within the sealed field closure. */
+  subtableFixedRows?: readonly string[];
+  /** Original source file read entries; uploads and permission checks are unchanged. */
+  fileResourceCodes?: SurfaceFieldRenderers['fileResourceCodes'];
+  /** Readonly source IDs/revisions remain untrusted inputs for server-side reconciliation. */
+  subtableReadonlyInputFields?: Readonly<Record<string, readonly string[]>>;
   intro?: ReactNode;
   /** Blocks only a new form; original submission recovery always takes priority. */
   preparation?: ReactNode;
@@ -2342,11 +2348,22 @@ export function WorkflowSubmissionPage({
     launchSurface, mutationMode, namedIntent, pendingSubmission, prefillContext, subjectDefinition, subjectForm]);
   useEffect(() => {
     if (loading || commandId || pendingSubmission || !launchSurface || formProjection.error || !subjectDefinition) return;
-    const values = normalizeRecordForForm(formProjection.hiddenValues, subjectDefinition.surface);
+    // Prefill and linkage may have written the controller since this render.
+    // Recompute visibility before clearing hidden values so an old watch snapshot
+    // cannot erase newly supplied source rows or other conditional defaults.
+    const current = normalizeFormValues(subjectForm.getFieldsValue(true), subjectDefinition.surface);
+    let hidden: JsonObject;
+    try {
+      hidden = workflowSubmissionFormProjection(fields, current, formOptions?.fieldState?.(current)).hiddenValues;
+    } catch {
+      // The next watched projection displays the rule error; preserve the input.
+      return;
+    }
+    const values = normalizeRecordForForm(hidden, subjectDefinition.surface);
     const changes = Object.entries(values).filter(([key, value]) =>
       JSON.stringify(subjectForm.getFieldValue(key)) !== JSON.stringify(value));
     if (changes.length) subjectForm.setFields(changes.map(([name, value]) => ({ name, value, errors: [] })));
-  }, [commandId, formProjection, launchSurface, loading, pendingSubmission, subjectDefinition, subjectForm]);
+  }, [commandId, fields, formOptions?.fieldState, formProjection, launchSurface, loading, pendingSubmission, subjectDefinition, subjectForm]);
 
   useEffect(() => {
     let active = true;
@@ -2771,7 +2788,7 @@ export function WorkflowSubmissionPage({
       setPendingSubmission(dispatched); setRecoveryError(null); setRecoveryObservedAbsent(false);
     };
     try {
-      const encoded = namedIntent ? namedProcessFormValues(values, subjectDefinition.surface, resources, namedIntent.ownedSubject, formOptions?.subtableReadonlyFields)
+      const encoded = namedIntent ? namedProcessFormValues(values, subjectDefinition.surface, resources, namedIntent.ownedSubject, formOptions?.subtableReadonlyFields, formOptions?.subtableReadonlyInputFields)
         : standardProcessFormValues(values, subjectDefinition.surface, resources,
           (field, mode) => fieldWritable(field, mode === 'create' ? 'create' : 'edit', hasCapability, identity.isAppSuperAdmin));
       const data = workflowSubmissionFormProjection(fields, encoded, formOptions?.fieldState?.(encoded)).values;
@@ -2959,10 +2976,13 @@ export function WorkflowSubmissionPage({
     ? {
         renderSubtable: ({ field, disabled, operation, recordId }) => {
           const grant = namedIntent?.ownedSubject?.subtables.find(table => table.fieldCode === field.key);
-          assertNamedSubtableReadonlyFields(subjectDefinition.surface, namedIntent?.ownedSubject, formOptions?.subtableReadonlyFields || {});
+          assertNamedSubtableReadonlyFields(subjectDefinition.surface, namedIntent?.ownedSubject, formOptions?.subtableReadonlyFields || {}, formOptions?.subtableFixedRows);
+          assertNamedSubtableReadonlyFields(subjectDefinition.surface, namedIntent?.ownedSubject, formOptions?.subtableReadonlyInputFields || {});
           return <SubtableField field={field} disabled={disabled} operation={operation} parentRecordId={recordId} mobile={variant === 'mobile'}
             {...(namedIntent && grant ? { launch: { fieldCodes: grant.fieldCodes,
-              readonlyFieldCodes: formOptions?.subtableReadonlyFields?.[field.key],
+              readonlyFieldCodes: [...(formOptions?.subtableReadonlyFields?.[field.key] || []), ...(formOptions?.subtableReadonlyInputFields?.[field.key] || [])],
+              fixedRows: formOptions?.subtableFixedRows?.includes(field.key),
+              fileResourceCodes: formOptions?.fileResourceCodes,
               reference: { workflowCode: definition.code, operationCode: namedIntent.operationCode, subtableFieldCode: field.key },
               upload: (childField, file) => uploadOperationManagedFile({
                 operationCode: uploadOperationCode, resourceCode: field.subtable!.resourceCode,
@@ -2971,6 +2991,7 @@ export function WorkflowSubmissionPage({
             } } : {})} />;
         },
         ...(namedIntent ? { referenceLaunch: { workflowCode: definition.code, operationCode: namedIntent.operationCode } } : {}),
+        fileResourceCodes: formOptions?.fileResourceCodes,
         candidateScopeValues: { ...formOptions?.candidateScopeValues, ...formProjection.values },
         upload: async (field, file) =>
           await uploadOperationManagedFile({

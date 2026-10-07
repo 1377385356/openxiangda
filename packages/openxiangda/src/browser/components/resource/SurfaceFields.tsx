@@ -43,7 +43,7 @@ import {
 } from '../../AuthoritativeSelector';
 import { AddressField, AddressValueDisplay } from '../platform-fields/AddressField';
 import { MobileManagedFileField } from '../platform-fields/MobileManagedFileField';
-import { AttachmentFileList, formatManagedFileSize } from '../platform-fields/AttachmentFileList';
+import { AttachmentFileList, formatManagedFileSize, managedFileGroups } from '../platform-fields/AttachmentFileList';
 import { CascadeField, CascadeValueDisplay } from '../platform-fields/CascadeField';
 import type { CascadeStoredValue } from '../platform-fields/cascade-value';
 import { DateTimeField, DateTimeFilter, DateTimeValueDisplay } from '../platform-fields/DateTimeField';
@@ -134,6 +134,8 @@ export interface SurfaceFieldValueContext {
 }
 
 export interface SurfaceFieldRenderers {
+  /** Read-entry hints only; Native checks every file and resource independently. */
+  fileResourceCodes?: Readonly<Record<string, string>>;
   referenceLaunch?: DataFieldSourceLaunchBinding;
   referenceTask?: WorkflowTaskSourceBinding;
   /** Search intent only; never part of a Native write or workflow payload. */
@@ -477,6 +479,7 @@ export function SurfaceFieldControl({
           maxSizeMb={field.maxSizeMb}
           multiple={(field.maxCount ?? 1) > 1}
           onUpload={renderers?.upload}
+          fileResourceCodes={renderers?.fileResourceCodes}
           recordId={recordId}
           resourceCode={resourceCode}
           workflowBinding={workflowFileBinding}
@@ -681,6 +684,7 @@ export function MobileSurfaceFieldControl({
           multiple={(field.maxCount ?? 1) > 1}
           mobile
           onUpload={renderers?.upload}
+          fileResourceCodes={renderers?.fileResourceCodes}
           recordId={recordId}
           resourceCode={resourceCode}
           workflowBinding={workflowFileBinding}
@@ -964,6 +968,7 @@ function ManagedFileField({
   onUpload,
   resourceCode,
   workflowBinding,
+  fileResourceCodes,
   mobile = false,
 }: {
   field: SurfaceField;
@@ -978,6 +983,7 @@ function ManagedFileField({
   onUpload?: SurfaceFieldRenderers['upload'];
   resourceCode?: string;
   workflowBinding?: WorkflowFileBinding;
+  fileResourceCodes?: Readonly<Record<string, string>>;
   mobile?: boolean;
 }) {
   const [uploading, setUploading] = useState(false);
@@ -1000,6 +1006,7 @@ function ManagedFileField({
       multiple={multiple} maxCount={maxCount} maxSizeMb={maxSizeMb} accept={accept}
       resourceCode={resourceCode} image={field.type === 'image'}
       workflowBinding={workflowBinding}
+      fileResourceCodes={fileResourceCodes}
       upload={file => onUpload(field, file, recordId)} />;
   }
   const uploadProps = {
@@ -1058,11 +1065,11 @@ function ManagedFileField({
         </div>
       )}
       {refs.length ? (
-        <AttachmentFileList files={refs} resourceCode={resourceCode} workflowBinding={workflowBinding} onRemove={file => {
+        managedFileGroups(refs, resourceCode, fileResourceCodes).map(group => <AttachmentFileList key={group.resourceCode} files={group.files} resourceCode={group.resourceCode} workflowBinding={group.resourceCode === resourceCode ? workflowBinding : undefined} onRemove={file => {
           const next = refs.filter(item => item.id !== file.id);
           refsRef.current = next;
           onChange?.(next);
-        }} removable={!disabled} imageTiles={field.type === 'image'} />
+        }} removable={!disabled} imageTiles={field.type === 'image'} />)
       ) : (
         null
       )}

@@ -143,6 +143,16 @@ function ManagedImageThumbnail({
   );
 }
 
+/** Group Native read entries without changing values, uploads or permission checks. */
+export function managedFileGroups(files: DataFileRef[], defaultResource = 'resources', sources?: Readonly<Record<string, string>>) {
+  const groups = new Map<string, DataFileRef[]>();
+  for (const file of files) {
+    const resourceCode = sources?.[file.id] || defaultResource;
+    const group = groups.get(resourceCode) || []; group.push(file); groups.set(resourceCode, group);
+  }
+  return groups.size ? [...groups].map(([resourceCode, files]) => ({ resourceCode, files })) : [{ resourceCode: defaultResource, files: [] }];
+}
+
 export function AttachmentFileList({
   files,
   resourceCode = 'resources',

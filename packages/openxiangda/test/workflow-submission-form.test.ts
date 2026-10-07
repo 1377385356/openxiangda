@@ -29,6 +29,15 @@ test('rules and prefill cannot add fields outside matched launch inputs', () => 
   assert.throws(() => workflowSubmissionPrefill(fields, { reason: 'illness', applicant: 'forged' }, applied, () => false), /FIELD_UNAVAILABLE/);
   assert.equal(applied.size, 0, 'Failed prefill cannot partially consume the initializer');
 });
+test('a required source value can be supplied outside the form while a missing value still blocks it', () => {
+  const source = [field('businessApplicant', true)];
+  const person = { value: 'chosen-person', label: '获授权对象' };
+  const projection = workflowSubmissionFormProjection(source, { businessApplicant: 'stale' }, { businessApplicant: { visible: false, hiddenValue: person } });
+  assert.deepEqual(projection.fields, []); assert.deepEqual(projection.values, { businessApplicant: person });
+  for (const hiddenValue of [null, undefined]) assert.throws(() => workflowSubmissionFormProjection(source, {}, { businessApplicant: { visible: false, hiddenValue } }), /REQUIRED_FIELD_HIDDEN/);
+  for (const hiddenValue of [false, 0]) assert.deepEqual(workflowSubmissionFormProjection(source, {}, { businessApplicant: { visible: false, hiddenValue } }).values, { businessApplicant: hiddenValue });
+  assert.equal(source[0].requiredHint, true);
+});
 test('late or repeated prefill preserves edits, including an intentionally cleared value', () => {
   const applied = new Set<string>();
   assert.deepEqual(workflowSubmissionPrefill(fields, { reason: 'illness', reviewer: 'suggested' }, applied, key => key === 'reason'), { reviewer: 'suggested' });

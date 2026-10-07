@@ -81,6 +81,9 @@ export interface SubtableFieldProps {
     fieldCodes: readonly string[];
     /** Presentation only: derived values remain visible but are not user input. */
     readonlyFieldCodes?: readonly string[];
+    /** Source rows may be edited in place; their membership is owned by business validation. */
+    fixedRows?: boolean;
+    fileResourceCodes?: SurfaceFieldRenderers['fileResourceCodes'];
     upload: NonNullable<SurfaceFieldRenderers['upload']>;
     reference?: SurfaceFieldRenderers['referenceLaunch'];
   };
@@ -195,7 +198,8 @@ export function SubtableField({
     } finally { setUploads(count => count - 1); }
   };
   const rowBinding = (row: SubtableDraftRow) => task?.binding ? { ...task.binding, resourceCode: config!.resourceCode, recordId: row.key } : undefined;
-  const rowReferences = (row: SubtableDraftRow): Pick<SurfaceFieldRenderers, 'referenceLaunch' | 'referenceTask'> => ({
+  const rowReferences = (row: SubtableDraftRow): Pick<SurfaceFieldRenderers, 'referenceLaunch' | 'referenceTask' | 'fileResourceCodes'> => ({
+    ...(launch?.fileResourceCodes ? { fileResourceCodes: launch.fileResourceCodes } : {}),
     ...(launch?.reference ? { referenceLaunch: launch.reference } : {}),
     ...(task?.reference ? { referenceTask: { ...task.reference, subtable: { fieldCode: field.key,
       row: row.state === 'persisted'
@@ -281,6 +285,7 @@ export function SubtableField({
   }
 
   const removeRow = (target: SubtableDraftRow) => {
+    if (launch?.fixedRows) return;
     if (!task && subtablePage(rowsRef.current, 1).visible.length <= minRows) return;
     emit(
       target.state === 'created'
@@ -318,18 +323,18 @@ export function SubtableField({
       return <MobileSubtableRow key={row.key} row={row} index={index} fields={fields} disabled={disabled}
         resourceCode={definition.code} operation={rowOperation}
         canWrite={child => writable && canWriteField(child, rowOperation, row)}
-        canDelete={!navigationBlocked && (Boolean(task) || visibleRows.length > minRows) && (row.state === 'persisted' ? canDelete : canCreate)} onRemove={() => removeRow(row)}
+        canDelete={!launch?.fixedRows && !navigationBlocked && (Boolean(task) || visibleRows.length > minRows) && (row.state === 'persisted' ? canDelete : canCreate)} onRemove={() => removeRow(row)}
         onChange={data => changeRow(row, data)}
         references={rowReferences(row)} workflowFileBinding={rowBinding(row)} upload={uploadFor(row)} signer={task?.signer} uploadBlocked={child => uploadBlocked(child, row)} taskMode={Boolean(task)} hint={child => requiredHint(child, row)}
         actions={task?.page.reorder && <Space><MobileButton fill="none" disabled={navigationBlocked || index === 0} aria-label={`上移第${index + 1}项`} onClick={() => moveRow(index, -1)}>上移</MobileButton><MobileButton fill="none" disabled={navigationBlocked || index === visibleRows.length - 1} aria-label={`下移第${index + 1}项`} onClick={() => moveRow(index, 1)}>下移</MobileButton></Space>} />;
     })}
-    {!disabled && <MobileButton block fill="none" color="primary" disabled={navigationBlocked || !canCreate || visibleRows.length >= maxRows}
+    {!disabled && !launch?.fixedRows && <MobileButton block fill="none" color="primary" disabled={navigationBlocked || !canCreate || visibleRows.length >= maxRows}
       onClick={() => { emit([...rows, { key: crypto.randomUUID(), state: 'created', data: {} }]); setRequestedPage(Math.floor(visibleRows.length / SUBTABLE_PAGE_SIZE) + 1); }}><PlusOutlined /> 新增一项</MobileButton>}
   </div></SubtableEditActivityContext.Provider>;
 
   const fields = childFields.filter(child => canReadField(child) || (canCreate && canWriteField(child, 'create')) || (canUpdate && canWriteField(child, 'update')));
   const writableCodes = fields.filter(child => canWriteField(child, 'create')).map(child => child.key);
-  const appendRows = (data: Record<string, unknown>[]) => { const start = subtablePage(rowsRef.current, 1).visible.length; emit([...rowsRef.current, ...data.map(item => ({
+  const appendRows = (data: Record<string, unknown>[]) => { if (launch?.fixedRows) return; const start = subtablePage(rowsRef.current, 1).visible.length; emit([...rowsRef.current, ...data.map(item => ({
     key: crypto.randomUUID(), state: 'created' as const,
     data: Object.fromEntries(Object.entries(item).map(([key, value]) => [key, fieldValueForForm(definition.surface.fields[key], value)])),
   }))]); setRequestedPage(Math.floor(start / SUBTABLE_PAGE_SIZE) + 1); };
@@ -358,11 +363,11 @@ export function SubtableField({
           actions={<Space size={0}>
             {!launch && <Button type="text" aria-label={`上移第${index + 1}项`} disabled={navigationBlocked || index === 0 || !writable || Boolean(task && !task.page.reorder)} icon={<UpOutlined />} onClick={() => moveRow(index, -1)} />}
             {!launch && <Button type="text" aria-label={`下移第${index + 1}项`} disabled={navigationBlocked || index === visibleRows.length - 1 || !writable || Boolean(task && !task.page.reorder)} icon={<DownOutlined />} onClick={() => moveRow(index, 1)} />}
-            <Button type="link" danger disabled={navigationBlocked || (!task && visibleRows.length <= minRows) || (row.state === 'persisted' ? !canDelete : !canCreate)} onClick={() => removeRow(row)}>删除</Button>
+            {!launch?.fixedRows && <Button type="link" danger disabled={navigationBlocked || (!task && visibleRows.length <= minRows) || (row.state === 'persisted' ? !canDelete : !canCreate)} onClick={() => removeRow(row)}>删除</Button>}
           </Space>} />;
       })}{!loading && !visibleRows.length && <tr><td colSpan={fields.length + 2}><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无明细" /></td></tr>}</tbody>
     </table></div>
-    {!disabled && <div className="oxa-subtable-toolbar"><Space wrap>
+    {!disabled && !launch?.fixedRows && <div className="oxa-subtable-toolbar"><Space wrap>
       <Button icon={<PlusOutlined />} disabled={navigationBlocked || !canCreate || visibleRows.length >= maxRows} onClick={() => appendRows([{}])}>新增一项</Button>
       <Upload accept=".csv,.xls,.xlsx" showUploadList={false} disabled={navigationBlocked || !canCreate || visibleRows.length >= maxRows} beforeUpload={async file => {
         setImporting(true);
@@ -391,7 +396,7 @@ function DesktopSubtableRow({ row, index, fields, operation, resourceCode, disab
   row: SubtableDraftRow; index: number; fields: SurfaceField[]; operation: 'create' | 'update'; resourceCode: string; disabled?: boolean;
   canRead: (field: SurfaceField) => boolean; canWrite: (field: SurfaceField) => boolean;
   onChange: (data: Record<string, unknown>) => void; upload: NonNullable<SurfaceFieldRenderers['upload']>;
-  references?: Pick<SurfaceFieldRenderers, 'referenceLaunch' | 'referenceTask'>;
+  references?: Pick<SurfaceFieldRenderers, 'referenceLaunch' | 'referenceTask' | 'fileResourceCodes'>;
   signer?: SurfaceFieldRenderers['signer']; uploadBlocked?: (field: SurfaceField) => boolean;
   actions: import('react').ReactNode;
   workflowFileBinding?: WorkflowFileBinding;
@@ -541,7 +546,7 @@ function MobileSubtableRow({ row, index, fields, operation, resourceCode, canWri
   actions?: import('react').ReactNode; workflowFileBinding?: WorkflowFileBinding;
   taskMode?: boolean; hint?: (field: SurfaceField) => import('react').ReactNode;
   onChange: (data: Record<string, unknown>) => void; upload: NonNullable<SurfaceFieldRenderers['upload']>;
-  references?: Pick<SurfaceFieldRenderers, 'referenceLaunch' | 'referenceTask'>;
+  references?: Pick<SurfaceFieldRenderers, 'referenceLaunch' | 'referenceTask' | 'fileResourceCodes'>;
   signer?: SurfaceFieldRenderers['signer']; uploadBlocked?: (field: SurfaceField) => boolean;
 }) {
   const [form] = Form.useForm();

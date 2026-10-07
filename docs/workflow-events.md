@@ -496,8 +496,11 @@ return <WorkflowSubmissionPage workflowCode="reinstatement" variant="mobile" for
 
 初值仅在当前匹配的发起合同内应用到未触碰字段，每字段一次；后到资料和父组件重新渲染
 不会覆盖已填写或手动清空的内容。日期和范围使用canonical值，标准页通过原codec转换。
-`fieldState`读取canonical值，`required`只能增加校验，不能撤销原必填或隐藏原必填字段；
+条件隐藏同步也读取表单当前值，避免预填或联动刚写入的来源行被旧显隐投影清空。
+`fieldState`读取canonical值，`required`只能增加校验，不能撤销原必填；
 可选字段隐藏时清为`hiddenValue`或undefined，提交也使用同一投影，不发送旧材料/人员。
+
+必填字段也可以隐藏，但必须提供非null/undefined的规范`hiddenValue`，例如表单外已经选定的业务对象。0与false是有效输入；平台仍核验类型、必填和授权，应用须重新核验对象。未提供值时表单继续阻断。
 初值或规则引用范围外字段会阻断表单。`intro`只提供页面说明，不拥有身份、授权或提交。
 资料加载/失败或业务资格提示可传`preparation`内容，它仅阻断尚未提交的表单；原请求查询
 及已接受命令的展示优先于该提示。应用应始终挂载标准页，避免当前资格变化遮蔽原结果恢复。
@@ -510,6 +513,10 @@ return <WorkflowSubmissionPage workflowCode="reinstatement" variant="mobile" for
 写回沿用codec并标记已触碰，迟到预填不会覆盖联动值。预填、草稿、恢复、程序写回不触发
 联动；PC/手机规则一致。异常保留输入并阻断新提交，下一次成功输入可恢复，原提交结果
 查询及已接受命令仍优先。异步资料读取放准备阶段，服务器仍校验资格和业务不变量。
+
+对已有台账等来源固定的子表，可以传 `subtableFixedRows: ['existingPositions']`，关闭新增、删除和导入，并保留允许字段的编辑、上传和分页。此项仅限制页面操作；业务动作仍须后台重读来源，核验行集合与来源版本，不能把它作为数据授权或防篡改守卫。
+
+当只读来源标识或版本需要发给后台核对时，使用 `subtableReadonlyInputFields: { existingPositions: ['ledgerId', 'ledgerRevision'] }`。字段必须属于当前操作的子表白名单；这些值仅在页面只读，仍是未经信任的输入，后台必须重读并执行版本／集合守卫。不得与同字段的 `subtableReadonlyFields` 混用，后者会省略派生输入。
 
 具名owned新建表单可传`subtableReadonlyFields: { lines: ['employeeNumber'] }`，
 把当前子行的派生值显示为只读，并从提交输入排除。表名与字段必须属于当前sealed
@@ -1121,3 +1128,5 @@ nodes: {
 自动协商 `workflow.correction-business-command@1.0.0`，无需额外开启功能。
 本人标量补正支持 Native 写入，owned 子表补正仍不支持；原已成功结果先于当前资料重验
 恢复，不因日期推移或资料后来停用而被误报为失败。接入方法见[后端](backend.md#correction-business-command)。
+
+具名来源行需要展示原资源的材料时，表单可提供 `fileResourceCodes: { [fileId]: resourceCode }`。PC/手机按来源选择 Native 附件读取入口；这是展示提示，平台仍检查当前用户对每个原文件的权限。新上传保留声明的目标资源，提交后台仍须验证来源并使用原复制回执，不能直接绑定另一资源文件。

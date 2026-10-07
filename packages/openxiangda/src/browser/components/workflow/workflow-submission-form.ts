@@ -27,7 +27,7 @@ export function workflowSubmissionFormProjection(
   for (const field of fields) {
     const state = states[field.key];
     if (state?.visible === false) {
-      if (field.requiredHint) throw new Error('OPENXIANGDA_WORKFLOW_FORM_REQUIRED_FIELD_HIDDEN');
+      if (field.requiredHint && state.hiddenValue == null) throw new Error('OPENXIANGDA_WORKFLOW_FORM_REQUIRED_FIELD_HIDDEN');
       hiddenValues[field.key] = state.hiddenValue;
       if (state.hiddenValue !== undefined) data[field.key] = state.hiddenValue;
     } else {
