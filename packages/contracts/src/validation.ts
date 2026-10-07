@@ -337,11 +337,12 @@ export function validateAppPackage(value: unknown): Diagnostic[] {
         )
       );
     } else {
-      if (required.length > 64) {
+      const maximumCapabilities = Object.keys(PLATFORM_CAPABILITY_CONTRACT_VERSIONS).length;
+      if (required.length > maximumCapabilities) {
         diagnostics.push(
           diagnostic(
             'APP_PACKAGE_PLATFORM_CAPABILITIES_LIMIT_EXCEEDED',
-            'requiredPlatformCapabilities 最多包含 64 项',
+            `requiredPlatformCapabilities 最多包含 ${maximumCapabilities} 项已声明能力`,
             'compatibility.requiredPlatformCapabilities'
           )
         );

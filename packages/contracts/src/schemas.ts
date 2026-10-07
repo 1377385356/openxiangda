@@ -4228,7 +4228,7 @@ export const configurationValidationResultSchema = {
     requiredPlatformCapabilities: {
       type: "array",
       minItems: 1,
-      maxItems: 64,
+      maxItems: Object.keys(PLATFORM_CAPABILITY_CONTRACT_VERSIONS).length,
       uniqueItems: true,
       items: requiredPlatformCapabilityContractSchema,
     },
@@ -4335,7 +4335,7 @@ export const appPackageSchema = {
         requiredPlatformCapabilities: {
           type: "array",
           minItems: 1,
-          maxItems: 64,
+          maxItems: Object.keys(PLATFORM_CAPABILITY_CONTRACT_VERSIONS).length,
           uniqueItems: true,
           items: requiredPlatformCapabilityContractSchema,
         },
