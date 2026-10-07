@@ -3378,7 +3378,8 @@ export interface BusinessProcessCommandWithData {
   subject: { fromOperation: string };
   data: BusinessProcessCommit['data'];
   expectedTransition: { status: 'running' | 'approved' | 'rejected' | 'withdrawn'; outcome: string | null; currentNodeId: string | null }
-    | { kind: 'correction-replay' };
+    | { kind: 'correction-replay' }
+    | { kind: 'approval-projection' };
 }
 
 /**

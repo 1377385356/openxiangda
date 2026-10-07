@@ -1117,6 +1117,13 @@ nodes: {
 
 标准 PC/手机任务页根据当前 Surface 调用该具名操作；应用不复制审批流转或预测下游
 动态人员。处理器先调用 `businessProcess.resolveOriginalTaskCommand(invocation)` 查询原结果，
+具名批准需要业务派生值与任务表单同事务保存时，可在固定定义声明
+`commandHandlers.approve: { operationCode: '...', transitionPolicy: 'workflow' }`，
+并调用 `commandWithData` 的 `expectedTransition: { kind: 'approval-projection' }`。
+平台核验原任务／令牌／修订／字段和候选人，保存数据并刷新事实，由内核处理
+会签等待及晚分支；任何未解析审批人都使事务失败。只允许显式 opt-in 的 approve
+handler；默认精确流转模式不变，旧站点须支持 `workflow.approval-business-command`。
+
 再合并受限任务字段、重验当前业务规则和资料，最后调用 `commandWithData`，
 使用 `expectedTransition: { kind: 'correction-replay' }`。平台验证真实本人补正、原任务与
 资料修订，在同一事务保存字段、刷新事实、核验 Native guards、关闭退回会话并重新计算。

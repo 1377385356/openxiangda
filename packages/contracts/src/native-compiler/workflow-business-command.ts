@@ -1,6 +1,10 @@
 /** Opt-in, fixed-definition dispatch; Workflow continues to own the decision. */
 export type WorkflowBusinessCommand = 'approve' | 'reject' | 'withdraw' | 'resubmit';
-export type WorkflowCommandHandlers = Partial<Record<WorkflowBusinessCommand, { operationCode: string }>>;
+export type WorkflowCommandHandlers = Partial<Record<WorkflowBusinessCommand, {
+  operationCode: string;
+  /** Opt-in approval routing remains owned by the Workflow kernel. */
+  transitionPolicy?: 'workflow';
+}>>;
 
 type Definition = {
   code: string;
@@ -25,7 +29,9 @@ export function validateWorkflowCommandHandlers(definition: Definition, operatio
     errors.push('WORKFLOW_BUSINESS_CORRECTION_REQUIRED');
   }
   for (const [command, handler] of Object.entries(handlers)) {
-    if (!handler || typeof handler !== 'object' || Array.isArray(handler) || Object.keys(handler).join(',') !== 'operationCode' ||
+    if (!handler || typeof handler !== 'object' || Array.isArray(handler) ||
+        Object.keys(handler).some(key => !['operationCode', 'transitionPolicy'].includes(key)) ||
+        (handler.transitionPolicy !== undefined && (command !== 'approve' || handler.transitionPolicy !== 'workflow')) ||
         !/^[a-z][a-z0-9]*(?:[-_.][a-z0-9]+)*$/.test(handler.operationCode || '')) {
       errors.push('WORKFLOW_BUSINESS_COMMAND_HANDLER_INVALID');
       continue;

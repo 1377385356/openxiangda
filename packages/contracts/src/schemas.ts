@@ -5724,7 +5724,8 @@ export const workflowDefinitionSchema = {
       type: 'object', additionalProperties: false, minProperties: 1,
       properties: Object.fromEntries(['approve', 'reject', 'withdraw', 'resubmit'].map(command => [command, {
         type: 'object', additionalProperties: false, required: ['operationCode'],
-        properties: { operationCode: { type: 'string', pattern: '^[a-z][a-z0-9]*(?:[-_.][a-z0-9]+)*$' } },
+        properties: { operationCode: { type: 'string', pattern: '^[a-z][a-z0-9]*(?:[-_.][a-z0-9]+)*$' },
+          ...(command === 'approve' ? { transitionPolicy: { const: 'workflow' } } : {}) },
       }])),
     },
     taskPages: {
@@ -6230,6 +6231,9 @@ export const businessProcessCommandWithDataSchema = {
   allOf: [{
     if: { properties: { expectedTransition: { required: ['kind'], properties: { kind: { const: 'correction-replay' } } } } },
     then: { properties: { workflow: { properties: { target: { properties: { kind: { const: 'task' }, command: { const: 'resubmit' } } } } } } },
+  }, {
+    if: { properties: { expectedTransition: { required: ['kind'], properties: { kind: { const: 'approval-projection' } } } } },
+    then: { properties: { workflow: { properties: { target: { properties: { kind: { const: 'task' }, command: { const: 'approve' } } } } } } },
   }],
   properties: {
     schemaVersion: { const: SCHEMA_VERSIONS.businessProcessCommandWithData },
@@ -6248,7 +6252,7 @@ export const businessProcessCommandWithDataSchema = {
         outcome: { type: ['string', 'null'], maxLength: 128 },
         currentNodeId: { type: ['string', 'null'], minLength: 1, maxLength: 128 },
       },
-    }, { type: 'object', additionalProperties: false, required: ['kind'], properties: { kind: { const: 'correction-replay' } } }] },
+    }, { type: 'object', additionalProperties: false, required: ['kind'], properties: { kind: { enum: ['correction-replay', 'approval-projection'] } } }] },
   },
 } as const;
 
