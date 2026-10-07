@@ -1,5 +1,5 @@
 import { Component, lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { formatWorkflowExpression, type WorkflowGraphProjection, type WorkflowGraphVisit } from 'openxiangda-contracts/browser';
+import { formatWorkflowExpression, workflowVariableLabel, type WorkflowGraphProjection, type WorkflowGraphVisit } from 'openxiangda-contracts/browser';
 import { Alert, Button, Empty, Input, Segmented, Select, Skeleton, Space, Switch, Tooltip } from 'antd';
 import { AimOutlined, BorderOutlined, LockOutlined, MinusOutlined, PlusOutlined } from '@ant-design/icons';
 import { WorkflowNodeCard } from './WorkflowNodeCard';
@@ -142,8 +142,8 @@ export function WorkflowDiagram({ graph, selectedNodeId, onSelectNode, titles = 
               <header><strong>{item.title}</strong>{item.nodeId && graph.nodes.some(node => node.id === item.nodeId) &&
                 <Button size="small" type="link" disabled={!shownGraph.nodes.some(node => node.id === item.nodeId)} onClick={() => locate(item.nodeId!)} aria-label={`定位代码逻辑节点：${title(item.nodeId)}`}>{title(item.nodeId)}</Button>}</header>
               <p>{item.description}</p>
-              <dl>{item.inputPaths.length > 0 && <><dt>读取</dt><dd>{item.inputPaths.map(path => <code key={path}>{graph.variables.find(variable => variable.path === path)?.label || path}</code>)}</dd></>}
-                {!!item.outputPaths?.length && <><dt>产生</dt><dd>{item.outputPaths.map(path => <code key={path}>{graph.variables.find(variable => variable.path === path)?.label || path}</code>)}</dd></>}</dl>
+              <dl>{item.inputPaths.length > 0 && <><dt>读取</dt><dd>{item.inputPaths.map(path => <code key={path} title={path}>{workflowVariableLabel(path, graph.variables)}</code>)}</dd></>}
+                {!!item.outputPaths?.length && <><dt>产生</dt><dd>{item.outputPaths.map(path => <code key={path} title={path}>{workflowVariableLabel(path, graph.variables)}</code>)}</dd></>}</dl>
               {item.source && <details className="oxa-workflow-logic-source"><summary>代码来源</summary><p><code>{item.source.path}</code>{item.source.symbol && <> · <code>{item.source.symbol}</code></>}</p><p>摘要：<code>{item.source.digest}</code></p></details>}
             </article>)}
           </section>;
