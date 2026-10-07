@@ -57,6 +57,7 @@ export default function WorkflowFlowCanvas(props: {
   const latest = useRef(props); latest.current = props;
   const container = useRef<HTMLDivElement>(null);
   const ensureVisible = useRef<((id: string) => void) | null>(null);
+  const interruptNavigation = useRef<(() => void) | null>(null);
   const [instance, setInstance] = useState<ReactFlowInstance<FlowNode, FlowEdge> | null>(null);
   const [layoutState, setLayoutState] = useState<{ graph: WorkflowGraphProjection; positions?: Awaited<ReturnType<typeof workflowFlowLayout>>; error?: Error }>({ graph: props.graph });
   const positions = layoutState.graph === props.graph ? layoutState.positions : undefined;
@@ -87,11 +88,16 @@ export default function WorkflowFlowCanvas(props: {
     let active = true;
     let focusFrame: number | undefined;
     let navigation = 0;
+    const startNavigation = () => {
+      if (focusFrame !== undefined) cancelAnimationFrame(focusFrame);
+      focusFrame = undefined;
+      return ++navigation;
+    };
+    interruptNavigation.current = startNavigation;
     const locate = (id: string, focus = false) => {
       const point = positions.nodes.get(id);
       if (!active || !point) return;
-      const currentNavigation = ++navigation;
-      if (focusFrame !== undefined) cancelAnimationFrame(focusFrame);
+      const currentNavigation = startNavigation();
       void instance.setCenter(point.x + point.width / 2, point.y + point.height / 2, { zoom: .95, duration: focus ? 0 : 180 }).then(() => {
         if (active && currentNavigation === navigation && focus) focusFrame = requestAnimationFrame(() => container.current?.querySelector<HTMLButtonElement>(`.react-flow__node[data-id="${CSS.escape(id)}"] button`)?.focus({ preventScroll: true }));
       });
@@ -100,14 +106,14 @@ export default function WorkflowFlowCanvas(props: {
       const point = positions.nodes.get(id), element = container.current;
       if (point && element && !workflowNodeIsReadable(point, instance.getViewport(), { width: element.clientWidth, height: element.clientHeight })) locate(id);
     };
-    latest.current.onReady({ locate, fit: () => { void instance.fitView({ padding: .18, maxZoom: 1, minZoom: .025, duration: 200 }); }, zoomBy: direction => { void instance.zoomTo(Math.max(.025, Math.min(1.6, instance.getZoom() * (direction > 0 ? 1.25 : .8))), { duration: 120 }); } });
+    latest.current.onReady({ locate, fit: () => { startNavigation(); void instance.fitView({ padding: .18, maxZoom: 1, minZoom: .025, duration: 200 }); }, zoomBy: direction => { startNavigation(); void instance.zoomTo(Math.max(.025, Math.min(1.6, instance.getZoom() * (direction > 0 ? 1.25 : .8))), { duration: 120 }); } });
     void instance.fitView({ padding: .2, maxZoom: 1, minZoom: .025 }).then(() => {
-      if (!active || instance.getZoom() >= workflowReadableZoom) return;
+      if (!active || navigation !== 0 || instance.getZoom() >= workflowReadableZoom) return;
       const graph = latest.current.graph;
       const target = [latest.current.selectedNodeId, graph.startAt, graph.nodes[0]?.id].find(id => id && positions.nodes.has(id));
       if (target) locate(target);
     });
-    return () => { active = false; if (focusFrame !== undefined) cancelAnimationFrame(focusFrame); ensureVisible.current = null; latest.current.onReady(null); };
+    return () => { active = false; if (focusFrame !== undefined) cancelAnimationFrame(focusFrame); ensureVisible.current = null; interruptNavigation.current = null; latest.current.onReady(null); };
   }, [instance, positions]);
   useEffect(() => { ensureVisible.current?.(props.selectedNodeId); }, [props.selectedNodeId]);
   if (layoutState.graph === props.graph && layoutState.error) throw layoutState.error;
@@ -116,7 +122,7 @@ export default function WorkflowFlowCanvas(props: {
     <ReactFlow<FlowNode, FlowEdge> nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes} onInit={setInstance}
       nodesDraggable={false} nodesConnectable={false} nodesFocusable={false} edgesFocusable={false} edgesReconnectable={false}
       deleteKeyCode={null} disableKeyboardA11y selectionOnDrag={false} selectionKeyCode={null} zoomOnDoubleClick={false}
-      minZoom={.025} maxZoom={1.6} onlyRenderVisibleElements onMoveEnd={(_event, viewport) => props.onZoom(viewport.zoom)}
+      minZoom={.025} maxZoom={1.6} onlyRenderVisibleElements onMoveStart={event => { if (event) interruptNavigation.current?.(); }} onMoveEnd={(_event, viewport) => props.onZoom(viewport.zoom)}
       onEdgeClick={(_event, edge) => props.onSelectEdge(edge.id)} aria-label="只读流程画布">
       <Background color="#d6dde5" gap={22} size={1} />
       <MiniMap pannable zoomable position="bottom-right" aria-label="流程缩略导航" style={{ width: 150, height: 94 }} nodeColor={node => node.selected ? '#1677ff' : '#b7c2cf'} maskColor="rgba(243, 246, 250, .72)" />
