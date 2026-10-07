@@ -22,7 +22,7 @@ import { validateWorkflowApprovedDelegation } from './workflow-approved-delegati
 import { validateWorkflowCorrections } from './workflow-correction.js';
 import { dateEventProjectionFieldsV2 } from './date-event-projection.js';
 import { validateWorkflowTaskPages } from './workflow-task-page.js';
-import { requiresExtendedOwnedSubtableCapacity } from './data-capacity.js';
+import { requiresExtendedOwnedSubtableCapacity, requiresAggregateOwnedSubtableCapacity, dataOwnedRowLimit, isDataOwnedRowLimit } from './data-capacity.js';
 import { validateWorkflowBusinessSteps, compileWorkflowBusinessStepHandlers, validateWorkflowBusinessStepSubscriptions, WORKFLOW_BUSINESS_STEP_EVENT, WORKFLOW_BUSINESS_STEP_EVENTS } from './workflow-business-step.js';
 import { validateWorkflowAssignmentRoutingBindings, validateWorkflowAssignmentRoutingPolicy } from './workflow-assignment-routing.js';
 import { requiresWorkflowRoleUnion, validateWorkflowRoleUnion } from './workflow-role-union.js';
@@ -724,6 +724,8 @@ export function compileRequiredPlatformCapabilitiesV3(
       : []),
     ...(requiresExtendedOwnedSubtableCapacity(config.data.resources)
       ? [{ code: 'data.extended-owned-subtable-capacity' as const, declaration: config.data.resources.filter((resource: any) => requiresExtendedOwnedSubtableCapacity([resource])) }] : []),
+    ...(requiresAggregateOwnedSubtableCapacity(config.data.resources)
+      ? [{ code: 'data.aggregate-owned-subtable-capacity' as const, declaration: config.data.resources.filter((resource: any) => requiresAggregateOwnedSubtableCapacity([resource])) }] : []),
     ...(config.data.resources.some((resource: JsonObject) => resource.schema.fields.some((field: JsonObject) => field.userCandidates !== undefined))
       ? [{ code: 'data.user-candidates' as const, declaration: config.data.resources.filter((resource: JsonObject) => resource.schema.fields.some((field: JsonObject) => field.userCandidates !== undefined)) }]
       : []),
@@ -6803,7 +6805,7 @@ function validateWorkflowReferences(config: JsonObject) {
     const taskPageErrors = validateWorkflowTaskPages(definition, new Map(
       (resources.get(definition.subject.resourceCode)?.schema.fields || [])
         .map((field: JsonObject) => [field.code, { ...resources.get(definition.subject.resourceCode)?.surface?.fields?.[field.code], ...field, system: ['id', 'revision', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy'].includes(field.code) }])
-    ), new Map([...resources].map(([code, resource]) => [code, new Map(resource.schema.fields.map((field: JsonObject) => [field.code, { ...resource.surface?.fields?.[field.code], ...field, system: ['id', 'revision', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy'].includes(field.code) }]))])));
+    ), new Map([...resources].map(([code, resource]) => [code, new Map(resource.schema.fields.map((field: JsonObject) => [field.code, { ...resource.surface?.fields?.[field.code], ...field, system: ['id', 'revision', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy'].includes(field.code) }]))])), dataOwnedRowLimit(resources.get(definition.subject.resourceCode)?.schema || {}));
     if (taskPageErrors.length) fail(taskPageErrors[0]!, `${pointer}/definition/taskPages`);
     const policyErrors = validateWorkflowInstanceCommandPolicies(definition, {
       appCode: config.appCode,
@@ -7631,7 +7633,8 @@ function validateResource(raw: any, pointer: string, appCode: string) {
   const code = resourceCode(resource.code, `${pointer}/code`);
   const name = requiredString(resource.name, `${pointer}/name`, 255);
   const schema = object(resource.schema, `${pointer}/schema`);
-  exactKeys(schema, ['fields'], `${pointer}/schema`);
+  exactKeys(schema, ['fields', 'ownedRowLimit'], `${pointer}/schema`, true);
+  if (schema.ownedRowLimit !== undefined && !isDataOwnedRowLimit(schema.ownedRowLimit)) fail('NATIVE_DATA_OWNED_ROW_LIMIT_INVALID', `${pointer}/schema/ownedRowLimit`);
   let fields;
   let invariants;
   let decimalReservationLifecycle;
@@ -7732,7 +7735,7 @@ function validateResource(raw: any, pointer: string, appCode: string) {
     ...resource,
     code,
     name,
-    schema: { fields },
+    schema: { fields, ...(schema.ownedRowLimit !== undefined ? { ownedRowLimit: schema.ownedRowLimit } : {}) },
     ...(resource.invariants === undefined ? {} : { invariants }),
     ...(decimalReservationLifecycle ? { decimalReservationLifecycle } : {}),
     ...(uniqueKeys !== undefined ? { uniqueKeys } : {}),

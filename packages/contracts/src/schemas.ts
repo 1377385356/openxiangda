@@ -1,5 +1,5 @@
 import { NATIVE_CONTRACT_CAPACITY_V2 } from './native-compiler/declaration-capacity.js';
-import { DATA_SUBTABLE_MAX_ROWS, DATA_TRANSACTION_MAX_OPERATIONS, DATA_TRANSACTION_MAX_BYTES } from './native-compiler/data-capacity.js';
+import { DATA_SUBTABLE_MAX_ROWS, DATA_SUBTABLE_MAX_TOTAL_ROWS, DATA_TRANSACTION_MAX_OPERATIONS, DATA_TRANSACTION_MAX_BYTES } from './native-compiler/data-capacity.js';
 import { nativeUniqueKeysJsonSchema } from './native-compiler/unique-keys.js';
 import { workflowAssignmentRoutingPolicySchema } from './native-compiler/workflow-assignment-routing.js';
 import { workflowBusinessCommandInvocationSchema } from './native-compiler/workflow-business-command.js';
@@ -2714,6 +2714,7 @@ export const dataResourceSchema = {
       additionalProperties: false,
       required: ["fields"],
       properties: {
+        ownedRowLimit: { type: 'integer', minimum: 1, maximum: DATA_SUBTABLE_MAX_TOTAL_ROWS },
         fields: {
           type: "array",
           minItems: 1,

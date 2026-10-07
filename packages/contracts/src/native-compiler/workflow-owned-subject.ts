@@ -1,4 +1,4 @@
-import { DATA_SUBTABLE_MAX_TOTAL_ROWS } from './data-capacity.js';
+import { DATA_SUBTABLE_MAX_ROWS, DATA_SUBTABLE_MAX_TOTAL_ROWS } from './data-capacity.js';
 
 /** Immutable create-only closure. It never grants ordinary child CRUD. */
 export interface WorkflowOwnedSubjectCreate {
@@ -66,7 +66,7 @@ export function assertWorkflowOwnedSubjectCreateResources(
       fail('RELATION_INVALID');
     children.add(relation.resourceCode);
     const maximum = relation.maxRows ?? 20;
-    if (!Number.isSafeInteger(maximum) || maximum < 1) fail('BUDGET_EXCEEDED');
+    if (!Number.isSafeInteger(maximum) || maximum < 1 || maximum > DATA_SUBTABLE_MAX_ROWS) fail('BUDGET_EXCEEDED');
     budget += maximum;
     for (const code of table.fieldCodes) {
       const definition = child!.get(code);

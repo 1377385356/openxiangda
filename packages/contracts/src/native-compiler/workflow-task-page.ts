@@ -187,7 +187,7 @@ function validExpression(value: unknown, fields: Set<string>, depth = 0, budget 
 
 /** Optional resource metadata lets the compiler and server reject unsupported controls. */
 type TaskResourceField = { type: string; system?: boolean; hidden?: boolean; widget?: string; subtable?: DataFieldSurface['subtable'] };
-export function validateWorkflowTaskPages(definition: Definition, resourceFields?: ReadonlyMap<string, TaskResourceField>, children?: ReadonlyMap<string, ReadonlyMap<string, TaskResourceField>>): string[] {
+export function validateWorkflowTaskPages(definition: Definition, resourceFields?: ReadonlyMap<string, TaskResourceField>, children?: ReadonlyMap<string, ReadonlyMap<string, TaskResourceField>>, ownedRowLimit = WORKFLOW_TASK_SUBTABLE_MAX_TOTAL_ROWS): string[] {
   const diagnostics: string[] = [];
   const pages = definition.taskPages;
   if (pages !== undefined && (!object(pages) || Object.keys(pages).length === 0 || Object.keys(pages).length > 16 || bytes(pages) > WORKFLOW_TASK_PAGE_DEFINITION_MAX_BYTES)) return ['WORKFLOW_TASK_PAGES_INVALID'];
@@ -227,7 +227,7 @@ export function validateWorkflowTaskPages(definition: Definition, resourceFields
         else diagnostics.push(...validateWorkflowTaskPages({ taskPages: { child: { title: '子行', fields: field.subtable.fields } } }, children?.get(resourceFields?.get(field.code)?.subtable?.resourceCode || '')).map(error => `${error}:${pointer}.${field.code}`));
       }
     }
-    if (rowBudget > WORKFLOW_TASK_SUBTABLE_MAX_TOTAL_ROWS || rowBudget < 0 || !Number.isSafeInteger(rowBudget)) diagnostics.push(`WORKFLOW_TASK_SUBTABLE_BUDGET_EXCEEDED:${pointer}`);
+    if (rowBudget > Math.min(ownedRowLimit, WORKFLOW_TASK_SUBTABLE_MAX_TOTAL_ROWS) || rowBudget < 0 || !Number.isSafeInteger(rowBudget) || !Number.isSafeInteger(ownedRowLimit) || ownedRowLimit < 1) diagnostics.push(`WORKFLOW_TASK_SUBTABLE_BUDGET_EXCEEDED:${pointer}`);
   }
   for (const [id, node] of Object.entries(definition.nodes || {})) if (object(node) && node.taskPageCode !== undefined) {
     if (!['approval', 'correction'].includes(node.kind) || typeof node.taskPageCode !== 'string' || !object(pages) || !Object.hasOwn(pages, node.taskPageCode)) diagnostics.push(`WORKFLOW_TASK_PAGE_NOT_FOUND:${id}`);

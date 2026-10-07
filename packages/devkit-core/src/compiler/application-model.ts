@@ -24,6 +24,7 @@ export interface AppDataModelDeclaration {
   recordPrint?: AppDataResourceDeclaration['recordPrint'];
   recordComments?: AppDataResourceDeclaration['recordComments'];
   recordDeletion?: AppDataResourceDeclaration['recordDeletion'];
+  ownedRowLimit?: AppDataResourceDeclaration['ownedRowLimit'];
   mutationOwner?: AppDataResourceDeclaration['mutationOwner'];
   invariants?: AppDataResourceDeclaration['invariants'];
   decimalReservationLifecycle?: AppDataResourceDeclaration['decimalReservationLifecycle'];
@@ -107,7 +108,7 @@ export function defineApplicationModule<const Module extends AppModuleDeclaratio
 
 /** One authoring projection into the platform's existing execution contract. */
 export const APP_MODEL_DECLARATION_KEYS = [
-  'code', 'name', 'fields', 'audit', 'workflowHistory', 'recordPrint', 'recordComments', 'recordDeletion', 'mutationOwner', 'invariants', 'decimalReservationLifecycle', 'uniqueKeys', 'dataPolicyCode', 'detailRouteCode',
+  'code', 'name', 'fields', 'audit', 'workflowHistory', 'recordPrint', 'recordComments', 'recordDeletion', 'mutationOwner', 'invariants', 'decimalReservationLifecycle', 'uniqueKeys', 'dataPolicyCode', 'detailRouteCode', 'ownedRowLimit',
 ] as const;
 
 export function materializeApplicationModules(modules: readonly AppModuleDeclaration[]) {
@@ -241,6 +242,7 @@ export function materializeApplicationModules(modules: readonly AppModuleDeclara
                     },
             }
           : {}),
+        ...(model.ownedRowLimit !== undefined ? { ownedRowLimit: model.ownedRowLimit } : {}),
         ...(model.invariants ? { invariants: model.invariants } : {}),
         ...(model.decimalReservationLifecycle !== undefined ? { decimalReservationLifecycle: model.decimalReservationLifecycle } : {}),
         ...(model.uniqueKeys !== undefined ? { uniqueKeys: model.uniqueKeys } : {}),

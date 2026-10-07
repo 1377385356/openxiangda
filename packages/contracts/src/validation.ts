@@ -1,4 +1,4 @@
-import { DATA_TRANSACTION_MAX_BYTES, DATA_TRANSACTION_MAX_OPERATIONS, serializedDataBytes } from './native-compiler/data-capacity.js';
+import { DATA_TRANSACTION_MAX_BYTES, DATA_TRANSACTION_MAX_OPERATIONS, serializedDataBytes, isDataOwnedRowLimit } from './native-compiler/data-capacity.js';
 import { isDataTransactionActorAuthorityGuard } from './native-compiler/actor-authority.js';
 import { DATA_TRANSACTION_RECORD_SET_MAX_RECORDS, isDataTransactionRecordSetMatchGuard } from './native-compiler/record-set-guard.js';
 import {
@@ -554,6 +554,9 @@ export function validateDataResource(value: unknown): Diagnostic[] {
   if (isRecord(value.surface) && isRecord(value.surface.list))
     diagnostics.push(...validateDataResourceListActions(value.surface.list.actions, 'surface.list.actions'));
   const schema = isRecord(value.schema) ? value.schema : {};
+  if (schema.ownedRowLimit !== undefined && !isDataOwnedRowLimit(schema.ownedRowLimit)) {
+    diagnostics.push(diagnostic('NATIVE_DATA_OWNED_ROW_LIMIT_INVALID', 'ownedRowLimit 必须是 1 到 1000 的整数，缺省为500', 'schema.ownedRowLimit'));
+  }
   const fields = Array.isArray(schema.fields) ? schema.fields : [];
   try {
     parseNativeUniqueKeys(value.uniqueKeys, fields.filter(isRecord) as any);

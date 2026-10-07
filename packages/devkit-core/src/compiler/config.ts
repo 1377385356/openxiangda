@@ -2,7 +2,7 @@ import { assertWorkflowNativeStagePolicy } from 'openxiangda-contracts';
 import { validateAuthenticatedPublicRead, AuthenticatedPublicReadContractError } from 'openxiangda-contracts/native-compiler';
 import { DATE_EVENT_RESERVED_DATA_FIELDS_V2, dateEventProjectionFieldsV2, dateEventProjectionEnvelopeSchemaV2 } from 'openxiangda-contracts/native-compiler';
 import { validateUserCandidateReferences, validateWorkflowUserCandidateBindings, UserCandidateContractError } from 'openxiangda-contracts';
-import { parseNativeUniqueKeys, DATA_SUBTABLE_MAX_TOTAL_ROWS } from 'openxiangda-contracts';
+import { parseNativeUniqueKeys, DATA_SUBTABLE_DEFAULT_TOTAL_ROWS, dataOwnedRowLimit, isDataOwnedRowLimit } from 'openxiangda-contracts';
 import { assertWorkflowOwnedSubjectCreate } from 'openxiangda-contracts';
 export { workflowBusinessCommandInvocationSchema } from 'openxiangda-contracts';
 import type { ManagedConcurrencyDeclaration } from 'openxiangda-contracts';
@@ -240,6 +240,8 @@ export interface AppDataResourceDeclaration {
     delete?: boolean;
   };
   fields: AppDataFieldDeclaration[];
+  /** Total owned-row capacity; defaults to 500, maximum 1000. */
+  ownedRowLimit?: number;
   /** 生成 user surface 的“我的记录 + 提交”标准页；home 缺省由首个启用资源承担。 */
   userSurface?: {
     home?: boolean;
@@ -4112,9 +4114,9 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
         (Array.isArray(policyFields) ? policyFields : []).map(raw => {
           const field = object(raw);
           const surfaceField = object(object(policyResource.surface).fields)[string(field.code)];
-          return [string(field.code), { ...object(surfaceField), type: string(field.type) }];
+          return [string(field.code), { ...object(surfaceField), ...field, type: string(field.type) }];
         })
-      ))) diagnostics.push(diagnostic('APP_CONFIG_WORKFLOW_TASK_PAGE_INVALID', error, `${path}.definition.taskPages`));
+      ), undefined, dataOwnedRowLimit(object(policyResource.schema)))) diagnostics.push(diagnostic('APP_CONFIG_WORKFLOW_TASK_PAGE_INVALID', error, `${path}.definition.taskPages`));
       for (const error of validateWorkflowInstanceCommandPolicies(definition, {
         appCode,
         capabilities: declaredCapabilities.map(item => string(object(item).code)),
@@ -7161,7 +7163,7 @@ export function materializeDataResource(
     appCode,
     code: declaration.code,
     name: declaration.name,
-    schema: { fields },
+    schema: { fields, ...(declaration.ownedRowLimit !== undefined ? { ownedRowLimit: declaration.ownedRowLimit } : {}) },
     ...(declaration.invariants ? { invariants: declaration.invariants } : {}),
     ...(declaration.decimalReservationLifecycle !== undefined ? { decimalReservationLifecycle: declaration.decimalReservationLifecycle } : {}),
     ...(uniqueKeys !== undefined ? { uniqueKeys } : {}),
@@ -7241,6 +7243,7 @@ export function validateAppDeclaration(value: unknown): Diagnostic[] {
     'recordPrint',
     'recordComments',
     'recordDeletion',
+    'ownedRowLimit',
   ]);
   const fieldKeys = new Set([
     'code',
@@ -7728,11 +7731,15 @@ export function validateAppDeclaration(value: unknown): Diagnostic[] {
       const configured = Number(object(field.subtable).maxRows);
       return total + (Number.isSafeInteger(configured) ? configured : 20);
     }, 0);
-    if (aggregateMaxRows > DATA_SUBTABLE_MAX_TOTAL_ROWS) {
+    const declaredLimit = declaration.resource.ownedRowLimit;
+    const limit = declaredLimit === undefined ? DATA_SUBTABLE_DEFAULT_TOTAL_ROWS : isDataOwnedRowLimit(declaredLimit) ? declaredLimit : 0;
+    if (declaredLimit !== undefined && !isDataOwnedRowLimit(declaredLimit)) diagnostics.push(diagnostic(
+      'NATIVE_DATA_OWNED_ROW_LIMIT_INVALID', 'ownedRowLimit 必须是1到1000的整数', `data.resources[${declaration.resourceIndex}].ownedRowLimit`));
+    if (aggregateMaxRows > limit) {
       diagnostics.push(
         diagnostic(
           'APP_CONFIG_DATA_SUBTABLE_AGGREGATE_MAX_ROWS_EXCEEDED',
-          `同一父资源的所有子表 maxRows 总和不能超过 ${DATA_SUBTABLE_MAX_TOTAL_ROWS}`,
+          `同一父资源的所有子表 maxRows 总和不能超过 ${limit}`,
           `data.resources[${declaration.resourceIndex}].fields`
         )
       );

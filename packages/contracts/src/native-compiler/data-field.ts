@@ -1,5 +1,5 @@
 import { parseDataFieldUserCandidates, type DataFieldUserCandidates } from './user-candidates.js';
-import { DATA_SUBTABLE_MAX_ROWS, DATA_SUBTABLE_MAX_TOTAL_ROWS } from './data-capacity.js';
+import { DATA_SUBTABLE_MAX_ROWS, dataOwnedRowLimit, isDataOwnedRowLimit } from './data-capacity.js';
 
 const FIELD_CODE_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,62}$/;
 const RESOURCE_CODE_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
@@ -329,7 +329,7 @@ export function validateNativeDataResourceReferencesV2(
   if (!Array.isArray(resources)) issue('NATIVE_ARRAY_REQUIRED', pointer);
   const declared = new Map<
     string,
-    { pointer: string; fields: NativeDataFieldV2[] }
+    { pointer: string; fields: NativeDataFieldV2[]; ownedRowLimit: number }
   >();
   resources.forEach((rawResource, resourceIndex) => {
     const resourcePointer = `${pointer}/${resourceIndex}`;
@@ -339,8 +339,12 @@ export function validateNativeDataResourceReferencesV2(
       issue('NATIVE_RESOURCE_CODE_INVALID', `${resourcePointer}/code`);
     }
     const schema = record(resource.schema, `${resourcePointer}/schema`);
+    if (schema.ownedRowLimit !== undefined && !isDataOwnedRowLimit(schema.ownedRowLimit)) {
+      issue('NATIVE_DATA_OWNED_ROW_LIMIT_INVALID', `${resourcePointer}/schema/ownedRowLimit`);
+    }
     declared.set(code, {
       pointer: resourcePointer,
+      ownedRowLimit: dataOwnedRowLimit(schema),
       fields: parseNativeDataFieldsV2(
         schema.fields,
         `${resourcePointer}/schema/fields`
@@ -354,7 +358,7 @@ export function validateNativeDataResourceReferencesV2(
     const aggregateMaxRows = declaration.fields
       .filter(field => field.type === 'subtable')
       .reduce((total, field) => total + (field.subtable?.maxRows ?? 20), 0);
-    if (aggregateMaxRows > DATA_SUBTABLE_MAX_TOTAL_ROWS) {
+    if (aggregateMaxRows > declaration.ownedRowLimit) {
       issue(
         'NATIVE_DATA_FIELD_SUBTABLE_AGGREGATE_MAX_ROWS_EXCEEDED',
         `${declaration.pointer}/schema/fields`

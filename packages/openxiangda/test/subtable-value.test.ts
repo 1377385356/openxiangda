@@ -31,6 +31,20 @@ test('seven full 50-row replacements form one 701-operation parent CAS transacti
   assert.deepEqual(operations[0], { operation: 'update', resourceCode: 'requests', id: 'parent-1', expectedRevision: 4, data: {} });
 });
 
+test('standard form consumes the parent budget for a full two-table replacement', () => {
+  const fields = [0, 1].map(index => ({ key: `items${index}`, subtable: { resourceCode: `children-${index}`, foreignKey: 'parent_id', orderField: 'display_order', maxRows: 500 } }));
+  const values = Object.fromEntries(fields.map(f => [f.key, [...Array.from({ length: 500 }, (_, index) => ({ key: `${f.key}-${index}`, state: 'deleted', id: `${f.key}-${index}`, revision: 2, data: {} })), ...Array.from({ length: 500 }, (_, index) => ({ key: `new-${index}`, state: 'created', data: { description: `new ${index}` } }))]]));
+  const definitions: any = Object.fromEntries(fields.map(f => [f.subtable.resourceCode, { code: f.subtable.resourceCode, surface: childSurface }]));
+  const input = { mode: 'edit' as const, resourceCode: 'requests', record: { id: 'parent', revision: 4 }, data: {}, values, subtableFields: fields as any, definitions, canWrite: () => true, canDelete: () => true };
+  assert.throws(() => buildResourceFormOperations(input), /AGGREGATE_MAX_ROWS/);
+  definitions.requests = { code: 'requests', ownedRowLimit: 1000 };
+  const operations = buildResourceFormOperations(input);
+  assert.equal(operations.length, 2001);
+  assert.equal(operations.filter(operation => operation.operation === 'delete').length, 1000);
+  assert.equal(operations.filter(operation => operation.operation === 'create').length, 1000);
+  assert.deepEqual(operations.at(-1), { operation: 'create', resourceCode: 'children-1', data: { description: 'new 499', parent_id: 'parent', display_order: 499 } });
+});
+
 test('plans parent references, updates, deletes and deterministic reorder', () => {
   const rows: SubtableDraftRow[] = [
     {

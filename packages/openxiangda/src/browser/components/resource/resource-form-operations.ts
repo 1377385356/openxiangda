@@ -1,5 +1,5 @@
 import type { DataTransactionOperation } from 'openxiangda-contracts/browser';
-import { DATA_TRANSACTION_MAX_OPERATIONS, DATA_SUBTABLE_MAX_TOTAL_ROWS } from 'openxiangda-contracts/browser';
+import { DATA_TRANSACTION_MAX_OPERATIONS, dataOwnedRowLimit } from 'openxiangda-contracts/browser';
 import { buildSubtableOperations, type SubtableDraftRow, type SubtableOperationPlanInput } from '../platform-fields/subtable-value';
 import type { SurfaceField } from './SurfaceFields';
 import type { GeneratedResourceDefinition } from './generated-resource-definition';
@@ -16,7 +16,8 @@ export function buildResourceFormOperations(input: {
   if (input.mode === 'edit' && (!input.record?.id || !Number.isSafeInteger(input.record.revision) || input.record.revision < 1)) {
     throw new Error('OPENXIANGDA_SUBTABLE_PARENT_REVISION_REQUIRED');
   }
-  if (input.subtableFields.reduce((total, field) => total + (field.subtable?.maxRows ?? 20), 0) > DATA_SUBTABLE_MAX_TOTAL_ROWS) {
+  const limit = dataOwnedRowLimit(input.definitions[input.resourceCode] || {});
+  if (input.subtableFields.reduce((total, field) => total + (field.subtable?.maxRows ?? 20), 0) > limit) {
     throw new Error('OPENXIANGDA_SUBTABLE_AGGREGATE_MAX_ROWS_EXCEEDED');
   }
   const operations: DataTransactionOperation[] = [input.mode === 'create'

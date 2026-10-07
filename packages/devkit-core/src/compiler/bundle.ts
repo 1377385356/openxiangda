@@ -2,7 +2,7 @@ import { compileNativeEventAction, requiresExtendedDeclarationCapacity, requires
 import { normalizeWorkflowOwnedSubjectCreate } from 'openxiangda-contracts/native-compiler';
 import { compileWorkflowBusinessStepHandlers, validateWorkflowBusinessStepSubscriptions, WORKFLOW_BUSINESS_STEP_EVENTS } from 'openxiangda-contracts/native-compiler';
 import { parseNativeUniqueKeys, parseDecimalReservationLifecycle } from 'openxiangda-contracts/native-compiler';
-import { DATA_AUDIT_METADATA_FIELDS, isDataAuditMetadataField, projectDataResourceView, requiresExtendedOwnedSubtableCapacity } from 'openxiangda-contracts';
+import { DATA_AUDIT_METADATA_FIELDS, isDataAuditMetadataField, projectDataResourceView, requiresExtendedOwnedSubtableCapacity, requiresAggregateOwnedSubtableCapacity } from 'openxiangda-contracts';
 import { nativeFieldRequiresCreateInputV2, requiresOwnedSubtableMinimumRows, requiresDateTimeMinutePrecision, requiresUserCandidateLaunchScope, requiresWorkflowRoleUnion } from 'openxiangda-contracts/native-compiler';
 import { createHash } from 'node:crypto';
 import {
@@ -1978,6 +1978,7 @@ function runtimeProtocolCapabilities(config: OpenXiangdaAppConfig) {
     ...(config.events?.subscriptions?.some(item => item.execution) ? ['events.native-data-actions'] : []),
     ...(config.data?.resources.length ? ['data-api-v2'] : []),
     ...(requiresExtendedOwnedSubtableCapacity(config.data?.resources || []) ? ['data.extended-owned-subtable-capacity'] : []),
+    ...(requiresAggregateOwnedSubtableCapacity(config.data?.resources || []) ? ['data.aggregate-owned-subtable-capacity'] : []),
     ...(requiresWorkflowRoleUnion(config.workflows?.bindings || []) ? ['workflow.role-union'] : []),
     ...(requiresUserCandidateLaunchScope(config.data?.resources || []) ? ['data.user-candidate-launch-scope'] : []),
     ...(requiresDateTimeMinutePrecision(config.data?.resources || []) ? ['data.datetime-minute-precision'] : []),
@@ -2068,6 +2069,7 @@ function normalizeDataResource(resource: DataResource): DataResource {
     code: resource.code,
     name: resource.name,
     schema: {
+      ...(resource.schema.ownedRowLimit !== undefined ? { ownedRowLimit: resource.schema.ownedRowLimit } : {}),
       fields: resource.schema.fields.map(field => ({
         code: field.code,
         type: field.type,
@@ -2302,6 +2304,7 @@ export function renderGeneratedContracts(
                 .split('\n')
                 .map((line, index) => (index === 0 ? line : `    ${line}`))
                 .join('\n')},\n` +
+              (item.schema.ownedRowLimit !== undefined ? `    ownedRowLimit: ${item.schema.ownedRowLimit},\n` : '') +
               (item.workflowHistory !== undefined ? `    workflowHistory: ${JSON.stringify(item.workflowHistory)},\n` : '') +
               (item.recordPrint !== undefined ? `    recordPrint: ${JSON.stringify(item.recordPrint)},\n` : '') +
               (item.recordComments !== undefined ? `    recordComments: ${JSON.stringify(item.recordComments)},\n` : '') +

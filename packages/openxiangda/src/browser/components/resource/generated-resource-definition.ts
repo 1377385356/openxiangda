@@ -4,6 +4,7 @@ export interface GeneratedResourceDefinition {
   code: string;
   viewCode?: string;
   name: string;
+  ownedRowLimit?: number;
   capabilities: {
     read: string;
     create: string;

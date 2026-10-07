@@ -1366,6 +1366,8 @@ export interface DataResource {
   name: string;
   schema: {
     fields: DataFieldDefinition[];
+    /** Explicit total owned-row budget; omitted = 500, maximum = 1000. */
+    ownedRowLimit?: number;
   };
   invariants?: DataResourceInvariant[];
   decimalReservationLifecycle?: DataDecimalReservationLifecycle;

@@ -575,6 +575,32 @@ test('rejects aggregate subtable capacity above one atomic transaction', () => {
   );
 });
 
+test('a model budget survives normalization, generated standard forms and Native capability negotiation', () => {
+  const declaration = allFieldDeclaration();
+  const parent = declaration.data!.resources[0]!;
+  const table = parent.fields.find(field => field.type === 'subtable')!;
+  table.subtable!.maxRows = 500;
+  const child = declaration.data!.resources.find(resource => resource.code === 'child-records')!;
+  declaration.data!.resources.push({ ...structuredClone(child), code: 'second-children', name: 'Second materials' });
+  parent.fields.push({ ...structuredClone(table), code: 'second', subtable: { ...table.subtable!, resourceCode: 'second-children' } });
+  parent.ownedRowLimit = 1000;
+  // Exercise the model -> view -> canonical resource path as used by applications.
+  declaration.modules = [{ code: 'capacity', models: declaration.data!.resources.map(resource => ({ code: resource.code, name: resource.name, fields: resource.fields, ...(resource.ownedRowLimit !== undefined ? { ownedRowLimit: resource.ownedRowLimit } : {}) })),
+    crud: declaration.data!.resources.map(resource => ({ model: resource.code })) }];
+  declaration.data!.resources = [];
+  const app = defineOpenXiangdaApp(declaration);
+  const sources = compileApplicationSources(app);
+  const native = compileNativeApplicationConfiguration({ appCode: app.app.code, configBytes: sources.config.content, contractBytes: sources.contracts.content,
+    expectedConfigDigest: sources.config.digest, expectedContractDigest: sources.contracts.digest });
+  assert.equal(sources.config.value.data.resources[0]!.schema.ownedRowLimit, 1000);
+  assert.match(sources.contracts.typescript, /ownedRowLimit: 1000/);
+  assert.equal(native.requiredPlatformCapabilities.some(capability => capability.code === 'data.aggregate-owned-subtable-capacity'), true);
+  const legacy = compileApplicationSources(defineOpenXiangdaApp(allFieldDeclaration()));
+  const old = compileNativeApplicationConfiguration({ appCode: legacy.config.value.appCode, configBytes: legacy.config.content, contractBytes: legacy.contracts.content,
+    expectedConfigDigest: legacy.config.digest, expectedContractDigest: legacy.contracts.digest });
+  assert.equal(old.requiredPlatformCapabilities.some(capability => capability.code === 'data.aggregate-owned-subtable-capacity'), false);
+});
+
 test('constrained users retain one source in storage, generated surfaces and normalized packages', () => {
   const userCandidates = {
     kind: 'app-role' as const, roleCode: 'reviewer', pageSize: 10,
