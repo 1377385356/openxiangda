@@ -123,7 +123,9 @@ export async function recoverRuntimeAuthorizationRead<T>(
         const delay = transport
           ? Math.max(suggested, Math.min(30_000, 2000 * 2 ** Math.min(transportBackoff++, 4))) * (1 + jitter * .25)
           : entryDeadline !== undefined
-          ? Math.min(15_000, Math.max(2000, suggested)) * (1 + jitter * .2)
+          // A queue receipt owns the next observation time. Capping its hint
+          // would poll before the server permits it, amplifying a busy entry.
+          ? Math.max(2000, suggested) * (1 + jitter * .2)
           : Math.max(suggested, Math.min(30_000, 2000 * 2 ** Math.min(backoff++, 4))) * (1 + jitter * .25);
         if (delay >= deadline - dependencies.now()) throw error;
         await dependencies.sleep(delay, controller.signal);

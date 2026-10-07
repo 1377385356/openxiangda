@@ -159,6 +159,58 @@ test('later receipt hints cannot refresh the original entrance deadline', async 
   assert.equal(calls, 4); assert.equal(time.dependencies.now(), 45_000);
 });
 
+test('distant entry receipts respect sixty-second hints and jitter within the heartbeat window', async () => {
+  for (const state of ['waiting', 'unavailable']) {
+    for (const random of [0, 1]) {
+      const time = clock(random); let calls = 0;
+      const value = await recoverRuntimeAuthorizationRead(async () => {
+        calls++;
+        if (calls === 1) throw failure(429, 'CONCURRENCY_BOOTSTRAP_BUSY', { data: {
+          state, remainingMs: 1_200_000, recoveryBudgetMs: 1_200_000, retryAfterMs: 60_000,
+        } });
+        assert.equal(time.dependencies.now(), random ? 72_000 : 60_000);
+        return 'verified';
+      }, undefined, time.dependencies);
+      assert.equal(value, 'verified'); assert.equal(calls, 2);
+      assert.deepEqual(time.delays, [random ? 72_000 : 60_000]);
+      assert.ok(time.delays[0] < 90_000);
+    }
+  }
+});
+
+test('entry hints beyond the original deadline never cause an early retry or refresh the deadline', async () => {
+  for (const hint of [60_000, Number.MAX_SAFE_INTEGER]) {
+    const time = clock(); let calls = 0;
+    const busy = failure(429, 'CONCURRENCY_BOOTSTRAP_BUSY', { data: {
+      state: 'waiting', remainingMs: 60_000, retryAfterMs: hint,
+    } });
+    await assert.rejects(recoverRuntimeAuthorizationRead(async () => { calls++; throw busy; },
+      undefined, time.dependencies), received => received === busy);
+    assert.equal(calls, 1); assert.deepEqual(time.delays, []);
+  }
+  const time = clock(); let calls = 0;
+  await assert.rejects(recoverRuntimeAuthorizationRead(async () => {
+    calls++;
+    throw failure(429, 'CONCURRENCY_BOOTSTRAP_BUSY', { data: {
+      state: 'waiting', remainingMs: calls === 1 ? 180_000 : 1_800_000, retryAfterMs: 60_000,
+    } });
+  }, undefined, time.dependencies), { code: 'CONCURRENCY_BOOTSTRAP_BUSY' });
+  assert.equal(calls, 3); assert.deepEqual(time.delays, [60_000, 60_000]);
+});
+
+test('leaving during a sixty-second receipt wait cancels without another identity read', async () => {
+  const controller = new AbortController(), reason = new Error('left queue');
+  let calls = 0;
+  const rejected = assert.rejects(recoverRuntimeAuthorizationRead(async () => {
+    calls++;
+    throw failure(429, 'CONCURRENCY_BOOTSTRAP_BUSY', { data: {
+      state: 'waiting', remainingMs: 1_200_000, retryAfterMs: 60_000,
+    } });
+  }, controller.signal), received => received === reason);
+  await settle(); controller.abort(reason); await rejected;
+  assert.equal(calls, 1);
+});
+
 test('entrance waiting caps inflated receipt duration at thirty minutes from the original start', async () => {
   const time = clock(); let calls = 0;
   await assert.rejects(recoverRuntimeAuthorizationRead(async () => {
