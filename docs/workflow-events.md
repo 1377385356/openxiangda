@@ -511,6 +511,11 @@ return <WorkflowSubmissionPage workflowCode="reinstatement" variant="mobile" for
 联动；PC/手机规则一致。异常保留输入并阻断新提交，下一次成功输入可恢复，原提交结果
 查询及已接受命令仍优先。异步资料读取放准备阶段，服务器仍校验资格和业务不变量。
 
+具名owned新建表单可传`subtableReadonlyFields: { lines: ['employeeNumber'] }`，
+把当前子行的派生值显示为只读，并从提交输入排除。表名与字段必须属于当前sealed
+owned闭包；配置错误会拒绝新表单。值仍可供应用联动展示，Server应重新计算可信值。
+此选项只收窄页面交互，不授予读写权限，也不改变普通CRUD或审批任务的字段规则。
+
 通用应用待办页通过 `frontend.user.applicationTodoCenter: true` 启用，平台同时提供
 `/todos` 和 `/m/todos`。它只投影当前登录用户的 Notification Hub 收件人数据，
 `查看详情` 使用上述统一导航解析；待办页不常驻业务详情，审批命令仍在目标 Workflow

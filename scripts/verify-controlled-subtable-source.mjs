@@ -37,6 +37,7 @@ try{
   const phone=page.locator('input[id$="_phone"]');await expect(phone.first()).toHaveValue('original-a');await phone.first().fill('manual-a');
   await choose('姓名','人物乙',1);await expect(phone.first()).toHaveValue('manual-a');await expect(phone.nth(1)).toHaveValue('original-b');
   await choose('时段','可选时段',0);await expect(phone.first()).toHaveValue('manual-a');
+  const employee=page.locator('input[id$="_employeeNumber"]');if(mobile){await expect(employee.first()).toBeDisabled();await expect(employee.first()).toHaveValue('derived-person-a');}else{await expect(employee).toHaveCount(0);await expect(page.getByText('derived-person-a',{exact:true})).toBeVisible();}
   assert.equal(queries.filter(q=>q.fieldCode==='time').at(-1).body.bindings.contextId,'config-0');
   const values=JSON.parse(await page.getByTestId('values').textContent());assert.equal(values.lines[0].data.person.snapshot,undefined);assert.equal(values.lines[1].data.person.snapshot,undefined);assert.equal(values.lines[0].data.contextId,'config-0');
   assert.deepEqual(errors,[]);await page.screenshot({path:join(output,`${mobile?'mobile':'pc'}.png`),fullPage:true});checks.push({mobile,hiddenBinding:true,manualFirstRowPreserved:true,snapshotConsumed:true,queries:queries.length});await context.close();

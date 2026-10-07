@@ -1,7 +1,21 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import dayjs from 'dayjs';
-import { namedProcessFormValues, standardProcessFormValues } from '../src/browser/components/workflow/standard-process-values.js';
+import { assertNamedSubtableReadonlyFields, namedProcessFormValues, standardProcessFormValues } from '../src/browser/components/workflow/standard-process-values.js';
+
+test('named child readonly presentation omits derived input and preserves original per-table values', () => {
+  const child: any = {fields:{person:{type:'resource-ref.single',widget:'resource'},employeeNumber:{type:'text.short',widget:'text'},phone:{type:'text.short',widget:'text'}}};
+  const parent: any = {fields:{items:{type:'subtable',subtable:{resourceCode:'lines',foreignKey:'parentId'}},other:{type:'subtable',subtable:{resourceCode:'lines',foreignKey:'parentId'}}}};
+  const grant={mode:'create' as const,resourceCode:'requests',subtables:['items','other'].map(fieldCode=>({fieldCode,fieldCodes:['person','employeeNumber','phone']}))};
+  const row={key:'original-row',state:'created' as const,data:{person:{value:'selected',label:'人物'},employeeNumber:'derived',phone:'manual'}};
+  const input={items:[row],other:[structuredClone(row)]},before=structuredClone(input);
+  const output=namedProcessFormValues(input,parent,{lines:{surface:child}},grant,{items:['employeeNumber']}) as any;
+  assert.deepEqual(output.items[0],{key:row.key,state:'created',data:{person:row.data.person,phone:'manual'}});
+  assert.equal(output.other[0].data.employeeNumber,'derived');assert.deepEqual(input,before);
+  assert.equal((namedProcessFormValues(input,parent,{lines:{surface:child}},grant) as any).items[0].data.employeeNumber,'derived');
+  for(const fields of [{items:['undeclared']},{unknown:['phone']}])assert.throws(()=>assertNamedSubtableReadonlyFields(parent,grant,fields),/READONLY_FIELDS_INVALID/);
+  assert.throws(()=>assertNamedSubtableReadonlyFields(parent,undefined,{items:['phone']}),/READONLY_FIELDS_INVALID/);
+});
 
 test('named create encodes only its own child whitelist even when no ordinary child field is writable', () => {
   const child: any = { fields: { date: { type: 'date', widget: 'date' }, score: { type: 'number.integer', widget: 'number' },

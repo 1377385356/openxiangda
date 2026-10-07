@@ -79,6 +79,8 @@ export interface SubtableFieldProps {
   /** Sealed named create intent: new local rows only, with operation uploads. */
   launch?: {
     fieldCodes: readonly string[];
+    /** Presentation only: derived values remain visible but are not user input. */
+    readonlyFieldCodes?: readonly string[];
     upload: NonNullable<SurfaceFieldRenderers['upload']>;
     reference?: SurfaceFieldRenderers['referenceLaunch'];
   };
@@ -178,7 +180,7 @@ export function SubtableField({
     ? launch.fieldCodes.includes(child.key) && (!row || row.state === 'created')
     : task ? !row || taskState(child, row)?.visible === true : fieldReadable(child, hasReadCapability, identity.isAppSuperAdmin);
   const canWriteField = (child: SurfaceField, operation: 'create' | 'update', row?: SubtableDraftRow) => launch
-    ? operation === 'create' && (!row || row.state === 'created') && launch.fieldCodes.includes(child.key) && child.widget !== 'readonly' && !child.hidden && !child.system
+    ? operation === 'create' && (!row || row.state === 'created') && launch.fieldCodes.includes(child.key) && !launch.readonlyFieldCodes?.includes(child.key) && child.widget !== 'readonly' && !child.hidden && !child.system
     : task
     ? (!row ? task.page.fields.some(item => item.code === child.key && !item.readonly) : Boolean(taskState(child, row)?.visible && !taskState(child, row)?.readonly))
     : fieldWritable(child, operation, hasCapability, identity.isAppSuperAdmin);

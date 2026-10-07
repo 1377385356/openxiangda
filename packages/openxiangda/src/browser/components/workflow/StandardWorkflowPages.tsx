@@ -129,7 +129,7 @@ import { ResourceFormContent, type ResourceFormDrawerState } from '../resource/R
 import { WorkflowRecordEditor } from './WorkflowRecordEditor';
 import { PlatformAvatar } from '../PlatformAvatar';
 import { SubtableField } from '../platform-fields/SubtableField';
-import { namedProcessFormValues, standardProcessFormValues } from './standard-process-values';
+import { assertNamedSubtableReadonlyFields, namedProcessFormValues, standardProcessFormValues } from './standard-process-values';
 import { fieldWritable } from '../resource/resource-page-helpers';
 import { workflowSubmissionFormProjection, workflowSubmissionPrefill, workflowSubmissionValueLinkage, type WorkflowSubmissionFieldStates } from './workflow-submission-form';
 export type { WorkflowSubmissionFieldState, WorkflowSubmissionFieldStates } from './workflow-submission-form';
@@ -2171,6 +2171,8 @@ export interface WorkflowSubmissionFormOptions {
   fieldState?: (values: Readonly<JsonObject>) => WorkflowSubmissionFieldStates;
   /** Synchronous canonical patch after user input, limited to editable launch fields. */
   valueLinkage?: (changed: Readonly<JsonObject>, values: Readonly<JsonObject>) => JsonObject;
+  /** Display derived owned-child values without including them in named create input. */
+  subtableReadonlyFields?: Readonly<Record<string, readonly string[]>>;
   intro?: ReactNode;
   /** Blocks only a new form; original submission recovery always takes priority. */
   preparation?: ReactNode;
@@ -2769,7 +2771,7 @@ export function WorkflowSubmissionPage({
       setPendingSubmission(dispatched); setRecoveryError(null); setRecoveryObservedAbsent(false);
     };
     try {
-      const encoded = namedIntent ? namedProcessFormValues(values, subjectDefinition.surface, resources, namedIntent.ownedSubject)
+      const encoded = namedIntent ? namedProcessFormValues(values, subjectDefinition.surface, resources, namedIntent.ownedSubject, formOptions?.subtableReadonlyFields)
         : standardProcessFormValues(values, subjectDefinition.surface, resources,
           (field, mode) => fieldWritable(field, mode === 'create' ? 'create' : 'edit', hasCapability, identity.isAppSuperAdmin));
       const data = workflowSubmissionFormProjection(fields, encoded, formOptions?.fieldState?.(encoded)).values;
@@ -2957,8 +2959,10 @@ export function WorkflowSubmissionPage({
     ? {
         renderSubtable: ({ field, disabled, operation, recordId }) => {
           const grant = namedIntent?.ownedSubject?.subtables.find(table => table.fieldCode === field.key);
+          assertNamedSubtableReadonlyFields(subjectDefinition.surface, namedIntent?.ownedSubject, formOptions?.subtableReadonlyFields || {});
           return <SubtableField field={field} disabled={disabled} operation={operation} parentRecordId={recordId} mobile={variant === 'mobile'}
             {...(namedIntent && grant ? { launch: { fieldCodes: grant.fieldCodes,
+              readonlyFieldCodes: formOptions?.subtableReadonlyFields?.[field.key],
               reference: { workflowCode: definition.code, operationCode: namedIntent.operationCode, subtableFieldCode: field.key },
               upload: (childField, file) => uploadOperationManagedFile({
                 operationCode: uploadOperationCode, resourceCode: field.subtable!.resourceCode,
