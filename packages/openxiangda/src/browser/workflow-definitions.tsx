@@ -1,4 +1,4 @@
-import { createContext, useContext, type ReactNode } from 'react';
+import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import {
   WORKFLOW_SUMMARY_MAX_FIELDS,
   type AppWorkflowLaunchContextDeclaration,
@@ -177,9 +177,10 @@ export function OpenXiangdaWorkflowDefinitionsProvider({
   definitions: StandardWorkflowDefinitionsInput;
   taskForms?: WorkflowTaskFormBehaviors;
 }) {
+  const normalized = useMemo(() => normalizeWorkflowDefinitions(definitions), [definitions]);
   return (
     <WorkflowDefinitionsContext.Provider
-      value={normalizeWorkflowDefinitions(definitions)}
+      value={normalized}
     >
       <WorkflowTaskFormsContext.Provider value={taskForms}>{children}</WorkflowTaskFormsContext.Provider>
     </WorkflowDefinitionsContext.Provider>
