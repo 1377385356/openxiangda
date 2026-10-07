@@ -238,7 +238,8 @@ copy: {
 接收 binding 支持 `fixed_users`、`initiator`、`input_users`、`form_field_users`、
 `app_role`、`app_role_in_scope`、`previous_node_actor`。仅使用事务内原生来源，
 不支持 `application_provider` 或需要申请人交互的 `initiator_select`。名单按用户去重，
-每次进入最多 20 人；`min/max` 默认 1/20，非空名单仍必须符合声明的下限。
+每次进入最多 200 人；`min/max` 默认 1/20，超过20人须由开发者显式声明更大的 `max`。
+未声明及既有显式20人预算保持；非空名单仍必须符合声明的下限。
 角色查询超过 200 条有效成员行时明确拒绝，不能使用截断后的名单。
 范围角色要求对应范围的 `cc` 授权（或未限制操作、`*`），仅 `approve` 不满足。
 抄送不套用审批代理。
@@ -350,7 +351,7 @@ Native Data 事件的 capture plan 由当前 Head 的 Event、Data、AuthZ revis
 `acceptedCommandDeactivationPolicy`：`finish-pinned` 让已接受的 durable process
 command 按固定版本完成，`cancel-on-deactivate` 在声明删除后取消尚未启动的命令；
 既有 Workflow instance 始终按固定版本继续。审批人 Provider 的 `min/max`
-默认 1/200，最大 200；自动抄送默认 1/20，最大 20。
+默认 1/200，最大 200；自动抄送默认 1/20，显式声明最大 200。
 需要按流程实例串行投递时只声明 `ordering: 'workflow-instance'`，不接受下划线别名。
 
 平台按 desired set 直接覆盖环境 Head，不做版本比较。因此 `openxiangda deploy`

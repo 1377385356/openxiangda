@@ -114,7 +114,7 @@ jointReviewers: {
 管理员仅在代码开放人员来源配置的节点中调整职责组合；单选仍保存 `roleCode`，
 多选保存 `roleCodes`。保存、版本激活均检查所有职责，任何职责失效或查询失败都不能
 变成部分名单。总候选最多 200 个成员身份；去重后的审批上限仍受原 binding 限制，
-自动抄送最多 20 人。声明自动协商 `workflow.role-union@1.0.0`，无需初始化开关。
+自动抄送遵守原binding人数预算，默认20、显式最大200人。声明自动协商 `workflow.role-union@1.0.0`，无需初始化开关。
 
 管理范围检索使用 `listRoleManagementScopeValues(dimensionCode, { keyword, limit, offset })`，返回 `NativeRoleManagementScopeValuePage` 的 `id/label` 与 `limit/offset`。它使用 `openxiangda.native-role-management-scope-value-page/v2`，与 Data 字段选择器的 `value/label/cursor` 协议分开。权限仍要求对成员的分配或更新能力；只读权限不因此扩张。
 
@@ -202,7 +202,7 @@ export function ReadableWorkflow({ workflowCode, version }: {
 
 模式为 `single/any/all/sequence` 的允许子集；可维护来源限 `fixed_users/app_role/app_role_in_scope`，范围角色必须已有代码声明的 scope。按钮 code 保持同意、拒绝、退回、转交、委托、加签的稳定语义；同意和拒绝不能关闭。只有同意/拒绝支持意见规则；拒绝默认必填，固定节点代码可用 operationPolicy.reject.commentRequired: false 显式选填。管理员可收紧选填规则，也可恢复代码明确允许的选填；不能放宽代码必填或未声明时的拒绝默认必填。已进入的任务保留冻结规则。字段显隐、填写与必填行为由应用页面和代码维护，不提供流程节点的字段管理覆盖。可编译声明见 `examples/workflow-administration/declaration.ts`。
 
-自动抄送节点仅开放名称、说明和显式声明的 `administration.assigneeProviders`；未开放时接收来源只读。共享编辑器显示“抄送人”，不显示审批方式或审批按钮，固定名单最多20人。`next`、空人策略和通知策略仍归代码；新配置只影响以后进入，过去抄送名单保持冻结。完整例子见 `examples/workflow-administration/automatic-cc.ts`，执行及读取边界见[自动抄送](workflow-events.md#automatic-cc)。
+自动抄送节点仅开放名称、说明和显式声明的 `administration.assigneeProviders`；未开放时接收来源只读。共享编辑器显示“抄送人”，不显示审批方式或审批按钮，固定名单遵守原binding的 `min/max`，默认1–20、显式最大200人；管理员不能扩大该预算。`next`、空人策略和通知策略仍归代码；新配置只影响以后进入，过去抄送名单保持冻结。完整例子见 `examples/workflow-administration/automatic-cc.ts`，执行及读取边界见[自动抄送](workflow-events.md#automatic-cc)。
 
 应用自定义管理页可使用 `WorkflowNodeConfigurationEditor`（`openxiangda/react`），输入同一读面中的节点、principals 和 context.headRevision，放在平台 App/UI 作用域内。它复用下列当前用户 SDK：
 
