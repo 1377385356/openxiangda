@@ -1,5 +1,6 @@
 import { DATA_RESOURCE_MAX_FIELDS, WORKFLOW_LAUNCH_MAX_INPUTS } from './native-compiler/data-capacity.js';
 import { NATIVE_CONTRACT_CAPACITY_V2 } from './native-compiler/declaration-capacity.js';
+import { NATIVE_ARTIFACT_CAPACITY_V2 } from './native-compiler/artifact-capacity-limits.js';
 import { DATA_SUBTABLE_MAX_ROWS, DATA_SUBTABLE_MAX_TOTAL_ROWS, DATA_TRANSACTION_MAX_OPERATIONS, DATA_TRANSACTION_MAX_BYTES } from './native-compiler/data-capacity.js';
 import { nativeUniqueKeysJsonSchema } from './native-compiler/unique-keys.js';
 import { workflowAssignmentRoutingPolicySchema } from './native-compiler/workflow-assignment-routing.js';
@@ -4131,8 +4132,8 @@ export const configurationCompatibilitySchema = {
         "requestBytes",
       ],
       properties: {
-        configurationCanonicalBytes: { const: 4 * 1024 * 1024 },
-        contractCanonicalBytes: { const: 8 * 1024 * 1024 },
+        configurationCanonicalBytes: { enum: [NATIVE_ARTIFACT_CAPACITY_V2.legacyConfigBytes, NATIVE_ARTIFACT_CAPACITY_V2.configBytes] },
+        contractCanonicalBytes: { const: NATIVE_ARTIFACT_CAPACITY_V2.contractBytes },
         requestBytes: { const: 10 * 1024 * 1024 },
       },
     },
@@ -4170,7 +4171,7 @@ export const configurationValidationRequestSchema = {
       properties: {
         schemaVersion: nonEmptyString,
         digest,
-        canonical: { type: "string", minLength: 1, maxLength: 4 * 1024 * 1024 },
+        canonical: { type: "string", minLength: 1, maxLength: NATIVE_ARTIFACT_CAPACITY_V2.configBytes },
       },
     },
     contract: {
@@ -4180,7 +4181,7 @@ export const configurationValidationRequestSchema = {
       properties: {
         schemaVersion: nonEmptyString,
         digest,
-        canonical: { type: "string", minLength: 1, maxLength: 8 * 1024 * 1024 },
+        canonical: { type: "string", minLength: 1, maxLength: NATIVE_ARTIFACT_CAPACITY_V2.contractBytes },
       },
     },
   },

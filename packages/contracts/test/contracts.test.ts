@@ -453,7 +453,7 @@ test('publishes one bounded atomic application contract compatibility tuple', ()
   assert.equal(
     contractSchemas.configurationValidationRequest.properties.configuration
       .properties.canonical.maxLength,
-    4 * 1024 * 1024
+    8 * 1024 * 1024
   );
   assert.equal(
     contractSchemas.configurationValidationRequest.properties.contract
@@ -464,7 +464,7 @@ test('publishes one bounded atomic application contract compatibility tuple', ()
     contractSchemas.platformCapabilities.properties.configurationCompatibility
       .properties.limits.properties,
     {
-      configurationCanonicalBytes: { const: 4 * 1024 * 1024 },
+      configurationCanonicalBytes: { enum: [4 * 1024 * 1024, 8 * 1024 * 1024] },
       contractCanonicalBytes: { const: 8 * 1024 * 1024 },
       requestBytes: { const: 10 * 1024 * 1024 },
     }

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.59.6",
+  "status": "reviewed",
+  "title": "配置容量预检与共享预算对齐",
+  "summary": "修复多流程应用部署预检使用旧配置预算的问题，兼容旧4 MiB和新8 MiB声明，保留能力协商、完整编译与总请求限制。",
+  "newFeatures": [],
+  "fixes": [
+    "配置兼容性能力声明接受已支持的4／8 MiB预算，其他上限和错误类型继续拒绝。",
+    "请求Schema与编译器共用配置预算；浏览器Schema只依赖纯常量，不引入Node加密模块。"
+  ],
+  "affectedUsers": ["在V2平台部署或检查较大多流程应用的开发者；旧小配置与V1不受影响。"],
+  "upgradeSteps": ["消费精确配套工具组合，核验平台与工具的共享编译器摘要一致；本批先本地验证，不自动发布或激活生产应用。"],
+  "knownLimitations": [
+    "配置8 MiB、契约8 MiB仍受总请求10 MiB限制，任务页与JSON预算保持。",
+    "较大配置仍要求平台支持application.extended-configuration-bytes能力，旧站点缺失时在上传前拒绝。"
+  ],
+  "issues": [],
+  "compatibility": {
+    "node": ">=24",
+    "platform": "共享编译器同源配对；较大配置要求application.extended-configuration-bytes@1.0.0",
+    "v1": "V1不消费本批V2契约"
+  }
+}
