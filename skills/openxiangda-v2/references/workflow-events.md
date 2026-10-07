@@ -620,6 +620,31 @@ outbox容量等事务故障会回滚，处理器按原键核对后重交，不�
 等待处理器的失败从原事件管理受控重放，保留原执行键。普通详情只显示安全状态
 摘要；原输入、输出和外部回执不放入普通时间线。
 
+### 在固定步骤内写入业务数据 {#step-data-transaction}
+
+审批中途需要更新台账时，使用 `reconciled-effect` 动作，并在固定 `handler` 上声明
+`dataTransaction: true`。编译器自动要求 `workflow.step-data-transaction@1.0.0`，
+标记进入签名处理器合同；旧具名版本不可直接改变，增加新版本时保留原实现。
+
+在已验证并领取的事件处理器内，注入 `OpenXiangdaApplicationDataApiService`。
+`reconcile` 先调用 `resolveWorkflowStepData()`：`committed` 用原事务结果重建固定
+`output/receipt`，`not_observed` 返回 `not-executed`，响应未知或失败保留原执行键。
+`handle` 调用 `commitWorkflowStepData({ guards, operations })`。执行ID从事件上下文
+取得，应用不传人、角色、下一节点或幂等键。每个 execution 只允许一个 Native 事务，
+内容不同返回冲突；普通事务不能使用保留的 `workflow-step:` 键。
+
+计划必须包含流程 subject 的 `record-match` 或 `record-assert` guard，其 `revision`
+等于事件数据的固定 `dataRevision`。Native 继续强制来源读取权限、目标写入权限和
+CAS；此接口不能直接修改流程 subject，任务补填仍使用原任务页面。数据计划遵循
+Native 的2016操作、2MiB限制，不支持 decimalReservation 或排队命令。复用原应用
+`data:read/data:write/data:transaction` 权限，不额外授予全校数据读取。
+
+平台先取得环境围栏、实例和步骤锁，再检查有效投递/领取租约，最后执行数据计划。
+业务行、数据事件、Native回执和步骤的回执引用一起提交；任一行失败或租约过期全部
+回滚。取消先取得锁时拒绝新写；数据先提交后取消、换阶段或换Head，resolve仍恢复
+同一原回执。原回执缺失时明确拒绝，不能以未知结果为由重新写入。步骤输出和后续
+流转继续由原事件回执处理，晚拒绝不自动撤销已写台账；补偿属于应用显式业务规则。
+
 ## 代码任务页面与补填 {#task-page-submit}
 
 需要办理人补填时，在定义的 `taskPages` 声明命名页面，审批节点以

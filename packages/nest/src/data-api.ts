@@ -1,5 +1,5 @@
 import { assertWorkflowNativeStageGuard, assertWorkflowNativeStageSourceGuard } from 'openxiangda-contracts';
-import { Inject, Injectable, Scope, UnauthorizedException } from '@nestjs/common';
+import { Inject, Injectable, Optional, Scope, UnauthorizedException } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
 import type {
   DataPage,
@@ -20,8 +20,12 @@ import type {
   DataBusinessCommandCommit,
   DataBusinessCommandIdentity,
   DataBusinessCommandResolution,
+  WorkflowStepDataCommand,
+  WorkflowStepDataIdentity,
+  WorkflowStepDataResolution,
 } from 'openxiangda-contracts';
-import { SCHEMA_VERSIONS } from 'openxiangda-contracts';
+import { SCHEMA_VERSIONS, WORKFLOW_STEP_DATA_COMMAND_SCHEMA } from 'openxiangda-contracts';
+import { OpenXiangdaEventContext } from './event-context.js';
 import { OpenXiangdaApplicationCredentials } from './application-credentials.js';
 import { assertOpenXiangdaRoleAssertions, requireOpenXiangdaBusinessActionContext } from './business-action-context.js';
 import { OpenXiangdaPlatformClient } from './platform-client.js';
@@ -532,8 +536,32 @@ export class OpenXiangdaApplicationDataApiService {
     @Inject(OpenXiangdaPlatformClient)
     private readonly platform: OpenXiangdaPlatformClient,
     @Inject(OpenXiangdaApplicationCredentials)
-    private readonly credentials: OpenXiangdaApplicationCredentials
+    private readonly credentials: OpenXiangdaApplicationCredentials,
+    @Optional() @Inject(OpenXiangdaEventContext)
+    private readonly eventContext?: OpenXiangdaEventContext
   ) {}
+
+  /** Reconcile first; one Native transaction uses the original fixed step execution. */
+  async commitWorkflowStepData(data: WorkflowStepDataCommand['data']): Promise<WorkflowStepDataResolution> {
+    const identity = this.workflowStepDataIdentity();
+    return this.credentials.withAuthorization(authorization =>
+      this.platform.commitWorkflowStepData(authorization, { ...identity, data }));
+  }
+
+  /** Read the original Native receipt even after cancellation or a new Head. */
+  async resolveWorkflowStepData(): Promise<WorkflowStepDataResolution> {
+    const identity = this.workflowStepDataIdentity();
+    return this.credentials.withAuthorization(authorization =>
+      this.platform.resolveWorkflowStepData(authorization, identity));
+  }
+
+  private workflowStepDataIdentity(): WorkflowStepDataIdentity {
+    const event = this.eventContext?.current(), step = event?.workflowStep;
+    if (!step || step.mode !== 'reconciled-effect' || step.dataTransaction !== true ||
+        event.subscriptionCode !== step.handlerCode || event.idempotencyKey !== step.executionId)
+      throw new UnauthorizedException('WORKFLOW_STEP_DATA_VERIFIED_CONTEXT_REQUIRED');
+    return { schemaVersion: WORKFLOW_STEP_DATA_COMMAND_SCHEMA, executionId: step.executionId };
+  }
 
   async query<T extends Record<string, unknown>>(
     resourceCode: string,

@@ -19,6 +19,7 @@ export * from './workflow-initiator-approval.js';
 export * from './workflow-completion-deadline.js';
 export * from './workflow-rejection-notification.js';
 export * from './workflow-business-step.js';
+export * from './workflow-step-data.js';
 export * from './workflow-business-command.js';
 export * from './workflow-launch-preflight.js';
 export * from './workflow-assignment-routing.js';

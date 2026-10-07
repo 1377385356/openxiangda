@@ -5238,9 +5238,10 @@ export const workflowBusinessStepResultSchema = {
 export const workflowBusinessStepHandlerSchema = {
   type: 'object', additionalProperties: false, required: ['version', 'mode', 'inputSchema', 'outputSchema'],
   properties: {
-    version: { type: 'integer', minimum: 1, maximum: 1_000_000 }, mode: { enum: ['pure', 'reconciled-effect'] },
+    version: { type: 'integer', minimum: 1, maximum: 1_000_000 }, mode: { enum: ['pure', 'reconciled-effect'] }, dataTransaction: { const: true },
     inputSchema: { type: 'object' }, outputSchema: { type: 'object' },
   },
+  allOf: [{ if: { required: ['dataTransaction'] }, then: { properties: { mode: { const: 'reconciled-effect' } } } }],
 } as const;
 
 export const eventReceiptCommandSchema = {
@@ -5548,7 +5549,8 @@ export const workflowBusinessStepNodeSchema = {
     id: nonEmptyString, kind: { const: 'action' }, title: nonEmptyString, next: nonEmptyString,
     handler: {
       type: 'object', additionalProperties: false, required: ['code', 'version', 'mode'],
-      properties: { code: { type: 'string', pattern: '^[a-z][a-z0-9-]{0,100}$' }, version: { type: 'integer', minimum: 1, maximum: 1_000_000 }, mode: { enum: ['pure', 'reconciled-effect'] } },
+      properties: { code: { type: 'string', pattern: '^[a-z][a-z0-9-]{0,100}$' }, version: { type: 'integer', minimum: 1, maximum: 1_000_000 }, mode: { enum: ['pure', 'reconciled-effect'] }, dataTransaction: { const: true } },
+      allOf: [{ if: { required: ['dataTransaction'] }, then: { properties: { mode: { const: 'reconciled-effect' } } } }],
     },
     inputSchema: { type: 'object' }, outputSchema: { type: 'object' },
     inputs: { type: 'object', maxProperties: 32, additionalProperties: {

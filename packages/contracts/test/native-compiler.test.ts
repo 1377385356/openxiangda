@@ -6,6 +6,17 @@ import { canonicalJson, sha256Digest } from '../src/canonical.js';
 import * as esm from '../dist/native-compiler/index.js';
 const cjs = createRequire(import.meta.url)('../dist/native-compiler/index.cjs') as typeof esm;
 const corpus = JSON.parse(readFileSync(new URL('./fixtures/configuration-compatibility-corpus.json', import.meta.url), 'utf8'));
+test('stage data transactions negotiate support only for opted-in fixed actions in ESM and CJS', () => {
+  const config = JSON.parse(corpus.configuration.canonical);
+  const nodes = config.workflows.definitions[0].definition.nodes;
+  nodes.write = { id: 'write', kind: 'action', handler: { mode: 'reconciled-effect' } };
+  for (const implementation of [esm, cjs]) {
+    assert.equal(implementation.compileRequiredPlatformCapabilitiesV3(config).some(item => item.code === 'workflow.step-data-transaction'), false);
+    nodes.write.handler.dataTransaction = true;
+    assert.equal(implementation.compileRequiredPlatformCapabilitiesV3(config).find(item => item.code === 'workflow.step-data-transaction')?.contractVersion, '1.0.0');
+    delete nodes.write.handler.dataTransaction;
+  }
+});
 function input(config = JSON.parse(corpus.configuration.canonical)) {
   return {
     appCode: corpus.appCode,

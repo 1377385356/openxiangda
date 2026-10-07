@@ -5,6 +5,7 @@ const managedReadRequest = Symbol('managed-read');
 import { createHash, randomUUID } from 'node:crypto';
 import { canonicalDataBusinessIntent, DATA_BUSINESS_COMMAND_SCHEMA, parseDataBusinessCommandResolution,
   type DataBusinessCommandCommit, type DataBusinessCommandIdentity, type DataBusinessCommandResolution } from 'openxiangda-contracts';
+import { parseWorkflowStepDataResolution } from 'openxiangda-contracts';
 import { HttpException, Inject, Injectable, Optional } from "@nestjs/common";
 import type {
   DataPage,
@@ -22,6 +23,9 @@ import type {
   DataRecord,
   DataTransactionRequest,
   DataTransactionResult,
+  WorkflowStepDataCommand,
+  WorkflowStepDataIdentity,
+  WorkflowStepDataResolution,
   CurrentInitiatorDirectorySnapshot,
   SelectedUserDirectorySnapshot,
   AssignmentCandidatePage,
@@ -729,6 +733,24 @@ export class OpenXiangdaPlatformClient {
       )}`,
       { headers: this.identityHeaders(authorization) }
     );
+  }
+
+  async commitWorkflowStepData(authorization: string, input: WorkflowStepDataCommand): Promise<WorkflowStepDataResolution> {
+    const result = await this.request<unknown>(
+      `${this.applicationPath()}/native/workflow-step-data/commands`, {
+        method: 'POST', headers: this.identityHeaders(authorization),
+        body: JSON.stringify({ ...input, environmentKey: this.options.environmentKey }),
+      });
+    return parseWorkflowStepDataResolution(result, input.executionId, true);
+  }
+
+  async resolveWorkflowStepData(authorization: string, input: WorkflowStepDataIdentity): Promise<WorkflowStepDataResolution> {
+    const result = await this.request<unknown>(
+      `${this.applicationPath()}/native/workflow-step-data/commands/resolve`, {
+        method: 'POST', headers: this.identityHeaders(authorization),
+        body: JSON.stringify({ ...input, environmentKey: this.options.environmentKey }),
+      });
+    return parseWorkflowStepDataResolution(result, input.executionId);
   }
 
   async workflowDelegationCatalog(authorization: string) {

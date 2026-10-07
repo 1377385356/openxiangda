@@ -12,6 +12,8 @@ export type WorkflowBusinessStepInput =
 export interface WorkflowBusinessStepHandlerContract {
   version: number;
   mode: 'pure' | 'reconciled-effect';
+  /** One recoverable Native transaction, bound to this fixed execution. */
+  dataTransaction?: true;
   inputSchema: Record<string, unknown>;
   outputSchema: Record<string, unknown>;
 }
@@ -21,7 +23,7 @@ export interface WorkflowBusinessStepNode {
   kind: 'action';
   title: string;
   next: string;
-  handler: { code: string; version: number; mode: WorkflowBusinessStepHandlerContract['mode'] };
+  handler: { code: string; version: number; mode: WorkflowBusinessStepHandlerContract['mode']; dataTransaction?: true };
   inputSchema: Record<string, unknown>;
   outputSchema: Record<string, unknown>;
   inputs: Record<string, WorkflowBusinessStepInput>;
@@ -43,6 +45,7 @@ export interface WorkflowBusinessStepRequest {
   handlerCode: string;
   handlerVersion: number;
   mode: WorkflowBusinessStepHandlerContract['mode'];
+  dataTransaction?: true;
   input: Record<string, unknown>;
   inputDigest: string;
   expectedFactRevision: number;
@@ -129,10 +132,11 @@ export function validateWorkflowBusinessStepResult(value: unknown): value is Wor
 }
 
 export function validateWorkflowBusinessStepRequest(value: unknown): value is WorkflowBusinessStepRequest {
-  return record(value) && Object.keys(value).every(key => ['executionId', 'nodeId', 'handlerCode', 'handlerVersion', 'mode', 'input', 'inputDigest', 'expectedFactRevision'].includes(key)) &&
+  return record(value) && Object.keys(value).every(key => ['executionId', 'nodeId', 'handlerCode', 'handlerVersion', 'mode', 'dataTransaction', 'input', 'inputDigest', 'expectedFactRevision'].includes(key)) &&
     typeof value.nodeId === 'string' && keyPattern.test(value.nodeId) && !forbidden.has(value.nodeId) &&
     typeof value.handlerCode === 'string' && /^[a-z][a-z0-9-]{0,100}$/.test(value.handlerCode) && value.handlerCode.endsWith(`-v${value.handlerVersion}`) &&
     ['pure', 'reconciled-effect'].includes(value.mode) &&
+    (value.dataTransaction === undefined || value.dataTransaction === true && value.mode === 'reconciled-effect') &&
     validateWorkflowBusinessStepResult({ executionId: value.executionId, handlerVersion: value.handlerVersion, inputDigest: value.inputDigest, expectedFactRevision: value.expectedFactRevision, output: value.input });
 }
 
@@ -231,9 +235,11 @@ function schemaAtPath(schema: Record<string, any>, path: string): Record<string,
 const schemaHasPath = (schema: Record<string, any>, path: string) => Boolean(schemaAtPath(schema, path));
 
 export function validateWorkflowBusinessStepHandlerContract(value: unknown): value is WorkflowBusinessStepHandlerContract {
-  return record(value) && Object.keys(value).every(key => ['version', 'mode', 'inputSchema', 'outputSchema'].includes(key)) &&
+  return record(value) && Object.keys(value).every(key => ['version', 'mode', 'dataTransaction', 'inputSchema', 'outputSchema'].includes(key)) &&
     Number.isSafeInteger(value.version) && value.version >= 1 && value.version <= 1_000_000 &&
-    ['pure', 'reconciled-effect'].includes(value.mode) && validateWorkflowBusinessStepSchema(value.inputSchema) && validateWorkflowBusinessStepSchema(value.outputSchema);
+    ['pure', 'reconciled-effect'].includes(value.mode) &&
+    (value.dataTransaction === undefined || value.dataTransaction === true && value.mode === 'reconciled-effect') &&
+    validateWorkflowBusinessStepSchema(value.inputSchema) && validateWorkflowBusinessStepSchema(value.outputSchema);
 }
 
 function targets(node: Record<string, any>): string[] {
@@ -263,10 +269,11 @@ export function validateWorkflowBusinessSteps(definition: Definition, binding?: 
     if (Object.keys(node).some(key => !['id', 'kind', 'title', 'next', 'handler', 'inputSchema', 'outputSchema', 'inputs'].includes(key)) ||
         node.id !== id || !keyPattern.test(id) || forbidden.has(id) || typeof node.title !== 'string' || !node.title.trim() || node.title.length > 255 || typeof node.next !== 'string' || !Object.hasOwn(nodes, node.next)) errors.push(`WORKFLOW_STEP_NODE_INVALID:${id}`);
     const handler = node.handler;
-    if (!record(handler) || Object.keys(handler).some(key => !['code', 'version', 'mode'].includes(key)) ||
+    if (!record(handler) || Object.keys(handler).some(key => !['code', 'version', 'mode', 'dataTransaction'].includes(key)) ||
         !Number.isSafeInteger(handler.version) || handler.version < 1 || handler.version > 1_000_000 ||
         !/^[a-z][a-z0-9-]{0,100}$/.test(handler.code || '') || !String(handler.code).endsWith(`-v${handler.version}`) ||
-        !['pure', 'reconciled-effect'].includes(handler.mode)) errors.push(`WORKFLOW_STEP_HANDLER_INVALID:${id}`);
+        !['pure', 'reconciled-effect'].includes(handler.mode) ||
+        handler.dataTransaction !== undefined && (handler.dataTransaction !== true || handler.mode !== 'reconciled-effect')) errors.push(`WORKFLOW_STEP_HANDLER_INVALID:${id}`);
     const inputSchemaValid = validateWorkflowBusinessStepSchema(node.inputSchema);
     if (!inputSchemaValid || !validateWorkflowBusinessStepSchema(node.outputSchema)) errors.push(`WORKFLOW_STEP_SCHEMA_INVALID:${id}`);
     if (!record(node.inputs) || Object.keys(node.inputs).length > 32) { errors.push(`WORKFLOW_STEP_INPUTS_INVALID:${id}`); continue; }
@@ -362,7 +369,8 @@ export function compileWorkflowBusinessStepHandlers(definitions: readonly Defini
     if (errors.length) throw new Error(errors.join('; '));
     for (const node of Object.values(definition.nodes || {})) {
       if (node.kind !== 'action') continue;
-      const contract = { version: node.handler.version, mode: node.handler.mode, inputSchema: node.inputSchema, outputSchema: node.outputSchema };
+      const contract = { version: node.handler.version, mode: node.handler.mode,
+        ...(node.handler.dataTransaction ? { dataTransaction: true as const } : {}), inputSchema: node.inputSchema, outputSchema: node.outputSchema };
       const previous = result[node.handler.code];
       if (previous && !jsonEqual(previous, contract)) throw new Error(`WORKFLOW_STEP_HANDLER_CONTRACT_CONFLICT:${node.handler.code}`);
       result[node.handler.code] = contract;

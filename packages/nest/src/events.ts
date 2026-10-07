@@ -656,6 +656,7 @@ export class OpenXiangdaEventReceiver {
     const step = (event.data as { step?: WorkflowBusinessStepRequest })?.step;
     if (event.type !== WORKFLOW_BUSINESS_STEP_EVENT || !validateWorkflowBusinessStepRequest(step) || step.handlerCode !== contract.code ||
         step.handlerVersion !== contract.workflowStep.version || step.mode !== contract.workflowStep.mode ||
+        step.dataTransaction !== contract.workflowStep.dataTransaction ||
         sha256Digest(step.input) !== step.inputDigest || !workflowBusinessStepValueMatches(contract.workflowStep.inputSchema, step.input))
       throw new BadRequestException('业务步骤请求与固定处理器合同不一致');
     return step;

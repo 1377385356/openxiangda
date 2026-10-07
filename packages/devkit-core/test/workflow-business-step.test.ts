@@ -46,3 +46,17 @@ test('authoring rejects missing subscriptions and broadened filters before gener
     assert.throws(() => compileApplicationSources(app), /WORKFLOW_STEP_SUBSCRIPTION_INVALID/);
   }
 });
+
+test('full authoring and Native ingestion keep opted-in data contracts and reject pure data effects', () => {
+  const app = fixture();
+  const action: any = app.workflows!.definitions[0]!.definition.nodes.calculate;
+  action.handler.mode = 'reconciled-effect'; action.handler.dataTransaction = true;
+  const compiled = compileApplicationSources(app);
+  const native = compileNativeApplicationConfiguration({ appCode: app.app.code,
+    configBytes: canonicalJson(compiled.config.value), contractBytes: canonicalJson(compiled.contracts.value),
+    expectedConfigDigest: compiled.config.digest, expectedContractDigest: compiled.contracts.digest });
+  assert.equal(compiled.contracts.value.eventHandlerManifest.handlers.find(h => h.code === 'calculate-v1')?.workflowStep?.dataTransaction, true);
+  assert.deepEqual(requiredPlatformCapabilities(app), native.requiredPlatformCapabilities);
+  assert.equal(native.requiredPlatformCapabilities.find(v => v.code === 'workflow.step-data-transaction')?.contractVersion, '1.0.0');
+  action.handler.mode = 'pure'; assert.throws(() => compileApplicationSources(app), /WORKFLOW_STEP.*INVALID/);
+});

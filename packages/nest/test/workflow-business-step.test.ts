@@ -7,14 +7,16 @@ import { OpenXiangdaEventContext } from '../src/event-context.js';
 import { executeWorkflowEventConsumer, OpenXiangdaEventHandler } from '../src/event-handler.js';
 import { OpenXiangdaEventReceiver, PlatformOpenXiangdaEventReceiptStore, InMemoryOpenXiangdaEventReceiptStore } from '../src/events.js';
 import type { OpenXiangdaModuleOptions } from '../src/types.js';
+import { OpenXiangdaApplicationDataApiService } from '../src/data-api.js';
+import { OpenXiangdaPlatformClient } from '../src/platform-client.js';
 const schema = { type: 'object', additionalProperties: false, required: ['amount'], properties: { amount: { type: 'integer', minimum: 0 } } };
 const secret = 'isolated-workflow-step-test-key';
 const handler: AppEventHandlerContract = { code: 'calculate-v1', endpointPath: '/__platform/events/calculate-v1', eventTypes: [WORKFLOW_BUSINESS_STEP_EVENT], dataSchemaVersions: ['2.0.0'], maxBodyBytes: 65536, receiptProtocolVersion: 2, workflowStep: { version: 1, mode: 'pure', inputSchema: schema, outputSchema: schema } };
-function fixture() {
+function fixture(contract = handler) {
  const context = new OpenXiangdaEventContext(); let claimed=0,completed=0,released=0,rejectComplete=false;
  const results: WorkflowBusinessStepResult[]=[];
  const options: OpenXiangdaModuleOptions={ appCode:'steps',environmentKey:'preproduction',platformBaseUrl:'https://isolated.invalid/service',eventSigningSecret:secret,eventReceiptMaxAttempts:2,eventReceiptRetryDelayMs:0,
- eventHandlerManifest:{schemaVersion:SCHEMA_VERSIONS.eventHandlerManifest,appCode:'steps',handlers:[handler,{...handler,code:'calculate-v2',endpointPath:'/__platform/events/calculate-v2',workflowStep:{...handler.workflowStep!,version:2}}]},
+ eventHandlerManifest:{schemaVersion:SCHEMA_VERSIONS.eventHandlerManifest,appCode:'steps',handlers:[contract,{...contract,code:'calculate-v2',endpointPath:'/__platform/events/calculate-v2',workflowStep:{...contract.workflowStep!,version:2}}]},
  fetch:async(_url,init)=>{
   const command=JSON.parse(String(init?.body)),timestamp=new Headers(init?.headers).get('x-openxiangda-timestamp')!;
   const content=[SCHEMA_VERSIONS.eventReceiptCommand,timestamp,command.action,command.tenantId,command.appCode,command.environmentKey,command.subscriptionCode,command.eventId,command.deliveryId,command.claimToken||''].join('\n')+workflowBusinessStepReceiptSignatureSuffix(command.workflowStepResult);
@@ -27,11 +29,11 @@ function fixture() {
  }};
  const receiver=new OpenXiangdaEventReceiver(options,new PlatformOpenXiangdaEventReceiptStore(options),context);
  const packet=(patch:Record<string,unknown>={})=>{
-  const input={amount:120_000},step={executionId:randomUUID(),nodeId:'calculate',handlerCode:handler.code,handlerVersion:1,mode:'pure',input,inputDigest:sha256Digest(input),expectedFactRevision:2,...patch};
+  const input={amount:120_000},step={executionId:randomUUID(),nodeId:'calculate',handlerCode:contract.code,handlerVersion:1,mode:contract.workflowStep!.mode,...(contract.workflowStep!.dataTransaction ? {dataTransaction:true}:{}),input,inputDigest:sha256Digest(input),expectedFactRevision:2,...patch};
   const event:CloudEvent={specversion:'1.0',id:randomUUID(),type:WORKFLOW_BUSINESS_STEP_EVENT,source:'/steps',time:new Date().toISOString(),tenantid:'tenant-a',appcode:'steps',environment:'preproduction',datacontenttype:'application/json',schemaversion:'2.0.0',data:{workflowCode:'amount',definitionVersion:1,bindingVersion:1,instanceId:randomUUID(),generation:1,businessKey:'synthetic',instanceSequence:1,revision:1,dataRef:{},dataRevision:'1',actor:{},cause:{depth:1},step}};
-  const body=JSON.stringify(event),timestamp=String(Math.floor(Date.now()/1000)),deliveryId=randomUUID(),digest=workflowBusinessStepHandlerDigest(options.eventHandlerManifest!,handler.code);
-  const signature=createHmac('sha256',secret).update(eventDeliverySignatureContentV2({timestamp,signingKeyVersion:'1',deliveryId,eventId:event.id,subscriptionCode:handler.code,handlerManifestDigest:digest,rawBody:body})).digest('hex');
-  return {event,step,body,headers:{'content-type':'application/cloudevents+json','x-openxiangda-timestamp':timestamp,'x-openxiangda-signature':`v2=${signature}`,'x-openxiangda-delivery-id':deliveryId,'x-openxiangda-event-id':event.id,'x-openxiangda-signing-key-version':'1','x-openxiangda-subscription-code':handler.code,'x-openxiangda-handler-manifest-digest':digest}};
+  const body=JSON.stringify(event),timestamp=String(Math.floor(Date.now()/1000)),deliveryId=randomUUID(),digest=workflowBusinessStepHandlerDigest(options.eventHandlerManifest!,contract.code);
+  const signature=createHmac('sha256',secret).update(eventDeliverySignatureContentV2({timestamp,signingKeyVersion:'1',deliveryId,eventId:event.id,subscriptionCode:contract.code,handlerManifestDigest:digest,rawBody:body})).digest('hex');
+  return {event,step,body,headers:{'content-type':'application/cloudevents+json','x-openxiangda-timestamp':timestamp,'x-openxiangda-signature':`v2=${signature}`,'x-openxiangda-delivery-id':deliveryId,'x-openxiangda-event-id':event.id,'x-openxiangda-signing-key-version':'1','x-openxiangda-subscription-code':contract.code,'x-openxiangda-handler-manifest-digest':digest}};
  };
  return {receiver,context,packet,results,counts:()=>({claimed,completed,released}),failComplete:()=>{rejectComplete=true;}};
 }
@@ -67,4 +69,46 @@ test('volatile receipts cannot complete steps and undeclared metadata fails regi
  const f=fixture(),p=f.packet();
  await assert.rejects(()=>new InMemoryOpenXiangdaEventReceiptStore().complete({tenantId:'tenant',appCode:'steps',environmentKey:'preproduction',subscriptionCode:handler.code,eventId:p.event.id,deliveryId:'delivery'},{executionId:p.step.executionId,handlerVersion:1,expectedFactRevision:2,inputDigest:p.step.inputDigest,output:{amount:1}}),/平台持久回执/);
  assert.throws(()=>OpenXiangdaEventHandler({...handler,workflowStep:{...handler.workflowStep!,unsafe:true}} as any),/合同不合法/);
+});
+
+test('signed opted-in effects derive original execution and cause headers for reconciliation and one data commit', async () => {
+ const contract: AppEventHandlerContract = {...handler,workflowStep:{...handler.workflowStep!,mode:'reconciled-effect',dataTransaction:true}};
+ const f=fixture(contract),p=f.packet(),calls: Array<{url:string;body:any;headers:Headers}>=[];
+ let wrongResponse=false;
+ const platform=new OpenXiangdaPlatformClient({appCode:'steps',environmentKey:'preproduction',platformBaseUrl:'https://isolated.invalid/service',fetch:async(url,init)=>{
+  const body=JSON.parse(String(init?.body)); calls.push({url:String(url),body,headers:new Headers(init?.headers)});
+  const resolution={schemaVersion:'openxiangda.workflow-step-data-resolution/v1',executionId:wrongResponse?randomUUID():body.executionId};
+  return Response.json({code:200,data:String(url).endsWith('/resolve')?{...resolution,outcome:'not_observed'}:{...resolution,outcome:'committed',transaction:{schemaVersion:SCHEMA_VERSIONS.dataTransactionResult,idempotencyKey:`workflow-step:${body.executionId}`,replayed:false,items:[{index:0,operation:'create',resourceCode:'ledger',id:randomUUID(),revision:1}]}}});
+ }},f.context);
+ const api=new OpenXiangdaApplicationDataApiService(platform,{withAuthorization:async(work:any)=>work('Bearer isolated-application')} as any,f.context);
+ const plan:any={guards:[],operations:[{operation:'create',resourceCode:'ledger',data:{}}]};
+ await assert.rejects(()=>api.resolveWorkflowStepData(),/VERIFIED_CONTEXT_REQUIRED/);
+ assert.equal(calls.length,0);
+ await f.receiver.accept(contract,p.headers,p.body,async()=>{
+  assert.equal((await api.resolveWorkflowStepData()).outcome,'not_observed');
+  assert.equal((await api.commitWorkflowStepData(plan)).outcome,'committed');
+  wrongResponse=true; await assert.rejects(()=>api.resolveWorkflowStepData(),/RESPONSE_INVALID/);
+  return {output:{amount:2}};
+ });
+ for(const call of calls){
+  assert.equal(call.body.executionId,p.step.executionId); assert.equal(call.body.environmentKey,'preproduction');
+  assert.equal(call.headers.get('x-openxiangda-causation-event-id'),p.event.id);
+  assert.equal(call.headers.get('x-openxiangda-origin-delivery-id'),p.headers['x-openxiangda-delivery-id']);
+  assert.equal(call.headers.get('x-openxiangda-origin-subscription-code'),contract.code);
+  assert.equal(call.headers.get('authorization'),'Bearer isolated-application');
+ }
+ const forged=f.packet({dataTransaction:undefined});
+ await assert.rejects(()=>f.receiver.accept(contract,forged.headers,forged.body,()=>{throw new Error('must not execute');}));
+ assert.equal(f.counts().claimed,1);
+ await assert.rejects(()=>api.commitWorkflowStepData(plan),/VERIFIED_CONTEXT_REQUIRED/);
+});
+
+test('ordinary and unmarked or pure signed steps cannot use stage data APIs', async () => {
+ for(const contract of [handler,{...handler,workflowStep:{...handler.workflowStep!,mode:'reconciled-effect' as const}}]){
+  const f=fixture(contract),p=f.packet();
+  const api=new OpenXiangdaApplicationDataApiService({} as any,{withAuthorization:()=>{throw new Error('must not authorize');}} as any,f.context);
+  await f.receiver.accept(contract,p.headers,p.body,async()=>{
+   await assert.rejects(()=>api.resolveWorkflowStepData(),/VERIFIED_CONTEXT_REQUIRED/); return {output:{amount:2}};
+  });
+ }
 });
