@@ -1,6 +1,6 @@
 import type { CommandReceipt } from 'openxiangda-contracts/browser';
 import type { ManagedConcurrencyClient, ManagedReadRecoveryOptions } from './managed-command';
-import { isManagedReadBusy } from './managed-read-recovery';
+import { isManagedReadBusy, isManagedReadTransport } from './managed-read-recovery';
 type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 interface Intent {
     version: 1;
@@ -375,7 +375,7 @@ export class DurableCommandController {
             catch (error) {
                 if (!active())
                     return;
-                if (!isManagedReadBusy(error) && !resultReadExhausted(error)) {
+                if (!isManagedReadBusy(error) && !isManagedReadTransport(error) && !resultReadExhausted(error)) {
                     this.update({ state: 'error', errorCode: code(error), isObserving: false });
                     return;
                 }

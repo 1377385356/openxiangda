@@ -19,6 +19,12 @@ export function isManagedReadBusy(error: unknown) {
     : value?.status === 503 && LEGACY_BUSY_CODES.has(value.code || '');
 }
 
+/** Only the authenticated transport's explicit unavailable marker is recoverable. */
+export function isManagedReadTransport(error: unknown) {
+  const value = error as { status?: number; code?: string; retryable?: boolean };
+  return value?.retryable !== false && value?.status === 503 && value.code === 'PLATFORM_TRANSPORT_UNAVAILABLE';
+}
+
 const exhausted = () => Object.assign(new Error('读取等待时间已结束，请稍后重新查询'), {
   code: 'CONCURRENCY_READ_RECOVERY_EXHAUSTED', status: 504, retryable: true,
 });
@@ -67,7 +73,7 @@ export async function recoverManagedRead<T>(
         return value;
       } catch (error) {
         if (controller.signal.aborted) throw abortReason(controller.signal);
-        if (!isManagedReadBusy(error)) throw error;
+        if (!isManagedReadBusy(error) && !isManagedReadTransport(error)) throw error;
         lastBusy = error;
         if (attempt + 1 >= attempts) throw error;
         const hint = Number((error as any).retryAfterMs ?? (error as any).data?.retryAfterMs);

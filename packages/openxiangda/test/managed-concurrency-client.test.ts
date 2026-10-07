@@ -99,6 +99,30 @@ test('all four managed read methods recover budget busy, using frozen original i
   });
 });
 
+test('all managed read methods recover fetch disconnects while writes retain unknown-response errors', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  await withClient(async (api, configure) => {
+    const calls: Array<{ path: string; body: string }> = [], counts = new Map<string, number>();
+    configure(async (path, init) => {
+      calls.push({ path, body: String(init.body) }); counts.set(path, (counts.get(path) || 0) + 1);
+      if (counts.get(path) === 1) throw new TypeError('Failed to fetch');
+      return reply(200);
+    });
+    const pending = Promise.all([api.read('offer', { id: 'original' }), api.mine('claim', { resourceKey: 'original' }),
+      api.result({ operationId: 'original' }), api.allocation('original')]);
+    await settle(); assert.equal(calls.length, 4); t.mock.timers.tick(2500); await pending;
+    assert.equal(calls.length, 8);
+    for (const path of counts.keys()) {
+      const pair = calls.filter(call => call.path === path); assert.equal(pair[0].body, pair[1].body);
+    }
+    configure(async (path, init) => { calls.push({ path, body: String(init.body) }); throw new TypeError('lost acknowledgement'); });
+    const before = calls.length;
+    for (const write of [() => api.enqueue('claim', {}, 'original'), () => api.accept('permit'), () => api.cancel('operation')])
+      await assert.rejects(write, { code: 'PLATFORM_TRANSPORT_UNAVAILABLE' });
+    assert.equal(calls.length, before + 3);
+  });
+});
+
 test('a changed authorization scope stops a read retry before another fetch', async t => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
   await withClient(async (api, configure, switchScope) => {

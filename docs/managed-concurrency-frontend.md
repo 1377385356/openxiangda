@@ -49,9 +49,9 @@ export async function readOffer(
 
 将读取接入应用已有的异步查询状态：初次加载显示局部骨架，空数组显示无可展示内容，失败提供局部重试。组件卸载或资源变化时中止旧请求，迟到响应不能覆盖新资源。同页多个观察者可复用应用已有查询层，查询键包含 `client.scope`、读取 code 和规范化参数，身份变化时清除旧主体视图；当前没有内置的 `useManagedRead` hook。
 
-### 只读预算繁忙恢复
+### 只读繁忙与断连恢复
 
-`read`、`mine`、`result`、`allocation` 共用有界恢复：单次调用默认含 HTTP 和等待的总预算 120 秒，最多 12 次总请求。应用可以通过 `budgetMs` 显式延长；超过 120 秒时最多 120 次总请求，预算上限为 30 分钟，超出上限按 30 分钟处理。只重试 HTTP 429 的 `CONCURRENCY_API_BUSY`、`CONCURRENCY_RESULT_BUSY`、`CONCURRENCY_RATE_LIMITED`、`CONCURRENCY_SOURCE_BUSY`；兼容旧平台的 HTTP 503 仅限前两个已知预算错误。明确 `retryable: false`、未知 429、权限拒绝、Redis/数据库/授权依赖失败和网络失败直接返回，不用繁忙重试掩盖。
+`read`、`mine`、`result`、`allocation` 共用有界恢复：单次调用默认含 HTTP 和等待的总预算 120 秒，最多 12 次总请求。应用可以通过 `budgetMs` 显式延长；超过 120 秒时最多 120 次总请求，预算上限为 30 分钟，超出上限按 30 分钟处理。可恢复的预算响应为 HTTP 429 的 `CONCURRENCY_API_BUSY`、`CONCURRENCY_RESULT_BUSY`、`CONCURRENCY_RATE_LIMITED`、`CONCURRENCY_SOURCE_BUSY`；兼容旧平台的 HTTP 503 仅限前两个已知预算错误。认证传输层标记为 HTTP 503、`PLATFORM_TRANSPORT_UNAVAILABLE` 的连接中断也按原预算恢复。明确 `retryable: false`、未标记的网络错误、未知 429、权限拒绝、Redis/数据库/授权依赖失败直接返回；连接中断不证明请求已受理或业务失败。
 
 第一次失败后的基础等待为 2 秒，之后指数增加到最多 30 秒；取其与有效服务端提示的较大值，再加 0% 至 25% 随机抖动。提示优先使用合法 `Retry-After`（秒或 HTTP 日期），缺失时使用 `data.retryAfterMs`。若等待达到剩余预算，不提前查询，直接返回最后一次繁忙错误；请求次数用完也保留最后繁忙响应。正在进行的请求超过总预算则中止并返回 `CONCURRENCY_READ_RECOVERY_EXHAUSTED`，不以之前的繁忙响应掩盖悬挂请求。
 
@@ -236,9 +236,9 @@ hook 从 `openxiangda/react` 和 `openxiangda/mobile` 导出。state、initializ
 
 已受理申请的自动观察最多持续到首次明确提交后的 30 分钟，默认受理恢复仍为 120 秒，两者分别计算。自动观察的每次结果读取同时受单次 120 秒和原提交剩余时间限制；刷新和 resume 不重新获得观察时间。跨设备没有本地首次时间时，用原回执 acceptedAt 计算观察窗口，不能以页面挂载时间重新计时。达到窗口后保留原意图，状态为 recovering、isObserving 为 false，提示稍后核对；明确 refresh 仍可用有界初查预算查询迟到终态，但不重新启动已经到期的自动观察，也不自动提交。
 
-正常待处理结果每次至少间隔 5 秒，遵守更长的服务端 retryAfterMs，再加随机抖动。单次只读恢复耗尽且仍是已知预算繁忙时，外层可在原观察窗口内指数退避继续。SDK 自身明确标记为 status=504、retryable=true 的 CONCURRENCY_READ_RECOVERY_EXHAUSTED 也只在已受理原结果观察中按退避恢复；它不代表服务端忙，不延长原三十分钟截止，也不触发再次提交。权限、依赖、普通网络错误、其他 504 或未标记可恢复的错误立即停止自动观察，显示 error 并保留原回执和请求键。终态停止。受理恢复中核对原结果同样只允许已知预算繁忙继续，读取依赖失败不能被外层重试隐藏。一个业务区域只挂载一个观察者。离开或关闭页面不撤销已受理请求，平台自动继续；新设备通过 mine 找到本人的原请求。position 为空时显示「已受理，稍后可查看」，不要显示虚假的精确人数或预计秒数。
+正常待处理结果每次至少间隔 5 秒，遵守更长的服务端 retryAfterMs，再加随机抖动。单次只读恢复耗尽且仍是已知预算繁忙或认证传输层标记的 `PLATFORM_TRANSPORT_UNAVAILABLE`/503 时，外层可在原观察窗口内指数退避继续。SDK 自身明确标记为 status=504、retryable=true 的 CONCURRENCY_READ_RECOVERY_EXHAUSTED 也只在已受理原结果观察中按退避恢复；它不代表服务端忙，不延长原三十分钟截止，也不触发再次提交。权限、依赖、未标记的网络错误、其他 504 或未标记可恢复的错误立即停止自动观察，显示 error 并保留原回执和请求键。终态停止。受理恢复中核对原结果的连接中断由同一有界只读层恢复，内层耗尽不触发 enqueue 重放，读取依赖失败不能被外层重试隐藏。一个业务区域只挂载一个观察者。离开或关闭页面不撤销已受理请求，平台自动继续；新设备通过 mine 找到本人的原请求。position 为空时显示「已受理，稍后可查看」，不要显示虚假的精确人数或预计秒数。
 
-refresh 有本地原键时先薄查询原 key；找到已受理非终态后不再 mine。没有本地意图或原申请已有终态时，mine 优先恢复新的进行中周期，避免本地历史 succeeded 遮蔽另一个设备的新申请。原键明确 404 后保留一次本人列表兜底；未确认的本地意图只能采用同原键回执。列表中只有别的活跃周期时显示 recovering / CONCURRENCY_ORIGINAL_REQUEST_REQUIRED，并保留原 key/input；没有匹配时显示 CONCURRENCY_ACCEPTANCE_UNCONFIRMED，提供「核对原申请」和「恢复原申请」动作。不能把无匹配解释为业务失败，也不丢弃可能迟到受理的原意图。已知读取繁忙耗尽显示 recovering，真实依赖、网络、权限或未知 400 显示 error；两种状态均保留原键、输入和已受理回执，读取失败不自动提交。
+refresh 有本地原键时先薄查询原 key；找到已受理非终态后不再 mine。没有本地意图或原申请已有终态时，mine 优先恢复新的进行中周期，避免本地历史 succeeded 遮蔽另一个设备的新申请。原键明确 404 后保留一次本人列表兜底；未确认的本地意图只能采用同原键回执。列表中只有别的活跃周期时显示 recovering / CONCURRENCY_ORIGINAL_REQUEST_REQUIRED，并保留原 key/input；没有匹配时显示 CONCURRENCY_ACCEPTANCE_UNCONFIRMED，提供「核对原申请」和「恢复原申请」动作。不能把无匹配解释为业务失败，也不丢弃可能迟到受理的原意图。已知读取繁忙耗尽显示 recovering，认证传输层标记的断连先在原预算内恢复；真实依赖、未标记的网络错误、权限或未知 400 显示 error。两种状态均保留原键、输入和已受理回执，读取失败不自动提交。
 
 不要在 mount 发现历史 succeeded 时自动跳成功页或永久禁用提交。它可能已经被管理员取消，需结合当前业务记录展示。只有用户明确再次点击 submit，且原请求已有终态，SDK 才创建新的 requestKey；活跃请求或未知应答始终恢复原 key。平台明确返回未受理的参数错误（400 + CONCURRENCY_INPUT_INVALID 等约定错误）时，SDK 才清除被拒输入，允许修正后再提交；未知 400、409、429、5xx 和网络错误仍保留原意图。成功提示以 receipt.state==='succeeded' 和 receipt.result 为准，accepted/executing 只显示「已登记，处理中」。
 

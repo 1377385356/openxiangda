@@ -29,13 +29,30 @@ test('known read budget busy retries with exponential delay, server hint and jit
 test('permission, dependency, unknown and explicitly non-retryable errors are returned once', async () => {
   for (const budgetMs of [undefined, 1_800_000]) for (const error of [busy(403), busy(503, 'CONCURRENCY_COORDINATION_UNAVAILABLE'),
     busy(503, 'CONCURRENCY_CACHE_UNAVAILABLE'), busy(503, 'CONCURRENCY_SOURCE_BUSY'),
-    busy(503, 'OPENXIANGDA_AUTHORIZATION_PROJECTION_NOT_READY'), busy(503, 'PLATFORM_TRANSPORT_UNAVAILABLE'),
+    busy(503, 'OPENXIANGDA_AUTHORIZATION_PROJECTION_NOT_READY'),
+    Object.assign(busy(503, 'PLATFORM_TRANSPORT_UNAVAILABLE'), { retryable: false }),
     busy(429, 'HTTP_429'), Object.assign(busy(), { retryable: false }), new TypeError('offline')]) {
     const c = clock(); let calls = 0;
     await assert.rejects(() => recoverManagedRead(async () => { calls++; throw error; }, undefined, { budgetMs }, c.dependencies),
       received => received === error);
     assert.equal(calls, 1); assert.deepEqual(c.waits, []);
   }
+});
+
+test('marked transport failures share the same fixed backoff budget as busy reads', async () => {
+  const c = clock(1); let calls = 0;
+  const result = await recoverManagedRead(async () => {
+    calls++;
+    if (calls === 1) throw busy(503, 'PLATFORM_TRANSPORT_UNAVAILABLE');
+    if (calls === 2) throw busy(429, 'CONCURRENCY_RESULT_BUSY', 8000);
+    return 'original result';
+  }, undefined, { budgetMs: 30000 }, c.dependencies);
+  assert.equal(result, 'original result'); assert.equal(calls, 3);
+  assert.deepEqual(c.waits, [2500, 10000]);
+  const offline = clock(), error = busy(503, 'PLATFORM_TRANSPORT_UNAVAILABLE'); let reads = 0;
+  await assert.rejects(() => recoverManagedRead(async () => { reads++; throw error; }, undefined,
+    { budgetMs: 4000 }, offline.dependencies), received => received === error);
+  assert.equal(reads, 2); assert.deepEqual(offline.waits, [2000]);
 });
 
 test('attempts are bounded independently of the clock and failures preserve the last response', async () => {
