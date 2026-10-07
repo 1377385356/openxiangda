@@ -45,6 +45,7 @@ import { runPackagePublicationStage } from "./lib/release-publication-stage.mjs"
 import { planGithubRelease, synchronizeGithubRelease } from './lib/release-github.mjs';
 import { releaseNpmEnvironment, resolveConvergenceBudgetMs } from "./lib/release-network-policy.mjs";
 import { archiveCompletedRelease } from "./lib/release-history.mjs";
+import { assertReleaseHeadOnMainline, frozenReleaseAllowsMainlineAdvance } from './lib/release-mainline.mjs';
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const full = process.argv.includes("--full");
@@ -75,7 +76,7 @@ const artifactManifestPath = join(artifactRoot, "manifest.json");
 
 let receipt = loadReceipt();
 assertAuthoritativeMainline({
-  allowContained: releasePublicationHasStarted(receipt),
+  allowContained: frozenReleaseAllowsMainlineAdvance(receipt, head),
 });
 receipt = discardSupersededPrepublicationReceipt(receipt);
 assertReleaseVersionsMaterialized(repositoryRoot);
@@ -183,7 +184,7 @@ if (freezeOnly) {
     if (receipt.phase !== "planned") {
       fail(`--mark-validated requires a planned receipt; received ${receipt.phase}`);
     }
-    assertAuthoritativeMainline();
+    assertAuthoritativeMainline({ allowContained: true });
     assertReceiptArtifacts(receipt);
     assertReceiptCandidatesUnpublished(receipt);
     assertRecoverableDistTags(receipt);
@@ -226,7 +227,7 @@ if (action === "validate") {
       },
     }
   );
-  assertAuthoritativeMainline();
+  assertAuthoritativeMainline({ allowContained: true });
   assertReceiptCandidatesUnpublished(receipt);
   assertRecoverableDistTags(receipt);
   if (receiptRequiresReference(receipt)) {
@@ -243,7 +244,7 @@ if (validateOnly) {
   if (action !== "verified" || receipt.phase !== "validated") {
     fail(`Release validation stopped in unexpected phase ${receipt.phase}`);
   }
-  assertAuthoritativeMainline();
+  assertAuthoritativeMainline({ allowContained: true });
   assertReceiptCandidatesUnpublished(receipt);
   assertRecoverableDistTags(receipt);
   if (receiptRequiresReference(receipt)) {
@@ -264,7 +265,7 @@ if (validateOnly) {
           )
         : undefined,
     preflightInitialPublication: () => {
-      assertAuthoritativeMainline();
+      assertAuthoritativeMainline({ allowContained: true });
       assertReceiptCandidatesUnpublished(receipt);
       assertRecoverableDistTags(receipt);
     },
@@ -321,18 +322,7 @@ function assertAuthoritativeMainline({ allowContained = false } = {}) {
   if (!upstream) fail("Release branch has no upstream");
   const upstreamHead = git(["rev-parse", "@{upstream}"]);
   const currentHead = git(["rev-parse", "HEAD"]);
-  if (allowContained) {
-    const contained = spawnSync(
-      "git",
-      ["merge-base", "--is-ancestor", currentHead, upstreamHead],
-      { cwd: repositoryRoot }
-    );
-    if (contained.status !== 0) {
-      fail(`Release HEAD ${currentHead} is not contained in ${upstream} ${upstreamHead}`);
-    }
-  } else if (currentHead !== upstreamHead) {
-    fail(`Release HEAD ${currentHead} does not exactly match ${upstream} ${upstreamHead}`);
-  }
+  assertReleaseHeadOnMainline({ cwd: repositoryRoot, head: currentHead, upstream, upstreamHead, allowContained });
 }
 
 function discardSupersededPrepublicationReceipt(value) {
