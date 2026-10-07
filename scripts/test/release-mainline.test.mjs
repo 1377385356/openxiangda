@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { assertReleaseHeadOnMainline, frozenReleaseAllowsMainlineAdvance } from '../lib/release-mainline.mjs';
+import { assertReleaseHeadOnMainline, frozenReleaseAllowsMainlineAdvance, frozenArtifactManifestAllowsMainlineAdvance } from '../lib/release-mainline.mjs';
+import { writeReleaseArtifactManifest } from '../lib/release-artifacts.mjs';
+import { PUBLIC_PACKAGE_NAMES } from '../lib/public-package-policy.mjs';
 
 function history(t) {
   const cwd = mkdtempSync(join(tmpdir(), 'ox-frozen-mainline-'));
@@ -45,4 +47,30 @@ test('only a matching frozen receipt can admit mainline advancement before publi
   for (const invalid of [undefined, { ...receipt, schema: 'unknown' }, { ...receipt, head: 'c'.repeat(40) }, { ...receipt, artifactManifestSha256: '' }, { ...receipt, artifactManifestPath: '' }, { ...receipt, candidates: [] }, { ...receipt, phase: 'unknown' }]) {
     assert.equal(frozenReleaseAllowsMainlineAdvance(invalid, head), false);
   }
+});
+
+test('a plan manifest admits first verification after mainline advances before its receipt exists', t => {
+  const f = history(t);
+  const path = join(f.cwd, '.git', 'manifest.json');
+  const registry = 'https://registry.npmjs.org';
+  const context = { path, head: f.head, registry };
+  assert.equal(frozenArtifactManifestAllowsMainlineAdvance(context), false);
+  const packages = PUBLIC_PACKAGE_NAMES.map(name => {
+    const tarball = join(f.cwd, '.git', `${name}.tgz`);
+    writeFileSync(tarball, `frozen ${name}`);
+    return { name, version: '2.0.0', status: 'candidate', tarball };
+  });
+  writeReleaseArtifactManifest({ ...context, packages });
+  const upstreamHead = f.commit('later change during reference preparation');
+  assertReleaseHeadOnMainline({ ...f, upstreamHead, allowContained: frozenArtifactManifestAllowsMainlineAdvance(context) });
+  assert.throws(() => frozenArtifactManifestAllowsMainlineAdvance({ ...context, head: 'c'.repeat(40) }), /HEAD_MISMATCH/);
+  assert.throws(() => frozenArtifactManifestAllowsMainlineAdvance({ ...context, registry: 'https://other.invalid' }), /REGISTRY_MISMATCH/);
+  const valid = readFileSync(path, 'utf8');
+  const missing = JSON.parse(valid);
+  missing.packages.pop();
+  writeFileSync(path, JSON.stringify(missing));
+  assert.throws(() => frozenArtifactManifestAllowsMainlineAdvance(context), /PUBLIC_PACKAGE_SET_INVALID/);
+  writeFileSync(path, valid);
+  writeFileSync(packages[0].tarball, 'changed bytes');
+  assert.throws(() => frozenArtifactManifestAllowsMainlineAdvance(context), /DIGEST_MISMATCH/);
 });

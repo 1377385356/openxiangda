@@ -45,7 +45,7 @@ import { runPackagePublicationStage } from "./lib/release-publication-stage.mjs"
 import { planGithubRelease, synchronizeGithubRelease } from './lib/release-github.mjs';
 import { releaseNpmEnvironment, resolveConvergenceBudgetMs } from "./lib/release-network-policy.mjs";
 import { archiveCompletedRelease } from "./lib/release-history.mjs";
-import { assertReleaseHeadOnMainline, frozenReleaseAllowsMainlineAdvance } from './lib/release-mainline.mjs';
+import { assertReleaseHeadOnMainline, frozenReleaseAllowsMainlineAdvance, frozenArtifactManifestAllowsMainlineAdvance } from './lib/release-mainline.mjs';
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const full = process.argv.includes("--full");
@@ -75,8 +75,11 @@ const artifactRoot = resolve(
 const artifactManifestPath = join(artifactRoot, "manifest.json");
 
 let receipt = loadReceipt();
+const frozenManifest = frozenArtifactManifestAllowsMainlineAdvance({
+  path: artifactManifestPath, head, registry: resolveReleaseRegistry(repositoryRoot),
+});
 assertAuthoritativeMainline({
-  allowContained: frozenReleaseAllowsMainlineAdvance(receipt, head),
+  allowContained: frozenManifest || frozenReleaseAllowsMainlineAdvance(receipt, head),
 });
 receipt = discardSupersededPrepublicationReceipt(receipt);
 assertReleaseVersionsMaterialized(repositoryRoot);

@@ -1,5 +1,15 @@
 import { spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { assertPublicArtifactManifest, loadReleaseArtifactManifest } from './release-artifacts.mjs';
 import { releasePublicationHasStarted } from './release-receipt-state.mjs';
+
+// release:plan freezes the manifest before verify creates its planned receipt.
+// Validate the complete frozen bytes before admitting a later mainline tip.
+export function frozenArtifactManifestAllowsMainlineAdvance({ path, head, registry }) {
+  if (!existsSync(path)) return false;
+  const manifest = assertPublicArtifactManifest(loadReleaseArtifactManifest(path, { head, registry }));
+  return manifest.packages.some(item => item.status === 'candidate');
+}
 
 export function frozenReleaseAllowsMainlineAdvance(receipt, head) {
   return receipt?.schema === 'openxiangda.release-receipt/v2'
