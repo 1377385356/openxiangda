@@ -7,7 +7,7 @@ export interface WorkflowCorrectionNode {
   next: string;
 }
 
-type Definition = { startAt: string; nodes: Record<string, any>; taskPages?: Record<string, any> };
+type Definition = { startAt: string; nodes: Record<string, any>; taskPages?: Record<string, any>; subject?: { factProjection?: Record<string, string> } };
 const object = (value: unknown): value is Record<string, any> => !!value && typeof value === 'object' && !Array.isArray(value) && [null, Object.prototype].includes(Object.getPrototypeOf(value));
 export function validateWorkflowCorrections(definition: Definition): string[] {
   const nodes = definition?.nodes || {};
@@ -39,7 +39,12 @@ export function validateWorkflowCorrections(definition: Definition): string[] {
       errors.push('WORKFLOW_CORRECTION_RETURN_SOURCE_REQUIRED');
     const page = definition.taskPages?.[node.taskPageCode];
     if (!page || !Array.isArray(page.fields)) errors.push('WORKFLOW_CORRECTION_PAGE_REQUIRED');
-    else if (page.fields.some((field: any) => field?.subtable)) errors.push('WORKFLOW_CORRECTION_OWNED_FACTS_UNSUPPORTED');
+    // Non-routing owned rows use the same authorized task transaction as an
+    // approval page. Replaying projected owned facts needs separate validation.
+    else if (page.fields.some((field: any) => field?.subtable &&
+      Object.values(definition.subject?.factProjection || {}).some(path =>
+        path === field.code || path.startsWith(`${field.code}.`))))
+      errors.push('WORKFLOW_CORRECTION_OWNED_FACTS_UNSUPPORTED');
   }
   return [...new Set(errors)];
 }
