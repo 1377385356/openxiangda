@@ -99,6 +99,7 @@ import {
 } from '../../platform-client';
 import {
   useWorkflowDefinition,
+  useWorkflowTaskFormBehavior,
   type GeneratedWorkflowNamedOperationIntent,
 } from '../../workflow-definitions';
 import { useResourceDefinitions } from '../../resource-definitions';
@@ -914,6 +915,7 @@ function WorkflowOperations({
   const mounted = useRef(false);
   const busyRef = useRef(false);
   const taskForm = useWorkflowTaskForm(surface.taskForm);
+  const taskFormBehavior = useWorkflowTaskFormBehavior(String(surface.instance.workflowCode || ''));
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   useEffect(() => {
     if (!settlement || request.current?.key !== settlement.key) return;
@@ -1073,6 +1075,8 @@ function WorkflowOperations({
         title="请刷新操作后继续办理" description="页面停留较久，需重新确认当前办理权限。刷新会保留尚未保存的输入。"
         action={<Button disabled={locked} loading={submitting} onClick={() => void refreshConfirmed()}>刷新操作</Button>} />}
       {surface.taskForm && <WorkflowTaskForm controller={taskForm} disabled={locked} variant={variant}
+        valueLinkage={taskFormBehavior?.valueLinkage}
+        linkageContext={{ workflowCode: String(surface.instance.workflowCode || ''), nodeId: String(surface.task?.nodeId || ''), pageCode: surface.taskForm.pageCode }}
         operationPending={submitting || unknown || Boolean(pendingLocator) || draftLocked || fileLocked}
         taskVersion={surface.task?.version ? Number(surface.task.version) : undefined}
         taskId={surface.task?.id ? String(surface.task.id) : undefined} draftDisabled={commandLocked} onRefresh={onRefresh}

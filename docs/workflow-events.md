@@ -1,3 +1,14 @@
+# 标准审批页面的值联动
+
+应用可给 `OpenXiangdaApplication` 传入 `workflowTaskForms`，按流程代码注册同步
+`valueLinkage(changed, values, { workflowCode, nodeId, pageCode })`。例如会议日期变化
+时生成可编辑意见。日期等输入已规范化为平台值；只响应用户修改，加载、草稿恢复和
+重读不会覆盖已有输入。独立手改意见是否保留由应用规则决定。
+
+回调只能读取和更新当前任务可见、可编辑的普通字段；子表、附件、只读、隐藏和
+未声明字段不参与。规则必须同步返回patch，不能发请求。规则失败保留输入并提示，
+整patch不会部分应用。保存、审批、CAS、权限、原命令恢复和固定流程仍由平台拥有。
+
 # Workflow 与 Notification Hub 2.0 边界
 
 标准 Workflow 与 Notification Hub 已作为 OpenXiangda 2.0 可选平台模块重新开放。它们不属于默认 CRUD 模板，也不兼容或复用 1.x 工作流、消息中心、模板、卡片、回调、表和 API。

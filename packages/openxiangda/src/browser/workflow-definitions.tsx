@@ -5,6 +5,7 @@ import {
   type AppWorkflowLaunchInputBindingDeclaration,
   type AppWorkflowNamedOperationOutputDeclaration,
 } from 'openxiangda-contracts/browser';
+type JsonObject = Record<string, unknown>;
 
 export interface WorkflowSubjectDefinition {
   resourceCode: string;
@@ -155,20 +156,38 @@ const WorkflowDefinitionsContext = createContext<
   ReadonlyMap<string, StandardWorkflowDefinition>
 >(new Map());
 
+export interface WorkflowTaskFormLinkageContext {
+  workflowCode: string;
+  nodeId: string;
+  pageCode: string;
+}
+export interface WorkflowTaskFormBehavior {
+  /** Synchronous presentation only. The platform still validates every task write. */
+  valueLinkage?: (changed: Readonly<JsonObject>, values: Readonly<JsonObject>, context: Readonly<WorkflowTaskFormLinkageContext>) => JsonObject;
+}
+export type WorkflowTaskFormBehaviors = Readonly<Record<string, WorkflowTaskFormBehavior>>;
+const WorkflowTaskFormsContext = createContext<WorkflowTaskFormBehaviors>({});
+
 export function OpenXiangdaWorkflowDefinitionsProvider({
   children,
   definitions,
+  taskForms = {},
 }: {
   children: ReactNode;
   definitions: StandardWorkflowDefinitionsInput;
+  taskForms?: WorkflowTaskFormBehaviors;
 }) {
   return (
     <WorkflowDefinitionsContext.Provider
       value={normalizeWorkflowDefinitions(definitions)}
     >
-      {children}
+      <WorkflowTaskFormsContext.Provider value={taskForms}>{children}</WorkflowTaskFormsContext.Provider>
     </WorkflowDefinitionsContext.Provider>
   );
+}
+
+export function useWorkflowTaskFormBehavior(code: string) {
+  return useContext(WorkflowTaskFormsContext)[code];
 }
 
 export function useWorkflowDefinitions() {
