@@ -10,7 +10,7 @@ import type { PlatformCapabilities } from 'openxiangda-contracts';
 import { compileApplicationSources, defineOpenXiangdaApp, adminNavigationGroup, adminResourcePage, defineAdminNavigation } from '../src/index.js';
 
 const cjs = createRequire(import.meta.url)('openxiangda-contracts/native-compiler') as typeof esm;
-function declaration(fieldCount = 1, label?: string) {
+function declaration(fieldCount = 1, label?: string, frontend: Partial<NonNullable<Parameters<typeof defineOpenXiangdaApp>[0]['frontend']>> = {}) {
   const resources = Array.from({ length: 128 }, (_, i) => ({ code: `records-${i}`, name: `Records ${i}`, dataPolicyCode: `owner-${i}`,
     fields: Array.from({ length: fieldCount }, (_, field) => ({ code: field ? `field_${field}` : 'name',
       type: 'text.short' as const, required: field === 0, label: label ?? (field ? `Field ${field}` : 'Name') })) }));
@@ -21,7 +21,7 @@ function declaration(fieldCount = 1, label?: string) {
     nodes: { done: { id: 'done', kind: 'end' as const, title: 'Done', outcome: 'approved' } },
   } }));
   return defineOpenXiangdaApp({ app: { code: 'bounded-declarations', name: 'Bounded declarations' },
-    frontend: { root: 'apps/web', admin: { navigation: defineAdminNavigation([adminNavigationGroup('records', 'Records', resources.map(r => adminResourcePage(r.code)))]) } },
+    frontend: { root: 'apps/web', admin: { navigation: defineAdminNavigation([adminNavigationGroup('records', 'Records', resources.map(r => adminResourcePage(r.code)))]) }, ...frontend },
     data: { resources }, authz: { capabilities: [], roles: Array.from({ length: 101 }, (_, i) => ({ code: `reader-${i}`, name: `Reader ${i}`,
       capabilities: i === 0 ? resources.map(r => `app:bounded-declarations:data:${r.code}:read`) : [] })),
     dataPolicies: resources.map((r, i) => ({ code: `owner-${i}`, name: `Owner ${i}`, resourceCode: r.code, unrestrictedRoleCodes: ['reader-0'], matchMode: 'OR' as const,
@@ -35,6 +35,51 @@ function input(config: any, contract: any) {
   return { appCode: config.appCode, configBytes: canonicalJson(config), contractBytes: canonicalJson(contract), expectedConfigDigest: sha256Digest(config), expectedContractDigest: sha256Digest(contract) };
 }
 const corpus = JSON.parse(readFileSync(new URL('../../contracts/test/fixtures/configuration-compatibility-corpus.json', import.meta.url), 'utf8'));
+function authenticatedDeclaration(routeCount: number) {
+  return declaration(1, undefined, {
+    routes: Array.from({ length: routeCount }, (_, i) => ({
+      code: `view-${i}`, path: i === 1 ? '/m/home' : `/views/${i}`, label: `View ${i}`, surface: 'user' as const,
+    })),
+    authentication: {
+      accountMode: 'existing-platform-users-only', registration: { mode: 'reject' },
+      methods: [{ code: 'password', type: 'password', label: 'Password', presentation: 'primary', required: true }],
+      surfaces: {
+        desktop: { routeCode: 'login', path: '/login', defaultRouteCode: 'view-0' },
+        mobile: { routeCode: 'login-mobile', path: '/m/login', defaultRouteCode: 'view-1' },
+      },
+    },
+  });
+}
+test('authenticated large applications use the declared route capacity in ESM and CJS', () => {
+  for (const routeCount of [501, esm.NATIVE_CONTRACT_CAPACITY_V2.routes]) {
+    const sources = compileApplicationSources(authenticatedDeclaration(routeCount));
+    const result = esm.compileNativeApplicationConfiguration(input(sources.config.value, sources.contracts.value));
+    assert.deepEqual(cjs.compileNativeApplicationConfiguration(input(sources.config.value, sources.contracts.value)), result);
+    assert.equal(sources.config.value.frontend.routes.length, routeCount);
+    assert.equal(result.requiredPlatformCapabilities.find(item => item.code === 'application.extended-declaration-capacity')?.contractVersion, '1.0.0');
+  }
+});
+test('large authenticated applications retain login validation and the exact route bound', () => {
+  const sources = compileApplicationSources(authenticatedDeclaration(501));
+  for (const compiler of [esm, cjs]) {
+    for (const [defaultRouteCode, expectedCode] of [
+      ['absent', 'NATIVE_APPLICATION_AUTH_DEFAULT_ROUTE_INVALID'],
+      ['view-1', 'NATIVE_APPLICATION_AUTH_DEFAULT_ROUTE_INVALID'],
+    ]) {
+      const config = structuredClone(sources.config.value), contract = structuredClone(sources.contracts.value);
+      config.frontend.authentication!.surfaces.desktop.defaultRouteCode = defaultRouteCode!;
+      assert.throws(() => compiler.compileNativeApplicationConfiguration(input(config, contract)),
+        (error: any) => error.code === expectedCode && error.pointer === '/config/frontend/authentication/surfaces/desktop/defaultRouteCode');
+    }
+    const config = structuredClone(sources.config.value), contract = structuredClone(sources.contracts.value);
+    config.frontend.authentication!.surfaces.desktop.routeCode = 'view-0';
+    assert.throws(() => compiler.compileNativeApplicationConfiguration(input(config, contract)),
+      (error: any) => error.code === 'NATIVE_APPLICATION_AUTH_SURFACE_CODE_CONFLICT' && error.pointer === '/config/frontend/authentication/surfaces/desktop/routeCode');
+    config.frontend.routes = Array.from({ length: compiler.NATIVE_CONTRACT_CAPACITY_V2.routes + 1 }, () => ({})) as any;
+    assert.throws(() => compiler.compileNativeApplicationConfiguration(input(config, contract)),
+      (error: any) => error.code === 'NATIVE_ARRAY_LIMIT_EXCEEDED' && error.pointer === '/config/frontend/routes');
+  }
+});
 test('public workflow definition schema accepts the same 200-field task boundary as the compiler', () => {
   const definition = compileApplicationSources(declaration()).config.value.workflows.definitions[0]!.definition;
   definition.taskPages = { budget: { title: '完整预算', fields: Array.from({ length: 200 }, (_, i) => ({ code: `value${i}` })) } };

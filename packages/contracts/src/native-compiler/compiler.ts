@@ -3364,7 +3364,7 @@ function validateApplicationAuthentication(
   const routes = boundedArray(
     routeDeclarations,
     '/config/frontend/routes',
-    500
+    NATIVE_CONTRACT_CAPACITY_V2.routes
   );
   const routesByCode = new Map<string, JsonObject>();
   for (const [index, rawRoute] of routes.entries()) {
