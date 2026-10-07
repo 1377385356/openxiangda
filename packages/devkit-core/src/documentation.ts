@@ -24,6 +24,7 @@ export const DOCUMENTATION_TOPICS = [
   { id: 'managed-concurrency', title: '缓存、排队与整数配额', file: 'managed-concurrency.md' },
   { id: 'managed-concurrency-frontend', title: '并发能力的前端接入', file: 'managed-concurrency-frontend.md' },
   { id: 'administration', title: '应用管理与有效配置', file: 'administration.md' },
+  { id: 'application-operations', title: 'AI 自助诊断、环境密钥和通知配置', file: 'application-operations.md' },
   { id: 'testing', title: '检查与真实业务验收', file: 'testing.md' },
   { id: 'delivery', title: '部署、生产晋级与恢复', file: 'delivery.md' },
   { id: 'upgrading', title: '版本升级与资料刷新', file: 'upgrading.md' },
