@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.59.6",
+  "version": "2.59.7",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -78,13 +78,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.8.3",
-    "openxiangda-contracts": "2.72.0",
-    "openxiangda-devkit-core": "2.54.0",
+    "openxiangda-cli": "2.8.4",
+    "openxiangda-contracts": "2.72.1",
+    "openxiangda-devkit-core": "2.54.1",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.1.2",
-    "openxiangda-nest": "2.16.3",
-    "openxiangda-skill-kit": "2.3.93",
+    "openxiangda-mcp": "2.1.3",
+    "openxiangda-nest": "2.16.4",
+    "openxiangda-skill-kit": "2.3.94",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -150,32 +150,34 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.59.6",
+    "version": "2.59.7",
     "status": "reviewed",
-    "title": "配置容量预检与共享预算对齐",
-    "summary": "修复多流程应用部署预检使用旧配置预算的问题，兼容旧4 MiB和新8 MiB声明，保留能力协商、完整编译与总请求限制。",
-    "newFeatures": [],
+    "title": "多流程源码容量与自动抄送预算",
+    "summary": "统一多流程应用的路由和资源预算，修正标准详情子表展示，并让自动抄送在显式人数预算内支持最多200人。",
+    "newFeatures": [
+      "自动抄送可显式声明最多200人，未声明时仍默认20人；节点配置编辑器遵守原binding预算。"
+    ],
     "fixes": [
-      "配置兼容性能力声明接受已支持的4／8 MiB预算，其他上限和错误类型继续拒绝。",
-      "请求Schema与编译器共用配置预算；浏览器Schema只依赖纯常量，不引入Node加密模块。"
+      "浏览器路由校验与共享声明对齐2048路由、512资源，避免合法多流程应用被旧局部限制拒绝。",
+      "标准流程详情的PC子表与手机明细隐藏内部父关联、排序、hidden和system字段，保留业务值与顺序。"
     ],
     "affectedUsers": [
-      "在V2平台部署或检查较大多流程应用的开发者；旧小配置与V1不受影响。"
+      "开发多流程V2应用、维护自动抄送节点或使用标准流程详情的开发者与管理员。"
     ],
     "upgradeSteps": [
-      "消费精确配套工具组合，核验平台与工具的共享编译器摘要一致；本批先本地验证，不自动发布或激活生产应用。"
+      "使用本批精确SDK组合，并同步支持新自动抄送预算的Server/Notification Hub；共享编译器摘要须一致。本候选先本地验证，未自动发布npm或学校生产。"
     ],
     "knownLimitations": [
-      "配置8 MiB、契约8 MiB仍受总请求10 MiB限制，任务页与JSON预算保持。",
-      "较大配置仍要求平台支持application.extended-configuration-bytes能力，旧站点缺失时在上传前拒绝。"
+      "旧绑定与已运行实例不自动扩大人数；人工抄送仍最多20人，角色源最多200有效成员行，不能截断。",
+      "单实例历史仍受1000审批/自动抄送席位与2MiB读取预算约束。学校实际50人投递与性能尚未验。"
     ],
     "issues": [],
     "compatibility": {
       "node": ">=24",
-      "platform": "共享编译器同源配对；较大配置要求application.extended-configuration-bytes@1.0.0",
+      "platform": "共享编译器同源配对；超过20人的自动抄送需同步升级Workflow与Notification Hub",
       "v1": "V1不消费本批V2契约"
     },
-    "sha256": "704919409c19828e4fc3b247f8967b50114e443c79ad5decd837fa77efcaa985",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.59.6"
+    "sha256": "fa3fb90b3634bafbb7aedb48b26dd3ac5779a2375873cb90f1e9a16222944647",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.59.7"
   }
 }
