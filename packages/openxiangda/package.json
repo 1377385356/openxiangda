@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.59.4",
+  "version": "2.59.5",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -78,13 +78,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.8.1",
-    "openxiangda-contracts": "2.71.0",
-    "openxiangda-devkit-core": "2.53.0",
+    "openxiangda-cli": "2.8.2",
+    "openxiangda-contracts": "2.71.1",
+    "openxiangda-devkit-core": "2.53.1",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.1.0",
-    "openxiangda-nest": "2.16.1",
-    "openxiangda-skill-kit": "2.3.91",
+    "openxiangda-mcp": "2.1.1",
+    "openxiangda-nest": "2.16.2",
+    "openxiangda-skill-kit": "2.3.92",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -150,7 +150,7 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.59.4",
+    "version": "2.59.5",
     "status": "reviewed",
     "title": "开发者AI应用自助操作与主线工具组合",
     "summary": "让AI沿用当前应用权限直接诊断事件、复用加密环境凭据、配置通知和恢复指定投递；发行同源主线已评审的流程及编译契约。",
@@ -164,14 +164,16 @@
       "补正可编辑未参与流转事实投影的一层owned子表；固定子表条件隐藏采用当前表单值。",
       "流程画布就绪后才开放导航，用户导航不再被迟到初始化覆盖；大型AppSpec支持512文件并保留原字节界限。",
       "流程提交遵循当前声明的隐藏字段保留或清空策略，并保留提交字段白名单。",
-      "冻结发行允许权威主线后续前进；源提交必须仍在主线，制品及参考应用证据必须保持原样。"
+      "冻结发行允许权威主线后续前进；源提交必须仍在主线，制品及参考应用证据必须保持原样。",
+      "流程变量叶路径继承已声明父变量的显示标签；路径、条件和单位事实保持。",
+      "冻结manifest在planned回执建立前即可验证主线祖先关系；缺失或损坏制品拒绝，实际验证门禁仍必需。"
     ],
     "affectedUsers": [
       "使用V2开发者CLI/MCP进行应用运维，或使用本批流程/编译增强的应用。稳定V1独立维护。"
     ],
     "upgradeSteps": [
       "精确更新完整工具组合，刷新工作区Skill和AGENTS平台区块并重启MCP。先读docs application-operations及admin operations --json。",
-      "共享校验器须与平台安装的openxiangda-contracts 2.71.0配对；已有生产应用保持原不可变版本，升级工具不代表重新部署业务。"
+      "共享校验器须与平台安装的openxiangda-contracts 2.71.1配对；已有生产应用保持原不可变版本，升级工具不代表重新部署业务。"
     ],
     "knownLimitations": [
       "沿用当前应用管理授权；首次账号授权、权限委托和外部身份目录维护仍由原owner处理。旧平台缺少接口时明确拒绝，不使用SQL或保护绕过。",
@@ -183,7 +185,7 @@
       "platform": "共享纯校验器同源配对；新增角色选人声明要求workflow.role-input-selection@1.0.0",
       "v1": "V1不消费本批V2契约或运行时"
     },
-    "sha256": "24320b39c5220c3acaf513b68532629801d3fc90f70f65659efcc69e1c7d616c",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.59.4"
+    "sha256": "a50ff28ce680ae7ec080219eb0e010ba087b3915c65582a13578ba3b9a7833b7",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.59.5"
   }
 }
