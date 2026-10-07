@@ -1,4 +1,4 @@
-import { DATA_TRANSACTION_MAX_BYTES, DATA_TRANSACTION_MAX_OPERATIONS, serializedDataBytes, isDataOwnedRowLimit } from './native-compiler/data-capacity.js';
+import { DATA_RESOURCE_MAX_FIELDS, DATA_TRANSACTION_MAX_BYTES, DATA_TRANSACTION_MAX_OPERATIONS, serializedDataBytes, isDataOwnedRowLimit } from './native-compiler/data-capacity.js';
 import { isDataTransactionActorAuthorityGuard } from './native-compiler/actor-authority.js';
 import { DATA_TRANSACTION_RECORD_SET_MAX_RECORDS, isDataTransactionRecordSetMatchGuard } from './native-compiler/record-set-guard.js';
 import {
@@ -565,11 +565,11 @@ export function validateDataResource(value: unknown): Diagnostic[] {
     if (!(error instanceof NativeUniqueKeyContractError)) throw error;
     diagnostics.push(diagnostic(error.code, error.message, error.pointer.replace(/^\//, '').replace(/\//g, '.')));
   }
-  if (fields.length === 0 || fields.length > 100) {
+  if (fields.length === 0 || fields.length > DATA_RESOURCE_MAX_FIELDS) {
     diagnostics.push(
       diagnostic(
         'DATA_RESOURCE_FIELDS_INVALID',
-        'schema.fields 必须包含 1 到 100 个字段',
+        `schema.fields 必须包含 1 到 ${DATA_RESOURCE_MAX_FIELDS} 个字段`,
         'schema.fields'
       )
     );

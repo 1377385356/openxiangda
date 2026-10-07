@@ -17,6 +17,7 @@ export const PLATFORM_CAPABILITY_CONTRACT_VERSIONS = {
   "data-api-v2": "1.1.0",
   "data.extended-owned-subtable-capacity": "1.0.0",
   "data.aggregate-owned-subtable-capacity": "1.0.0",
+  "data.extended-field-capacity": "1.0.0",
   "data.business-commands": "1.0.0",
   "data.record-edit": "1.0.0",
   "data.native-golden-crud": "1.0.0",

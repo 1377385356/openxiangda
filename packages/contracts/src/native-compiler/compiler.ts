@@ -1,3 +1,4 @@
+import { requiresExtendedFieldCapacity, WORKFLOW_LAUNCH_MAX_INPUTS } from './data-capacity.js';
 import { assertWorkflowNativeStagePolicy } from './workflow-native-stage.js';
 import { validateAuthenticatedPublicRead, AuthenticatedPublicReadContractError } from './authenticated-public-read.js';
 import { validateUserCandidateReferences, validateWorkflowUserCandidateBindings, UserCandidateContractError, requiresUserCandidateLaunchScope } from './user-candidates.js';
@@ -724,6 +725,8 @@ export function compileRequiredPlatformCapabilitiesV3(
       : []),
     ...(requiresExtendedOwnedSubtableCapacity(config.data.resources)
       ? [{ code: 'data.extended-owned-subtable-capacity' as const, declaration: config.data.resources.filter((resource: any) => requiresExtendedOwnedSubtableCapacity([resource])) }] : []),
+    ...(requiresExtendedFieldCapacity(config.data.resources, config.workflows?.definitions || [])
+      ? [{ code: 'data.extended-field-capacity' as const, declaration: { resources: config.data.resources.filter((resource: any) => resource.schema.fields.length > 100), workflows: (config.workflows?.definitions || []).filter((item: any) => requiresExtendedFieldCapacity([], [item])) } }] : []),
     ...(requiresAggregateOwnedSubtableCapacity(config.data.resources)
       ? [{ code: 'data.aggregate-owned-subtable-capacity' as const, declaration: config.data.resources.filter((resource: any) => requiresAggregateOwnedSubtableCapacity([resource])) }] : []),
     ...(config.data.resources.some((resource: JsonObject) => resource.schema.fields.some((field: JsonObject) => field.userCandidates !== undefined))
@@ -5401,12 +5404,12 @@ function compileWorkflowLaunchContract(
         : uniqueStrings(
             requestSchema.required,
             `${intentPointer}/operation/requestSchema/required`,
-            64
+            WORKFLOW_LAUNCH_MAX_INPUTS
           )
     );
     const inputs = object(intent.inputs, `${intentPointer}/inputs`);
     const inputEntries = Object.entries(inputs);
-    if (!inputEntries.length || inputEntries.length > 64) {
+    if (!inputEntries.length || inputEntries.length > WORKFLOW_LAUNCH_MAX_INPUTS) {
       fail(
         'NATIVE_WORKFLOW_NAMED_OPERATION_INPUT_INVALID',
         `${intentPointer}/inputs`

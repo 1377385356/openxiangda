@@ -1,3 +1,4 @@
+import { DATA_RESOURCE_MAX_FIELDS, WORKFLOW_LAUNCH_MAX_INPUTS } from './native-compiler/data-capacity.js';
 import { NATIVE_CONTRACT_CAPACITY_V2 } from './native-compiler/declaration-capacity.js';
 import { DATA_SUBTABLE_MAX_ROWS, DATA_SUBTABLE_MAX_TOTAL_ROWS, DATA_TRANSACTION_MAX_OPERATIONS, DATA_TRANSACTION_MAX_BYTES } from './native-compiler/data-capacity.js';
 import { nativeUniqueKeysJsonSchema } from './native-compiler/unique-keys.js';
@@ -2718,7 +2719,7 @@ export const dataResourceSchema = {
         fields: {
           type: "array",
           minItems: 1,
-          maxItems: 100,
+          maxItems: DATA_RESOURCE_MAX_FIELDS,
           items: {
             type: "object",
             additionalProperties: false,
@@ -6873,7 +6874,7 @@ export const workflowSurfaceSchema = {
       properties: {
         pageCode: nonEmptyString, page: { type: 'object' },
         expectedRevision: { type: 'integer', minimum: 1 },
-        fields: { type: 'object', maxProperties: 64 }, values: { type: 'object', maxProperties: 64 },
+        fields: { type: 'object', maxProperties: DATA_RESOURCE_MAX_FIELDS }, values: { type: 'object', maxProperties: DATA_RESOURCE_MAX_FIELDS },
       },
     },
     presentation: {
@@ -7085,7 +7086,7 @@ const workflowNamedOperationLaunchIntentSchema = {
     inputs: {
       type: "object",
       minProperties: 1,
-      maxProperties: 64,
+      maxProperties: WORKFLOW_LAUNCH_MAX_INPUTS,
       propertyNames: {
         type: "string",
         pattern: "^[A-Za-z][A-Za-z0-9_.:-]{0,254}$",
