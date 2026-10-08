@@ -26,7 +26,7 @@ export function DateTimeField(props: DateTimeConstraints & {
   const inherited = usePresentationTimeZone(props.timeZone);
   const effective = { ...props, ...fieldDateTimeConstraints(props.field, props) };
   const zoned = props.field.type === 'datetime' || props.field.type === 'datetime-range';
-  if (zoned && (inherited || props.min !== undefined || props.max !== undefined || effective.minuteStep !== undefined))
+  if (zoned && (inherited || props.min !== undefined || props.max !== undefined || effective.minuteStep !== undefined || props.disabledWeekdays !== undefined))
     return <ZonedDateTimeField {...effective} timeZone={inherited ?? Intl.DateTimeFormat().resolvedOptions().timeZone} />;
   return <LocalDateTimeField {...effective} />;
 }

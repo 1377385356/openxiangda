@@ -1175,3 +1175,9 @@ handler；默认精确流转模式不变，旧站点须支持 `workflow.approval
 状态只调整页面展示与可见输入校验，不改变流程、读写授权或子表数据；隐藏旧值会保留，
 重新显示后恢复。列必须已在具名操作的 sealed child closure 内，未知表/列与非布尔状态
 拒绝；`required: false` 不能撤销声明的必填，服务端业务仍独立验证实际提交值。
+
+生成提交页的 `formOptions.dateTimeConstraints` 可按已匹配的 `datetime` 或
+`datetime-range` 字段提供 `timeZone`、范围、步长和 `disabledWeekdays`（ISO周一1
+至周日7）。这只控制新选择，保留已有值，不能当成服务端提交门禁。
+`formOptions.fieldHints(values)` 返回按已匹配字段的提示内容，用于时段或业务说明，
+它不改变必填和数据；PC/手机均显示在字段旁。未知字段和无效约束阻止新表单。

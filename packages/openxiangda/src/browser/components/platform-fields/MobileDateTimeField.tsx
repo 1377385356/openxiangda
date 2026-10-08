@@ -20,7 +20,7 @@ export function MobileDateTimeField(props: FieldProps & DateTimeConstraints) {
   const inherited = usePresentationTimeZone(props.timeZone);
   const effective = { ...props, ...fieldDateTimeConstraints(props.field, props) };
   const zoned = props.field.type === 'datetime' || props.field.type === 'datetime-range';
-  if (zoned && (inherited || props.min !== undefined || props.max !== undefined || effective.minuteStep !== undefined))
+  if (zoned && (inherited || props.min !== undefined || props.max !== undefined || effective.minuteStep !== undefined || props.disabledWeekdays !== undefined))
     return <MobileZonedDateTimeField {...effective} timeZone={inherited ?? Intl.DateTimeFormat().resolvedOptions().timeZone} />;
   return <LocalMobileDateTimeField {...effective} />;
 }

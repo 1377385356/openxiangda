@@ -60,6 +60,7 @@ import { ResourceReferenceField } from '../platform-fields/ResourceReferenceFiel
 import { RichTextField, RichTextValueDisplay } from '../platform-fields/RichTextField';
 import { SignatureField, SignatureValueDisplay } from '../platform-fields/SignatureField';
 import type { WorkflowFileBinding } from '../../platform-client';
+import type { DateTimeConstraints } from '../platform-fields/zoned-date-time';
 
 export type SurfaceField = DataFieldSurface & { key: string };
 
@@ -134,6 +135,8 @@ export interface SurfaceFieldValueContext {
 }
 
 export interface SurfaceFieldRenderers {
+  /** Page picker assistance, independent of Native write validation. */
+  dateTimeConstraints?: Readonly<Record<string, DateTimeConstraints>>;
   /** Read-entry hints only; Native checks every file and resource independently. */
   fileResourceCodes?: Readonly<Record<string, string>>;
   referenceLaunch?: DataFieldSourceLaunchBinding;
@@ -402,7 +405,7 @@ export function SurfaceFieldControl({
     case 'datetime':
     case 'date-range':
     case 'datetime-range':
-      control = <DateTimeField disabled={disabled} field={field} />;
+      control = <DateTimeField {...renderers?.dateTimeConstraints?.[field.key]} disabled={disabled} field={field} />;
       break;
     case 'switch':
       control = <DesktopBooleanField field={field} disabled={disabled} />;
@@ -603,7 +606,7 @@ export function MobileSurfaceFieldControl({
     case 'datetime':
     case 'date-range':
     case 'datetime-range':
-      control = <MobileDateTimeField disabled={disabled} field={field} />;
+      control = <MobileDateTimeField {...renderers?.dateTimeConstraints?.[field.key]} disabled={disabled} field={field} />;
       break;
     case 'switch':
       control = <MobileBooleanField disabled={disabled} field={field} />;

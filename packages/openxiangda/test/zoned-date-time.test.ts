@@ -6,6 +6,18 @@ import { carrierWall, dateOptions, disabledZonedTime, fieldDateTimeConstraints, 
   wallCarrier, zonedInputResult } from '../src/browser/components/platform-fields/zoned-date-time';
 import { validatePresentationTimeZone, formatPresentationTime } from '../src/browser/presentation-time';
 
+test('weekday selection uses the business wall date and preserves the unconstrained path', () => {
+  const constraints = validateDateTimeConstraints({ timeZone: 'Asia/Shanghai', disabledWeekdays: [1] });
+  const instant = '2026-10-11T16:15:00.000Z'; // Sunday UTC, Monday in Shanghai.
+  assert.match(zonedInputResult(instantToWall(instant, 'Asia/Shanghai'), 'Asia/Shanghai', constraints).error!, /日期不可选择/);
+  assert.equal(zonedInputResult(instantToWall(instant, 'UTC'), 'UTC', constraints).value, instant);
+  assert.equal(zonedInputResult(instantToWall(instant, 'Asia/Shanghai'), 'Asia/Shanghai', {}).value, instant);
+  for (const wall of ['2026-10-11T09:30', '2026-10-13T16:30'])
+    assert.ok(zonedInputResult(Temporal.PlainDateTime.from(wall), 'Asia/Shanghai', constraints).value);
+  for (const disabledWeekdays of [[0], [8], [1.5], [1, 1], ['1'], Array(8).fill(1)])
+    assert.throws(() => validateDateTimeConstraints({ disabledWeekdays: disabledWeekdays as number[] }), /CONSTRAINT_INVALID/);
+});
+
 test('declared minute precision preserves exact instants and stricter caller steps', () => {
   for (const type of ['datetime', 'datetime-range'] as const) {
     const constraints = fieldDateTimeConstraints({ type, timePrecision: 'minute' }, {});

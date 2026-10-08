@@ -134,6 +134,7 @@ import { SubtableField } from '../platform-fields/SubtableField';
 import { assertNamedSubtableReadonlyFields, namedProcessFormValues, standardProcessFormValues } from './standard-process-values';
 import { fieldWritable } from '../resource/resource-page-helpers';
 import { workflowSubmissionFormInput, workflowSubmissionFormProjection, workflowSubmissionPrefill, workflowSubmissionValueLinkage, workflowSubmissionSubtableStates, type WorkflowSubmissionFieldStates, type WorkflowSubmissionSubtableFieldStates } from './workflow-submission-form';
+import { validateDateTimeConstraints } from '../platform-fields/zoned-date-time';
 export type { WorkflowSubmissionFieldState, WorkflowSubmissionFieldStates, WorkflowSubmissionSubtableFieldStates } from './workflow-submission-form';
 
 type PageVariant = 'desktop' | 'mobile';
@@ -2178,6 +2179,10 @@ export interface WorkflowSubmissionFormOptions {
   fieldState?: (values: Readonly<JsonObject>) => WorkflowSubmissionFieldStates;
   /** Narrows named-create child presentation; hidden values are retained and remain server-validated. */
   subtableFieldState?: (values: Readonly<JsonObject>) => WorkflowSubmissionSubtableFieldStates;
+  /** Assistance for matched datetime/range inputs; never a server submission rule. */
+  dateTimeConstraints?: SurfaceFieldRenderers['dateTimeConstraints'];
+  /** Dynamic help next to matched fields; independent of requirements and writes. */
+  fieldHints?: (values: Readonly<JsonObject>) => Readonly<Record<string, ReactNode>>;
   /** Synchronous canonical patch after user input, limited to editable launch fields. */
   valueLinkage?: (changed: Readonly<JsonObject>, values: Readonly<JsonObject>) => JsonObject;
   /** Display derived owned-child values without including them in named create input. */
@@ -2341,11 +2346,19 @@ export function WorkflowSubmissionPage({
       const values = subjectDefinition ? normalizeFormValues(watchedFormValues || {}, subjectDefinition.surface) : {};
       const subtableStates = workflowSubmissionSubtableStates(subjectDefinition?.surface || { fields: {} },
         namedIntent?.ownedSubject, formOptions?.subtableFieldState?.(structuredClone(values)));
-      return { ...workflowSubmissionFormProjection(fields, values, formOptions?.fieldState?.(values)), subtableStates, error: false };
+      for (const [code, constraints] of Object.entries(formOptions?.dateTimeConstraints || {})) {
+        if (!fields.some(field => field.key === code && ['datetime', 'datetime-range'].includes(field.type)))
+          throw new Error('OPENXIANGDA_WORKFLOW_FORM_DATE_FIELD_UNAVAILABLE');
+        validateDateTimeConstraints(constraints);
+      }
+      const fieldHints = formOptions?.fieldHints?.(structuredClone(values)) || {};
+      if (Object.keys(fieldHints).some(code => !fields.some(field => field.key === code)))
+        throw new Error('OPENXIANGDA_WORKFLOW_FORM_FIELD_UNAVAILABLE');
+      return { ...workflowSubmissionFormProjection(fields, values, formOptions?.fieldState?.(values)), subtableStates, fieldHints, error: false };
     } catch {
-      return { fields, values: {}, hiddenValues: {}, subtableStates: {}, error: true };
+      return { fields, values: {}, hiddenValues: {}, subtableStates: {}, fieldHints: {}, error: true };
     }
-  }, [fields, formOptions?.fieldState, formOptions?.subtableFieldState, namedIntent?.ownedSubject, subjectDefinition, watchedFormValues]);
+  }, [fields, formOptions?.fieldState, formOptions?.subtableFieldState, formOptions?.dateTimeConstraints, formOptions?.fieldHints, namedIntent?.ownedSubject, subjectDefinition, watchedFormValues]);
   const prefillContext = JSON.stringify([recoveryScope, identity.environment.activeAppVersionId, submissionMode, subjectId]);
   useEffect(() => { setLinkageError(false); }, [prefillContext]);
   useEffect(() => { setSubjectDirty(false); }, [prefillContext]);
@@ -3020,6 +3033,8 @@ export function WorkflowSubmissionPage({
     namedIntent?.operationCode || definition.processOperationCode;
   const fieldRenderers: SurfaceFieldRenderers | undefined = uploadOperationCode
     ? {
+        dateTimeConstraints: formOptions?.dateTimeConstraints,
+        renderExtra: ({ field }) => formProjection.fieldHints[field.key],
         renderSubtable: ({ field, disabled, operation, recordId }) => {
           const grant = namedIntent?.ownedSubject?.subtables.find(table => table.fieldCode === field.key);
           assertNamedSubtableReadonlyFields(subjectDefinition.surface, namedIntent?.ownedSubject, formOptions?.subtableReadonlyFields || {}, formOptions?.subtableFixedRows);
