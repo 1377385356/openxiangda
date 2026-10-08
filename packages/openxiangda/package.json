@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.60.0",
+  "version": "2.60.1",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -79,13 +79,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.8.5",
-    "openxiangda-contracts": "2.73.0",
-    "openxiangda-devkit-core": "2.55.0",
+    "openxiangda-cli": "2.8.6",
+    "openxiangda-contracts": "2.74.0",
+    "openxiangda-devkit-core": "2.56.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.1.4",
-    "openxiangda-nest": "2.16.5",
-    "openxiangda-skill-kit": "2.3.95",
+    "openxiangda-mcp": "2.1.5",
+    "openxiangda-nest": "2.16.6",
+    "openxiangda-skill-kit": "2.3.96",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -151,40 +151,37 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.60.0",
+    "version": "2.60.1",
     "status": "reviewed",
-    "title": "OpenXiangda 2.60.0：OSS 应用制品直传",
-    "summary": "开发工具可使用平台已配置的阿里云 OSS 直接上传应用构建包及镜像分块，服务器校验后按原摘要和进度导入，减轻客户 VPN 的大文件传输压力。",
+    "title": "OpenXiangda 2.60.1：显式父资源读取策略",
+    "summary": "新增原生子表父资源读取策略，保持同一有效成员关系内的完整授权链；本次同时物化完整主线中已存在的六项工作流界面与查询维护。",
     "newFeatures": [
-      "新增独立 artifact-transfer/v1 能力协商，平台启用后自动使用限时、精确对象范围的签名直传。",
-      "镜像沿用原 OCI 摘要、预算、断点及受管仓库，已有 Registry 层在直传前复用。",
-      "平台存储设置支持前端 OSS/CDN 静态分发；登录、HTML 及 API 入口保持平台地址。"
+      "原生子表可声明 parentRead，由平台绑定唯一父资源与子表字段，并以同一有效成员关系同时核验子、父、范围与读取视角。",
+      "公开 contracts/devkit 提供同源解析器与能力协商，根包及 CLI 模板传播精确配套版本。"
     ],
     "fixes": [
-      "同时收录本次物化前主线已有 Changeset：按真实构建输入复用后端镜像、HTTP 环境浏览器 SHA-256、较大声明的有界容量协商。",
-      "收录主线已有标准流程页面整理、补正派生事实、补填值联动、日期辅助、提交后导航及子表展示修正。"
+      "收录主线已有工作流画布缩放、面板、受控选中和按钮点击/键盘命中整理。",
+      "收录主线已有工作中心服务端分页搜索及流程不可读取/不存在状态的中文呈现。"
     ],
     "affectedUsers": [
-      "使用 OpenXiangda V2 发布应用且平台已配置 OSS 的开发者与管理员。"
+      "需要通过父记录权限读取 owned 子表的 V2 应用开发者，以及使用标准工作流界面和工作中心的用户。"
     ],
     "upgradeSteps": [
-      "按平台正式升级入口部署配套服务器和管理界面。",
-      "将项目 openxiangda 升至 2.60.0，按锁文件安装依赖并刷新项目同版本资料。",
-      "管理员按需启用存储设置中的开发工具直传及静态分发，核验 GET/HEAD CORS 和目录权限。"
+      "按正式版本组合升级平台 SQL 与服务器，再按锁文件安装精确工具包并刷新同版本资料。",
+      "启用 parentRead 前核验 data.parent-read-policy 能力，保留原业务 UUID、父子外键和 Head 回执。"
     ],
     "knownLimitations": [
-      "首轮仅支持阿里云 OSS；COS、MinIO、旧平台及关闭开关的站点保留原通道。",
-      "OSS 分发不等于 CDN 加速；CDN 域名需要独立配置，实际性能以部署样本为准。",
-      "暂存目录建议由管理员配置 1 天生命周期，平台不会覆盖整桶生命周期或 ACL。",
-      "本次以官方 Changeset 物化主线待发包内容，未新实现上述既有流程改动；所有版本与共享编译器需按平台组合配对。"
+      "仅支持只读、唯一父资源、单层 owned 子表；禁止应用自定义外键、多跳、循环及借读取扩大写权限。",
+      "隔离 PG15 实际 kernel 与合成授权测试不替代学校真实角色、页面、文件及性能验收。",
+      "本次包含完整既有 master 维护，不是只发布 G04 源码；后续 selected-department 与 managed-file 契约仍各自独立发布。"
     ],
     "compatibility": {
       "node": ">=24",
-      "platform": "配套平台 artifact-transfer/v1 可选接口；应用/编译器契约不变",
-      "v1": "V1不消费新增 OSS 制品传输协议。"
+      "platform": "启用 parentRead 需要配套 data.parent-read-policy 与正式 SQL 迁移",
+      "v1": "V1 不消费新增 V2 parentRead 契约。"
     },
     "issues": [],
-    "sha256": "1becf5ff798495bf650c87783f0714ccaa1f5dd2d1edab1b93eccfdfbea6edde",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.60.0"
+    "sha256": "1ac76bbd7c06e6a4aeb1613004b6a521fb44d0ad385f96fa5b81fb2f3ac60a35",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.60.1"
   }
 }
