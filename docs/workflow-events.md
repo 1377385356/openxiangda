@@ -1146,7 +1146,15 @@ handler；默认精确流转模式不变，旧站点须支持 `workflow.approval
 再合并受限任务字段、重验当前业务规则和资料，最后调用 `commandWithData`，
 使用 `expectedTransition: { kind: 'correction-replay' }`。平台验证真实本人补正、原任务与
 资料修订，在同一事务保存字段、刷新事实、核验 Native guards、关闭退回会话并重新计算。
-业务 mutation 仅写非事实的可信快照或审计字段，不能直接改变 `factProjection` 字段。
+业务 mutation 默认只写非事实的可信快照或审计字段。指导老师、部门或场馆等来源更正
+需要重算审批事实时，在固定`commandHandlers.resubmit`声明
+`derivedSubjectFields: ['instructorPerson']`：最多32个唯一、实际投影的顶层非system
+字段，且所有任务页面都不能将其设为可编辑。应用从当前可信来源重新计算，用原
+subject update和来源guards提交实际改变的派生字段；普通补填仍放在原任务表单。
+平台权威重读后原子刷新事实、修订和摘要，验证失效代码步骤能沿固定路径重放。
+其他事实与身份保持原保护，不允许在approve/reject/withdraw复用此权限。自动要求
+`workflow.correction-derived-subject-facts@1.0.0`，旧平台会拒绝新增声明，无额外开关。
+原实例继续固定旧定义；未改变的派生字段不回写，无声明时不能更换派生审批事实。
 
 `save_form` 仍可保存未填完的资料；只有通过业务重校验才能重提。直接调用原 Workflow
 重提入口会被拒绝，管理员不能替原发起人绕过该处理器。仅声明 resubmit 的流程可保留

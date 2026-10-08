@@ -2046,6 +2046,8 @@ function runtimeProtocolCapabilities(config: OpenXiangdaAppConfig) {
       ? ['workflow.approval-business-command'] : []),
     ...((config.workflows?.definitions || []).some(item => item.definition.commandHandlers?.resubmit) || operations.some(operation => operation.platformAccess?.workflow?.businessCommands?.includes('resubmit'))
       ? ['workflow.correction-business-command'] : []),
+    ...((config.workflows?.definitions || []).some(item => item.definition.commandHandlers?.resubmit?.derivedSubjectFields !== undefined)
+      ? ['workflow.correction-derived-subject-facts'] : []),
     ...((config.workflows?.definitions || []).some(item => item.definition.launchPreflight !== undefined)
       ? ['workflow.launch-preflight'] : []),
     ...((config.workflows?.definitions || []).some(item => item.definition.instanceCommands !== undefined)

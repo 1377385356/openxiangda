@@ -799,6 +799,9 @@ export function compileRequiredPlatformCapabilitiesV3(
         } }] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => item.definition.launchPreflight !== undefined)
       ? [{ code: 'workflow.launch-preflight' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => item.definition.launchPreflight !== undefined) }] : []),
+    ...(config.workflows.definitions.some((item: JsonObject) => item.definition.commandHandlers?.resubmit?.derivedSubjectFields !== undefined)
+      ? [{ code: 'workflow.correction-derived-subject-facts' as const,
+          declaration: config.workflows.definitions.filter((item: JsonObject) => item.definition.commandHandlers?.resubmit?.derivedSubjectFields !== undefined) }] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => item.definition.approvedDelegation !== undefined)
       ? [{ code: 'workflow.approved-delegation' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => item.definition.approvedDelegation !== undefined) }] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => workflowUsesOwnedInitialFacts(item.definition, config.data.resources))
@@ -6823,6 +6826,13 @@ function validateWorkflowReferences(config: JsonObject) {
       resources,
       `${pointer}/definition/subject`
     );
+    const derivedFields = definition.commandHandlers?.resubmit?.derivedSubjectFields || [];
+    const subjectResource = resources.get(definition.subject.resourceCode);
+    for (const fieldCode of derivedFields) {
+      const field = subjectResource?.schema.fields.find((entry: JsonObject) => entry.code === fieldCode);
+      if (!field || field.system === true || subjectResource?.surface?.fields?.[fieldCode]?.system === true)
+        fail('WORKFLOW_CORRECTION_DERIVED_SUBJECT_FIELDS_INVALID', `${pointer}/definition/commandHandlers/resubmit/derivedSubjectFields`);
+    }
     const taskPageErrors = validateWorkflowTaskPages(definition, new Map(
       (resources.get(definition.subject.resourceCode)?.schema.fields || [])
         .map((field: JsonObject) => [field.code, { ...resources.get(definition.subject.resourceCode)?.surface?.fields?.[field.code], ...field, system: ['id', 'revision', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy'].includes(field.code) }])

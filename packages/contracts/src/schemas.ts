@@ -5726,7 +5726,9 @@ export const workflowDefinitionSchema = {
       properties: Object.fromEntries(['approve', 'reject', 'withdraw', 'resubmit'].map(command => [command, {
         type: 'object', additionalProperties: false, required: ['operationCode'],
         properties: { operationCode: { type: 'string', pattern: '^[a-z][a-z0-9]*(?:[-_.][a-z0-9]+)*$' },
-          ...(command === 'approve' ? { transitionPolicy: { const: 'workflow' } } : {}) },
+          ...(command === 'approve' ? { transitionPolicy: { const: 'workflow' } } : {}),
+          ...(command === 'resubmit' ? { derivedSubjectFields: { type: 'array', minItems: 1, maxItems: 32, uniqueItems: true,
+            items: { type: 'string', pattern: '^[A-Za-z][A-Za-z0-9_]{0,62}$' } } } : {}) },
       }])),
     },
     taskPages: {

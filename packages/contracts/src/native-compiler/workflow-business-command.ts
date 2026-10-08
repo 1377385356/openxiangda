@@ -1,16 +1,21 @@
+import { OPENXIANGDA_NATIVE_SYSTEM_FIELD_MAP_V2 } from './data-field.js';
+
 /** Opt-in, fixed-definition dispatch; Workflow continues to own the decision. */
 export type WorkflowBusinessCommand = 'approve' | 'reject' | 'withdraw' | 'resubmit';
-export type WorkflowCommandHandlers = Partial<Record<WorkflowBusinessCommand, {
+export type WorkflowCommandHandlers = { [Command in WorkflowBusinessCommand]?: {
   operationCode: string;
   /** Opt-in approval routing remains owned by the Workflow kernel. */
   transitionPolicy?: 'workflow';
-}>>;
+  /** Fixed, server-derived routing fields; never writable on a task page. */
+  derivedSubjectFields?: Command extends 'resubmit' ? readonly string[] : never;
+}};
 
 type Definition = {
   code: string;
-  subject?: { resourceCode: string };
+  subject?: { resourceCode: string; factProjection?: Record<string, string> };
   commandHandlers?: WorkflowCommandHandlers;
   nodes: Record<string, { kind: string; emptyPolicy?: string; initiatorApprovalPolicy?: string }>;
+  taskPages?: Record<string, { fields: readonly { code: string; readonly?: boolean }[] }>;
 };
 type Operation = {
   code: string;
@@ -30,11 +35,22 @@ export function validateWorkflowCommandHandlers(definition: Definition, operatio
   }
   for (const [command, handler] of Object.entries(handlers)) {
     if (!handler || typeof handler !== 'object' || Array.isArray(handler) ||
-        Object.keys(handler).some(key => !['operationCode', 'transitionPolicy'].includes(key)) ||
+        Object.keys(handler).some(key => !['operationCode', 'transitionPolicy', 'derivedSubjectFields'].includes(key)) ||
         (handler.transitionPolicy !== undefined && (command !== 'approve' || handler.transitionPolicy !== 'workflow')) ||
         !/^[a-z][a-z0-9]*(?:[-_.][a-z0-9]+)*$/.test(handler.operationCode || '')) {
       errors.push('WORKFLOW_BUSINESS_COMMAND_HANDLER_INVALID');
       continue;
+    }
+    if (handler.derivedSubjectFields !== undefined) {
+      const fields = handler.derivedSubjectFields;
+      const projected = new Set(Object.values(definition.subject?.factProjection || {}));
+      if (command !== 'resubmit' || !Array.isArray(fields) || fields.length < 1 || fields.length > 32 ||
+          new Set(fields).size !== fields.length || fields.some(field => typeof field !== 'string' ||
+            !/^[A-Za-z][A-Za-z0-9_]{0,62}$/.test(field) || !projected.has(field) ||
+            (OPENXIANGDA_NATIVE_SYSTEM_FIELD_MAP_V2.has(field) || ['createdBy', 'updatedBy', 'createdAt', 'updatedAt'].includes(field)) || Object.values(definition.taskPages || {}).some(page =>
+              page.fields?.some(entry => entry.code === field && entry.readonly !== true)))) {
+        errors.push('WORKFLOW_CORRECTION_DERIVED_SUBJECT_FIELDS_INVALID');
+      }
     }
     if (!operations) continue;
     const operation = operations.find(item => item.code === handler.operationCode);

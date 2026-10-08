@@ -68,6 +68,7 @@ export const PLATFORM_CAPABILITY_CONTRACT_VERSIONS = {
   "workflow.owned-initial-facts": "1.0.0",
   "workflow.initiator-correction": "1.0.0",
   "workflow.correction-business-command": "1.0.0",
+  "workflow.correction-derived-subject-facts": "1.0.0",
   "workflow.role-references": "1.0.0",
   "workflow.delegation-management": "1.0.0",
   "workflow.automatic-cc": "1.0.0",

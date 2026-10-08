@@ -183,6 +183,52 @@ test('correction revalidation compiles through both boundaries without changing 
   assert.throws(() => compileApplicationSources(defineOpenXiangdaApp(source)), /WORKFLOW_BUSINESS_CORRECTION_REQUIRED|WORKFLOW_CORRECTION_RETURN/);
 });
 
+function derivedCorrectionFixture() {
+  const source = fixture(); const definition: any = source.workflows!.definitions[0]!.definition;
+  definition.commandHandlers = { resubmit: { operationCode: 'decide-request', derivedSubjectFields: ['amount'] } };
+  definition.subject.summaryFields = [];
+  definition.taskPages = { correct: { title: '更正申请', fields: [{ code: 'amount', readonly: true }, { code: 'status' }] } };
+  definition.nodes.correct = { id: 'correct', kind: 'correction', title: '本人补正', taskPageCode: 'correct', next: definition.startAt };
+  definition.nodes.review.returnTargets = ['correct'];
+  source.backend!.operations[0]!.platformAccess!.workflow!.businessCommands = ['resubmit'];
+  return source;
+}
+
+test('derived correction seals identical authoring/ESM/CJS capability closure and rejects an old platform', () => {
+  const source = derivedCorrectionFixture();
+  const output = compileApplicationSources(defineOpenXiangdaApp(source));
+  const input = { appCode: source.app.code, configBytes: output.config.content, expectedConfigDigest: output.config.digest,
+    contractBytes: output.contracts.content, expectedContractDigest: output.contracts.digest };
+  const target = compileNativeApplicationConfiguration(input);
+  const cjs = createRequire(import.meta.url)('openxiangda-contracts/native-compiler');
+  assert.deepEqual(cjs.compileNativeApplicationConfiguration(input), target);
+  assert.deepEqual(target.requiredPlatformCapabilities, requiredPlatformCapabilitiesFromConfiguration(output.config.value));
+  const requirement = target.requiredPlatformCapabilities.filter(item => item.code === 'workflow.correction-derived-subject-facts');
+  assert.equal(requirement.length, 1);
+  assert.equal(requirement[0]!.contractVersion, '1.0.0');
+  assert.ok(output.config.value.runtime.protocolCapabilities.includes('workflow.correction-derived-subject-facts'));
+  assert.throws(() => assertRequiredCapabilitiesAvailable({ features: {} } as PlatformCapabilities, requirement),
+    (error: any) => error.code === 'OPENXIANGDA_REQUIRED_CAPABILITY_UNAVAILABLE');
+  const validate = new Ajv2020({ strict: false, validateFormats: false }).compile(workflowDefinitionSchema);
+  assert.equal(validate(output.config.value.workflows.definitions[0]!.definition), true, JSON.stringify(validate.errors));
+  const ordinary = fixture();
+  assert.equal(requiredPlatformCapabilitiesFromConfiguration(compileApplicationSources(defineOpenXiangdaApp(ordinary)).config.value)
+    .some(item => item.code === 'workflow.correction-derived-subject-facts'), false);
+});
+
+test('derived correction cannot turn a task input or another handler into a trusted calculation', () => {
+  for (const mutate of [
+    (definition: any) => definition.taskPages.correct.fields[0].readonly = false,
+    (definition: any) => definition.commandHandlers.resubmit.derivedSubjectFields = ['status'],
+    (definition: any) => definition.commandHandlers.approve = definition.commandHandlers.resubmit,
+  ]) {
+    const source = derivedCorrectionFixture(); mutate(source.workflows!.definitions[0]!.definition);
+    assert.throws(() => compileApplicationSources(defineOpenXiangdaApp(source)), /WORKFLOW_CORRECTION_DERIVED_SUBJECT_FIELDS_INVALID/);
+    const validate = new Ajv2020({ strict: false, validateFormats: false }).compile(workflowDefinitionSchema);
+    if (source.workflows!.definitions[0]!.definition.commandHandlers!.approve) assert.equal(validate(source.workflows!.definitions[0]!.definition), false);
+  }
+});
+
 test('approved delegation is preserved by app and target compilers and requires support only when declared', () => {
   const source = fixture();
   const lines: NonNullable<NonNullable<OpenXiangdaAppDeclaration['data']>['resources']>[number] = {

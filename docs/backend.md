@@ -91,6 +91,14 @@ return businessProcess.commandWithData({
 `not_observed` 仅表示尚未看到确定回执；保留原输入、原 token 和原键，按用户显式操作恢复。
 声明及限制见[工作流](workflow-events.md#correction-business-command)。
 
+更正指导老师、申报部门或预约场馆时，可在固定resubmit handler声明
+`derivedSubjectFields`白名单。处理器恢复原结果后，按当前可信字典和资料计算实际
+改变的字段，将它们与非事实审计值放入同一次subject update并携带来源guards；
+用户输入不能直接提供派生审批人，页面仍只提交原补正表单。平台从权威Native记录
+重读事实，与任务、数据和回执同事务更新；无法安全重放、来源/CAS或类型变化整笔
+回滚。未变化字段省略，确保已固定的无此声明旧实例仍可做普通更正。完整限制与
+自动能力协商见上述工作流专题，不另建重算API、事务或权限状态。
+
 ### 数据修改的原结果恢复 {#data-business-commands}
 
 仅修改业务资料的具名动作，在 `platformAccess` 声明
