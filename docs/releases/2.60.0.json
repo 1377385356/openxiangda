@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.60.0",
+  "status": "reviewed",
+  "title": "OpenXiangda 2.60.0：OSS 应用制品直传",
+  "summary": "开发工具可使用平台已配置的阿里云 OSS 直接上传应用构建包及镜像分块，服务器校验后按原摘要和进度导入，减轻客户 VPN 的大文件传输压力。",
+  "newFeatures": [
+    "新增独立 artifact-transfer/v1 能力协商，平台启用后自动使用限时、精确对象范围的签名直传。",
+    "镜像沿用原 OCI 摘要、预算、断点及受管仓库，已有 Registry 层在直传前复用。",
+    "平台存储设置支持前端 OSS/CDN 静态分发；登录、HTML 及 API 入口保持平台地址。"
+  ],
+  "fixes": [],
+  "affectedUsers": [
+    "使用 OpenXiangda V2 发布应用且平台已配置 OSS 的开发者与管理员。"
+  ],
+  "upgradeSteps": [
+    "按平台正式升级入口部署配套服务器和管理界面。",
+    "将项目 openxiangda 升至 2.60.0，按锁文件安装依赖并刷新项目同版本资料。",
+    "管理员按需启用存储设置中的开发工具直传及静态分发，核验 GET/HEAD CORS 和目录权限。"
+  ],
+  "knownLimitations": [
+    "首轮仅支持阿里云 OSS；COS、MinIO、旧平台及关闭开关的站点保留原通道。",
+    "OSS 分发不等于 CDN 加速；CDN 域名需要独立配置，实际性能以部署样本为准。",
+    "暂存目录建议由管理员配置 1 天生命周期，平台不会覆盖整桶生命周期或 ACL。"
+  ],
+  "compatibility": {
+    "node": ">=24",
+    "platform": "配套平台 artifact-transfer/v1 可选接口；应用/编译器契约不变"
+  },
+  "issues": []
+}
