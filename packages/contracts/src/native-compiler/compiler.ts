@@ -145,8 +145,8 @@ const EVENT_AUTHORIZATION_SYSTEM_FIELDS = new Set([
   'created_at',
   'updated_at',
 ]);
-export { NATIVE_CONTRACT_CAPACITY_V2, requiresExtendedDeclarationCapacity, generatedCrudCapabilityOperations } from './declaration-capacity.js';
-import { NATIVE_CONTRACT_CAPACITY_V2, requiresExtendedDeclarationCapacity } from './declaration-capacity.js';
+export { NATIVE_CONTRACT_CAPACITY_V2, requiresExtendedDeclarationCapacity, requiresExtendedRoleCapacity, generatedCrudCapabilityOperations } from './declaration-capacity.js';
+import { NATIVE_CONTRACT_CAPACITY_V2, requiresExtendedDeclarationCapacity, requiresExtendedRoleCapacity } from './declaration-capacity.js';
 export { NATIVE_ARTIFACT_CAPACITY_V2, NATIVE_HIGH_DENSITY_ARTIFACT_CAPACITY_V2, requiresHighDensityArtifactCapacity, requiresExtendedArtifactCapacity, requiresExtendedConfigurationBytes } from './artifact-capacity.js';
 import { NATIVE_ARTIFACT_CAPACITY_V2, NATIVE_HIGH_DENSITY_ARTIFACT_CAPACITY_V2, requiresHighDensityArtifactCapacity, requiresExtendedArtifactCapacity, requiresExtendedConfigurationBytes } from './artifact-capacity.js';
 export const DATA_EVENT_TYPES_V2 = [
@@ -540,6 +540,9 @@ export function compileRequiredPlatformCapabilitiesV3(
     code: OpenXiangdaPlatformCapabilityCode;
     declaration: unknown;
   }> = [
+    ...(requiresExtendedRoleCapacity(config)
+      ? [{ code: 'application.extended-role-capacity' as const,
+          declaration: { roles: config.authz.roles.length, maximum: NATIVE_CONTRACT_CAPACITY_V2.roles } }] : []),
     ...(requiresExtendedConfigurationBytes(config)
       ? [{ code: 'application.extended-configuration-bytes' as const,
           declaration: { legacyConfigBytes: NATIVE_ARTIFACT_CAPACITY_V2.legacyConfigBytes,

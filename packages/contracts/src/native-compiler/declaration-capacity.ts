@@ -1,6 +1,6 @@
 /** Declaration slots share the existing global byte, depth and JSON-node budgets. */
 export const NATIVE_CONTRACT_CAPACITY_V2 = Object.freeze({
-  perspectives: 100, resources: 512, dataPolicies: 512, roles: 256,
+  perspectives: 100, resources: 512, dataPolicies: 512, roles: 512,
   subjectReadSurfaces: 50, capabilities: 4096, operations: 500,
   eventConsumers: 100, eventProducers: 1000, eventSchemas: 100, eventTypes: 500,
   workflows: 512, routes: 2048, adminPages: 2048,
@@ -25,6 +25,10 @@ type Declaration = {
   workflows?: { definitions?: readonly unknown[]; bindings?: readonly unknown[]; activations?: readonly unknown[] };
   frontend?: { routes?: readonly unknown[]; admin?: { navigation?: readonly { items: readonly unknown[] }[] } };
 };
+/** Role slots beyond the previous server bound require explicit support. */
+export function requiresExtendedRoleCapacity(config: Declaration): boolean {
+  return (config.authz?.roles?.length || 0) > 256;
+}
 /** Derived from the sealed declaration; applications cannot assert support. */
 export function requiresExtendedDeclarationCapacity(config: Declaration): boolean {
   const catalogSlots = (config.data?.resources || []).filter(resource => resource.status !== 'retired')
