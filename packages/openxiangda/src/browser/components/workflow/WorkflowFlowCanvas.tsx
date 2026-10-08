@@ -127,7 +127,7 @@ export default function WorkflowFlowCanvas(props: {
   if (!positions) return <div className="oxa-workflow-canvas-loading"><Skeleton active title paragraph={{ rows: 4 }} /></div>;
   return <div ref={container} className="oxa-workflow-reactflow">
     <ReactFlow<FlowNode, FlowEdge> nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes} onInit={setInstance}
-      nodesDraggable={false} nodesConnectable={false} nodesFocusable={false} edgesFocusable={false} edgesReconnectable={false}
+      nodesDraggable={false} nodesConnectable={false} nodesFocusable={false} edgesFocusable={false} edgesReconnectable={false} elementsSelectable={false}
       deleteKeyCode={null} disableKeyboardA11y selectionOnDrag={false} selectionKeyCode={null} zoomOnDoubleClick={false}
       minZoom={.025} maxZoom={1.6} onlyRenderVisibleElements onMoveStart={event => { if (event) interruptNavigation.current?.(); }} onMoveEnd={(_event, viewport) => props.onZoom(viewport.zoom)}
       onEdgeClick={(_event, edge) => props.onSelectEdge(edge.id)} aria-label="只读流程画布">
