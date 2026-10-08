@@ -448,13 +448,16 @@ for (const mobile of [false, true]) test(`unsaved workflow launch ${mobile ? 'mo
   if (mobile) await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/workflow-entry.e2e.html?mode=${mobile ? 'mobile' : 'callback'}`);
   const drawer = page.getByRole('dialog', { name: '采购审批' });
-  await expect(drawer.getByRole('textbox', { name: '申请名称', exact: true })).toBeVisible();
-  await drawer.getByRole('textbox', { name: '申请名称', exact: true }).fill('未提交的原输入');
+  const titleInput = mobile
+    ? drawer.getByRole('textbox', { name: '申请名称', exact: true })
+    : drawer.getByLabel('申请名称', { exact: true });
+  await expect(titleInput).toBeVisible();
+  await titleInput.fill('未提交的原输入');
   await drawer.getByRole('button', { name: '关闭', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: '离开当前页面？' });
   await expect(dialog).toBeVisible();
   await dialog.getByRole('button', { name: '继续编辑' }).click();
-  await expect(drawer.getByRole('textbox', { name: '申请名称', exact: true })).toHaveValue('未提交的原输入');
+  await expect(titleInput).toHaveValue('未提交的原输入');
   await drawer.getByRole('button', { name: '关闭', exact: true }).click();
   await dialog.getByRole('button', { name: /^离\s*开$/ }).click();
   await expect(drawer).toHaveCount(0);
