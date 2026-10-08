@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.59.7",
+  "version": "2.60.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -79,13 +79,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.8.4",
-    "openxiangda-contracts": "2.72.1",
-    "openxiangda-devkit-core": "2.54.1",
+    "openxiangda-cli": "2.8.5",
+    "openxiangda-contracts": "2.73.0",
+    "openxiangda-devkit-core": "2.55.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.1.3",
-    "openxiangda-nest": "2.16.4",
-    "openxiangda-skill-kit": "2.3.94",
+    "openxiangda-mcp": "2.1.4",
+    "openxiangda-nest": "2.16.5",
+    "openxiangda-skill-kit": "2.3.95",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -151,34 +151,40 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.59.7",
+    "version": "2.60.0",
     "status": "reviewed",
-    "title": "多流程源码容量与自动抄送预算",
-    "summary": "统一多流程应用的路由和资源预算，修正标准详情子表展示，并让自动抄送在显式人数预算内支持最多200人。",
+    "title": "OpenXiangda 2.60.0：OSS 应用制品直传",
+    "summary": "开发工具可使用平台已配置的阿里云 OSS 直接上传应用构建包及镜像分块，服务器校验后按原摘要和进度导入，减轻客户 VPN 的大文件传输压力。",
     "newFeatures": [
-      "自动抄送可显式声明最多200人，未声明时仍默认20人；节点配置编辑器遵守原binding预算。"
+      "新增独立 artifact-transfer/v1 能力协商，平台启用后自动使用限时、精确对象范围的签名直传。",
+      "镜像沿用原 OCI 摘要、预算、断点及受管仓库，已有 Registry 层在直传前复用。",
+      "平台存储设置支持前端 OSS/CDN 静态分发；登录、HTML 及 API 入口保持平台地址。"
     ],
     "fixes": [
-      "浏览器路由校验与共享声明对齐2048路由、512资源，避免合法多流程应用被旧局部限制拒绝。",
-      "标准流程详情的PC子表与手机明细隐藏内部父关联、排序、hidden和system字段，保留业务值与顺序。"
+      "同时收录本次物化前主线已有 Changeset：按真实构建输入复用后端镜像、HTTP 环境浏览器 SHA-256、较大声明的有界容量协商。",
+      "收录主线已有标准流程页面整理、补正派生事实、补填值联动、日期辅助、提交后导航及子表展示修正。"
     ],
     "affectedUsers": [
-      "开发多流程V2应用、维护自动抄送节点或使用标准流程详情的开发者与管理员。"
+      "使用 OpenXiangda V2 发布应用且平台已配置 OSS 的开发者与管理员。"
     ],
     "upgradeSteps": [
-      "使用本批精确SDK组合，并同步支持新自动抄送预算的Server/Notification Hub；共享编译器摘要须一致。本候选先本地验证，未自动发布npm或学校生产。"
+      "按平台正式升级入口部署配套服务器和管理界面。",
+      "将项目 openxiangda 升至 2.60.0，按锁文件安装依赖并刷新项目同版本资料。",
+      "管理员按需启用存储设置中的开发工具直传及静态分发，核验 GET/HEAD CORS 和目录权限。"
     ],
     "knownLimitations": [
-      "旧绑定与已运行实例不自动扩大人数；人工抄送仍最多20人，角色源最多200有效成员行，不能截断。",
-      "单实例历史仍受1000审批/自动抄送席位与2MiB读取预算约束。学校实际50人投递与性能尚未验。"
+      "首轮仅支持阿里云 OSS；COS、MinIO、旧平台及关闭开关的站点保留原通道。",
+      "OSS 分发不等于 CDN 加速；CDN 域名需要独立配置，实际性能以部署样本为准。",
+      "暂存目录建议由管理员配置 1 天生命周期，平台不会覆盖整桶生命周期或 ACL。",
+      "本次以官方 Changeset 物化主线待发包内容，未新实现上述既有流程改动；所有版本与共享编译器需按平台组合配对。"
     ],
-    "issues": [],
     "compatibility": {
       "node": ">=24",
-      "platform": "共享编译器同源配对；超过20人的自动抄送需同步升级Workflow与Notification Hub",
-      "v1": "V1不消费本批V2契约"
+      "platform": "配套平台 artifact-transfer/v1 可选接口；应用/编译器契约不变",
+      "v1": "V1不消费新增 OSS 制品传输协议。"
     },
-    "sha256": "fa3fb90b3634bafbb7aedb48b26dd3ac5779a2375873cb90f1e9a16222944647",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.59.7"
+    "issues": [],
+    "sha256": "1becf5ff798495bf650c87783f0714ccaa1f5dd2d1edab1b93eccfdfbea6edde",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.60.0"
   }
 }
