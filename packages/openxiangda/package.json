@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.60.1",
+  "version": "2.60.2",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -79,13 +79,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.8.6",
-    "openxiangda-contracts": "2.74.0",
-    "openxiangda-devkit-core": "2.56.0",
+    "openxiangda-cli": "2.8.7",
+    "openxiangda-contracts": "2.75.0",
+    "openxiangda-devkit-core": "2.57.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.1.5",
-    "openxiangda-nest": "2.16.6",
-    "openxiangda-skill-kit": "2.3.96",
+    "openxiangda-mcp": "2.1.6",
+    "openxiangda-nest": "2.17.0",
+    "openxiangda-skill-kit": "2.3.97",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -151,37 +151,33 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.60.1",
+    "version": "2.60.2",
     "status": "reviewed",
-    "title": "OpenXiangda 2.60.1：显式父资源读取策略",
-    "summary": "新增原生子表父资源读取策略，保持同一有效成员关系内的完整授权链；本次同时物化完整主线中已存在的六项工作流界面与查询维护。",
+    "title": "OpenXiangda 2.60.2：已选部门真实事实",
+    "summary": "具名后端动作可基于平台目录解析有界已选部门名称与路径，保存可信展示快照而不复制组织权限。",
     "newFeatures": [
-      "原生子表可声明 parentRead，由平台绑定唯一父资源与子表字段，并以同一有效成员关系同时核验子、父、范围与读取视角。",
-      "公开 contracts/devkit 提供同源解析器与能力协商，根包及 CLI 模板传播精确配套版本。"
+      "新增 directory.selected-departments 能力和 selectedDepartments 声明，SDK 使用真实发起人、固定环境与动作证明读取平台目录事实。",
+      "至多50个不重复部门按输入顺序返回声明字段，整体检查缺失、删除、授权与当前 Head，并附真实数据库时间及摘要。"
     ],
-    "fixes": [
-      "收录主线已有工作流画布缩放、面板、受控选中和按钮点击/键盘命中整理。",
-      "收录主线已有工作中心服务端分页搜索及流程不可读取/不存在状态的中文呈现。"
-    ],
+    "fixes": [],
     "affectedUsers": [
-      "需要通过父记录权限读取 owned 子表的 V2 应用开发者，以及使用标准工作流界面和工作中心的用户。"
+      "需要在 V2 业务动作中保存部门名称、父级或完整路径快照的应用开发者。"
     ],
     "upgradeSteps": [
-      "按正式版本组合升级平台 SQL 与服务器，再按锁文件安装精确工具包并刷新同版本资料。",
-      "启用 parentRead 前核验 data.parent-read-policy 能力，保留原业务 UUID、父子外键和 Head 回执。"
+      "先按精确平台组合部署目录能力，再锁定同版本公开工具包并刷新契约。",
+      "具名动作显式声明字段与上限，快照只作展示，实际权限和审批路由仍由平台目录及角色控制。"
     ],
     "knownLimitations": [
-      "仅支持只读、唯一父资源、单层 owned 子表；禁止应用自定义外键、多跳、循环及借读取扩大写权限。",
-      "隔离 PG15 实际 kernel 与合成授权测试不替代学校真实角色、页面、文件及性能验收。",
-      "本次包含完整既有 master 维护，不是只发布 G04 源码；后续 selected-department 与 managed-file 契约仍各自独立发布。"
+      "本次主题仅提供当前租户未删除部门的已有目录读取范围；不引入未实现的每部门可见策略。",
+      "无学校真实角色或页面验收声明；source/SDK聚焦测试不代替上线业务验证。"
     ],
     "compatibility": {
       "node": ">=24",
-      "platform": "启用 parentRead 需要配套 data.parent-read-policy 与正式 SQL 迁移",
-      "v1": "V1 不消费新增 V2 parentRead 契约。"
+      "platform": "directory.selected-departments 1.0.0 与配套contracts/devkit/nest",
+      "v1": "V1 API 与未声明此能力的 V2 动作保持现有行为。"
     },
     "issues": [],
-    "sha256": "1ac76bbd7c06e6a4aeb1613004b6a521fb44d0ad385f96fa5b81fb2f3ac60a35",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.60.1"
+    "sha256": "c5897f1bec938ea57c4c4d9e04381c39bc78bf47e4dce018890d42d696bbf341",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.60.2"
   }
 }

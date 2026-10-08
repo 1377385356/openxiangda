@@ -3,6 +3,37 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.60.2",
+      "status": "reviewed",
+      "title": "OpenXiangda 2.60.2：已选部门真实事实",
+      "summary": "具名后端动作可基于平台目录解析有界已选部门名称与路径，保存可信展示快照而不复制组织权限。",
+      "newFeatures": [
+        "新增 directory.selected-departments 能力和 selectedDepartments 声明，SDK 使用真实发起人、固定环境与动作证明读取平台目录事实。",
+        "至多50个不重复部门按输入顺序返回声明字段，整体检查缺失、删除、授权与当前 Head，并附真实数据库时间及摘要。"
+      ],
+      "fixes": [],
+      "affectedUsers": [
+        "需要在 V2 业务动作中保存部门名称、父级或完整路径快照的应用开发者。"
+      ],
+      "upgradeSteps": [
+        "先按精确平台组合部署目录能力，再锁定同版本公开工具包并刷新契约。",
+        "具名动作显式声明字段与上限，快照只作展示，实际权限和审批路由仍由平台目录及角色控制。"
+      ],
+      "knownLimitations": [
+        "本次主题仅提供当前租户未删除部门的已有目录读取范围；不引入未实现的每部门可见策略。",
+        "无学校真实角色或页面验收声明；source/SDK聚焦测试不代替上线业务验证。"
+      ],
+      "compatibility": {
+        "node": ">=24",
+        "platform": "directory.selected-departments 1.0.0 与配套contracts/devkit/nest",
+        "v1": "V1 API 与未声明此能力的 V2 动作保持现有行为。"
+      },
+      "issues": [],
+      "sha256": "c5897f1bec938ea57c4c4d9e04381c39bc78bf47e4dce018890d42d696bbf341",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.60.2"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.60.1",
       "status": "reviewed",
       "title": "OpenXiangda 2.60.1：显式父资源读取策略",
