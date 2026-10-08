@@ -3,6 +3,35 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.59.3-http.0",
+      "status": "reviewed",
+      "title": "内网 HTTP 标准审批与签名兼容修复",
+      "summary": "基于已发布 2.59.2 的精确工具组合，修复内网 HTTP 缺少 SubtleCrypto 导致审批请求无法发送及手写签名摘要失败的问题。",
+      "newFeatures": [],
+      "fixes": [
+        "标准审批及手写签名共用浏览器 SHA-256；原生 Web Crypto 不可用时采用 @noble/hashes 2.0.1，保持同一摘要和原操作恢复。"
+      ],
+      "affectedUsers": [
+        "使用 HTTP 内网应用的 V2 审批人和手写签名用户。"
+      ],
+      "upgradeSteps": [
+        "精确安装 openxiangda@2.59.3-http.0，其他工具依赖保持 2.59.2 的已发布组合；重新部署测试环境并验收实际 HTTP 审批。"
+      ],
+      "knownLimitations": [
+        "这是 http 专用兼容通道，保留 npm latest/stable-v2；不包含主线尚未发布的流程与共享契约增强。",
+        "保留原权限、幂等恢复、测试环境及 HTTP 传输方式。未知审批结果不得重新发起。"
+      ],
+      "issues": [],
+      "compatibility": {
+        "node": ">=24",
+        "platform": "contracts 2.70.0 / devkit-core 2.52.0，同源校验器摘要保持原 2.59.2 组合",
+        "v1": "V1不消费本修复"
+      },
+      "sha256": "de5b032901bf648ae2d4497d8314c4745af1f10c170313d9661c5cee0c65c2f6",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.59.3-http.0"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.59.2",
       "status": "reviewed",
       "title": "入口排队观察节奏与同源契约升级",
