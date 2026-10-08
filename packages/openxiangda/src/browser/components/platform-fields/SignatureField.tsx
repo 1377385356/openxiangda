@@ -1,4 +1,5 @@
 import { PresentationTime } from '../../presentation-time';
+import { browserSha256 } from '../../sha256';
 import { Button as MobileButton, Popup } from '../../mobile';
 import { MobileSheetHeader } from './MobileFieldLayout';
 import {
@@ -46,10 +47,7 @@ function sampledPoints(input: StableSignaturePoint[], maximum: number) {
 }
 
 async function sha256(blob: Blob) {
-  const digest = await crypto.subtle.digest('SHA-256', await blob.arrayBuffer());
-  return [...new Uint8Array(digest)]
-    .map(byte => byte.toString(16).padStart(2, '0'))
-    .join('');
+  return browserSha256(new Uint8Array(await blob.arrayBuffer()));
 }
 
 function managedFile(file: DataFileRef): StableSignatureValue['file'] {

@@ -1213,6 +1213,29 @@ test('renders a standalone desktop detail on the canonical user URL', async ({
   await expect(page.getByRole('button', { name: /拒\s*绝/ })).toBeVisible();
 });
 
+for (const mobile of [false, true]) test(`approval submits once on insecure HTTP (${mobile ? 'mobile' : 'desktop'})`, async ({ page, baseURL }) => {
+  // Keep the browser origin genuinely insecure while forwarding fixture assets
+  // to the local server. No mutation of crypto or secure-context browser flags.
+  const httpOrigin = 'http://openxiangda-http.test';
+  await page.route(`${httpOrigin}/**`, async route => {
+    const url = new URL(route.request().url());
+    const response = await route.fetch({ url: new URL(url.pathname + url.search, baseURL!).toString() });
+    await route.fulfill({ response });
+  });
+  const mock = await mockWorkflow(page);
+  if (mobile) await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(httpOrigin + workflowFixtureUrl(`${mobile ? '/m' : ''}/tasks/${taskId}`));
+  expect(await page.evaluate(() => ({ secure: isSecureContext, subtle: Boolean(globalThis.crypto?.subtle) })))
+    .toEqual({ secure: false, subtle: false });
+  await page.getByRole('button', { name: /同\s*意/ }).click();
+  await page.getByLabel('审批意见').fill('同意采购');
+  await page.getByRole('button', { name: '确认同意' }).click();
+  await expect(page.getByText('同意已提交')).toBeVisible();
+  expect(mock.requests.filter(request => request.method === 'POST' && request.path.endsWith('/commands/approve'))).toHaveLength(1);
+  await expect(page).toHaveURL(new RegExp(`${mobile ? '/m' : ''}/workflows/${instanceId}$`));
+  expect(await page.evaluate(() => Object.keys(sessionStorage).filter(key => key.startsWith('openxiangda:pending-task-command:v1:')).length)).toBe(0);
+});
+
 test('refreshes the task after definitive command-token expiry without a second write', async ({
   page,
 }) => {

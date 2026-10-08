@@ -71,6 +71,7 @@
   },
   "dependencies": {
     "@js-temporal/polyfill": "0.5.1",
+    "@noble/hashes": "2.0.1",
     "@rc-component/async-validator": "6.0.0",
     "@rc-component/picker": "1.10.0",
     "@xyflow/react": "12.12.0",

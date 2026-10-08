@@ -8,7 +8,7 @@ test('signature source stays on managed PNG protocol instead of inline image dat
     'utf8'
   );
   assert.match(field, /toBlob\(resolve, 'image\/png'\)/);
-  assert.match(field, /digest\('SHA-256'/);
+  // Digest behavior (including HTTP) is covered by browser-sha256.test.ts.
   assert.match(field, /file: managedFile\(uploaded\)/);
   assert.doesNotMatch(field, /dataURL|base64/);
 });
