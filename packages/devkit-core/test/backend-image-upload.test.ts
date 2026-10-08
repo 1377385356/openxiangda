@@ -137,6 +137,7 @@ test('sends the gzip chunk header without changing the octet-stream content type
   const requests: Array<{ url: string; init?: RequestInit }> = [];
   const client = new OpenXiangdaControlPlaneClient({ baseUrl: 'https://platform.example/service',
     token: 'developer-access-token', fetch: async (input, init) => {
+      if (String(input).endsWith('/artifact-transfer')) return Response.json({ code: 404, message: 'not found' }, { status: 404 });
       requests.push({ url: String(input), init });
       return Response.json({ code: 200, message: 'success', data: { offset: 3, complete: true } });
     } });

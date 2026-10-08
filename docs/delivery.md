@@ -177,3 +177,11 @@ MCP 的 check_app、deployment_plan、deploy_app 使用与 CLI 相同的环境�
 先运行 `openxiangda deploy --environment test --strategy maintenance-replace --dry-run --json` 查看前驱版本、Head revision 和停止后的容量估算，再使用相同参数去掉 `--dry-run` 提交。计划不预留资源。只有已存在、身份匹配的单副本 TEST 后端才可使用；前端应用、新应用和 production 不支持。默认仍为 rolling，不会因配额不足自动停止实例。
 
 策略属于部署幂等请求。默认维护幂等键含策略，显式幂等键不能在不同策略之间复用。已有运行通过 status/retry 恢复；持续恢复中的运行保持 preparing/maintenance-recovery-required，平台会重试恢复，恢复失败时保留原运行与错误。
+
+## OSS 直传与静态分发
+
+平台管理员在「平台内置对象存储 → 应用构建与分发」启用「开发工具直传 OSS」后，新版 CLI 自动协商并直传构建包和镜像分块。开发者无需本机 OSS 密钥；平台从自己的存储读取，校验大小及摘要后封存或导入受管镜像仓库。中断后重新运行原 deploy，仍按原 digest/offset 恢复，不手工创建新镜像尝试。旧平台没有此能力时保持原通道；云端失败明确报告，不静默改用另一通道。
+
+「前端静态资源 → OSS / CDN」让 JS、CSS、字体等从 OSS 的不可变版本目录加载。HTML、登录、路由和 API 保留平台入口。Public Base URL 可配置已可用的 HTTPS CDN 域名；未配 CDN 时是 OSS 分发，不能据此承诺 CDN 加速。OSS GET/HEAD 的 CORS 需包含实际平台 origin。源码映射不公开。
+
+存储权限需覆盖隔离目录的 PutObject、GetObject、对象 ACL（暂存 private，校验后的静态资源 public-read）。不得更改整桶 ACL。建议为 `openxiangda/application-staging/` 配置 1 天生命周期；平台不自动覆盖现有生命周期。配置切换发生在直传和导入之间会明确拒绝，重新运行原部署即可按新配置恢复。关闭直传/切回平台静态分发可回退，不修改业务数据或环境版本。

@@ -653,6 +653,7 @@ test("classifies interrupted artifact uploads as retryable before DeploymentRun 
     baseUrl: "https://platform.example/service",
     token: "developer-access-token",
     fetch: async (_input, init) => {
+      if (String(_input).endsWith('/artifact-transfer')) return Response.json({ code: 404, message: 'not found' }, { status: 404 });
       assert.equal(init?.method, "POST");
       assert.ok(init?.body instanceof FormData);
       const cause = Object.assign(new Error("headers timeout"), {

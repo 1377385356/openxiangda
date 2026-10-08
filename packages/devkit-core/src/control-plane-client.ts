@@ -1,3 +1,6 @@
+import { createHash } from 'node:crypto';
+import { gunzipSync } from 'node:zlib';
+import type { ApplicationArtifactTransferCapability, ApplicationArtifactUploadSession } from 'openxiangda-contracts';
 import type { WorkflowDelegationAdministration, WorkflowDelegationCatalog, WorkflowDelegationCandidatePage, WorkflowDelegationCandidateQuery, WorkflowDelegationListQuery, WorkflowDelegationPage, WorkflowDelegationMutationPreview, WorkflowDelegationMutationReceipt, WorkflowDelegationMutationRequest } from "openxiangda-contracts";
 import type { DeploymentStrategy } from 'openxiangda-contracts';
 import { applicationOperationTransport, secretOperationMetadata, parseApplicationOperation } from './application-operations.js';
@@ -440,6 +443,7 @@ export class OpenXiangdaControlPlaneClient {
   private readonly baseUrl: string;
   private readonly fetch: FetchLike;
   private readonly artifactUploadFetch: FetchLike;
+  private readonly artifactTransfers = new Map<string, { capability: ApplicationArtifactTransferCapability; expiresAt: number }>();
 
   constructor(private readonly options: ControlPlaneClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
@@ -1027,6 +1031,60 @@ export class OpenXiangdaControlPlaneClient {
     }
   }
 
+  async artifactTransferCapability(appCode: string): Promise<ApplicationArtifactTransferCapability> {
+    const cached = this.artifactTransfers.get(appCode);
+    if (cached && cached.expiresAt > Date.now()) return cached.capability;
+    let capability: ApplicationArtifactTransferCapability;
+    try {
+      capability = await this.json<ApplicationArtifactTransferCapability>(
+        `/openxiangda-api/v2/applications/${encodeURIComponent(appCode)}/artifact-transfer`,
+        { signal: AbortSignal.timeout(10000) });
+    } catch (error) {
+      if (!(error instanceof ControlPlaneError) || error.status !== 404) throw error;
+      // Older platforms have no negotiation endpoint and keep their original upload contract.
+      capability = { schemaVersion: 'openxiangda.artifact-transfer/v1', provider: 'oss',
+        directUpload: false, frontendDelivery: 'platform', maxChunkBytes: 8388608, maxArtifactBytes: 52428800 };
+    }
+    if (capability.schemaVersion !== 'openxiangda.artifact-transfer/v1' || capability.provider !== 'oss' ||
+      typeof capability.directUpload !== 'boolean' || !['platform', 'object-storage'].includes(capability.frontendDelivery) ||
+      capability.maxChunkBytes !== 8388608 || capability.maxArtifactBytes !== 52428800)
+      throw new ControlPlaneError(502, 'OPENXIANGDA_ARTIFACT_TRANSFER_INVALID', '平台制品传输能力无效');
+    this.artifactTransfers.set(appCode, { capability, expiresAt: Date.now() + 10000 });
+    while (this.artifactTransfers.size > 32) this.artifactTransfers.delete(this.artifactTransfers.keys().next().value!);
+    return capability;
+  }
+
+  private async uploadObject(session: ApplicationArtifactUploadSession, content: Uint8Array) {
+    // Do not call this.request: platform authentication must never reach the cloud provider.
+    try {
+      const url = new URL(session.uploadUrl);
+      if (session.schemaVersion !== 'openxiangda.artifact-upload-session/v1' || session.uploadMethod !== 'POST' ||
+        !/^[a-f0-9]{64}$/.test(session.storageFingerprint) || url.protocol !== 'https:' ||
+        url.username || url.password || url.search || url.hash ||
+        Date.parse(session.expiresAt) <= Date.now() || !Number.isFinite(Date.parse(session.expiresAt)) ||
+        !session.formFields || session.formFields['x-oss-object-acl'] !== 'private' ||
+        !session.formFields.key?.startsWith('openxiangda/application-staging/')) throw new Error('invalid');
+      const form = new FormData();
+      for (const [key, value] of Object.entries(session.formFields)) {
+        if (typeof value !== 'string') throw new Error('invalid');
+        form.append(key, value);
+      }
+      // OSS requires the file to follow all policy fields.
+      form.append('file', new Blob([Uint8Array.from(content)], { type: 'application/octet-stream' }), 'artifact');
+      const response = await this.artifactUploadFetch(url.toString(), {
+        method: 'POST', body: form, redirect: 'error', signal: AbortSignal.timeout(90000),
+      });
+      if (response.status !== 200) {
+        await response.body?.cancel();
+        throw new Error('rejected');
+      }
+      await response.body?.cancel();
+    } catch {
+      throw new ControlPlaneError(503, 'OPENXIANGDA_OBJECT_UPLOAD_FAILED',
+        'OSS 制品直传失败，请重试原部署；检查 OSS 配置与网络', undefined, { retryable: true });
+    }
+  }
+
   async beginBackendImage(appCode: string, input: { digest: string; manifest: string }) {
     return this.json<BackendImageUploadReceipt>(
       `/openxiangda-api/v2/applications/${encodeURIComponent(appCode)}/backend-images`,
@@ -1035,6 +1093,20 @@ export class OpenXiangdaControlPlaneClient {
 
   async uploadBackendImageChunk(appCode: string, digest: string, blobDigest: string, offset: number,
     content: Uint8Array, chunkEncoding?: BackendImageChunkEncoding) {
+    if ((await this.artifactTransferCapability(appCode)).directUpload) {
+      const raw = chunkEncoding === 'gzip' ? gunzipSync(content, { maxOutputLength: 8388608 }) : content;
+      const input = { offset, size: raw.byteLength, sha256: createHash('sha256').update(raw).digest('hex') };
+      const path = `/openxiangda-api/v2/applications/${encodeURIComponent(appCode)}/backend-images/${encodeURIComponent(digest)}/blobs/${encodeURIComponent(blobDigest)}`;
+      const prepared = await this.json<{ session?: ApplicationArtifactUploadSession; progress?: { offset: number; complete: boolean } }>(
+        `${path}/object-session`, { method: 'POST', body: JSON.stringify(input), signal: AbortSignal.timeout(90000) });
+      if (prepared.progress) return prepared.progress;
+      if (!prepared.session) throw new ControlPlaneError(502, 'OPENXIANGDA_ARTIFACT_TRANSFER_INVALID', '缺少 OSS 上传凭证');
+      await this.uploadObject(prepared.session, raw);
+      return this.json<{ offset: number; complete: boolean }>(`${path}/object-import`, {
+        method: 'POST', body: JSON.stringify({ ...input, storageFingerprint: prepared.session.storageFingerprint }),
+        signal: AbortSignal.timeout(90000),
+      });
+    }
     return this.request<{ offset: number; complete: boolean }>(
       `/openxiangda-api/v2/applications/${encodeURIComponent(appCode)}/backend-images/${encodeURIComponent(digest)}/blobs/${encodeURIComponent(blobDigest)}?offset=${offset}`,
       { method: 'POST', body: new Blob([Uint8Array.from(content)]),
@@ -1051,6 +1123,19 @@ export class OpenXiangdaControlPlaneClient {
   }
 
   async uploadArtifact(input: UploadArtifactInput) {
+    if ((await this.artifactTransferCapability(input.appCode)).directUpload) {
+      const content = new Uint8Array(await new Blob([input.content]).arrayBuffer());
+      const path = `/openxiangda-api/v2/applications/${encodeURIComponent(input.appCode)}/artifacts/${input.digest}`;
+      const session = await this.json<ApplicationArtifactUploadSession>(`${path}/object-session`, {
+        method: 'POST', body: JSON.stringify({ size: content.byteLength }), signal: AbortSignal.timeout(10000),
+      });
+      await this.uploadObject(session, content);
+      return this.json<Record<string, unknown>>(`${path}/object-import`, {
+        method: 'POST', body: JSON.stringify({ size: content.byteLength, kind: input.kind,
+          contentType: input.contentType, metadata: input.metadata || {}, storageFingerprint: session.storageFingerprint }),
+        signal: AbortSignal.timeout(90000),
+      });
+    }
     const params = new URLSearchParams({
       kind: input.kind,
       contentType: input.contentType,

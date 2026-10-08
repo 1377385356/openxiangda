@@ -4137,3 +4137,22 @@ export interface DevkitResult<T> {
   traceId?: string;
 }
 import { WORKFLOW_DELEGATION_ADMINISTRATION_SCHEMA, WORKFLOW_DELEGATION_MUTATION_SCHEMA, WORKFLOW_DELEGATION_PREVIEW_SCHEMA, WORKFLOW_DELEGATION_RECEIPT_SCHEMA } from './native-compiler/workflow-delegation-administration.js';
+
+/** Optional transport negotiation, independent from application/compiler contracts. */
+export interface ApplicationArtifactTransferCapability {
+  schemaVersion: 'openxiangda.artifact-transfer/v1';
+  provider: 'oss';
+  directUpload: boolean;
+  frontendDelivery: 'platform' | 'object-storage';
+  maxChunkBytes: 8388608;
+  maxArtifactBytes: 52428800;
+}
+
+export interface ApplicationArtifactUploadSession {
+  schemaVersion: 'openxiangda.artifact-upload-session/v1';
+  storageFingerprint: string;
+  uploadMethod: 'POST';
+  uploadUrl: string;
+  formFields: Record<string, string>;
+  expiresAt: string;
+}
