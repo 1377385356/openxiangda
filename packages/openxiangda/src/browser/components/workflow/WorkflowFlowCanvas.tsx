@@ -49,7 +49,7 @@ const edgeTypes = { workflow: DiagramEdge };
 
 /** Lazy module: loading a CRUD page or the node list does not instantiate React Flow. */
 export default function WorkflowFlowCanvas(props: {
-  graph: WorkflowGraphProjection; selectedNodeId: string; selectedEdgeId?: string;
+  graph: WorkflowGraphProjection; selectedNodeId: string; selectedEdgeId?: string; startAtTop?: boolean;
   titles: Record<string, string>; summaries?: Record<string, string>; visits: readonly WorkflowGraphVisit[]; executedEdges: Set<string>;
   onSelectNode: (id: string) => void; onSelectEdge: (id: string) => void; onNavigate: (id: string, key: string) => boolean;
   onReady: (controller: WorkflowFlowCanvasController | null) => void; onZoom: (zoom: number) => void;
@@ -107,14 +107,21 @@ export default function WorkflowFlowCanvas(props: {
       if (point && element && !workflowNodeIsReadable(point, instance.getViewport(), { width: element.clientWidth, height: element.clientHeight })) locate(id);
     };
     latest.current.onReady({ locate, fit: () => { startNavigation(); void instance.fitView({ padding: .18, maxZoom: 1, minZoom: .025, duration: 200 }); }, zoomBy: direction => { startNavigation(); void instance.zoomTo(Math.max(.025, Math.min(1.6, instance.getZoom() * (direction > 0 ? 1.25 : .8))), { duration: 120 }); } });
-    void instance.fitView({ padding: .2, maxZoom: 1, minZoom: .025 }).then(() => {
+    const graph = latest.current.graph;
+    const target = [latest.current.selectedNodeId, graph.startAt, graph.nodes[0]?.id].find(id => id && positions.nodes.has(id));
+    if (props.startAtTop && target && container.current) {
+      const point = positions.nodes.get(target)!;
+      const zoom = .9;
+      // Leave room for the floating tools, then show the following nodes below.
+      // Explicit locate/fit actions still use their ordinary viewport behavior.
+      void instance.setViewport({ x: container.current.clientWidth / 2 - (point.x + point.width / 2) * zoom,
+        y: 110 - point.y * zoom, zoom });
+    } else void instance.fitView({ padding: .2, maxZoom: 1, minZoom: .025 }).then(() => {
       if (!active || navigation !== 0 || instance.getZoom() >= workflowReadableZoom) return;
-      const graph = latest.current.graph;
-      const target = [latest.current.selectedNodeId, graph.startAt, graph.nodes[0]?.id].find(id => id && positions.nodes.has(id));
       if (target) locate(target);
     });
     return () => { active = false; if (focusFrame !== undefined) cancelAnimationFrame(focusFrame); ensureVisible.current = null; interruptNavigation.current = null; latest.current.onReady(null); };
-  }, [instance, positions]);
+  }, [instance, positions, props.startAtTop]);
   useEffect(() => { ensureVisible.current?.(props.selectedNodeId); }, [props.selectedNodeId]);
   if (layoutState.graph === props.graph && layoutState.error) throw layoutState.error;
   if (!positions) return <div className="oxa-workflow-canvas-loading"><Skeleton active title paragraph={{ rows: 4 }} /></div>;
