@@ -1,0 +1,9 @@
+# 2026-10-09 Parent-read companion release scope
+
+This release uses the complete authoritative master baseline and adds one architecture topic: PLT-049 same-membership Native parent-read authorization. It includes existing master maintenance and must not be described as a G04-only package change. The implementation commit is `4bfff2f84bd6fd920f03ba0d2029212730e0d4e8`.
+
+The six existing pending root-package maintenance Changesets are `calm-start-canvas`, `calm-workflow-hit-targets`, `clear-work-center-search`, `quiet-canvas-panels`, `steady-workflow-selection`, and `workflow-read-error-presentation`. They cover workflow canvas presentation, controlled selection and hit targets, work-center server pagination/search, and readable workflow denial errors. No source or Changeset from this baseline is removed to narrow the release description.
+
+The new `native-parent-read-same-membership` Changeset requests contracts/devkit minor releases. The same-topic `native-parent-read-release-companions` Changeset requests root/CLI patches because the root and packaged CLI template pins must propagate together. Exact versions and all internal dependency propagation are generated only by `release:version`; this document selects no version. The first version attempt failed before writes with `ROOT_TEMPLATE_CLI_CHANGESET_REQUIRED`, exposing the baseline root/CLI coupling gap. Published 2.73.0 package bytes remain immutable.
+
+After reviewing and pushing generated versions, the root platform combination must pin the exact pushed master commits before candidate freeze. `release:plan` freezes one candidate tarball set; `verify:release` and `release:publish` must consume those same bytes. This source/package release does not deploy school services or establish school page/data acceptance. PLT-047 and PLT-048 remain separate later architecture releases.
