@@ -236,6 +236,1126 @@ MCP 使用项目锁定的根包；在客户端配置下列 stdio 启动参数，
 }
 ```
 
+## application_operations
+
+发现应用运行自助操作。读取事件诊断与指定投递恢复、加密环境凭据复用、通知渠道配置/默认/健康/失败恢复的有界操作目录和输入 Schema。无需管理页面；沿用当前应用权限。
+
+- 只读：是
+- 可替换文件或改变远端状态：否
+- 幂等：否
+
+输入参数：
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+## application_operation
+
+执行应用运行自助操作。先读 application_operations 或 docs_read(application-operations)，在用户已授权范围内执行。environment 必须明确。每种操作严格校验 input，拒绝自报身份及任意 API。密钥复制只接受名称和修订，恢复只接受指定原投递；结果未知先查原证据，不自动批量重试。读操作无副作用，配置有 CAS；健康写入诊断元数据，通知恢复可能实际发送。
+
+- 只读：否
+- 可替换文件或改变远端状态：是
+- 幂等：否
+
+输入参数：
+
+```json
+{
+  "type": "object",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "events.status",
+          "description": "读取队列积压、消费者健康、写入保护阈值和恢复条件"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "test",
+            "production"
+          ]
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {},
+          "required": []
+        }
+      },
+      "required": [
+        "operation",
+        "environment",
+        "input"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "events.subscriptions",
+          "description": "读取当前环境订阅及配置修订"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "test",
+            "production"
+          ]
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {},
+          "required": []
+        }
+      },
+      "required": [
+        "operation",
+        "environment",
+        "input"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "events.deliveries",
+          "description": "分页读取投递、失败重试和死信"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "test",
+            "production"
+          ]
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "cursor": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "from": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            },
+            "to": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            }
+          },
+          "required": []
+        }
+      },
+      "required": [
+        "operation",
+        "environment",
+        "input"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "events.journal",
+          "description": "分页读取不可变事件日志"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "test",
+            "production"
+          ]
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "cursor": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "from": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            },
+            "to": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            }
+          },
+          "required": []
+        }
+      },
+      "required": [
+        "operation",
+        "environment",
+        "input"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "events.audit",
+          "description": "分页读取事件恢复操作审计"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "test",
+            "production"
+          ]
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "cursor": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            }
+          },
+          "required": []
+        }
+      },
+      "required": [
+        "operation",
+        "environment",
+        "input"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "events.replay",
+          "description": "恢复指定原投递；可显式选择已修复的当前订阅"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "test",
+            "production"
+          ]
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "deliveryId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 36,
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "description": "操作原因；保留到平台审计"
+            },
+            "idempotencyKey": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "description": "同一次操作及未知结果重试保持原键和完整请求"
+            },
+            "useCurrentSubscription": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "deliveryId",
+            "reason",
+            "idempotencyKey",
+            "useCurrentSubscription"
+          ]
+        }
+      },
+      "required": [
+        "operation",
+        "environment",
+        "input"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "secrets.list",
+          "description": "读取当前环境凭据元信息和修订，不读取明文"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "test",
+            "production"
+          ]
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {},
+          "required": []
+        }
+      },
+      "required": [
+        "operation",
+        "environment",
+        "input"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "secrets.copy",
+          "description": "从同应用另一个环境原子复制所选加密凭据"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "test",
+            "production"
+          ]
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "sourceEnvironment": {
+              "type": "string",
+              "enum": [
+                "test",
+                "production"
+              ]
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "description": "操作原因；保留到平台审计"
+            },
+            "idempotencyKey": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "description": "同一次操作及未知结果重试保持原键和完整请求"
+            },
+            "secrets": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 50,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "sourceRevision": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  },
+                  "expectedRevision": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "name",
+                  "sourceRevision",
+                  "expectedRevision"
+                ]
+              }
+            }
+          },
+          "required": [
+            "sourceEnvironment",
+            "reason",
+            "idempotencyKey",
+            "secrets"
+          ]
+        }
+      },
+      "required": [
+        "operation",
+        "environment",
+        "input"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "notifications.diagnostics",
+          "description": "诊断默认通道、凭据、收件人绑定及失败投递"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "test",
+            "production"
+          ]
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {},
+          "required": []
+        }
+      },
+      "required": [
+        "operation",
+        "environment",
+        "input"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "notifications.channels",
+          "description": "读取渠道配置、能力、健康及修订"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "test",
+            "production"
+          ]
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {},
+          "required": []
+        }
+      },
+      "required": [
+        "operation",
+        "environment",
+        "input"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "notifications.rules",
+          "description": "读取通知规则及修订"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "test",
+            "production"
+          ]
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {},
+          "required": []
+        }
+      },
+      "required": [
+        "operation",
+        "environment",
+        "input"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "notifications.bootstrap",
+          "description": "初始化缺少的标准通知模板和规则"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "test",
+            "production"
+          ]
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {},
+          "required": []
+        }
+      },
+      "required": [
+        "operation",
+        "environment",
+        "input"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "notifications.configure-external-http",
+          "description": "配置 External HTTP 通道；鉴权仅接受 Secret 引用"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "test",
+            "production"
+          ]
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "bindingCode": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "expectedRevision": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "active",
+                "paused"
+              ]
+            },
+            "confirmProduction": {
+              "type": "boolean"
+            },
+            "config": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "schemaVersion": {
+                  "const": "openxiangda.notification.external-http-channel/v2"
+                },
+                "providerCode": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "baseUrl": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                },
+                "identityRealm": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 255
+                },
+                "auth": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "mode": {
+                          "const": "HMAC_SHA256"
+                        },
+                        "keyId": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 128
+                        },
+                        "secretRef": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 128
+                        }
+                      },
+                      "required": [
+                        "mode",
+                        "keyId",
+                        "secretRef"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "mode": {
+                          "const": "OAUTH2_CLIENT_CREDENTIALS"
+                        },
+                        "tokenUrl": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 2048
+                        },
+                        "clientIdSecretRef": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 128
+                        },
+                        "clientSecretSecretRef": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 128
+                        },
+                        "scope": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 500
+                        },
+                        "audience": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 500
+                        }
+                      },
+                      "required": [
+                        "mode",
+                        "tokenUrl",
+                        "clientIdSecretRef",
+                        "clientSecretSecretRef"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "mode": {
+                          "const": "MTLS"
+                        },
+                        "certSecretRef": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 128
+                        },
+                        "keySecretRef": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 128
+                        },
+                        "caSecretRef": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 128
+                        }
+                      },
+                      "required": [
+                        "mode",
+                        "certSecretRef",
+                        "keySecretRef"
+                      ]
+                    }
+                  ]
+                },
+                "callback": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "hmacKeyId": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "hmacSecretRef": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "maxSkewSeconds": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "actionTokenTtlMinutes": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "enabled",
+                    "maxSkewSeconds",
+                    "actionTokenTtlMinutes"
+                  ]
+                },
+                "features": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "interactiveActions": {
+                      "type": "boolean"
+                    },
+                    "readReceipt": {
+                      "type": "boolean"
+                    },
+                    "todoSemantics": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "interactiveActions",
+                    "readReceipt",
+                    "todoSemantics"
+                  ]
+                },
+                "requestTimeoutMs": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 60000
+                }
+              },
+              "required": [
+                "schemaVersion",
+                "providerCode",
+                "baseUrl",
+                "identityRealm",
+                "auth",
+                "callback",
+                "features",
+                "requestTimeoutMs"
+              ]
+            }
+          },
+          "required": [
+            "bindingCode",
+            "expectedRevision",
+            "status",
+            "config"
+          ]
+        }
+      },
+      "required": [
+        "operation",
+        "environment",
+        "input"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "notifications.configure-dingtalk-oa",
+          "description": "配置钉钉 OA 工作通知通道；仅使用 Secret 引用"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "test",
+            "production"
+          ]
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "bindingCode": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "expectedRevision": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "active",
+                "paused"
+              ]
+            },
+            "config": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "schemaVersion": {
+                  "const": "openxiangda.notification.dingtalk-work-notice-oa-channel/v2"
+                },
+                "corpId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 255
+                },
+                "agentId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 255
+                },
+                "clientIdSecretRef": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "clientSecretSecretRef": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "requestTimeoutMs": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 60000
+                },
+                "decorationImage": {
+                  "type": "string",
+                  "enum": [
+                    "NONE",
+                    "PLATFORM_WORKFLOW"
+                  ]
+                }
+              },
+              "required": [
+                "schemaVersion",
+                "corpId",
+                "agentId",
+                "clientIdSecretRef",
+                "clientSecretSecretRef",
+                "requestTimeoutMs",
+                "decorationImage"
+              ]
+            }
+          },
+          "required": [
+            "bindingCode",
+            "expectedRevision",
+            "status",
+            "config"
+          ]
+        }
+      },
+      "required": [
+        "operation",
+        "environment",
+        "input"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "notifications.test",
+          "description": "检查渠道凭据与外部协议健康；不发送实际收件通知"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "test",
+            "production"
+          ]
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "bindingCode": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "channel": {
+              "type": "string",
+              "enum": [
+                "external-http",
+                "dingtalk-work-notice-oa",
+                "dingtalk-card"
+              ]
+            }
+          },
+          "required": [
+            "bindingCode",
+            "channel"
+          ]
+        }
+      },
+      "required": [
+        "operation",
+        "environment",
+        "input"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "notifications.set-default",
+          "description": "为当前环境 workflow.standard 规则选择默认渠道"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "test",
+            "production"
+          ]
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "bindingCode": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "expectedRevision": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "expectedBindingRevision": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "bindingCode",
+            "expectedRevision",
+            "expectedBindingRevision"
+          ]
+        }
+      },
+      "required": [
+        "operation",
+        "environment",
+        "input"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "notifications.messages",
+          "description": "按业务关联或收件人分页查询原通知"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "test",
+            "production"
+          ]
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "status": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50
+            },
+            "correlationId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            },
+            "recipientUserId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            }
+          },
+          "required": []
+        }
+      },
+      "required": [
+        "operation",
+        "environment",
+        "input"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "notifications.message",
+          "description": "读取原消息、收件人、投递尝试和审计"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "test",
+            "production"
+          ]
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "messageId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 36,
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            }
+          },
+          "required": [
+            "messageId"
+          ]
+        }
+      },
+      "required": [
+        "operation",
+        "environment",
+        "input"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "notifications.dead-letters",
+          "description": "分页查询通知死信，可限定原 messageId"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "test",
+            "production"
+          ]
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "messageId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 36,
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            }
+          },
+          "required": []
+        }
+      },
+      "required": [
+        "operation",
+        "environment",
+        "input"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "notifications.replay",
+          "description": "修复配置后仅恢复指定原通知死信"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "test",
+            "production"
+          ]
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "deadLetterId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 36,
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            }
+          },
+          "required": [
+            "deadLetterId"
+          ]
+        }
+      },
+      "required": [
+        "operation",
+        "environment",
+        "input"
+      ]
+    }
+  ]
+}
+```
+
 ## workflow_node_configurations
 
 查看流程有效参数。修改已部署流程前，读取管理员维护的节点配置。已有任务和后续节点进入使用各自适用版本。

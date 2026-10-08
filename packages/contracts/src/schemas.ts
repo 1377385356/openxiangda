@@ -1,4 +1,6 @@
+import { DATA_RESOURCE_MAX_FIELDS, WORKFLOW_LAUNCH_MAX_INPUTS } from './native-compiler/data-capacity.js';
 import { NATIVE_CONTRACT_CAPACITY_V2 } from './native-compiler/declaration-capacity.js';
+import { NATIVE_ARTIFACT_CAPACITY_V2 } from './native-compiler/artifact-capacity-limits.js';
 import { DATA_SUBTABLE_MAX_ROWS, DATA_SUBTABLE_MAX_TOTAL_ROWS, DATA_TRANSACTION_MAX_OPERATIONS, DATA_TRANSACTION_MAX_BYTES } from './native-compiler/data-capacity.js';
 import { nativeUniqueKeysJsonSchema } from './native-compiler/unique-keys.js';
 import { workflowAssignmentRoutingPolicySchema } from './native-compiler/workflow-assignment-routing.js';
@@ -2718,7 +2720,7 @@ export const dataResourceSchema = {
         fields: {
           type: "array",
           minItems: 1,
-          maxItems: 100,
+          maxItems: DATA_RESOURCE_MAX_FIELDS,
           items: {
             type: "object",
             additionalProperties: false,
@@ -4130,8 +4132,8 @@ export const configurationCompatibilitySchema = {
         "requestBytes",
       ],
       properties: {
-        configurationCanonicalBytes: { const: 4 * 1024 * 1024 },
-        contractCanonicalBytes: { const: 8 * 1024 * 1024 },
+        configurationCanonicalBytes: { enum: [NATIVE_ARTIFACT_CAPACITY_V2.legacyConfigBytes, NATIVE_ARTIFACT_CAPACITY_V2.configBytes] },
+        contractCanonicalBytes: { const: NATIVE_ARTIFACT_CAPACITY_V2.contractBytes },
         requestBytes: { const: 10 * 1024 * 1024 },
       },
     },
@@ -4169,7 +4171,7 @@ export const configurationValidationRequestSchema = {
       properties: {
         schemaVersion: nonEmptyString,
         digest,
-        canonical: { type: "string", minLength: 1, maxLength: 4 * 1024 * 1024 },
+        canonical: { type: "string", minLength: 1, maxLength: NATIVE_ARTIFACT_CAPACITY_V2.configBytes },
       },
     },
     contract: {
@@ -4179,7 +4181,7 @@ export const configurationValidationRequestSchema = {
       properties: {
         schemaVersion: nonEmptyString,
         digest,
-        canonical: { type: "string", minLength: 1, maxLength: 8 * 1024 * 1024 },
+        canonical: { type: "string", minLength: 1, maxLength: NATIVE_ARTIFACT_CAPACITY_V2.contractBytes },
       },
     },
   },
@@ -4228,7 +4230,7 @@ export const configurationValidationResultSchema = {
     requiredPlatformCapabilities: {
       type: "array",
       minItems: 1,
-      maxItems: 64,
+      maxItems: Object.keys(PLATFORM_CAPABILITY_CONTRACT_VERSIONS).length,
       uniqueItems: true,
       items: requiredPlatformCapabilityContractSchema,
     },
@@ -4335,7 +4337,7 @@ export const appPackageSchema = {
         requiredPlatformCapabilities: {
           type: "array",
           minItems: 1,
-          maxItems: 64,
+          maxItems: Object.keys(PLATFORM_CAPABILITY_CONTRACT_VERSIONS).length,
           uniqueItems: true,
           items: requiredPlatformCapabilityContractSchema,
         },
@@ -5723,7 +5725,8 @@ export const workflowDefinitionSchema = {
       type: 'object', additionalProperties: false, minProperties: 1,
       properties: Object.fromEntries(['approve', 'reject', 'withdraw', 'resubmit'].map(command => [command, {
         type: 'object', additionalProperties: false, required: ['operationCode'],
-        properties: { operationCode: { type: 'string', pattern: '^[a-z][a-z0-9]*(?:[-_.][a-z0-9]+)*$' } },
+        properties: { operationCode: { type: 'string', pattern: '^[a-z][a-z0-9]*(?:[-_.][a-z0-9]+)*$' },
+          ...(command === 'approve' ? { transitionPolicy: { const: 'workflow' } } : {}) },
       }])),
     },
     taskPages: {
@@ -5734,7 +5737,7 @@ export const workflowDefinitionSchema = {
         properties: {
           title: { type: 'string', minLength: 1, maxLength: 160 },
           fields: {
-            type: 'array', minItems: 1, maxItems: 64,
+            type: 'array', minItems: 1, maxItems: DATA_RESOURCE_MAX_FIELDS,
             items: {
               type: 'object', additionalProperties: false, required: ['code'],
               properties: {
@@ -5884,6 +5887,11 @@ export const workflowBindingSchema = {
             properties: { provider: { const: 'form_field_users' } },
             not: { anyOf: [{ required: ['roleCode'] }, { required: ['scope'] }, { required: ['routing'] }] },
           },
+        }, {
+          if: { required: ['selectedInputPath'] },
+          then: { properties: { provider: { enum: ['app_role', 'app_role_in_scope'] } },
+            anyOf: [{ required: ['roleCode'] }, { required: ['roleCodes'] }],
+            not: { anyOf: [{ required: ['candidateField'] }, { required: ['inputPath'] }, { required: ['routing'] }] } },
         }],
         properties: {
           provider: {
@@ -5903,6 +5911,7 @@ export const workflowBindingSchema = {
           },
           users: { type: "array", uniqueItems: true, items: nonEmptyString },
           inputPath: { type: "string" },
+          selectedInputPath: { type: "string", maxLength: 255, pattern: "^[A-Za-z][A-Za-z0-9_-]*(?:\\.[A-Za-z][A-Za-z0-9_-]*)*$" },
           candidateField: dataFieldCode,
           departmentIdFrom: { type: "string" },
           level: { type: "integer", minimum: 1, maximum: 20 },
@@ -6223,6 +6232,9 @@ export const businessProcessCommandWithDataSchema = {
   allOf: [{
     if: { properties: { expectedTransition: { required: ['kind'], properties: { kind: { const: 'correction-replay' } } } } },
     then: { properties: { workflow: { properties: { target: { properties: { kind: { const: 'task' }, command: { const: 'resubmit' } } } } } } },
+  }, {
+    if: { properties: { expectedTransition: { required: ['kind'], properties: { kind: { const: 'approval-projection' } } } } },
+    then: { properties: { workflow: { properties: { target: { properties: { kind: { const: 'task' }, command: { const: 'approve' } } } } } } },
   }],
   properties: {
     schemaVersion: { const: SCHEMA_VERSIONS.businessProcessCommandWithData },
@@ -6241,7 +6253,7 @@ export const businessProcessCommandWithDataSchema = {
         outcome: { type: ['string', 'null'], maxLength: 128 },
         currentNodeId: { type: ['string', 'null'], minLength: 1, maxLength: 128 },
       },
-    }, { type: 'object', additionalProperties: false, required: ['kind'], properties: { kind: { const: 'correction-replay' } } }] },
+    }, { type: 'object', additionalProperties: false, required: ['kind'], properties: { kind: { enum: ['correction-replay', 'approval-projection'] } } }] },
   },
 } as const;
 
@@ -6867,7 +6879,7 @@ export const workflowSurfaceSchema = {
       properties: {
         pageCode: nonEmptyString, page: { type: 'object' },
         expectedRevision: { type: 'integer', minimum: 1 },
-        fields: { type: 'object', maxProperties: 64 }, values: { type: 'object', maxProperties: 64 },
+        fields: { type: 'object', maxProperties: DATA_RESOURCE_MAX_FIELDS }, values: { type: 'object', maxProperties: DATA_RESOURCE_MAX_FIELDS },
       },
     },
     presentation: {
@@ -7079,7 +7091,7 @@ const workflowNamedOperationLaunchIntentSchema = {
     inputs: {
       type: "object",
       minProperties: 1,
-      maxProperties: 64,
+      maxProperties: WORKFLOW_LAUNCH_MAX_INPUTS,
       propertyNames: {
         type: "string",
         pattern: "^[A-Za-z][A-Za-z0-9_.:-]{0,254}$",

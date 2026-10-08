@@ -43,7 +43,7 @@ import {
 } from '../../AuthoritativeSelector';
 import { AddressField, AddressValueDisplay } from '../platform-fields/AddressField';
 import { MobileManagedFileField } from '../platform-fields/MobileManagedFileField';
-import { AttachmentFileList, formatManagedFileSize } from '../platform-fields/AttachmentFileList';
+import { AttachmentFileList, formatManagedFileSize, managedFileGroups } from '../platform-fields/AttachmentFileList';
 import { CascadeField, CascadeValueDisplay } from '../platform-fields/CascadeField';
 import type { CascadeStoredValue } from '../platform-fields/cascade-value';
 import { DateTimeField, DateTimeFilter, DateTimeValueDisplay } from '../platform-fields/DateTimeField';
@@ -60,6 +60,7 @@ import { ResourceReferenceField } from '../platform-fields/ResourceReferenceFiel
 import { RichTextField, RichTextValueDisplay } from '../platform-fields/RichTextField';
 import { SignatureField, SignatureValueDisplay } from '../platform-fields/SignatureField';
 import type { WorkflowFileBinding } from '../../platform-client';
+import type { DateTimeConstraints } from '../platform-fields/zoned-date-time';
 
 export type SurfaceField = DataFieldSurface & { key: string };
 
@@ -134,6 +135,10 @@ export interface SurfaceFieldValueContext {
 }
 
 export interface SurfaceFieldRenderers {
+  /** Page picker assistance, independent of Native write validation. */
+  dateTimeConstraints?: Readonly<Record<string, DateTimeConstraints>>;
+  /** Read-entry hints only; Native checks every file and resource independently. */
+  fileResourceCodes?: Readonly<Record<string, string>>;
   referenceLaunch?: DataFieldSourceLaunchBinding;
   referenceTask?: WorkflowTaskSourceBinding;
   /** Search intent only; never part of a Native write or workflow payload. */
@@ -400,7 +405,7 @@ export function SurfaceFieldControl({
     case 'datetime':
     case 'date-range':
     case 'datetime-range':
-      control = <DateTimeField disabled={disabled} field={field} />;
+      control = <DateTimeField {...renderers?.dateTimeConstraints?.[field.key]} disabled={disabled} field={field} />;
       break;
     case 'switch':
       control = <DesktopBooleanField field={field} disabled={disabled} />;
@@ -477,6 +482,7 @@ export function SurfaceFieldControl({
           maxSizeMb={field.maxSizeMb}
           multiple={(field.maxCount ?? 1) > 1}
           onUpload={renderers?.upload}
+          fileResourceCodes={renderers?.fileResourceCodes}
           recordId={recordId}
           resourceCode={resourceCode}
           workflowBinding={workflowFileBinding}
@@ -600,7 +606,7 @@ export function MobileSurfaceFieldControl({
     case 'datetime':
     case 'date-range':
     case 'datetime-range':
-      control = <MobileDateTimeField disabled={disabled} field={field} />;
+      control = <MobileDateTimeField {...renderers?.dateTimeConstraints?.[field.key]} disabled={disabled} field={field} />;
       break;
     case 'switch':
       control = <MobileBooleanField disabled={disabled} field={field} />;
@@ -681,6 +687,7 @@ export function MobileSurfaceFieldControl({
           multiple={(field.maxCount ?? 1) > 1}
           mobile
           onUpload={renderers?.upload}
+          fileResourceCodes={renderers?.fileResourceCodes}
           recordId={recordId}
           resourceCode={resourceCode}
           workflowBinding={workflowFileBinding}
@@ -964,6 +971,7 @@ function ManagedFileField({
   onUpload,
   resourceCode,
   workflowBinding,
+  fileResourceCodes,
   mobile = false,
 }: {
   field: SurfaceField;
@@ -978,6 +986,7 @@ function ManagedFileField({
   onUpload?: SurfaceFieldRenderers['upload'];
   resourceCode?: string;
   workflowBinding?: WorkflowFileBinding;
+  fileResourceCodes?: Readonly<Record<string, string>>;
   mobile?: boolean;
 }) {
   const [uploading, setUploading] = useState(false);
@@ -1000,6 +1009,7 @@ function ManagedFileField({
       multiple={multiple} maxCount={maxCount} maxSizeMb={maxSizeMb} accept={accept}
       resourceCode={resourceCode} image={field.type === 'image'}
       workflowBinding={workflowBinding}
+      fileResourceCodes={fileResourceCodes}
       upload={file => onUpload(field, file, recordId)} />;
   }
   const uploadProps = {
@@ -1058,11 +1068,11 @@ function ManagedFileField({
         </div>
       )}
       {refs.length ? (
-        <AttachmentFileList files={refs} resourceCode={resourceCode} workflowBinding={workflowBinding} onRemove={file => {
+        managedFileGroups(refs, resourceCode, fileResourceCodes).map(group => <AttachmentFileList key={group.resourceCode} files={group.files} resourceCode={group.resourceCode} workflowBinding={group.resourceCode === resourceCode ? workflowBinding : undefined} onRemove={file => {
           const next = refs.filter(item => item.id !== file.id);
           refsRef.current = next;
           onChange?.(next);
-        }} removable={!disabled} imageTiles={field.type === 'image'} />
+        }} removable={!disabled} imageTiles={field.type === 'image'} />)
       ) : (
         null
       )}

@@ -1,3 +1,13 @@
+/** Shared field budget for Native records and workflow task forms. */
+export const DATA_RESOURCE_MAX_FIELDS = 200;
+// At most one binding per field plus the five supported system input sources.
+export const WORKFLOW_LAUNCH_MAX_INPUTS = DATA_RESOURCE_MAX_FIELDS + 5;
+export function requiresExtendedFieldCapacity(resources: readonly { schema: { fields: readonly unknown[] } }[], definitions: readonly { definition: { taskPages?: Record<string, { fields?: readonly unknown[] }> }; launch?: { submission?: { create?: { inputs?: object }; existing?: { inputs?: object } } } }[] = []): boolean {
+  return resources.some(resource => resource.schema.fields.length > 100) || definitions.some(item =>
+    Object.values(item.definition.taskPages || {}).some(page => (page.fields?.length ?? 0) > 64) ||
+    [item.launch?.submission?.create, item.launch?.submission?.existing].some(intent => Object.keys(intent?.inputs || {}).length > 64));
+}
+
 /** Shared bounds for one atomic Native parent/owned-child edit. */
 export const DATA_SUBTABLE_MAX_ROWS = 500;
 export const DATA_SUBTABLE_DEFAULT_TOTAL_ROWS = 500;

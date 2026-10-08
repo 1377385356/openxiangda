@@ -1,4 +1,5 @@
 export * from './application-services.js';
+export * from './application-operations.js';
 export * from './app-spec.js';
 export * from './connected-development.js';
 export * from './connected-development-vite.js';

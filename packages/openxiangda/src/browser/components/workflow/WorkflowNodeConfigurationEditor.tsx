@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Alert, App, Button, Checkbox, Drawer, Empty, Form, Input, Radio, Select, Space, Tabs, Tag, Typography } from 'antd';
 import type { WorkflowNodeConfigurations, WorkflowNodeConfigurationPatch, WorkflowNodeConfigurationMutation, WorkflowNodeConfigurationReceipt } from 'openxiangda-contracts/browser';
-import { formatWorkflowCompletionDeadline, validateWorkflowNodeConfigurationPatch, workflowOperationCommentRequired, workflowOperationReasonRequired } from 'openxiangda-contracts/browser';
+import { formatWorkflowCompletionDeadline, validateWorkflowNodeConfigurationPatch, workflowOperationCommentRequired, workflowOperationReasonRequired, WORKFLOW_AUTOMATIC_CC_DEFAULT_RECIPIENTS, WORKFLOW_AUTOMATIC_CC_MAX_RECIPIENTS } from 'openxiangda-contracts/browser';
 import { PlatformDirectoryPicker } from '../platform-fields/PlatformDirectoryPicker';
 import { loadApplicationAdministrationContext, loadWorkflowNodeConfigurations, saveWorkflowNodeConfiguration } from '../../platform-client';
 
@@ -48,6 +48,8 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
   const isCc = node.kind === 'cc';
   const selectedProvider = Form.useWatch('provider', form) || node.effective.binding?.provider;
   const binding = node.defaults.binding;
+  const recipientMinimum = isCc ? binding?.min ?? 1 : node.effective.emptyPolicy === 'skip' ? 0 : 1;
+  const recipientMaximum = isCc ? Math.min(binding?.max ?? WORKFLOW_AUTOMATIC_CC_DEFAULT_RECIPIENTS, WORKFLOW_AUTOMATIC_CC_MAX_RECIPIENTS) : 200;
   const allowedProviders = node.administration?.assigneeProviders || (!isCc && binding && providers[binding.provider] ? [binding.provider] : []);
   const close = () => {
     if (busy) return;
@@ -126,7 +128,7 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
           <p className="oxa-workflow-config-help">{isCc ? '抄送来源由开发者开放；保存时校验人员、角色及范围。抄送只提供流程查阅权。' : '人员来源和可选审批方式由开发者开放；保存时平台校验人员、角色及范围。'}</p>
           {allowedProviders.length > 0 ? <>
             <Form.Item name="provider" label="人员来源" rules={[{ required: true }]}><Radio.Group className="oxa-workflow-provider-options" options={allowedProviders.map(value => ({ value, label: providers[value] }))} /></Form.Item>
-            {selectedProvider === 'fixed_users' && <Form.Item name="users" label={isCc ? '指定抄送人' : '指定审批人'} rules={[{ required: isCc || node.effective.emptyPolicy !== 'skip', type: 'array', min: !isCc && node.effective.emptyPolicy === 'skip' ? 0 : 1, max: isCc ? 20 : 200 }]}><PlatformDirectoryPicker kind="user" multiple placeholder="从通讯录选择人员" /></Form.Item>}
+            {selectedProvider === 'fixed_users' && <Form.Item name="users" label={isCc ? '指定抄送人' : '指定审批人'} extra={isCc ? `请选择 ${recipientMinimum} 至 ${recipientMaximum} 位抄送人，人数范围由流程代码确定。` : undefined} rules={[{ required: isCc || node.effective.emptyPolicy !== 'skip', type: 'array', min: recipientMinimum, max: recipientMaximum }]}><PlatformDirectoryPicker kind="user" multiple placeholder="从通讯录选择人员" /></Form.Item>}
             {['app_role', 'app_role_in_scope'].includes(selectedProvider || '') && <Form.Item name="roleCodes" label={isCc ? '抄送角色' : '审批角色'} rules={[{ required: true, type: 'array', min: 1, max: 8 }]} extra="可选 1–8 个角色；成员合并后去重。重复人员按选择顺序使用首个角色的代理规则。"><Select mode="multiple" maxCount={8} showSearch={{ optionFilterProp: 'label' }} options={principals.roles.map(role => ({ value: role.code, label: `${role.name}（${role.code}）` }))} /></Form.Item>}
           </> : <Alert type="info" title="人员来源由开发者维护" description="此节点未开放人员来源调整。" />}
           {binding?.scope && <p className="oxa-workflow-config-scope">范围来源：{binding.scope.dimension} · {binding.scope.valueFrom || binding.scope.value}<br />范围计算由流程代码维护。</p>}

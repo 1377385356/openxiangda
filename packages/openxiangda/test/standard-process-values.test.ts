@@ -3,6 +3,20 @@ import test from 'node:test';
 import dayjs from 'dayjs';
 import { assertNamedSubtableReadonlyFields, namedProcessFormValues, standardProcessFormValues } from '../src/browser/components/workflow/standard-process-values.js';
 
+test('readonly source metadata stays in the sealed input, including hidden fields, without granting ordinary child writes', () => {
+  const child: any = { fields: { sourceId: { type: 'uuid', hidden: true, widget: 'readonly' }, sourceRevision: { type: 'number.integer', hidden: true, widget: 'readonly' }, decision: { type: 'text.short', widget: 'text' }, derived: { type: 'text.short', widget: 'text' } } };
+  const parent: any = { fields: { rows: { type: 'subtable', subtable: { resourceCode: 'source-lines', foreignKey: 'requestId' } } } };
+  const grant = { mode: 'create' as const, resourceCode: 'requests', subtables: [{ fieldCode: 'rows', fieldCodes: ['sourceId', 'sourceRevision', 'decision', 'derived'] }] };
+  const input = { rows: [{ key: 'original', state: 'created' as const, data: { sourceId: 'source-row', sourceRevision: 7, decision: 'keep', derived: 'server' } }] }, before = structuredClone(input);
+  const output = namedProcessFormValues(input, parent, { 'source-lines': { surface: child } }, grant, { rows: ['derived'] }, { rows: ['sourceId', 'sourceRevision'] }) as any;
+  assert.deepEqual(output.rows[0].data, { decision: 'keep', sourceId: 'source-row', sourceRevision: 7 });
+  assert.deepEqual(input, before);
+  assert.doesNotThrow(() => assertNamedSubtableReadonlyFields(parent, grant, {}, ['rows']));
+  for (const tables of [['foreign'], ['rows', 'rows']]) assert.throws(() => assertNamedSubtableReadonlyFields(parent, grant, {}, tables), /FIXED_ROWS_INVALID/);
+  assert.throws(() => namedProcessFormValues(input, parent, { 'source-lines': { surface: child } }, grant, {}, { rows: ['foreign'] }), /READONLY_FIELDS_INVALID/);
+  assert.throws(() => namedProcessFormValues(input, parent, { 'source-lines': { surface: child } }, grant, { rows: ['sourceId'] }, { rows: ['sourceId'] }), /READONLY_INPUT_OVERLAP/);
+});
+
 test('named child readonly presentation omits derived input and preserves original per-table values', () => {
   const child: any = {fields:{person:{type:'resource-ref.single',widget:'resource'},employeeNumber:{type:'text.short',widget:'text'},phone:{type:'text.short',widget:'text'}}};
   const parent: any = {fields:{items:{type:'subtable',subtable:{resourceCode:'lines',foreignKey:'parentId'}},other:{type:'subtable',subtable:{resourceCode:'lines',foreignKey:'parentId'}}}};

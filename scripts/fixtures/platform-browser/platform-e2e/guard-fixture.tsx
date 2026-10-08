@@ -14,11 +14,13 @@ function Draft() {
   const [saved, setSaved] = useState(false);
   const [mountId] = useState(() => crypto.randomUUID());
   const navigate = useNavigate();
-  useUnsavedChangesGuard({ when: Boolean(value) && !saved, message: '会议草稿尚未保存。' });
+  const guard = useUnsavedChangesGuard({ when: Boolean(value) && !saved, message: '会议草稿尚未保存。' });
   useEffect(() => { if (saved) navigate('/saved'); }, [saved, navigate]);
   return <div><h1>编辑会议</h1><input aria-label="主题" value={value} onChange={e => setValue(e.target.value)} />
     <output data-testid="mount">{mountId}</output><button onClick={() => setValue('')}>保存</button>
     <button onClick={() => setSaved(true)}>提交并跳转</button>
+    <button onClick={() => { setValue(''); guard.release(); navigate('/saved'); }}>同步提交并跳转</button>
+    <button onClick={() => guard.confirmNavigation(() => { setValue(''); guard.release(); navigate('/closed'); })}>关闭当前表单</button>
     <button onClick={() => setSecond(v => !v)}>切换第二表单</button>{second && <SecondDraft />}
     <Link to="/link">站内链接</Link><button onClick={() => navigate('/replace', { replace: true })}>替换跳转</button>
   </div>;

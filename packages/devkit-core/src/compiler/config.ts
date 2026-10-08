@@ -1,4 +1,5 @@
 import { assertWorkflowNativeStagePolicy } from 'openxiangda-contracts';
+import { WORKFLOW_LAUNCH_MAX_INPUTS } from 'openxiangda-contracts';
 import { validateAuthenticatedPublicRead, AuthenticatedPublicReadContractError } from 'openxiangda-contracts/native-compiler';
 import { DATE_EVENT_RESERVED_DATA_FIELDS_V2, dateEventProjectionFieldsV2, dateEventProjectionEnvelopeSchemaV2 } from 'openxiangda-contracts/native-compiler';
 import { validateUserCandidateReferences, validateWorkflowUserCandidateBindings, UserCandidateContractError } from 'openxiangda-contracts';
@@ -3673,7 +3674,7 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
       let inputsInvalid =
         !isRecord(intent.inputs) ||
         inputEntries.length === 0 ||
-        inputEntries.length > 64;
+        inputEntries.length > WORKFLOW_LAUNCH_MAX_INPUTS;
       for (const [inputCode, rawBinding] of inputEntries) {
         const binding = object(rawBinding);
         const source = string(binding.source);

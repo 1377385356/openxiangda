@@ -305,6 +305,16 @@ test('revoked admin authority fails saving and hides editing when identity is re
   await drawer.getByRole('button', { name: '保存' }).click();
   await expect(drawer.getByText('当前用户无权编辑数据')).toBeVisible();
   await expect(drawer.getByLabel('申请名称', { exact: true })).toHaveValue('撤权后不能保存');
+  page.once('dialog', async dialog => {
+    expect(dialog.type()).toBe('beforeunload');
+    await dialog.accept();
+  });
+  // This isolated fixture now uses the actual browser router. Serve its entry
+  // HTML at the current SPA URL so reload mounts the same identity boundary.
+  await page.route('**/admin/purchases', async route => {
+    const response = await route.fetch({ url: new URL('/workflow-entry.e2e.html', route.request().url()).href });
+    await route.fulfill({ response });
+  });
   await page.reload();
   await expect(page.getByRole('button', { name: '查看', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: '编辑', exact: true })).toHaveCount(0);
@@ -422,11 +432,52 @@ test('supplementary answers are guarded and resume completion without resubmitti
   await drawer.getByRole('button', { name: '提交审批' }).click();
   await drawer.getByRole('combobox', { name: '申请部门' }).click();
   await page.locator('.ant-select-dropdown').getByText('理学院', { exact: true }).click();
+  await drawer.getByRole('button', { name: '关闭', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: '离开当前页面？' })).toBeVisible();
+  await page.getByRole('button', { name: '继续编辑' }).click();
+  await expect(drawer.getByRole('combobox', { name: '申请部门' }).locator('..')).toContainText('理学院');
   await drawer.getByRole('button', { name: '提交补充信息' }).dblclick();
   await expect(page.getByTestId('completions')).toHaveText('record-created');
   expect(state.answers).toHaveLength(1);
   expect(state.answers[0]).toMatchObject({ expectedRevision: 1, answers: { department: 'college' } });
   expect(state.launches).toHaveLength(1);
+});
+
+for (const mobile of [false, true]) test(`unsaved workflow launch ${mobile ? 'mobile' : 'desktop'} cancels dismissal and preserves input`, async ({ page }) => {
+  const state = await workflowEntryPlatform(page);
+  if (mobile) await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`/workflow-entry.e2e.html?mode=${mobile ? 'mobile' : 'callback'}`);
+  const drawer = page.getByRole('dialog', { name: '采购审批' });
+  await expect(drawer.getByRole('textbox', { name: '申请名称', exact: true })).toBeVisible();
+  await drawer.getByRole('textbox', { name: '申请名称', exact: true }).fill('未提交的原输入');
+  await drawer.getByRole('button', { name: '关闭', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: '离开当前页面？' });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: '继续编辑' }).click();
+  await expect(drawer.getByRole('textbox', { name: '申请名称', exact: true })).toHaveValue('未提交的原输入');
+  await drawer.getByRole('button', { name: '关闭', exact: true }).click();
+  await dialog.getByRole('button', { name: /^离\s*开$/ }).click();
+  await expect(drawer).toHaveCount(0);
+  expect(state.launches).toHaveLength(0);
+});
+
+test('clean launch closes without a prompt and an acknowledged standalone submit navigates normally', async ({ page }) => {
+  const state = await workflowEntryPlatform(page);
+  await page.goto('/workflow-entry.e2e.html?mode=callback');
+  const drawer = page.getByRole('dialog', { name: '采购审批' });
+  await expect(drawer.getByLabel('申请名称', { exact: true })).toBeVisible();
+  await drawer.getByRole('button', { name: '关闭', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.goto('/workflow-entry.e2e.html?mode=standalone');
+  await page.getByLabel('申请名称', { exact: true }).fill('同tick正常跳转');
+  await page.getByLabel('申请金额', { exact: true }).fill('400');
+  await page.getByRole('link', { name: '离开发起页面' }).click();
+  await page.getByRole('button', { name: '继续编辑' }).click();
+  await expect(page.getByLabel('申请名称', { exact: true })).toHaveValue('同tick正常跳转');
+  await page.getByRole('button', { name: '提交审批' }).click();
+  await expect(page.getByTestId('route')).toHaveText(`/instances/${instanceId}`);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  expect(state.launchEffects).toBe(1);
 });
 
 test('workflow change history uses the acquired Surface CSRF token', async ({ page }) => {

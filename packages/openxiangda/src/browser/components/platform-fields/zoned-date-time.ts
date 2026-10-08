@@ -13,6 +13,8 @@ export interface DateTimeConstraints {
   min?: string;
   max?: string;
   minuteStep?: number;
+  /** Picker assistance only. ISO weekday: Monday 1 through Sunday 7. */
+  disabledWeekdays?: readonly number[];
   /** Derived from the field declaration, independent of the wall-time step. */
   instantPrecision?: 'minute';
 }
@@ -33,6 +35,9 @@ export function validateDateTimeConstraints(input: DateTimeConstraints) {
   try {
     if (input.minuteStep !== undefined && (!Number.isInteger(input.minuteStep) ||
       input.minuteStep < 1 || input.minuteStep > 60 || 60 % input.minuteStep !== 0)) throw new Error('step');
+    if (input.disabledWeekdays !== undefined && (!Array.isArray(input.disabledWeekdays) ||
+      input.disabledWeekdays.length > 7 || new Set(input.disabledWeekdays).size !== input.disabledWeekdays.length ||
+      input.disabledWeekdays.some(day => !Number.isInteger(day) || day < 1 || day > 7))) throw new Error('weekday');
     const min = input.min === undefined ? undefined : Temporal.Instant.from(input.min);
     const max = input.max === undefined ? undefined : Temporal.Instant.from(input.max);
     if (min && max && Temporal.Instant.compare(min, max) > 0) throw new Error('bounds');
@@ -61,6 +66,8 @@ export function carrierWall(value: Dayjs) {
 
 export function zonedInputResult(value: Temporal.PlainDateTime, timeZone: string,
   constraints: DateTimeConstraints): { value?: string; error?: string } {
+  if (constraints.disabledWeekdays?.includes(value.dayOfWeek))
+    return { error: '此日期不可选择，请选择其他日期' };
   let instant: Temporal.Instant;
   try {
     instant = wallToInstant(value, timeZone);

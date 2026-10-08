@@ -40,21 +40,37 @@ export function namedProcessFormValues(
   children: Record<string, { surface: DataResourceSurface }>,
   grant?: WorkflowOwnedSubjectCreate,
   readonlyFields: Readonly<Record<string, readonly string[]>> = {},
+  readonlyInputs: Readonly<Record<string, readonly string[]>> = {},
 ) {
   assertNamedSubtableReadonlyFields(parent, grant, readonlyFields);
+  assertNamedSubtableReadonlyFields(parent, grant, readonlyInputs);
+  if (Object.entries(readonlyInputs).some(([code, names]) => names.some(name => readonlyFields[code]?.includes(name))))
+    throw new Error('OPENXIANGDA_NAMED_SUBTABLE_READONLY_INPUT_OVERLAP');
   for (const [code, field] of Object.entries(parent.fields)) {
     if (field.type !== 'subtable' || !Object.hasOwn(values, code)) continue;
     if (!grant?.subtables.some(table => table.fieldCode === code) || !Array.isArray(values[code]) ||
         (values[code] as SubtableDraftRow[]).some(row => row.state !== 'created' || row.id !== undefined || row.revision !== undefined))
       throw new Error('OPENXIANGDA_NAMED_OWNED_CREATE_REQUIRED');
   }
-  return standardProcessFormValues(values, parent, children, (field, mode, resourceCode, parentFieldCode) => mode === 'create' &&
+  const result = standardProcessFormValues(values, parent, children, (field, mode, resourceCode, parentFieldCode) => mode === 'create' &&
     Boolean(grant?.subtables.some(table => table.fieldCode === parentFieldCode && parent.fields[table.fieldCode]?.subtable?.resourceCode === resourceCode && table.fieldCodes.includes(field.key) && !readonlyFields[table.fieldCode]?.includes(field.key))));
+  for (const [code, names] of Object.entries(readonlyInputs)) {
+    if (!Object.hasOwn(values, code)) continue;
+    const child = children[parent.fields[code]!.subtable!.resourceCode]!.surface;
+    const original = values[code] as SubtableDraftRow[], encoded = result[code] as SubtableDraftRow[];
+    encoded.forEach((row, index) => {
+      row.data = { ...row.data, ...normalizeFormValues(Object.fromEntries(names.filter(name => Object.hasOwn(original[index]!.data, name)).map(name => [name, original[index]!.data[name]])), child) };
+    });
+  }
+  return result;
 }
 
 /** A page may narrow presentation only inside the current sealed child closure. */
 export function assertNamedSubtableReadonlyFields(parent: DataResourceSurface, grant: WorkflowOwnedSubjectCreate | undefined,
-  fields: Readonly<Record<string, readonly string[]>>) {
+  fields: Readonly<Record<string, readonly string[]>>, fixedRows: readonly string[] = []) {
+  if (!Array.isArray(fixedRows) || new Set(fixedRows).size !== fixedRows.length || fixedRows.some(code =>
+    parent.fields[code]?.type !== 'subtable' || !grant?.subtables.some(table => table.fieldCode === code)))
+    throw new Error('OPENXIANGDA_NAMED_SUBTABLE_FIXED_ROWS_INVALID');
   for (const [code, names] of Object.entries(fields)) {
     const table=grant?.subtables.find(table=>table.fieldCode===code);
     if (parent.fields[code]?.type !== 'subtable' || !table || !Array.isArray(names) || names.some(name=>!table.fieldCodes.includes(name)))

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validateWorkflowRoleUnion, workflowBindingRoleCodes } from '../src/native-compiler/workflow-role-union.js';
+import { validateWorkflowRoleUnion, workflowBindingRoleCodes, validateWorkflowRoleInputSelection, requiresWorkflowRoleInputSelection } from '../src/native-compiler/workflow-role-union.js';
 import { validateWorkflowNodeConfigurationPatch } from '../src/native-compiler/workflow-node-administration.js';
 
 const union = { provider: 'app_role', roleCodes: ['student-office', 'organization'] };
@@ -36,4 +36,17 @@ test('administrator can choose a bounded ordered union without changing scope or
   for (const assignee of [{ ...union, roleCode: 'original' }, { ...union, roleCodes: ['same', 'same'] }, { ...union, scope: binding.scope }]) {
     assert.ok(validateWorkflowNodeConfigurationPatch(node, binding, { assignee }).length);
   }
+});
+
+
+test('code selection stays attached to a role and cannot be overridden by another source', () => {
+  const selected = { ...union, selectedInputPath: 'steps.resolve-leaders.userIds' };
+  assert.deepEqual(validateWorkflowRoleInputSelection(selected), []);
+  assert.equal(requiresWorkflowRoleInputSelection([{ binding: { bindings: { leaders: selected } } }]), true);
+  assert.equal(requiresWorkflowRoleInputSelection([{ binding: { bindings: { leaders: union } } }]), false);
+  for (const change of [{ provider: 'input_users' }, { selectedInputPath: '' }, { selectedInputPath: 'steps.__proto__.users' }, { selectedInputPath: 'steps.constructor.users' }, { routing: {} }, { inputPath: 'leaders' }, { candidateField: 'leaders' }])
+    assert.ok(validateWorkflowRoleInputSelection({ ...selected, ...change }).length);
+  const node = { kind: 'approval', administration: { assigneeProviders: ['app_role', 'fixed_users'] } } as any;
+  assert.ok(validateWorkflowNodeConfigurationPatch(node, selected, { assignee: { provider: 'fixed_users', users: ['person'] } }).includes('WORKFLOW_V2_NODE_CONFIGURATION_PROVIDER_READONLY'));
+  assert.deepEqual(validateWorkflowNodeConfigurationPatch(node, selected, { assignee: { provider: 'app_role', roleCode: 'current-role' } }), []);
 });

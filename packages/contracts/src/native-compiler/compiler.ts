@@ -1,3 +1,4 @@
+import { requiresExtendedFieldCapacity, WORKFLOW_LAUNCH_MAX_INPUTS } from './data-capacity.js';
 import { assertWorkflowNativeStagePolicy } from './workflow-native-stage.js';
 import { validateAuthenticatedPublicRead, AuthenticatedPublicReadContractError } from './authenticated-public-read.js';
 import { validateUserCandidateReferences, validateWorkflowUserCandidateBindings, UserCandidateContractError, requiresUserCandidateLaunchScope } from './user-candidates.js';
@@ -25,7 +26,7 @@ import { validateWorkflowTaskPages } from './workflow-task-page.js';
 import { requiresExtendedOwnedSubtableCapacity, requiresAggregateOwnedSubtableCapacity, dataOwnedRowLimit, isDataOwnedRowLimit } from './data-capacity.js';
 import { validateWorkflowBusinessSteps, compileWorkflowBusinessStepHandlers, validateWorkflowBusinessStepSubscriptions, WORKFLOW_BUSINESS_STEP_EVENT, WORKFLOW_BUSINESS_STEP_EVENTS } from './workflow-business-step.js';
 import { validateWorkflowAssignmentRoutingBindings, validateWorkflowAssignmentRoutingPolicy } from './workflow-assignment-routing.js';
-import { requiresWorkflowRoleUnion, validateWorkflowRoleUnion } from './workflow-role-union.js';
+import { requiresWorkflowRoleUnion, validateWorkflowRoleUnion, requiresWorkflowRoleInputSelection, validateWorkflowRoleInputSelection } from './workflow-role-union.js';
 import { assertWorkflowOwnedSubjectCreate, assertWorkflowOwnedSubjectCreateResources } from './workflow-owned-subject.js';
 import * as crypto from 'crypto';
 import {
@@ -145,8 +146,8 @@ const EVENT_AUTHORIZATION_SYSTEM_FIELDS = new Set([
 ]);
 export { NATIVE_CONTRACT_CAPACITY_V2, requiresExtendedDeclarationCapacity, generatedCrudCapabilityOperations } from './declaration-capacity.js';
 import { NATIVE_CONTRACT_CAPACITY_V2, requiresExtendedDeclarationCapacity } from './declaration-capacity.js';
-export { NATIVE_ARTIFACT_CAPACITY_V2, requiresExtendedArtifactCapacity } from './artifact-capacity.js';
-import { NATIVE_ARTIFACT_CAPACITY_V2, requiresExtendedArtifactCapacity } from './artifact-capacity.js';
+export { NATIVE_ARTIFACT_CAPACITY_V2, NATIVE_HIGH_DENSITY_ARTIFACT_CAPACITY_V2, requiresHighDensityArtifactCapacity, requiresExtendedArtifactCapacity, requiresExtendedConfigurationBytes } from './artifact-capacity.js';
+import { NATIVE_ARTIFACT_CAPACITY_V2, NATIVE_HIGH_DENSITY_ARTIFACT_CAPACITY_V2, requiresHighDensityArtifactCapacity, requiresExtendedArtifactCapacity, requiresExtendedConfigurationBytes } from './artifact-capacity.js';
 export const DATA_EVENT_TYPES_V2 = [
   'openxiangda.data.record.created.v2',
   'openxiangda.data.record.updated.v2',
@@ -306,8 +307,11 @@ export function compileNativeApplicationConfiguration(
   );
   // First enforce all global safety bounds before deriving an extension from
   // untrusted input. The sealed configuration alone selects the larger budget.
-  inspectJsonBudget(parsedConfig, '/config', NATIVE_ARTIFACT_CAPACITY_V2.extendedNodes);
-  inspectJsonBudget(parsedContract, '/contracts', NATIVE_ARTIFACT_CAPACITY_V2.extendedNodes);
+  inspectJsonBudget(parsedConfig, '/config', NATIVE_HIGH_DENSITY_ARTIFACT_CAPACITY_V2.nodes);
+  inspectJsonBudget(parsedContract, '/contracts', NATIVE_HIGH_DENSITY_ARTIFACT_CAPACITY_V2.nodes);
+  if (!requiresHighDensityArtifactCapacity(parsedConfig)) {
+    inspectJsonBudget(parsedContract, '/contracts', NATIVE_ARTIFACT_CAPACITY_V2.extendedNodes);
+  }
   if (!requiresExtendedArtifactCapacity(parsedConfig)) {
     inspectJsonBudget(parsedContract, '/contracts', NATIVE_ARTIFACT_CAPACITY_V2.legacyNodes);
   }
@@ -535,9 +539,16 @@ export function compileRequiredPlatformCapabilitiesV3(
     code: OpenXiangdaPlatformCapabilityCode;
     declaration: unknown;
   }> = [
+    ...(requiresExtendedConfigurationBytes(config)
+      ? [{ code: 'application.extended-configuration-bytes' as const,
+          declaration: { legacyConfigBytes: NATIVE_ARTIFACT_CAPACITY_V2.legacyConfigBytes,
+            configBytes: NATIVE_ARTIFACT_CAPACITY_V2.configBytes } }] : []),
     ...(requiresExtendedArtifactCapacity(config)
       ? [{ code: 'application.extended-artifact-capacity' as const,
           declaration: NATIVE_ARTIFACT_CAPACITY_V2 }] : []),
+    ...(requiresHighDensityArtifactCapacity(config)
+      ? [{ code: 'application.high-density-artifact-capacity' as const,
+          declaration: NATIVE_HIGH_DENSITY_ARTIFACT_CAPACITY_V2 }] : []),
     ...(requiresExtendedDeclarationCapacity(config)
       ? [{ code: 'application.extended-declaration-capacity' as const, declaration: {
           resources: config.data.resources.length, policies: config.authz.dataPolicies.length,
@@ -724,11 +735,15 @@ export function compileRequiredPlatformCapabilitiesV3(
       : []),
     ...(requiresExtendedOwnedSubtableCapacity(config.data.resources)
       ? [{ code: 'data.extended-owned-subtable-capacity' as const, declaration: config.data.resources.filter((resource: any) => requiresExtendedOwnedSubtableCapacity([resource])) }] : []),
+    ...(requiresExtendedFieldCapacity(config.data.resources, config.workflows?.definitions || [])
+      ? [{ code: 'data.extended-field-capacity' as const, declaration: { resources: config.data.resources.filter((resource: any) => resource.schema.fields.length > 100), workflows: (config.workflows?.definitions || []).filter((item: any) => requiresExtendedFieldCapacity([], [item])) } }] : []),
     ...(requiresAggregateOwnedSubtableCapacity(config.data.resources)
       ? [{ code: 'data.aggregate-owned-subtable-capacity' as const, declaration: config.data.resources.filter((resource: any) => requiresAggregateOwnedSubtableCapacity([resource])) }] : []),
     ...(config.data.resources.some((resource: JsonObject) => resource.schema.fields.some((field: JsonObject) => field.userCandidates !== undefined))
       ? [{ code: 'data.user-candidates' as const, declaration: config.data.resources.filter((resource: JsonObject) => resource.schema.fields.some((field: JsonObject) => field.userCandidates !== undefined)) }]
       : []),
+    ...(requiresWorkflowRoleInputSelection(config.workflows.bindings)
+      ? [{ code: 'workflow.role-input-selection' as const, declaration: config.workflows.bindings.filter((item: JsonObject) => Object.values(item.binding.bindings).some((entry: any) => entry.selectedInputPath !== undefined)) }] : []),
     ...(requiresWorkflowRoleUnion(config.workflows.bindings)
       ? [{ code: 'workflow.role-union' as const, declaration: config.workflows.bindings.filter((item: JsonObject) => Object.values(item.binding.bindings).some((entry: any) => entry.roleCodes !== undefined)) }] : []),
     ...(config.backend.operations.some((item: JsonObject) => item.platformAccess?.ownedSubject)
@@ -774,6 +789,9 @@ export function compileRequiredPlatformCapabilitiesV3(
           definitions: config.workflows.definitions.filter((item: JsonObject) => item.definition.commandHandlers !== undefined),
           operations: operations.filter(operation => operation.platformAccess?.workflow?.businessCommands),
         } }] : []),
+    ...(config.workflows.definitions.some((item: JsonObject) => item.definition.commandHandlers?.approve?.transitionPolicy === 'workflow')
+      ? [{ code: 'workflow.approval-business-command' as const,
+          declaration: config.workflows.definitions.filter((item: JsonObject) => item.definition.commandHandlers?.approve?.transitionPolicy === 'workflow') }] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => item.definition.commandHandlers?.resubmit) || operations.some(operation => operation.platformAccess?.workflow?.businessCommands?.includes('resubmit'))
       ? [{ code: 'workflow.correction-business-command' as const, declaration: {
           definitions: config.workflows.definitions.filter((item: JsonObject) => item.definition.commandHandlers?.resubmit),
@@ -3352,7 +3370,7 @@ function validateApplicationAuthentication(
   const routes = boundedArray(
     routeDeclarations,
     '/config/frontend/routes',
-    500
+    NATIVE_CONTRACT_CAPACITY_V2.routes
   );
   const routesByCode = new Map<string, JsonObject>();
   for (const [index, rawRoute] of routes.entries()) {
@@ -5399,12 +5417,12 @@ function compileWorkflowLaunchContract(
         : uniqueStrings(
             requestSchema.required,
             `${intentPointer}/operation/requestSchema/required`,
-            64
+            WORKFLOW_LAUNCH_MAX_INPUTS
           )
     );
     const inputs = object(intent.inputs, `${intentPointer}/inputs`);
     const inputEntries = Object.entries(inputs);
-    if (!inputEntries.length || inputEntries.length > 64) {
+    if (!inputEntries.length || inputEntries.length > WORKFLOW_LAUNCH_MAX_INPUTS) {
       fail(
         'NATIVE_WORKFLOW_NAMED_OPERATION_INPUT_INVALID',
         `${intentPointer}/inputs`
@@ -7391,6 +7409,8 @@ function validateWorkflowBinding(binding: JsonObject, pointer: string) {
   for (const [code, raw] of Object.entries(entries)) {
     workflowBindingCode(code, `${pointer}/bindings/${code}`);
     const entry = object(raw, `${pointer}/bindings/${code}`);
+    const selectionErrors = validateWorkflowRoleInputSelection(entry);
+    if (selectionErrors.length) fail(selectionErrors[0]!, `${pointer}/bindings/${code}/selectedInputPath`);
     const unionErrors = validateWorkflowRoleUnion(entry);
     if (unionErrors.length) fail(unionErrors[0]!, `${pointer}/bindings/${code}/roleCodes`);
     const provider = requiredString(

@@ -1,6 +1,7 @@
 import type { WorkflowApprovalAdministration, WorkflowConfigurableOperation, WorkflowNodeConfigurationPatch, WorkflowNodeOperationPolicy } from '../types.js';
 import { validateWorkflowInitiatorApprovalPolicy, type WorkflowInitiatorApprovalPages } from './workflow-initiator-approval.js';
 import { validateWorkflowRoleUnion } from './workflow-role-union.js';
+import { WORKFLOW_AUTOMATIC_CC_DEFAULT_RECIPIENTS, WORKFLOW_AUTOMATIC_CC_MAX_RECIPIENTS } from './workflow-automatic-cc.js';
 
 export const WORKFLOW_CONFIGURABLE_OPERATIONS = ['approve', 'reject', 'return', 'transfer', 'delegate', 'add_assignee'] as const;
 export const WORKFLOW_CONFIGURABLE_PROVIDERS = ['fixed_users', 'app_role', 'app_role_in_scope'] as const;
@@ -19,7 +20,7 @@ export interface WorkflowAdministrationNodeSource {
   administration?: WorkflowApprovalAdministration;
   fieldPolicy?: { default?: string; fields?: Record<string, string> };
 }
-type BindingSource = { provider: string; scope?: { dimension: string; value?: string; valueFrom?: string } };
+type BindingSource = { provider: string; min?: number; max?: number; selectedInputPath?: string; scope?: { dimension: string; value?: string; valueFrom?: string } };
 const record = (value: unknown): value is Record<string, any> => !!value && typeof value === 'object' && !Array.isArray(value);
 const keys = (value: object, allowed: readonly string[]) => Object.keys(value).every(key => allowed.includes(key));
 const boundedList = (value: unknown, allowed: readonly string[], limit: number) => Array.isArray(value) && value.length > 0 && value.length <= limit && new Set(value).size === value.length && value.every(item => typeof item === 'string' && allowed.includes(item));
@@ -90,9 +91,12 @@ export function validateWorkflowNodeConfigurationPatch(node: WorkflowAdministrat
   if (patch.assignee !== undefined) {
     const value = patch.assignee;
     const allowed = admin?.assigneeProviders || (node.kind === 'approval' && binding && WORKFLOW_CONFIGURABLE_PROVIDERS.includes(binding.provider as any) ? [binding.provider] : []);
+    if (binding?.selectedInputPath && !['app_role', 'app_role_in_scope'].includes(value?.provider || '')) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_PROVIDER_READONLY');
     if (!record(value) || !['approval', 'cc'].includes(node.kind) || !allowed.includes(value.provider) || (value.provider === 'app_role_in_scope' && !binding?.scope)) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_PROVIDER_READONLY');
     else if (value.provider === 'fixed_users') {
-      if (!keys(value, ['provider', 'users']) || !Array.isArray(value.users) || (value.users.length < 1 && !(node.kind === 'approval' && node.emptyPolicy === 'skip')) || value.users.length > (node.kind === 'cc' ? 20 : 200) || new Set(value.users).size !== value.users.length || value.users.some(id => typeof id !== 'string' || !id.trim() || id.length > 255)) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_USERS_INVALID');
+      const minimum = node.kind === 'cc' ? binding?.min ?? 1 : node.emptyPolicy === 'skip' ? 0 : 1;
+      const maximum = node.kind === 'cc' ? Math.min(binding?.max ?? WORKFLOW_AUTOMATIC_CC_DEFAULT_RECIPIENTS, WORKFLOW_AUTOMATIC_CC_MAX_RECIPIENTS) : 200;
+      if (!keys(value, ['provider', 'users']) || !Array.isArray(value.users) || value.users.length < minimum || value.users.length > maximum || new Set(value.users).size !== value.users.length || value.users.some(id => typeof id !== 'string' || !id.trim() || id.length > 255)) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_USERS_INVALID');
     } else if (value.roleCodes !== undefined) {
       if (!keys(value, ['provider', 'roleCodes']) || validateWorkflowRoleUnion({ ...value, ...(value.provider === 'app_role_in_scope' ? { scope: binding?.scope } : {}) }).length) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_ROLE_INVALID');
     } else if (!keys(value, ['provider', 'roleCode']) || typeof value.roleCode !== 'string' || !/^[a-z][a-z0-9_-]{0,127}$/.test(value.roleCode)) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_ROLE_INVALID');

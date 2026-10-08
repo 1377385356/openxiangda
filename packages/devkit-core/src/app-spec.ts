@@ -28,7 +28,7 @@ export const APP_SPEC_SCHEMAS = {
 } as const;
 
 export const APP_SPEC_LIMITS = {
-  maximumFiles: 128,
+  maximumFiles: 512,
   maximumFileBytes: 256 * 1024,
   maximumTotalBytes: 2 * 1024 * 1024,
   maximumContextBytes: 256 * 1024,

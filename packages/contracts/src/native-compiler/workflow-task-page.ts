@@ -1,8 +1,8 @@
 import type { DataFileUploadPlan, WorkflowExpression } from '../types.js';
 import type { DataFieldSurface } from '../surface.js';
-import { DATA_SUBTABLE_MAX_ROWS, DATA_SUBTABLE_MAX_TOTAL_ROWS } from './data-capacity.js';
+import { DATA_RESOURCE_MAX_FIELDS, DATA_SUBTABLE_MAX_ROWS, DATA_SUBTABLE_MAX_TOTAL_ROWS } from './data-capacity.js';
 
-export const WORKFLOW_TASK_PAGE_MAX_FIELDS = 64;
+export const WORKFLOW_TASK_PAGE_MAX_FIELDS = DATA_RESOURCE_MAX_FIELDS;
 export const WORKFLOW_TASK_PAGE_MAX_BYTES = 1024 * 1024;
 export const WORKFLOW_TASK_PAGE_DEFINITION_MAX_BYTES = 65_536;
 export const WORKFLOW_TASK_SUBTABLE_MAX_ROWS = DATA_SUBTABLE_MAX_ROWS;

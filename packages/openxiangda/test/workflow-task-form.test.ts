@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import dayjs from 'dayjs';
-import { workflowTaskFormPatch, workflowTaskFormReviewFields } from '../src/browser/components/workflow/WorkflowTaskForm';
+import { workflowTaskFormLinkage, workflowTaskFormPatch, workflowTaskFormReviewFields } from '../src/browser/components/workflow/WorkflowTaskForm';
 import { workflowTaskDraftConfirmsSave, workflowTaskDraftWasRejected } from '../src/browser/components/workflow/WorkflowTaskDraftPanel';
 import { clearPendingWorkflowTaskCommand, readPendingWorkflowTaskCommand, workflowCommandTokenDigest, workflowTaskCommandScope,
   workflowTaskCommandWasRejected, writePendingWorkflowTaskCommand } from '../src/browser/workflow-task-command-recovery';
@@ -12,6 +12,35 @@ const source: any = { pageCode: 'fill', expectedRevision: 3, page: { title: '补
 ] }, fields: { title: { type: 'text.short' }, amount: { type: 'number.integer' }, needsReason: { type: 'boolean' },
   reason: { type: 'text.long' }, date: { type: 'date' } },
   values: { title: '原申请', amount: 100, needsReason: true, reason: '原说明', date: '2026-10-02' } };
+
+const context = { workflowCode: 'business', nodeId: 'review', pageCode: 'fill' };
+test('task value linkage uses canonical dates, preserves independent edits and cannot mutate input', () => {
+  const values = { ...source.values, date: dayjs('2026-10-03'), reason: '手填意见' };
+  const rule = (changed: any, all: any, received: any) => {
+    assert.deepEqual(received, context); assert.equal(Object.hasOwn(all, 'title'), false);
+    if (!Object.hasOwn(changed, 'date')) return {};
+    assert.equal(all.date, '2026-10-03'); all.amount = 999;
+    return { reason: `会议日期：${all.date}` };
+  };
+  assert.deepEqual(workflowTaskFormLinkage(source, { date: values.date }, values, rule, context), { reason: '会议日期：2026-10-03' });
+  assert.deepEqual(workflowTaskFormLinkage(source, { reason: '手填意见' }, values, rule, context), {});
+  assert.equal(values.amount, 100); assert.equal(source.expectedRevision, 3);
+});
+test('task linkage rejects an entire mixed patch targeting hidden, readonly, unmatched, owned or file fields', () => {
+  const bounded: any = { ...source, page: { ...source.page, fields: [...source.page.fields,
+    { code: 'children', subtable: {} }, { code: 'file' }] }, fields: { ...source.fields, children: { type: 'subtable' }, file: { type: 'file' } } };
+  const values = { ...source.values, needsReason: false };
+  for (const code of ['title', 'reason', 'undeclared', 'children', 'file'])
+    assert.throws(() => workflowTaskFormLinkage(bounded, { amount: 2 }, values, () => ({ amount: 2, [code]: 'forged' }), context), /FIELD_UNAVAILABLE/);
+  assert.deepEqual(workflowTaskFormPatch(source, { ...source.values, amount: 2 }), { expectedRevision: 3, values: { amount: 2 } });
+});
+test('task linkage rejects asynchronous rules and ignores non-scalar changes without overwriting entered values', () => {
+  for (const output of [Promise.resolve({ amount: 1 }), { then: () => {} }, []])
+    assert.throws(() => workflowTaskFormLinkage(source, { amount: 2 }, source.values, (() => output) as any, context), /LINKAGE_INVALID/);
+  let called = false;
+  assert.deepEqual(workflowTaskFormLinkage(source, { undeclared: 1 }, source.values, () => { called = true; return {}; }, context), {});
+  assert.equal(called, false); assert.equal(source.values.amount, 100);
+});
 
 test('task patch keeps CAS and omits readonly, hidden and unchanged fields', () => {
   assert.deepEqual(workflowTaskFormPatch(source, { title: '篡改', amount: 0, needsReason: false, reason: '未提交隐藏值', date: dayjs('2026-10-02') }),

@@ -1,10 +1,11 @@
-import { createContext, useContext, type ReactNode } from 'react';
+import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import {
   WORKFLOW_SUMMARY_MAX_FIELDS,
   type AppWorkflowLaunchContextDeclaration,
   type AppWorkflowLaunchInputBindingDeclaration,
   type AppWorkflowNamedOperationOutputDeclaration,
 } from 'openxiangda-contracts/browser';
+type JsonObject = Record<string, unknown>;
 
 export interface WorkflowSubjectDefinition {
   resourceCode: string;
@@ -155,20 +156,39 @@ const WorkflowDefinitionsContext = createContext<
   ReadonlyMap<string, StandardWorkflowDefinition>
 >(new Map());
 
+export interface WorkflowTaskFormLinkageContext {
+  workflowCode: string;
+  nodeId: string;
+  pageCode: string;
+}
+export interface WorkflowTaskFormBehavior {
+  /** Synchronous presentation only. The platform still validates every task write. */
+  valueLinkage?: (changed: Readonly<JsonObject>, values: Readonly<JsonObject>, context: Readonly<WorkflowTaskFormLinkageContext>) => JsonObject;
+}
+export type WorkflowTaskFormBehaviors = Readonly<Record<string, WorkflowTaskFormBehavior>>;
+const WorkflowTaskFormsContext = createContext<WorkflowTaskFormBehaviors>({});
+
 export function OpenXiangdaWorkflowDefinitionsProvider({
   children,
   definitions,
+  taskForms = {},
 }: {
   children: ReactNode;
   definitions: StandardWorkflowDefinitionsInput;
+  taskForms?: WorkflowTaskFormBehaviors;
 }) {
+  const normalized = useMemo(() => normalizeWorkflowDefinitions(definitions), [definitions]);
   return (
     <WorkflowDefinitionsContext.Provider
-      value={normalizeWorkflowDefinitions(definitions)}
+      value={normalized}
     >
-      {children}
+      <WorkflowTaskFormsContext.Provider value={taskForms}>{children}</WorkflowTaskFormsContext.Provider>
     </WorkflowDefinitionsContext.Provider>
   );
+}
+
+export function useWorkflowTaskFormBehavior(code: string) {
+  return useContext(WorkflowTaskFormsContext)[code];
 }
 
 export function useWorkflowDefinitions() {
