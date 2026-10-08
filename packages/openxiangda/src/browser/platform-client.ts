@@ -2862,10 +2862,14 @@ export async function loadWorkflowWorkCenter(input: {
   view?: import('openxiangda-contracts/browser').WorkflowWorkCenterView;
   limit?: number;
   offset?: number;
+  keyword?: string;
+  instanceStatus?: 'running' | 'approved' | 'rejected' | 'withdrawn' | 'terminated';
 }) {
   const query = new URLSearchParams({
     environmentKey: currentEnvironmentKey(),
     ...(input.view ? { view: input.view } : { status: input.status || 'pending' }),
+    ...(input.keyword?.trim() ? { keyword: input.keyword.trim() } : {}),
+    ...(input.instanceStatus ? { instanceStatus: input.instanceStatus } : {}),
     limit: String(input.limit ?? 20),
     offset: String(input.offset ?? 0),
   });
