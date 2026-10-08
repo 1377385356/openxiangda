@@ -1169,3 +1169,9 @@ handler；默认精确流转模式不变，旧站点须支持 `workflow.approval
 只需重核自身业务不变量，不能另写一次子行。投影为流程事实的子表暂不支持此
 补正形式，仍返回 `WORKFLOW_CORRECTION_OWNED_FACTS_UNSUPPORTED`；不能通过
 移除真实流转事实来绕过。原返回、重走首节点、职责和原命令恢复规则保持。
+
+具名新建的 owned 子表可以用 `formOptions.subtableFieldState(values)` 返回按子表字段
+和子列编码的 `{ visible, required }`，例如 `{ relatives: { extraFact: { visible: false } } }`。
+状态只调整页面展示与可见输入校验，不改变流程、读写授权或子表数据；隐藏旧值会保留，
+重新显示后恢复。列必须已在具名操作的 sealed child closure 内，未知表/列与非布尔状态
+拒绝；`required: false` 不能撤销声明的必填，服务端业务仍独立验证实际提交值。

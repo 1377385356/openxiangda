@@ -133,8 +133,8 @@ import { PlatformAvatar } from '../PlatformAvatar';
 import { SubtableField } from '../platform-fields/SubtableField';
 import { assertNamedSubtableReadonlyFields, namedProcessFormValues, standardProcessFormValues } from './standard-process-values';
 import { fieldWritable } from '../resource/resource-page-helpers';
-import { workflowSubmissionFormInput, workflowSubmissionFormProjection, workflowSubmissionPrefill, workflowSubmissionValueLinkage, type WorkflowSubmissionFieldStates } from './workflow-submission-form';
-export type { WorkflowSubmissionFieldState, WorkflowSubmissionFieldStates } from './workflow-submission-form';
+import { workflowSubmissionFormInput, workflowSubmissionFormProjection, workflowSubmissionPrefill, workflowSubmissionValueLinkage, workflowSubmissionSubtableStates, type WorkflowSubmissionFieldStates, type WorkflowSubmissionSubtableFieldStates } from './workflow-submission-form';
+export type { WorkflowSubmissionFieldState, WorkflowSubmissionFieldStates, WorkflowSubmissionSubtableFieldStates } from './workflow-submission-form';
 
 type PageVariant = 'desktop' | 'mobile';
 export type WorkflowPageVariant = PageVariant;
@@ -2176,6 +2176,8 @@ export interface WorkflowSubmissionFormOptions {
    * are not bound launch inputs. Never inserted into form submission/drafts. */
   candidateScopeValues?: Readonly<JsonObject>;
   fieldState?: (values: Readonly<JsonObject>) => WorkflowSubmissionFieldStates;
+  /** Narrows named-create child presentation; hidden values are retained and remain server-validated. */
+  subtableFieldState?: (values: Readonly<JsonObject>) => WorkflowSubmissionSubtableFieldStates;
   /** Synchronous canonical patch after user input, limited to editable launch fields. */
   valueLinkage?: (changed: Readonly<JsonObject>, values: Readonly<JsonObject>) => JsonObject;
   /** Display derived owned-child values without including them in named create input. */
@@ -2337,11 +2339,13 @@ export function WorkflowSubmissionPage({
   const formProjection = useMemo(() => {
     try {
       const values = subjectDefinition ? normalizeFormValues(watchedFormValues || {}, subjectDefinition.surface) : {};
-      return { ...workflowSubmissionFormProjection(fields, values, formOptions?.fieldState?.(values)), error: false };
+      const subtableStates = workflowSubmissionSubtableStates(subjectDefinition?.surface || { fields: {} },
+        namedIntent?.ownedSubject, formOptions?.subtableFieldState?.(structuredClone(values)));
+      return { ...workflowSubmissionFormProjection(fields, values, formOptions?.fieldState?.(values)), subtableStates, error: false };
     } catch {
-      return { fields, values: {}, hiddenValues: {}, error: true };
+      return { fields, values: {}, hiddenValues: {}, subtableStates: {}, error: true };
     }
-  }, [fields, formOptions?.fieldState, subjectDefinition, watchedFormValues]);
+  }, [fields, formOptions?.fieldState, formOptions?.subtableFieldState, namedIntent?.ownedSubject, subjectDefinition, watchedFormValues]);
   const prefillContext = JSON.stringify([recoveryScope, identity.environment.activeAppVersionId, submissionMode, subjectId]);
   useEffect(() => { setLinkageError(false); }, [prefillContext]);
   useEffect(() => { setSubjectDirty(false); }, [prefillContext]);
@@ -3023,6 +3027,7 @@ export function WorkflowSubmissionPage({
           return <SubtableField field={field} disabled={disabled} operation={operation} parentRecordId={recordId} mobile={variant === 'mobile'}
             {...(namedIntent && grant ? { launch: { fieldCodes: grant.fieldCodes,
               readonlyFieldCodes: [...(formOptions?.subtableReadonlyFields?.[field.key] || []), ...(formOptions?.subtableReadonlyInputFields?.[field.key] || [])],
+              fieldState: formProjection.subtableStates[field.key],
               fixedRows: formOptions?.subtableFixedRows?.includes(field.key),
               fileResourceCodes: formOptions?.fileResourceCodes,
               reference: { workflowCode: definition.code, operationCode: namedIntent.operationCode, subtableFieldCode: field.key },

@@ -52,6 +52,7 @@ import type { SubtableDraftRow } from './subtable-value';
 import { buildResourceImportTemplate, parseResourceImportFile } from '../resource/resource-import';
 import { selectedSurfaceFields } from '../resource/resource-field-selection';
 import { resourceReferenceBindingPatch } from './reference-binding-change';
+import { workflowSubmissionSubtableFields, type WorkflowSubmissionSubtableFieldStates } from '../workflow/workflow-submission-form';
 
 interface GeneratedDefinition {
   code: string;
@@ -81,6 +82,8 @@ export interface SubtableFieldProps {
     fieldCodes: readonly string[];
     /** Presentation only: derived values remain visible but are not user input. */
     readonlyFieldCodes?: readonly string[];
+    /** Page presentation only; row data and sealed field closure are unchanged. */
+    fieldState?: WorkflowSubmissionSubtableFieldStates[string];
     /** Source rows may be edited in place; their membership is owned by business validation. */
     fixedRows?: boolean;
     fileResourceCodes?: SurfaceFieldRenderers['fileResourceCodes'];
@@ -180,10 +183,10 @@ export function SubtableField({
     return stateCache.get(row.key)!.find(state => state.code === child.key);
   };
   const canReadField = (child: SurfaceField, row?: SubtableDraftRow) => launch
-    ? launch.fieldCodes.includes(child.key) && (!row || row.state === 'created')
+    ? launch.fieldState?.[child.key]?.visible !== false && launch.fieldCodes.includes(child.key) && (!row || row.state === 'created')
     : task ? !row || taskState(child, row)?.visible === true : fieldReadable(child, hasReadCapability, identity.isAppSuperAdmin);
   const canWriteField = (child: SurfaceField, operation: 'create' | 'update', row?: SubtableDraftRow) => launch
-    ? operation === 'create' && (!row || row.state === 'created') && launch.fieldCodes.includes(child.key) && !launch.readonlyFieldCodes?.includes(child.key) && child.widget !== 'readonly' && !child.hidden && !child.system
+    ? launch.fieldState?.[child.key]?.visible !== false && operation === 'create' && (!row || row.state === 'created') && launch.fieldCodes.includes(child.key) && !launch.readonlyFieldCodes?.includes(child.key) && child.widget !== 'readonly' && !child.hidden && !child.system
     : task
     ? (!row ? task.page.fields.some(item => item.code === child.key && !item.readonly) : Boolean(taskState(child, row)?.visible && !taskState(child, row)?.readonly))
     : fieldWritable(child, operation, hasCapability, identity.isAppSuperAdmin);
@@ -210,7 +213,8 @@ export function SubtableField({
   const uploadBlocked = (child: SurfaceField, row: SubtableDraftRow) => Boolean(task && ['file', 'image', 'signature', 'text.rich'].includes(child.type) &&
     (task.uploadEnabled === false || !workflowTaskPageFieldState({ title: field.label, fields: task.page.fields }, task.rows?.find(value => String(value.id) === row.key) || {})
       .some(state => state.code === child.key && state.visible && !state.readonly)));
-  const rowFields = (row: SubtableDraftRow) => childFields.map(child => task ? { ...child, requiredHint: false } : child);
+  const rowFields = () => launch ? workflowSubmissionSubtableFields(childFields, launch.fieldState)
+    : childFields.map(child => task ? { ...child, requiredHint: false } : child);
   const requiredHint = (child: SurfaceField, row: SubtableDraftRow) => taskState(child, row)?.required
     ? <Typography.Text type="secondary">完成任务前必填</Typography.Text> : undefined;
 
@@ -222,7 +226,7 @@ export function SubtableField({
       await validateSubtableRows(rows, row => {
         const operation = row.state === 'persisted' ? 'update' : 'create';
         const writable = task ? row.state === 'persisted' || task.page.create === true : row.state === 'persisted' ? canUpdate : canCreate;
-        return rowFields(row).filter(child => writable && canWriteField(child, operation, row) && !uploadBlocked(child, row));
+        return rowFields().filter(child => writable && canWriteField(child, operation, row) && !uploadBlocked(child, row));
       }, mobile);
     } catch (error) {
       if (error instanceof SubtableRowValidationError) setRequestedPage(Math.floor(error.rowIndex / SUBTABLE_PAGE_SIZE) + 1);
@@ -319,7 +323,7 @@ export function SubtableField({
       const index = page.start + offset;
       const rowOperation = row.state === 'persisted' ? 'update' : 'create';
       const writable = task ? row.state === 'persisted' || task.page.create === true : row.state === 'persisted' ? canUpdate : canCreate;
-      const fields = rowFields(row).filter(child => canReadField(child, row) || (writable && canWriteField(child, rowOperation, row)));
+      const fields = rowFields().filter(child => canReadField(child, row) || (writable && canWriteField(child, rowOperation, row)));
       return <MobileSubtableRow key={row.key} row={row} index={index} fields={fields} disabled={disabled}
         resourceCode={definition.code} operation={rowOperation}
         canWrite={child => writable && canWriteField(child, rowOperation, row)}
@@ -332,7 +336,7 @@ export function SubtableField({
       onClick={() => { emit([...rows, { key: crypto.randomUUID(), state: 'created', data: {} }]); setRequestedPage(Math.floor(visibleRows.length / SUBTABLE_PAGE_SIZE) + 1); }}><PlusOutlined /> 新增一项</MobileButton>}
   </div></SubtableEditActivityContext.Provider>;
 
-  const fields = childFields.filter(child => canReadField(child) || (canCreate && canWriteField(child, 'create')) || (canUpdate && canWriteField(child, 'update')));
+  const fields = rowFields().filter(child => canReadField(child) || (canCreate && canWriteField(child, 'create')) || (canUpdate && canWriteField(child, 'update')));
   const writableCodes = fields.filter(child => canWriteField(child, 'create')).map(child => child.key);
   const appendRows = (data: Record<string, unknown>[]) => { if (launch?.fixedRows) return; const start = subtablePage(rowsRef.current, 1).visible.length; emit([...rowsRef.current, ...data.map(item => ({
     key: crypto.randomUUID(), state: 'created' as const,

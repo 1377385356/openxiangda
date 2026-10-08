@@ -1,12 +1,43 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { SurfaceField } from '../src/browser/components/resource/SurfaceFields.js';
-import { workflowSubmissionFormInput, workflowSubmissionFormProjection, workflowSubmissionPrefill, workflowSubmissionValueLinkage } from '../src/browser/components/workflow/workflow-submission-form.js';
+import { workflowSubmissionFormInput, workflowSubmissionFormProjection, workflowSubmissionPrefill, workflowSubmissionValueLinkage, workflowSubmissionSubtableStates, workflowSubmissionSubtableFields } from '../src/browser/components/workflow/workflow-submission-form.js';
+import { namedProcessFormValues } from '../src/browser/components/workflow/standard-process-values.js';
+import { validateSubtableRows } from '../src/browser/components/platform-fields/subtable-pagination.js';
 import { normalizeFormValues, normalizeRecordForForm } from '../src/browser/components/platform-fields/field-form-codec.js';
 
 const field = (key: string, requiredHint = false): SurfaceField => ({ key, label: key, type: 'text.short', widget: 'text',
   requiredHint, readCapabilities: [], createCapabilities: [], updateCapabilities: [] });
 const fields = [field('reason', true), field('evidence'), field('reviewer')];
+
+test('child presentation retains hidden input through both codecs and cannot expand the sealed closure', () => {
+  const parent: any = { fields: { rows: { type: 'subtable', subtable: { resourceCode: 'children', foreignKey: 'parentId' } } } };
+  const child: any = { fields: { visibleFact: field('visibleFact', true), hiddenFact: field('hiddenFact', true), secret: field('secret') } };
+  const grant = { mode: 'create' as const, resourceCode: 'requests', subtables: [{ fieldCode: 'rows', fieldCodes: ['visibleFact', 'hiddenFact'] }] };
+  const states = workflowSubmissionSubtableStates(parent, grant, { rows: { hiddenFact: { visible: false }, visibleFact: { required: false } } });
+  const row = { key: 'original-row', state: 'created' as const, data: { visibleFact: 'current', hiddenFact: 'old', secret: 'forged' } };
+  const before = structuredClone(row);
+  const projected = workflowSubmissionSubtableFields([field('visibleFact', true), field('hiddenFact', true)], states.rows);
+  assert.deepEqual(projected.map(value => value.key), ['visibleFact']);
+  assert.equal(projected[0].requiredHint, true);
+  const output: any = namedProcessFormValues({ rows: [row] }, parent, { children: { surface: child } }, grant);
+  assert.deepEqual(output.rows[0].data, { visibleFact: 'current', hiddenFact: 'old' });
+  assert.deepEqual(row, before);
+  assert.deepEqual(workflowSubmissionSubtableFields([field('visibleFact'), field('hiddenFact')]).map(value => value.key), ['visibleFact', 'hiddenFact']);
+  for (const bad of [{ unknown: { hiddenFact: { visible: true } } }, { rows: { secret: { visible: true } } },
+    { rows: { hiddenFact: { hiddenValue: 'replace' } } }, { rows: { hiddenFact: { visible: 'true' } } }])
+    assert.throws(() => workflowSubmissionSubtableStates(parent, grant, bad as any), /FIELD_STATE_INVALID/);
+});
+
+test('hidden child validation resumes when revealed on PC and mobile without changing stored rows', async () => {
+  const columns = [field('visibleFact', true), field('hiddenFact', true)];
+  const rows = [{ key: 'row', state: 'created' as const, data: { visibleFact: 'entered' } }];
+  for (const mobile of [false, true]) {
+    await validateSubtableRows(rows, () => workflowSubmissionSubtableFields(columns, { hiddenFact: { visible: false } }), mobile);
+    await assert.rejects(() => validateSubtableRows(rows, () => workflowSubmissionSubtableFields(columns), mobile), /第 1 项/);
+  }
+  assert.deepEqual(rows[0].data, { visibleFact: 'entered' });
+});
 
 test('hidden stale files and people are cleared in both the view and submitted input', () => {
   const value = workflowSubmissionFormProjection(fields, { reason: 'personal', evidence: [{ id: 'old' }], reviewer: { value: 'old' }, identity: 'injected' },
