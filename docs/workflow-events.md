@@ -959,7 +959,14 @@ append 处理签名或 HTML。当前任务、实例、记录或字段改变时�
 
 ### 审批人为空时的节点策略
 
-审批节点可声明 `emptyPolicy: 'skip'`，省略或声明 `block` 时保持阻塞。第一版 skip 支持 fixed_users、input_users、form_field_users、app_role、app_role_in_scope；编译器拒绝其他来源与 skip 组合。表单人员明确为 `[]`，或存在的角色在有效范围内没有成员，且解析成功、没有警告，才允许自动继续到 `onApprove`。缺失/null 字段、不存在的角色、无效账号、缺少范围、解析失败和非零人数不满足 min/max 都不能跳过。
+审批节点可声明 `emptyPolicy: 'skip'`，省略或声明 `block` 时保持阻塞。第一版 skip 支持 fixed_users、input_users、form_field_users、app_role、app_role_in_scope；编译器拒绝其他来源与 skip 组合。表单人员明确为 `[]`，或存在的角色在有效范围内没有成员，且解析成功、没有警告，才允许自动继续到 `onApprove`。
+
+`form_field_users` 也支持主体投影的可选单人为空：固定 Native 主体的
+`factProjection` 必须准确指向非必填 `user.single`，并且保存值明确为 `null`。
+平台核验主体、定义与资料修订后，仅在审批空人策略解析中把该值视为已核实空名单；
+限定候选仍核验当前范围与授权。此规则不增加开关，也不改变节点的 skip/block/兜底策略。
+字段缺失、必填人员为 null、无主体或无准确投影、类型错误、无效账号、缺少范围、
+解析失败和非零人数不满足 min/max 都不能跳过；普通选人及 `input_users` 不接受 null。
 
 该策略由代码固定。每次实际跳过记录节点访问、当时配置、解析依据和 `openxiangda.workflow.node.skipped.v2` 事件；图和 PC/手机历史显示“已跳过”。连续节点推进受 200 节点上限约束，业务步骤仍等待其正式结果。后续失败与业务变更在原事务一起回滚，重试沿用原命令。
 
