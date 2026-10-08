@@ -70,7 +70,7 @@ export default function WorkflowFlowCanvas(props: {
   const nodes = useMemo<FlowNode[]>(() => positions ? props.graph.nodes.map(node => {
     const point = positions.nodes.get(node.id)!;
     return { id: node.id, type: 'workflow', position: { x: point.x, y: point.y }, width: point.width, height: point.height,
-      style: { width: point.width, height: point.height }, selected: props.selectedNodeId === node.id, draggable: false, connectable: false, deletable: false,
+      style: { width: point.width, height: point.height, pointerEvents: 'all' }, selected: props.selectedNodeId === node.id, draggable: false, connectable: false, deletable: false,
       data: { node, title: props.titles[node.id] || node.title, summary: props.summaries?.[node.id], start: node.id === props.graph.startAt,
         visit: [...props.visits].reverse().find(visit => visit.nodeId === node.id), input: point.input, outputs: point.outputs,
         onSelect: () => latest.current.onSelectNode(node.id), onNavigate: (id, key) => latest.current.onNavigate(id, key) } };
