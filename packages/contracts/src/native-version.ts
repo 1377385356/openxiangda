@@ -6,6 +6,7 @@ export const PLATFORM_CAPABILITY_CONTRACT_VERSIONS = {
   "application-native-2": "1.0.0",
   "application.extended-declaration-capacity": "1.0.0",
   "application.extended-artifact-capacity": "1.0.0",
+  "application.high-density-artifact-capacity": "1.0.0",
   "application.extended-configuration-bytes": "1.0.0",
   "application.development-configuration": "1.0.0",
   "authz.native-batch-explain": "1.0.0",

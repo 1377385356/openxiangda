@@ -8,3 +8,8 @@ export const NATIVE_ARTIFACT_CAPACITY_V2 = Object.freeze({
   legacyNodes: 100_000,
   extendedNodes: 250_000,
 } as const);
+
+/** Additional density is negotiated independently from the prior extension. */
+export const NATIVE_HIGH_DENSITY_ARTIFACT_CAPACITY_V2 = Object.freeze({
+  nodes: 500_000,
+} as const);

@@ -146,8 +146,8 @@ const EVENT_AUTHORIZATION_SYSTEM_FIELDS = new Set([
 ]);
 export { NATIVE_CONTRACT_CAPACITY_V2, requiresExtendedDeclarationCapacity, generatedCrudCapabilityOperations } from './declaration-capacity.js';
 import { NATIVE_CONTRACT_CAPACITY_V2, requiresExtendedDeclarationCapacity } from './declaration-capacity.js';
-export { NATIVE_ARTIFACT_CAPACITY_V2, requiresExtendedArtifactCapacity, requiresExtendedConfigurationBytes } from './artifact-capacity.js';
-import { NATIVE_ARTIFACT_CAPACITY_V2, requiresExtendedArtifactCapacity, requiresExtendedConfigurationBytes } from './artifact-capacity.js';
+export { NATIVE_ARTIFACT_CAPACITY_V2, NATIVE_HIGH_DENSITY_ARTIFACT_CAPACITY_V2, requiresHighDensityArtifactCapacity, requiresExtendedArtifactCapacity, requiresExtendedConfigurationBytes } from './artifact-capacity.js';
+import { NATIVE_ARTIFACT_CAPACITY_V2, NATIVE_HIGH_DENSITY_ARTIFACT_CAPACITY_V2, requiresHighDensityArtifactCapacity, requiresExtendedArtifactCapacity, requiresExtendedConfigurationBytes } from './artifact-capacity.js';
 export const DATA_EVENT_TYPES_V2 = [
   'openxiangda.data.record.created.v2',
   'openxiangda.data.record.updated.v2',
@@ -307,8 +307,11 @@ export function compileNativeApplicationConfiguration(
   );
   // First enforce all global safety bounds before deriving an extension from
   // untrusted input. The sealed configuration alone selects the larger budget.
-  inspectJsonBudget(parsedConfig, '/config', NATIVE_ARTIFACT_CAPACITY_V2.extendedNodes);
-  inspectJsonBudget(parsedContract, '/contracts', NATIVE_ARTIFACT_CAPACITY_V2.extendedNodes);
+  inspectJsonBudget(parsedConfig, '/config', NATIVE_HIGH_DENSITY_ARTIFACT_CAPACITY_V2.nodes);
+  inspectJsonBudget(parsedContract, '/contracts', NATIVE_HIGH_DENSITY_ARTIFACT_CAPACITY_V2.nodes);
+  if (!requiresHighDensityArtifactCapacity(parsedConfig)) {
+    inspectJsonBudget(parsedContract, '/contracts', NATIVE_ARTIFACT_CAPACITY_V2.extendedNodes);
+  }
   if (!requiresExtendedArtifactCapacity(parsedConfig)) {
     inspectJsonBudget(parsedContract, '/contracts', NATIVE_ARTIFACT_CAPACITY_V2.legacyNodes);
   }
@@ -543,6 +546,9 @@ export function compileRequiredPlatformCapabilitiesV3(
     ...(requiresExtendedArtifactCapacity(config)
       ? [{ code: 'application.extended-artifact-capacity' as const,
           declaration: NATIVE_ARTIFACT_CAPACITY_V2 }] : []),
+    ...(requiresHighDensityArtifactCapacity(config)
+      ? [{ code: 'application.high-density-artifact-capacity' as const,
+          declaration: NATIVE_HIGH_DENSITY_ARTIFACT_CAPACITY_V2 }] : []),
     ...(requiresExtendedDeclarationCapacity(config)
       ? [{ code: 'application.extended-declaration-capacity' as const, declaration: {
           resources: config.data.resources.length, policies: config.authz.dataPolicies.length,

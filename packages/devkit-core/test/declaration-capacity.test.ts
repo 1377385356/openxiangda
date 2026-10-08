@@ -144,7 +144,7 @@ test('large declarations retain global byte and JSON-node budgets and real polic
     const config = JSON.parse(corpus.configuration.canonical), contract = JSON.parse(corpus.contract.canonical);
     config.extra = 'x'.repeat(esm.NATIVE_ARTIFACT_CAPACITY_V2.configBytes);
     assert.throws(() => compiler.compileNativeApplicationConfiguration(input(config, contract)), /NATIVE_CONFIG_ARTIFACT_TOO_LARGE/);
-    config.extra = Array.from({ length: esm.NATIVE_ARTIFACT_CAPACITY_V2.extendedNodes + 1 }, () => null);
+    config.extra = Array.from({ length: esm.NATIVE_HIGH_DENSITY_ARTIFACT_CAPACITY_V2.nodes + 1 }, () => null);
     assert.throws(() => compiler.compileNativeApplicationConfiguration(input(config, contract)), /NATIVE_ARTIFACT_NODE_LIMIT_EXCEEDED/);
   }
   const sources = compileApplicationSources(declaration()), config = JSON.parse(sources.config.content), contract = JSON.parse(sources.contracts.content);
@@ -220,7 +220,7 @@ test('artifact extension retains precise global limits and cannot be asserted by
     ? Object.values(value).reduce<number>((sum, child) => sum + count(child), 0) : 0);
   for (const compiler of [esm, cjs]) {
     const config = JSON.parse(corpus.configuration.canonical), contract = JSON.parse(corpus.contract.canonical);
-    const maximum = compiler.NATIVE_ARTIFACT_CAPACITY_V2.extendedNodes;
+    const maximum = compiler.NATIVE_HIGH_DENSITY_ARTIFACT_CAPACITY_V2.nodes;
     config.extra = [];
     config.extra = Array.from({ length: maximum - count(config) }, () => null);
     // At the exact global budget the unrelated extra key reaches semantic
@@ -240,4 +240,24 @@ test('artifact extension retains precise global limits and cannot be asserted by
     config.extra = Array.from({ length: compiler.NATIVE_ARTIFACT_CAPACITY_V2.depth + 1 }).reduce(value => ({ child: value }), null);
     assert.throws(() => compiler.compileNativeApplicationConfiguration(input(config, contract)), /NATIVE_ARTIFACT_DEPTH_LIMIT_EXCEEDED/);
   }
+});
+
+
+test('high density closure adds an independent capability while older extensions keep their declaration', () => {
+  const sources = compileApplicationSources(declaration(96));
+  const config = JSON.parse(sources.config.content), contract = JSON.parse(sources.contracts.content);
+  assert.equal(esm.requiresHighDensityArtifactCapacity(config), true);
+  const result = esm.compileNativeApplicationConfiguration(input(config, contract));
+  assert.deepEqual(cjs.compileNativeApplicationConfiguration(input(config, contract)), result);
+  const requirement = result.requiredPlatformCapabilities.filter(item => item.code === 'application.high-density-artifact-capacity');
+  assert.equal(requirement.length, 1);
+  assert.equal(requirement[0]!.contractVersion, '1.0.0');
+  assert.ok(config.runtime.protocolCapabilities.includes('application.high-density-artifact-capacity'));
+  assert.equal(esm.NATIVE_ARTIFACT_CAPACITY_V2.extendedNodes, 250_000);
+  const features = (status?: string) => ({ features: status ? { 'application.high-density-artifact-capacity': { status, contractVersion: '1.0.0' } } : {} }) as PlatformCapabilities;
+  assert.doesNotThrow(() => assertRequiredCapabilitiesAvailable(features('available'), requirement));
+  for (const target of [features(), features('disabled')]) assert.throws(() => assertRequiredCapabilitiesAvailable(target, requirement), (error: any) => error.code === 'OPENXIANGDA_REQUIRED_CAPABILITY_UNAVAILABLE');
+  const smallConfig = JSON.parse(corpus.configuration.canonical), largeContract = JSON.parse(corpus.contract.canonical);
+  largeContract.extra = Array.from({ length: 250_000 }, () => null);
+  for (const compiler of [esm, cjs]) assert.throws(() => compiler.compileNativeApplicationConfiguration(input(smallConfig, largeContract)), (error: any) => error.code === 'NATIVE_ARTIFACT_NODE_LIMIT_EXCEEDED' && error.pointer.startsWith('/contracts/'));
 });

@@ -1,4 +1,4 @@
-import { compileNativeEventAction, requiresExtendedDeclarationCapacity, requiresExtendedArtifactCapacity, requiresExtendedConfigurationBytes } from 'openxiangda-contracts/native-compiler';
+import { compileNativeEventAction, requiresExtendedDeclarationCapacity, requiresExtendedArtifactCapacity, requiresHighDensityArtifactCapacity, requiresExtendedConfigurationBytes } from 'openxiangda-contracts/native-compiler';
 import { normalizeWorkflowOwnedSubjectCreate } from 'openxiangda-contracts/native-compiler';
 import { compileWorkflowBusinessStepHandlers, validateWorkflowBusinessStepSubscriptions, WORKFLOW_BUSINESS_STEP_EVENTS } from 'openxiangda-contracts/native-compiler';
 import { parseNativeUniqueKeys, parseDecimalReservationLifecycle } from 'openxiangda-contracts/native-compiler';
@@ -1978,6 +1978,7 @@ function runtimeProtocolCapabilities(config: OpenXiangdaAppConfig) {
     'application-native-2',
     ...(requiresExtendedDeclarationCapacity(config) ? ['application.extended-declaration-capacity'] : []),
     ...(requiresExtendedArtifactCapacity(config) ? ['application.extended-artifact-capacity'] : []),
+    ...(requiresHighDensityArtifactCapacity(config) ? ['application.high-density-artifact-capacity'] : []),
     'authz.batch-explain',
     'deployment.durable-runs',
     'deployment.platform-executor',
