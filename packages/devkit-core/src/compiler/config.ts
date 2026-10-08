@@ -4721,6 +4721,7 @@ function validateBackendOperations(
       const access = object(operation.platformAccess);
       const allowedAccessKeys = new Set([
         'directory',
+        'selectedDepartments',
         'managedFiles',
         'managedFileCopies',
         'notification',
@@ -4787,6 +4788,11 @@ function validateBackendOperations(
           Object.keys(directory).some(
             key => !['mode', 'fields'].includes(key)
           );
+      }
+      if (access.selectedDepartments !== undefined) {
+        const departments = object(access.selectedDepartments);
+        const fields = Array.isArray(departments.fields) ? departments.fields : [];
+        invalid ||= !isRecord(access.selectedDepartments) || !fields.includes('name') || fields.length > 4 || new Set(fields).size !== fields.length || fields.some(field => !['name','path','parent','fullPath'].includes(string(field))) || !Number.isSafeInteger(departments.maxIds) || Number(departments.maxIds) < 1 || Number(departments.maxIds) > 50 || Object.keys(departments).some(key => !['fields','maxIds'].includes(key));
       }
       if (access.managedFiles !== undefined) {
         const managedFiles = Array.isArray(access.managedFiles)

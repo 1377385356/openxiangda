@@ -7610,6 +7610,14 @@ const appOperationPlatformAccessSchema = {
         } } },
       }],
     },
+    selectedDepartments: {
+      type: 'object', additionalProperties: false, required: ['fields', 'maxIds'],
+      properties: {
+        fields: { type: 'array', minItems: 1, maxItems: 4, uniqueItems: true,
+          items: { enum: ['name', 'path', 'parent', 'fullPath'] }, contains: { const: 'name' } },
+        maxIds: { type: 'integer', minimum: 1, maximum: 50 },
+      },
+    },
     managedFiles: {
       type: "array",
       minItems: 1,

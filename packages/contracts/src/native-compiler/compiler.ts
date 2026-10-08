@@ -454,7 +454,7 @@ export function compileRequiredPlatformCapabilitiesV3(
         ].includes(field.type)
       )
     ) ||
-    operations.some(operation => operation.platformAccess?.directory);
+    operations.some(operation => operation.platformAccess?.directory || operation.platformAccess?.selectedDepartments);
   const usesEvents = Boolean(
     config.events.subscriptions.length ||
       config.events.timers.length ||
@@ -675,6 +675,7 @@ export function compileRequiredPlatformCapabilitiesV3(
           },
         ]
       : []),
+    ...(operations.some(operation => operation.platformAccess?.selectedDepartments) ? [{ code: 'directory.selected-departments' as const, declaration: operations.filter(operation => operation.platformAccess?.selectedDepartments).map(operation => ({code:operation.code,selectedDepartments:operation.platformAccess.selectedDepartments})) }] : []),
     ...(operations.some(operation => operation.platformAccess?.directory?.mode === 'selected-user') ? [{ code: 'directory.selected-user' as const, declaration: operations.filter(operation => operation.platformAccess?.directory?.mode === 'selected-user').map(operation => ({code:operation.code,directory:operation.platformAccess.directory})) }] : []),
     ...(initiatorPhoneOperations.length || initiatorPhoneCommands.length ? [{
       code: 'directory.current-initiator-phone' as const,
@@ -2819,7 +2820,7 @@ function validateOperationPlatformAccess(
   const access = object(value, pointer);
   exactKeys(
     access,
-    ['directory', 'managedFiles', 'managedFileCopies', 'notification', 'workflow', 'roleAssertions', 'decimalReservation', 'dataCommands', 'recordEdit', 'ownedSubject', 'workflowStage'],
+    ['directory', 'selectedDepartments', 'managedFiles', 'managedFileCopies', 'notification', 'workflow', 'roleAssertions', 'decimalReservation', 'dataCommands', 'recordEdit', 'ownedSubject', 'workflowStage'],
     pointer,
     true
   );
@@ -2900,6 +2901,15 @@ function validateOperationPlatformAccess(
       mode: String(directory.mode),
       fields: uniqueSorted(fields),
     };
+  }
+  if (access.selectedDepartments !== undefined) {
+    const entryPointer = `${pointer}/selectedDepartments`;
+    const entry = object(access.selectedDepartments, entryPointer);
+    exactKeys(entry, ['fields', 'maxIds'], entryPointer);
+    const fields = uniqueStrings(entry.fields, `${entryPointer}/fields`, 4);
+    if (!fields.includes('name') || fields.some(field => !['name','path','parent','fullPath'].includes(field)) || !Number.isSafeInteger(entry.maxIds) || entry.maxIds < 1 || entry.maxIds > 50)
+      fail('NATIVE_OPERATION_SELECTED_DEPARTMENTS_INVALID', entryPointer);
+    result.selectedDepartments = { fields: uniqueSorted(fields), maxIds: entry.maxIds };
   }
   if (access.managedFiles !== undefined) {
     const entries = boundedArray(

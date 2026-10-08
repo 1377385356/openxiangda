@@ -284,6 +284,11 @@ export interface AppOperationPlatformAccessDeclaration {
     mode: 'selected-user';
     fields: readonly Exclude<AppOperationDirectoryField, 'phone'>[];
   };
+  /** Selected live department facts; does not grant directory read or management. */
+  selectedDepartments?: {
+    fields: readonly ('name' | 'path' | 'parent' | 'fullPath')[];
+    maxIds: number;
+  };
   managedFiles?: ReadonlyArray<{
     resourceCode: string;
     fieldCodes: readonly string[];

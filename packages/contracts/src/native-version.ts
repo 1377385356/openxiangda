@@ -38,6 +38,7 @@ export const PLATFORM_CAPABILITY_CONTRACT_VERSIONS = {
   "workflow.approved-delegation": "1.0.0",
   "directory-v2": "1.0.0",
   "directory.selected-user": "1.0.0",
+  "directory.selected-departments": "1.0.0",
   "directory.current-initiator-phone": "1.0.0",
   "events-v2": "1.0.0",
   "events.durable-receipts": "1.0.0",
