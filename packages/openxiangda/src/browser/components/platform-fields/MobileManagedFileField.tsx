@@ -7,7 +7,6 @@ import type { WorkflowFileBinding } from '../../platform-client';
 import {
   AttachmentFileList,
   formatManagedFileSize,
-  managedFileGroups,
 } from './AttachmentFileList';
 
 type Pending = {
@@ -29,7 +28,6 @@ export function MobileManagedFileField({
   accept,
   resourceCode,
   workflowBinding,
-  fileResourceCodes,
   image = false,
 }: {
   value?: DataFileRef[];
@@ -42,7 +40,6 @@ export function MobileManagedFileField({
   accept?: string | string[];
   resourceCode?: string;
   workflowBinding?: WorkflowFileBinding;
-  fileResourceCodes?: Readonly<Record<string, string>>;
   image?: boolean;
 }) {
   const input = useRef<HTMLInputElement>(null);
@@ -168,12 +165,11 @@ export function MobileManagedFileField({
           </div>
         ))}
       </div>
-      {managedFileGroups(value, resourceCode, fileResourceCodes).map((group, index, groups) => <AttachmentFileList
-        key={group.resourceCode}
+      <AttachmentFileList
         mobile
         imageTiles={image}
         uploadTile={
-          image && index === groups.length - 1 && value.length + pending.length < maxCount ? (
+          image && value.length + pending.length < maxCount ? (
             <Button
               className="oxa-mobile-image-upload"
               aria-label="上传图片"
@@ -185,16 +181,16 @@ export function MobileManagedFileField({
             </Button>
           ) : undefined
         }
-        files={group.files}
-        resourceCode={group.resourceCode}
-        workflowBinding={group.resourceCode === resourceCode ? workflowBinding : undefined}
+        files={value}
+        resourceCode={resourceCode}
+        workflowBinding={workflowBinding}
         removable={!disabled}
         onRemove={file => {
           const next = current.current.filter(item => item.id !== file.id);
           current.current = next;
           onChange?.(next);
         }}
-      />)}
+      />
     </div>
   );
 }

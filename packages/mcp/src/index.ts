@@ -8,7 +8,6 @@ import {
   OpenXiangdaApplicationServices,
   checkApplication, deployApplication, developerEnvironment, watchDeployment,
   DEVELOPER_ENVIRONMENTS, documentationIndex, readDocumentation,
-  APPLICATION_OPERATION_SCHEMA,
   type OperationProgressListener,
 } from 'openxiangda-devkit-core';
 import {
@@ -512,13 +511,6 @@ export const MCP_TOOL_DEFINITIONS = {
   appspec_verify: definition('核对业务验收报告', '读取成功测试运行与 Git 中的真实验收报告，核对版本绑定、场景结果和性能证据；有实际授权的性能延期单列为deferred未通过，不豁免功能AC，不自动编造或执行验收。', z.object({ deploymentId: z.string().min(1), evidencePath: z.string().optional().describe('appspec/verification/*.json；省略时按运行 ID 读取') }).strict()),
   docs_read: definition('读取中文使用资料', '不传 topic 返回当前版本的主题和章节目录；传 topic/section 读取对应正文。', z.object({ topic: z.string().min(1).max(80).optional().describe('主题目录中的 ID'), section: z.string().min(1).max(200).optional().describe('主题章节目录中的 ID') }).strict()),
   administration_context: definition('查看应用管理入口', '读取当前用户可用的管理能力和入口；不修改角色或成员。', z.object({ environment }).strict()),
-  application_operations: definition('发现应用运行自助操作', '读取事件诊断与指定投递恢复、加密环境凭据复用、通知渠道配置/默认/健康/失败恢复的有界操作目录和输入 Schema。无需管理页面；沿用当前应用权限。', z.object({}).strict()),
-  application_operation: {
-    title: '执行应用运行自助操作',
-    description: '先读 application_operations 或 docs_read(application-operations)，在用户已授权范围内执行。environment 必须明确。每种操作严格校验 input，拒绝自报身份及任意 API。密钥复制只接受名称和修订，恢复只接受指定原投递；结果未知先查原证据，不自动批量重试。读操作无副作用，配置有 CAS；健康写入诊断元数据，通知恢复可能实际发送。',
-    inputSchema: fromJsonSchema(APPLICATION_OPERATION_SCHEMA as never),
-    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false },
-  },
   workflow_node_configurations: definition('查看流程有效参数', '修改已部署流程前，读取管理员维护的节点配置。已有任务和后续节点进入使用各自适用版本。', z.object({ environment, workflowCode: z.string().min(1).describe('流程声明中的 code') }).strict()),
   check_app: definition('检查完整应用', '先在本地完成完整配置校验，默认核对平台同源规则与只读环境条件，再生成、静态检查、测试和构建。local 仅用于本地或 CI 验证，不证明目标环境可部署；正式 deploy 始终预检平台。会写本地文件，前置失败即停止。', z.object({ environment, local: z.boolean().default(false).describe('仅本地完整检查；结果 validationScope=local，不核对现场条件') }).strict(), false, true),
   deployment_plan: definition('预览应用发布', '只读预览测试部署的运行配额，或指定测试版本的生产晋级；返回容量与缺口，不构建、上传或提交运行。', deploymentInput),
@@ -538,7 +530,7 @@ export const MCP_TOOL_NAMES = Object.keys(MCP_TOOL_DEFINITIONS) as Array<keyof t
 export function mcpToolReference() {
   return MCP_TOOL_NAMES.map(name => {
     const { inputSchema, ...metadata } = MCP_TOOL_DEFINITIONS[name];
-    return { name, ...metadata, inputSchema: name === 'application_operation' ? APPLICATION_OPERATION_SCHEMA : z.toJSONSchema(inputSchema as z.ZodObject, { io: 'input' }) };
+    return { name, ...metadata, inputSchema: z.toJSONSchema(inputSchema, { io: 'input' }) };
   });
 }
 
@@ -576,19 +568,6 @@ export function createOpenXiangdaMcpServer(options: { services?: OpenXiangdaAppl
   register('appspec_verify', input => services.appSpecVerify(root, input.deploymentId, input.evidencePath));
   register('docs_read', async input => docResult(input.topic, input.section));
   register('administration_context', input => services.administrationContext(root, developerEnvironment(input.environment)));
-  register('application_operations', () => services.applicationOperations(root));
-  server.registerTool('application_operation', {
-    ...MCP_TOOL_DEFINITIONS.application_operation,
-    outputSchema: z.object({ ok: z.boolean(), operation: z.string(), data: z.unknown().optional() }).passthrough(),
-  }, async input => {
-    let result: Record<string, unknown>;
-    try { result = await services.applicationOperation(root, input) as unknown as Record<string, unknown>; }
-    catch (error) {
-      const failure = developerError(error);
-      result = { ok: false, operation: 'application_operation', data: null, error: failure, diagnostics: [{ ...failure, severity: 'error' }], nextActions: [] };
-    }
-    return { ...(result.ok === false ? { isError: true } : {}), content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }], structuredContent: result };
-  });
   register('workflow_node_configurations', input => services.workflowNodeConfigurations(root, input.workflowCode, developerEnvironment(input.environment)));
   register('check_app', (input, onProgress) => checkApplication(services, { ...local, environment: input.environment, local: input.local, onProgress }));
   register('deployment_plan', (input, onProgress) => deployApplication(services, { ...local, ...definedDeploymentInput(input), dryRun: true, onProgress }));
@@ -604,7 +583,7 @@ export function createOpenXiangdaMcpServer(options: { services?: OpenXiangdaAppl
   register('rollback_app', input => services.rollback(root, developerEnvironment(input.environment), input.appVersionId));
   return server;
 
-  function register<K extends Exclude<keyof typeof MCP_TOOL_DEFINITIONS, 'application_operation'>>(name: K, execute: (input: z.output<(typeof MCP_TOOL_DEFINITIONS)[K]['inputSchema']>, onProgress: OperationProgressListener) => Promise<unknown>) {
+  function register<K extends keyof typeof MCP_TOOL_DEFINITIONS>(name: K, execute: (input: z.output<(typeof MCP_TOOL_DEFINITIONS)[K]['inputSchema']>, onProgress: OperationProgressListener) => Promise<unknown>) {
     const metadata = MCP_TOOL_DEFINITIONS[name];
     server.registerTool(name, {
       ...metadata,

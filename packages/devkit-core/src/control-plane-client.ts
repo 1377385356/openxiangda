@@ -1,6 +1,5 @@
 import type { WorkflowDelegationAdministration, WorkflowDelegationCatalog, WorkflowDelegationCandidatePage, WorkflowDelegationCandidateQuery, WorkflowDelegationListQuery, WorkflowDelegationPage, WorkflowDelegationMutationPreview, WorkflowDelegationMutationReceipt, WorkflowDelegationMutationRequest } from "openxiangda-contracts";
 import type { DeploymentStrategy } from 'openxiangda-contracts';
-import { applicationOperationTransport, secretOperationMetadata, parseApplicationOperation } from './application-operations.js';
 import { DEVELOPMENT_BACKEND_FEATURE, DEVELOPMENT_BACKEND_INVOCATION_FEATURE, DEVELOPMENT_BACKEND_INVOCATION_SCHEMA, type DevelopmentBackendBootstrap,
   type DevelopmentBackendRequest, type DevelopmentBackendResponse } from 'openxiangda-contracts';
 import { assertDevelopmentConfigurationResult, DEVELOPMENT_CONFIGURATION_ENDPOINT,
@@ -1250,13 +1249,6 @@ export class OpenXiangdaControlPlaneClient {
         body: JSON.stringify(input),
       }
     );
-  }
-
-  async applicationOperation(appCode: string, input: unknown) {
-    const request = parseApplicationOperation(input);
-    const transport = applicationOperationTransport(appCode, request);
-    const result = await this.json<unknown>(transport.path, transport.init);
-    return request.operation.startsWith('secrets.') ? secretOperationMetadata(result) : result;
   }
 
   async applicationSecrets(appCode: string, environmentKey: string) {

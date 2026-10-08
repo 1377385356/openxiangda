@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { createRequire } from 'node:module';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -12,8 +11,6 @@ import { defineOpenXiangdaApp, type OpenXiangdaAppDeclaration } from '../src/com
 import { resourceRecordSchema } from '../src/compiler/schema-composition.js';
 import { requiredPlatformCapabilitiesFromConfiguration } from '../src/compiler/package-compiler.js';
 import { loadAppConfig } from '../src/workspace-loader.js';
-import { assertRequiredCapabilitiesAvailable } from '../src/deployment.js';
-import type { PlatformCapabilities } from 'openxiangda-contracts';
 
 function fixture(): OpenXiangdaAppDeclaration {
   const capability = 'app:command-review:request:decide';
@@ -47,46 +44,6 @@ function fixture(): OpenXiangdaAppDeclaration {
     },
   };
 }
-
-test('approval projection is fixed, opt-in and compiled equally for the SDK and platform', () => {
-  const declaration = fixture();
-  declaration.workflows!.definitions![0]!.definition.commandHandlers!.approve!.transitionPolicy = 'workflow';
-  const output = compileApplicationSources(defineOpenXiangdaApp(declaration));
-  const input = { appCode: declaration.app.code, configBytes: output.config.content,
-    expectedConfigDigest: output.config.digest, contractBytes: output.contracts.content, expectedContractDigest: output.contracts.digest };
-  const result = compileNativeApplicationConfiguration(input);
-  const cjs = createRequire(import.meta.url)('openxiangda-contracts/native-compiler');
-  assert.deepEqual(cjs.compileNativeApplicationConfiguration(input), result);
-  const requirements = result.requiredPlatformCapabilities.filter(item => item.code === 'workflow.approval-business-command');
-  assert.equal(requirements.length, 1);
-  assert.equal(requirements[0]!.contractVersion, '1.0.0');
-  assert.ok(output.config.value.runtime.protocolCapabilities.includes('workflow.approval-business-command'));
-  assert.throws(() => assertRequiredCapabilitiesAvailable({ features: {} } as PlatformCapabilities, requirements),
-    (error: any) => error.code === 'OPENXIANGDA_REQUIRED_CAPABILITY_UNAVAILABLE');
-  const validate = new Ajv2020({ strict: false, validateFormats: false }).compile(workflowDefinitionSchema);
-  assert.equal(validate(output.config.value.workflows.definitions[0]!.definition), true, JSON.stringify(validate.errors));
-  declaration.workflows!.definitions![0]!.definition.commandHandlers!.reject!.transitionPolicy = 'workflow';
-  assert.throws(() => compileApplicationSources(defineOpenXiangdaApp(declaration)), /WORKFLOW_BUSINESS_COMMAND_HANDLER_INVALID/);
-});
-
-test('approval projection invocation schema rejects other commands and added prediction fields', () => {
-  const validate = new Ajv2020({ strict: false, validateFormats: false }).compile(businessProcessCommandWithDataSchema);
-  const id = '11111111-1111-4111-8111-111111111111';
-  const value: any = { schemaVersion: 'openxiangda.business-process-command-with-data/v2', environmentKey: 'preproduction',
-    workflow: { workflowCode: 'request-approval', target: { kind: 'task', id, command: 'approve' }, recordId: id,
-      expectedRevision: 2, commandToken: 'A'.repeat(43), idempotencyKey: 'original-decision', input: {} },
-    subject: { fromOperation: 'subject' }, data: { guards: [], operations: [{ kind: 'update', key: 'subject',
-      resourceCode: 'requests', id, expectedRevision: 2, data: { note: 'checked' } }] },
-    expectedTransition: { kind: 'approval-projection' } };
-  assert.equal(validate(value), true, JSON.stringify(validate.errors));
-  for (const command of ['reject', 'resubmit', 'withdraw']) {
-    value.workflow.target.command = command;
-    assert.equal(validate(value), false, command);
-  }
-  value.workflow.target.command = 'approve';
-  value.expectedTransition.currentNodeId = 'predicted';
-  assert.equal(validate(value), false);
-});
 
 test('workspace declaration imports the public command schema without a private contracts dependency', async () => {
   const root = mkdtempSync(join(tmpdir(), 'openxiangda-business-command-config-'));

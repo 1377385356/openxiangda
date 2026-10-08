@@ -1,5 +1,4 @@
 import { applicationCode } from '../../runtime-meta';
-import { useUnsavedChangesGuard } from '../../navigation-guard';
 import { readPendingWorkflowSubmission, writePendingWorkflowSubmission, clearPendingWorkflowSubmission, workflowSubmissionScope, submissionLocatorStorage, standardProcessWasRejected, type PendingWorkflowSubmission } from '../../workflow-submission-recovery';
 import { readPendingWorkflowTaskCommand, writePendingWorkflowTaskCommand, clearPendingWorkflowTaskCommand, workflowTaskCommandScope, workflowCommandTokenDigest, workflowTaskCommandWasRejected, type PendingWorkflowTaskCommand } from '../../workflow-task-command-recovery';
 import { WorkflowTaskForm, useWorkflowTaskForm } from './WorkflowTaskForm';
@@ -100,7 +99,6 @@ import {
 } from '../../platform-client';
 import {
   useWorkflowDefinition,
-  useWorkflowTaskFormBehavior,
   type GeneratedWorkflowNamedOperationIntent,
 } from '../../workflow-definitions';
 import { useResourceDefinitions } from '../../resource-definitions';
@@ -133,9 +131,8 @@ import { PlatformAvatar } from '../PlatformAvatar';
 import { SubtableField } from '../platform-fields/SubtableField';
 import { assertNamedSubtableReadonlyFields, namedProcessFormValues, standardProcessFormValues } from './standard-process-values';
 import { fieldWritable } from '../resource/resource-page-helpers';
-import { workflowSubmissionFormInput, workflowSubmissionFormProjection, workflowSubmissionPrefill, workflowSubmissionValueLinkage, workflowSubmissionSubtableStates, type WorkflowSubmissionFieldStates, type WorkflowSubmissionSubtableFieldStates } from './workflow-submission-form';
-import { validateDateTimeConstraints } from '../platform-fields/zoned-date-time';
-export type { WorkflowSubmissionFieldState, WorkflowSubmissionFieldStates, WorkflowSubmissionSubtableFieldStates } from './workflow-submission-form';
+import { workflowSubmissionFormProjection, workflowSubmissionPrefill, workflowSubmissionValueLinkage, type WorkflowSubmissionFieldStates } from './workflow-submission-form';
+export type { WorkflowSubmissionFieldState, WorkflowSubmissionFieldStates } from './workflow-submission-form';
 
 type PageVariant = 'desktop' | 'mobile';
 export type WorkflowPageVariant = PageVariant;
@@ -352,9 +349,7 @@ function WorkflowSubtableValue({
   const order = subtable.surface.detail?.fieldOrder || [];
   const fields = order.flatMap((key) => {
     const item = subtable.surface.fields[key];
-    return item && item.system !== true && item.hidden !== true &&
-      item.type !== 'subtable' && key !== field.subtable?.foreignKey &&
-      key !== field.subtable?.orderField
+    return item && item.system !== true
       ? [{ key, ...item } as SurfaceField]
       : [];
   });
@@ -917,7 +912,6 @@ function WorkflowOperations({
   const mounted = useRef(false);
   const busyRef = useRef(false);
   const taskForm = useWorkflowTaskForm(surface.taskForm);
-  const taskFormBehavior = useWorkflowTaskFormBehavior(String(surface.instance.workflowCode || ''));
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   useEffect(() => {
     if (!settlement || request.current?.key !== settlement.key) return;
@@ -1077,8 +1071,6 @@ function WorkflowOperations({
         title="请刷新操作后继续办理" description="页面停留较久，需重新确认当前办理权限。刷新会保留尚未保存的输入。"
         action={<Button disabled={locked} loading={submitting} onClick={() => void refreshConfirmed()}>刷新操作</Button>} />}
       {surface.taskForm && <WorkflowTaskForm controller={taskForm} disabled={locked} variant={variant}
-        valueLinkage={taskFormBehavior?.valueLinkage}
-        linkageContext={{ workflowCode: String(surface.instance.workflowCode || ''), nodeId: String(surface.task?.nodeId || ''), pageCode: surface.taskForm.pageCode }}
         operationPending={submitting || unknown || Boolean(pendingLocator) || draftLocked || fileLocked}
         taskVersion={surface.task?.version ? Number(surface.task.version) : undefined}
         taskId={surface.task?.id ? String(surface.task.id) : undefined} draftDisabled={commandLocked} onRefresh={onRefresh}
@@ -2177,22 +2169,10 @@ export interface WorkflowSubmissionFormOptions {
    * are not bound launch inputs. Never inserted into form submission/drafts. */
   candidateScopeValues?: Readonly<JsonObject>;
   fieldState?: (values: Readonly<JsonObject>) => WorkflowSubmissionFieldStates;
-  /** Narrows named-create child presentation; hidden values are retained and remain server-validated. */
-  subtableFieldState?: (values: Readonly<JsonObject>) => WorkflowSubmissionSubtableFieldStates;
-  /** Assistance for matched datetime/range inputs; never a server submission rule. */
-  dateTimeConstraints?: SurfaceFieldRenderers['dateTimeConstraints'];
-  /** Dynamic help next to matched fields; independent of requirements and writes. */
-  fieldHints?: (values: Readonly<JsonObject>) => Readonly<Record<string, ReactNode>>;
   /** Synchronous canonical patch after user input, limited to editable launch fields. */
   valueLinkage?: (changed: Readonly<JsonObject>, values: Readonly<JsonObject>) => JsonObject;
   /** Display derived owned-child values without including them in named create input. */
   subtableReadonlyFields?: Readonly<Record<string, readonly string[]>>;
-  /** Keep loaded source rows; their values remain editable within the sealed field closure. */
-  subtableFixedRows?: readonly string[];
-  /** Original source file read entries; uploads and permission checks are unchanged. */
-  fileResourceCodes?: SurfaceFieldRenderers['fileResourceCodes'];
-  /** Readonly source IDs/revisions remain untrusted inputs for server-side reconciliation. */
-  subtableReadonlyInputFields?: Readonly<Record<string, readonly string[]>>;
   intro?: ReactNode;
   /** Blocks only a new form; original submission recovery always takes priority. */
   preparation?: ReactNode;
@@ -2260,27 +2240,11 @@ export function WorkflowSubmissionPage({
   const [loadedSubjectRevision, setLoadedSubjectRevision] = useState<number>();
   const [localCommandId, setLocalCommandId] = useState('');
   const [localSubjectId, setLocalSubjectId] = useState('');
-  const [subjectDirty, setSubjectDirty] = useState(false);
-  const [requirementDirty, setRequirementDirty] = useState(false);
   const launchPagePath = useRef('');
   const [fullScreen, setFullScreen] = useState(false);
   const pathCommandId = useParams<{ commandId?: string }>().commandId;
   const commandId = onDismiss ? localCommandId : pathCommandId || searchParams.get('processCommandId') || '';
   const subjectId = onDismiss ? localSubjectId : searchParams.get('subjectId') || '';
-  const recoveryMustStay = Boolean(pendingSubmission && !recoveryPersisted);
-  const navigationGuard = useUnsavedChangesGuard({
-    when: subjectDirty || requirementDirty || loading || recoveryMustStay,
-    preventNavigation: loading || recoveryMustStay,
-    message: loading ? '正在提交，请等待当前操作结果。'
-      : recoveryMustStay ? '提交结果尚未确认，恢复信息未能保存。请留在本页查询原操作。'
-      : pendingSubmission ? '原提交结果尚未确认。离开后可返回查询原操作，请勿重复申请。'
-      : '填写内容尚未提交，离开后将丢失。',
-  });
-  const acknowledgeSubmission = () => {
-    setSubjectDirty(false);
-    setRequirementDirty(false);
-    navigationGuard.release();
-  };
   const newPageQuery = new URLSearchParams();
   if (commandId) newPageQuery.set('processCommandId', commandId);
   else if (subjectId) newPageQuery.set('subjectId', subjectId);
@@ -2344,26 +2308,14 @@ export function WorkflowSubmissionPage({
   const formProjection = useMemo(() => {
     try {
       const values = subjectDefinition ? normalizeFormValues(watchedFormValues || {}, subjectDefinition.surface) : {};
-      const subtableStates = workflowSubmissionSubtableStates(subjectDefinition?.surface || { fields: {} },
-        namedIntent?.ownedSubject, formOptions?.subtableFieldState?.(structuredClone(values)));
-      for (const [code, constraints] of Object.entries(formOptions?.dateTimeConstraints || {})) {
-        if (!fields.some(field => field.key === code && ['datetime', 'datetime-range'].includes(field.type)))
-          throw new Error('OPENXIANGDA_WORKFLOW_FORM_DATE_FIELD_UNAVAILABLE');
-        validateDateTimeConstraints(constraints);
-      }
-      const fieldHints = formOptions?.fieldHints?.(structuredClone(values)) || {};
-      if (Object.keys(fieldHints).some(code => !fields.some(field => field.key === code)))
-        throw new Error('OPENXIANGDA_WORKFLOW_FORM_FIELD_UNAVAILABLE');
-      return { ...workflowSubmissionFormProjection(fields, values, formOptions?.fieldState?.(values)), subtableStates, fieldHints, error: false };
+      return { ...workflowSubmissionFormProjection(fields, values, formOptions?.fieldState?.(values)), error: false };
     } catch {
-      return { fields, values: {}, hiddenValues: {}, subtableStates: {}, fieldHints: {}, error: true };
+      return { fields, values: {}, hiddenValues: {}, error: true };
     }
-  }, [fields, formOptions?.fieldState, formOptions?.subtableFieldState, formOptions?.dateTimeConstraints, formOptions?.fieldHints, namedIntent?.ownedSubject, subjectDefinition, watchedFormValues]);
+  }, [fields, formOptions?.fieldState, subjectDefinition, watchedFormValues]);
   const prefillContext = JSON.stringify([recoveryScope, identity.environment.activeAppVersionId, submissionMode, subjectId]);
   useEffect(() => { setLinkageError(false); }, [prefillContext]);
-  useEffect(() => { setSubjectDirty(false); }, [prefillContext]);
   const onValuesChange = (changed: Record<string, unknown>, values: Record<string, unknown>) => {
-    if (!loading && !commandId && !pendingSubmission) setSubjectDirty(true);
     if (!formOptions?.valueLinkage || loading || commandId || pendingSubmission || !subjectDefinition) return;
     try {
       const canonical = normalizeFormValues(values, subjectDefinition.surface) as JsonObject;
@@ -2390,22 +2342,11 @@ export function WorkflowSubmissionPage({
     launchSurface, mutationMode, namedIntent, pendingSubmission, prefillContext, subjectDefinition, subjectForm]);
   useEffect(() => {
     if (loading || commandId || pendingSubmission || !launchSurface || formProjection.error || !subjectDefinition) return;
-    // Prefill and linkage may have written the controller since this render.
-    // Recompute visibility before clearing hidden values so an old watch snapshot
-    // cannot erase newly supplied source rows or other conditional defaults.
-    const current = normalizeFormValues(subjectForm.getFieldsValue(true), subjectDefinition.surface);
-    let hidden: JsonObject;
-    try {
-      hidden = workflowSubmissionFormProjection(fields, current, formOptions?.fieldState?.(current)).hiddenValues;
-    } catch {
-      // The next watched projection displays the rule error; preserve the input.
-      return;
-    }
-    const values = normalizeRecordForForm(hidden, subjectDefinition.surface);
+    const values = normalizeRecordForForm(formProjection.hiddenValues, subjectDefinition.surface);
     const changes = Object.entries(values).filter(([key, value]) =>
       JSON.stringify(subjectForm.getFieldValue(key)) !== JSON.stringify(value));
     if (changes.length) subjectForm.setFields(changes.map(([name, value]) => ({ name, value, errors: [] })));
-  }, [commandId, fields, formOptions?.fieldState, formProjection, launchSurface, loading, pendingSubmission, subjectDefinition, subjectForm]);
+  }, [commandId, formProjection, launchSurface, loading, pendingSubmission, subjectDefinition, subjectForm]);
 
   useEffect(() => {
     let active = true;
@@ -2697,12 +2638,7 @@ export function WorkflowSubmissionPage({
   }, [commandId, processSurface?.subject.recordId, subjectDefinition, subjectForm]);
 
   const drawerBusy = loading || Boolean(commandId && (!processSurface || ['accepted', 'resolving', 'ready', 'starting', 'retry_wait'].includes(processSurface.command.status)) && !processError);
-  const dismissDrawer = () => {
-    if (!submitInFlight.current && !drawerBusy) navigationGuard.confirmNavigation(() => {
-      acknowledgeSubmission();
-      onDismiss?.();
-    });
-  };
+  const dismissDrawer = () => { if (!submitInFlight.current && !drawerBusy) onDismiss?.(); };
   const frame = (content: ReactNode) =>
     onDismiss ? <Drawer open title={definition?.title || '新增流程申请'} closable={false}
       rootClassName="oxa-resource-drawer oxa-workflow-launch-drawer"
@@ -2729,7 +2665,6 @@ export function WorkflowSubmissionPage({
   const resumeOriginal = (id: string, attempt: PendingWorkflowSubmission) => {
     if (activeRecoveryScope.current !== recoveryScope) return;
     clearOriginal(attempt);
-    acknowledgeSubmission();
     if (onDismiss) { setLocalCommandId(id); return; }
     const next = new URLSearchParams(searchParams);
     next.set('processCommandId', id); next.delete('subjectId');
@@ -2836,9 +2771,8 @@ export function WorkflowSubmissionPage({
       setPendingSubmission(dispatched); setRecoveryError(null); setRecoveryObservedAbsent(false);
     };
     try {
-      const entered = workflowSubmissionFormInput(fields, subjectForm.getFieldsValue(true), values);
-      const encoded = namedIntent ? namedProcessFormValues(entered, subjectDefinition.surface, resources, namedIntent.ownedSubject, formOptions?.subtableReadonlyFields, formOptions?.subtableReadonlyInputFields)
-        : standardProcessFormValues(entered, subjectDefinition.surface, resources,
+      const encoded = namedIntent ? namedProcessFormValues(values, subjectDefinition.surface, resources, namedIntent.ownedSubject, formOptions?.subtableReadonlyFields)
+        : standardProcessFormValues(values, subjectDefinition.surface, resources,
           (field, mode) => fieldWritable(field, mode === 'create' ? 'create' : 'edit', hasCapability, identity.isAppSuperAdmin));
       const data = workflowSubmissionFormProjection(fields, encoded, formOptions?.fieldState?.(encoded)).values;
       const signature = JSON.stringify({ workflowCode, subjectId, environmentKey: identity.environment.key, submissionMode, data });
@@ -2878,7 +2812,6 @@ export function WorkflowSubmissionPage({
         );
         clearOriginal(dispatched!);
         if (activeRecoveryScope.current !== recoveryScope) return;
-        acknowledgeSubmission();
         if (outcome.kind === 'workflow-command') {
           if (onDismiss) { setLocalCommandId(outcome.command.id); return; }
           const next = new URLSearchParams(searchParams);
@@ -2921,7 +2854,6 @@ export function WorkflowSubmissionPage({
       const command = await originalRetry.current.send();
       clearOriginal(dispatched!);
       if (activeRecoveryScope.current !== recoveryScope) return;
-      acknowledgeSubmission();
       if (onDismiss) { setLocalCommandId(command.id); return; }
       const next = new URLSearchParams(searchParams);
       next.set('processCommandId', command.id);
@@ -2953,8 +2885,6 @@ export function WorkflowSubmissionPage({
       setProcessSurface(null);
       setProcessRefreshAttempt(value => value + 1);
       requirementForm.resetFields();
-      setRequirementDirty(false);
-      navigationGuard.release();
     } catch (error) {
       message.error(errorMessage(error, '补充发起信息失败'));
     } finally {
@@ -2981,32 +2911,26 @@ export function WorkflowSubmissionPage({
   };
 
   const selectMode = (nextMode: 'create' | 'existing') => {
-    if (nextMode === submissionMode || !generatedNamedSubmission?.[nextMode] || submitInFlight.current || commandId || pendingSubmission) return;
-    navigationGuard.confirmNavigation(() => {
-      acknowledgeSubmission();
-      setSubmissionMode(nextMode);
-      setCompletion(null);
-      subjectForm.resetFields();
-      if (onDismiss) { setLocalSubjectId(''); return; }
-      const next = new URLSearchParams(searchParams);
-      next.delete('processCommandId');
-      if (nextMode === 'create') next.delete('subjectId');
-      setSearchParams(next, { replace: true });
-    });
+    if (!generatedNamedSubmission?.[nextMode] || submitInFlight.current || commandId) return;
+    setSubmissionMode(nextMode);
+    setCompletion(null);
+    subjectForm.resetFields();
+    if (onDismiss) { setLocalSubjectId(''); return; }
+    const next = new URLSearchParams(searchParams);
+    next.delete('processCommandId');
+    if (nextMode === 'create') next.delete('subjectId');
+    setSearchParams(next, { replace: true });
   };
   const selectSubject = (nextSubjectId?: string) => {
-    if ((nextSubjectId || '') === subjectId || submitInFlight.current || commandId || pendingSubmission) return;
-    navigationGuard.confirmNavigation(() => {
-      acknowledgeSubmission();
-      setCompletion(null);
-      subjectForm.resetFields();
-      if (onDismiss) { setLocalSubjectId(nextSubjectId || ''); return; }
-      const next = new URLSearchParams(searchParams);
-      next.delete('processCommandId');
-      if (nextSubjectId) next.set('subjectId', nextSubjectId);
-      else next.delete('subjectId');
-      setSearchParams(next, { replace: true });
-    });
+    if (submitInFlight.current || commandId) return;
+    setCompletion(null);
+    subjectForm.resetFields();
+    if (onDismiss) { setLocalSubjectId(nextSubjectId || ''); return; }
+    const next = new URLSearchParams(searchParams);
+    next.delete('processCommandId');
+    if (nextSubjectId) next.set('subjectId', nextSubjectId);
+    else next.delete('subjectId');
+    setSearchParams(next, { replace: true });
   };
   const launchControls = generatedNamedSubmission ? (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
@@ -3033,18 +2957,12 @@ export function WorkflowSubmissionPage({
     namedIntent?.operationCode || definition.processOperationCode;
   const fieldRenderers: SurfaceFieldRenderers | undefined = uploadOperationCode
     ? {
-        dateTimeConstraints: formOptions?.dateTimeConstraints,
-        renderExtra: ({ field }) => formProjection.fieldHints[field.key],
         renderSubtable: ({ field, disabled, operation, recordId }) => {
           const grant = namedIntent?.ownedSubject?.subtables.find(table => table.fieldCode === field.key);
-          assertNamedSubtableReadonlyFields(subjectDefinition.surface, namedIntent?.ownedSubject, formOptions?.subtableReadonlyFields || {}, formOptions?.subtableFixedRows);
-          assertNamedSubtableReadonlyFields(subjectDefinition.surface, namedIntent?.ownedSubject, formOptions?.subtableReadonlyInputFields || {});
+          assertNamedSubtableReadonlyFields(subjectDefinition.surface, namedIntent?.ownedSubject, formOptions?.subtableReadonlyFields || {});
           return <SubtableField field={field} disabled={disabled} operation={operation} parentRecordId={recordId} mobile={variant === 'mobile'}
             {...(namedIntent && grant ? { launch: { fieldCodes: grant.fieldCodes,
-              readonlyFieldCodes: [...(formOptions?.subtableReadonlyFields?.[field.key] || []), ...(formOptions?.subtableReadonlyInputFields?.[field.key] || [])],
-              fieldState: formProjection.subtableStates[field.key],
-              fixedRows: formOptions?.subtableFixedRows?.includes(field.key),
-              fileResourceCodes: formOptions?.fileResourceCodes,
+              readonlyFieldCodes: formOptions?.subtableReadonlyFields?.[field.key],
               reference: { workflowCode: definition.code, operationCode: namedIntent.operationCode, subtableFieldCode: field.key },
               upload: (childField, file) => uploadOperationManagedFile({
                 operationCode: uploadOperationCode, resourceCode: field.subtable!.resourceCode,
@@ -3053,7 +2971,6 @@ export function WorkflowSubmissionPage({
             } } : {})} />;
         },
         ...(namedIntent ? { referenceLaunch: { workflowCode: definition.code, operationCode: namedIntent.operationCode } } : {}),
-        fileResourceCodes: formOptions?.fileResourceCodes,
         candidateScopeValues: { ...formOptions?.candidateScopeValues, ...formProjection.values },
         upload: async (field, file) =>
           await uploadOperationManagedFile({
@@ -3107,7 +3024,6 @@ export function WorkflowSubmissionPage({
     onBack: onDismiss ? dismissDrawer : () => navigate(-1),
     onSubmit: submit,
     onValuesChange,
-    onRequirementsChange: () => setRequirementDirty(true),
     onAnswer: answer,
     onRetry: retry,
     onRefresh: () => { setProcessError(null); setProcessRefreshAttempt(value => value + 1); },
@@ -3145,7 +3061,6 @@ interface ProcessSubmissionRendererProps {
   onBack: () => void;
   onSubmit: (values: JsonObject) => Promise<void>;
   onValuesChange: (changed: Record<string, unknown>, values: Record<string, unknown>) => void;
-  onRequirementsChange: () => void;
   onAnswer: (answers: JsonObject) => Promise<void>;
   onRetry: () => Promise<void>;
   onRefresh: () => void;
@@ -3159,7 +3074,6 @@ function ProcessCommandPanel({
   onAnswer,
   onRetry,
   onRefresh,
-  onValuesChange,
 }: {
   form: ProcessSubmissionRendererProps['requirementForm'];
   surface: ProcessCommandSurface | null;
@@ -3168,7 +3082,6 @@ function ProcessCommandPanel({
   onAnswer: ProcessSubmissionRendererProps['onAnswer'];
   onRetry: ProcessSubmissionRendererProps['onRetry'];
   onRefresh: ProcessSubmissionRendererProps['onRefresh'];
-  onValuesChange: ProcessSubmissionRendererProps['onRequirementsChange'];
 }) {
   if (error) {
     return (
@@ -3192,7 +3105,7 @@ function ProcessCommandPanel({
     <div className="oxa-workflow-submission-followup">
       {command.status === 'awaiting_input' ? (
         <Card title="还需要补充一些信息">
-          <Form form={form} layout="vertical" onValuesChange={onValuesChange} onFinish={values => void onAnswer(values)}>
+          <Form form={form} layout="vertical" onFinish={values => void onAnswer(values)}>
             <RequirementFields requirements={surface.requirements} />
             <Button htmlType="submit" loading={loading} type="primary">
               提交补充信息
@@ -3238,7 +3151,6 @@ function StandardProcessSubmissionRenderer(props: ProcessSubmissionRendererProps
         {props.processing && <Alert type="info" showIcon title="正在提交申请，请稍候…" />}</>}
       onValuesChange={props.onValuesChange} onSubmit={values => void props.onSubmit(values)} />
     <ProcessCommandPanel error={props.processError} form={props.requirementForm} loading={props.loading}
-      onValuesChange={props.onRequirementsChange}
       onAnswer={props.onAnswer} onRetry={props.onRetry} onRefresh={props.onRefresh} surface={props.processSurface} />
   </div>;
 }

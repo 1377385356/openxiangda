@@ -172,7 +172,7 @@ ADR 状态支持 `proposed`、`accepted`、`superseded`、`rejected`；按真实
 
 ### 按 ID 读取
 
-`context` / `workspace_context` 默认返回总纲、相关变更索引、阶段缺口和下一步。`spec context` / `appspec_context` 的 context v4 默认只返回总纲正文及有界索引，按稳定 ID 加载相关能力、变更、ADR 和 DES-* 设计正文及 documents 传递引用。product/experience/design/reviews 的单层 Markdown 也进入当前资料与原测试提交读取；非 Markdown 原型只引用不执行。当前资料最多 512 文件、2 MiB，正文上下文最多 256 KiB，超出时明确诊断。较大的应用可保留各批次的产品、架构、变更与评审，不需要删除历史来容纳新模块；增加文件数量不放宽字节或上下文预算。
+`context` / `workspace_context` 默认返回总纲、相关变更索引、阶段缺口和下一步。`spec context` / `appspec_context` 的 context v4 默认只返回总纲正文及有界索引，按稳定 ID 加载相关能力、变更、ADR 和 DES-* 设计正文及 documents 传递引用。product/experience/design/reviews 的单层 Markdown 也进入当前资料与原测试提交读取；非 Markdown 原型只引用不执行。当前资料最多 128 文件、2 MiB，正文上下文最多 256 KiB，超出时明确诊断。
 
 历史与当前资料独立预算，每页 50 条，使用 `--history-offset 50` 或 MCP `historyOffset` 翻页。历史索引仅读取头部，稳定历史 ID 可直接读取页外正文；归档增加不会挤掉当前资料。索引读取上限为 256 个年份目录、10 万个记录名和 5 秒，达到预算给出提示，文件不会删除。`workspaceDigest` 对应当前资料与实时契约，分页不改变它；`selectionDigest` 对应选中的具体正文与契约。
 

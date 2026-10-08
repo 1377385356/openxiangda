@@ -2591,8 +2591,6 @@ export interface WorkflowBindingEntry {
   candidateField?: string;
   users?: string[];
   inputPath?: string;
-  /** Code-owned selection, checked against currently effective role candidates. */
-  selectedInputPath?: string;
   departmentIdFrom?: string;
   level?: number;
   fallbackToAncestorSupervisor?: boolean;
@@ -3378,8 +3376,7 @@ export interface BusinessProcessCommandWithData {
   subject: { fromOperation: string };
   data: BusinessProcessCommit['data'];
   expectedTransition: { status: 'running' | 'approved' | 'rejected' | 'withdrawn'; outcome: string | null; currentNodeId: string | null }
-    | { kind: 'correction-replay' }
-    | { kind: 'approval-projection' };
+    | { kind: 'correction-replay' };
 }
 
 /**

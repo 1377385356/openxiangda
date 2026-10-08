@@ -19,7 +19,6 @@
 - 默认读取 AppSpec 当前规格、设计索引、活动变更和阶段缺口。新应用先用自然语言对话主动发现模块，完成本期 PRD、旅程、逐页交互、视觉/原型、权限与架构设计及实际确认，形成内容摘要绑定的评审基线后再制定实施计划和实现业务；参见 docs product-design 和 docs interaction-patterns。既有应用仅修订受影响设计，不把 AI 建议写成用户确认。总纲保存长期规则，本轮变更关联需求、任务、源码与 AC 验收；测试发布前完成设计与计划，生产晋级前保存绑定原测试运行及包摘要的实际验收报告。更新当前规则、验证与发布结果和交接后归档；不得编造确认或通过结果。
 - 根据变化风险记录业务意图。无行为变化引用已有记录；已有授权和已确认意图不重复向用户请求机械确认。真实角色和浏览器验收与本地测试分别记录。
 - 失败保留错误码、指针和原候选；查询平台状态后使用允许的恢复操作，不自动重放未知结果。
-- 事件高水位、缺少正式环境密钥或通知故障先读 `docs application-operations` 和 `admin operations --json`（MCP `application_operations`）。AI 沿用当前应用管理权限，在已授权范围内直接用 `admin execute` / `application_operation` 完成诊断、加密环境凭据复用、渠道配置及指定投递恢复，无需转交用户操作管理页面。显式选择环境，保留修订与原幂等键，不读取密钥明文、不重建原业务、不批量重发历史通知。
 - 平台契约、诊断和产品/架构咨询按 openxiangda-support 技能持续跟进已授权案例。使用 support status 查看 DWS 接入状态；待 OAuth、钉钉入群或网络恢复不阻塞独立开发，后台续跑以实际宿主监听/定时配置为准。
 
 MCP 使用同一项目 CLI：`pnpm exec openxiangda --mcp-stdio --cwd <workspace>`。先读取 workspace_context，再按任务读取 docs_read 和当前契约。登录、创建及长期 dev 使用 CLI/终端。

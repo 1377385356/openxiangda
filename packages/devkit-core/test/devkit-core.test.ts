@@ -1442,39 +1442,6 @@ function assertPlatformCapabilitiesInvalid(capabilities: PlatformCapabilities) {
   );
 }
 
-test('accepts supported configuration budgets and rejects invalid advertised limits before deployment', () => {
-  const base = platformCapabilitiesFixture();
-  const advertised = (configurationCanonicalBytes: unknown) => ({
-    ...base,
-    configurationCompatibility: {
-      ...base.configurationCompatibility,
-      limits: { ...base.configurationCompatibility.limits, configurationCanonicalBytes },
-    },
-  }) as PlatformCapabilities;
-  for (const limit of [4 * 1024 * 1024, 8 * 1024 * 1024]) {
-    assert.doesNotThrow(() => assertApplicationContractCompatible(advertised(limit), CURRENT_APPLICATION_CONTRACT));
-  }
-  for (const limit of [0, 4 * 1024 * 1024 + 1, 8 * 1024 * 1024 + 1, 16 * 1024 * 1024, '8388608', null]) {
-    assertPlatformCapabilitiesInvalid(advertised(limit));
-  }
-});
-
-test('accepts a configuration preflight request beyond the old budget but retains the new upper bound', () => {
-  const validate = new Ajv2020({ strict: false, validateFormats: false }).compile(contractSchemas.configurationValidationRequest);
-  const fixture = {
-    schemaVersion: SCHEMA_VERSIONS.configurationValidationRequest,
-    environmentKey: 'preproduction',
-    clientContractVersion: OPENXIANGDA_CONTRACT_VERSION,
-    required: CURRENT_APPLICATION_CONTRACT,
-    configuration: { schemaVersion: SCHEMA_VERSIONS.configurationBundle, digest: 'a'.repeat(64), canonical: 'x'.repeat(4 * 1024 * 1024 + 1) },
-    contract: { schemaVersion: SCHEMA_VERSIONS.contractBundle, digest: 'b'.repeat(64), canonical: '{}' },
-  };
-  assert.equal(validate(fixture), true, JSON.stringify(validate.errors));
-  fixture.configuration.canonical = 'x'.repeat(8 * 1024 * 1024 + 1);
-  assert.equal(validate(fixture), false);
-  assert.equal(validate.errors?.[0]?.instancePath, '/configuration/canonical');
-});
-
 test('validates optional source hosting from the platform without opening the capability envelope', () => {
   const base = platformCapabilitiesFixture();
   for (const sourceHosting of [undefined, { provider: 'forgejo' as const, enabled: false }, { provider: 'forgejo' as const, enabled: true }]) {

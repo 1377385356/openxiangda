@@ -36,36 +36,10 @@ test('cc rejects unavailable providers, limits and unknown node controls', () =>
     const f = fixture(); Object.assign(f.definition.nodes.copy, patch);
     assert.ok(validateWorkflowAutomaticCc(f.definition, f.binding).includes('WORKFLOW_CC_NODE_INVALID:copy'));
   }
-  for (const entry of [{ max: 201 }, { min: 0 }, { min: 3, max: 2 }, { provider: 'fixed_users', users: Array.from({ length: 21 }, (_, i) => `u${i}`) }]) {
+  for (const entry of [{ max: 21 }, { min: 0 }, { min: 3, max: 2 }, { provider: 'fixed_users', users: Array.from({ length: 21 }, (_, i) => `u${i}`) }]) {
     const f = fixture(); Object.assign(f.binding.bindings.recipients, entry);
     assert.ok(validateWorkflowAutomaticCc(f.definition, f.binding).includes('WORKFLOW_CC_RECIPIENT_LIMIT_INVALID:copy'));
   }
-});
-
-test('explicit cc budgets allow 50 and 200 while omitted and pinned 20 stay bounded', () => {
-  const users = (count: number) => Array.from({ length: count }, (_, i) => `u${i}`);
-  for (const count of [50, 200]) {
-    const f = fixture();
-    Object.assign(f.binding.bindings.recipients, { provider: 'fixed_users', max: count, users: users(count) });
-    assert.deepEqual(validateWorkflowAutomaticCc(f.definition, f.binding), []);
-    f.binding.bindings.recipients.users.push('excess');
-    assert.ok(validateWorkflowAutomaticCc(f.definition, f.binding).includes('WORKFLOW_CC_RECIPIENT_LIMIT_INVALID:copy'));
-  }
-  for (const max of [undefined, 20]) {
-    const f = fixture();
-    Object.assign(f.binding.bindings.recipients, { provider: 'fixed_users', max, users: users(21) });
-    assert.ok(validateWorkflowAutomaticCc(f.definition, f.binding).includes('WORKFLOW_CC_RECIPIENT_LIMIT_INVALID:copy'));
-  }
-});
-
-test('administrator fixed cc lists obey the immutable binding budget', () => {
-  const f = fixture(), node = f.definition.nodes.copy, binding = f.binding.bindings.recipients;
-  const patch = (count: number) => ({ assignee: { provider: 'fixed_users' as const, users: Array.from({ length: count }, (_, i) => `u${i}`) } });
-  assert.ok(validateWorkflowNodeConfigurationPatch(node, binding, patch(21)).includes('WORKFLOW_V2_NODE_CONFIGURATION_USERS_INVALID'));
-  Object.assign(binding, { min: 2, max: 50 });
-  assert.deepEqual(validateWorkflowNodeConfigurationPatch(node, binding, patch(50)), []);
-  for (const count of [1, 51]) assert.ok(validateWorkflowNodeConfigurationPatch(node, binding, patch(count)).includes('WORKFLOW_V2_NODE_CONFIGURATION_USERS_INVALID'));
-  assert.ok(validateWorkflowNodeConfigurationPatch(node, binding, { ...patch(50), max: 200 }).includes('WORKFLOW_V2_NODE_CONFIGURATION_PATCH_INVALID'));
 });
 
 test('cc only opens explicitly declared recipient sources, with no approval or topology controls', () => {

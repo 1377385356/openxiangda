@@ -178,10 +178,10 @@ test("locks Oclif to the root plugin and cleans stale command output", () => {
 });
 
 test("keeps the minimal delivery defaults and machine-output boundary", () => {
-  assert.equal(Admin.flags.environment.default, undefined);
+  assert.equal(Admin.flags.environment.default, "test");
   assert.deepEqual(Admin.flags.environment.options, ["test", "production"]);
-  assert.deepEqual(Admin.args.action.options, ["context", "workflow", "operations", "execute"]);
-  assert.equal(DEVKIT_COMMANDS.find(command => command.id === "admin")?.risk, "deploy");
+  assert.deepEqual(Admin.args.action.options, ["context", "workflow"]);
+  assert.equal(DEVKIT_COMMANDS.find(command => command.id === "admin")?.risk, "read");
   assert.equal(Deploy.flags.environment.default, "test");
   assert.deepEqual(Deploy.flags.environment.options, ["test", "production"]);
   assert.equal(Rollback.flags.environment.default, "test");

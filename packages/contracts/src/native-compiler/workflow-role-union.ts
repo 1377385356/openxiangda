@@ -37,21 +37,3 @@ export function workflowBindingRoleCodes(entry: Pick<Source, 'roleCode' | 'roleC
 export function requiresWorkflowRoleUnion(bindings: Array<{ binding: { bindings: Record<string, Source> } }>): boolean {
   return bindings.some(item => Object.values(item.binding.bindings).some(entry => entry.roleCodes !== undefined));
 }
-
-
-/** Code outputs remain selection intent, never a substitute for a role membership. */
-export function validateWorkflowRoleInputSelection(entry: { provider?: string; selectedInputPath?: unknown; roleCode?: unknown; roleCodes?: unknown; candidateField?: unknown; inputPath?: unknown; routing?: unknown }): string[] {
-  if (entry.selectedInputPath === undefined) return [];
-  const path = entry.selectedInputPath;
-  if (!['app_role', 'app_role_in_scope'].includes(entry.provider || '') ||
-      entry.candidateField !== undefined || entry.inputPath !== undefined || entry.routing !== undefined ||
-      (entry.roleCode === undefined && entry.roleCodes === undefined) ||
-      typeof path !== 'string' || path.length > 255 || !/^[A-Za-z][A-Za-z0-9_-]*(?:\.[A-Za-z][A-Za-z0-9_-]*)*$/.test(path) ||
-      path.split('.').some(part => ['__proto__', 'constructor', 'prototype'].includes(part)))
-    return ['WORKFLOW_V2_ROLE_INPUT_SELECTION_INVALID'];
-  return [];
-}
-
-export function requiresWorkflowRoleInputSelection(bindings: Array<{ binding: { bindings: Record<string, { selectedInputPath?: unknown }> } }>): boolean {
-  return bindings.some(item => Object.values(item.binding.bindings).some(entry => entry.selectedInputPath !== undefined));
-}

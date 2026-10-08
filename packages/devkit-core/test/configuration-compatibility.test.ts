@@ -5,13 +5,7 @@ import test from 'node:test';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import {
   CONFIGURATION_COMPATIBILITY_CAPABILITY,
-  CURRENT_APPLICATION_CONTRACT,
-  OPENXIANGDA_CONTRACT_VERSION,
-  PLATFORM_CAPABILITY_CONTRACT_VERSIONS,
-  SCHEMA_VERSIONS,
   contractSchemas,
-  validateAppPackage,
-  type AppPackage,
   type RequiredPlatformCapabilityContract,
 } from 'openxiangda-contracts';
 import {
@@ -154,54 +148,6 @@ test('accepts the complete corpus through the exported public JSON Schemas', () 
   const unknownRouteKey = JSON.parse(fixed.contract.canonical) as any;
   unknownRouteKey.routeManifest.routes[0].desktop.unknown = true;
   assert.equal(validateContract(unknownRouteKey), false);
-});
-
-test('complete known capability closures pass preflight and package schemas beyond 64 entries', () => {
-  const capabilities = Object.entries(PLATFORM_CAPABILITY_CONTRACT_VERSIONS).map(([code, contractVersion]) => ({
-    code: code as RequiredPlatformCapabilityContract['code'], contractVersion,
-    usageDigest: `sha256:${'b'.repeat(64)}` as const,
-  })).sort((left, right) => left.code.localeCompare(right.code));
-  assert.ok(capabilities.length > 64, 'The public catalog already exceeds the retired limit');
-  const ajv = new Ajv2020({ allErrors: true, strict: false, validateFormats: false });
-  const validatePreflight = ajv.compile(contractSchemas.configurationValidationResult);
-  const validatePackage = ajv.compile(contractSchemas.appPackage);
-  for (const count of [64, 65, capabilities.length]) {
-    const closure = capabilities.slice(0, count);
-    const preflight = {
-      schemaVersion: SCHEMA_VERSIONS.configurationValidationResult, compatible: true,
-      environmentKey: 'preproduction', clientContractVersion: OPENXIANGDA_CONTRACT_VERSION,
-      platformVersion: 'capability-closure-test',
-      capability: { code: CONFIGURATION_COMPATIBILITY_CAPABILITY,
-        version: CURRENT_APPLICATION_CONTRACT.compilerContractVersion, status: 'available' },
-      required: CURRENT_APPLICATION_CONTRACT, supported: [CURRENT_APPLICATION_CONTRACT],
-      source: { configurationDigest: 'a'.repeat(64), contractDigest: 'b'.repeat(64) },
-      projectionDigest: 'c'.repeat(64), requiredPlatformCapabilities: closure,
-      counts: { resources: 1, perspectives: 0, capabilities: 1, eventProducers: 0, workflowDefinitions: 1 },
-    };
-    const pkg: AppPackage = {
-      schemaVersion: SCHEMA_VERSIONS.appPackage, appCode: 'capability-closure-test',
-      version: '2.0.0-test.1', createdAt: '2026-10-07T00:00:00.000Z',
-      source: { repository: 'https://example.invalid/capability-closure.git', commit: '0123456789abcdef', dirty: false },
-      toolchain: { version: '2.0.0-test.1', contractVersion: OPENXIANGDA_CONTRACT_VERSION },
-      artifacts: [{ kind: 'config', digest: 'a'.repeat(64), size: 128,
-        mediaType: 'application/vnd.openxiangda.config.v3+json' }],
-      manifests: { config: 'a'.repeat(64) },
-      compatibility: { minimumPlatformVersion: '2.0.0-alpha.1',
-        requiredPlatformCapabilities: closure, applicationContract: CURRENT_APPLICATION_CONTRACT },
-    };
-    assert.equal(validatePreflight(preflight), true, JSON.stringify(validatePreflight.errors));
-    assert.equal(validatePackage(pkg), true, JSON.stringify(validatePackage.errors));
-    assert.deepEqual(validateAppPackage(pkg), [], `semantic package validation: ${count} entries`);
-    for (const invalid of [[], [closure[0], closure[0]],
-      [{ ...closure[0], code: 'unknown-capability' }],
-      [{ ...closure[0], usageDigest: 'invalid-digest' }],
-      [...capabilities, { ...capabilities[0], usageDigest: `sha256:${'d'.repeat(64)}` }]]) {
-      assert.equal(validatePreflight({ ...preflight, requiredPlatformCapabilities: invalid }), false);
-      const badPackage = { ...pkg, compatibility: { ...pkg.compatibility, requiredPlatformCapabilities: invalid } };
-      assert.equal(validatePackage(badPackage), false);
-      assert.ok(validateAppPackage(badPackage).length > 0);
-    }
-  }
 });
 
 test('configuration JSON Schema rejects non-canonical authorization transitions', () => {

@@ -104,33 +104,9 @@ test('multiple guards aggregate once and unmount removes only its own registrati
 });
 
 test('submission success clears registration before the navigation effect', async ({ page }) => {
-  await page.getByRole('button', { name: '提交并跳转', exact: true }).click();
+  await page.getByRole('button', { name: '提交并跳转' }).click();
   await expect(page).toHaveURL('/guard/saved');
   await expect(page.getByRole('dialog')).toHaveCount(0);
-});
-
-test('acknowledged submission navigates in the same tick without waiting for a clean render', async ({ page }) => {
-  await page.getByRole('button', { name: '同步提交并跳转' }).click();
-  await expect(page).toHaveURL('/guard/saved');
-  await expect(page.getByRole('dialog')).toHaveCount(0);
-});
-
-test('local dismissal uses the same confirmation owner and preserves values on cancellation', async ({ page }) => {
-  await page.getByRole('button', { name: '关闭当前表单' }).click();
-  await expect(page.getByRole('dialog')).toHaveCount(1);
-  await page.getByRole('button', { name: '继续编辑' }).click();
-  await expect(page.getByRole('textbox', { name: '主题' })).toHaveValue('季度会议');
-  await page.getByRole('button', { name: '关闭当前表单' }).click();
-  await page.getByRole('button', { name: /^离\s*开$/ }).click();
-  await expect(page).toHaveURL('/guard/closed');
-});
-
-test('synchronous release removes only the acknowledged form guard', async ({ page }) => {
-  await page.getByRole('button', { name: '切换第二表单' }).click();
-  await page.getByRole('button', { name: '同步提交并跳转' }).click();
-  await expect(page.getByRole('dialog')).toContainText('第二表单尚未保存');
-  await page.getByRole('button', { name: '继续编辑' }).click();
-  await expect(page).toHaveURL('/guard/edit');
 });
 
 test('mobile cancellation keeps the form and one visible accessible dialog', async ({ page }, info) => {

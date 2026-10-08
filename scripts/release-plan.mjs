@@ -5,8 +5,6 @@ import { acquireReleaseProcessLock } from "./lib/release-process-lock.mjs";
 import { assertReleaseVersionsMaterialized } from "./lib/release-changeset-state.mjs";
 import { ensureReleaseArtifacts } from "./lib/release-artifact-preparation.mjs";
 import { createReleaseValidationPlan } from "./lib/release-validation-plan.mjs";
-import { resolveReleaseRegistry } from "./lib/release-package-state.mjs";
-import { assertReleaseHeadOnMainline, frozenArtifactManifestAllowsMainlineAdvance } from "./lib/release-mainline.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const full = process.argv.includes("--full");
@@ -26,20 +24,6 @@ const releaseLock = acquireReleaseProcessLock(
 );
 let plan;
 try {
-  const status = runCaptured("git", ["status", "--porcelain"]);
-  if (status) throw new Error(`Release worktree is not clean:\n${status}`);
-  const branch = runCaptured("git", ["branch", "--show-current"]);
-  if (branch !== "master") throw new Error(`Release must run from master, received ${branch || "detached HEAD"}`);
-  runCaptured("git", ["fetch", "--quiet", "origin", "master"]);
-  const upstream = runCaptured("git", ["rev-parse", "--abbrev-ref", "@{upstream}"]);
-  assertReleaseHeadOnMainline({
-    cwd: repositoryRoot, head, upstream,
-    upstreamHead: runCaptured("git", ["rev-parse", "@{upstream}"]),
-    allowContained: frozenArtifactManifestAllowsMainlineAdvance({
-      path: resolve(artifactRoot, "manifest.json"), head,
-      registry: resolveReleaseRegistry(repositoryRoot),
-    }),
-  });
   // The first plan invocation performs the expensive build/pack work. Its
   // manifest is persisted so verify/publish can consume the same bytes.
   const packageState = ensureReleaseArtifacts(repositoryRoot, {

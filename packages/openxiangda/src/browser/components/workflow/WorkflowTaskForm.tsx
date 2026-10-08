@@ -14,25 +14,6 @@ import { SubtableField } from '../platform-fields/SubtableField';
 import { resourceReferenceBindingPatch } from '../platform-fields/reference-binding-change';
 import { rebaseWorkflowTaskSubtable, workflowTaskSubtableDataRows, workflowTaskSubtableFormRows } from './workflow-task-subtable';
 import { workflowTaskRequiredErrorUpdates } from './workflow-task-required-errors';
-import { workflowSubmissionValueLinkage } from './workflow-submission-form';
-import type { WorkflowTaskFormBehavior, WorkflowTaskFormLinkageContext } from '../../workflow-definitions';
-
-export function workflowTaskFormLinkage(source: WorkflowTaskFormSurface, changed: Record<string, unknown>, values: Record<string, unknown>, linkage: WorkflowTaskFormBehavior['valueLinkage'], context: WorkflowTaskFormLinkageContext) {
-  const canonical = workflowTaskFormValues(source, values);
-  const fields = workflowTaskPageFieldState(source.page, canonical).filter(state => state.visible && !state.readonly &&
-    !source.page.fields.find(field => field.code === state.code)?.subtable &&
-    !['file', 'image', 'signature', 'text.rich'].includes(source.fields[state.code]!.type))
-    .map(state => ({ ...source.fields[state.code]!, key: state.code }));
-  // Subtable/file edits still use the platform controller, but do not run a
-  // scalar linkage callback. A callback cannot manufacture owned rows/files.
-  const keys = new Set(fields.map(field => field.key));
-  const selected = Object.fromEntries(Object.entries(changed).filter(([code]) => keys.has(code)));
-  if (!linkage || !Object.keys(selected).length) return {};
-  const patch = workflowSubmissionValueLinkage(fields,
-    Object.fromEntries(Object.keys(selected).map(code => [code, canonical[code]])) as any,
-    canonical as any, (input, all) => linkage(input, all, Object.freeze({ ...context })));
-  return Object.fromEntries(Object.entries(patch).map(([code, value]) => [code, fieldValueForForm(source.fields[code], value)]));
-}
 
 export function workflowTaskFormValues(source: WorkflowTaskFormSurface, values: Record<string, unknown>) {
   return Object.fromEntries(source.page.fields.map(field => [field.code,
@@ -63,7 +44,6 @@ export function useWorkflowTaskForm(latest?: WorkflowTaskFormSurface) {
   const [source, setSource] = useState(latest);
   const [draft, setDraft] = useState<WorkflowTaskDraft | undefined>();
   const [subtableError, setSubtableError] = useState<{ field: string; index: number }>();
-  const [linkageError, setLinkageError] = useState(false);
   const initialSource = useRef(latest);
   const acceptedLatest = useRef(latest);
   const requiredErrors = useRef(new Map<string, string>());
@@ -94,7 +74,6 @@ export function useWorkflowTaskForm(latest?: WorkflowTaskFormSurface) {
 
   const build = async (complete: boolean) => {
     if (!source) return undefined;
-    if (linkageError) throw new Error('补填联动暂不可用，请保留输入并修正规则后重试。');
     await form.validateFields(workflowTaskPageFieldState(source.page, current)
       .filter(field => field.visible && !field.readonly).map(field => field.code));
     const input = workflowTaskFormPatch(source, form.getFieldsValue(true));
@@ -157,10 +136,10 @@ export function useWorkflowTaskForm(latest?: WorkflowTaskFormSurface) {
     setDraft(saved);
   };
   const removedDraft = (id: string) => setDraft(currentDraft => currentDraft?.id === id ? undefined : currentDraft);
-  return { form, source, latest, current, subtableError, linkageError, setLinkageError, dirty, unsaved, stale, draft, draftNeedsSave, build, reviewLatest, committed, adoptDraft, savedDraft, removedDraft };
+  return { form, source, latest, current, subtableError, dirty, unsaved, stale, draft, draftNeedsSave, build, reviewLatest, committed, adoptDraft, savedDraft, removedDraft };
 }
 
-export function WorkflowTaskForm({ controller, disabled, operationPending = disabled, draftDisabled = disabled, taskId, taskVersion, onDraftBusyChange, onFileBusyChange, onRefresh, variant, resourceCode, recordId, valueLinkage, linkageContext }: {
+export function WorkflowTaskForm({ controller, disabled, operationPending = disabled, draftDisabled = disabled, taskId, taskVersion, onDraftBusyChange, onFileBusyChange, onRefresh, variant, resourceCode, recordId }: {
   controller: ReturnType<typeof useWorkflowTaskForm>;
   disabled: boolean;
   /** Protect pending writes; a confirmed command's read failure only disables controls. */
@@ -174,8 +153,6 @@ export function WorkflowTaskForm({ controller, disabled, operationPending = disa
   variant: 'desktop' | 'mobile';
   resourceCode?: string;
   recordId?: string;
-  valueLinkage?: WorkflowTaskFormBehavior['valueLinkage'];
-  linkageContext?: WorkflowTaskFormLinkageContext;
 }) {
   const { modal, message } = App.useApp();
   const files = useWorkflowTaskFiles({ taskId, controller, onBusyChange: onFileBusyChange });
@@ -213,19 +190,12 @@ export function WorkflowTaskForm({ controller, disabled, operationPending = disa
       <Button disabled={disabled} onClick={() => review(true)}>保留输入并核对</Button>
       <Button disabled={disabled} onClick={() => review(false)}>采用最新资料</Button>
     </Space>} />}
-    {controller.linkageError && <Alert showIcon type="error" title="补填联动暂不可用" description="已保留输入，请修正规则后重新修改相关字段。" />}
     <Form form={form} layout="vertical" initialValues={formValues(source)} disabled={disabled || stale}
       onValuesChange={(changed, values) => {
-        if (disabled || stale || operationPending) return;
         const fields = workflowTaskPageFieldState(source.page, current).filter(state => state.visible && !state.readonly)
           .map(state => ({ ...source.fields[state.code]!, key: state.code }));
         const patch = resourceReferenceBindingPatch(fields, changed, values, current);
         form.setFields(Object.entries(patch).map(([name, value]) => ({ name, value, touched: true, errors: [] })));
-        try {
-          const linked = linkageContext ? workflowTaskFormLinkage(source, changed, { ...values, ...patch }, valueLinkage, linkageContext) : {};
-          form.setFields(Object.entries(linked).map(([name, value]) => ({ name, value, touched: true, errors: [] })));
-          controller.setLinkageError(false);
-        } catch { controller.setLinkageError(true); }
       }}>
       {workflowTaskPageFieldState(source.page, current).filter(state => state.visible).map(state => {
         const field = { ...source.fields[state.code]!, key: state.code, requiredHint: false };

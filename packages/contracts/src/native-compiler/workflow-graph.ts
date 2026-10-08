@@ -280,28 +280,9 @@ export function projectWorkflowGraph(definition: WorkflowGraphDefinitionSource, 
     logic, diagnostics };
 }
 
-/** Resolve display names only from the current projection; never invent a source or unit. */
-export function workflowVariableLabel(path: string, variables: readonly WorkflowGraphVariable[] = []): string {
-  const named = (candidate: string) => {
-    const label = variables.find(variable => variable.path === candidate)?.label;
-    return label && label !== candidate ? label : undefined;
-  };
-  const exact = named(path);
-  if (exact) return exact;
-  for (let dot = path.lastIndexOf('.'); dot > 0; dot = path.lastIndexOf('.', dot - 1)) {
-    const parent = named(path.slice(0, dot));
-    if (!parent) continue;
-    const suffix = path.slice(dot + 1);
-    if (suffix === 'value') return `${parent}（值）`;
-    if (suffix === 'label') return `${parent}（显示名称）`;
-    return `${parent}.${suffix}`;
-  }
-  return path;
-}
-
 export function formatWorkflowExpression(expression: WorkflowGraphExpression, variables: readonly WorkflowGraphVariable[] = [], depth = 0): string {
   if (!expression || depth > 20) return '无法识别的条件';
-  if (expression.op === 'path') return workflowVariableLabel(expression.path, variables);
+  if (expression.op === 'path') return variables.find(variable => variable.path === expression.path)?.label || expression.path;
   if (expression.op === 'literal') return JSON.stringify(expression.value) ?? '缺值';
   if (expression.op === 'and' || expression.op === 'or') return expression.values.slice(0, 128).map(item => `（${formatWorkflowExpression(item, variables, depth + 1)}）`).join(expression.op === 'and' ? ' 且 ' : ' 或 ');
   if (expression.op === 'not' || expression.op === 'exists') return `${expression.op === 'not' ? '不满足' : '存在'}（${formatWorkflowExpression(expression.value, variables, depth + 1)}）`;

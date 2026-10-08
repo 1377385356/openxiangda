@@ -77,7 +77,6 @@ pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ skill install --force
 | 热点读取、抢票、排队、名额预占与原结果恢复 | [缓存、排队与配额](references/managed-concurrency.md) |
 | 报名按钮、表单排队、短确认页、预占倒计时与前端恢复 | [并发前端接入](references/managed-concurrency-frontend.md)：按六种形式选择；仅使用已导出的 API，区分待实现封装 |
 | 管理成员或查看有效流程参数 | [应用管理](references/administration.md) |
-| 高水位/死信、正式环境缺密钥、通知未发送或收件人错误 | [AI 应用自助操作](references/application-operations.md)；先读 `admin operations --json` 或 MCP `application_operations`，在已有授权范围内直接执行，沿用当前平台账号，无需人工打开管理页 |
 | 检查、部署、生产发布与故障恢复 | [验收](references/testing.md)、[交付](references/delivery.md) |
 | 需求记录与版本升级 | [全流程记录](references/appspec.md)、[升级](references/upgrading.md) |
 | 选择 CLI/MCP 操作 | [命令](references/cli.md)、[MCP](references/mcp.md) |

@@ -26,16 +26,8 @@ for (const [name, change, code] of [
   ['missing page', (d: any) => d.nodes.correct.taskPageCode = 'unknown', 'WORKFLOW_CORRECTION_PAGE_REQUIRED'],
   ['injected binding', (d: any) => d.nodes.correct.binding = 'other', 'WORKFLOW_CORRECTION_NODE_INVALID'],
   ['automatic approval', (d: any) => d.nodes.correct.initiatorApprovalPolicy = 'auto_approve', 'WORKFLOW_CORRECTION_NODE_INVALID'],
-  ['projected owned mutation', (d: any) => { d.subject.factProjection.rows = 'items'; d.taskPages.correction.fields.push({ code: 'items', subtable: {} }); }, 'WORKFLOW_CORRECTION_OWNED_FACTS_UNSUPPORTED'],
-  ['projected owned child path', (d: any) => { d.subject.factProjection.names = 'items.name'; d.taskPages.correction.fields.push({ code: 'items', subtable: {} }); }, 'WORKFLOW_CORRECTION_OWNED_FACTS_UNSUPPORTED'],
+  ['owned data mutation', (d: any) => d.taskPages.correction.fields.push({ code: 'items', subtable: {} }), 'WORKFLOW_CORRECTION_OWNED_FACTS_UNSUPPORTED'],
 ] as const) test(`reject ${name}`, () => { const d = fixture(); change(d); assert.ok(validateWorkflowCorrections(d).includes(code)); });
-test('allows owned correction without projecting the rows into routing facts', () => {
-  const d = fixture();
-  d.taskPages.correction.fields.push({ code: 'items', subtable: { create: true, delete: true, reorder: true, fields: [{ code: 'name', required: true }] } });
-  // A scalar whose name has the same prefix is a different top-level field.
-  d.subject.factProjection.counter = 'itemsCount';
-  assert.deepEqual(validateWorkflowCorrections(d), []);
-});
 test('scalar correction invalidates prior step outputs and start replay covers them', () => {
   const d = fixture();
   const refreshed = refreshWorkflowTaskPageFacts(d, { amount: 100, steps: { calculate: { total: 100 } } }, { amount: 2000 });

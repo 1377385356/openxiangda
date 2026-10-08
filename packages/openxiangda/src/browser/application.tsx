@@ -68,7 +68,6 @@ import { useGlobalRequestLoading } from './platform-client';
 import {
   OpenXiangdaWorkflowDefinitionsProvider,
   type StandardWorkflowDefinitionsInput,
-  type WorkflowTaskFormBehaviors,
 } from './workflow-definitions';
 import {
   StandardUserSurfaceErrorBoundary,
@@ -307,8 +306,6 @@ export interface OpenXiangdaApplicationProps {
   routeManifest: AppRouteManifestV3;
   perspectives?: readonly RuntimePerspective[];
   workflows?: StandardWorkflowDefinitionsInput;
-  /** Optional application value rules for platform-owned approval forms. */
-  workflowTaskForms?: WorkflowTaskFormBehaviors;
   contributions?: OpenXiangdaApplicationContributions;
   publicAccess?: AnonymousPublicAccessContractV2 | null;
 }
@@ -572,7 +569,6 @@ export function OpenXiangdaApplication({
   routeManifest,
   perspectives = [],
   workflows = [],
-  workflowTaskForms,
   contributions,
   publicAccess,
 }: OpenXiangdaApplicationProps) {
@@ -893,7 +889,7 @@ export function OpenXiangdaApplication({
     >
       <AdminContributionsProvider contributions={contributions}>
       <OpenXiangdaResourceDefinitionsProvider definitions={resourceDefinitions}>
-        <OpenXiangdaWorkflowDefinitionsProvider definitions={workflows} taskForms={workflowTaskForms}>
+        <OpenXiangdaWorkflowDefinitionsProvider definitions={workflows}>
           <OpenXiangdaUiProvider {...ui} timeZone={timeZone}>
             <ApplicationRouter basename={applicationBasename()}>
               <GlobalRequestLoading />

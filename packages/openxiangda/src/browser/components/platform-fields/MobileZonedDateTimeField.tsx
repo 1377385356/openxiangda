@@ -12,8 +12,8 @@ const hours = Array.from({ length: 24 }, (_, n) => ({ label: `${n}时`, value: p
 const seconds = Array.from({ length: 60 }, (_, n) => ({ label: `${n}秒`, value: pad(n) }));
 
 export function MobileZonedDateTimeField({ field, value, disabled, id, onChange,
-  timeZone, min, max, minuteStep, disabledWeekdays }: FieldProps & DateTimeConstraints & { timeZone: string }) {
-  const constraints = validateDateTimeConstraints(fieldDateTimeConstraints(field, { timeZone, min, max, minuteStep, disabledWeekdays }));
+  timeZone, min, max, minuteStep }: FieldProps & DateTimeConstraints & { timeZone: string }) {
+  const constraints = validateDateTimeConstraints(fieldDateTimeConstraints(field, { timeZone, min, max, minuteStep }));
   const root = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<'start' | 'end'>('start');
@@ -32,8 +32,7 @@ export function MobileZonedDateTimeField({ field, value, disabled, id, onChange,
   const draft = { start: resultStart.value, end: resultEnd.value };
   const error = range && step === 'end' ? resultStart.error || resultEnd.error || rangeValueValidationMessage(field, draft) : resultStart.error;
   const active = range && step === 'end' ? end : start;
-  const dates = dateOptions(active, timeZone, min, max).filter(date =>
-    !disabledWeekdays?.includes(Temporal.PlainDate.from(date.value).dayOfWeek));
+  const dates = dateOptions(active, timeZone, min, max);
   const minuteOptions = Array.from({ length: 60 / (minuteStep ?? 1) }, (_, i) => {
     const n = i * (minuteStep ?? 1); return { label: `${n}分`, value: pad(n) };
   });

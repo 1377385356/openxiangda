@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { NATIVE_CONTRACT_CAPACITY_V2 } from 'openxiangda-contracts/browser';
 
 import {
   defineApplicationContributions,
@@ -345,35 +344,4 @@ test('fails closed for route/page drift and invalid admin manifests', () => {
       }),
     /OPENXIANGDA_ADMIN_CONTRIBUTIONS_INVALID:instruments:row:too-many-actions/,
   );
-});
-
-test('large generated page families bind to the shared declaration boundary', () => {
-  const family = (count: number) => ({
-    contracts: Object.fromEntries(Array.from({ length: count }, (_, i) => [`page-${i}`, {
-      code: `page-${i}`, path: `/pages/${i}`, label: `Page ${i}`, surface: 'user' as const,
-      capability: `pages.read.${i}`, tabPersistence: 'none' as const, keepAlive: 'none' as const,
-    }])),
-    pages: Object.fromEntries(Array.from({ length: count }, (_, i) => [`page-${i}`, Page])),
-  });
-  for (const count of [501, NATIVE_CONTRACT_CAPACITY_V2.routes]) {
-    const { contracts, pages } = family(count), contributions = defineApplicationContributions(contracts, { pages });
-    assert.equal(contributions.routes.length, count);
-    assert.equal(isApplicationRouteAllowed(contributions.routes[count - 1]!, contributions.routes, code => code === `pages.read.${count - 1}`), true);
-  }
-  const over = family(NATIVE_CONTRACT_CAPACITY_V2.routes + 1);
-  assert.throws(() => defineApplicationContributions(over.contracts, { pages: over.pages }), /too-many-routes/);
-  const valid = family(501);
-  delete valid.pages['page-500'];
-  assert.throws(() => defineApplicationContributions(valid.contracts, { pages: valid.pages }), /pages-must-match-generated-routes/);
-  valid.pages['page-500'] = Page;
-  valid.contracts['page-500']!.path = valid.contracts['page-0']!.path;
-  assert.throws(() => defineApplicationContributions(valid.contracts, { pages: valid.pages }), /route:page-500/);
-});
-test('resource contribution families share the resource boundary without expanding action slots', () => {
-  const resources = Object.fromEntries(Array.from({ length: NATIVE_CONTRACT_CAPACITY_V2.resources }, (_, i) => [`records-${i}`, {
-    row: [{ code: 'inspect', label: 'Inspect', render: () => null }],
-  }]));
-  assert.equal(Object.keys(defineApplicationContributions({}, { pages: {}, resources }).resources).length, NATIVE_CONTRACT_CAPACITY_V2.resources);
-  resources.overflow = { row: [] };
-  assert.throws(() => defineApplicationContributions({}, { pages: {}, resources }), /too-many-resources/);
 });

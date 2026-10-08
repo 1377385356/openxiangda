@@ -1,14 +1,3 @@
-# 标准审批页面的值联动
-
-应用可给 `OpenXiangdaApplication` 传入 `workflowTaskForms`，按流程代码注册同步
-`valueLinkage(changed, values, { workflowCode, nodeId, pageCode })`。例如会议日期变化
-时生成可编辑意见。日期等输入已规范化为平台值；只响应用户修改，加载、草稿恢复和
-重读不会覆盖已有输入。独立手改意见是否保留由应用规则决定。
-
-回调只能读取和更新当前任务可见、可编辑的普通字段；子表、附件、只读、隐藏和
-未声明字段不参与。规则必须同步返回patch，不能发请求。规则失败保留输入并提示，
-整patch不会部分应用。保存、审批、CAS、权限、原命令恢复和固定流程仍由平台拥有。
-
 # Workflow 与 Notification Hub 2.0 边界
 
 标准 Workflow 与 Notification Hub 已作为 OpenXiangda 2.0 可选平台模块重新开放。它们不属于默认 CRUD 模板，也不兼容或复用 1.x 工作流、消息中心、模板、卡片、回调、表和 API。
@@ -249,8 +238,7 @@ copy: {
 接收 binding 支持 `fixed_users`、`initiator`、`input_users`、`form_field_users`、
 `app_role`、`app_role_in_scope`、`previous_node_actor`。仅使用事务内原生来源，
 不支持 `application_provider` 或需要申请人交互的 `initiator_select`。名单按用户去重，
-每次进入最多 200 人；`min/max` 默认 1/20，超过20人须由开发者显式声明更大的 `max`。
-未声明及既有显式20人预算保持；非空名单仍必须符合声明的下限。
+每次进入最多 20 人；`min/max` 默认 1/20，非空名单仍必须符合声明的下限。
 角色查询超过 200 条有效成员行时明确拒绝，不能使用截断后的名单。
 范围角色要求对应范围的 `cc` 授权（或未限制操作、`*`），仅 `approve` 不满足。
 抄送不套用审批代理。
@@ -362,7 +350,7 @@ Native Data 事件的 capture plan 由当前 Head 的 Event、Data、AuthZ revis
 `acceptedCommandDeactivationPolicy`：`finish-pinned` 让已接受的 durable process
 command 按固定版本完成，`cancel-on-deactivate` 在声明删除后取消尚未启动的命令；
 既有 Workflow instance 始终按固定版本继续。审批人 Provider 的 `min/max`
-默认 1/200，最大 200；自动抄送默认 1/20，显式声明最大 200。
+默认 1/200，最大 200；自动抄送默认 1/20，最大 20。
 需要按流程实例串行投递时只声明 `ordering: 'workflow-instance'`，不接受下划线别名。
 
 平台按 desired set 直接覆盖环境 Head，不做版本比较。因此 `openxiangda deploy`
@@ -508,11 +496,8 @@ return <WorkflowSubmissionPage workflowCode="reinstatement" variant="mobile" for
 
 初值仅在当前匹配的发起合同内应用到未触碰字段，每字段一次；后到资料和父组件重新渲染
 不会覆盖已填写或手动清空的内容。日期和范围使用canonical值，标准页通过原codec转换。
-条件隐藏同步也读取表单当前值，避免预填或联动刚写入的来源行被旧显隐投影清空。
-`fieldState`读取canonical值，`required`只能增加校验，不能撤销原必填；
+`fieldState`读取canonical值，`required`只能增加校验，不能撤销原必填或隐藏原必填字段；
 可选字段隐藏时清为`hiddenValue`或undefined，提交也使用同一投影，不发送旧材料/人员。
-
-必填字段也可以隐藏，但必须提供非null/undefined的规范`hiddenValue`，例如表单外已经选定的业务对象。0与false是有效输入；平台仍核验类型、必填和授权，应用须重新核验对象。未提供值时表单继续阻断。
 初值或规则引用范围外字段会阻断表单。`intro`只提供页面说明，不拥有身份、授权或提交。
 资料加载/失败或业务资格提示可传`preparation`内容，它仅阻断尚未提交的表单；原请求查询
 及已接受命令的展示优先于该提示。应用应始终挂载标准页，避免当前资格变化遮蔽原结果恢复。
@@ -525,10 +510,6 @@ return <WorkflowSubmissionPage workflowCode="reinstatement" variant="mobile" for
 写回沿用codec并标记已触碰，迟到预填不会覆盖联动值。预填、草稿、恢复、程序写回不触发
 联动；PC/手机规则一致。异常保留输入并阻断新提交，下一次成功输入可恢复，原提交结果
 查询及已接受命令仍优先。异步资料读取放准备阶段，服务器仍校验资格和业务不变量。
-
-对已有台账等来源固定的子表，可以传 `subtableFixedRows: ['existingPositions']`，关闭新增、删除和导入，并保留允许字段的编辑、上传和分页。此项仅限制页面操作；业务动作仍须后台重读来源，核验行集合与来源版本，不能把它作为数据授权或防篡改守卫。
-
-当只读来源标识或版本需要发给后台核对时，使用 `subtableReadonlyInputFields: { existingPositions: ['ledgerId', 'ledgerRevision'] }`。字段必须属于当前操作的子表白名单；这些值仅在页面只读，仍是未经信任的输入，后台必须重读并执行版本／集合守卫。不得与同字段的 `subtableReadonlyFields` 混用，后者会省略派生输入。
 
 具名owned新建表单可传`subtableReadonlyFields: { lines: ['employeeNumber'] }`，
 把当前子行的派生值显示为只读，并从提交输入排除。表名与字段必须属于当前sealed
@@ -959,14 +940,7 @@ append 处理签名或 HTML。当前任务、实例、记录或字段改变时�
 
 ### 审批人为空时的节点策略
 
-审批节点可声明 `emptyPolicy: 'skip'`，省略或声明 `block` 时保持阻塞。第一版 skip 支持 fixed_users、input_users、form_field_users、app_role、app_role_in_scope；编译器拒绝其他来源与 skip 组合。表单人员明确为 `[]`，或存在的角色在有效范围内没有成员，且解析成功、没有警告，才允许自动继续到 `onApprove`。
-
-`form_field_users` 也支持主体投影的可选单人为空：固定 Native 主体的
-`factProjection` 必须准确指向非必填 `user.single`，并且保存值明确为 `null`。
-平台核验主体、定义与资料修订后，仅在审批空人策略解析中把该值视为已核实空名单；
-限定候选仍核验当前范围与授权。此规则不增加开关，也不改变节点的 skip/block/兜底策略。
-字段缺失、必填人员为 null、无主体或无准确投影、类型错误、无效账号、缺少范围、
-解析失败和非零人数不满足 min/max 都不能跳过；普通选人及 `input_users` 不接受 null。
+审批节点可声明 `emptyPolicy: 'skip'`，省略或声明 `block` 时保持阻塞。第一版 skip 支持 fixed_users、input_users、form_field_users、app_role、app_role_in_scope；编译器拒绝其他来源与 skip 组合。表单人员明确为 `[]`，或存在的角色在有效范围内没有成员，且解析成功、没有警告，才允许自动继续到 `onApprove`。缺失/null 字段、不存在的角色、无效账号、缺少范围、解析失败和非零人数不满足 min/max 都不能跳过。
 
 该策略由代码固定。每次实际跳过记录节点访问、当时配置、解析依据和 `openxiangda.workflow.node.skipped.v2` 事件；图和 PC/手机历史显示“已跳过”。连续节点推进受 200 节点上限约束，业务步骤仍等待其正式结果。后续失败与业务变更在原事务一起回滚，重试沿用原命令。
 
@@ -1136,13 +1110,6 @@ nodes: {
 
 标准 PC/手机任务页根据当前 Surface 调用该具名操作；应用不复制审批流转或预测下游
 动态人员。处理器先调用 `businessProcess.resolveOriginalTaskCommand(invocation)` 查询原结果，
-具名批准需要业务派生值与任务表单同事务保存时，可在固定定义声明
-`commandHandlers.approve: { operationCode: '...', transitionPolicy: 'workflow' }`，
-并调用 `commandWithData` 的 `expectedTransition: { kind: 'approval-projection' }`。
-平台核验原任务／令牌／修订／字段和候选人，保存数据并刷新事实，由内核处理
-会签等待及晚分支；任何未解析审批人都使事务失败。只允许显式 opt-in 的 approve
-handler；默认精确流转模式不变，旧站点须支持 `workflow.approval-business-command`。
-
 再合并受限任务字段、重验当前业务规则和资料，最后调用 `commandWithData`，
 使用 `expectedTransition: { kind: 'correction-replay' }`。平台验证真实本人补正、原任务与
 资料修订，在同一事务保存字段、刷新事实、核验 Native guards、关闭退回会话并重新计算。
@@ -1154,30 +1121,3 @@ handler；默认精确流转模式不变，旧站点须支持 `workflow.approval
 自动协商 `workflow.correction-business-command@1.0.0`，无需额外开启功能。
 本人标量补正支持 Native 写入，owned 子表补正仍不支持；原已成功结果先于当前资料重验
 恢复，不因日期推移或资料后来停用而被误报为失败。接入方法见[后端](backend.md#correction-business-command)。
-
-具名来源行需要展示原资源的材料时，表单可提供 `fileResourceCodes: { [fileId]: resourceCode }`。PC/手机按来源选择 Native 附件读取入口；这是展示提示，平台仍检查当前用户对每个原文件的权限。新上传保留声明的目标资源，提交后台仍须验证来源并使用原复制回执，不能直接绑定另一资源文件。
-
-角色绑定 `app_role` / `app_role_in_scope` 可声明 `selectedInputPath`，从固定代码步骤输出或流程事实中读取人员数组（用户ID或 `{ value, label }`）。平台按当前角色和范围重新核验，再按输入顺序保留其职责出处。越权、失效或重复人员整体拒绝；缺值阻断，只有显式 `[]` 可以消费节点已声明的无人策略。不可与 `routing`、`candidateField`、`inputPath` 混用。编译器要求 `workflow.role-input-selection@1.0.0`；该路径属于代码定义，不是管理员可改的连接或条件。
-
-### 申请人补正中的非流转子表
-
-固定 `correction` 任务可以包含一层 owned 子表，只要这些子表不在
-`subject.factProjection` 中。页内的 `subtable.create/delete/reorder` 和子字段
-白名单、只读、必填及模型 `minRows/maxRows` 仍生效。使用原任务的
-`key/state/values/id/revision` 编辑，不把新建申请的 `data` 行结构套到原行。
-平台把父子修改与 `resubmit` 放在同一授权、版本校验和事务中，应用的业务重提
-只需重核自身业务不变量，不能另写一次子行。投影为流程事实的子表暂不支持此
-补正形式，仍返回 `WORKFLOW_CORRECTION_OWNED_FACTS_UNSUPPORTED`；不能通过
-移除真实流转事实来绕过。原返回、重走首节点、职责和原命令恢复规则保持。
-
-具名新建的 owned 子表可以用 `formOptions.subtableFieldState(values)` 返回按子表字段
-和子列编码的 `{ visible, required }`，例如 `{ relatives: { extraFact: { visible: false } } }`。
-状态只调整页面展示与可见输入校验，不改变流程、读写授权或子表数据；隐藏旧值会保留，
-重新显示后恢复。列必须已在具名操作的 sealed child closure 内，未知表/列与非布尔状态
-拒绝；`required: false` 不能撤销声明的必填，服务端业务仍独立验证实际提交值。
-
-生成提交页的 `formOptions.dateTimeConstraints` 可按已匹配的 `datetime` 或
-`datetime-range` 字段提供 `timeZone`、范围、步长和 `disabledWeekdays`（ISO周一1
-至周日7）。这只控制新选择，保留已有值，不能当成服务端提交门禁。
-`formOptions.fieldHints(values)` 返回按已匹配字段的提示内容，用于时段或业务说明，
-它不改变必填和数据；PC/手机均显示在字段旁。未知字段和无效约束阻止新表单。

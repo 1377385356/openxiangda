@@ -8,11 +8,11 @@ import { carrierWall, disabledZonedTime, fieldDateTimeConstraints, instantText, 
   wallCarrier, zonedInputResult, type DateTimeConstraints } from './zoned-date-time';
 
 export function ZonedDateTimeField({ field, value, onChange, disabled, mobile, filter,
-  timeZone, min, max, minuteStep, disabledWeekdays }: DateTimeConstraints & {
+  timeZone, min, max, minuteStep }: DateTimeConstraints & {
   field: DataFieldSurface; value?: unknown; onChange?: (value: unknown) => void;
   disabled?: boolean; mobile?: boolean; filter?: boolean; timeZone: string;
 }) {
-  const constraints = validateDateTimeConstraints(fieldDateTimeConstraints(field, { timeZone, min, max, minuteStep, disabledWeekdays }));
+  const constraints = validateDateTimeConstraints(fieldDateTimeConstraints(field, { timeZone, min, max, minuteStep }));
   const range = field.type === 'datetime-range';
   const Picker = useMemo(() => DatePicker.generatePicker<Dayjs>({
     ...dayjsGenerateConfig,
@@ -59,7 +59,6 @@ export function ZonedDateTimeField({ field, value, onChange, disabled, mobile, f
     format,
     minDate: min ? toCarrier(min)! : undefined,
     maxDate: max ? toCarrier(max)! : undefined,
-    disabledDate: (date: Dayjs) => Boolean(disabledWeekdays?.includes(carrierWall(date).dayOfWeek)),
     disabledTime: (date: Dayjs | null) => disabledZonedTime(
       (date ? carrierWall(date) : nowWall(timeZone)).toPlainDate(), timeZone, constraints),
     showTime: { format: minuteStep === undefined ? 'HH:mm:ss' : 'HH:mm',

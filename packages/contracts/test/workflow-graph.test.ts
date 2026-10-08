@@ -1,25 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { sha256Digest } from '../src/canonical.js';
-import { projectWorkflowGraph, formatWorkflowExpression, workflowVariableLabel, validateWorkflowReadability, workflowExpressionPaths, type WorkflowGraphDefinitionSource, type WorkflowGraphVariable } from '../src/native-compiler/workflow-graph.js';
-
-test('display names inherit only a complete declared parent and retain exact leaf labels and units', () => {
-  const variable = (path: string, label: string): WorkflowGraphVariable => ({ path, label, type: 'object', required: false, source: { kind: 'input' }, usedBy: [] });
-  const variables = [variable('person', '申请人'), variable('person.value', 'person.value'),
-    variable('person.label', '特定显示名'), variable('steps.calc', '核算结果'),
-    { ...variable('steps.calc.amount', '核算金额'), unit: '分' }];
-  const before = structuredClone(variables);
-  assert.equal(workflowVariableLabel('person.value', variables), '申请人（值）');
-  assert.equal(workflowVariableLabel('person.label', variables), '特定显示名');
-  assert.equal(workflowVariableLabel('person.profile.phone', variables), '申请人.profile.phone');
-  assert.equal(workflowVariableLabel('personnel.value', variables), 'personnel.value');
-  assert.equal(workflowVariableLabel('missing.value', variables), 'missing.value');
-  assert.equal(workflowVariableLabel('steps.calc.amount.value', variables), '核算金额（值）');
-  const expression = (path: string): Parameters<typeof formatWorkflowExpression>[0] => ({ op: 'gt', left: { op: 'path', path }, right: { op: 'literal', value: 100 } });
-  assert.equal(formatWorkflowExpression(expression('steps.calc.amount'), variables), '核算金额 > 100 分');
-  assert.equal(formatWorkflowExpression(expression('steps.calc.amount.value'), variables), '核算金额（值） > 100');
-  assert.deepEqual(variables, before);
-});
+import { projectWorkflowGraph, formatWorkflowExpression, validateWorkflowReadability, workflowExpressionPaths, type WorkflowGraphDefinitionSource } from '../src/native-compiler/workflow-graph.js';
 
 function fixture(): WorkflowGraphDefinitionSource {
   return { code: 'amount', title: '金额申请', startAt: 'route',

@@ -1,9 +1,9 @@
-import { compileNativeEventAction, requiresExtendedDeclarationCapacity, requiresExtendedArtifactCapacity, requiresHighDensityArtifactCapacity, requiresExtendedConfigurationBytes } from 'openxiangda-contracts/native-compiler';
+import { compileNativeEventAction, requiresExtendedDeclarationCapacity, requiresExtendedArtifactCapacity } from 'openxiangda-contracts/native-compiler';
 import { normalizeWorkflowOwnedSubjectCreate } from 'openxiangda-contracts/native-compiler';
 import { compileWorkflowBusinessStepHandlers, validateWorkflowBusinessStepSubscriptions, WORKFLOW_BUSINESS_STEP_EVENTS } from 'openxiangda-contracts/native-compiler';
 import { parseNativeUniqueKeys, parseDecimalReservationLifecycle } from 'openxiangda-contracts/native-compiler';
 import { DATA_AUDIT_METADATA_FIELDS, isDataAuditMetadataField, projectDataResourceView, requiresExtendedOwnedSubtableCapacity, requiresAggregateOwnedSubtableCapacity } from 'openxiangda-contracts';
-import { nativeFieldRequiresCreateInputV2, requiresOwnedSubtableMinimumRows, requiresDateTimeMinutePrecision, requiresUserCandidateLaunchScope, requiresWorkflowRoleUnion, requiresWorkflowRoleInputSelection } from 'openxiangda-contracts/native-compiler';
+import { nativeFieldRequiresCreateInputV2, requiresOwnedSubtableMinimumRows, requiresDateTimeMinutePrecision, requiresUserCandidateLaunchScope, requiresWorkflowRoleUnion } from 'openxiangda-contracts/native-compiler';
 import { createHash } from 'node:crypto';
 import {
   canonicalJson,
@@ -221,7 +221,7 @@ export function compileApplicationSources(
 export function normalizeConfiguration(
   config: OpenXiangdaAppConfig
 ): ConfigurationBundleV3 {
-  const normalized: ConfigurationBundleV3 = {
+  return {
     schemaVersion: CONFIG_BUNDLE_SCHEMA,
     compilerContractVersion: COMPILER_CONTRACT_VERSION,
     appCode: config.app.code,
@@ -780,13 +780,6 @@ export function normalizeConfiguration(
       },
     },
   };
-  if (requiresExtendedConfigurationBytes(normalized)) {
-    normalized.runtime.protocolCapabilities = uniqueSorted([
-      ...normalized.runtime.protocolCapabilities,
-      'application.extended-configuration-bytes',
-    ]);
-  }
-  return normalized;
 }
 
 function normalizeAuthorizationTransition(
@@ -1978,7 +1971,6 @@ function runtimeProtocolCapabilities(config: OpenXiangdaAppConfig) {
     'application-native-2',
     ...(requiresExtendedDeclarationCapacity(config) ? ['application.extended-declaration-capacity'] : []),
     ...(requiresExtendedArtifactCapacity(config) ? ['application.extended-artifact-capacity'] : []),
-    ...(requiresHighDensityArtifactCapacity(config) ? ['application.high-density-artifact-capacity'] : []),
     'authz.batch-explain',
     'deployment.durable-runs',
     'deployment.platform-executor',
@@ -1988,7 +1980,6 @@ function runtimeProtocolCapabilities(config: OpenXiangdaAppConfig) {
     ...(requiresExtendedOwnedSubtableCapacity(config.data?.resources || []) ? ['data.extended-owned-subtable-capacity'] : []),
     ...(requiresAggregateOwnedSubtableCapacity(config.data?.resources || []) ? ['data.aggregate-owned-subtable-capacity'] : []),
     ...(requiresWorkflowRoleUnion(config.workflows?.bindings || []) ? ['workflow.role-union'] : []),
-    ...(requiresWorkflowRoleInputSelection(config.workflows?.bindings || []) ? ['workflow.role-input-selection'] : []),
     ...(requiresUserCandidateLaunchScope(config.data?.resources || []) ? ['data.user-candidate-launch-scope'] : []),
     ...(requiresDateTimeMinutePrecision(config.data?.resources || []) ? ['data.datetime-minute-precision'] : []),
     ...(requiresOwnedSubtableMinimumRows(config.data?.resources || []) ? ['data.subtable-minimum-rows'] : []),
@@ -2042,8 +2033,6 @@ function runtimeProtocolCapabilities(config: OpenXiangdaAppConfig) {
       : []),
     ...((config.workflows?.definitions || []).some(item => item.definition.commandHandlers !== undefined) || operations.some(operation => operation.platformAccess?.workflow?.businessCommands)
       ? ['workflow.business-data-command'] : []),
-    ...((config.workflows?.definitions || []).some(item => item.definition.commandHandlers?.approve?.transitionPolicy === 'workflow')
-      ? ['workflow.approval-business-command'] : []),
     ...((config.workflows?.definitions || []).some(item => item.definition.commandHandlers?.resubmit) || operations.some(operation => operation.platformAccess?.workflow?.businessCommands?.includes('resubmit'))
       ? ['workflow.correction-business-command'] : []),
     ...((config.workflows?.definitions || []).some(item => item.definition.launchPreflight !== undefined)

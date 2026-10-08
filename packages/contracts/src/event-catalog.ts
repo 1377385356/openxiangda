@@ -1,4 +1,3 @@
-import { DATA_RESOURCE_MAX_FIELDS } from './native-compiler/data-capacity.js';
 import {
   DATA_EVENT_TYPES_V2,
   SCHEMA_VERSIONS,
@@ -61,10 +60,10 @@ export const DATA_RECORD_EVENT_DATA_SCHEMA_V2 = {
     changedFields: {
       type: 'array',
       uniqueItems: true,
-      maxItems: DATA_RESOURCE_MAX_FIELDS,
+      maxItems: 100,
       items: { type: 'string', minLength: 1, maxLength: 128 },
     },
-    changes: { type: 'object', maxProperties: DATA_RESOURCE_MAX_FIELDS },
+    changes: { type: 'object', maxProperties: 100 },
     projection: { type: 'object', maxProperties: 64 },
     actor: {
       type: 'object',

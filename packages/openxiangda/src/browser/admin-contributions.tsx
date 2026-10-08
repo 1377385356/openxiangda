@@ -1,5 +1,4 @@
 import type { AppFrontendRouteContract } from 'openxiangda-contracts/browser';
-import { NATIVE_CONTRACT_CAPACITY_V2 } from 'openxiangda-contracts/browser';
 import {
   createContext,
   useContext,
@@ -16,6 +15,8 @@ import type { StandardUserSurfaceContributions } from './standard-user-surfaces'
 const CODE_PATTERN = /^[a-z][a-z0-9]*(?:[-_.][a-z0-9]+)*$/;
 const CAPABILITY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9:._*-]{0,254}$/;
 const RESOURCE_CODE_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
+const MAX_ROUTES = 500;
+const MAX_RESOURCES = 200;
 const MAX_ACTIONS_PER_SLOT = 50;
 const ADMIN_CONTRIBUTIONS_BRAND: unique symbol = Symbol(
   'openxiangda.admin-contributions',
@@ -280,7 +281,7 @@ function defineContributions<const Routes extends RouteContracts>(
 ): OpenXiangdaApplicationContributions {
   const routeEntries = Object.entries(routeContracts);
   const pageEntries = Object.entries(input.pages);
-  if (routeEntries.length > NATIVE_CONTRACT_CAPACITY_V2.routes) invalid('too-many-routes');
+  if (routeEntries.length > MAX_ROUTES) invalid('too-many-routes');
   const routeKeys = new Set(routeEntries.map(([key]) => key));
   if (
     pageEntries.length !== routeEntries.length ||
@@ -350,7 +351,7 @@ function defineContributions<const Routes extends RouteContracts>(
   }
 
   const resourceEntries = Object.entries(input.resources || {});
-  if (resourceEntries.length > NATIVE_CONTRACT_CAPACITY_V2.resources) invalid('too-many-resources');
+  if (resourceEntries.length > MAX_RESOURCES) invalid('too-many-resources');
   const resources = Object.fromEntries(
     resourceEntries.map(([resource, slots]) => {
       if (!RESOURCE_CODE_PATTERN.test(resource)) invalid(`resource:${resource}`);

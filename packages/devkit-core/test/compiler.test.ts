@@ -1364,32 +1364,6 @@ test('compiles named-operation Workflow submission routes and rejects unsealed m
   assert.equal(launch?.desktop.capability, capability);
   assert.equal(launch?.mobile.capability, capability);
 
-  // The UI compiler and sealed platform compiler must agree on a full form,
-  // including required inputs beyond the former 64-binding limit.
-  for (const extraCount of [59, 60, 190]) {
-    const large = structuredClone(declaration) as any;
-    const resource = large.data.resources.find((item: any) => item.code === 'instruments');
-    const operation = large.backend.operations[0];
-    const inputs = large.workflows.definitions[0].launch.submission.create.inputs;
-    for (let index = 0; index < extraCount; index++) {
-      const code = `budget${index}`;
-      resource.fields.push({ code, label: code, type: 'text.short', maxLength: 80 });
-      operation.requestSchema.properties[code] = { type: 'string' };
-      operation.requestSchema.required.push(code);
-      inputs[code] = { source: 'field', fieldCode: code };
-    }
-    const app = defineOpenXiangdaApp(large);
-    assert.equal(requiredPlatformCapabilities(app).some(item => item.code === 'data.extended-field-capacity'), extraCount >= 60);
-    const sources = compileApplicationSources(app);
-    assert.doesNotThrow(() => compileNativeApplicationConfiguration({
-      appCode: app.app.code, configBytes: sources.config.content, contractBytes: sources.contracts.content,
-      expectedConfigDigest: sources.config.digest, expectedContractDigest: sources.contracts.digest,
-    }));
-    delete inputs.budget0;
-    assert.throws(() => defineOpenXiangdaApp(large), error => diagnosticOf(error,
-      'APP_CONFIG_WORKFLOW_NAMED_OPERATION_INPUT_INVALID', 'workflows.definitions[0].launch.submission.create.inputs'));
-  }
-
   const invalidCases: Array<[(value: any) => void, string, string]> = [
     [
       value => {
