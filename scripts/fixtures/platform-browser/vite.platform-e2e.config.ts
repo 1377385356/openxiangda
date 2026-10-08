@@ -1,8 +1,13 @@
 import { mergeConfig } from 'vite';
+import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
 import applicationConfig from './vite.config';
 
 // 只装入发行门禁的临时应用，不分发到用户工作区。
 export default mergeConfig(applicationConfig, {
+  // Maintainer fixtures use the actual installed router owner, including in a
+  // packed candidate. Do not expose this internal owner as an application API.
+  resolve: { alias: { '@maintainer/navigation-owner': join(dirname(createRequire(import.meta.url).resolve('openxiangda/package.json')), 'dist/browser/navigation-guard.js') } },
   optimizeDeps: {
     entries: [
       'index.html',

@@ -1,6 +1,6 @@
 import { Modal } from 'antd';
 import {
-  createContext, useCallback, useContext, useLayoutEffect, useRef, useState,
+  createContext, useCallback, useContext, useLayoutEffect, useMemo, useRef, useState,
   type ReactNode,
 } from 'react';
 import { createBrowserRouter, RouterProvider, useBlocker } from 'react-router-dom';
@@ -13,16 +13,26 @@ export interface UnsavedChangesGuardOptions {
 }
 
 type RegisterGuard = (key: symbol, options: UnsavedChangesGuardOptions) => () => void;
-const GuardContext = createContext<RegisterGuard | null>(null);
+interface GuardOwner {
+  register: RegisterGuard;
+  release: (key: symbol) => void;
+  confirmNavigation: (proceed: () => void) => void;
+}
+const GuardContext = createContext<GuardOwner | null>(null);
 const RouterContents = createContext<ReactNode>(null);
 type BlockedNavigation = Extract<ReturnType<typeof useBlocker>, { state: 'blocked' }>;
 
 /** Register local dirty state with the application's single navigation owner. */
 export function useUnsavedChangesGuard({ when, message, preventNavigation }: UnsavedChangesGuardOptions) {
-  const register = useContext(GuardContext);
+  const owner = useContext(GuardContext);
   const key = useRef(Symbol('unsaved-changes'));
-  if (!register) throw new Error('OPENXIANGDA_NAVIGATION_GUARD_PROVIDER_REQUIRED');
+  if (!owner) throw new Error('OPENXIANGDA_NAVIGATION_GUARD_PROVIDER_REQUIRED');
+  const { register, release, confirmNavigation } = owner;
   useLayoutEffect(() => register(key.current, { when, message, preventNavigation }), [register, when, message, preventNavigation]);
+  // Acknowledged writes may navigate in the same tick, before React commits
+  // the clean state. Remove only this form's registration synchronously.
+  const releaseOwnGuard = useCallback(() => release(key.current), [release]);
+  return { release: releaseOwnGuard, confirmNavigation };
 }
 
 function NavigationGuardOwner({ children }: { children: ReactNode }) {
@@ -36,12 +46,29 @@ function NavigationGuardOwner({ children }: { children: ReactNode }) {
       if (guards.current.delete(key)) refresh(value => value + 1);
     };
   }, []);
+  const release = useCallback((key: symbol) => {
+    if (guards.current.delete(key)) refresh(value => value + 1);
+  }, []);
   const shouldBlock = useCallback(() => guards.current.size > 0, []);
   const blocker = useBlocker(shouldBlock);
   // React Router may publish reset/proceed after our local state update. Do not
   // recapture the old blocked snapshot and reopen a just-dismissed dialog.
   const settling = useRef(false);
-  const [pending, setPending] = useState<{ navigation: BlockedNavigation; message: string }>();
+  type Pending = { navigation?: BlockedNavigation; proceed?: () => void; message: string };
+  const [pending, setPendingState] = useState<Pending>();
+  const pendingRef = useRef<Pending | undefined>(undefined);
+  const setPending = useCallback((value: Pending | undefined) => {
+    pendingRef.current = value;
+    setPendingState(value);
+  }, []);
+  const guardMessage = () => [...guards.current.values()]
+    .find(item => item.message?.trim())?.message || '当前内容尚未保存，离开后将丢失。';
+  const confirmNavigation = useCallback((proceed: () => void) => {
+    if (pendingRef.current) return;
+    if (!guards.current.size) { proceed(); return; }
+    setPending({ proceed, message: guardMessage() });
+  }, [setPending]);
+  const owner = useMemo(() => ({ register, release, confirmNavigation }), [register, release, confirmNavigation]);
   useLayoutEffect(() => {
     if (blocker.state !== 'blocked') settling.current = false;
     if (guards.current.size === 0) {
@@ -49,10 +76,9 @@ function NavigationGuardOwner({ children }: { children: ReactNode }) {
         settling.current = true;
         blocker.reset();
       }
-      if (pending) setPending(undefined);
+      if (pending?.navigation) setPending(undefined);
     } else if (!pending && !settling.current && blocker.state === 'blocked') {
-      setPending({ navigation: blocker, message: [...guards.current.values()]
-        .find(item => item.message?.trim())?.message || '当前内容尚未保存，离开后将丢失。' });
+      setPending({ navigation: blocker, message: guardMessage() });
     }
   }, [blocker, pending, revision]);
   useLayoutEffect(() => {
@@ -67,7 +93,7 @@ function NavigationGuardOwner({ children }: { children: ReactNode }) {
   const stay = () => {
     if (!pending || settling.current) return;
     settling.current = true;
-    const navigation = pending?.navigation;
+    const navigation = pending.navigation || (blocker.state === 'blocked' ? blocker : undefined);
     setPending(undefined);
     navigation?.reset();
   };
@@ -75,11 +101,14 @@ function NavigationGuardOwner({ children }: { children: ReactNode }) {
     if (!pending || settling.current) return;
     if ([...guards.current.values()].some(item => item.preventNavigation)) { stay(); return; }
     settling.current = true;
-    const navigation = pending?.navigation;
+    const navigation = pending.navigation;
+    const proceed = pending.proceed;
+    if (!navigation && blocker.state === 'blocked') blocker.reset();
     setPending(undefined);
     navigation?.proceed();
+    proceed?.();
   };
-  return <GuardContext.Provider value={register}>
+  return <GuardContext.Provider value={owner}>
     {children}
     <Modal open={Boolean(pending)} title={[...guards.current.values()].some(item => item.preventNavigation) ? '请先完成当前操作' : '离开当前页面？'} centered
       okText={[...guards.current.values()].some(item => item.preventNavigation) ? '返回处理' : '离开'} cancelText="继续编辑" onOk={leave} onCancel={stay}

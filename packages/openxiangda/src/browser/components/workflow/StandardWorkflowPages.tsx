@@ -1,4 +1,5 @@
 import { applicationCode } from '../../runtime-meta';
+import { useUnsavedChangesGuard } from '../../navigation-guard';
 import { readPendingWorkflowSubmission, writePendingWorkflowSubmission, clearPendingWorkflowSubmission, workflowSubmissionScope, submissionLocatorStorage, standardProcessWasRejected, type PendingWorkflowSubmission } from '../../workflow-submission-recovery';
 import { readPendingWorkflowTaskCommand, writePendingWorkflowTaskCommand, clearPendingWorkflowTaskCommand, workflowTaskCommandScope, workflowCommandTokenDigest, workflowTaskCommandWasRejected, type PendingWorkflowTaskCommand } from '../../workflow-task-command-recovery';
 import { WorkflowTaskForm, useWorkflowTaskForm } from './WorkflowTaskForm';
@@ -2252,11 +2253,27 @@ export function WorkflowSubmissionPage({
   const [loadedSubjectRevision, setLoadedSubjectRevision] = useState<number>();
   const [localCommandId, setLocalCommandId] = useState('');
   const [localSubjectId, setLocalSubjectId] = useState('');
+  const [subjectDirty, setSubjectDirty] = useState(false);
+  const [requirementDirty, setRequirementDirty] = useState(false);
   const launchPagePath = useRef('');
   const [fullScreen, setFullScreen] = useState(false);
   const pathCommandId = useParams<{ commandId?: string }>().commandId;
   const commandId = onDismiss ? localCommandId : pathCommandId || searchParams.get('processCommandId') || '';
   const subjectId = onDismiss ? localSubjectId : searchParams.get('subjectId') || '';
+  const recoveryMustStay = Boolean(pendingSubmission && !recoveryPersisted);
+  const navigationGuard = useUnsavedChangesGuard({
+    when: subjectDirty || requirementDirty || loading || recoveryMustStay,
+    preventNavigation: loading || recoveryMustStay,
+    message: loading ? '正在提交，请等待当前操作结果。'
+      : recoveryMustStay ? '提交结果尚未确认，恢复信息未能保存。请留在本页查询原操作。'
+      : pendingSubmission ? '原提交结果尚未确认。离开后可返回查询原操作，请勿重复申请。'
+      : '填写内容尚未提交，离开后将丢失。',
+  });
+  const acknowledgeSubmission = () => {
+    setSubjectDirty(false);
+    setRequirementDirty(false);
+    navigationGuard.release();
+  };
   const newPageQuery = new URLSearchParams();
   if (commandId) newPageQuery.set('processCommandId', commandId);
   else if (subjectId) newPageQuery.set('subjectId', subjectId);
@@ -2327,7 +2344,9 @@ export function WorkflowSubmissionPage({
   }, [fields, formOptions?.fieldState, subjectDefinition, watchedFormValues]);
   const prefillContext = JSON.stringify([recoveryScope, identity.environment.activeAppVersionId, submissionMode, subjectId]);
   useEffect(() => { setLinkageError(false); }, [prefillContext]);
+  useEffect(() => { setSubjectDirty(false); }, [prefillContext]);
   const onValuesChange = (changed: Record<string, unknown>, values: Record<string, unknown>) => {
+    if (!loading && !commandId && !pendingSubmission) setSubjectDirty(true);
     if (!formOptions?.valueLinkage || loading || commandId || pendingSubmission || !subjectDefinition) return;
     try {
       const canonical = normalizeFormValues(values, subjectDefinition.surface) as JsonObject;
@@ -2661,7 +2680,12 @@ export function WorkflowSubmissionPage({
   }, [commandId, processSurface?.subject.recordId, subjectDefinition, subjectForm]);
 
   const drawerBusy = loading || Boolean(commandId && (!processSurface || ['accepted', 'resolving', 'ready', 'starting', 'retry_wait'].includes(processSurface.command.status)) && !processError);
-  const dismissDrawer = () => { if (!submitInFlight.current && !drawerBusy) onDismiss?.(); };
+  const dismissDrawer = () => {
+    if (!submitInFlight.current && !drawerBusy) navigationGuard.confirmNavigation(() => {
+      acknowledgeSubmission();
+      onDismiss?.();
+    });
+  };
   const frame = (content: ReactNode) =>
     onDismiss ? <Drawer open title={definition?.title || '新增流程申请'} closable={false}
       rootClassName="oxa-resource-drawer oxa-workflow-launch-drawer"
@@ -2688,6 +2712,7 @@ export function WorkflowSubmissionPage({
   const resumeOriginal = (id: string, attempt: PendingWorkflowSubmission) => {
     if (activeRecoveryScope.current !== recoveryScope) return;
     clearOriginal(attempt);
+    acknowledgeSubmission();
     if (onDismiss) { setLocalCommandId(id); return; }
     const next = new URLSearchParams(searchParams);
     next.set('processCommandId', id); next.delete('subjectId');
@@ -2836,6 +2861,7 @@ export function WorkflowSubmissionPage({
         );
         clearOriginal(dispatched!);
         if (activeRecoveryScope.current !== recoveryScope) return;
+        acknowledgeSubmission();
         if (outcome.kind === 'workflow-command') {
           if (onDismiss) { setLocalCommandId(outcome.command.id); return; }
           const next = new URLSearchParams(searchParams);
@@ -2878,6 +2904,7 @@ export function WorkflowSubmissionPage({
       const command = await originalRetry.current.send();
       clearOriginal(dispatched!);
       if (activeRecoveryScope.current !== recoveryScope) return;
+      acknowledgeSubmission();
       if (onDismiss) { setLocalCommandId(command.id); return; }
       const next = new URLSearchParams(searchParams);
       next.set('processCommandId', command.id);
@@ -2909,6 +2936,8 @@ export function WorkflowSubmissionPage({
       setProcessSurface(null);
       setProcessRefreshAttempt(value => value + 1);
       requirementForm.resetFields();
+      setRequirementDirty(false);
+      navigationGuard.release();
     } catch (error) {
       message.error(errorMessage(error, '补充发起信息失败'));
     } finally {
@@ -2935,26 +2964,32 @@ export function WorkflowSubmissionPage({
   };
 
   const selectMode = (nextMode: 'create' | 'existing') => {
-    if (!generatedNamedSubmission?.[nextMode] || submitInFlight.current || commandId) return;
-    setSubmissionMode(nextMode);
-    setCompletion(null);
-    subjectForm.resetFields();
-    if (onDismiss) { setLocalSubjectId(''); return; }
-    const next = new URLSearchParams(searchParams);
-    next.delete('processCommandId');
-    if (nextMode === 'create') next.delete('subjectId');
-    setSearchParams(next, { replace: true });
+    if (nextMode === submissionMode || !generatedNamedSubmission?.[nextMode] || submitInFlight.current || commandId || pendingSubmission) return;
+    navigationGuard.confirmNavigation(() => {
+      acknowledgeSubmission();
+      setSubmissionMode(nextMode);
+      setCompletion(null);
+      subjectForm.resetFields();
+      if (onDismiss) { setLocalSubjectId(''); return; }
+      const next = new URLSearchParams(searchParams);
+      next.delete('processCommandId');
+      if (nextMode === 'create') next.delete('subjectId');
+      setSearchParams(next, { replace: true });
+    });
   };
   const selectSubject = (nextSubjectId?: string) => {
-    if (submitInFlight.current || commandId) return;
-    setCompletion(null);
-    subjectForm.resetFields();
-    if (onDismiss) { setLocalSubjectId(nextSubjectId || ''); return; }
-    const next = new URLSearchParams(searchParams);
-    next.delete('processCommandId');
-    if (nextSubjectId) next.set('subjectId', nextSubjectId);
-    else next.delete('subjectId');
-    setSearchParams(next, { replace: true });
+    if ((nextSubjectId || '') === subjectId || submitInFlight.current || commandId || pendingSubmission) return;
+    navigationGuard.confirmNavigation(() => {
+      acknowledgeSubmission();
+      setCompletion(null);
+      subjectForm.resetFields();
+      if (onDismiss) { setLocalSubjectId(nextSubjectId || ''); return; }
+      const next = new URLSearchParams(searchParams);
+      next.delete('processCommandId');
+      if (nextSubjectId) next.set('subjectId', nextSubjectId);
+      else next.delete('subjectId');
+      setSearchParams(next, { replace: true });
+    });
   };
   const launchControls = generatedNamedSubmission ? (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
@@ -3052,6 +3087,7 @@ export function WorkflowSubmissionPage({
     onBack: onDismiss ? dismissDrawer : () => navigate(-1),
     onSubmit: submit,
     onValuesChange,
+    onRequirementsChange: () => setRequirementDirty(true),
     onAnswer: answer,
     onRetry: retry,
     onRefresh: () => { setProcessError(null); setProcessRefreshAttempt(value => value + 1); },
@@ -3089,6 +3125,7 @@ interface ProcessSubmissionRendererProps {
   onBack: () => void;
   onSubmit: (values: JsonObject) => Promise<void>;
   onValuesChange: (changed: Record<string, unknown>, values: Record<string, unknown>) => void;
+  onRequirementsChange: () => void;
   onAnswer: (answers: JsonObject) => Promise<void>;
   onRetry: () => Promise<void>;
   onRefresh: () => void;
@@ -3102,6 +3139,7 @@ function ProcessCommandPanel({
   onAnswer,
   onRetry,
   onRefresh,
+  onValuesChange,
 }: {
   form: ProcessSubmissionRendererProps['requirementForm'];
   surface: ProcessCommandSurface | null;
@@ -3110,6 +3148,7 @@ function ProcessCommandPanel({
   onAnswer: ProcessSubmissionRendererProps['onAnswer'];
   onRetry: ProcessSubmissionRendererProps['onRetry'];
   onRefresh: ProcessSubmissionRendererProps['onRefresh'];
+  onValuesChange: ProcessSubmissionRendererProps['onRequirementsChange'];
 }) {
   if (error) {
     return (
@@ -3133,7 +3172,7 @@ function ProcessCommandPanel({
     <div className="oxa-workflow-submission-followup">
       {command.status === 'awaiting_input' ? (
         <Card title="还需要补充一些信息">
-          <Form form={form} layout="vertical" onFinish={values => void onAnswer(values)}>
+          <Form form={form} layout="vertical" onValuesChange={onValuesChange} onFinish={values => void onAnswer(values)}>
             <RequirementFields requirements={surface.requirements} />
             <Button htmlType="submit" loading={loading} type="primary">
               提交补充信息
@@ -3179,6 +3218,7 @@ function StandardProcessSubmissionRenderer(props: ProcessSubmissionRendererProps
         {props.processing && <Alert type="info" showIcon title="正在提交申请，请稍候…" />}</>}
       onValuesChange={props.onValuesChange} onSubmit={values => void props.onSubmit(values)} />
     <ProcessCommandPanel error={props.processError} form={props.requirementForm} loading={props.loading}
+      onValuesChange={props.onRequirementsChange}
       onAnswer={props.onAnswer} onRetry={props.onRetry} onRefresh={props.onRefresh} surface={props.processSurface} />
   </div>;
 }

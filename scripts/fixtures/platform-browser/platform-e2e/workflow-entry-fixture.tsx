@@ -3,12 +3,13 @@ import { Refine } from '@refinedev/core';
 import { App as AntdApp } from 'antd';
 import React, { useState } from 'react';
 import ReactDOM from 'react-dom/client';
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { Link, Route, Routes, useLocation } from 'react-router-dom';
 import {
   createApplicationProvider, GeneratedResourcePage, OpenXiangdaResourceDefinitionsProvider,
   OpenXiangdaUiProvider, OpenXiangdaWorkflowDefinitionsProvider, RuntimeBoundary, WorkflowSubmissionPage,
   type GeneratedResourceDefinition,
 } from 'openxiangda/react';
+import { ApplicationRouter } from '@maintainer/navigation-owner';
 import 'openxiangda/react/styles.css';
 import 'openxiangda/mobile/styles.css';
 
@@ -84,6 +85,7 @@ if (query.has('named')) {
 const mode = query.get('mode') || 'list';
 const base = mode === 'mobile-detail' ? '/m/admin/purchases' : '/admin/purchases';
 const paths = { fallback: '/admin', list: base, detail: `${base}/:id` };
+history.replaceState({}, '', (mode === 'mobile-detail' || mode === 'desktop-detail') ? `${paths.list}/record-1` : paths.list + (query.has('named') ? '?changeType=JOIN' : ''));
 
 function Entry() {
   const [completions, setCompletions] = useState<string[]>([]);
@@ -97,14 +99,15 @@ function Entry() {
     <output data-testid="parent-render">{render}</output>
     <output data-testid="completions">{completions.join(',')}</output>
     <output data-testid="route">{location.pathname}{location.search}</output>
+    {mode === 'standalone' && <Link to="/other">离开发起页面</Link>}
     {!dismissed && <WorkflowSubmissionPage workflowCode="purchase-approval" variant={mode === 'mobile' ? 'mobile' : 'desktop'}
-      onDismiss={() => setDismissed(true)} onCompleted={id => setCompletions(values => [...values, id])} />}
+      instancePath="/instances/:instanceId" onDismiss={mode === 'standalone' ? undefined : () => setDismissed(true)} onCompleted={mode === 'standalone' ? undefined : id => setCompletions(values => [...values, id])} />}
   </>;
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <OpenXiangdaUiProvider><AntdApp><MemoryRouter initialEntries={[(mode === 'mobile-detail' || mode === 'desktop-detail') ? `${paths.list}/record-1` : paths.list + (query.has('named') ? '?changeType=JOIN' : '')]}><RuntimeBoundary>
+    <OpenXiangdaUiProvider><AntdApp><ApplicationRouter><RuntimeBoundary>
       <OpenXiangdaResourceDefinitionsProvider definitions={definitions}>
         <OpenXiangdaWorkflowDefinitionsProvider definitions={workflowDefinitions}>
           <Refine dataProvider={createApplicationProvider(definitions)} resources={[{ name: code, list: paths.list, show: paths.detail }]}>
@@ -112,6 +115,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           </Refine>
         </OpenXiangdaWorkflowDefinitionsProvider>
       </OpenXiangdaResourceDefinitionsProvider>
-    </RuntimeBoundary></MemoryRouter></AntdApp></OpenXiangdaUiProvider>
+    </RuntimeBoundary></ApplicationRouter></AntdApp></OpenXiangdaUiProvider>
   </React.StrictMode>,
 );
