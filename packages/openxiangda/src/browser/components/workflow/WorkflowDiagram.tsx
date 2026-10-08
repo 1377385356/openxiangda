@@ -4,7 +4,8 @@ import { Alert, Button, Empty, Input, Segmented, Select, Skeleton, Space, Switch
 import { AimOutlined, BorderOutlined, LockOutlined, MinusOutlined, PlusOutlined } from '@ant-design/icons';
 import { WorkflowNodeCard } from './WorkflowNodeCard';
 import type { WorkflowFlowCanvasController } from './WorkflowFlowCanvas';
-import { workflowNodeSummaries } from './workflow-graph-presentation';
+import { workflowDiagramProjection, workflowNodeSummaries } from './workflow-graph-presentation';
+export { workflowDiagramProjection } from './workflow-graph-presentation';
 
 const FlowCanvas = lazy(() => import('./WorkflowFlowCanvas'));
 const emptyVisits: readonly WorkflowGraphVisit[] = [];
@@ -42,6 +43,8 @@ export interface WorkflowDiagramProps {
   visits?: readonly WorkflowGraphVisit[];
   selectedEdgeId?: string;
   onSelectEdge?: (edgeId: string) => void;
+  /** Fill the host canvas; code explanations can be shown in the host's node panel. */
+  presentation?: 'embedded' | 'canvas';
 }
 
 class CanvasBoundary extends Component<{ children: ReactNode; onList: () => void }, { failed: boolean }> {
@@ -53,7 +56,7 @@ class CanvasBoundary extends Component<{ children: ReactNode; onList: () => void
 }
 
 /** Read-only graph and accessible list share the platform's immutable projection. */
-export function WorkflowDiagram({ graph, selectedNodeId, onSelectNode, titles = emptyTitles, summaries, visits = emptyVisits, selectedEdgeId, onSelectEdge }: WorkflowDiagramProps) {
+export function WorkflowDiagram({ graph, selectedNodeId, onSelectNode, titles = emptyTitles, summaries, visits = emptyVisits, selectedEdgeId, onSelectEdge, presentation = 'embedded' }: WorkflowDiagramProps) {
   const [canvas, setCanvas] = useState<{ graph: WorkflowGraphProjection; controller: WorkflowFlowCanvasController } | null>(null);
   const list = useRef<HTMLOListElement>(null);
   const listButtons = useRef(new Map<string, HTMLButtonElement>());
@@ -79,10 +82,11 @@ export function WorkflowDiagram({ graph, selectedNodeId, onSelectNode, titles = 
     return visit.transition ? [`${visit.nodeId}:${visit.transition}`] : [];
   })), [visits]);
   const shownGraph = useMemo(() => {
-    if (!actualOnly) return graph;
-    const nodes = graph.nodes.filter(node => visited.has(node.id));
+    const projection = workflowDiagramProjection(graph);
+    if (!actualOnly) return projection;
+    const nodes = projection.nodes.filter(node => visited.has(node.id));
     const ids = new Set(nodes.map(node => node.id));
-    return { ...graph, nodes, edges: graph.edges.filter(edge => ids.has(edge.from) && ids.has(edge.to) && executedEdges.has(edge.id)) };
+    return { ...projection, nodes, edges: projection.edges.filter(edge => ids.has(edge.from) && ids.has(edge.to) && executedEdges.has(edge.id)) };
   }, [graph, actualOnly, visited, executedEdges]);
   const controller = canvas?.graph === shownGraph ? canvas.controller : null;
   const orderedNodes = useMemo(() => displayNodeOrder(shownGraph), [shownGraph]);
@@ -121,7 +125,7 @@ export function WorkflowDiagram({ graph, selectedNodeId, onSelectNode, titles = 
     setLocalEdge(id); onSelectEdge?.(id);
   };
   if (graph.nodes.length > 200) return <Alert type="error" title="流程图超出 200 节点的显示上限" />;
-  return <section className="oxa-workflow-diagram" aria-label="固定流程结构">
+  return <section className={`oxa-workflow-diagram ${presentation === 'canvas' ? 'oxa-workflow-diagram-standalone' : ''}`} aria-label="固定流程结构">
     <div className="oxa-workflow-diagram-tools">
       <Segmented aria-label="流程查看方式" value={effectiveView} disabled={narrow} onChange={value => setView(value as typeof view)} options={[{ value: 'graph', label: '流程图' }, { value: 'list', label: '节点列表' }]} />
       <div className="oxa-workflow-node-search"><Input.Search aria-label="搜索流程节点" placeholder="搜索节点" value={keyword} allowClear onChange={event => setKeyword(event.target.value)} onSearch={() => options[0] && locate(options[0].value)} />
@@ -129,7 +133,7 @@ export function WorkflowDiagram({ graph, selectedNodeId, onSelectNode, titles = 
       {visits.length > 0 && <Space size="small"><Switch size="small" checked={actualOnly} onChange={setActualOnly} aria-label="只看已执行节点" /><span>已执行路径</span></Space>}
       <span className="oxa-workflow-readonly"><LockOutlined /> 结构只读</span>
     </div>
-    {graph.logic.length > 0 && <details className="oxa-workflow-logic" aria-label="固定代码逻辑说明">
+    {presentation !== 'canvas' && graph.logic.length > 0 && <details className="oxa-workflow-logic" aria-label="固定代码逻辑说明">
       <summary>代码逻辑说明 <span>{graph.logic.length}</span></summary>
       <div className="oxa-workflow-logic-content">
         <p className="oxa-workflow-logic-help">按处理阶段查看开发者提供的代码说明。实际执行记录请查看办理历史。</p>

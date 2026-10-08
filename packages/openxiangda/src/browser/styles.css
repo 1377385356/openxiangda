@@ -2942,6 +2942,19 @@
 .oxa-form-scroll > .ant-alert { margin: 12px 16px; }
 .oxa-form-overlay .oxa-settings-actions { padding: 12px; }
 .oxa-workflow-diagram { min-width: 0; min-height: 0; display: flex; flex-direction: column; height: 100%; background: var(--ant-color-bg-container, #fff); }
+.oxa-workflow-diagram-standalone { position: relative; background: #f5f6f8; }
+.oxa-workflow-diagram-standalone .oxa-workflow-diagram-tools { position: absolute; left: 20px; top: 16px; right: 20px; z-index: 5; width: fit-content; max-width: calc(100% - 40px); padding: 8px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; box-shadow: 0 3px 12px #1f36500a; }
+.oxa-workflow-diagram-standalone .oxa-workflow-canvas { height: 100%; min-height: 0; }
+.oxa-workflow-diagram-standalone .oxa-workflow-node { border-radius: 6px; padding: 16px; border-top: 4px solid #94a3b8; }
+.oxa-workflow-diagram-standalone .kind-approval { border-top-color: #f4a54a; }
+.oxa-workflow-diagram-standalone .kind-cc { border-top-color: #5999ed; }
+.oxa-workflow-diagram-standalone .kind-condition { border-top-color: #6ba98b; }
+.oxa-workflow-diagram-standalone .kind-action { border-top-color: #8794ca; }
+.oxa-workflow-diagram-standalone .oxa-workflow-node-list { height: 100%; max-height: none; padding-top: 88px; }
+.oxa-workflow-config-panel { display: flex; flex-direction: column; height: 100%; min-height: 0; background: #fff; }
+.oxa-workflow-config-panel-heading { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-bottom: 1px solid #e5e7eb; }
+.oxa-workflow-config-panel-body { flex: 1; min-height: 0; overflow: auto; padding: 20px; }
+.oxa-workflow-config-panel > .oxa-workflow-config-footer { padding: 14px 16px; border-top: 1px solid #e5e7eb; }
 .oxa-workflow-diagram-tools { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--ant-color-border-secondary, #e8edf2); font-size: 12px; }
 .oxa-workflow-node-search { display: flex; gap: 8px; min-width: 0; flex: 1; max-width: 460px; }
 .oxa-workflow-node-search > .ant-input-search { width: 190px; }

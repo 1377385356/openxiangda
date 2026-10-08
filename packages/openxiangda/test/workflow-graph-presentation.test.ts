@@ -1,7 +1,32 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { WorkflowGraphProjection } from 'openxiangda-contracts/browser';
-import { workflowNodeIsReadable, workflowNodeSummaries } from '../src/browser/components/workflow/workflow-graph-presentation';
+import { workflowDiagramProjection, workflowNodeIsReadable, workflowNodeSummaries } from '../src/browser/components/workflow/workflow-graph-presentation';
+
+test('diagram hides common operation paths without changing canonical business branches or history', () => {
+  const graph: WorkflowGraphProjection = {
+    schemaVersion: 'openxiangda.workflow-graph/v2', workflowCode: 'test', definitionDigest: 'fixed', startAt: 'review',
+    fixedTopology: true, branchStrategy: 'first_match', variables: [], logic: [], diagnostics: [],
+    nodes: [{ id: 'review', kind: 'approval', title: '审批' }, { id: 'fix', kind: 'correction', title: '补正' },
+      { id: 'no', kind: 'end', title: '拒绝', outcome: 'rejected' }, { id: 'legacy-no', kind: 'end', title: '未知终态' },
+      { id: 'business', kind: 'action', title: '拒绝原因计算' }, { id: 'done', kind: 'end', title: '完成', outcome: 'approved' }],
+    edges: [
+      { id: 'approve', from: 'review', to: 'business', kind: 'approve', label: '通过', variablePaths: [] },
+      { id: 'reject', from: 'review', to: 'no', kind: 'reject', label: '拒绝', variablePaths: [] },
+      { id: 'legacy-reject', from: 'review', to: 'legacy-no', kind: 'reject', label: '拒绝', variablePaths: [] },
+      { id: 'return', from: 'review', to: 'fix', kind: 'return', label: '退回', variablePaths: [] },
+      { id: 'resubmit', from: 'fix', to: 'review', kind: 'resubmit', label: '重提', variablePaths: [] },
+      { id: 'branch', from: 'business', to: 'done', kind: 'branch', label: '有效条件', variablePaths: [] },
+    ],
+  };
+  const original = structuredClone(graph);
+  const result = workflowDiagramProjection(graph);
+  assert.deepEqual(result.nodes.map(n => n.id), ['review', 'business', 'done']);
+  assert.deepEqual(result.edges.map(e => e.id), ['approve', 'branch']);
+  assert.ok(result.edges.every(e => result.nodes.some(n => n.id === e.from) && result.nodes.some(n => n.id === e.to)));
+  assert.deepEqual(graph, original);
+  assert.deepEqual(workflowDiagramProjection(result), result);
+});
 
 test('node summaries follow actual branch references and declared step outputs', () => {
   const graph: WorkflowGraphProjection = {

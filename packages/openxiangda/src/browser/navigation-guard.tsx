@@ -10,6 +10,8 @@ export interface UnsavedChangesGuardOptions {
   message?: string;
   /** Keep the page mounted while a write is running or its result is unknown. */
   preventNavigation?: boolean;
+  /** Shared controls can also be hosted by a platform console with its own router. */
+  optionalProvider?: boolean;
 }
 
 type RegisterGuard = (key: symbol, options: UnsavedChangesGuardOptions) => () => void;
@@ -23,15 +25,22 @@ const RouterContents = createContext<ReactNode>(null);
 type BlockedNavigation = Extract<ReturnType<typeof useBlocker>, { state: 'blocked' }>;
 
 /** Register local dirty state with the application's single navigation owner. */
-export function useUnsavedChangesGuard({ when, message, preventNavigation }: UnsavedChangesGuardOptions) {
+export function useUnsavedChangesGuard({ when, message, preventNavigation, optionalProvider }: UnsavedChangesGuardOptions) {
   const owner = useContext(GuardContext);
   const key = useRef(Symbol('unsaved-changes'));
-  if (!owner) throw new Error('OPENXIANGDA_NAVIGATION_GUARD_PROVIDER_REQUIRED');
-  const { register, release, confirmNavigation } = owner;
-  useLayoutEffect(() => register(key.current, { when, message, preventNavigation }), [register, when, message, preventNavigation]);
+  if (!owner && !optionalProvider) throw new Error('OPENXIANGDA_NAVIGATION_GUARD_PROVIDER_REQUIRED');
+  const register = owner?.register, release = owner?.release;
+  useLayoutEffect(() => register?.(key.current, { when, message, preventNavigation }), [register, when, message, preventNavigation]);
   // Acknowledged writes may navigate in the same tick, before React commits
   // the clean state. Remove only this form's registration synchronously.
-  const releaseOwnGuard = useCallback(() => release(key.current), [release]);
+  const releaseOwnGuard = useCallback(() => release?.(key.current), [release]);
+  const confirmNavigation = useCallback((proceed: () => void) => {
+    if (owner) owner.confirmNavigation(proceed);
+    else if (!preventNavigation) {
+      if (when) Modal.confirm({ title: '离开此页面？', content: message || '未保存的输入将丢失。', onOk: proceed });
+      else proceed();
+    }
+  }, [owner, when, message, preventNavigation]);
   return { release: releaseOwnGuard, confirmNavigation };
 }
 

@@ -1,5 +1,19 @@
 import { workflowVariableLabel, type WorkflowGraphProjection } from 'openxiangda-contracts/browser';
 
+/** Common task operations belong in configuration/history, not in the main diagram. */
+export function workflowDiagramProjection(graph: WorkflowGraphProjection): WorkflowGraphProjection {
+  const nodes = graph.nodes.filter(node => {
+    if (node.kind === 'correction') return false;
+    if (node.kind !== 'end') return true;
+    if (node.outcome === 'rejected') return false;
+    const incoming = graph.edges.filter(edge => edge.to === node.id);
+    return !incoming.length || incoming.some(edge => edge.kind !== 'reject');
+  });
+  const ids = new Set(nodes.map(node => node.id));
+  return { ...graph, nodes, edges: graph.edges.filter(edge =>
+    !['reject', 'return', 'resubmit'].includes(edge.kind) && ids.has(edge.from) && ids.has(edge.to)) };
+}
+
 /** Summaries describe the immutable projection; they never infer business rules. */
 export function workflowNodeSummaries(graph: WorkflowGraphProjection): Record<string, string> {
   const label = (path: string) => workflowVariableLabel(path, graph.variables);

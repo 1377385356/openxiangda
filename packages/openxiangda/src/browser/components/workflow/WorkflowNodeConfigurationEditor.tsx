@@ -1,4 +1,5 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useUnsavedChangesGuard } from '../../navigation-guard';
 import { Alert, App, Button, Checkbox, Drawer, Empty, Form, Input, Radio, Select, Space, Tabs, Tag, Typography } from 'antd';
 import type { WorkflowNodeConfigurations, WorkflowNodeConfigurationPatch, WorkflowNodeConfigurationMutation, WorkflowNodeConfigurationReceipt } from 'openxiangda-contracts/browser';
 import { formatWorkflowCompletionDeadline, validateWorkflowNodeConfigurationPatch, workflowOperationCommentRequired, workflowOperationReasonRequired, WORKFLOW_AUTOMATIC_CC_DEFAULT_RECIPIENTS, WORKFLOW_AUTOMATIC_CC_MAX_RECIPIENTS } from 'openxiangda-contracts/browser';
@@ -33,9 +34,10 @@ function initialValues(node: Node, principals: WorkflowNodeConfigurations['princ
 }
 
 /** Shared editor: platform console and application pages use the same bounded SDK write. */
-export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNode, principals: initialPrincipals, expectedHeadRevision, onClose, onSaved }: {
+export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNode, principals: initialPrincipals, expectedHeadRevision, onClose, onSaved, presentation = 'drawer' }: {
   workflowCode: string; node: Node; principals: WorkflowNodeConfigurations['principals']; expectedHeadRevision: number;
   onClose: () => void; onSaved: (receipt: WorkflowNodeConfigurationReceipt) => void;
+  presentation?: 'drawer' | 'panel';
 }) {
   const { modal } = App.useApp();
   const [node, setNode] = useState(initialNode);
@@ -45,6 +47,15 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
   const frozen = useRef<WorkflowNodeConfigurationMutation | null>(null);
   const [busy, setBusy] = useState(false), [uncertain, setUncertain] = useState(false), [conflict, setConflict] = useState(false), [error, setError] = useState('');
   const [tab, setTab] = useState(['approval', 'cc'].includes(initialNode.kind) ? 'people' : 'general');
+  const [dirty, setDirty] = useState(false);
+  const guard = useUnsavedChangesGuard({ when: dirty || busy || uncertain, preventNavigation: busy || uncertain, optionalProvider: true,
+    message: uncertain ? '节点配置操作尚未确认，请先使用原请求核对结果。' : '节点配置尚未保存，离开将丢失草稿。' });
+  useEffect(() => {
+    if (!dirty && !busy && !uncertain) return;
+    const protect = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
+    window.addEventListener('beforeunload', protect);
+    return () => window.removeEventListener('beforeunload', protect);
+  }, [dirty, busy, uncertain]);
   const isCc = node.kind === 'cc';
   const selectedProvider = Form.useWatch('provider', form) || node.effective.binding?.provider;
   const binding = node.defaults.binding;
@@ -52,9 +63,10 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
   const recipientMaximum = isCc ? Math.min(binding?.max ?? WORKFLOW_AUTOMATIC_CC_DEFAULT_RECIPIENTS, WORKFLOW_AUTOMATIC_CC_MAX_RECIPIENTS) : 200;
   const allowedProviders = node.administration?.assigneeProviders || (!isCc && binding && providers[binding.provider] ? [binding.provider] : []);
   const close = () => {
-    if (busy) return;
-    if (form.isFieldsTouched() || uncertain) modal.confirm({ title: '关闭节点配置？', content: uncertain ? '操作结果尚未确认。请保留原操作 ID，重新打开后先查询配置和修改记录。' : '未保存的草稿将离开编辑器。', okText: '关闭', cancelText: '继续编辑', onOk: onClose });
-    else onClose();
+    if (busy || uncertain) return;
+    const finish = () => { guard.release(); onClose(); };
+    if (form.isFieldsTouched()) modal.confirm({ title: '关闭节点配置？', content: '未保存的草稿将离开编辑器。', okText: '放弃草稿', cancelText: '继续编辑', onOk: finish });
+    else finish();
   };
   const buildPatch = (values: Values): WorkflowNodeConfigurationPatch => {
     const patch = structuredClone(node.configuration.patch || {});
@@ -92,6 +104,7 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
     setBusy(true); setError('');
     try {
       const receipt = await saveWorkflowNodeConfiguration(workflowCode, node.nodeId, frozen.current);
+      guard.release();
       onSaved(receipt);
     } catch (failure) {
       const detail = failure as Error & { code?: string; status?: number };
@@ -116,13 +129,14 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
       setNode(latest); setPrincipals(configuration.principals); setConflict(false); frozen.current = null;
     } catch (failure) { setError((failure as Error).message); } finally { setBusy(false); }
   };
-  return <Drawer open title="调整节点配置" size={620} rootClassName="oxa-workflow-config" onClose={close} closable={!busy} mask={{ closable: !busy }} footer={<div className="oxa-workflow-config-footer"><span>当前待办保留原配置</span><Space><Button disabled={busy} onClick={close}>取消</Button><Button aria-label="保存节点配置" type="primary" loading={busy} disabled={conflict} onClick={() => void save()}>{uncertain ? '重试相同操作' : '保存配置'}</Button></Space></div>}>
+  const footer = <div className="oxa-workflow-config-footer"><span>对后续节点生效</span><Space><Button disabled={busy || uncertain} onClick={close}>取消</Button><Button aria-label="保存节点配置" type="primary" loading={busy} disabled={conflict} onClick={() => void save()}>{uncertain ? '重试相同操作' : '保存配置'}</Button></Space></div>;
+  const content = <>
     <div className="oxa-workflow-config-context"><Typography.Title level={4}>{node.effective.title}</Typography.Title><Space wrap><Tag>{node.configuration.patch ? '后台覆盖' : '代码默认值'}</Tag><Tag>修订 {basis.current.expectedRevision}</Tag></Space></div>
     <Alert type="info" showIcon title="对后续进入的节点生效" description={isCc ? '后续进入使用新配置；已抄送的接收人和记录保留。' : effect} style={{ marginBottom: 16 }} />
     {error && <Alert type="error" showIcon title={conflict ? '配置已有新的修订，草稿已保留' : uncertain ? '操作结果未确认' : '配置未保存'} description={error} style={{ marginBottom: 16 }} />}
     {conflict && <Button onClick={() => void refreshKeepingDraft()} disabled={busy} style={{ marginBottom: 16 }}>载入最新配置并保留草稿</Button>}
     {uncertain && <Typography.Paragraph>继续使用原操作 ID：<Typography.Text code>{frozen.current?.operationId}</Typography.Text>。重试时不修改请求。</Typography.Paragraph>}
-    <Form form={form} layout="vertical" disabled={busy || uncertain} initialValues={initialValues(initialNode, initialPrincipals)}>
+    <Form form={form} layout="vertical" disabled={busy || uncertain} onValuesChange={() => setDirty(true)} initialValues={initialValues(initialNode, initialPrincipals)}>
       <Tabs activeKey={tab} onChange={setTab} items={[
         { key: 'people', label: isCc ? '抄送人' : '审批人', forceRender: true, children: <>
           <p className="oxa-workflow-config-help">{isCc ? '抄送来源由开发者开放；保存时校验人员、角色及范围。抄送只提供流程查阅权。' : '人员来源和可选审批方式由开发者开放；保存时平台校验人员、角色及范围。'}</p>
@@ -154,5 +168,9 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
       ].filter(item => node.kind === 'approval' || item.key === 'general' || isCc && item.key === 'people')} />
       <div className="oxa-workflow-config-reason"><Form.Item name="reason" label="修改原因" rules={[{ required: true, whitespace: true }]} extra="将记录在配置修改历史中。"><Input.TextArea rows={2} maxLength={1000} placeholder="说明本次调整的原因" /></Form.Item></div>
     </Form>
-  </Drawer>;
+  </>;
+  return presentation === 'panel' ? <section className="oxa-workflow-config oxa-workflow-config-panel" aria-label="调整节点配置">
+    <header className="oxa-workflow-config-panel-heading"><strong>节点配置</strong><Button aria-label="关闭节点配置" disabled={busy || uncertain} onClick={close}>关闭</Button></header>
+    <div className="oxa-workflow-config-panel-body">{content}</div>{footer}
+  </section> : <Drawer open title="调整节点配置" size={620} rootClassName="oxa-workflow-config" onClose={close} closable={!busy && !uncertain} mask={{ closable: !busy && !uncertain }} footer={footer}>{content}</Drawer>;
 }
