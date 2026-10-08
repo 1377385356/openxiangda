@@ -54,6 +54,7 @@ export const PLATFORM_CAPABILITY_CONTRACT_VERSIONS = {
   "workflow.optional-withdrawal-reason": "1.0.0",
   "data.transaction-actor-authority": "1.0.0",
   "data.authenticated-public-projection": "1.0.0",
+  "data.parent-read-policy": "1.0.0",
   "data.record-print": "1.0.0",
   "data.workflow-record-deletion": "1.0.0",
   "data.record-comments": "1.0.0",

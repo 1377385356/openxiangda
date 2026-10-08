@@ -2174,6 +2174,10 @@ function normalizeDataResource(resource: DataResource): DataResource {
 function normalizeDataPolicyRule(
   rule: import('./config.js').AuthzDataPolicyRuleDeclaration
 ): AppDataPolicyRuleDeclaration {
+  if ('parentRead' in rule) {
+    return { parentRead: { ...rule.parentRead },
+      ...(rule.roleCodes ? { roleCodes: uniqueSorted(rule.roleCodes) } : {}) };
+  }
   if ('operator' in rule) {
     if ('operand' in rule) {
       return {

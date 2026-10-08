@@ -1,3 +1,4 @@
+import { hasNativeParentReadPolicy, resolveNativeParentReadBinding, validateNativeParentReadPolicies, NativeParentReadPolicyError } from './parent-read-policy.js';
 import { requiresExtendedFieldCapacity, WORKFLOW_LAUNCH_MAX_INPUTS } from './data-capacity.js';
 import { assertWorkflowNativeStagePolicy } from './workflow-native-stage.js';
 import { validateAuthenticatedPublicRead, AuthenticatedPublicReadContractError } from './authenticated-public-read.js';
@@ -570,6 +571,9 @@ export function compileRequiredPlatformCapabilitiesV3(
     ...(operations.some(operation => operation.platformAccess?.dataCommands)
       ? [{ code: 'data.business-commands' as const, declaration: operations.filter(operation => operation.platformAccess?.dataCommands) }]
       : []),
+    ...(config.authz.dataPolicies.some(hasNativeParentReadPolicy)
+      ? [{ code: 'data.parent-read-policy' as const,
+          declaration: config.authz.dataPolicies.filter(hasNativeParentReadPolicy) }] : []),
     ...(config.authz.dataPolicies.some((policy: JsonObject) => policy.publicRead)
       ? [{ code: 'data.authenticated-public-projection' as const,
           declaration: config.authz.dataPolicies.filter((policy: JsonObject) => policy.publicRead) }]
@@ -1001,14 +1005,18 @@ export function compileNativeEventCapturePlansV2(input: {
       }
       const authorizationFields = new Set<string>();
       for (const rule of policy?.rules || []) {
-        authorizationFields.add(String(rule.field));
+        authorizationFields.add(rule.parentRead
+          ? resolveNativeParentReadBinding(input.resources, code, rule.parentRead, `${pointer}/parentRead`).foreignKey
+          : String(rule.field));
       }
       if (policy?.readExpression) {
         for (const entry of nativeDataPolicyExpressionLeavesV2(
           policy.readExpression,
           `${pointer}/readExpression`
         )) {
-          authorizationFields.add(String(entry.rule.field));
+          authorizationFields.add(entry.rule.parentRead
+            ? resolveNativeParentReadBinding(input.resources, code, entry.rule.parentRead, `${pointer}/parentRead`).foreignKey
+            : String(entry.rule.field));
         }
       }
       const filterFields = new Set<string>();
@@ -6304,6 +6312,7 @@ function validateDataPolicyReferences(config: JsonObject) {
       exactKeys(
         rule,
         [
+          'parentRead',
           'subject',
           'dimensionCode',
           'relationCode',
@@ -6320,6 +6329,12 @@ function validateDataPolicyReferences(config: JsonObject) {
         rulePointer,
         true
       );
+      if (rule.parentRead !== undefined) {
+        for (const roleCode of uniqueStrings(rule.roleCodes || [], `${rulePointer}/roleCodes`, 100)) {
+          if (!roleCodes.has(roleCode)) fail('NATIVE_ROLE_REFERENCE_MISSING', `${rulePointer}/roleCodes`);
+        }
+        continue;
+      }
       const field = fieldCodeValue(rule.field, `${rulePointer}/field`);
       const fieldDefinition = policyFields?.get(field);
       if (hasReadExpression && !fieldDefinition) {
@@ -6430,6 +6445,12 @@ function validateDataPolicyReferences(config: JsonObject) {
         );
       }
     }
+  }
+  try {
+    validateNativeParentReadPolicies(config.data.resources, config.authz.dataPolicies);
+  } catch (error) {
+    if (error instanceof NativeParentReadPolicyError) fail(error.code, error.pointer);
+    throw error;
   }
   for (const [index, raw] of config.data.resources.entries()) {
     const resource = object(raw, `/config/data/resources/${index}`);

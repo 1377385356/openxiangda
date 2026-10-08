@@ -126,6 +126,7 @@ export function validateAuthzSemanticBindings(input: {
     // 这是基线角色（无业务归属字段可用时）唯一可用的行级收窄手段。
     const auditUserFields = new Set(['created_by', 'updated_by']);
     policyRuleEntries(policy, policyPath).forEach(({ rule, path: rulePath }) => {
+      if (rule.parentRead !== undefined) return; // Validated against the exact sealed subtable binding.
       const fieldCode = text(rule.field);
       const isAuditUserField = auditUserFields.has(fieldCode);
       const field = resource.fields.get(fieldCode);

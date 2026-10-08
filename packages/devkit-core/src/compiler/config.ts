@@ -1,3 +1,4 @@
+import { parseNativeParentReadPolicy, validateNativeParentReadPolicies, NativeParentReadPolicyError, NativeDataPolicyExpressionV2Error } from 'openxiangda-contracts/native-compiler';
 import { assertWorkflowNativeStagePolicy } from 'openxiangda-contracts';
 import { WORKFLOW_LAUNCH_MAX_INPUTS } from 'openxiangda-contracts';
 import { validateAuthenticatedPublicRead, AuthenticatedPublicReadContractError } from 'openxiangda-contracts/native-compiler';
@@ -2677,6 +2678,7 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
         const unknownRuleKeys = Object.keys(rule).filter(
           key =>
             ![
+              'parentRead',
               'subject',
               'dimensionCode',
               'relationCode',
@@ -2714,8 +2716,14 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
           dimensionCode,
           relationCode,
           dbNow ? 'db_now' : '',
+          rule.parentRead !== undefined ? 'parent_read' : '',
           constantPredicate || nullPredicate ? 'constant' : '',
         ].filter(Boolean);
+        let validParentRead = false;
+        if (rule.parentRead !== undefined) {
+          try { parseNativeParentReadPolicy(rule.parentRead, `${rulePath}.parentRead`); validParentRead = true; }
+          catch { /* The shared cross-resource validator reports the exact failure. */ }
+        }
         const validCurrentUser = subject === 'current_user';
         const validDimension =
           Boolean(dimensionCode) && dimensionCodes.has(dimensionCode);
@@ -2744,19 +2752,20 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
           rule.value === undefined &&
           policyFields?.get(string(rule.field)) === 'datetime';
         if (
-          !/^[A-Za-z_][A-Za-z0-9_]{0,127}$/.test(string(rule.field)) ||
+          (!validParentRead && !/^[A-Za-z_][A-Za-z0-9_]{0,127}$/.test(string(rule.field))) ||
           modes.length !== 1 ||
           (!validCurrentUser &&
             !validDimension &&
             !validRelationship &&
             !validConstant &&
             !validNull &&
-            !validDbNow)
+            !validDbNow &&
+            !validParentRead)
         ) {
           diagnostics.push(
             diagnostic(
               'APP_CONFIG_AUTHZ_POLICY_RULE_INVALID',
-              '策略规则必须且只能声明 current_user、dimension、relationship、constant/null 或 datetime db_now 中的一种',
+              '策略规则必须且只能声明 current_user、dimension、relationship、constant/null、datetime db_now 或只读 parentRead 中的一种',
               rulePath
             )
           );
@@ -2805,6 +2814,14 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
         }
       );
     });
+    try {
+      validateNativeParentReadPolicies(dataResources.map(object), policies.map(object), 'authz.dataPolicies');
+    } catch (error) {
+      if (error instanceof NativeParentReadPolicyError) {
+        diagnostics.push(diagnostic(error.code, 'parentRead 必须绑定唯一的真实父子表关系且只用于读取', error.pointer));
+      } else if (!(error instanceof NativeDataPolicyExpressionV2Error)) throw error;
+      // Malformed expressions were already reported by policyRuleNodes.
+    }
     scopeSources.forEach((rawSource, sourceIndex) => {
       const source = object(rawSource);
       if (string(source.failureMode) !== 'last_known_good') return;
@@ -6913,6 +6930,10 @@ export function currentUserDataPolicy(input: {
 }
 
 export const dataPolicyExpression = {
+  parentRead: (input: { resourceCode: string; subtableFieldCode: string; roleCodes?: string[] }): AppDataPolicyRuleDeclaration => ({
+    parentRead: { resourceCode: input.resourceCode, subtableFieldCode: input.subtableFieldCode },
+    ...(input.roleCodes ? { roleCodes: [...input.roleCodes] } : {}),
+  }),
   allOf: (
     ...values: AppDataPolicyExpressionDeclaration[]
   ): AppDataPolicyExpressionDeclaration => ({ allOf: values }),

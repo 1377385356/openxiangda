@@ -134,6 +134,10 @@ export interface AppRelationshipGrantSourceDeclaration {
 
 export type AppDataPolicyRuleDeclaration =
   | {
+      parentRead: { resourceCode: string; subtableFieldCode: string };
+      roleCodes?: string[];
+    }
+  | {
       field: string;
       operator: 'eq' | 'not_eq' | 'in' | 'not_in';
       value: string | string[];
