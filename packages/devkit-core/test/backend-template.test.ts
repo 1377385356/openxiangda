@@ -18,9 +18,13 @@ test('the clean server template only owns platform bootstrap', () => {
 
 test('backend dependency build accepts optional vendored archives without exposing build mounts at runtime', () => {
   const source = readFileSync(new URL('../templates/backend/Dockerfile', import.meta.url), 'utf8');
-  const [build, runtime] = source.split(/FROM node:[^\n]+ AS runtime/);
-  assert.ok(build.indexOf('target=/source,readonly') < build.indexOf('install --no-frozen-lockfile'));
+  const [build, runtime] = source.split(/FROM [^\n]+ AS runtime/);
+  assert.ok(build.indexOf('target=/source,readonly') < build.indexOf('install --frozen-lockfile'));
   assert.match(build, /if \[ -d \/source\/vendor \]; then cp -a \/source\/vendor \/workspace\/vendor; fi/);
   assert.doesNotMatch(runtime, /\/source|--mount/);
   assert.match(runtime, /COPY --from=build --chown=1000:1000 \/output \/app/);
+  assert.match(build, /install --frozen-lockfile --prefer-offline --store-dir=\/pnpm\/store/);
+  assert.match(build, /deploy --prod --legacy --prefer-offline --store-dir=\/pnpm\/store/);
+  assert.match(build, /target=\/root\/\.cache\/pnpm,sharing=locked/);
+  assert.doesNotMatch(build, /delete p\.devDependencies|no-frozen-lockfile/);
 });

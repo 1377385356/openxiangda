@@ -2058,7 +2058,7 @@ export class OpenXiangdaApplicationServices {
       ? input.backendImage
         ? input.backendImage
         : (
-            await operationStage('backend-image', '构建或恢复原后端镜像上传', async () => publishBackendImage({
+            await operationStage('backend-image', '复用、构建或恢复后端镜像', async () => publishBackendImage({
               root: workspace.root,
               backendRoot: workspace.config.backend.root,
               target: backendImageBuildTarget(capabilities, workspace.config.app.code),

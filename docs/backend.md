@@ -16,6 +16,19 @@ operation、事件消费者、人员提供器，然后运行 `pnpm openxiangda c
 工具从当前版本的内置模板初始化后端源码并安装依赖；后续不会覆盖业务代码。
 标准表单、流程定义/激活和平台待办通知使用平台运行时，不会隐式启用 Nest。
 
+当前官方 Dockerfile 保留原 package.json，使用 `--frozen-lockfile` 安装后端和共享契约
+依赖；锁文件与源码不一致会明确失败，请在本地更新并提交锁文件。pnpm store、registry
+metadata 与 Corepack 使用当前 BuildKit builder 的持久缓存，依赖层失效时优先复用已有包。
+生产依赖整理也使用同一包和 metadata 缓存及 `--prefer-offline`；首次 legacy deploy
+仍需读取 registry metadata，缓存命中后减少重复联网。首次构建或 builder 缓存被回收后
+仍需要下载依赖。不要求应用更改本地 workspace 链接方式。
+
+随模板生成的 `Dockerfile.dockerignore` 仅包含后端必需输入，避免前端/文档变化使
+依赖层失效。已有后端源码归应用所有，不自动覆盖旧 Dockerfile；升级时可对照
+工具包 `openxiangda-devkit-core/templates/backend/` 更新 Dockerfile 和专用 ignore，
+并保留自己的业务构建步骤及依赖。需要额外目录时同步加入 ignore 白名单，重新验证。
+纯前端发布的镜像复用与重建选项见[交付](delivery.md#测试部署)。
+
 依赖安装失败会保留新源码并报告 `OPENXIANGDA_BACKEND_INSTALL_FAILED`；重试相同命令
 即可继续。关闭 backend 不自动删除用户源码。仅删除已经确认不用的后端目录和其依赖。
 开发者本地 `/api` 经过 connected proxy 进入 Nest；普通浏览器身份经过平台实时授权，

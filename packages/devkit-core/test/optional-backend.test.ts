@@ -54,6 +54,23 @@ test('dependency failure is retryable without discarding the new source or app e
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+test('a customized backend root receives all required Docker ignore parent rules', () => {
+  for (const backendRoot of ['server', 'services/custom/server']) {
+    const root = workspace();
+    try {
+      const config = app(true);
+      config.backend.root = backendRoot;
+      initializeOptionalBackend(root, config, { install: () => {} });
+      const source = readFileSync(join(root, backendRoot, 'Dockerfile'), 'utf8');
+      const ignore = readFileSync(join(root, backendRoot, 'Dockerfile.dockerignore'), 'utf8');
+      assert.match(source, new RegExp(`COPY ${backendRoot}/package.json`));
+      const parts = backendRoot.split('/');
+      for (let i = 1; i <= parts.length; i++) assert.ok(ignore.split('\n').includes(`!${parts.slice(0, i).join('/')}`));
+      assert.ok(!ignore.includes('apps/server'));
+    } finally { rmSync(root, { recursive: true, force: true }); }
+  }
+});
+
 test('path escapes, symlink paths and concurrent initialization cannot overwrite files', () => {
   const root = workspace();
   const outside = workspace();

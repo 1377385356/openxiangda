@@ -1,6 +1,7 @@
 import { runCommandProcess } from './command-process.js';
 import { uploadBackendOciLayout, type BackendImageUploader } from './backend-image-upload.js';
-import { withBackendImageCandidate, type BackendImageRecoveryScope } from './backend-image-candidate.js';
+import { BACKEND_IMAGE_CACHE_METADATA_BYTES, withBackendImageCandidate, type BackendImageRecoveryScope } from './backend-image-candidate.js';
+import { operationStage } from './operation-progress.js';
 import {
   existsSync,
   mkdtempSync,
@@ -225,7 +226,7 @@ export async function publishBackendImage(input: {
     if (!input.uploader) {
       throw new BackendImageBuildError('OPENXIANGDA_BACKEND_IMAGE_UPLOADER_REQUIRED', '缺少平台登录态镜像上传通道');
     }
-    const build = async (directory: string) => {
+    const build = async (directory: string) => operationStage('backend-image-build', 'Docker 构建后端 OCI 镜像', async () => {
       await assertBuilder();
       const built = await runDocker(docker, ['buildx', 'build', '--file', dockerfile,
         '--platform', input.target.platform, '--provenance=false', '--sbom=false',
@@ -241,10 +242,10 @@ export async function publishBackendImage(input: {
         }
         throw new BackendImageBuildError('OPENXIANGDA_BACKEND_IMAGE_BUILD_FAILED', '本地后端镜像构建失败');
       }
-    };
+    });
     const upload = async (directory: string, expectedDigest?: string, assertOwnership?: () => void) => {
-      const uploaded = await uploadBackendOciLayout({ directory, ...input.target.upload!, uploader: input.uploader!,
-        ...(expectedDigest ? { expectedDigest } : {}), ...(assertOwnership ? { assertOwnership } : {}) });
+      const uploaded = await operationStage('backend-image-transfer', '核验平台镜像并按需恢复分片上传', () => uploadBackendOciLayout({ directory, ...input.target.upload!, uploader: input.uploader!,
+        ...(expectedDigest ? { expectedDigest } : {}), ...(assertOwnership ? { assertOwnership } : {}) }));
       return { repository: uploaded.reference.split('@')[0]!, platform: input.target.platform, ...uploaded };
     };
     // Local recovery capacity must not lower the platform's accepted image limit.
@@ -253,6 +254,8 @@ export async function publishBackendImage(input: {
         throw new BackendImageBuildError('OPENXIANGDA_BACKEND_IMAGE_RECOVERY_SCOPE_INVALID', '恢复应用与上传目标不一致');
       }
       return withBackendImageCandidate({ root, dockerfile, scope: input.recoveryScope,
+        retainCompleted: process.env.OPENXIANGDA_BACKEND_IMAGE_CACHE !== 'false' &&
+          input.target.upload.maxImageBytes <= 8 * 1024 ** 3 - BACKEND_IMAGE_CACHE_METADATA_BYTES,
         maxImageBytes: input.target.upload.maxImageBytes,
         ...(input.candidateCacheRoot ? { cacheRoot: input.candidateCacheRoot } : {}), build, upload });
     }

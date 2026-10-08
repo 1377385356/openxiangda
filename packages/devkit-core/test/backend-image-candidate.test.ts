@@ -9,6 +9,7 @@ import { backendImageContextDigest, withBackendImageCandidate, type BackendImage
 import { publishBackendImage } from '../src/backend-image-build.js';
 import { ControlPlaneError, OpenXiangdaControlPlaneClient } from '../src/control-plane-client.js';
 import { developerError } from '../src/developer-errors.js';
+import { withOperationProgress } from '../src/operation-progress.js';
 import { uploadBackendOciLayout, type BackendImageUploader, type BackendImageUploadReceipt } from '../src/backend-image-upload.js';
 
 const hash = (value: string | Uint8Array) => `sha256:${createHash('sha256').update(value).digest('hex')}`;
@@ -81,6 +82,142 @@ function transport(sample: ReturnType<typeof fixture>) {
     counters: () => ({ beginCalls, chunkCalls }), offsets };
 }
 
+function officialInputs(sample: ReturnType<typeof fixture>, template = 'backend/Dockerfile', historicalReference = false) {
+  let source = readFileSync(new URL(`../templates/${template}`, import.meta.url), 'utf8');
+  if (historicalReference) source = source.replaceAll('docker.xuanyuan.run/node:', 'node:');
+  writeFileSync(sample.dockerfile, source);
+  for (const file of ['package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml', 'tsconfig.base.json',
+    'packages/contracts/src/generated.ts', 'vendor/sdk.tgz', 'apps/web/src/login.tsx', 'docs/design.md']) {
+    mkdirSync(join(sample.root, file, '..'), { recursive: true });
+    writeFileSync(join(sample.root, file), file === 'package.json' ? '{"name":"image-fixture","private":true}\n' : `original ${file}`);
+  }
+}
+
+test('frontend, docs and separate configuration changes reuse a successful official image with a new platform receipt', async () => {
+  for (const [template, historical] of [['backend/Dockerfile', false], ['backend-inputs/legacy.Dockerfile', false],
+    ['backend-inputs/legacy.Dockerfile', true]] as const) {
+    const sample = fixture();
+    try {
+      officialInputs(sample, template, historical);
+      const remote = transport(sample);
+      await publishBackendImage({ ...sample.publish, uploader: remote.uploader });
+      const key = sample.entries()[0]!;
+      const saved = JSON.parse(readFileSync(join(sample.cacheRoot, key, 'candidate.json'), 'utf8'));
+      assert.ok(saved.reservedBytes < sample.publish.target.upload.maxImageBytes);
+      assert.equal(saved.reference, undefined);
+      writeFileSync(join(sample.root, 'apps/web/src/login.tsx'), 'new login redirect');
+      writeFileSync(join(sample.root, 'docs/design.md'), 'new design');
+      rmSync(sample.docker);
+      const result = await withOperationProgress('reuse', undefined, async () => ({
+        data: await publishBackendImage({ ...sample.publish,
+          recoveryScope: { ...scope, configurationDigest: hash('new frontend configuration') }, uploader: remote.uploader }),
+      }));
+      assert.equal(result.data.digest, sample.digest);
+      assert.equal(result.data.execution.stages.find(x => x.stage === 'backend-image-build')?.state, 'skipped');
+      assert.equal(readFileSync(sample.marker, 'utf8'), 'build\n');
+      assert.equal(remote.counters().beginCalls, 2);
+      assert.equal(remote.counters().chunkCalls, sample.receipt.blobs.length);
+      assert.equal(sample.entries()[0], key);
+    } finally { sample.cleanup(); }
+  }
+});
+
+test('completed images stay isolated by platform, tenant, actor, application, environment and tool version', async () => {
+  const sample = fixture();
+  try {
+    officialInputs(sample);
+    let builds = 0;
+    const run = async (next = scope) => {
+      await withBackendImageCandidate({ ...sample.input, scope: next, retainCompleted: true,
+        build: async directory => { builds++; await sample.input.build(directory); }, upload: async () => 'ready' });
+    };
+    await run();
+    for (const partial of [{ platform: 'https://other.example/service' }, { tenantId: 't2' }, { userId: 'u2' },
+      { appCode: 'other-app' }, { environmentKey: 'production' }, { environmentId: 'second' }, { toolchainVersion: 'new' }]) {
+      await run({ ...scope, ...partial });
+    }
+    assert.equal(builds, 8);
+    await run({ ...scope, configurationDigest: hash('frontend-only') });
+    assert.equal(builds, 8);
+    assert.equal(sample.entries().length, 8);
+  } finally { sample.cleanup(); }
+});
+
+test('backend, contracts, vendor, lock, Dockerfile and effective ignore changes always rebuild', async () => {
+  const sample = fixture();
+  try {
+    officialInputs(sample);
+    const remote = transport(sample);
+    let builds = 0;
+    await publishBackendImage({ ...sample.publish, uploader: remote.uploader });
+    builds++;
+    for (const file of ['apps/server/main.ts', 'packages/contracts/src/generated.ts', 'vendor/sdk.tgz',
+      'package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml', 'tsconfig.base.json', 'apps/server/Dockerfile', '.dockerignore']) {
+      writeFileSync(join(sample.root, file), file === 'package.json'
+        ? '{"name":"changed-image-fixture","private":true}\n'
+        : `${readFileSync(join(sample.root, file), 'utf8')}\nchanged`);
+      await publishBackendImage({ ...sample.publish, uploader: remote.uploader });
+      assert.equal(readFileSync(sample.marker, 'utf8').trim().split('\n').length, ++builds, file);
+    }
+    assert.equal(sample.entries().length, 8);
+  } finally { sample.cleanup(); }
+});
+
+test('unknown Dockerfiles retain the complete Docker context and cannot infer shell inputs', async () => {
+  const sample = fixture();
+  try {
+    officialInputs(sample);
+    writeFileSync(sample.dockerfile, `${readFileSync(sample.dockerfile, 'utf8')}\nRUN cat /source/apps/web/src/login.tsx\n`);
+    const remote = transport(sample);
+    await publishBackendImage({ ...sample.publish, uploader: remote.uploader });
+    writeFileSync(join(sample.root, 'apps/web/src/login.tsx'), 'must invalidate unknown build');
+    await publishBackendImage({ ...sample.publish, uploader: remote.uploader });
+    assert.equal(readFileSync(sample.marker, 'utf8'), 'build\nbuild\n');
+  } finally { sample.cleanup(); }
+});
+
+test('successful reuse restores missing remote bytes and propagates permission rejection without rebuilding', async () => {
+  const sample = fixture();
+  try {
+    officialInputs(sample);
+    const first = transport(sample);
+    await publishBackendImage({ ...sample.publish, uploader: first.uploader });
+    rmSync(sample.docker);
+    const freshRemote = transport(sample);
+    await publishBackendImage({ ...sample.publish, uploader: freshRemote.uploader });
+    assert.equal(freshRemote.counters().chunkCalls, sample.receipt.blobs.length);
+    let denied = 0;
+    await assert.rejects(publishBackendImage({ ...sample.publish, uploader: { ...freshRemote.uploader,
+      async beginBackendImage() { denied++; throw new ControlPlaneError(403, 'FORBIDDEN', 'not allowed'); },
+    } }), (error: any) => error.code === 'OPENXIANGDA_BACKEND_IMAGE_UPLOAD_PENDING' && error.data.causeCode === 'FORBIDDEN');
+    assert.equal(denied, 1);
+    assert.equal(readFileSync(sample.marker, 'utf8'), 'build\n');
+  } finally { sample.cleanup(); }
+});
+
+test('disabling completed reuse rebuilds but preserves unfinished upload recovery', async () => {
+  const sample = fixture();
+  const previous = process.env.OPENXIANGDA_BACKEND_IMAGE_CACHE;
+  try {
+    const remote = transport(sample);
+    await publishBackendImage({ ...sample.publish, uploader: remote.uploader });
+    process.env.OPENXIANGDA_BACKEND_IMAGE_CACHE = 'false';
+    await publishBackendImage({ ...sample.publish, uploader: remote.uploader });
+    await publishBackendImage({ ...sample.publish, uploader: remote.uploader });
+    assert.equal(readFileSync(sample.marker, 'utf8'), 'build\nbuild\nbuild\n');
+    const missing = transport(sample); missing.failChunks(true);
+    await assert.rejects(publishBackendImage({ ...sample.publish, uploader: missing.uploader }), /UPLOAD_PENDING/);
+    rmSync(sample.docker); missing.failChunks(false);
+    await publishBackendImage({ ...sample.publish, uploader: missing.uploader });
+    assert.equal(readFileSync(sample.marker, 'utf8'), 'build\nbuild\nbuild\nbuild\n');
+    assert.equal(sample.entries().length, 1); // only the enabled-mode success survives
+  } finally {
+    if (previous === undefined) delete process.env.OPENXIANGDA_BACKEND_IMAGE_CACHE;
+    else process.env.OPENXIANGDA_BACKEND_IMAGE_CACHE = previous;
+    sample.cleanup();
+  }
+});
+
 test('a new publish call resumes saved offsets and original digest without Docker after repeated transport failure', async () => {
   const sample = fixture();
   try {
@@ -101,7 +238,7 @@ test('a new publish call resumes saved offsets and original digest without Docke
     const result = await publishBackendImage({ ...sample.publish, uploader: remote.uploader });
     assert.equal(result.digest, sample.digest);
     assert.equal(remote.counters().beginCalls, 2);
-    assert.equal(sample.entries().length, 0);
+    assert.equal(sample.entries().length, 1); // successful bytes remain available for subsequent publishes
     assert.equal(readFileSync(sample.marker, 'utf8'), 'build\n');
   } finally { sample.cleanup(); }
 });
@@ -160,7 +297,7 @@ test('HTTP budget rejection preserves safe CLI evidence without retrying, then r
     assert.equal(remote.counters().beginCalls, 1);
     assert.equal(remote.counters().chunkCalls, sample.receipt.blobs.length);
     assert.equal(readFileSync(sample.marker, 'utf8'), 'build\n');
-    assert.equal(sample.entries().length, 0);
+    assert.equal(sample.entries().length, 1);
   } finally { sample.cleanup(); }
 });
 
@@ -230,7 +367,7 @@ test('dirty content, platform, tenant, actor, environment, config and tool ident
 test('tampered blobs and symlinked OCI directories are rejected before any network write', async () => {
   const sample = fixture();
   try {
-    await assert.rejects(withBackendImageCandidate({ ...sample.input, upload: async () => { throw new Error('offline'); } }), /UPLOAD_PENDING/);
+    await assert.rejects(withBackendImageCandidate({ ...sample.input, retainCompleted: true, upload: async () => { throw new Error('offline'); } }), /UPLOAD_PENDING/);
     const image = join(sample.cacheRoot, sample.entries()[0]!, 'image');
     const blob = join(image, 'blobs/sha256', sample.receipt.blobs[0]!.digest.slice(7));
     writeFileSync(blob, Buffer.alloc(sample.receipt.blobs[0]!.size, 1));

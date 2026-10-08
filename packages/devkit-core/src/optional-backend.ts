@@ -68,6 +68,12 @@ export function initializeOptionalBackend(
       const dockerfilePath = join(staging, 'Dockerfile');
       writeFileSync(dockerfilePath, readFileSync(dockerfilePath, 'utf8')
         .replaceAll('apps/server', relative(root, target).split(sep).join('/')));
+      const ignorePath = `${dockerfilePath}.dockerignore`;
+      const backendParts = relative(root, target).split(sep);
+      const parentRules = backendParts.slice(0, -1).map((_, index) => `!${backendParts.slice(0, index + 1).join('/')}`).join('\n');
+      writeFileSync(ignorePath, readFileSync(ignorePath, 'utf8')
+        .replaceAll('!apps\n', parentRules ? `${parentRules}\n` : '')
+        .replaceAll('apps/server', relative(root, target).split(sep).join('/')));
       // Write the retry receipt before committing source so interrupted setup is resumable.
       if (!existsSync(receipt)) {
         writeFileSync(receipt, `${JSON.stringify({ root: config.backend.root })}\n`, { flag: 'wx' });

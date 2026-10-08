@@ -23,6 +23,8 @@
   "files": [
     "dist/",
     "templates/backend/Dockerfile",
+    "templates/backend/Dockerfile.dockerignore",
+    "templates/backend-inputs/legacy.Dockerfile",
     "templates/backend/package.json",
     "templates/backend/tsconfig.json",
     "templates/backend/src/",

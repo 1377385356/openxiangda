@@ -8,6 +8,8 @@ import type { Ignore } from '@balena/dockerignore';
 import { lock } from 'proper-lockfile';
 import { inspectBackendOciLayout } from './backend-image-upload.js';
 import { backendImageUploadFailure } from './backend-image-upload-failure.js';
+import { backendImageInputPaths } from './backend-image-inputs.js';
+import { skippedOperationStage } from './operation-progress.js';
 
 const SCHEMA = 'openxiangda.backend-image-candidate/v1';
 const KEY = /^[a-f0-9]{64}$/;
@@ -16,6 +18,8 @@ const TTL = 24 * 60 * 60 * 1000;
 const MAX_ENTRIES = 8;
 const MAX_BYTES = 8 * 1024 ** 3;
 const CANDIDATE_BYTES = MAX_BYTES;
+// inspectBackendOciLayout caps both OCI metadata files at 256 KiB; candidate.json at 4 KiB.
+export const BACKEND_IMAGE_CACHE_METADATA_BYTES = 2 * 256 * 1024 + 4096;
 const dockerignore = createRequire(import.meta.url)('@balena/dockerignore') as (options: { ignorecase: boolean }) => Ignore;
 
 export interface BackendImageRecoveryScope {
@@ -107,7 +111,7 @@ async function lease(path: string, retries = 0) {
   }
 }
 
-/** Hash the actual local Docker context, including dirty/untracked files; never use a commit as a cache key. */
+/** Hash actual inputs, including dirty/untracked files; unknown Dockerfiles use the entire context. */
 export async function backendImageContextDigest(root: string, dockerfile: string): Promise<string> {
   const ignorePath = existsSync(`${dockerfile}.dockerignore`) ? `${dockerfile}.dockerignore` : join(root, '.dockerignore');
   for (const path of [dockerfile, ignorePath]) {
@@ -118,6 +122,9 @@ export async function backendImageContextDigest(root: string, dockerfile: string
   const rules = readFileSync(ignorePath, 'utf8');
   if (Buffer.byteLength(rules) > 256 * 1024) fail('CONTEXT_LIMIT', 'Docker ignore 文件超过 256 KiB');
   const matcher = dockerignore({ ignorecase: false }).add(rules);
+  const inputs = backendImageInputPaths(root, dockerfile);
+  const relevant = (path: string) => !inputs || inputs.some(input =>
+    path === input || path.startsWith(`${input}/`) || input.startsWith(`${path}/`));
   const exceptions = rules.split(/\r?\n/).map(line => line.trim()).filter(line => line.startsWith('!')).map(line => line.slice(1).replace(/^\/+|\/+$/g, ''));
   // When an exclusion can re-include descendants we must walk the excluded parent.
   const mayInclude = (path: string) => exceptions.some(pattern => {
@@ -136,10 +143,11 @@ export async function backendImageContextDigest(root: string, dockerfile: string
       const path = join(directory, name);
       const relativePath = relative(root, path).replaceAll('\\', '/');
       const stat = lstatSync(path);
-      const included = path === dockerfile || path === ignorePath || !matcher.ignores(relativePath);
+      const required = path === dockerfile || path === ignorePath;
+      const included = required || (relevant(relativePath) && !matcher.ignores(relativePath));
       if (stat.isDirectory()) {
         if (included) hash.update(JSON.stringify(['d', relativePath, stat.mode & 0o777]));
-        if (included || mayInclude(relativePath) || dockerfile.startsWith(`${path}/`) || ignorePath.startsWith(`${path}/`)) await walk(path);
+        if (included || (relevant(relativePath) && mayInclude(relativePath)) || dockerfile.startsWith(`${path}/`) || ignorePath.startsWith(`${path}/`)) await walk(path);
       } else if (included && stat.isSymbolicLink()) {
         hash.update(JSON.stringify(['l', relativePath, readlinkSync(path)]));
       } else if (included && stat.isFile()) {
@@ -224,6 +232,8 @@ export async function withBackendImageCandidate<T>(input: {
   dockerfile: string;
   scope: BackendImageRecoveryScope;
   maxImageBytes: number;
+  /** Retain sealed bytes after success. Platform receipts, never this cache, own remote availability. */
+  retainCompleted?: boolean;
   /** @internal Temporary private directory for executable tests. */
   cacheRoot?: string;
   build: (directory: string) => Promise<void>;
@@ -239,31 +249,49 @@ export async function withBackendImageCandidate<T>(input: {
   const dockerfile = join(root, relative(resolve(input.root), input.dockerfile));
   const contextDigest = await backendImageContextDigest(root, dockerfile);
   const key = createHash('sha256').update(JSON.stringify([SCHEMA, root, relative(root, input.dockerfile), platform.href.replace(/\/+$/, ''),
-    scope.tenantId, scope.userId, scope.appCode, scope.environmentKey, scope.environmentId ?? '', scope.configurationDigest, scope.toolchainVersion, contextDigest])).digest('hex');
+    scope.tenantId, scope.userId, scope.appCode, scope.environmentKey, scope.environmentId ?? '',
+    input.retainCompleted ? 'build-input-reuse/v1' : scope.configurationDigest, scope.toolchainVersion, contextDigest])).digest('hex');
   const cacheRoot = resolve(input.cacheRoot || join(realpathSync(homedir()), '.openxiangda', 'cache', 'backend-images'));
   if (cacheRoot === root || cacheRoot.startsWith(`${root}/`)) fail('CACHE_PATH_INVALID', '镜像缓存不能进入 Docker 构建上下文');
   for (let path = cacheRoot; path !== dirname(path); path = dirname(path)) {
     if (existsSync(path) && lstatSync(path).isSymbolicLink()) fail('CACHE_PATH_INVALID', '镜像缓存路径不能经过符号链接');
   }
   if (!Number.isSafeInteger(input.maxImageBytes) || input.maxImageBytes < 1 || input.maxImageBytes > MAX_BYTES) fail('CACHE_LIMIT', '当前候选超过 8 GiB 本机恢复预算');
-  const selected = await acquireCandidate(cacheRoot, key, Math.min(CANDIDATE_BYTES, input.maxImageBytes));
+  const reservedBytes = input.maxImageBytes + (input.retainCompleted ? BACKEND_IMAGE_CACHE_METADATA_BYTES : 0);
+  if (reservedBytes > MAX_BYTES) fail('CACHE_LIMIT', '镜像及元数据超过本机缓存预算');
+  const selected = await acquireCandidate(cacheRoot, key, reservedBytes);
   const directory = join(selected.directory, 'image');
   let sealed = selected.candidate.state === 'sealed';
+  const reused = sealed;
   try {
+    if (reused) skippedOperationStage('backend-image-build', '后端输入匹配，跳过 Docker 构建并核验原 OCI 制品');
     if (!sealed) {
       rmSync(directory, { recursive: true, force: true });
       await input.build(directory);
       selected.owned.assert();
       if (await backendImageContextDigest(root, dockerfile) !== contextDigest) fail('CONTEXT_CHANGED', '构建期间源码发生变化，未上传混合候选；保存后重试');
-      const inspected = await inspectBackendOciLayout({ directory, maxImageBytes: selected.candidate.reservedBytes });
-      selected.candidate = { ...selected.candidate, state: 'sealed', digest: inspected.digest };
-      saveCandidate(selected.directory, selected.candidate);
+      const inspected = await inspectBackendOciLayout({ directory, maxImageBytes: input.maxImageBytes });
+      const global = await lease(join(cacheRoot, '.registry'), 8);
+      try {
+        global.assert(); selected.owned.assert();
+        const actualBytes = inspected.sizeBytes + lstatSync(join(directory, 'index.json')).size +
+          lstatSync(join(directory, 'oci-layout')).size + 4096;
+        selected.candidate = { ...selected.candidate, state: 'sealed', digest: inspected.digest,
+          ...(input.retainCompleted ? { reservedBytes: actualBytes } : {}) };
+        saveCandidate(selected.directory, selected.candidate);
+      } finally { await global.release(); }
       sealed = true;
     }
     selected.owned.assert();
+    if (reused && await backendImageContextDigest(root, dockerfile) !== contextDigest) {
+      fail('CONTEXT_CHANGED', '复用校验期间后端输入发生变化，未上传旧候选；保存后重试');
+    }
     const result = await input.upload(directory, selected.candidate.digest!, selected.owned.assert);
+    // No remote ready/reference is persisted. Every reuse validates bytes and obtains a fresh platform receipt.
     // A local cleanup error must never turn a confirmed remote success into a failure.
-    try { await removeOwnedCandidate(cacheRoot, selected.directory, selected.owned); } catch { /* bounded cache will reclaim it */ }
+    if (!input.retainCompleted) {
+      try { await removeOwnedCandidate(cacheRoot, selected.directory, selected.owned); } catch { /* bounded cache will reclaim it */ }
+    }
     return result;
   } catch (error) {
     if (!sealed) {
