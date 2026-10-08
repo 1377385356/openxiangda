@@ -202,6 +202,10 @@ export async function completeWorkflowCommand(
 function errorMessage(error: unknown, fallback: string) {
   const code = (error as { code?: string } | null)?.code;
   const taskPageMessages: Record<string, string> = {
+    WORKFLOW_V2_INSTANCE_FORBIDDEN: '你暂时无法查看此申请，请联系管理员确认查看权限。',
+    WORKFLOW_V2_INSTANCE_NOT_FOUND: '此申请暂时无法查看，请返回申请列表核对。',
+    WORKFLOW_V2_TASK_FORBIDDEN: '你暂时无法查看此待办，请返回待办列表核对或联系管理员。',
+    WORKFLOW_V2_TASK_NOT_FOUND: '此待办暂时无法查看，请返回待办列表核对。',
     WORKFLOW_TASK_FORM_REQUIRED: '请完成本页必填资料后再提交。',
     WORKFLOW_TASK_FORM_REVISION_CONFLICT: '业务资料已被其他处理人更新。请刷新并核对，当前输入会保留。',
     WORKFLOW_TASK_FORM_RECOMPUTATION_REQUIRED: '这些资料会影响已完成的计算，请退回到计算前的节点重新办理。',
