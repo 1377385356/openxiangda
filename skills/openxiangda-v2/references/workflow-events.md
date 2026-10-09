@@ -1189,3 +1189,24 @@ subject update和来源guards提交实际改变的派生字段；普通补填仍
 至周日7）。这只控制新选择，保留已有值，不能当成服务端提交门禁。
 `formOptions.fieldHints(values)` 返回按已匹配字段的提示内容，用于时段或业务说明，
 它不改变必填和数据；PC/手机均显示在字段旁。未知字段和无效约束阻止新表单。
+
+### 详情的条件显示
+
+`OpenXiangdaApplication` 的可选 `workflowDetails` 按流程编码提供详情展示规则：
+
+```tsx
+<OpenXiangdaApplication {...applicationProps} workflowDetails={{
+  'expense-request': { fieldVisibility: ({ fieldCode, record, definitionVersion }) => {
+    if (definitionVersion !== 1 || !Object.hasOwn(record, 'expenseType')) return undefined;
+    if (fieldCode === 'travelBudget') return record.expenseType === 'travel';
+    return undefined;
+  } },
+}} />
+```
+
+复用应用已有的字段条件，条件依赖没有包含在可读投影中时返回 `undefined`。
+回调还可读取 `workflowCode`、`bindingVersion` 和 `resourceCode`。返回 `false`
+只省略空字段；已有文本、0、false、引用值和非空子表仍显示，避免隐藏历史内容。
+缺少规则、返回 `undefined` 或回调失败均保持原显示。PC/手机共用这一规则，
+最后一个字段被省略后对应空分组也消失。这是同步展示扩展，不发请求、不写数据，
+不改变字段授权、审批参数或流程版本；不提供该选项的应用保持既有行为。

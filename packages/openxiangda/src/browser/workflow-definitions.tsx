@@ -168,27 +168,51 @@ export interface WorkflowTaskFormBehavior {
 export type WorkflowTaskFormBehaviors = Readonly<Record<string, WorkflowTaskFormBehavior>>;
 const WorkflowTaskFormsContext = createContext<WorkflowTaskFormBehaviors>({});
 
+export interface WorkflowDetailFieldContext {
+  workflowCode: string;
+  definitionVersion: number;
+  bindingVersion: number;
+  resourceCode: string | null;
+  fieldCode: string;
+  /** Only the platform's readable projection, never hidden record fields. */
+  record: Readonly<Record<string, unknown>>;
+}
+export interface WorkflowDetailBehavior {
+  /** Presentation only. False hides an empty field; historical values remain. */
+  fieldVisibility?: (context: Readonly<WorkflowDetailFieldContext>) => boolean | undefined;
+}
+export type WorkflowDetailBehaviors = Readonly<Record<string, WorkflowDetailBehavior>>;
+const WorkflowDetailsContext = createContext<WorkflowDetailBehaviors>({});
+
 export function OpenXiangdaWorkflowDefinitionsProvider({
   children,
   definitions,
   taskForms = {},
+  details = {},
 }: {
   children: ReactNode;
   definitions: StandardWorkflowDefinitionsInput;
   taskForms?: WorkflowTaskFormBehaviors;
+  details?: WorkflowDetailBehaviors;
 }) {
   const normalized = useMemo(() => normalizeWorkflowDefinitions(definitions), [definitions]);
   return (
     <WorkflowDefinitionsContext.Provider
       value={normalized}
     >
-      <WorkflowTaskFormsContext.Provider value={taskForms}>{children}</WorkflowTaskFormsContext.Provider>
+      <WorkflowTaskFormsContext.Provider value={taskForms}>
+        <WorkflowDetailsContext.Provider value={details}>{children}</WorkflowDetailsContext.Provider>
+      </WorkflowTaskFormsContext.Provider>
     </WorkflowDefinitionsContext.Provider>
   );
 }
 
 export function useWorkflowTaskFormBehavior(code: string) {
   return useContext(WorkflowTaskFormsContext)[code];
+}
+
+export function useWorkflowDetailBehavior(code: string) {
+  return useContext(WorkflowDetailsContext)[code];
 }
 
 export function useWorkflowDefinitions() {
