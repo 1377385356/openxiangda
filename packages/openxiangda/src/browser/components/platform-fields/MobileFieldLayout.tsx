@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import { CloseCircleFilled, RightOutlined } from '@ant-design/icons';
 import { Button } from '../../mobile';
 
@@ -20,16 +20,18 @@ export function MobileFieldTrigger({
   onClick: () => void;
   onClear?: () => void;
 }) {
+  const descriptionId = useId();
   return (
     <div className="oxa-mobile-field-trigger">
       <Button
         id={id}
         aria-label={title}
+        aria-describedby={descriptionId}
         fill="none"
         disabled={disabled}
         onClick={onClick}
       >
-        <span className={!value ? 'is-placeholder' : undefined}>
+        <span id={descriptionId} className={!value ? 'is-placeholder' : undefined}>
           {value || placeholder}
         </span>
         {!value && <RightOutlined aria-hidden />}
