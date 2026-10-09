@@ -2280,7 +2280,7 @@ export interface EventDeliveryPolicy {
 }
 
 export interface EventSubscription {
-  execution?: import("./native.js").NativeEventActionPlan;
+  execution?: import("./native.js").NativeEventActionPlan | import("./event-worker-effect.js").EventWorkerEffectPlan;
   schemaVersion: typeof SCHEMA_VERSIONS.eventSubscription;
   id: string;
   appCode: string;

@@ -29,3 +29,5 @@ export * from './logger.js';
 
 export { OpenXiangdaManagedCommandHandler } from './managed-command.js';
 export type { OpenXiangdaManagedCommandContext, OpenXiangdaManagedCommandPlanner } from './managed-command.js';
+
+export * from './event-worker-effect.js';

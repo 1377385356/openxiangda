@@ -142,6 +142,10 @@ export class PlatformOpenXiangdaEventReceiptStore
     private readonly options: OpenXiangdaModuleOptions
   ) {}
 
+  workerClaimToken(receipt: OpenXiangdaEventReceiptContext): string | null {
+    return this.claimTokens.get(this.key(receipt)) || null;
+  }
+
   async claim(
     receipt: OpenXiangdaEventReceiptContext
   ): Promise<'claimed' | 'duplicate' | 'busy'> {
@@ -488,7 +492,8 @@ export class OpenXiangdaEventReceiver {
         event,
         deliveryId,
         subscriptionCode,
-        async context => await handler(event, context)
+        async context => await handler(event, context),
+        this.receipts.workerClaimToken?.(receipt) || undefined
       );
       if (step && contract.workflowStep) {
         if (!output || typeof output !== 'object' || Array.isArray(output) || Object.keys(output).some(key => !['output', 'receipt'].includes(key)))

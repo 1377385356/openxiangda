@@ -719,8 +719,10 @@ export function compileRequiredPlatformCapabilitiesV3(
           },
         ]
       : []),
-    ...(config.events.subscriptions.some((item: JsonObject) => item.execution)
-      ? [{ code: 'events.native-data-actions' as const, declaration: config.events.subscriptions.filter((item: JsonObject) => item.execution) }]
+    ...(config.events.subscriptions.some((item: JsonObject) => item.execution?.kind === 'worker-effect')
+      ? [{ code: 'events.worker-effects' as const, declaration: config.events.subscriptions.filter((item: JsonObject) => item.execution?.kind === 'worker-effect') }] : []),
+    ...(config.events.subscriptions.some((item: JsonObject) => item.execution?.kind === 'native-data')
+      ? [{ code: 'events.native-data-actions' as const, declaration: config.events.subscriptions.filter((item: JsonObject) => item.execution?.kind === 'native-data') }]
       : []),
     ...(config.events.capturePolicies?.length
       ? [{ code: 'events.capture-policy' as const, declaration: config.events.capturePolicies }]
@@ -1574,7 +1576,7 @@ function compileExpectedContract(
           );
         }
       });
-      const nativeAction = compileNativeEventAction(subscription, config.data.resources, pointer);
+      const nativeAction = compileNativeEventAction(subscription, config.data.resources, pointer, { emitEventTypes: eventSchemas.map((schema: JsonObject) => String(schema.eventType)), workflowResources: config.workflows.bindings.map((binding: JsonObject) => String(binding.binding?.resourceCode || binding.resourceCode || '')) });
       const delivery = validateEventDeliveryPolicy(
         subscription.delivery,
         eventTypes,
@@ -1695,7 +1697,7 @@ function compileExpectedContract(
     eventHandlerManifest: {
       schemaVersion: EVENT_HANDLER_MANIFEST_SCHEMA,
       appCode: config.appCode,
-      handlers: eventConsumers.filter(consumer => !consumer.execution).map(consumer => ({
+      handlers: eventConsumers.filter(consumer => consumer.execution?.kind !== 'native-data').map(consumer => ({
         code: consumer.code,
         endpointPath: consumer.endpointPath,
         eventTypes: consumer.eventTypes,

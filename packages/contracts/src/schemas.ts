@@ -5048,6 +5048,34 @@ const eventSubscriptionPlatformAccessSchema = {
   },
 } as const;
 
+export const eventWorkerEffectDeclarationSchema = {
+  type: 'object', additionalProperties: false,
+  required: ['kind','version','resources','emitEventTypes','maxOperations','maxGuards','maxQueryRecords','maxIntentsPerEvent'],
+  properties: {
+    kind: { const: 'worker-effect' }, version: { const: 1 },
+    maxOperations: { type: 'integer', minimum: 1, maximum: 8 },
+    maxGuards: { type: 'integer', minimum: 1, maximum: 24 },
+    maxQueryRecords: { type: 'integer', minimum: 1, maximum: 500 },
+    maxIntentsPerEvent: { type: 'integer', minimum: 1, maximum: 100 },
+    emitEventTypes: { type: 'array', maxItems: 16, uniqueItems: true, items: nonEmptyString },
+    resources: { type: 'array', minItems: 1, maxItems: 16, items: {
+      type: 'object', additionalProperties: false, required: ['resourceCode','readFields','writeOperations','writeFields'],
+      properties: {
+        resourceCode: dataResourceCode,
+        readFields: { type: 'array', minItems: 1, maxItems: 64, uniqueItems: true, items: nonEmptyString },
+        writeFields: { type: 'array', maxItems: 64, uniqueItems: true, items: nonEmptyString },
+        writeOperations: { type: 'array', maxItems: 2, uniqueItems: true, items: { enum: ['create','update'] } },
+      },
+    } },
+  },
+} as const;
+export const eventWorkerEffectPlanSchema = {
+  ...eventWorkerEffectDeclarationSchema,
+  required: [...eventWorkerEffectDeclarationSchema.required, 'resourceDigests', 'digest'],
+  properties: { ...eventWorkerEffectDeclarationSchema.properties, digest,
+    resourceDigests: { type: 'object', maxProperties: 16, additionalProperties: digest } },
+} as const;
+
 export const eventSubscriptionSchema = {
   $id: SCHEMA_VERSIONS.eventSubscription,
   type: "object",
@@ -5071,7 +5099,7 @@ export const eventSubscriptionSchema = {
   ],
   properties: {
     schemaVersion: { const: SCHEMA_VERSIONS.eventSubscription },
-    execution: {
+    execution: { oneOf: [{
       type: "object", additionalProperties: false,
       required: ["kind", "version", "operations", "resourceDigests", "digest"],
       properties: {
@@ -5083,7 +5111,7 @@ export const eventSubscriptionSchema = {
             data: { type: "object", maxProperties: 32 }, id: { type: "object" }, expectedRevision: { type: "object" } },
         } },
       },
-    },
+    }, eventWorkerEffectPlanSchema] },
     id: nonEmptyString,
     appCode: nonEmptyString,
     code: { type: "string", pattern: "^[a-z][a-z0-9-]*$" },

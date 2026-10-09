@@ -1105,7 +1105,7 @@ export function backendRuntimeRequired(config: OpenXiangdaAppConfig) {
       Boolean(
         backend.operations?.length ||
           backend.secrets?.length ||
-          config.events?.subscriptions?.some(item => !item.execution) ||
+          config.events?.subscriptions?.some(item => item.execution?.kind !== 'native-data') ||
           config.events?.timers?.length ||
           config.events?.dateTriggers?.length ||
           config.workflows?.providers?.length ||
@@ -1633,7 +1633,7 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
     (Array.isArray(backend.operations) && backend.operations.length > 0 ||
       Array.isArray(backend.secrets) && backend.secrets.length > 0 ||
       Array.isArray(eventConfig.subscriptions) &&
-        eventConfig.subscriptions.some(item => !object(item).execution) ||
+        eventConfig.subscriptions.some(item => object(item).execution?.kind !== 'native-data') ||
       Array.isArray(eventConfig.timers) && eventConfig.timers.length > 0 ||
       Array.isArray(eventConfig.dateTriggers) &&
         eventConfig.dateTriggers.length > 0 ||
@@ -7845,7 +7845,7 @@ export function defineOpenXiangdaApp(
       root: 'apps/server', runtime: 'node', framework: 'nestjs',
       enabled: Boolean(
         declaration.backend?.operations?.length || declaration.backend?.secrets?.length ||
-        declaration.events?.subscriptions?.some(item => !item.execution) || declaration.events?.timers?.length ||
+        declaration.events?.subscriptions?.some(item => item.execution?.kind !== 'native-data') || declaration.events?.timers?.length ||
         declaration.events?.dateTriggers?.length ||
         declaration.workflows?.providers?.length || declaration.data?.concurrency?.commands.some(command=>command.mode==='durable')
       ),

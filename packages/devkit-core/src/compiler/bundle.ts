@@ -973,7 +973,7 @@ function compileContractBundleFromNormalized(
     eventHandlerManifest: {
       schemaVersion: SCHEMA_VERSIONS.eventHandlerManifest,
       appCode: config.app.code,
-      handlers: eventConsumers.filter(consumer => !consumer.execution).map(consumer => ({
+      handlers: eventConsumers.filter(consumer => consumer.execution?.kind !== 'native-data').map(consumer => ({
         code: consumer.code,
         endpointPath: consumer.endpointPath,
         eventTypes: consumer.eventTypes,
