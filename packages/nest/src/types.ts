@@ -196,6 +196,7 @@ export interface OpenXiangdaServicePrincipal extends Principal {
 
 export interface OpenXiangdaGatewayTransportContext
   extends GatewayInvocationPrincipal {
+  connectedDevelopmentSessionToken?: string;
   authorization: string;
   perspectiveCode: string | null;
 }

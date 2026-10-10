@@ -3,7 +3,7 @@ import type { ConfigurationBundleV3, ContractBundleV3 } from "../native.js";
 import { OPENXIANGDA_CONTRACT_VERSION } from "../native-version.js";
 
 export const DEVELOPMENT_CONFIGURATION_SCHEMA =
-  "openxiangda.development-configuration/v1";
+  "openxiangda.development-configuration/v2";
 export const DEVELOPMENT_CONFIGURATION_MANIFEST_SCHEMA =
   "openxiangda.development-configuration-manifest/v1";
 export const DEVELOPMENT_CONFIGURATION_FEATURE =
@@ -46,6 +46,8 @@ export interface DevelopmentConfigurationResult {
   appVersionId: string;
   configurationRunId: string;
   headRevision: number;
+  publishedAppVersionId: string;
+  selection: "session";
   configDigest: string;
   contractDigest: string;
   reused: boolean;
@@ -169,11 +171,12 @@ export function createDevelopmentConfigurationManifest(
 
 export function developmentConfigurationKey(
   manifest: DevelopmentConfigurationManifest,
-  expectedHeadRevision: number
+  expectedHeadRevision: number,
+  actorUserId?: string
 ): string {
   if (!Number.isSafeInteger(expectedHeadRevision) || expectedHeadRevision < 1)
     fail("/expectedHeadRevision");
-  return `development:${sha256Digest({ manifest, expectedHeadRevision })}`;
+  return `development:${sha256Digest({ manifest, expectedHeadRevision, ...(actorUserId ? { actorUserId } : {}) })}`;
 }
 
 export function assertDevelopmentConfigurationResult(
@@ -195,6 +198,8 @@ export function assertDevelopmentConfigurationResult(
     "appVersionId",
     "configurationRunId",
     "headRevision",
+    "publishedAppVersionId",
+    "selection",
     "configDigest",
     "contractDigest",
     "reused",
@@ -212,11 +217,12 @@ export function assertDevelopmentConfigurationResult(
     r.contractDigest !== input.contractDigest ||
     !uuid.test(r.environmentId) ||
     !uuid.test(r.appVersionId) ||
+    !uuid.test(r.publishedAppVersionId) || r.appVersionId === r.publishedAppVersionId || r.selection !== "session" ||
     !uuid.test(r.configurationRunId) ||
     typeof r.reused !== "boolean" ||
     !Number.isSafeInteger(r.headRevision) ||
     r.headRevision < 1 ||
-    (!r.reused && r.headRevision !== input.expectedHeadRevision + 1) ||
+    r.headRevision !== input.expectedHeadRevision ||
     r.runtimeArtifactsDeployed !== false ||
     r.backendEventsAvailable !== false
   )

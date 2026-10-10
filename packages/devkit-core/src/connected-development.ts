@@ -373,6 +373,7 @@ function createConnectedProxy(input: {
       const headers = forwardedHeaders(request.headers);
       const explicitAuthorization = request.headers.authorization;
       delete headers['x-openxiangda-dev-session'];
+      delete headers['x-openxiangda-dev-selection'];
       delete headers['x-openxiangda-connected-dev'];
       const browserIdentity = input.identityMode === 'browser' ||
         hasApplicationBrowserCookie(request.headers.cookie) ||
@@ -389,6 +390,10 @@ function createConnectedProxy(input: {
           request.headers.origin === localWeb.origin && request.headers.host === localWeb.host &&
           request.headers['sec-fetch-site'] === 'same-origin') {
         headers.origin = new URL(input.platformBaseUrl).origin;
+      }
+      if (ordinaryIdentity) {
+        const selected = await input.sessionHeaders();
+        headers['x-openxiangda-dev-selection'] = `selector:${selected['x-openxiangda-dev-session']}`;
       }
       if (!ordinaryIdentity) {
         headers.authorization = authorization!;

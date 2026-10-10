@@ -252,7 +252,7 @@ export class OpenXiangdaPlatformClient {
       {
         headers: {
           ...this.identityHeaders(authorization),
-          "X-OpenXiangda-Dev-Session": sessionToken,
+          [sessionToken.startsWith("selector:") ? "X-OpenXiangda-Dev-Selection" : "X-OpenXiangda-Dev-Session"]: sessionToken,
         },
       }
     );
@@ -1279,7 +1279,8 @@ export class OpenXiangdaPlatformClient {
               : {}),
             ...(businessAction.connectedDevelopmentSessionToken
               ? {
-                  "X-OpenXiangda-Dev-Session":
+                  [businessAction.connectedDevelopmentSessionToken.startsWith("selector:")
+                    ? "X-OpenXiangda-Dev-Selection" : "X-OpenXiangda-Dev-Session"]:
                     businessAction.connectedDevelopmentSessionToken,
                 }
               : {}),

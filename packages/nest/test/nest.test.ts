@@ -1405,6 +1405,7 @@ function gatewayAssertion(input: {
   perspectiveCode?: string | null;
   /** Assertion lifetime in seconds; defaults to the platform legacy 30s window. */
   ttlSeconds?: number;
+  backendRevisionId?: string;
 }) {
   const now = Math.floor(Date.now() / 1000);
   const header = Buffer.from(
@@ -1426,7 +1427,7 @@ function gatewayAssertion(input: {
       app_version_id: gatewayTarget.appVersionId,
       deployment_run_id: gatewayTarget.deploymentRunId,
       head_revision: gatewayTarget.headRevision,
-      backend_revision_id: gatewayTarget.backendRevisionId,
+      backend_revision_id: input.backendRevisionId || gatewayTarget.backendRevisionId,
       method: input.method,
       normalized_path: input.path,
       canonical_query_digest: sha256(input.query),
@@ -3775,4 +3776,39 @@ test('managed exchange keeps application environment and business action on all 
     assert.equal(JSON.parse(String(call.init?.body)).environmentKey, 'preproduction');
   }
   assert.equal(JSON.parse(String(calls[1]!.init?.body)).fileSize, undefined);
+});
+
+
+test('connected development never acquires or releases the published background lease',async()=>{
+  const credentials={configured:()=>true,withAuthorization:test.mock.fn()};
+  const platform={commandRuntimeLease:test.mock.fn()};
+  const lease=new OpenXiangdaRuntimeLeaseService(credentials as any,platform as any,{...options(globalThis.fetch),connectedDevelopment:true});
+  lease.onApplicationBootstrap();await lease.onApplicationShutdown();
+  assert.equal(lease.isActive(),false);
+  assert.equal(credentials.withAuthorization.mock.callCount(),0);
+  assert.equal(platform.commandRuntimeLease.mock.callCount(),0);
+});
+
+test('ordinary source invocations bind the config selector to the signed session and real actor',async()=>{
+  const backendRevisionId='connected-development:session-one';const token='source-invocation';const body=Buffer.alloc(0);
+  const selected:any={schemaVersion:'openxiangda.connected-dev-session/v2',sessionId:'session-one',
+    expiresAt:new Date(Date.now()+60000).toISOString(),environment:{id:gatewayTarget.environmentId,key:'preproduction',activeAppVersionId:gatewayTarget.appVersionId,headRevision:gatewayTarget.headRevision},
+    principal:{userId:'user-1'},mode:'manifest-overlay'};
+  for(const invalid of [null,'session','actor','published-runtime'] as const){
+    const selection=structuredClone(selected);
+    if(invalid==='session')selection.sessionId='session-other';
+    if(invalid==='actor')selection.principal.userId='other-user';
+    const invocation={...roleUnionGatewayInvocationFixture,target:{...gatewayTarget,backendRevisionId}};
+    const platform={...gatewayPlatform(invocation),connectedDevelopmentSession:test.mock.fn(async()=>selection)};
+    const opts={...options(globalThis.fetch),backendRevisionId,connectedDevelopment:invalid!=='published-runtime'};
+    const guard=new OpenXiangdaGatewayTransportGuard(new OpenXiangdaGatewayAssertionVerifier(platform as any,opts),platform as any,opts);
+    const request:any={method:'GET',url:'/api/instruments/context',rawBody:body,headers:{authorization:`Bearer ${token}`,
+      'x-openxiangda-dev-selection':'selector:config-proof','x-openxiangda-gateway-assertion':gatewayAssertion({method:'GET',path:'/api/instruments/context',query:'',body,token,backendRevisionId})}};
+    if(invalid)await assert.rejects(()=>guard.canActivate(httpContext(request)));
+    else {await guard.canActivate(httpContext(request));assert.equal(request.openxiangdaInvocation.connectedDevelopmentSessionToken,'selector:config-proof');
+      const authz=new OpenXiangdaAuthzGuard({getAllAndOverride:()=> 'app:reference-app:data:instruments:update'} as any);
+      await authz.canActivate(httpContext(request));
+      assert.equal(request.openxiangda.connectedDevelopmentSessionToken,'selector:config-proof');
+      assert.equal(request.openxiangda.principal.userId,'user-1');}
+  }
 });

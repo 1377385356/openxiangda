@@ -35,6 +35,7 @@ export class OpenXiangdaRuntimeLeaseService
   implements OnApplicationBootstrap, OnApplicationShutdown
 {
   private readonly holderId: string;
+  private readonly connectedDevelopment: boolean;
   private current: RuntimeLeaseResult | null = null;
   private lastError: string | null = null;
   private stopped = false;
@@ -52,10 +53,11 @@ export class OpenXiangdaRuntimeLeaseService
     options: OpenXiangdaModuleOptions
   ) {
     this.holderId = runtimeHolderId(options.runtimeInstanceId);
+    this.connectedDevelopment = Boolean(options.connectedDevelopment);
   }
 
   onApplicationBootstrap(): void {
-    if (!this.credentials.configured() || this.loopPromise) return;
+    if (this.connectedDevelopment || !this.credentials.configured() || this.loopPromise) return;
     this.loopPromise = this.loop();
   }
 

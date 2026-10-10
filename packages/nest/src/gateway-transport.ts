@@ -226,8 +226,21 @@ export class OpenXiangdaGatewayTransportGuard implements CanActivate {
       assertion
     );
     this.assertInvocation(invocation, payload);
+    const sessionToken = header(request, 'x-openxiangda-dev-selection').trim();
+    if (sessionToken) {
+      if (!this.options.connectedDevelopment || !payload.backend_revision_id.startsWith('connected-development:'))
+        this.fail('OPENXIANGDA_CONNECTED_DEV_IDENTITY_INVALID');
+      const selected = await this.platform.connectedDevelopmentSession(authorization, sessionToken);
+      if (`connected-development:${selected.sessionId}` !== payload.backend_revision_id
+        || selected.environment.id !== payload.environment_id
+        || selected.environment.activeAppVersionId !== payload.app_version_id
+        || selected.environment.headRevision !== payload.head_revision
+        || !('userId' in invocation.principal) || selected.principal.userId !== invocation.principal.userId)
+        this.fail('OPENXIANGDA_CONNECTED_DEV_IDENTITY_INVALID');
+    }
     request.openxiangdaInvocation = {
       ...invocation,
+      ...(sessionToken ? { connectedDevelopmentSessionToken: sessionToken } : {}),
       authorization,
       perspectiveCode: payload.perspective_code,
     };
@@ -246,7 +259,7 @@ export class OpenXiangdaGatewayTransportGuard implements CanActivate {
     const sessionToken = header(
       request,
       "x-openxiangda-dev-session"
-    ).trim();
+    ).trim() || header(request, "x-openxiangda-dev-selection").trim();
     if (!sessionToken) {
       this.fail("OPENXIANGDA_CONNECTED_DEV_SESSION_REQUIRED");
     }
