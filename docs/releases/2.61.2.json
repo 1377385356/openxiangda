@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.61.2",
+  "status": "reviewed",
+  "title": "富文本 Field Kit 工具栏视觉重设计",
+  "summary": "将官方 Tiptap 富文本工具栏改为图标优先的分组操作和受控菜单，降低桌面密度并改善移动端编辑体验。",
+  "newFeatures": [
+    "段落、字体、字号、行高、对齐和表情使用平台受控菜单，移除浏览器原生选择器。",
+    "富文本操作保留完整中文无障碍标签，桌面端提供分组工具栏，移动端支持横向滚动。"
+  ],
+  "fixes": [
+    "修复工具栏文字按钮堆叠、表情原生弹出框和应用样式覆盖 Field Kit 的视觉问题。"
+  ],
+  "affectedUsers": [
+    "使用 OpenXiangda Field Kit 富文本字段的应用开发者和终端编辑人员。"
+  ],
+  "upgradeSteps": [
+    "升级 openxiangda 至 2.61.2，并使用匹配的 openxiangda-cli 2.8.10。",
+    "重新构建应用前端；富文本 HTML、清洗、媒体上传和数据协议无需迁移。"
+  ],
+  "knownLimitations": [
+    "浏览器颜色选择器仍由操作系统提供，颜色值和清洗规则保持现有协议。"
+  ],
+  "compatibility": {
+    "node": ">=24",
+    "platform": "data.rich-text 1.0.0",
+    "generation": "OpenXiangda Native V2"
+  },
+  "issues": []
+}
