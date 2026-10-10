@@ -272,7 +272,11 @@ export function DefaultRichTextField({ value = '', onChange, disabled = false, m
     const icon = label === '段落' ? <AlignLeftOutlined /> : label === '字体' || label === '字号' ? <FontSizeOutlined /> : label === '行高' ? <LineHeightOutlined /> : label === '对齐' ? <AlignLeftOutlined /> : <SmileOutlined />;
     const fallback = label === '段落' ? '正文' : label === '字号' ? '16px' : label;
     const current = menuValues[label] || fallback;
-    return <Dropdown key={label} trigger={['click']} placement="bottomLeft" menu={{
+    // Native popovers are promoted to the top layer. Mounting a dropdown in
+    // document.body would leave it underneath the fullscreen editor, so keep
+    // open menus inside that same popover while fullscreen is active.
+    return <Dropdown key={label} trigger={['click']} placement="bottomLeft"
+      getPopupContainer={() => fullScreen ? (fieldRoot.current || document.body) : document.body} menu={{
       items: values.map(value => ({ key: value, label: value })),
       onClick: ({ key }) => { const next = String(key); setMenuValues(previous => ({ ...previous, [label]: next })); action(next); },
     }}>
