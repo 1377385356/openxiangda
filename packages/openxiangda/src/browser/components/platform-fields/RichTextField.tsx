@@ -186,6 +186,91 @@ export function RichTextField(props: RichTextFieldProps) {
   const Editor = useContext(RichTextEditorContext) || DefaultRichTextField;
   return <Editor {...props} />;
 }
+
+function RichTextToolbar({ mobile, children }: { mobile: boolean; children: ReactNode }) {
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const expandedRef = useRef(false);
+  const measureFrame = useRef<number | null>(null);
+  const measureTimer = useRef<number | null>(null);
+  const [overflowing, setOverflowing] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const measureOverflow = () => {
+    const toolbar = toolbarRef.current;
+    if (mobile || expandedRef.current || !toolbar) return;
+    setOverflowing(toolbar.scrollWidth > toolbar.clientWidth + 1);
+  };
+  const scheduleMeasure = () => {
+    if (typeof window === 'undefined') return;
+    if (measureFrame.current !== null || measureTimer.current !== null) return;
+    if (typeof window.requestAnimationFrame === 'function') {
+      measureFrame.current = window.requestAnimationFrame(() => {
+        measureFrame.current = null;
+        measureOverflow();
+      });
+    } else {
+      measureTimer.current = window.setTimeout(() => {
+        measureTimer.current = null;
+        measureOverflow();
+      }, 0);
+    }
+  };
+  const cancelScheduledMeasure = () => {
+    if (typeof window === 'undefined') return;
+    if (measureFrame.current !== null) {
+      window.cancelAnimationFrame(measureFrame.current);
+      measureFrame.current = null;
+    }
+    if (measureTimer.current !== null) {
+      window.clearTimeout(measureTimer.current);
+      measureTimer.current = null;
+    }
+  };
+  useEffect(() => {
+    expandedRef.current = false;
+    setExpanded(false);
+    setOverflowing(false);
+    if (mobile) return;
+    const toolbar = toolbarRef.current;
+    if (!toolbar) return;
+    const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(measureOverflow) : null;
+    resizeObserver?.observe(toolbar);
+    const mutationObserver = typeof MutationObserver === 'function' ? new MutationObserver(scheduleMeasure) : null;
+    mutationObserver?.observe(toolbar, { childList: true, subtree: true, attributes: true });
+    window.addEventListener('resize', measureOverflow);
+    scheduleMeasure();
+    return () => {
+      resizeObserver?.disconnect();
+      mutationObserver?.disconnect();
+      window.removeEventListener('resize', measureOverflow);
+      cancelScheduledMeasure();
+    };
+  }, [mobile]);
+  const showMore = !mobile && (overflowing || expanded);
+  const toggleExpanded = () => {
+    const next = !expandedRef.current;
+    expandedRef.current = next;
+    setExpanded(next);
+    if (!next) scheduleMeasure();
+  };
+  return <div className={`oxa-rich-text-toolbar-shell${showMore ? ' oxa-rich-text-toolbar-shell-overflowing' : ''}${expanded ? ' oxa-rich-text-toolbar-shell-expanded' : ''}`}>
+    <div ref={toolbarRef} className="oxa-rich-text-toolbar" role="toolbar" aria-label="富文本工具栏">
+      {children}
+    </div>
+    {showMore && <Tooltip title={expanded ? '收起工具栏' : '显示更多工具'}>
+      <Button
+        className="oxa-rich-text-toolbar-more"
+        type="text"
+        size="small"
+        icon={<EllipsisOutlined />}
+        aria-label={expanded ? '收起更多工具' : '更多工具'}
+        aria-expanded={expanded}
+        onMouseDown={event => event.preventDefault()}
+        onClick={toggleExpanded}
+      >更多</Button>
+    </Tooltip>}
+  </div>;
+}
+
 export function DefaultRichTextField({ value = '', onChange, disabled = false, mobile = false, onUpload, resourceCode, workflowBinding, recordId, fieldCode }: RichTextFieldProps) {
   const [uploading, setUploading] = useState(false), [error, setError] = useState('');
   const [fullScreen, setFullScreen] = useState(false);
@@ -291,7 +376,7 @@ export function DefaultRichTextField({ value = '', onChange, disabled = false, m
   return <div ref={fieldRoot} role={fullScreen ? 'region' : undefined} aria-label={fullScreen ? '富文本全屏编辑' : undefined}
     onKeyDown={event => { if (fullScreen && event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setFullScreen(false); } }}
     className={`oxa-rich-text-field${mobile ? ' oxa-mobile-rich-text-field' : ''}${fullScreen ? ' oxa-rich-text-fullscreen' : ''}`}>
-    <div className="oxa-rich-text-toolbar" role="toolbar" aria-label="富文本工具栏">
+    <RichTextToolbar mobile={mobile}>
       <div className="oxa-rich-text-toolbar-group oxa-rich-text-toolbar-group-menus">
         {select('段落', ['正文', '标题1', '标题2', '标题3'], v => v === '正文' ? editor?.chain().focus().setParagraph().run() : editor?.chain().focus().setHeading({ level: Number(v.slice(-1)) as 1 | 2 | 3 }).run())}
         {select('字体', [...RICH_TEXT_POLICY_V2.fonts], v => editor?.chain().focus().setFontFamily(v).run())}
@@ -337,7 +422,7 @@ export function DefaultRichTextField({ value = '', onChange, disabled = false, m
         {button('撤销', () => editor?.chain().focus().undo().run())}{button('重做', () => editor?.chain().focus().redo().run())}
         {button(fullScreen ? '退出全屏' : '全屏编辑', () => setFullScreen(previous => !previous))}
       </div>
-    </div>
+    </RichTextToolbar>
     <input type="file" ref={input} hidden style={{ display: 'none' }} disabled={locked} onChange={e => { const file = e.target.files?.[0]; e.target.value = ''; if (file) void insertFile(file); }} />
     {error && <div className="oxa-rich-text-error" role="alert">{error}</div>}
     <EditorContent editor={editor} />

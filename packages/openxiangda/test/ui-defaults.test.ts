@@ -19,6 +19,18 @@ test('platform CSS keeps the host document unchanged and uses library defaults',
   assert.ok(variables.every(name => name.startsWith('--ant-')));
 });
 
+test('rich text Field Kit owns a stable desktop overflow disclosure', () => {
+  const component = readFileSync(new URL('../src/browser/components/platform-fields/RichTextField.tsx', import.meta.url), 'utf8');
+  const styles = readFileSync(new URL('../src/browser/styles.css', import.meta.url), 'utf8');
+  assert.match(component, /function RichTextToolbar/);
+  assert.match(component, /new ResizeObserver\(measureOverflow\)/);
+  assert.match(component, /new MutationObserver\(scheduleMeasure\)/);
+  assert.match(component, /const expandedRef = useRef\(false\)/);
+  assert.match(component, /aria-expanded=\{expanded\}/);
+  assert.match(styles, /\.oxa-rich-text-toolbar-shell-expanded \.oxa-rich-text-toolbar \{ flex-wrap: wrap;/);
+  assert.match(styles, /\.oxa-rich-text-toolbar-more\.ant-btn/);
+});
+
 test('mobile base CSS scopes only upstream defaults and retains scroll/measurement mechanics', () => {
   const require = createRequire(import.meta.url);
   const source = readFileSync(require.resolve('antd-mobile/es/global/global.css'), 'utf8');
