@@ -3,6 +3,45 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.61.0",
+      "status": "reviewed",
+      "title": "OpenXiangda 2.61.0：完整富文本与受管视频",
+      "summary": "PC 与移动富文本改用免费 MIT Tiptap 引擎，统一编辑、Native 写入和公开投影的 HTML5 安全规则，保留丰富排版并支持受管视频。本次同时物化既有主线待发布维护。",
+      "newFeatures": [
+        "支持字体、字号、行高、颜色、背景色、对齐、缩进、上下标、表格、待办列表和分割线。",
+        "受管 MP4/WebM 视频每个最高100MiB，每字段最多4个；图片最多20张、每张10MiB。配套平台以授权 Range 流式读取，复用现有跨资源复制回执。",
+        "应用可使用外部编辑器，但须消费同一安全协议；text.rich 自动要求 data.rich-text:1.0.0。",
+        "收录主线已有的独立角色容量512与标准工作流详情条件显示。"
+      ],
+      "fixes": [
+        "避免前端、服务端与发布展示清洗白名单不同造成保存后格式丢失。",
+        "收录主线已有的移动已选值可访问描述与 selected-department 精确配套版本。"
+      ],
+      "affectedUsers": [
+        "使用 V2 text.rich 的所有应用，以及需要视频、复杂排版和外部编辑器的开发者。"
+      ],
+      "upgradeSteps": [
+        "先部署配套服务器并核验 data.rich-text 与 validatorDigest，再安装 openxiangda2.61.0/contracts2.76.0/devkit2.57.1/CLI2.8.8。",
+        "使用标准 RichTextField 与 RichTextValueDisplay；外部编辑器先统一清洗，上传与跨资源发布使用官方受管文件接口。",
+        "刷新同版本技能，验证保存、回填及立即/定时发布后晋级原成功测试制品。"
+      ],
+      "knownLimitations": [
+        "不支持外部视频、iframe、自动播放、转码或任意 CSS；容器支持不保证所有客户端编解码器可播放。",
+        "HTML 限1MiB，解析树限制25000节点与128层；上传还受平台原存储限额约束。",
+        "新格式保存后回退旧服务端可能在下次写入丢格式；回滚编辑器时保留新版清洗与读取规则。",
+        "本地真实浏览器与受控服务测试不替代学校业务角色及发布链路验收。"
+      ],
+      "compatibility": {
+        "node": ">=24",
+        "platform": "配套 rich-text-html/1、data.rich-text:1.0.0 与相同 contracts validatorDigest；无新增 SQL。",
+        "v1": "V1 运行时和编辑器保持独立，不消费新增 V2 规则。"
+      },
+      "issues": [],
+      "sha256": "90e225ca2aada3d5d94b11e569fb7db25731444c9c8cb3dc5d3edb30e39ec609",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.61.0"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.60.2",
       "status": "reviewed",
       "title": "OpenXiangda 2.60.2：已选部门真实事实",
