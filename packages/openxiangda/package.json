@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.61.0",
+  "version": "2.61.1",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -94,13 +94,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.8.8",
-    "openxiangda-contracts": "2.76.0",
-    "openxiangda-devkit-core": "2.57.1",
+    "openxiangda-cli": "2.8.9",
+    "openxiangda-contracts": "2.77.0",
+    "openxiangda-devkit-core": "2.58.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.1.7",
-    "openxiangda-nest": "2.17.1",
-    "openxiangda-skill-kit": "2.3.98",
+    "openxiangda-mcp": "2.1.8",
+    "openxiangda-nest": "2.17.2",
+    "openxiangda-skill-kit": "2.3.99",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -166,41 +166,39 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.61.0",
+    "version": "2.61.1",
     "status": "reviewed",
-    "title": "OpenXiangda 2.61.0：完整富文本与受管视频",
-    "summary": "PC 与移动富文本改用免费 MIT Tiptap 引擎，统一编辑、Native 写入和公开投影的 HTML5 安全规则，保留丰富排版并支持受管视频。本次同时物化既有主线待发布维护。",
+    "title": "连接开发与已部署预发版本隔离",
+    "summary": "修复启动本地连接开发后预发页面变为未部署的问题。开发配置通过独立会话选择，已部署前后端与权限、流程、订阅和调度保持原发布选择。",
     "newFeatures": [
-      "支持字体、字号、行高、颜色、背景色、对齐、缩进、上下标、表格、待办列表、分割线、表情选择与全屏编辑。",
-      "受管 MP4/WebM 视频每个最高100MiB，每字段最多4个；图片最多20张、每张10MiB。配套平台以授权 Range 流式读取，复用现有跨资源复制回执。",
-      "应用可使用外部编辑器，但须消费同一安全协议；text.rich 自动要求 data.rich-text:1.0.0。",
-      "收录主线已有的独立角色容量512与标准工作流详情条件显示。"
+      "开发会话引用独立配置快照，源码连接和短期工作负载凭证按会话隔离。"
     ],
     "fixes": [
-      "避免前端、服务端与发布展示清洗白名单不同造成保存后格式丢失。",
-      "收录主线已有的移动已选值可访问描述与 selected-department 精确配套版本。"
+      "dev 不再切换共享预发 Head，不再清空已部署的前后端制品指针。",
+      "普通线上请求不会被导向开发者本地 Nest；关闭、过期和撤销只影响对应开发会话。",
+      "普通浏览器配置选择证明绑定签名会话与实际登录用户，不能借用开发者权限。"
     ],
     "affectedUsers": [
-      "使用 V2 text.rich 的所有应用，以及需要视频、复杂排版和外部编辑器的开发者。"
+      "使用 openxiangda dev 的应用开发者及同一应用的预发使用者。"
     ],
     "upgradeSteps": [
-      "先部署配套服务器并核验 data.rich-text 与 validatorDigest，再安装 openxiangda2.61.0/contracts2.76.0/devkit2.57.1/CLI2.8.8。",
-      "使用标准 RichTextField 与 RichTextValueDisplay；外部编辑器先统一清洗，上传与跨资源发布使用官方受管文件接口。",
-      "刷新同版本技能，验证保存、回填及立即/定时发布后晋级原成功测试制品。"
+      "先升级配套平台，确认 application.development-configuration 契约为 2.0.0。",
+      "更新工作区至 openxiangda 2.61.1，重新运行 dev 创建独立开发会话。",
+      "历史已被开发配置切换的预发版本，通过正常 rollback 恢复已部署版本。"
     ],
     "knownLimitations": [
-      "不支持外部视频、iframe、自动播放、转码或任意 CSS；容器支持不保证所有客户端编解码器可播放。",
-      "HTML 限1MiB，解析树限制25000节点与128层；上传还受平台原存储限额约束。",
-      "新格式保存后回退旧服务端可能在下次写入丢格式；回滚编辑器时保留新版清洗与读取规则。",
-      "本地真实浏览器与受控服务测试不替代学校业务角色及发布链路验收。"
+      "共享测试数据的业务写入仍然真实生效；本次隔离配置和运行选择，不隔离数据。",
+      "新模型、已发布角色及流程结构的变更需要独立测试环境或正式部署；已有模型的新增字段只增加可空物理列。",
+      "开发启动不激活后台订阅、定时或业务日期调度，后台链路仍通过正式部署批次验收。",
+      "浏览器文件流操作需要部署制品。"
     ],
     "compatibility": {
       "node": ">=24",
-      "platform": "配套 rich-text-html/1、data.rich-text:1.0.0 与相同 contracts validatorDigest；无新增 SQL。",
-      "v1": "V1 运行时和编辑器保持独立，不消费新增 V2 规则。"
+      "platform": "application.development-configuration 2.0.0",
+      "generation": "OpenXiangda Native V2"
     },
     "issues": [],
-    "sha256": "aece510083f6d6b04ae4c62410631e99824718072c64cfb1ab605970889d065d",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.61.0"
+    "sha256": "acfeb841fe4e2107fb13cf3e0ef92c1c35bad7b1836b61ac3e6028bf97ff589e",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.61.1"
   }
 }
