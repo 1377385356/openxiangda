@@ -2,6 +2,7 @@
 "openxiangda-contracts": minor
 "openxiangda-devkit-core": patch
 "openxiangda": minor
+"openxiangda-cli": patch
 ---
 
 Replace the minimal rich text editor with the free MIT Tiptap 3.31.4 engine on
