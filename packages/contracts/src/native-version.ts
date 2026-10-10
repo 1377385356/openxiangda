@@ -5,6 +5,7 @@ export const OPENXIANGDA_CONTRACT_VERSION = "2.0.0-alpha.5" as const;
 export const PLATFORM_CAPABILITY_CONTRACT_VERSIONS = {
   "application-native-2": "1.0.0",
   "application.extended-declaration-capacity": "1.0.0",
+  "application.extended-role-capacity": "1.0.0",
   "application.extended-artifact-capacity": "1.0.0",
   "application.high-density-artifact-capacity": "1.0.0",
   "application.extended-configuration-bytes": "1.0.0",
@@ -16,6 +17,7 @@ export const PLATFORM_CAPABILITY_CONTRACT_VERSIONS = {
   "deployment.platform-executor": "1.0.0",
   "environment.on-demand-production": "1.0.0",
   "environment.runtime-lifecycle": "1.0.0",
+  "data.rich-text": "1.0.0",
   "data-api-v2": "1.1.0",
   "data.extended-owned-subtable-capacity": "1.0.0",
   "data.aggregate-owned-subtable-capacity": "1.0.0",
@@ -38,6 +40,7 @@ export const PLATFORM_CAPABILITY_CONTRACT_VERSIONS = {
   "workflow.approved-delegation": "1.0.0",
   "directory-v2": "1.0.0",
   "directory.selected-user": "1.0.0",
+  "directory.selected-departments": "1.0.0",
   "directory.current-initiator-phone": "1.0.0",
   "events-v2": "1.0.0",
   "events.durable-receipts": "1.0.0",

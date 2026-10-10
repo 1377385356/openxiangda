@@ -1,6 +1,6 @@
 import { Inject, Injectable, Scope, UnauthorizedException } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
-import type { AssignmentCandidateQuery, AssignmentCandidatePage, CurrentInitiatorDirectorySnapshot, SelectedUserDirectorySnapshot } from 'openxiangda-contracts';
+import type { AssignmentCandidateQuery, AssignmentCandidatePage, CurrentInitiatorDirectorySnapshot, SelectedUserDirectorySnapshot, SelectedDepartmentsDirectorySnapshot } from 'openxiangda-contracts';
 import { requireOpenXiangdaBusinessActionContext } from './business-action-context.js';
 import { OpenXiangdaPlatformClient } from './platform-client.js';
 import type { OpenXiangdaHttpRequest } from './types.js';
@@ -34,6 +34,27 @@ export class OpenXiangdaBusinessDirectoryService {
       throw new UnauthorizedException('OPENXIANGDA_DIRECTORY_OPERATION_ACCESS_REQUIRED');
     }
     return this.platform.resolveSelectedUser(context.authorization, context.action, userId);
+  }
+
+  async selectedDepartments(
+    ids: readonly string[]
+  ): Promise<SelectedDepartmentsDirectorySnapshot> {
+    const context = requireOpenXiangdaBusinessActionContext(this.request);
+    const declared =
+      this.request.openxiangda?.operation?.platformAccess?.selectedDepartments;
+    if (!declared)
+      throw new UnauthorizedException(
+        'OPENXIANGDA_DIRECTORY_DEPARTMENTS_ACCESS_REQUIRED'
+      );
+    if (!Array.isArray(ids) || ids.length > declared.maxIds)
+      throw new UnauthorizedException(
+        'OPENXIANGDA_DIRECTORY_DEPARTMENTS_IDS_INVALID'
+      );
+    return this.platform.resolveSelectedDepartments(
+      context.authorization,
+      context.action,
+      ids
+    );
   }
 
   async currentInitiator(): Promise<CurrentInitiatorDirectorySnapshot> {

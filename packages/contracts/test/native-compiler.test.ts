@@ -339,3 +339,31 @@ test('owned minima agree in ESM/CJS and reject malformed or contradictory ranges
       subtable: { ...relation, minRows: 500, maxRows: 500 } }], '/fields')[0]!.subtable!.minRows, 500);
   }
 });
+
+test('selected department contract is preserved and capability-negotiated by the same ESM and CJS compiler', () => {
+  const config=JSON.parse(corpus.configuration.canonical);
+  const access={fields:['name','parent','path'],maxIds:8};
+  config.backend.operations[0].platformAccess.selectedDepartments=access;
+  const contract=JSON.parse(corpus.contract.canonical);
+  contract.operations[0].platformAccess.selectedDepartments=access;
+  contract.configDigest=sha256Digest(config);
+  const value={...input(config),contractBytes:canonicalJson(contract),expectedContractDigest:sha256Digest(contract)};
+  const compiled=[esm,cjs].map(implementation=>implementation.compileNativeApplicationConfiguration(value));
+  assert.deepEqual(compiled[0],compiled[1]);
+  assert.equal(compiled[0]!.requiredPlatformCapabilities.find(c=>c.code==='directory.selected-departments')?.contractVersion,'1.0.0');
+  for(const invalid of [{fields:['path'],maxIds:8},{fields:['name','phone'],maxIds:8},{fields:['name'],maxIds:51},{fields:['name'],maxIds:8,all:true}]){
+    config.backend.operations[0].platformAccess.selectedDepartments=invalid;
+    contract.operations[0].platformAccess.selectedDepartments=invalid;
+    contract.configDigest=sha256Digest(config);
+    const bad={...input(config),contractBytes:canonicalJson(contract),expectedContractDigest:sha256Digest(contract)};
+    for(const implementation of [esm,cjs])assert.throws(()=>implementation.compileNativeApplicationConfiguration(bad));
+  }
+});
+
+test('rich fields automatically require the uniform platform format and managed-video capability', () => {
+  const config = JSON.parse(corpus.configuration.canonical);
+  config.data.resources[0].schema.fields.push({ code: 'body', type: 'text.rich', nullable: true });
+  for (const implementation of [esm, cjs])
+    assert.deepEqual(implementation.compileRequiredPlatformCapabilitiesV3(config).find(item => item.code === 'data.rich-text'),
+      { code: 'data.rich-text', contractVersion: '1.0.0', usageDigest: 'sha256:' + sha256Digest({ policyVersion: 'rich-text-html/1' }) });
+});

@@ -101,10 +101,12 @@ import {
 import {
   useWorkflowDefinition,
   useWorkflowTaskFormBehavior,
+  useWorkflowDetailBehavior,
   type GeneratedWorkflowNamedOperationIntent,
 } from '../../workflow-definitions';
 import { useResourceDefinitions } from '../../resource-definitions';
 import { selectedSurfaceFields } from '../resource/resource-field-selection';
+import { workflowDetailGroups } from './workflow-detail-fields';
 import type { GeneratedResourceDefinition } from '../resource/generated-resource-definition';
 import { useRuntime, useOptionalRuntime } from '../../runtime';
 import {
@@ -316,21 +318,6 @@ function standardWorkflowOperations(surface: WorkflowSurface) {
     });
 }
 
-function workflowDetailGroups(detail: WorkflowBusinessDetail) {
-  const order = detail.surface?.detail?.fieldOrder || [];
-  const groups = new Map<string, SurfaceField[]>();
-  for (const key of order) {
-    const field = detail.surface?.fields[key];
-    if (!field || field.system === true) continue;
-    const section = field.section || '申请信息';
-    groups.set(section, [
-      ...(groups.get(section) || []),
-      { key, ...field },
-    ]);
-  }
-  return [...groups.entries()].map(([section, fields]) => ({ section, fields }));
-}
-
 function workflowBusinessRecordPath(
   surface: WorkflowSurface,
   variant: PageVariant,
@@ -430,7 +417,10 @@ export function WorkflowBusinessDetailSections({
 }) {
   const detail = surfaceBusinessDetail(surface);
   const instance = surfaceInstance(surface);
-  const groups = workflowDetailGroups(detail);
+  const behavior = useWorkflowDetailBehavior(instance.workflowCode);
+  const groups = workflowDetailGroups(detail, { behavior, context: {
+    workflowCode: instance.workflowCode, definitionVersion: instance.definitionVersion, bindingVersion: instance.bindingVersion,
+  } });
   if (detail.status === 'missing') {
     return <Result status="404" title="业务记录已不存在" />;
   }

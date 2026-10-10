@@ -608,3 +608,17 @@ CAS与写后范围检查同事务执行。应用仍负责业务规则和字典gu
 
 保存与核对共用同一operation，首次业务读取前先resolveOriginalCommand；not_observed只表示观察时未见回执，
 不自动重试或换键。管理员资料修改不会重写已完成意见、已走路径或已派审批人，后续任务按平台原Native修订协议处理。
+
+### 已选部门的实时解析
+
+业务动作需要将部门选择器结果保存为业务快照时，声明
+`platformAccess: { selectedDepartments: { fields: ['name', 'path', 'parent', 'fullPath'], maxIds: 8 } }`，
+调用 `businessDirectory.selectedDepartments(ids)`。仅提交不重复的部门 ID；必须声明 `name`，
+最多解析 50 个部门，返回值按输入顺序给出真实 `value`、`label` 及声明的可选路径字段。
+目标平台需要 `directory.selected-departments` 1.0.0；编译器自动派生该能力。
+
+此接口要求已验证的用户 Named Action，并复核发起人、环境 Head、租户及现有
+`app:<appCode>:directory:read` 权限。部门范围沿平台现有部门选择器的租户及未删除关系，
+没有新增独立的部门可见范围策略。任何部门不存在或已删除时，整组失败，不按姓名匹配，
+不接受客户端标签，也不回退到应用内复制的组织表。`snapshotRevision` 描述返回事实，
+`resolvedAt` 来自数据库时间；快照不能替代后续业务事务的权限检查。

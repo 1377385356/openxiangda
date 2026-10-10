@@ -145,8 +145,8 @@ const EVENT_AUTHORIZATION_SYSTEM_FIELDS = new Set([
   'created_at',
   'updated_at',
 ]);
-export { NATIVE_CONTRACT_CAPACITY_V2, requiresExtendedDeclarationCapacity, generatedCrudCapabilityOperations } from './declaration-capacity.js';
-import { NATIVE_CONTRACT_CAPACITY_V2, requiresExtendedDeclarationCapacity } from './declaration-capacity.js';
+export { NATIVE_CONTRACT_CAPACITY_V2, requiresExtendedDeclarationCapacity, requiresExtendedRoleCapacity, generatedCrudCapabilityOperations } from './declaration-capacity.js';
+import { NATIVE_CONTRACT_CAPACITY_V2, requiresExtendedDeclarationCapacity, requiresExtendedRoleCapacity } from './declaration-capacity.js';
 export { NATIVE_ARTIFACT_CAPACITY_V2, NATIVE_HIGH_DENSITY_ARTIFACT_CAPACITY_V2, requiresHighDensityArtifactCapacity, requiresExtendedArtifactCapacity, requiresExtendedConfigurationBytes } from './artifact-capacity.js';
 import { NATIVE_ARTIFACT_CAPACITY_V2, NATIVE_HIGH_DENSITY_ARTIFACT_CAPACITY_V2, requiresHighDensityArtifactCapacity, requiresExtendedArtifactCapacity, requiresExtendedConfigurationBytes } from './artifact-capacity.js';
 export const DATA_EVENT_TYPES_V2 = [
@@ -454,7 +454,7 @@ export function compileRequiredPlatformCapabilitiesV3(
         ].includes(field.type)
       )
     ) ||
-    operations.some(operation => operation.platformAccess?.directory);
+    operations.some(operation => operation.platformAccess?.directory || operation.platformAccess?.selectedDepartments);
   const usesEvents = Boolean(
     config.events.subscriptions.length ||
       config.events.timers.length ||
@@ -540,6 +540,9 @@ export function compileRequiredPlatformCapabilitiesV3(
     code: OpenXiangdaPlatformCapabilityCode;
     declaration: unknown;
   }> = [
+    ...(requiresExtendedRoleCapacity(config)
+      ? [{ code: 'application.extended-role-capacity' as const,
+          declaration: { roles: config.authz.roles.length, maximum: NATIVE_CONTRACT_CAPACITY_V2.roles } }] : []),
     ...(requiresExtendedConfigurationBytes(config)
       ? [{ code: 'application.extended-configuration-bytes' as const,
           declaration: { legacyConfigBytes: NATIVE_ARTIFACT_CAPACITY_V2.legacyConfigBytes,
@@ -675,6 +678,7 @@ export function compileRequiredPlatformCapabilitiesV3(
           },
         ]
       : []),
+    ...(operations.some(operation => operation.platformAccess?.selectedDepartments) ? [{ code: 'directory.selected-departments' as const, declaration: operations.filter(operation => operation.platformAccess?.selectedDepartments).map(operation => ({code:operation.code,selectedDepartments:operation.platformAccess.selectedDepartments})) }] : []),
     ...(operations.some(operation => operation.platformAccess?.directory?.mode === 'selected-user') ? [{ code: 'directory.selected-user' as const, declaration: operations.filter(operation => operation.platformAccess?.directory?.mode === 'selected-user').map(operation => ({code:operation.code,directory:operation.platformAccess.directory})) }] : []),
     ...(initiatorPhoneOperations.length || initiatorPhoneCommands.length ? [{
       code: 'directory.current-initiator-phone' as const,
@@ -683,6 +687,7 @@ export function compileRequiredPlatformCapabilitiesV3(
         commands: initiatorPhoneCommands.map((command: JsonObject) => ({ code: command.code, directory: command.execution.directory })),
       },
     }] : []),
+    ...(config.data.resources.some((resource: JsonObject) => resource.schema.fields.some((field: JsonObject) => field.type === 'text.rich')) ? [{ code: 'data.rich-text' as const, declaration: { policyVersion: 'rich-text-html/1' } }] : []),
     ...(usesManagedFiles
       ? [
           {
@@ -1782,7 +1787,7 @@ function validateEventSubscriptionPlatformAccess(
         sourceFields.forEach((field, fieldIndex) => {
           const sourceType = source!.get(field);
           const targetType = target!.get(targetFields[fieldIndex]!);
-          if (!['file', 'image'].includes(String(sourceType)) || sourceType !== targetType) {
+          if (!['file', 'image', 'text.rich'].includes(String(sourceType)) || sourceType !== targetType) {
             fail('NATIVE_EVENT_MANAGED_FILE_COPY_FIELD_INVALID', `${entryPointer}/sourceFieldCodes/${fieldIndex}`);
           }
         });
@@ -2819,7 +2824,7 @@ function validateOperationPlatformAccess(
   const access = object(value, pointer);
   exactKeys(
     access,
-    ['directory', 'managedFiles', 'managedFileCopies', 'notification', 'workflow', 'roleAssertions', 'decimalReservation', 'dataCommands', 'recordEdit', 'ownedSubject', 'workflowStage'],
+    ['directory', 'selectedDepartments', 'managedFiles', 'managedFileCopies', 'notification', 'workflow', 'roleAssertions', 'decimalReservation', 'dataCommands', 'recordEdit', 'ownedSubject', 'workflowStage'],
     pointer,
     true
   );
@@ -2900,6 +2905,15 @@ function validateOperationPlatformAccess(
       mode: String(directory.mode),
       fields: uniqueSorted(fields),
     };
+  }
+  if (access.selectedDepartments !== undefined) {
+    const entryPointer = `${pointer}/selectedDepartments`;
+    const entry = object(access.selectedDepartments, entryPointer);
+    exactKeys(entry, ['fields', 'maxIds'], entryPointer);
+    const fields = uniqueStrings(entry.fields, `${entryPointer}/fields`, 4);
+    if (!fields.includes('name') || fields.some(field => !['name','path','parent','fullPath'].includes(field)) || !Number.isSafeInteger(entry.maxIds) || entry.maxIds < 1 || entry.maxIds > 50)
+      fail('NATIVE_OPERATION_SELECTED_DEPARTMENTS_INVALID', entryPointer);
+    result.selectedDepartments = { fields: uniqueSorted(fields), maxIds: entry.maxIds };
   }
   if (access.managedFiles !== undefined) {
     const entries = boundedArray(
@@ -3009,7 +3023,7 @@ function validateOperationPlatformAccess(
         sourceFields.forEach((field, fieldIndex) => {
           const sourceType = source!.get(field);
           const targetType = target!.get(targetFields[fieldIndex]!);
-          if (!['file', 'image'].includes(String(sourceType)) || sourceType !== targetType) {
+          if (!['file', 'image', 'text.rich'].includes(String(sourceType)) || sourceType !== targetType) {
             fail('NATIVE_OPERATION_MANAGED_FILE_COPY_FIELD_INVALID', `${entryPointer}/sourceFieldCodes/${fieldIndex}`);
           }
         });

@@ -1,6 +1,6 @@
 {
   "name": "openxiangda-contracts",
-  "version": "2.74.0",
+  "version": "2.76.0",
   "description": "OpenXiangda 2.0 的共享类型、协议与 JSON Schema。",
   "type": "module",
   "main": "./dist/index.js",
@@ -19,12 +19,20 @@
       "import": "./dist/native-compiler/index.js",
       "require": "./dist/native-compiler/index.cjs"
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./rich-text": {
+      "types": "./dist/rich-text.d.ts",
+      "import": "./dist/rich-text.js",
+      "require": "./dist/rich-text.cjs"
+    }
   },
   "typesVersions": {
     "*": {
       "native-compiler": [
         "dist/native-compiler/index.d.ts"
+      ],
+      "rich-text": [
+        "dist/rich-text.d.ts"
       ]
     }
   },
@@ -33,7 +41,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json && node scripts/build-native-compiler.mjs",
+    "build": "tsc -p tsconfig.json && node scripts/build-native-compiler.mjs && node scripts/build-rich-text.mjs",
     "build:release": "node ../../scripts/prune-package-dist.mjs && pnpm build",
     "prepack": "pnpm build:release",
     "check": "tsc -p tsconfig.json --noEmit",
@@ -55,5 +63,8 @@
   "homepage": "https://github.com/1377385356/openxiangda",
   "bugs": {
     "url": "https://github.com/1377385356/openxiangda/issues"
+  },
+  "dependencies": {
+    "parse5": "8.0.0"
   }
 }

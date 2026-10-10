@@ -3,6 +3,76 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.61.0",
+      "status": "reviewed",
+      "title": "OpenXiangda 2.61.0：完整富文本与受管视频",
+      "summary": "PC 与移动富文本改用免费 MIT Tiptap 引擎，统一编辑、Native 写入和公开投影的 HTML5 安全规则，保留丰富排版并支持受管视频。本次同时物化既有主线待发布维护。",
+      "newFeatures": [
+        "支持字体、字号、行高、颜色、背景色、对齐、缩进、上下标、表格、待办列表、分割线、表情选择与全屏编辑。",
+        "受管 MP4/WebM 视频每个最高100MiB，每字段最多4个；图片最多20张、每张10MiB。配套平台以授权 Range 流式读取，复用现有跨资源复制回执。",
+        "应用可使用外部编辑器，但须消费同一安全协议；text.rich 自动要求 data.rich-text:1.0.0。",
+        "收录主线已有的独立角色容量512与标准工作流详情条件显示。"
+      ],
+      "fixes": [
+        "避免前端、服务端与发布展示清洗白名单不同造成保存后格式丢失。",
+        "收录主线已有的移动已选值可访问描述与 selected-department 精确配套版本。"
+      ],
+      "affectedUsers": [
+        "使用 V2 text.rich 的所有应用，以及需要视频、复杂排版和外部编辑器的开发者。"
+      ],
+      "upgradeSteps": [
+        "先部署配套服务器并核验 data.rich-text 与 validatorDigest，再安装 openxiangda2.61.0/contracts2.76.0/devkit2.57.1/CLI2.8.8。",
+        "使用标准 RichTextField 与 RichTextValueDisplay；外部编辑器先统一清洗，上传与跨资源发布使用官方受管文件接口。",
+        "刷新同版本技能，验证保存、回填及立即/定时发布后晋级原成功测试制品。"
+      ],
+      "knownLimitations": [
+        "不支持外部视频、iframe、自动播放、转码或任意 CSS；容器支持不保证所有客户端编解码器可播放。",
+        "HTML 限1MiB，解析树限制25000节点与128层；上传还受平台原存储限额约束。",
+        "新格式保存后回退旧服务端可能在下次写入丢格式；回滚编辑器时保留新版清洗与读取规则。",
+        "本地真实浏览器与受控服务测试不替代学校业务角色及发布链路验收。"
+      ],
+      "compatibility": {
+        "node": ">=24",
+        "platform": "配套 rich-text-html/1、data.rich-text:1.0.0 与相同 contracts validatorDigest；无新增 SQL。",
+        "v1": "V1 运行时和编辑器保持独立，不消费新增 V2 规则。"
+      },
+      "issues": [],
+      "sha256": "aece510083f6d6b04ae4c62410631e99824718072c64cfb1ab605970889d065d",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.61.0"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.60.2",
+      "status": "reviewed",
+      "title": "OpenXiangda 2.60.2：已选部门真实事实",
+      "summary": "具名后端动作可基于平台目录解析有界已选部门名称与路径，保存可信展示快照而不复制组织权限。",
+      "newFeatures": [
+        "新增 directory.selected-departments 能力和 selectedDepartments 声明，SDK 使用真实发起人、固定环境与动作证明读取平台目录事实。",
+        "至多50个不重复部门按输入顺序返回声明字段，整体检查缺失、删除、授权与当前 Head，并附真实数据库时间及摘要。"
+      ],
+      "fixes": [],
+      "affectedUsers": [
+        "需要在 V2 业务动作中保存部门名称、父级或完整路径快照的应用开发者。"
+      ],
+      "upgradeSteps": [
+        "先按精确平台组合部署目录能力，再锁定同版本公开工具包并刷新契约。",
+        "具名动作显式声明字段与上限，快照只作展示，实际权限和审批路由仍由平台目录及角色控制。"
+      ],
+      "knownLimitations": [
+        "本次主题仅提供当前租户未删除部门的已有目录读取范围；不引入未实现的每部门可见策略。",
+        "无学校真实角色或页面验收声明；source/SDK聚焦测试不代替上线业务验证。"
+      ],
+      "compatibility": {
+        "node": ">=24",
+        "platform": "directory.selected-departments 1.0.0 与配套contracts/devkit/nest",
+        "v1": "V1 API 与未声明此能力的 V2 动作保持现有行为。"
+      },
+      "issues": [],
+      "sha256": "c5897f1bec938ea57c4c4d9e04381c39bc78bf47e4dce018890d42d696bbf341",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.60.2"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.60.1",
       "status": "reviewed",
       "title": "OpenXiangda 2.60.1：显式父资源读取策略",

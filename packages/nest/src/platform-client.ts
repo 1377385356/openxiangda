@@ -28,6 +28,7 @@ import type {
   WorkflowStepDataResolution,
   CurrentInitiatorDirectorySnapshot,
   SelectedUserDirectorySnapshot,
+  SelectedDepartmentsDirectorySnapshot,
   AssignmentCandidatePage,
   AssignmentCandidateQuery,
   GatewayAssertionJwks,
@@ -204,6 +205,102 @@ export class OpenXiangdaPlatformClient {
     );
     if (result?.schemaVersion !== "openxiangda.selected-user-directory-snapshot/v2" || result.userId !== userId || typeof result.snapshotRevision !== "string" || !/^[0-9a-f]{64}$/.test(result.snapshotRevision) || !Number.isFinite(Date.parse(result.resolvedAt))) {
       throw new OpenXiangdaPlatformError(502, "OPENXIANGDA_DIRECTORY_SELECTED_USER_RESPONSE_INVALID", "平台人员解析返回无效");
+    }
+    return result;
+  }
+
+  async resolveSelectedDepartments(
+    authorization: string,
+    businessAction: OpenXiangdaBusinessActionContext,
+    ids: readonly string[]
+  ): Promise<SelectedDepartmentsDirectorySnapshot> {
+    if (
+      !Array.isArray(ids) ||
+      ids.length < 1 ||
+      ids.length > 50 ||
+      new Set(ids).size !== ids.length ||
+      ids.some(
+        (id) =>
+          typeof id !== 'string' || !id || id !== id.trim() || id.length > 255
+      )
+    ) {
+      throw new OpenXiangdaPlatformError(
+        400,
+        'OPENXIANGDA_DIRECTORY_DEPARTMENTS_IDS_INVALID',
+        '请选择有效且不重复的组织部门'
+      );
+    }
+    const result = await this.request<SelectedDepartmentsDirectorySnapshot>(
+      `/openxiangda-api/v2/applications/${encodeURIComponent(
+        this.options.appCode
+      )}/directory/selected-departments?environmentKey=${encodeURIComponent(
+        this.options.environmentKey
+      )}`,
+      {
+        method: 'POST',
+        headers: this.identityHeaders(authorization, null, businessAction),
+        body: JSON.stringify({
+          schemaVersion:
+            'openxiangda.selected-departments-directory-request/v2',
+          ids,
+        }),
+      }
+    );
+    const labeled = (
+      value: unknown
+    ): value is { value: string; label: string } =>
+      Boolean(
+        value &&
+          typeof value === 'object' &&
+          typeof (value as any).value === 'string' &&
+          (value as any).value &&
+          typeof (value as any).label === 'string' &&
+          (value as any).label &&
+          Object.keys(value).every((key) => ['value', 'label'].includes(key))
+      );
+    if (
+      result?.schemaVersion !==
+        'openxiangda.selected-departments-directory-snapshot/v2' ||
+      Object.keys(result).some(
+        (key) =>
+          ![
+            'schemaVersion',
+            'departments',
+            'snapshotRevision',
+            'resolvedAt',
+          ].includes(key)
+      ) ||
+      !Array.isArray(result.departments) ||
+      result.departments.length !== ids.length ||
+      result.departments.some(
+        (item, index) =>
+          !item ||
+          typeof item !== 'object' ||
+          Object.keys(item).some(
+            (key) =>
+              !['value', 'label', 'path', 'parent', 'fullPath'].includes(key)
+          ) ||
+          item.value !== ids[index] ||
+          typeof item.label !== 'string' ||
+          !item.label ||
+          (item.path !== undefined &&
+            (!Array.isArray(item.path) ||
+              !item.path.length ||
+              item.path.some((part) => !labeled(part)) ||
+              item.path.at(-1)?.value !== item.value)) ||
+          (item.parent !== undefined && !labeled(item.parent)) ||
+          (item.fullPath !== undefined && typeof item.fullPath !== 'string')
+      ) ||
+      typeof result.snapshotRevision !== 'string' ||
+      !/^[0-9a-f]{64}$/.test(result.snapshotRevision) ||
+      typeof result.resolvedAt !== 'string' ||
+      !Number.isFinite(Date.parse(result.resolvedAt))
+    ) {
+      throw new OpenXiangdaPlatformError(
+        502,
+        'OPENXIANGDA_DIRECTORY_DEPARTMENTS_RESPONSE_INVALID',
+        '平台部门解析返回无效'
+      );
     }
     return result;
   }

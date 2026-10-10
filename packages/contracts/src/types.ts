@@ -375,6 +375,13 @@ export interface SelectedUserDirectorySnapshot extends Omit<CurrentInitiatorDire
   schemaVersion: "openxiangda.selected-user-directory-snapshot/v2";
 }
 
+export interface SelectedDepartmentsDirectorySnapshot {
+  schemaVersion: "openxiangda.selected-departments-directory-snapshot/v2";
+  departments: DepartmentReferenceValue[];
+  snapshotRevision: Sha256Digest;
+  resolvedAt: IsoDateTime;
+}
+
 /** Query hints only; revalidate the selected member in the committing transaction. */
 export interface AssignmentCandidateQuery {
   roleCode: string;

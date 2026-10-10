@@ -1,4 +1,4 @@
-import { compileNativeEventAction, requiresExtendedDeclarationCapacity, requiresExtendedArtifactCapacity, requiresHighDensityArtifactCapacity, requiresExtendedConfigurationBytes } from 'openxiangda-contracts/native-compiler';
+import { compileNativeEventAction, requiresExtendedDeclarationCapacity, requiresExtendedRoleCapacity, requiresExtendedArtifactCapacity, requiresHighDensityArtifactCapacity, requiresExtendedConfigurationBytes } from 'openxiangda-contracts/native-compiler';
 import { normalizeWorkflowOwnedSubjectCreate } from 'openxiangda-contracts/native-compiler';
 import { compileWorkflowBusinessStepHandlers, validateWorkflowBusinessStepSubscriptions, WORKFLOW_BUSINESS_STEP_EVENTS } from 'openxiangda-contracts/native-compiler';
 import { parseNativeUniqueKeys, parseDecimalReservationLifecycle } from 'openxiangda-contracts/native-compiler';
@@ -414,6 +414,9 @@ export function normalizeConfiguration(
                         directory: normalizeOperationDirectory(operation.platformAccess.directory),
                       }
                     : {}),
+                  ...(operation.platformAccess.selectedDepartments ? { selectedDepartments: {
+                    fields: uniqueSorted(operation.platformAccess.selectedDepartments.fields), maxIds: operation.platformAccess.selectedDepartments.maxIds,
+                  } } : {}),
                   ...(operation.platformAccess.managedFiles
                     ? {
                         managedFiles: sorted(
@@ -1788,6 +1791,9 @@ function compileOperations(config: OpenXiangdaAppConfig) {
                     directory: normalizeOperationDirectory(operation.platformAccess.directory),
                   }
                 : {}),
+              ...(operation.platformAccess.selectedDepartments ? { selectedDepartments: {
+                fields: uniqueSorted(operation.platformAccess.selectedDepartments.fields), maxIds: operation.platformAccess.selectedDepartments.maxIds,
+              } } : {}),
               ...(operation.platformAccess.managedFiles
                 ? {
                     managedFiles: sorted(
@@ -1973,10 +1979,11 @@ function runtimeProtocolCapabilities(config: OpenXiangdaAppConfig) {
       resource.schema.fields.some(field =>
         field.type.startsWith('user.') || field.type.startsWith('department.')
       )
-    ) || operations.some(operation => operation.platformAccess?.directory);
+    ) || operations.some(operation => operation.platformAccess?.directory || operation.platformAccess?.selectedDepartments);
   return uniqueSorted([
     'application-native-2',
     ...(requiresExtendedDeclarationCapacity(config) ? ['application.extended-declaration-capacity'] : []),
+    ...(requiresExtendedRoleCapacity(config) ? ['application.extended-role-capacity'] : []),
     ...(requiresExtendedArtifactCapacity(config) ? ['application.extended-artifact-capacity'] : []),
     ...(requiresHighDensityArtifactCapacity(config) ? ['application.high-density-artifact-capacity'] : []),
     'authz.batch-explain',
@@ -1993,6 +2000,7 @@ function runtimeProtocolCapabilities(config: OpenXiangdaAppConfig) {
     ...(requiresDateTimeMinutePrecision(config.data?.resources || []) ? ['data.datetime-minute-precision'] : []),
     ...(requiresOwnedSubtableMinimumRows(config.data?.resources || []) ? ['data.subtable-minimum-rows'] : []),
     ...(usesDirectory ? ['directory-v2'] : []),
+    ...(operations.some(operation => operation.platformAccess?.selectedDepartments) ? ['directory.selected-departments'] : []),
     ...(operations.some(operation=>operation.platformAccess?.directory?.mode==='selected-user') ? ['directory.selected-user'] : []),
     ...(operations.some(operation => operation.platformAccess?.directory?.mode === 'current-initiator' && operation.platformAccess.directory.fields.includes('phone')) ||
     config.data?.concurrency?.commands.some(command => command.execution?.directory?.fields.includes('phone'))

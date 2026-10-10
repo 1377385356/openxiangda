@@ -511,6 +511,8 @@ export function SurfaceFieldControl({
     case 'rich-text':
       control = (
         <RichTextField
+          recordId={recordId}
+          fieldCode={field.key}
           disabled={disabled}
           onUpload={renderers?.upload
             ? (file, onRecovered) => renderers.upload!(field, file, recordId, onRecovered)
@@ -715,7 +717,7 @@ export function MobileSurfaceFieldControl({
       control = <AddressField disabled={disabled} mobile />;
       break;
     case 'rich-text':
-      control = <RichTextField disabled={disabled} mobile
+      control = <RichTextField recordId={recordId} fieldCode={field.key} disabled={disabled} mobile
         onUpload={renderers?.upload
           ? (file, onRecovered) => renderers.upload!(field, file, recordId, onRecovered)
           : undefined}

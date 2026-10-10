@@ -61,3 +61,5 @@ export * from './workflow-correction.js';
 export * from './date-event-projection.js';
 
 export * from './parent-read-policy.js';
+
+export * from './rich-text-policy.js';

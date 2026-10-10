@@ -2362,6 +2362,25 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
+.oxa-rich-text-fullscreen:popover-open {
+  position: fixed;
+  inset: 8px;
+  margin: 0;
+  width: calc(100% - 16px);
+  height: calc(100dvh - 16px);
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid var(--ant-color-border);
+  background: var(--ant-color-bg-container);
+  color: var(--ant-color-text);
+  align-content: start;
+  overflow: auto;
+}
+
+.oxa-rich-text-fullscreen .oxa-rich-text-editor {
+  min-height: 55dvh;
+}
+
 .oxa-rich-text-editor img,
 .oxa-rich-text-value img {
   height: auto;
@@ -3154,3 +3173,22 @@
 .oxa-workflow-record-history-person { margin-top: 8px; }
 .oxa-workflow-record-history[data-device="mobile"] button { min-height: 44px; }
 .oxa-workflow-history-collapse { margin-top: 16px; }
+
+/* Rich text styles are scoped; no host document reset. */
+.oxa-rich-text-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.oxa-rich-text-choice { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; }
+.oxa-rich-text-choice select { max-width: 140px; padding: 3px; }
+.oxa-rich-text-choice input[type="color"] { width: 26px; height: 26px; padding: 1px; }
+.oxa-rich-text-editor table, .oxa-rich-text-value table { border-collapse: collapse; max-width: 100%; table-layout: fixed; }
+.oxa-rich-text-editor td, .oxa-rich-text-editor th, .oxa-rich-text-value td, .oxa-rich-text-value th { border: 1px solid #d9d9d9; padding: 6px 8px; min-width: 40px; }
+.oxa-rich-text-editor .tableWrapper, .oxa-rich-text-value { overflow-x: auto; }
+.oxa-rich-text-editor .selectedCell { background: #e6f4ff; }
+.oxa-rich-text-editor .column-resize-handle { position: absolute; right: -2px; top: 0; bottom: 0; width: 4px; background: #1677ff; pointer-events: none; }
+.oxa-rich-text-editor td, .oxa-rich-text-editor th { position: relative; }
+.oxa-rich-text-editor video, .oxa-rich-text-value video { max-width: 100%; }
+.oxa-rich-text-editor ul[data-type="taskList"], .oxa-rich-text-value ul[data-type="taskList"] { list-style: none; padding-left: 8px; }
+.oxa-rich-text-editor li[data-type="taskItem"], .oxa-rich-text-value li[data-type="taskItem"] { display: flex; align-items: flex-start; gap: 8px; }
+.oxa-rich-text-editor li[data-type="taskItem"] > div, .oxa-rich-text-value li[data-type="taskItem"] > div { flex: 1; }
+.oxa-rich-text-editor pre, .oxa-rich-text-value pre { overflow-x: auto; background: #f5f5f5; padding: 12px; border-radius: 4px; }
+.oxa-mobile-rich-text-field .oxa-rich-text-toolbar { max-height: 160px; overflow-y: auto; }
+.oxa-mobile-rich-text-field .oxa-rich-text-toolbar button { min-height: 32px; }
