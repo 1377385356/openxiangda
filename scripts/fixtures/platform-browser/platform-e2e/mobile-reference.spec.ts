@@ -257,12 +257,11 @@ test.describe('confirmed mobile form reference', () => {
     await signature.getByRole('button', { name: '保存签名' }).click();
     await expect(signature).toHaveCount(0);
     await expect(field(page, '手写签名').getByRole('img', { name: '业务签名' })).toHaveJSProperty('naturalHeight', 240);
-    await field(page, '富文本')
-      .getByRole('textbox')
-      .fill('第一行 <说明>');
-    await field(page, '富文本').getByRole('textbox').press('End');
-    await field(page, '富文本').getByRole('textbox').press('Enter');
-    await field(page, '富文本').getByRole('textbox').pressSequentially('第二行 & 补充');
+    const richText = field(page, '富文本').getByRole('textbox', { name: '富文本内容', exact: true });
+    await richText.fill('第一行 <说明>');
+    await richText.press('End');
+    await richText.press('Enter');
+    await richText.pressSequentially('第二行 & 补充');
     const saved = await submit(page);
     expect(saved.地址.detail).toBe('文一西路 1 号');
     expect(saved.地址.street.label).toBe('五常街道');
