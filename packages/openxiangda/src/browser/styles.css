@@ -2330,25 +2330,94 @@
   width: 100%;
 }
 
-.oxa-rich-text-toolbar {
-  border: 1px solid var(--ant-color-border);
-  border-bottom: 0;
-  border-radius: 6px 6px 0 0;
-  padding: 6px;
+.oxa-rich-text-field {
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 14px;
+  background: var(--ant-color-bg-container);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--ant-color-text) 6%, transparent);
 }
 
+.oxa-rich-text-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  min-height: 46px;
+  padding: 6px 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 0;
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+  background: var(--ant-color-bg-container);
+  scrollbar-width: none;
+}
+
+.oxa-rich-text-toolbar::-webkit-scrollbar { display: none; }
+.oxa-rich-text-toolbar-group { display: inline-flex; align-items: center; gap: 2px; flex: none; }
+.oxa-rich-text-toolbar-group-menus { gap: 4px; }
+.oxa-rich-text-toolbar-group-tail { margin-inline-start: auto; }
+.oxa-rich-text-divider { width: 1px; height: 22px; flex: none; margin: 0 4px; background: var(--ant-color-border-secondary); }
+
+.oxa-rich-text-action.ant-btn,
+.oxa-rich-text-menu-button.ant-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 7px;
+  color: var(--ant-color-text-secondary);
+  transition: color 120ms ease, background 120ms ease, box-shadow 120ms ease;
+}
+
+.oxa-rich-text-action.ant-btn { width: 32px; padding: 0; }
+.oxa-rich-text-action.ant-btn:hover:not(:disabled),
+.oxa-rich-text-menu-button.ant-btn:hover:not(:disabled) { color: var(--ant-color-text); background: var(--ant-color-fill-tertiary); }
+.oxa-rich-text-action.ant-btn.ant-btn-primary { color: var(--ant-color-primary); background: var(--ant-color-primary-bg); box-shadow: none; }
+.oxa-rich-text-action.ant-btn:focus-visible,
+.oxa-rich-text-menu-button.ant-btn:focus-visible,
+.oxa-rich-text-color:focus-within { outline: 2px solid color-mix(in srgb, var(--ant-color-primary) 45%, transparent); outline-offset: 1px; }
+.oxa-rich-text-menu-button.ant-btn { gap: 6px; min-width: 70px; color: var(--ant-color-text); font-size: 13px; }
+.oxa-rich-text-toolbar-group-menus .oxa-rich-text-menu-button:first-child { min-width: 88px; }
+.oxa-rich-text-toolbar-group-menus .oxa-rich-text-menu-button:nth-child(2) { min-width: 92px; }
+.oxa-rich-text-toolbar-group-menus .oxa-rich-text-menu-button:nth-child(3) { min-width: 70px; }
+.oxa-rich-text-menu-button .oxa-rich-text-menu-chevron { margin-inline-start: auto; color: var(--ant-color-text-tertiary); font-size: 10px; }
+
+.oxa-rich-text-color {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  color: var(--ant-color-text-secondary);
+  cursor: pointer;
+}
+
+.oxa-rich-text-color:hover { background: var(--ant-color-fill-tertiary); color: var(--ant-color-text); }
+.oxa-rich-text-color input[type="color"] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.oxa-rich-text-color::after { content: ''; position: absolute; right: 7px; bottom: 5px; left: 7px; height: 2px; border-radius: 2px; background: var(--ant-color-primary); pointer-events: none; }
+.oxa-rich-text-color[aria-label="背景色"]::after { background: var(--ant-color-warning); }
+
 .oxa-rich-text-editor {
-  border: 1px solid var(--ant-color-border);
-  border-radius: 0 0 6px 6px;
-  min-height: 160px;
+  min-height: 260px;
+  padding: 28px 32px 160px;
+  border: 0;
+  border-radius: 0;
+  border-top: 0;
   overflow-wrap: anywhere;
-  padding: 10px 12px;
+  background: var(--ant-color-bg-container);
 }
 
 .oxa-rich-text-editor:focus {
-  border-color: var(--ant-color-primary);
-  box-shadow: 0 0 0 2px
-    color-mix(in srgb, var(--ant-color-primary) 10%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--ant-color-primary) 12%, transparent);
   outline: 0;
 }
 
@@ -3174,11 +3243,7 @@
 .oxa-workflow-record-history[data-device="mobile"] button { min-height: 44px; }
 .oxa-workflow-history-collapse { margin-top: 16px; }
 
-/* Rich text styles are scoped; no host document reset. */
-.oxa-rich-text-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
-.oxa-rich-text-choice { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; }
-.oxa-rich-text-choice select { max-width: 140px; padding: 3px; }
-.oxa-rich-text-choice input[type="color"] { width: 26px; height: 26px; padding: 1px; }
+/* Rich text document styles are scoped; no host document reset. */
 .oxa-rich-text-editor table, .oxa-rich-text-value table { border-collapse: collapse; max-width: 100%; table-layout: fixed; }
 .oxa-rich-text-editor td, .oxa-rich-text-editor th, .oxa-rich-text-value td, .oxa-rich-text-value th { border: 1px solid #d9d9d9; padding: 6px 8px; min-width: 40px; }
 .oxa-rich-text-editor .tableWrapper, .oxa-rich-text-value { overflow-x: auto; }
@@ -3190,5 +3255,14 @@
 .oxa-rich-text-editor li[data-type="taskItem"], .oxa-rich-text-value li[data-type="taskItem"] { display: flex; align-items: flex-start; gap: 8px; }
 .oxa-rich-text-editor li[data-type="taskItem"] > div, .oxa-rich-text-value li[data-type="taskItem"] > div { flex: 1; }
 .oxa-rich-text-editor pre, .oxa-rich-text-value pre { overflow-x: auto; background: #f5f5f5; padding: 12px; border-radius: 4px; }
-.oxa-mobile-rich-text-field .oxa-rich-text-toolbar { max-height: 160px; overflow-y: auto; }
-.oxa-mobile-rich-text-field .oxa-rich-text-toolbar button { min-height: 32px; }
+.oxa-mobile-rich-text-field .oxa-rich-text-toolbar { min-height: 52px; }
+.oxa-mobile-rich-text-field .oxa-rich-text-toolbar-group-tail { margin-inline-start: 0; }
+.oxa-mobile-rich-text-field .oxa-rich-text-toolbar button { min-height: 40px; }
+.oxa-mobile-rich-text-field .oxa-rich-text-editor { min-height: 220px; padding: 20px 18px 128px; }
+
+@media (max-width: 760px) {
+  .oxa-rich-text-editor { min-height: 220px; padding: 22px 18px 140px; }
+  .oxa-rich-text-toolbar { padding-inline: 6px; }
+  .oxa-rich-text-toolbar-group-menus .oxa-rich-text-menu-button { min-width: 68px; }
+  .oxa-rich-text-toolbar-group-menus .oxa-rich-text-menu-button:nth-child(2) { min-width: 76px; }
+}

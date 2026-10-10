@@ -1,5 +1,41 @@
-import { Button, Tooltip } from 'antd';
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ComponentType, type RefObject } from 'react';
+import { Button, Dropdown, Tooltip } from 'antd';
+import {
+  AlignLeftOutlined,
+  BlockOutlined,
+  BoldOutlined,
+  CheckSquareOutlined,
+  ClearOutlined,
+  CodeOutlined,
+  DeleteColumnOutlined,
+  DeleteRowOutlined,
+  DownOutlined,
+  EllipsisOutlined,
+  FontColorsOutlined,
+  FontSizeOutlined,
+  FullscreenExitOutlined,
+  FullscreenOutlined,
+  HighlightOutlined,
+  ItalicOutlined,
+  LinkOutlined,
+  LineHeightOutlined,
+  MergeCellsOutlined,
+  MinusOutlined,
+  OrderedListOutlined,
+  PictureOutlined,
+  PlusOutlined,
+  RedoOutlined,
+  SmileOutlined,
+  SplitCellsOutlined,
+  StrikethroughOutlined,
+  TableOutlined,
+  UnderlineOutlined,
+  UnorderedListOutlined,
+  UndoOutlined,
+  VideoCameraOutlined,
+  VerticalAlignBottomOutlined,
+  VerticalAlignTopOutlined,
+} from '@ant-design/icons';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode, type RefObject } from 'react';
 import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
 import type { DataFileRef } from 'openxiangda-contracts/browser';
 import { RICH_TEXT_POLICY_V2, sanitizeRichTextHtml } from 'openxiangda-contracts/rich-text';
@@ -153,6 +189,7 @@ export function RichTextField(props: RichTextFieldProps) {
 export function DefaultRichTextField({ value = '', onChange, disabled = false, mobile = false, onUpload, resourceCode, workflowBinding, recordId, fieldCode }: RichTextFieldProps) {
   const [uploading, setUploading] = useState(false), [error, setError] = useState('');
   const [fullScreen, setFullScreen] = useState(false);
+  const [menuValues, setMenuValues] = useState<Record<string, string>>({});
   const fieldRoot = useRef<HTMLDivElement>(null);
   const generation = useRef(0), input = useRef<HTMLInputElement>(null), uploadKind = useRef<'image' | 'video'>('image');
   const scope = JSON.stringify([resourceCode, recordId, fieldCode, workflowBinding]);
@@ -176,7 +213,7 @@ export function DefaultRichTextField({ value = '', onChange, disabled = false, m
   useEffect(() => {
     if (editor && sanitizeRichTextHtml(editor.getHTML()) !== sanitizeRichTextHtml(value)) editor.commands.setContent(sanitizeRichTextHtml(value), { emitUpdate: false });
   }, [editor, value]);
-  useEffect(() => { generation.current++; setUploading(false); setError(''); setFullScreen(false); return () => { generation.current++; }; }, [scope]);
+  useEffect(() => { generation.current++; setUploading(false); setError(''); setFullScreen(false); setMenuValues({}); return () => { generation.current++; }; }, [scope]);
   useEffect(() => {
     const element = fieldRoot.current;
     if (!element) return;
@@ -190,9 +227,19 @@ export function DefaultRichTextField({ value = '', onChange, disabled = false, m
     return () => { if (element.hidePopover && element.matches(':popover-open')) element.hidePopover(); element.removeAttribute('popover'); };
   }, [fullScreen, editor]);
   const uploadResource = resourceCode || workflowBinding?.resourceCode;
+  const actionIcons: Record<string, ReactNode> = {
+    加粗: <BoldOutlined />, 斜体: <ItalicOutlined />, 下划线: <UnderlineOutlined />, 删除线: <StrikethroughOutlined />,
+    上标: <VerticalAlignTopOutlined />, 下标: <VerticalAlignBottomOutlined />, 首行缩进: <BlockOutlined />, 取消缩进: <BlockOutlined />,
+    有序列表: <OrderedListOutlined />, 无序列表: <UnorderedListOutlined />, 待办列表: <CheckSquareOutlined />, 引用: <BlockOutlined />,
+    代码块: <CodeOutlined />, 分割线: <MinusOutlined />, 插入链接: <LinkOutlined />, 取消链接: <LinkOutlined />,
+    插入表格: <TableOutlined />, 添加行: <PlusOutlined />, 添加列: <PlusOutlined />, 删除行: <DeleteRowOutlined />, 删除列: <DeleteColumnOutlined />,
+    合并单元格: <MergeCellsOutlined />, 拆分单元格: <SplitCellsOutlined />, 删除表格: <TableOutlined />, 插入图片: <PictureOutlined />,
+    插入视频: <VideoCameraOutlined />, 清除格式: <ClearOutlined />, 撤销: <UndoOutlined />, 重做: <RedoOutlined />,
+    '退出全屏': <FullscreenExitOutlined />, 全屏编辑: <FullscreenOutlined />,
+  };
   const button = (label: string, action: () => void, active = false) => <Tooltip title={label} key={label}><Button
-    aria-label={label} aria-pressed={active} type={active ? 'primary' : 'text'} size="small" disabled={locked || !editor}
-    onMouseDown={e => e.preventDefault()} onClick={action}>{label}</Button></Tooltip>;
+    className="oxa-rich-text-action" aria-label={label} aria-pressed={active} type={active ? 'primary' : 'text'} size="small" icon={actionIcons[label] || <EllipsisOutlined />} disabled={locked || !editor}
+    onMouseDown={e => e.preventDefault()} onClick={action} /></Tooltip>;
   const choose = (kind: 'image' | 'video') => {
     uploadKind.current = kind;
     if (input.current) { input.current.accept = (kind === 'image' ? RICH_TEXT_POLICY_V2.imageTypes : RICH_TEXT_POLICY_V2.videoTypes).join(','); input.current.click(); }
@@ -221,43 +268,71 @@ export function DefaultRichTextField({ value = '', onChange, disabled = false, m
     } catch (reason) { if (generation.current === original) setError(reason instanceof Error ? reason.message : String(reason)); }
     finally { if (generation.current === original) setUploading(false); }
   };
-  const select = (label: string, values: string[], action: (value: string) => void) => <label className="oxa-rich-text-choice" key={label}>{label}<select
-    aria-label={label} disabled={locked || !editor} defaultValue="" onChange={e => { action(e.target.value); e.target.value = ''; }}>
-    <option value="" disabled>选择</option>{values.map(v => <option value={v} key={v}>{v}</option>)}
-  </select></label>;
+  const select = (label: string, values: string[], action: (value: string) => void) => {
+    const icon = label === '段落' ? <AlignLeftOutlined /> : label === '字体' || label === '字号' ? <FontSizeOutlined /> : label === '行高' ? <LineHeightOutlined /> : label === '对齐' ? <AlignLeftOutlined /> : <SmileOutlined />;
+    const fallback = label === '段落' ? '正文' : label === '字号' ? '16px' : label;
+    const current = menuValues[label] || fallback;
+    return <Dropdown key={label} trigger={['click']} placement="bottomLeft" menu={{
+      items: values.map(value => ({ key: value, label: value })),
+      onClick: ({ key }) => { const next = String(key); setMenuValues(previous => ({ ...previous, [label]: next })); action(next); },
+    }}>
+      <Button className="oxa-rich-text-menu-button" type="text" aria-label={label} disabled={locked || !editor} icon={icon}
+        onMouseDown={e => e.preventDefault()}><span>{current}</span><DownOutlined className="oxa-rich-text-menu-chevron" /></Button>
+    </Dropdown>;
+  };
+  const colorControl = (label: '文字颜色' | '背景色') => <Tooltip title={label} key={label}><label className="oxa-rich-text-color" aria-label={label}>
+    {label === '文字颜色' ? <FontColorsOutlined /> : <HighlightOutlined />}<input type="color" aria-label={label} disabled={locked} onMouseDown={e => e.stopPropagation()}
+      onChange={e => label === '文字颜色' ? editor?.chain().focus().setColor(e.target.value).run() : editor?.chain().focus().setBackgroundColor(e.target.value).run()} />
+  </label></Tooltip>;
   return <div ref={fieldRoot} role={fullScreen ? 'region' : undefined} aria-label={fullScreen ? '富文本全屏编辑' : undefined}
     onKeyDown={event => { if (fullScreen && event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setFullScreen(false); } }}
     className={`oxa-rich-text-field${mobile ? ' oxa-mobile-rich-text-field' : ''}${fullScreen ? ' oxa-rich-text-fullscreen' : ''}`}>
     <div className="oxa-rich-text-toolbar" role="toolbar" aria-label="富文本工具栏">
-      {select('段落', ['正文', '标题1', '标题2', '标题3'], v => v === '正文' ? editor?.chain().focus().setParagraph().run() : editor?.chain().focus().setHeading({ level: Number(v.slice(-1)) as 1 | 2 | 3 }).run())}
-      {select('字体', [...RICH_TEXT_POLICY_V2.fonts], v => editor?.chain().focus().setFontFamily(v).run())}
-      {select('字号', ['12px', '14px', '16px', '18px', '20px', '24px', '32px', '48px'], v => editor?.chain().focus().setFontSize(v).run())}
-      {select('行高', ['1', '1.5', '2', '2.5', '3'], v => editor?.chain().focus().updateAttributes(editor.isActive('heading') ? 'heading' : 'paragraph', { 'line-height': v }).run())}
-      {button('加粗', () => editor?.chain().focus().toggleBold().run(), editor?.isActive('bold'))}
-      {button('斜体', () => editor?.chain().focus().toggleItalic().run(), editor?.isActive('italic'))}
-      {button('下划线', () => editor?.chain().focus().toggleUnderline().run(), editor?.isActive('underline'))}
-      {button('删除线', () => editor?.chain().focus().toggleStrike().run(), editor?.isActive('strike'))}
-      {button('上标', () => editor?.chain().focus().toggleSuperscript().run(), editor?.isActive('superscript'))}
-      {button('下标', () => editor?.chain().focus().toggleSubscript().run(), editor?.isActive('subscript'))}
-      {(['文字颜色', '背景色'] as const).map(label => <label className="oxa-rich-text-choice" key={label}>{label}<input type="color" aria-label={label} disabled={locked} onChange={e => label === '文字颜色' ? editor?.chain().focus().setColor(e.target.value).run() : editor?.chain().focus().setBackgroundColor(e.target.value).run()} /></label>)}
-      {select('对齐', ['left', 'center', 'right', 'justify'], v => editor?.chain().focus().setTextAlign(v).run())}
-      {button('首行缩进', () => editor?.chain().focus().updateAttributes(editor.isActive('heading') ? 'heading' : 'paragraph', { 'text-indent': '2em' }).run())}
-      {button('取消缩进', () => editor?.chain().focus().updateAttributes(editor.isActive('heading') ? 'heading' : 'paragraph', { 'text-indent': null, 'margin-left': null, 'padding-left': null }).run())}
-      {button('有序列表', () => editor?.chain().focus().toggleOrderedList().run(), editor?.isActive('orderedList'))}
-      {button('无序列表', () => editor?.chain().focus().toggleBulletList().run(), editor?.isActive('bulletList'))}
-      {button('待办列表', () => editor?.chain().focus().toggleTaskList().run(), editor?.isActive('taskList'))}
-      {button('引用', () => editor?.chain().focus().toggleBlockquote().run(), editor?.isActive('blockquote'))}
-      {button('代码块', () => editor?.chain().focus().toggleCodeBlock().run(), editor?.isActive('codeBlock'))}
-      {button('分割线', () => editor?.chain().focus().setHorizontalRule().run())}
-      {button('插入链接', () => { const url = window.prompt('链接地址', editor?.getAttributes('link').href || 'https://'); if (url) editor?.chain().focus().extendMarkRange('link').setLink({ href: url }).run(); })}
-      {button('取消链接', () => editor?.chain().focus().unsetLink().run())}
-      {select('表情', ['😀', '😊', '👍', '🎉', '❤️', '🌹', '🙏', '✅'], v => editor?.chain().focus().insertContent(v).run())}
-      {button('插入表格', () => editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run())}
-      {editor?.isActive('table') && <>{button('添加行', () => editor.chain().focus().addRowAfter().run())}{button('添加列', () => editor.chain().focus().addColumnAfter().run())}{button('删除行', () => editor.chain().focus().deleteRow().run())}{button('删除列', () => editor.chain().focus().deleteColumn().run())}{button('合并单元格', () => editor.chain().focus().mergeCells().run())}{button('拆分单元格', () => editor.chain().focus().splitCell().run())}{button('删除表格', () => editor.chain().focus().deleteTable().run())}</>}
-      {onUpload && uploadResource && <>{button('插入图片', () => choose('image'))}{button('插入视频', () => choose('video'))}</>}
-      {button('清除格式', () => editor?.chain().focus().unsetAllMarks().clearNodes().run())}
-      {button('撤销', () => editor?.chain().focus().undo().run())}{button('重做', () => editor?.chain().focus().redo().run())}
-      {button(fullScreen ? '退出全屏' : '全屏编辑', () => setFullScreen(previous => !previous))}
+      <div className="oxa-rich-text-toolbar-group oxa-rich-text-toolbar-group-menus">
+        {select('段落', ['正文', '标题1', '标题2', '标题3'], v => v === '正文' ? editor?.chain().focus().setParagraph().run() : editor?.chain().focus().setHeading({ level: Number(v.slice(-1)) as 1 | 2 | 3 }).run())}
+        {select('字体', [...RICH_TEXT_POLICY_V2.fonts], v => editor?.chain().focus().setFontFamily(v).run())}
+        {select('字号', ['12px', '14px', '16px', '18px', '20px', '24px', '32px', '48px'], v => editor?.chain().focus().setFontSize(v).run())}
+        {select('行高', ['1', '1.5', '2', '2.5', '3'], v => editor?.chain().focus().updateAttributes(editor.isActive('heading') ? 'heading' : 'paragraph', { 'line-height': v }).run())}
+      </div>
+      <span className="oxa-rich-text-divider" aria-hidden="true" />
+      <div className="oxa-rich-text-toolbar-group">
+        {button('加粗', () => editor?.chain().focus().toggleBold().run(), editor?.isActive('bold'))}
+        {button('斜体', () => editor?.chain().focus().toggleItalic().run(), editor?.isActive('italic'))}
+        {button('下划线', () => editor?.chain().focus().toggleUnderline().run(), editor?.isActive('underline'))}
+        {button('删除线', () => editor?.chain().focus().toggleStrike().run(), editor?.isActive('strike'))}
+        {button('上标', () => editor?.chain().focus().toggleSuperscript().run(), editor?.isActive('superscript'))}
+        {button('下标', () => editor?.chain().focus().toggleSubscript().run(), editor?.isActive('subscript'))}
+        {colorControl('文字颜色')}{colorControl('背景色')}
+      </div>
+      <span className="oxa-rich-text-divider" aria-hidden="true" />
+      <div className="oxa-rich-text-toolbar-group">
+        {select('对齐', ['left', 'center', 'right', 'justify'], v => editor?.chain().focus().setTextAlign(v).run())}
+        {button('首行缩进', () => editor?.chain().focus().updateAttributes(editor.isActive('heading') ? 'heading' : 'paragraph', { 'text-indent': '2em' }).run())}
+        {button('取消缩进', () => editor?.chain().focus().updateAttributes(editor.isActive('heading') ? 'heading' : 'paragraph', { 'text-indent': null, 'margin-left': null, 'padding-left': null }).run())}
+        {button('有序列表', () => editor?.chain().focus().toggleOrderedList().run(), editor?.isActive('orderedList'))}
+        {button('无序列表', () => editor?.chain().focus().toggleBulletList().run(), editor?.isActive('bulletList'))}
+        {button('待办列表', () => editor?.chain().focus().toggleTaskList().run(), editor?.isActive('taskList'))}
+      </div>
+      <span className="oxa-rich-text-divider" aria-hidden="true" />
+      <div className="oxa-rich-text-toolbar-group">
+        {button('引用', () => editor?.chain().focus().toggleBlockquote().run(), editor?.isActive('blockquote'))}
+        {button('代码块', () => editor?.chain().focus().toggleCodeBlock().run(), editor?.isActive('codeBlock'))}
+        {button('分割线', () => editor?.chain().focus().setHorizontalRule().run())}
+        {button('插入链接', () => { const url = window.prompt('链接地址', editor?.getAttributes('link').href || 'https://'); if (url) editor?.chain().focus().extendMarkRange('link').setLink({ href: url }).run(); })}
+        {button('取消链接', () => editor?.chain().focus().unsetLink().run())}
+        {select('表情', ['😀', '😊', '👍', '🎉', '❤️', '🌹', '🙏', '✅'], v => editor?.chain().focus().insertContent(v).run())}
+        {button('插入表格', () => editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run())}
+        {onUpload && uploadResource && <>{button('插入图片', () => choose('image'))}{button('插入视频', () => choose('video'))}</>}
+      </div>
+      {editor?.isActive('table') && <><span className="oxa-rich-text-divider" aria-hidden="true" /><div className="oxa-rich-text-toolbar-group oxa-rich-text-toolbar-group-table">
+        {button('添加行', () => editor.chain().focus().addRowAfter().run())}{button('添加列', () => editor.chain().focus().addColumnAfter().run())}{button('删除行', () => editor.chain().focus().deleteRow().run())}{button('删除列', () => editor.chain().focus().deleteColumn().run())}{button('合并单元格', () => editor.chain().focus().mergeCells().run())}{button('拆分单元格', () => editor.chain().focus().splitCell().run())}{button('删除表格', () => editor.chain().focus().deleteTable().run())}
+      </div></>}
+      <span className="oxa-rich-text-divider" aria-hidden="true" />
+      <div className="oxa-rich-text-toolbar-group oxa-rich-text-toolbar-group-tail">
+        {button('清除格式', () => editor?.chain().focus().unsetAllMarks().clearNodes().run())}
+        {button('撤销', () => editor?.chain().focus().undo().run())}{button('重做', () => editor?.chain().focus().redo().run())}
+        {button(fullScreen ? '退出全屏' : '全屏编辑', () => setFullScreen(previous => !previous))}
+      </div>
     </div>
     <input type="file" ref={input} hidden style={{ display: 'none' }} disabled={locked} onChange={e => { const file = e.target.files?.[0]; e.target.value = ''; if (file) void insertFile(file); }} />
     {error && <div className="oxa-rich-text-error" role="alert">{error}</div>}
