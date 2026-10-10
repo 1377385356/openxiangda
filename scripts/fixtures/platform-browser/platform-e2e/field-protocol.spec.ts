@@ -394,3 +394,14 @@ test('受管视频插入后流式播放，保存值仅包含稳定平台路径',
   await page.getByRole('button', { name: '重新载入已保存值' }).click();
   await expect(field.locator('video')).toHaveCount(1);
 });
+
+test('相同正文切换记录后，旧上传和重复恢复回调不能写入新记录', async ({ page }) => {
+  await page.goto('/field-protocol.e2e.html?richScope');
+  await page.getByRole('button', { name: '插入图片', exact: true }).click();
+  await page.locator('input[type="file"]').setInputFiles({ name: 'example.png', mimeType: 'image/png', buffer: Buffer.from([1]) });
+  await expect(page.getByRole('button', { name: '完成旧上传' })).toBeEnabled();
+  await page.getByRole('button', { name: '切换记录' }).click();
+  await page.getByRole('button', { name: '完成旧上传' }).click();
+  await expect(page.locator('[data-rich-scope="record-b"]')).toBeEmpty();
+  await expect(page.locator('.oxa-rich-text-editor img')).toHaveCount(0);
+});

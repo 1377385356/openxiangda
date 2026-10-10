@@ -365,10 +365,17 @@ import { RichTextField, RichTextValueDisplay, uploadOperationManagedFile } from 
 每个100MiB；实际仍受租户存储上传额度限制）。服务器核验真实图片/视频容器，权限路由支持
 Range 流式读取。无转码、外站视频、iframe 和自动播放；浏览器编解码器可能不同。
 
-前端、写入和公开投影统一消费 `openxiangda-contracts/rich-text`；`sanitizeRichText` 用于展示，
+前端、写入和公开投影统一消费 `openxiangda-contracts/rich-text`；
+应用浏览器及 Nest 通过 `openxiangda/rich-text` 使用相同无 DOM 规则，避免后端加载 UI 包。`sanitizeRichText` 用于展示，
 `sanitizeRichTextHtml` 默认只接受 Native 受管媒体，`display:true` 才接受平台匿名公共媒体路径。
 不要保存 blob、data、OSS 签名 URL，禁止关闭清洗。外部编辑器可以使用该协议，样式仍受
 版本化白名单与数值上限约束。`createRichTextExtensions` 提供同一官方免费节点集合。
+
+需要替换全部标准字段的编辑器时，使用 `RichTextEditorProvider` 注入
+`ComponentType<RichTextFieldProps>`；自定义组件接收当前资源、字段、recordId、workflowBinding
+及同一 onUpload/onChange/disabled/mobile。必须遵守统一清洗和受管文件协议。需要默认实现
+时渲染 `DefaultRichTextField`，不要在 Provider 中递归调用 `RichTextField`。上传跨记录/字段
+切换时丢弃旧完成回调，不将新文件插入另一个表单。
 
 跨资源发布声明原有 `managedFileCopies` 的同型 `text.rich` 字段对，对每个媒体调用
 `copyManagedFile`，收到 `succeeded` 回执后用 `sanitizeRichTextHtml(html, { rewriteMedia })` 重写为

@@ -26,6 +26,10 @@
       "types": "./dist/field-kit.d.ts",
       "import": "./dist/field-kit.js"
     },
+    "./rich-text": {
+      "types": "./dist/rich-text.d.ts",
+      "import": "./dist/rich-text.js"
+    },
     "./react": {
       "types": "./dist/react.d.ts",
       "import": "./dist/react.js"

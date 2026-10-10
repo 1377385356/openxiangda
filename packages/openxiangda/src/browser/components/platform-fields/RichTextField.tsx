@@ -1,5 +1,5 @@
 import { Button, Tooltip } from 'antd';
-import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ComponentType, type RefObject } from 'react';
 import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
 import type { DataFileRef } from 'openxiangda-contracts/browser';
 import { RICH_TEXT_POLICY_V2, sanitizeRichTextHtml } from 'openxiangda-contracts/rich-text';
@@ -137,14 +137,23 @@ export function RichTextValueDisplay({
   );
 }
 
-export function RichTextField({ value = '', onChange, disabled = false, mobile = false, onUpload, resourceCode, workflowBinding }: {
+export interface RichTextFieldProps {
+  recordId?: string; fieldCode?: string;
   value?: string; onChange?: (value: string) => void; disabled?: boolean; mobile?: boolean;
   onUpload?: (file: File, onRecovered?: (file: DataFileRef) => void) => Promise<DataFileRef>;
   resourceCode?: string; workflowBinding?: WorkflowFileBinding;
-}) {
+}
+const RichTextEditorContext = createContext<ComponentType<RichTextFieldProps> | null>(null);
+/** Custom editors receive the same field, upload and workflow boundaries. */
+export const RichTextEditorProvider = RichTextEditorContext.Provider;
+export function RichTextField(props: RichTextFieldProps) {
+  const Editor = useContext(RichTextEditorContext) || DefaultRichTextField;
+  return <Editor {...props} />;
+}
+export function DefaultRichTextField({ value = '', onChange, disabled = false, mobile = false, onUpload, resourceCode, workflowBinding, recordId, fieldCode }: RichTextFieldProps) {
   const [uploading, setUploading] = useState(false), [error, setError] = useState('');
   const generation = useRef(0), input = useRef<HTMLInputElement>(null), uploadKind = useRef<'image' | 'video'>('image');
-  const scope = JSON.stringify([resourceCode, workflowBinding]);
+  const scope = JSON.stringify([resourceCode, recordId, fieldCode, workflowBinding]);
   const change = useRef(onChange); change.current = onChange;
   const editor = useEditor({
     extensions: createRichTextExtensions(workflowBinding),
