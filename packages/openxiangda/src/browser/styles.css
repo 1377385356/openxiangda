@@ -2362,6 +2362,25 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
+.oxa-rich-text-fullscreen:popover-open {
+  position: fixed;
+  inset: 8px;
+  margin: 0;
+  width: calc(100% - 16px);
+  height: calc(100dvh - 16px);
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid var(--ant-color-border);
+  background: var(--ant-color-bg-container);
+  color: var(--ant-color-text);
+  align-content: start;
+  overflow: auto;
+}
+
+.oxa-rich-text-fullscreen .oxa-rich-text-editor {
+  min-height: 55dvh;
+}
+
 .oxa-rich-text-editor img,
 .oxa-rich-text-value img {
   height: auto;

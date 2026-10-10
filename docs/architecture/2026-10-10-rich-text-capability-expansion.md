@@ -11,6 +11,8 @@ V2 2.60.1 标准控件是 contentEditable/execCommand，仅提供基础强调、
 采用 Tiptap 3.31.4 / ProseMirror，精确锁定 MIT 核心与免费扩展。官方 TextStyle、Table、TaskList、
 TextAlign、上下标等扩展能够覆盖本次需求，平台自行实现有界缩进和受管媒体节点。
 React peer 支持 19；不引入付费协作、AI、云存储或 iframe 嵌入。
+全屏编辑保留同一编辑实例与 DOM，通过浏览器 top layer 展开，关闭或 Escape 返回原表单；
+不支持该 API 的旧浏览器明确提示，正文编辑仍可用。表情选择按普通 Unicode 文字保存。
 
 | 候选 | 调查证据与结论 |
 | --- | --- |
@@ -35,6 +37,9 @@ V1 编辑器与数据不参与。平台默认控件使用 Tiptap，应用可选�
 前端、服务端写入、回填和公开路径重写消费同一 contracts/rich-text 模块，以 HTML5 解析器
 parse5 执行统一清洗和序列化；无 DOMParser 时也清洗。能力 data.rich-text 声明策略版本，
 编译器自动要求此能力，旧平台不能接受新应用制品。格式规则不由应用提交或修改。
+管理控制台的 capabilities 客户端使用开放 feature 映射，没有该响应的严格 digest 校验；
+当前 contracts 浏览器导入仅是工作流投影类型，故本主题无需重建管理 UI。应用浏览器随 SDK
+升级，服务器精确安装新版 contracts；既有 V1 和其他未变的前端镜像维持其原发行边界。
 
 ## 格式与安全资源边界
 

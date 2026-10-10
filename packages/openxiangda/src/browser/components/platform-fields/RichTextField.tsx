@@ -152,6 +152,8 @@ export function RichTextField(props: RichTextFieldProps) {
 }
 export function DefaultRichTextField({ value = '', onChange, disabled = false, mobile = false, onUpload, resourceCode, workflowBinding, recordId, fieldCode }: RichTextFieldProps) {
   const [uploading, setUploading] = useState(false), [error, setError] = useState('');
+  const [fullScreen, setFullScreen] = useState(false);
+  const fieldRoot = useRef<HTMLDivElement>(null);
   const generation = useRef(0), input = useRef<HTMLInputElement>(null), uploadKind = useRef<'image' | 'video'>('image');
   const scope = JSON.stringify([resourceCode, recordId, fieldCode, workflowBinding]);
   const change = useRef(onChange); change.current = onChange;
@@ -174,7 +176,19 @@ export function DefaultRichTextField({ value = '', onChange, disabled = false, m
   useEffect(() => {
     if (editor && sanitizeRichTextHtml(editor.getHTML()) !== sanitizeRichTextHtml(value)) editor.commands.setContent(sanitizeRichTextHtml(value), { emitUpdate: false });
   }, [editor, value]);
-  useEffect(() => { generation.current++; setUploading(false); setError(''); return () => { generation.current++; }; }, [scope]);
+  useEffect(() => { generation.current++; setUploading(false); setError(''); setFullScreen(false); return () => { generation.current++; }; }, [scope]);
+  useEffect(() => {
+    const element = fieldRoot.current;
+    if (!element) return;
+    if (fullScreen) {
+      if (!element.showPopover) { setError('当前浏览器不支持全屏编辑，请使用较新的浏览器。'); setFullScreen(false); return; }
+      element.setAttribute('popover', 'manual'); element.showPopover(); editor?.commands.focus();
+    } else {
+      if (element.hidePopover && element.matches(':popover-open')) element.hidePopover();
+      element.removeAttribute('popover');
+    }
+    return () => { if (element.hidePopover && element.matches(':popover-open')) element.hidePopover(); element.removeAttribute('popover'); };
+  }, [fullScreen, editor]);
   const uploadResource = resourceCode || workflowBinding?.resourceCode;
   const button = (label: string, action: () => void, active = false) => <Tooltip title={label} key={label}><Button
     aria-label={label} aria-pressed={active} type={active ? 'primary' : 'text'} size="small" disabled={locked || !editor}
@@ -211,7 +225,9 @@ export function DefaultRichTextField({ value = '', onChange, disabled = false, m
     aria-label={label} disabled={locked || !editor} defaultValue="" onChange={e => { action(e.target.value); e.target.value = ''; }}>
     <option value="" disabled>选择</option>{values.map(v => <option value={v} key={v}>{v}</option>)}
   </select></label>;
-  return <div className={`oxa-rich-text-field${mobile ? ' oxa-mobile-rich-text-field' : ''}`}>
+  return <div ref={fieldRoot} role={fullScreen ? 'region' : undefined} aria-label={fullScreen ? '富文本全屏编辑' : undefined}
+    onKeyDown={event => { if (fullScreen && event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setFullScreen(false); } }}
+    className={`oxa-rich-text-field${mobile ? ' oxa-mobile-rich-text-field' : ''}${fullScreen ? ' oxa-rich-text-fullscreen' : ''}`}>
     <div className="oxa-rich-text-toolbar" role="toolbar" aria-label="富文本工具栏">
       {select('段落', ['正文', '标题1', '标题2', '标题3'], v => v === '正文' ? editor?.chain().focus().setParagraph().run() : editor?.chain().focus().setHeading({ level: Number(v.slice(-1)) as 1 | 2 | 3 }).run())}
       {select('字体', [...RICH_TEXT_POLICY_V2.fonts], v => editor?.chain().focus().setFontFamily(v).run())}
@@ -235,11 +251,13 @@ export function DefaultRichTextField({ value = '', onChange, disabled = false, m
       {button('分割线', () => editor?.chain().focus().setHorizontalRule().run())}
       {button('插入链接', () => { const url = window.prompt('链接地址', editor?.getAttributes('link').href || 'https://'); if (url) editor?.chain().focus().extendMarkRange('link').setLink({ href: url }).run(); })}
       {button('取消链接', () => editor?.chain().focus().unsetLink().run())}
+      {select('表情', ['😀', '😊', '👍', '🎉', '❤️', '🌹', '🙏', '✅'], v => editor?.chain().focus().insertContent(v).run())}
       {button('插入表格', () => editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run())}
       {editor?.isActive('table') && <>{button('添加行', () => editor.chain().focus().addRowAfter().run())}{button('添加列', () => editor.chain().focus().addColumnAfter().run())}{button('删除行', () => editor.chain().focus().deleteRow().run())}{button('删除列', () => editor.chain().focus().deleteColumn().run())}{button('合并单元格', () => editor.chain().focus().mergeCells().run())}{button('拆分单元格', () => editor.chain().focus().splitCell().run())}{button('删除表格', () => editor.chain().focus().deleteTable().run())}</>}
       {onUpload && uploadResource && <>{button('插入图片', () => choose('image'))}{button('插入视频', () => choose('video'))}</>}
       {button('清除格式', () => editor?.chain().focus().unsetAllMarks().clearNodes().run())}
       {button('撤销', () => editor?.chain().focus().undo().run())}{button('重做', () => editor?.chain().focus().redo().run())}
+      {button(fullScreen ? '退出全屏' : '全屏编辑', () => setFullScreen(previous => !previous))}
     </div>
     <input type="file" ref={input} hidden style={{ display: 'none' }} disabled={locked} onChange={e => { const file = e.target.files?.[0]; e.target.value = ''; if (file) void insertFile(file); }} />
     {error && <div className="oxa-rich-text-error" role="alert">{error}</div>}

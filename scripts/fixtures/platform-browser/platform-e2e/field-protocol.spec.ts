@@ -348,6 +348,13 @@ for (const mobile of [false, true]) {
     await field.getByLabel('对齐', { exact: true }).selectOption('center');
     await field.getByLabel('行高', { exact: true }).selectOption('2');
     await field.getByRole('button', { name: '首行缩进', exact: true }).click();
+    await field.getByRole('button', { name: '全屏编辑', exact: true }).click();
+    const fullScreen = page.getByRole('region', { name: '富文本全屏编辑', exact: true });
+    await expect(fullScreen).toBeVisible();
+    await fullScreen.getByRole('textbox', { name: '富文本内容', exact: true }).press('End');
+    await fullScreen.getByLabel('表情', { exact: true }).selectOption('😀');
+    await fullScreen.getByRole('button', { name: '退出全屏', exact: true }).click();
+    await expect(fullScreen).toHaveCount(0);
     await editor.press('ArrowRight');
     await editor.press('End');
     await editor.press('Enter');
@@ -356,7 +363,7 @@ for (const mobile of [false, true]) {
     const output = page.locator('[data-saved-values]');
     await expect(output).toContainText('平台富文本');
     const html = JSON.parse(await output.innerText()).富文本;
-    for (const format of ['<strong>', 'font-family: Arial', 'font-size: 24px', 'text-align: center', 'line-height: 2', 'text-indent: 2em', '<table>']) expect(html).toContain(format);
+    for (const format of ['<strong>', 'font-family: Arial', 'font-size: 24px', 'text-align: center', 'line-height: 2', 'text-indent: 2em', '<table>', '😀']) expect(html).toContain(format);
     await page.getByRole('button', { name: '重新载入已保存值' }).click();
     await page.getByRole('button', { name: '验证表单', exact: true }).click();
     expect(JSON.parse(await output.innerText()).富文本).toBe(html);
