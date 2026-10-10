@@ -1,5 +1,6 @@
 ---
 'openxiangda': patch
+'openxiangda-cli': patch
 ---
 
 重设计 Field Kit 富文本工具栏：采用图标优先的分组操作、受控菜单和移动端横向滚动，保留完整富文本能力与稳定无障碍标签。
