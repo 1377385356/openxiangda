@@ -3,6 +3,39 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.61.3",
+      "status": "reviewed",
+      "title": "Field Kit 富文本工具栏溢出操作",
+      "summary": "官方富文本 Field Kit 在桌面窄容器中显示可发现的更多工具入口，并支持稳定展开多行，避免靠后的编辑操作被隐藏。",
+      "newFeatures": [
+        "桌面工具栏发生横向溢出时显示“更多工具”按钮，点击后展开为多行并提供收起状态。",
+        "ResizeObserver 与 MutationObserver 共同覆盖容器尺寸、菜单和动态表格工具变化，移动端继续使用原有换行布局。"
+      ],
+      "fixes": [
+        "修复富文本工具栏隐藏滚动条后图片、视频、表格和撤销/重做等操作不可发现的问题。",
+        "修复展开后因重新测量导致按钮闪退的问题；组件卸载会清理观察器和待执行测量。"
+      ],
+      "affectedUsers": [
+        "使用 OpenXiangda 官方 Field Kit 富文本字段的应用开发者和编辑人员。"
+      ],
+      "upgradeSteps": [
+        "升级 openxiangda 至 2.61.3，并使用匹配的 openxiangda-cli 2.8.11。",
+        "重新构建应用前端即可获得平台组件行为；HTML、清洗、媒体上传和数据协议无需迁移。"
+      ],
+      "knownLimitations": [
+        "使用自定义编辑器的应用不会自动继承官方 Field Kit 的工具栏布局；移动端按既有换行规则展示。"
+      ],
+      "compatibility": {
+        "node": ">=24",
+        "platform": "data.rich-text 1.0.0",
+        "generation": "OpenXiangda Native V2"
+      },
+      "issues": [],
+      "sha256": "b2bfeb9d8bbaaa20a142b8abf4da4f4384edf013e4b5c542bb7cdca75e966f40",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.61.3"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.61.2",
       "status": "reviewed",
       "title": "富文本 Field Kit 工具栏视觉重设计",
