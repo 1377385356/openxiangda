@@ -320,8 +320,7 @@ ISO instant）与 `minuteStep`（1 到 60 且整除 60）。设置步长后只�
 - 子表单使用每页十行的行内字段，手机支持折叠、添加和删除；父表提交校验所有行，包括折叠及未显示页的行。分页保留完整输入和草稿，任务完成校验会定位到错误行所在页；有待处理上传时先完成或移除文件，再翻页。
   权限、最大行数、原子事务和已存行的 revision 继续由原有资源契约约束。
 - 签名在底部画布手写并保存；图片、签名和附件仍通过托管文件接口上传与鉴权读取。
-- 手机富文本编辑降级为多行文本。未修改时保留已有 HTML；修改后将纯文本转为转义后的
-  段落 HTML，继续使用原有 `text.rich` 数据类型。
+- 手机富文本使用同一 Tiptap 引擎和安全格式协议；工具栏支持触控和滚动，保留已有排版。
 
 评分是整数的可选控件，默认五颗星，声明示例：
 
@@ -346,3 +345,32 @@ ISO instant）与 `minuteStep`（1 到 60 且整除 60）。设置步长后只�
 普通新建即使省略表也检查；编辑只检查本次提交的表。任务草稿/保存允许不足，
 完成时对可见可写表检查最终行数，删除标记不算行。旧固定声明不隐式补造数据。
 标准PC/移动表单显示下限并保留字段校验；应用可提供初始空行，平台不生成可信资料。
+
+
+### 完整富文本与受管视频
+
+`RichTextField` 默认采用 Tiptap / ProseMirror，支持标题、字体/字号、对齐、首行缩进、行高、
+文字/背景色、基础强调、上下标、引用、代码、分隔线、列表/待办、表格与撤销/重做。
+PC 和手机保存同一 HTML 字符串。平台 `data.rich-text` 能力和配套服务端必须先升级。
+
+```tsx
+import { RichTextField, RichTextValueDisplay, uploadOperationManagedFile } from 'openxiangda/field-kit';
+<RichTextField resourceCode="articles" value={body} onChange={setBody}
+  onUpload={file => uploadOperationManagedFile({ operationCode: 'save-article', resourceCode: 'articles', fieldCode: 'body', intent: 'create', file })} />
+<RichTextValueDisplay resourceCode="articles" value={body} />
+```
+
+具名动作声明 `managedFiles` 对应资源/富文本字段，普通 CRUD/任务页面沿用其上传适配器。
+图片只支持 PNG/JPEG/WebP/GIF（每值20张，每张10MiB），视频只支持 MP4/WebM（每值4个，
+每个100MiB；实际仍受租户存储上传额度限制）。服务器核验真实图片/视频容器，权限路由支持
+Range 流式读取。无转码、外站视频、iframe 和自动播放；浏览器编解码器可能不同。
+
+前端、写入和公开投影统一消费 `openxiangda-contracts/rich-text`；`sanitizeRichText` 用于展示，
+`sanitizeRichTextHtml` 默认只接受 Native 受管媒体，`display:true` 才接受平台匿名公共媒体路径。
+不要保存 blob、data、OSS 签名 URL，禁止关闭清洗。外部编辑器可以使用该协议，样式仍受
+版本化白名单与数值上限约束。`createRichTextExtensions` 提供同一官方免费节点集合。
+
+跨资源发布声明原有 `managedFileCopies` 的同型 `text.rich` 字段对，对每个媒体调用
+`copyManagedFile`，收到 `succeeded` 回执后用 `sanitizeRichTextHtml(html, { rewriteMedia })` 重写为
+目标资源的 canonical 路径，再执行业务事务。复制后源文件不变，目标独立引用并参与清理。
+立即/定时发布共用同一服务动作；不能直接复用另一个资源的 file ID。

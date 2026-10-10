@@ -1,52 +1,11 @@
-import {
-  BoldOutlined,
-  FileImageOutlined,
-  ItalicOutlined,
-  LinkOutlined,
-  OrderedListOutlined,
-  StrikethroughOutlined,
-  UnderlineOutlined,
-  UnorderedListOutlined,
-} from '@ant-design/icons';
-import { Button, Space, Tooltip } from 'antd';
-import { Button as MobileButton } from '../../mobile';
+import { Button, Tooltip } from 'antd';
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
 import type { DataFileRef } from 'openxiangda-contracts/browser';
-import { useEffect, useMemo, useRef, useState, type RefObject, type ReactNode } from 'react';
-import {
-  dataRichTextImageSource,
-  fetchDataFileBlob,
-  fetchWorkflowDataFileBlob,
-  type WorkflowFileBinding,
-} from '../../platform-client';
-import {
-  managedRichTextImageFileId,
-  MANAGED_RICH_TEXT_SOURCE_ATTRIBUTE,
-  richTextHydrationHtml,
-  sanitizeRichText,
-} from './rich-text-value';
-
-const INLINE_IMAGE_ACCEPT = 'image/png,image/jpeg,image/webp,image/gif';
-const INLINE_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
-const INLINE_IMAGE_MAX_COUNT = 20;
-
-const TOOLS = [
-  { command: 'bold', label: '加粗', icon: <BoldOutlined /> },
-  { command: 'italic', label: '斜体', icon: <ItalicOutlined /> },
-  { command: 'underline', label: '下划线', icon: <UnderlineOutlined /> },
-  { command: 'strikeThrough', label: '删除线', icon: <StrikethroughOutlined /> },
-  { command: 'insertOrderedList', label: '有序列表', icon: <OrderedListOutlined /> },
-  { command: 'insertUnorderedList', label: '无序列表', icon: <UnorderedListOutlined /> },
-] as const;
-
-function editableRichTextValue(element: HTMLElement) {
-  const clone = element.cloneNode(true) as HTMLElement;
-  for (const image of [...clone.querySelectorAll('img')]) {
-    const source = image.getAttribute(MANAGED_RICH_TEXT_SOURCE_ATTRIBUTE);
-    if (source) image.setAttribute('src', source);
-    image.removeAttribute(MANAGED_RICH_TEXT_SOURCE_ATTRIBUTE);
-  }
-  return sanitizeRichText(clone.innerHTML);
-}
+import { RICH_TEXT_POLICY_V2, sanitizeRichTextHtml } from 'openxiangda-contracts/rich-text';
+import { dataRichTextImageSource, dataFileContentUrl, workflowDataFileContentUrl, fetchDataFileBlob, fetchWorkflowDataFileBlob, type WorkflowFileBinding } from '../../platform-client';
+import { managedRichTextImageFileId, MANAGED_RICH_TEXT_SOURCE_ATTRIBUTE, richTextHydrationHtml } from './rich-text-value';
+import { createRichTextExtensions } from './rich-text-extensions';
 
 function useHydratedManagedImages(
   root: RefObject<HTMLElement | null>,
@@ -78,6 +37,11 @@ function useHydratedManagedImages(
     }
     if (!container || (!resourceCode && !workflowBinding)) return;
     let active = true;
+    for (const video of [...container.querySelectorAll('video')]) {
+      const source = video.getAttribute(MANAGED_RICH_TEXT_SOURCE_ATTRIBUTE) || '';
+      const fileId = managedRichTextImageFileId(source);
+      if (fileId) video.src = workflowBinding ? workflowDataFileContentUrl(workflowBinding, fileId, 'inline') : dataFileContentUrl(resourceCode!, fileId, 'inline');
+    }
     const images = [...container.querySelectorAll('img')];
     const activeSources = new Set(
       images
@@ -173,186 +137,103 @@ export function RichTextValueDisplay({
   );
 }
 
-export function RichTextField({
-  value = '',
-  onChange,
-  disabled = false,
-  mobile = false,
-  onUpload,
-  resourceCode,
-  workflowBinding,
-}: {
-  value?: string;
-  onChange?: (value: string) => void;
-  disabled?: boolean;
-  mobile?: boolean;
+export function RichTextField({ value = '', onChange, disabled = false, mobile = false, onUpload, resourceCode, workflowBinding }: {
+  value?: string; onChange?: (value: string) => void; disabled?: boolean; mobile?: boolean;
   onUpload?: (file: File, onRecovered?: (file: DataFileRef) => void) => Promise<DataFileRef>;
-  resourceCode?: string;
-  workflowBinding?: WorkflowFileBinding;
+  resourceCode?: string; workflowBinding?: WorkflowFileBinding;
 }) {
-  const editor = useRef<HTMLDivElement | null>(null);
-  const imageInput = useRef<HTMLInputElement | null>(null);
-  const insertedImageUrls = useRef(new Set<string>());
-  const [imageUploading, setImageUploading] = useState(false);
-  const [imageError, setImageError] = useState('');
-  const selectedImageRange = useRef<Range | null>(null);
-  const generation = useRef(0);
-  const scope = JSON.stringify([resourceCode, workflowBinding?.taskId, workflowBinding?.instanceId,
-    workflowBinding?.resourceCode, workflowBinding?.recordId, workflowBinding?.fieldCode]);
-  useEffect(() => {
-    generation.current += 1;
-    selectedImageRange.current = null;
-    insertedImageUrls.current.forEach(source => URL.revokeObjectURL(source));
-    insertedImageUrls.current.clear();
-    setImageUploading(false); setImageError('');
-    return () => { generation.current += 1; };
+  const [uploading, setUploading] = useState(false), [error, setError] = useState('');
+  const generation = useRef(0), input = useRef<HTMLInputElement>(null), uploadKind = useRef<'image' | 'video'>('image');
+  const scope = JSON.stringify([resourceCode, workflowBinding]);
+  const change = useRef(onChange); change.current = onChange;
+  const editor = useEditor({
+    extensions: createRichTextExtensions(workflowBinding),
+    content: sanitizeRichTextHtml(value),
+    immediatelyRender: false,
+    editorProps: { attributes: { class: 'oxa-rich-text-editor', role: 'textbox', 'aria-label': '富文本内容', 'aria-multiline': 'true' },
+      transformPastedHTML: html => sanitizeRichTextHtml(html),
+    },
+    onUpdate: ({ editor }) => {
+      try { change.current?.(editor.isEmpty ? '' : sanitizeRichTextHtml(editor.getHTML())); setError(''); }
+      catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
+    },
   }, [scope]);
-  const locked = disabled || imageUploading;
-  const uploadResource = resourceCode || workflowBinding?.resourceCode;
-
+  useEditorState({ editor, selector: context => context.editor?.state });
+  const locked = disabled || uploading;
+  const disabledNow = useRef(disabled); disabledNow.current = disabled;
+  useEffect(() => { editor?.setEditable(!locked); }, [editor, locked]);
   useEffect(() => {
-    if (editor.current && editableRichTextValue(editor.current) !== value) {
-      insertedImageUrls.current.forEach(source => URL.revokeObjectURL(source));
-      insertedImageUrls.current.clear();
-      editor.current.innerHTML = richTextHydrationHtml(value);
-    }
-  }, [value]);
-  useEffect(() => () => {
-    insertedImageUrls.current.forEach(source => URL.revokeObjectURL(source));
-    insertedImageUrls.current.clear();
-  }, []);
-  useHydratedManagedImages(editor, value, resourceCode, workflowBinding);
-
-  const emit = () => {
-    if (!editor.current) return;
-    const normalized = editableRichTextValue(editor.current);
-    const liveObjectUrls = new Set(
-      [...editor.current.querySelectorAll('img')]
-        .map(image => image.getAttribute('src') || '')
-        .filter(source => source.startsWith('blob:'))
-    );
-    for (const source of insertedImageUrls.current) {
-      if (liveObjectUrls.has(source)) continue;
-      URL.revokeObjectURL(source);
-      insertedImageUrls.current.delete(source);
-    }
-    onChange?.(normalized);
+    if (editor && sanitizeRichTextHtml(editor.getHTML()) !== sanitizeRichTextHtml(value)) editor.commands.setContent(sanitizeRichTextHtml(value), { emitUpdate: false });
+  }, [editor, value]);
+  useEffect(() => { generation.current++; setUploading(false); setError(''); return () => { generation.current++; }; }, [scope]);
+  const uploadResource = resourceCode || workflowBinding?.resourceCode;
+  const button = (label: string, action: () => void, active = false) => <Tooltip title={label} key={label}><Button
+    aria-label={label} aria-pressed={active} type={active ? 'primary' : 'text'} size="small" disabled={locked || !editor}
+    onMouseDown={e => e.preventDefault()} onClick={action}>{label}</Button></Tooltip>;
+  const choose = (kind: 'image' | 'video') => {
+    uploadKind.current = kind;
+    if (input.current) { input.current.accept = (kind === 'image' ? RICH_TEXT_POLICY_V2.imageTypes : RICH_TEXT_POLICY_V2.videoTypes).join(','); input.current.click(); }
   };
-
-  const command = (name: string, argument?: string) => {
-    if (locked) return;
-    editor.current?.focus();
-    document.execCommand(name, false, argument);
-    emit();
-  };
-
-  const insertLink = () => {
-    if (locked) return;
-    const url = window.prompt('链接地址');
-    if (url && /^(?:https?:|mailto:|tel:)/i.test(url.trim())) {
-      command('createLink', url.trim());
-    }
-  };
-
-  const chooseImage = () => {
-    if (locked) return;
-    const selection = window.getSelection();
-    selectedImageRange.current =
-      selection?.rangeCount && editor.current?.contains(selection.anchorNode)
-        ? selection.getRangeAt(0).cloneRange()
-        : null;
-    imageInput.current?.click();
-  };
-
-  const insertImage = async (file: File) => {
-    if (locked || !editor.current || !onUpload || !uploadResource) return;
-    const container = editor.current;
-    const selectedRange = selectedImageRange.current;
-    selectedImageRange.current = null;
-    const originalGeneration = generation.current;
-    let uploadStarted = false;
+  const insertFile = async (file: File) => {
+    if (!editor || locked || !onUpload || !uploadResource) return;
+    const original = generation.current, kind = uploadKind.current, position = editor.state.selection.from;
+    const contentAtUpload = editor.getHTML();
+    let adopted = false;
     try {
-      setImageError('');
-      setImageUploading(true);
-      if (!INLINE_IMAGE_ACCEPT.split(',').includes(file.type)) {
-        throw new Error('仅支持 PNG、JPEG、WebP 或 GIF 图片');
-      }
-      if (file.size > INLINE_IMAGE_MAX_BYTES) {
-        throw new Error('单张图片不能超过 10MB');
-      }
-      if (editor.current.querySelectorAll('img').length >= INLINE_IMAGE_MAX_COUNT) {
-        throw new Error('每个富文本最多插入 20 张图片');
-      }
-      let adopted = false;
+      setUploading(true); setError('');
+      const types: readonly string[] = kind === 'image' ? RICH_TEXT_POLICY_V2.imageTypes : RICH_TEXT_POLICY_V2.videoTypes;
+      if (!types.includes(file.type)) throw new Error(kind === 'image' ? '支持 PNG、JPEG、WebP、GIF 图片' : '支持 MP4、WebM 视频');
+      if (file.size === 0) throw new Error('不能上传空文件');
+      if (file.size > (kind === 'image' ? RICH_TEXT_POLICY_V2.imageMaxBytes : RICH_TEXT_POLICY_V2.videoMaxBytes)) throw new Error(kind === 'image' ? '单张图片不能超过 10MB' : '单个视频不能超过 100MB');
+      let count = 0; editor.state.doc.descendants(node => { if (node.type.name === (kind === 'image' ? 'image' : 'managedVideo')) count++; });
+      if (count >= (kind === 'image' ? RICH_TEXT_POLICY_V2.maxImages : RICH_TEXT_POLICY_V2.maxVideos)) throw new Error(kind === 'image' ? '最多插入 20 张图片' : '最多插入 4 个视频');
       const adopt = (uploaded: DataFileRef) => {
-        if (adopted || generation.current !== originalGeneration || editor.current !== container) return;
-        const image = document.createElement('img');
-        const source = dataRichTextImageSource(uploadResource, uploaded.id);
-        image.setAttribute(MANAGED_RICH_TEXT_SOURCE_ATTRIBUTE, source);
-        const range = selectedRange || document.createRange();
-        if (selectedRange && !container.contains(range.commonAncestorContainer)) {
-          throw new Error('原插入位置已变更，请保留当前文字并重新核对。');
-        }
-        if (!selectedRange) { range.selectNodeContents(container); range.collapse(false); }
-        const objectUrl = URL.createObjectURL(file);
-        insertedImageUrls.current.add(objectUrl);
-        image.src = objectUrl; image.alt = file.name;
-        range.deleteContents(); range.insertNode(image);
-        range.setStartAfter(image); range.collapse(true);
-        const selection = window.getSelection();
-        selection?.removeAllRanges(); selection?.addRange(range);
-        adopted = true; setImageError(''); emit();
+        if (adopted || generation.current !== original || editor.isDestroyed) return;
+        if (disabledNow.current || editor.getHTML() !== contentAtUpload) { setError('上传已完成，原内容已变更，请重新选择插入位置。'); return; }
+        adopted = true;
+        editor.chain().focus().insertContentAt(Math.min(position, editor.state.doc.content.size), { type: kind === 'image' ? 'image' : 'managedVideo', attrs: { src: dataRichTextImageSource(uploadResource, uploaded.id), alt: file.name, title: file.name } }).run();
+        setError('');
       };
-      uploadStarted = true;
       adopt(await onUpload(file, adopt));
-    } catch (error) {
-      if (generation.current === originalGeneration) {
-        setImageError(workflowBinding?.taskId && uploadStarted ? '' : error instanceof Error ? error.message : String(error));
-      }
-    } finally {
-      if (generation.current === originalGeneration) setImageUploading(false);
-    }
+    } catch (reason) { if (generation.current === original) setError(reason instanceof Error ? reason.message : String(reason)); }
+    finally { if (generation.current === original) setUploading(false); }
   };
-
-  const toolbarButton = (label: string, icon: ReactNode, action: () => void) => mobile ? (
-    <span key={label} onPointerDown={event => event.preventDefault()}><MobileButton aria-label={label} disabled={locked} fill="none" size="small"
-      onClick={action}>{icon}</MobileButton></span>
-  ) : <Tooltip key={label} title={label}><Button aria-label={label} disabled={locked} icon={icon}
-    onMouseDown={event => event.preventDefault()} onClick={action} size="small" /></Tooltip>;
-  const toolbar = <>
-    {TOOLS.map(tool => toolbarButton(tool.label, tool.icon, () => command(tool.command)))}
-    {toolbarButton('插入链接', <LinkOutlined />, insertLink)}
-    {onUpload && uploadResource && toolbarButton('插入图片', <FileImageOutlined />, chooseImage)}
-  </>;
-
-  return (
-    <div className={`oxa-rich-text-field${mobile ? ' oxa-mobile-rich-text-field oxa-mobile-scope' : ''}`}>
-      {mobile ? <div className="oxa-rich-text-toolbar">{toolbar}</div> : <Space className="oxa-rich-text-toolbar" size={4} wrap>{toolbar}</Space>}
-      <input
-        disabled={locked}
-        accept={INLINE_IMAGE_ACCEPT}
-        onChange={event => {
-          const file = event.currentTarget.files?.[0];
-          event.currentTarget.value = '';
-          if (file) void insertImage(file);
-        }}
-        ref={imageInput}
-        style={{ display: 'none' }}
-        type="file"
-      />
-      {imageError && <div className="oxa-rich-text-error" role="alert">{imageError}</div>}
-      <div
-        aria-label="富文本内容"
-        aria-disabled={locked}
-        aria-multiline="true"
-        className="oxa-rich-text-editor"
-        contentEditable={!locked}
-        onBlur={emit}
-        onInput={emit}
-        ref={editor}
-        role="textbox"
-        suppressContentEditableWarning
-      />
+  const select = (label: string, values: string[], action: (value: string) => void) => <label className="oxa-rich-text-choice" key={label}>{label}<select
+    aria-label={label} disabled={locked || !editor} defaultValue="" onChange={e => { action(e.target.value); e.target.value = ''; }}>
+    <option value="" disabled>选择</option>{values.map(v => <option value={v} key={v}>{v}</option>)}
+  </select></label>;
+  return <div className={`oxa-rich-text-field${mobile ? ' oxa-mobile-rich-text-field' : ''}`}>
+    <div className="oxa-rich-text-toolbar" role="toolbar" aria-label="富文本工具栏">
+      {select('段落', ['正文', '标题1', '标题2', '标题3'], v => v === '正文' ? editor?.chain().focus().setParagraph().run() : editor?.chain().focus().setHeading({ level: Number(v.slice(-1)) as 1 | 2 | 3 }).run())}
+      {select('字体', [...RICH_TEXT_POLICY_V2.fonts], v => editor?.chain().focus().setFontFamily(v).run())}
+      {select('字号', ['12px', '14px', '16px', '18px', '20px', '24px', '32px', '48px'], v => editor?.chain().focus().setFontSize(v).run())}
+      {select('行高', ['1', '1.5', '2', '2.5', '3'], v => editor?.chain().focus().updateAttributes(editor.isActive('heading') ? 'heading' : 'paragraph', { 'line-height': v }).run())}
+      {button('加粗', () => editor?.chain().focus().toggleBold().run(), editor?.isActive('bold'))}
+      {button('斜体', () => editor?.chain().focus().toggleItalic().run(), editor?.isActive('italic'))}
+      {button('下划线', () => editor?.chain().focus().toggleUnderline().run(), editor?.isActive('underline'))}
+      {button('删除线', () => editor?.chain().focus().toggleStrike().run(), editor?.isActive('strike'))}
+      {button('上标', () => editor?.chain().focus().toggleSuperscript().run(), editor?.isActive('superscript'))}
+      {button('下标', () => editor?.chain().focus().toggleSubscript().run(), editor?.isActive('subscript'))}
+      {(['文字颜色', '背景色'] as const).map(label => <label className="oxa-rich-text-choice" key={label}>{label}<input type="color" aria-label={label} disabled={locked} onChange={e => label === '文字颜色' ? editor?.chain().focus().setColor(e.target.value).run() : editor?.chain().focus().setBackgroundColor(e.target.value).run()} /></label>)}
+      {select('对齐', ['left', 'center', 'right', 'justify'], v => editor?.chain().focus().setTextAlign(v).run())}
+      {button('首行缩进', () => editor?.chain().focus().updateAttributes(editor.isActive('heading') ? 'heading' : 'paragraph', { 'text-indent': '2em' }).run())}
+      {button('取消缩进', () => editor?.chain().focus().updateAttributes(editor.isActive('heading') ? 'heading' : 'paragraph', { 'text-indent': null, 'margin-left': null, 'padding-left': null }).run())}
+      {button('有序列表', () => editor?.chain().focus().toggleOrderedList().run(), editor?.isActive('orderedList'))}
+      {button('无序列表', () => editor?.chain().focus().toggleBulletList().run(), editor?.isActive('bulletList'))}
+      {button('待办列表', () => editor?.chain().focus().toggleTaskList().run(), editor?.isActive('taskList'))}
+      {button('引用', () => editor?.chain().focus().toggleBlockquote().run(), editor?.isActive('blockquote'))}
+      {button('代码块', () => editor?.chain().focus().toggleCodeBlock().run(), editor?.isActive('codeBlock'))}
+      {button('分割线', () => editor?.chain().focus().setHorizontalRule().run())}
+      {button('插入链接', () => { const url = window.prompt('链接地址', editor?.getAttributes('link').href || 'https://'); if (url) editor?.chain().focus().extendMarkRange('link').setLink({ href: url }).run(); })}
+      {button('取消链接', () => editor?.chain().focus().unsetLink().run())}
+      {button('插入表格', () => editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run())}
+      {editor?.isActive('table') && <>{button('添加行', () => editor.chain().focus().addRowAfter().run())}{button('添加列', () => editor.chain().focus().addColumnAfter().run())}{button('删除行', () => editor.chain().focus().deleteRow().run())}{button('删除列', () => editor.chain().focus().deleteColumn().run())}{button('合并单元格', () => editor.chain().focus().mergeCells().run())}{button('拆分单元格', () => editor.chain().focus().splitCell().run())}{button('删除表格', () => editor.chain().focus().deleteTable().run())}</>}
+      {onUpload && uploadResource && <>{button('插入图片', () => choose('image'))}{button('插入视频', () => choose('video'))}</>}
+      {button('清除格式', () => editor?.chain().focus().unsetAllMarks().clearNodes().run())}
+      {button('撤销', () => editor?.chain().focus().undo().run())}{button('重做', () => editor?.chain().focus().redo().run())}
     </div>
-  );
+    <input type="file" ref={input} hidden style={{ display: 'none' }} disabled={locked} onChange={e => { const file = e.target.files?.[0]; e.target.value = ''; if (file) void insertFile(file); }} />
+    {error && <div className="oxa-rich-text-error" role="alert">{error}</div>}
+    <EditorContent editor={editor} />
+  </div>;
 }

@@ -687,6 +687,7 @@ export function compileRequiredPlatformCapabilitiesV3(
         commands: initiatorPhoneCommands.map((command: JsonObject) => ({ code: command.code, directory: command.execution.directory })),
       },
     }] : []),
+    ...(config.data.resources.some((resource: JsonObject) => resource.schema.fields.some((field: JsonObject) => field.type === 'text.rich')) ? [{ code: 'data.rich-text' as const, declaration: { policyVersion: 'rich-text-html/1' } }] : []),
     ...(usesManagedFiles
       ? [
           {
@@ -1786,7 +1787,7 @@ function validateEventSubscriptionPlatformAccess(
         sourceFields.forEach((field, fieldIndex) => {
           const sourceType = source!.get(field);
           const targetType = target!.get(targetFields[fieldIndex]!);
-          if (!['file', 'image'].includes(String(sourceType)) || sourceType !== targetType) {
+          if (!['file', 'image', 'text.rich'].includes(String(sourceType)) || sourceType !== targetType) {
             fail('NATIVE_EVENT_MANAGED_FILE_COPY_FIELD_INVALID', `${entryPointer}/sourceFieldCodes/${fieldIndex}`);
           }
         });
@@ -3022,7 +3023,7 @@ function validateOperationPlatformAccess(
         sourceFields.forEach((field, fieldIndex) => {
           const sourceType = source!.get(field);
           const targetType = target!.get(targetFields[fieldIndex]!);
-          if (!['file', 'image'].includes(String(sourceType)) || sourceType !== targetType) {
+          if (!['file', 'image', 'text.rich'].includes(String(sourceType)) || sourceType !== targetType) {
             fail('NATIVE_OPERATION_MANAGED_FILE_COPY_FIELD_INVALID', `${entryPointer}/sourceFieldCodes/${fieldIndex}`);
           }
         });

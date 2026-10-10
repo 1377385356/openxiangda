@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 
 const fieldCount = 38;
@@ -331,4 +332,65 @@ test.describe('Field Kit protocol acceptance', () => {
     expect(await outsideStyles()).toEqual(baseline);
     expect(pageErrors).toEqual([]);
   });
+});
+
+for (const mobile of [false, true]) {
+  test(`完整富文本在${mobile ? '手机' : '桌面'}保存回填保留排版与表格`, async ({ page }) => {
+    await page.setViewportSize(mobile ? { width: 390, height: 844 } : { width: 1440, height: 1000 });
+    await page.goto(`/field-protocol.e2e.html${mobile ? '?mode=mobile' : ''}`);
+    const field = page.locator('[data-field-code="富文本"]');
+    const editor = field.getByRole('textbox', { name: '富文本内容' });
+    await editor.fill('平台富文本');
+    await editor.press('ControlOrMeta+A');
+    await field.getByRole('button', { name: '加粗', exact: true }).click();
+    await field.getByLabel('字体', { exact: true }).selectOption('Arial');
+    await field.getByLabel('字号', { exact: true }).selectOption('24px');
+    await field.getByLabel('对齐', { exact: true }).selectOption('center');
+    await field.getByLabel('行高', { exact: true }).selectOption('2');
+    await field.getByRole('button', { name: '首行缩进', exact: true }).click();
+    await editor.press('ArrowRight');
+    await editor.press('End');
+    await editor.press('Enter');
+    await field.getByRole('button', { name: '插入表格', exact: true }).click();
+    await page.getByRole('button', { name: '验证表单', exact: true }).click();
+    const output = page.locator('[data-saved-values]');
+    await expect(output).toContainText('平台富文本');
+    const html = JSON.parse(await output.innerText()).富文本;
+    for (const format of ['<strong>', 'font-family: Arial', 'font-size: 24px', 'text-align: center', 'line-height: 2', 'text-indent: 2em', '<table>']) expect(html).toContain(format);
+    await page.getByRole('button', { name: '重新载入已保存值' }).click();
+    await page.getByRole('button', { name: '验证表单', exact: true }).click();
+    expect(JSON.parse(await output.innerText()).富文本).toBe(html);
+    await expect(field.locator('input[type="file"]')).toBeHidden();
+    await field.getByRole('toolbar').evaluate(element => { element.scrollTop = 0; });
+    await field.screenshot({ path: test.info().outputPath(`rich-text-${mobile ? 'mobile' : 'desktop'}.png`), animations: 'disabled' });
+  });
+}
+
+
+test('受管视频插入后流式播放，保存值仅包含稳定平台路径', async ({ page }) => {
+  const bytes = Buffer.from(JSON.parse(readFileSync(new URL('./rich-text-video.json', import.meta.url), 'utf8')).base64, 'base64');
+  let ranges = 0;
+  await page.route('**/native/data/field-records/files/*/content?*', async route => {
+    const range = route.request().headers().range;
+    if (range) {
+      ranges++;
+      const [startText, endText] = range.replace('bytes=', '').split('-');
+      const start = Number(startText), end = Math.min(Number(endText || bytes.length - 1), bytes.length - 1);
+      await route.fulfill({ status: 206, contentType: 'video/mp4', headers: { 'Accept-Ranges': 'bytes', 'Content-Range': `bytes ${start}-${end}/${bytes.length}` }, body: bytes.subarray(start, end + 1) });
+    } else await route.fulfill({ contentType: 'video/mp4', body: bytes });
+  });
+  await page.goto('/field-protocol.e2e.html');
+  const field = page.locator('[data-field-code="富文本"]');
+  await field.getByRole('button', { name: '插入视频', exact: true }).click();
+  await field.locator('input[type="file"]').setInputFiles({ name: 'clip.mp4', mimeType: 'video/mp4', buffer: bytes });
+  await expect(field.locator('video')).toHaveCount(1);
+  await field.locator('video').evaluate(async (element: HTMLVideoElement) => { element.muted = true; await element.play(); });
+  await expect.poll(() => field.locator('video').evaluate((element: HTMLVideoElement) => element.currentTime)).toBeGreaterThan(0);
+  expect(ranges).toBeGreaterThan(0);
+  await page.getByRole('button', { name: '验证表单', exact: true }).click();
+  const html = JSON.parse(await page.locator('[data-saved-values]').innerText()).富文本;
+  expect(html).toContain('<video'); expect(html).toContain('/native/data/field-records/files/');
+  expect(html).not.toMatch(/blob:|data:|environmentKey=/);
+  await page.getByRole('button', { name: '重新载入已保存值' }).click();
+  await expect(field.locator('video')).toHaveCount(1);
 });

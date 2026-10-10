@@ -3236,8 +3236,8 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
               targetFields.length > 16 ||
               new Set(sourceFields).size !== sourceFields.length ||
               new Set(targetFields).size !== targetFields.length ||
-              sourceFields.some(field => !['file', 'image'].includes(source?.get(field) || '')) ||
-              targetFields.some(field => !['file', 'image'].includes(target?.get(field) || '')) ||
+              sourceFields.some(field => !['file', 'image', 'text.rich'].includes(source?.get(field) || '')) ||
+              targetFields.some(field => !['file', 'image', 'text.rich'].includes(target?.get(field) || '')) ||
               sourceFields.length !== targetFields.length ||
               sourceFields.some((field, i) => source?.get(field) !== target?.get(targetFields[i] || '')) ||
               Object.keys(copy).some(key => ![
@@ -4860,8 +4860,8 @@ function validateBackendOperations(
             targetFields.length > 16 ||
             new Set(sourceFields).size !== sourceFields.length ||
             new Set(targetFields).size !== targetFields.length ||
-            sourceFields.some(field => !['file', 'image'].includes(source?.get(field) || '')) ||
-            targetFields.some(field => !['file', 'image'].includes(target?.get(field) || '')) ||
+            sourceFields.some(field => !['file', 'image', 'text.rich'].includes(source?.get(field) || '')) ||
+            targetFields.some(field => !['file', 'image', 'text.rich'].includes(target?.get(field) || '')) ||
             sourceFields.length !== targetFields.length ||
             sourceFields.some((field, i) => source?.get(field) !== target?.get(targetFields[i] || '')) ||
             Object.keys(copy).some(key => ![
