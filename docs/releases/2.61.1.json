@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.61.1",
+  "status": "reviewed",
+  "title": "连接开发与已部署预发版本隔离",
+  "summary": "修复启动本地连接开发后预发页面变为未部署的问题。开发配置通过独立会话选择，已部署前后端与权限、流程、订阅和调度保持原发布选择。",
+  "newFeatures": [
+    "开发会话引用独立配置快照，源码连接和短期工作负载凭证按会话隔离。"
+  ],
+  "fixes": [
+    "dev 不再切换共享预发 Head，不再清空已部署的前后端制品指针。",
+    "普通线上请求不会被导向开发者本地 Nest；关闭、过期和撤销只影响对应开发会话。",
+    "普通浏览器配置选择证明绑定签名会话与实际登录用户，不能借用开发者权限。"
+  ],
+  "affectedUsers": [
+    "使用 openxiangda dev 的应用开发者及同一应用的预发使用者。"
+  ],
+  "upgradeSteps": [
+    "先升级配套平台，确认 application.development-configuration 契约为 2.0.0。",
+    "更新工作区至 openxiangda 2.61.1，重新运行 dev 创建独立开发会话。",
+    "历史已被开发配置切换的预发版本，通过正常 rollback 恢复已部署版本。"
+  ],
+  "knownLimitations": [
+    "共享测试数据的业务写入仍然真实生效；本次隔离配置和运行选择，不隔离数据。",
+    "新模型、已发布角色及流程结构的变更需要独立测试环境或正式部署；已有模型的新增字段只增加可空物理列。",
+    "开发启动不激活后台订阅、定时或业务日期调度，后台链路仍通过正式部署批次验收。",
+    "浏览器文件流操作需要部署制品。"
+  ],
+  "compatibility": {
+    "node": ">=24",
+    "platform": "application.development-configuration 2.0.0",
+    "generation": "OpenXiangda Native V2"
+  },
+  "issues": []
+}
