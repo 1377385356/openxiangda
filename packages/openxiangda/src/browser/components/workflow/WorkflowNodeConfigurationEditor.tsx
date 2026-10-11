@@ -1,3 +1,4 @@
+import { createBrowserUuid } from '../../uuid';
 import { useEffect, useRef, useState } from 'react';
 import { useUnsavedChangesGuard } from '../../navigation-guard';
 import { Alert, App, Button, Checkbox, Drawer, Empty, Form, Input, Radio, Select, Space, Tabs, Tag, Typography } from 'antd';
@@ -99,7 +100,7 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
         completionDeadline: node.defaults.completionDeadline,
       }, binding, patch);
       if (errors.length) { setError(errors.join('；')); return; }
-      frozen.current = { ...basis.current, patch, reason: values.reason, operationId: crypto.randomUUID() };
+      frozen.current = { ...basis.current, patch, reason: values.reason, operationId: createBrowserUuid() };
     }
     setBusy(true); setError('');
     try {

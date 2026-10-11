@@ -1,3 +1,4 @@
+import { createBrowserUuid } from '../../uuid';
 import { PlusOutlined, UploadOutlined } from '@ant-design/icons';
 import type { DataFileRef } from 'openxiangda-contracts/browser';
 import { useContext, useEffect, useId, useRef, useState } from 'react';
@@ -110,7 +111,7 @@ export function MobileManagedFileField({
     }
     setNotice('');
     for (const file of files) {
-      const task: Pending = { id: crypto.randomUUID(), file, status: 'error' };
+      const task: Pending = { id: createBrowserUuid(), file, status: 'error' };
       tasks.current.set(task.id, task);
       void run(task);
     }

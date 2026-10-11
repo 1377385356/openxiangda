@@ -1,3 +1,4 @@
+import { createBrowserUuid } from '../../uuid';
 import { useRef, useState } from 'react';
 import { Alert, App, Button, Checkbox, DatePicker, Drawer, Empty, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd';
 import dayjs from 'dayjs';
@@ -54,7 +55,7 @@ export function WorkflowAssignmentRoutingEditor({ configuration: initial, onClos
     changes.push(...[...previous.values()].map(rule => ({ key: rule.ruleCode, action: '删除', before: describe(rule, configuration), after: '—' })));
     if (!changes.length) { setError('规则没有变化。'); return; }
     const mutation: WorkflowAssignmentRoutingMutation = { expectedHeadRevision: configuration.headRevision, expectedRevision: configuration.revision,
-      operationId: crypto.randomUUID(), reason: reason.trim(), rules: structuredClone(rules) };
+      operationId: createBrowserUuid(), reason: reason.trim(), rules: structuredClone(rules) };
     setReviewing(true);
     modal.confirm({ title: `核对 ${changes.length} 项规则变更`, width: 900, okText: '确认保存', cancelText: '继续编辑', mask: { closable: false },
       content: <><p>保存后影响未来进入的审批节点。当前待办与已选中的人员保持原快照。</p>

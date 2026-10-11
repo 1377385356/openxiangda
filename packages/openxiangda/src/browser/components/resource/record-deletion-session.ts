@@ -1,3 +1,4 @@
+import { createBrowserUuid } from '../../uuid';
 import type { DataRecordDeletionMutation, DataRecordDeletionPreview, DataRecordDeletionReceipt } from 'openxiangda-contracts/browser';
 import { OpenXiangdaPlatformRequestError } from '../../platform-client';
 
@@ -17,7 +18,7 @@ export function createRecordDeletionSession(
   submit: (input: DataRecordDeletionMutation) => Promise<DataRecordDeletionReceipt>,
   recover: (input: DataRecordDeletionMutation) => Promise<DataRecordDeletionReceipt>,
   changed: (state: RecordDeletionState) => void,
-  newKey: () => string = () => crypto.randomUUID(),
+  newKey: () => string = () => createBrowserUuid(),
   now: () => number = Date.now,
 ) {
   let state: RecordDeletionState = { busy: false };

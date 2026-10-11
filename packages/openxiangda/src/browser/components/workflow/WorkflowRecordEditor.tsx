@@ -1,3 +1,4 @@
+import { createBrowserUuid } from '../../uuid';
 import { Alert, App, Button, Result, Spin } from 'antd';
 import type { WorkflowRecordCorrectionSurface } from 'openxiangda-contracts/browser';
 import { useEffect, useRef, useState } from 'react';
@@ -91,7 +92,7 @@ function WorkflowRecordEditSession({ resourceCode, recordId, onDismiss, onSaved,
       });
       const payload = JSON.stringify(operations);
       if (!requestKey.current || requestKey.current.payload !== payload) {
-        requestKey.current = { payload, key: `correction:${crypto.randomUUID()}` };
+        requestKey.current = { payload, key: `correction:${createBrowserUuid()}` };
       }
       await correctWorkflowRecord(surface, resourceCode, operations, requestKey.current.key);
       if (!active.current) return;

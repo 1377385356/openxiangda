@@ -1,3 +1,4 @@
+import { createBrowserUuid } from './uuid';
 import type { CommandReceipt } from 'openxiangda-contracts/browser';
 import type { ManagedConcurrencyClient, ManagedReadRecoveryOptions } from './managed-command';
 import { isManagedReadBusy, isManagedReadTransport } from './managed-read-recovery';
@@ -255,7 +256,7 @@ export class DurableCommandController {
                     throw new Error('CONCURRENCY_ORIGINAL_REQUEST_REQUIRED');
             }
             else
-                this.intent = { version: 1, input: JSON.parse(serialized), requestKey: crypto.randomUUID(), firstSubmittedAt: Date.now() };
+                this.intent = { version: 1, input: JSON.parse(serialized), requestKey: createBrowserUuid(), firstSubmittedAt: Date.now() };
             // Old intents cannot establish a historical start; begin at this explicit recovery.
             this.intent.firstSubmittedAt ??= Date.now();
             this.persist();

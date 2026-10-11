@@ -1,3 +1,4 @@
+import { createBrowserUuid } from '../../uuid';
 import type { DataRecordCommentMutation, DataRecordCommentReceipt } from 'openxiangda-contracts/browser';
 import { OpenXiangdaPlatformRequestError } from '../../platform-client';
 
@@ -15,7 +16,7 @@ export function createRecordCommentSession(
   submit: (input: DataRecordCommentMutation) => Promise<DataRecordCommentReceipt>,
   recover: (key: string) => Promise<DataRecordCommentReceipt>,
   changed: (state: RecordCommentState) => void,
-  newKey: () => string = () => crypto.randomUUID(),
+  newKey: () => string = () => createBrowserUuid(),
 ) {
   let pending: DataRecordCommentMutation | undefined;
   let busy = false;
