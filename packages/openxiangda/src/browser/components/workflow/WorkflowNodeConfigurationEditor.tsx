@@ -195,7 +195,7 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
         </> : <p className="oxa-workflow-config-help">当前人员规则由应用维护。</p>}
         {binding?.scope && <p className="oxa-workflow-config-help">人员范围由应用规则限定。</p>}
         {isHuman && (node.administration?.modes ? <>
-          <Form.Item name="mode" label={node.kind === 'handle' ? '多人办理方式' : '多人审批方式'} rules={[{ required: true }]}>
+          <Form.Item className="oxa-workflow-mode-field" name="mode" label={node.kind === 'handle' ? '多人办理方式' : '多人审批方式'} rules={[{ required: true }]}>
             <Radio.Group className="oxa-workflow-mode-options" options={node.administration.modes.map(value => ({ value, label: ({ single: '单人', any: '或签', all: '会签', sequence: '依次审批' } as Record<string, string>)[value] }))} />
           </Form.Item>
           <p className="oxa-workflow-config-help">{modeDescriptions[selectedMode]}{node.kind === 'approval' ? '任何一人拒绝后，本节点结束并按拒绝路径处理。' : ''}</p>

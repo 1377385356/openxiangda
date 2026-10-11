@@ -3615,3 +3615,13 @@
 .oxa-designer-publish-counts .outcome-excepted dt::before { background: #fa8c16; }
 .oxa-designer-publish-counts dd { margin: 0; font-variant-numeric: tabular-nums; }
 .oxa-designer-publish-reason { display: flex; align-items: center; gap: 12px; margin: 20px 0 8px; font-size: 13px; white-space: nowrap; }
+
+@media(min-width:900px) {
+  .oxa-workflow-config-inline .oxa-workflow-mode-field .ant-form-item-row { display: flex; flex-direction: row; align-items: center; gap: 12px; }
+  .oxa-workflow-config-inline .oxa-workflow-mode-field .ant-form-item-label { flex: 0 0 auto; padding: 0; }
+  .oxa-workflow-config-inline .oxa-workflow-mode-field .ant-form-item-control { flex: 1; min-width: 0; }
+}
+.oxa-designer-workspace.without-outline .oxa-designer-outline { padding: 8px 4px; }
+.oxa-designer-workspace.without-outline .oxa-designer-outline-heading { padding: 0; justify-content: center; }
+.oxa-designer-workspace.without-outline .oxa-designer-outline nav button { justify-content: center; padding: 10px 4px; gap: 0; }
+.oxa-designer-outline nav button .anticon { flex: 0 0 20px; min-width: 20px; }
