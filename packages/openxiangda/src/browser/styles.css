@@ -3390,7 +3390,7 @@
 .oxa-workflow-diagram-designer .kind-start .oxa-workflow-node-copy, .oxa-workflow-diagram-designer .kind-end .oxa-workflow-node-copy { flex: 0 1 auto; }
 .oxa-workflow-diagram-designer .kind-start strong, .oxa-workflow-diagram-designer .kind-end strong { margin: 0; white-space: nowrap; }
 .oxa-workflow-diagram-designer .kind-start small, .oxa-workflow-diagram-designer .kind-end small { display: none; }
-.oxa-workflow-diagram-designer .oxa-workflow-edge-insert { width: 20px; height: 20px; display: grid; place-items: center; border: 1px solid #c5d2e4; border-radius: 50%; color: #6c7e98; background: white; padding: 0; font-size: 11px; }
+.oxa-workflow-diagram-designer .oxa-workflow-edge-insert { position: absolute; pointer-events: all; width: 20px; height: 20px; display: grid; place-items: center; border: 1px solid #c5d2e4; border-radius: 50%; color: #6c7e98; background: white; padding: 0; font-size: 11px; }
 .oxa-workflow-diagram-designer .oxa-workflow-edge-insert:hover { color: #0066ff; border-color: #0066ff; }
 .oxa-workflow-diagram-designer .react-flow__handle { opacity: 0; }
 .oxa-workflow-diagram-designer .oxa-workflow-viewport-tools { bottom: 18px; left: 16px; border-radius: 5px; box-shadow: none; }
@@ -3403,10 +3403,10 @@
 .oxa-workflow-designer-inspector > header .ant-tag { margin: 0; font-size: 11px; }
 .oxa-workflow-designer-inspector > header .ant-btn { margin-left: auto; }
 .oxa-designer-inspector-icon { width: 30px; height: 30px; display: grid; place-items: center; color: #0066ff; background: #eaf2ff; font-size: 22px; border-radius: 5px; }
-.oxa-workflow-designer-inspector h3 { font-size: 13px; margin: 0 0 8px; }
+.oxa-workflow-designer-inspector h3 { font-size: 14px; margin: 0 0 8px; }
 .oxa-workflow-designer-inspector p { color: #7b879a; font-size: 12px; line-height: 1.6; }
 .oxa-workflow-designer-inspector .oxa-workflow-config-inline label { display: inline-flex; flex-direction: row; margin: 0; }
-.oxa-designer-handling-notice, .oxa-designer-defaults-notice { border-radius: 4px; color: #2d7617; background: #edf8ea; padding: 9px 12px; margin-bottom: 14px; font-size: 12px; }
+.oxa-designer-handling-notice, .oxa-designer-defaults-notice { border-radius: 4px; color: #2d7617; background: #edf8ea; padding: 9px 12px; margin-bottom: 14px; font-size: 13px; line-height: 20px; }
 .oxa-designer-defaults-notice { background: #fff7e7; color: #a16b1c; }
 .oxa-workflow-config-inline .oxa-workflow-config-section { border: 0; padding: 0; margin: 0 0 14px; }
 .oxa-workflow-config-inline .ant-form-item { margin-bottom: 12px; }
@@ -3418,15 +3418,15 @@
 .oxa-workflow-config-inline .oxa-workflow-mode-options { display: flex; flex-direction: row; align-items: center; flex-wrap: wrap; gap: 8px; }
 .oxa-workflow-config-inline .oxa-workflow-mode-options .ant-radio-wrapper { font-size: 12px; padding: 0; margin: 0; }
 .oxa-workflow-config-inline .oxa-workflow-mode-options + p, .oxa-workflow-config-inline .oxa-workflow-config-help { margin: 4px 0 8px; font-size: 12px; }
-.oxa-workflow-config-inline .oxa-workflow-operation-table { width: 100%; border: 1px solid #e2e8f1; border-collapse: collapse; table-layout: fixed; font-size: 12px; }
-.oxa-workflow-config-inline .oxa-workflow-operation-table th, .oxa-workflow-config-inline .oxa-workflow-operation-table td { height: 44px; padding: 6px 8px; border: 1px solid #e2e8f1; text-align: left; vertical-align: middle; }
+.oxa-workflow-config-inline .oxa-workflow-operation-table { width: 100%; border: 1px solid #e2e8f1; border-collapse: collapse; table-layout: fixed; font-size: 13px; line-height: 20px; }
+.oxa-workflow-config-inline .oxa-workflow-operation-table th, .oxa-workflow-config-inline .oxa-workflow-operation-table td { box-sizing: border-box; height: 44px; padding: 4px 8px; border: 1px solid #e2e8f1; text-align: left; vertical-align: middle; }
 .oxa-workflow-config-inline .oxa-workflow-operation-table th { font-weight: 500; }
 .oxa-workflow-config-inline .oxa-workflow-operation-table thead th { background: #f5f7fb; color: #526178; height: 34px; }
 .oxa-workflow-config-inline .oxa-workflow-operation-table thead th:first-child { width: 23%; }
 .oxa-workflow-config-inline .oxa-workflow-operation-table thead th:last-child { width: 22%; }
 .oxa-workflow-config-inline .oxa-workflow-operation-table .ant-form-item { margin: 0; }
-.oxa-workflow-config-inline .oxa-workflow-operation-table .ant-input, .oxa-workflow-config-inline .oxa-workflow-operation-table .ant-select { font-size: 12px; padding-left: 0; width: 100%; }
-.oxa-workflow-config-inline .oxa-workflow-operation-table small { display: block; color: #7b879a; font-size: 10px; font-weight: 400; margin-top: 3px; }
+.oxa-workflow-config-inline .oxa-workflow-operation-table .ant-input, .oxa-workflow-config-inline .oxa-workflow-operation-table .ant-select { font-size: 13px; padding-left: 0; width: 100%; }
+.oxa-workflow-config-inline .oxa-workflow-operation-table small { display: block; color: #7b879a; font-size: 11px; line-height: 14px; font-weight: 400; margin-top: 2px; }
 .oxa-workflow-config-inline .oxa-workflow-operation-table .ant-switch { min-width: 28px; }
 .oxa-workflow-config-inline .oxa-workflow-config-footer { padding: 0; border: 0; background: none; justify-content: flex-end; margin: 8px 0 14px; }
 .oxa-workflow-config-inline .oxa-workflow-config-footer > span { display: none; }
@@ -3488,8 +3488,8 @@
   .oxa-designer-workspace .oxa-designer-desktop-inspector { display: block; position: fixed; inset: auto 0 0; height: 85dvh; z-index: 1001; padding: 16px; border: 0; border-radius: 12px 12px 0 0; box-shadow: 0 -8px 32px #1d355326; }
 }
 
-.oxa-designer-insert-menu .ant-dropdown-menu { min-width: 180px; padding: 8px; border: 1px solid #dbe3ee; border-radius: 8px; }
-.oxa-designer-insert-menu .ant-dropdown-menu-item, .oxa-designer-insert-menu .ant-dropdown-menu-submenu-title { min-height: 36px; font-size: 13px; }
+.oxa-designer-insert-menu .ant-dropdown-menu { min-width: min(320px, calc(100vw - 32px)); padding: 8px; border: 1px solid #dbe3ee; border-radius: 8px; }
+.oxa-designer-insert-menu .ant-dropdown-menu-item, .oxa-designer-insert-menu .ant-dropdown-menu-submenu-title { min-height: 44px; font-size: 13px; }
 .oxa-designer-insert-menu .anticon { font-size: 18px; color: #0066ff; }
 .oxa-designer-return-summary > td { background: #f8faff; }
 .oxa-designer-return-summary > td > div { display: flex; align-items: flex-start; gap: 8px; }
@@ -3534,3 +3534,102 @@
 .oxa-workflow-config-inline.compact .oxa-workflow-config-footer .ant-space-item { width: 100%; flex: 1; }
 .oxa-workflow-designer-inspector > header h2 { font-size: 20px; line-height: 28px; }
 .oxa-designer-workspace:not(.detail-inspector) .oxa-designer-inspector-icon { width: 40px; height: 40px; font-size: 27px; }
+
+.oxa-designer-insert-option { display: flex; align-items: center; gap: 18px; }
+.oxa-designer-insert-option > span { min-width: 64px; }
+.oxa-designer-insert-option > small { color: #7a879b; font-size: 12px; white-space: normal; }
+.oxa-designer-insert-menu .ant-dropdown-menu-item-group-title { padding: 8px 12px 4px; color: #445169; font-size: 13px; font-weight: 600; }
+.oxa-designer-insert-menu .anticon.kind-condition { color: #e58a15; }
+.oxa-designer-insert-menu .anticon.kind-action { color: #7c3aed; }
+.oxa-designer-insert-menu .anticon.kind-notification { color: #e14b80; }
+
+.oxa-workflow-config-inline .oxa-workflow-operation-table .ant-form-item-control-input { min-height: 24px; }
+.oxa-workflow-config-inline .oxa-workflow-operation-table td:last-child small { display: inline; margin-left: 8px; }
+.oxa-workflow-config-inline .oxa-workflow-operation-table .ant-select-content { font-size: 13px; }
+.oxa-workflow-designer-inspector .oxa-designer-draft-band .ant-collapse-header { font-size: 13px; }
+
+.oxa-designer-condition-editor > .ant-alert { margin: 0 0 16px; font-size: 13px; }
+.oxa-designer-branch-selector { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.oxa-designer-branch-identity { display: flex; align-items: center; gap: 6px; margin-bottom: 20px; }
+.oxa-designer-branch-identity > .ant-input { flex: 1; min-width: 0; }
+.oxa-designer-branch-identity > .ant-tag { margin: 0; white-space: nowrap; }
+.oxa-designer-condition-surface { padding: 12px !important; border: 1px solid #e1e8f2 !important; background: #f7f9fc; border-radius: 6px; margin-bottom: 18px !important; }
+.oxa-designer-condition-surface .oxa-condition-row { grid-template-columns: minmax(0,1fr) 106px minmax(0,1fr); }
+.oxa-designer-condition-surface .oxa-condition-row > .ant-btn { grid-column: 1 / -1; justify-self: start; color: #0066ff; }
+.oxa-designer-condition-surface .ant-select, .oxa-designer-condition-surface .ant-input-number { width: 100%; min-width: 0; }
+.oxa-designer-condition-description { padding: 10px 12px; background: #f7f9fc; border: 1px solid #e1e8f2; border-radius: 5px; overflow-wrap: anywhere; }
+.oxa-designer-condition-editor > label { display: flex; flex-direction: column; gap: 8px; margin: 14px 0; font-weight: 600; }
+.oxa-designer-return-notice { background: #eaf2ff; color: #0066ff; padding: 12px; border-radius: 5px; font-weight: 600; margin-bottom: 12px; }
+.oxa-designer-return-target { border: 1px solid #e1e8f2; background: #fafbfd; border-radius: 6px; padding: 14px; margin: 12px 0; }
+.oxa-designer-return-target.enabled { background: #fff; }
+.oxa-designer-return-target > header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.oxa-designer-return-target > header > .ant-checkbox-wrapper { font-weight: 600; }
+.oxa-designer-return-target > header > label { display: flex; align-items: center; gap: 8px; color: #7b879a; font-size: 12px; }
+.oxa-designer-return-target > header .ant-select { min-width: 172px; }
+.oxa-designer-return-path { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; margin: 14px 0 10px; font-size: 12px; }
+.oxa-designer-return-path > small { color: #7b879a; margin-right: 4px; }
+.oxa-designer-return-path > span { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
+.oxa-designer-return-path > span > span { background: #eaf2ff; border-radius: 4px; padding: 5px 8px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.oxa-designer-return-path .skipped { text-decoration: line-through; color: #a0a8b6; background: #f5f7fb; }
+.oxa-workflow-designer-inspector .oxa-designer-return-warning { color: #c98113; }
+.oxa-designer-return-rule { border: 1px solid #e1e8f2; background: #f7f9fc; border-radius: 6px; padding: 14px; margin: 18px 0; }
+.oxa-designer-return-rule h3 { margin: 0 0 8px; }
+.oxa-designer-return-rule p { margin: 0; }
+.oxa-designer-return-back { padding-left: 0; margin-bottom: 8px; }
+@media(max-width:899px) {
+  .oxa-designer-branch-identity { flex-wrap: wrap; }
+  .oxa-designer-branch-identity > .ant-input { flex-basis: 100%; }
+  .oxa-designer-condition-surface .oxa-condition-row { grid-template-columns: minmax(0,1fr) 106px; }
+  .oxa-designer-condition-surface .oxa-condition-row > :nth-child(3) { grid-column: 1 / -1; }
+  .oxa-designer-return-target > header > label { width: 100%; flex-wrap: wrap; }
+  .oxa-designer-return-target > header .ant-select { flex: 1; min-width: 0; }
+}
+.oxa-designer-condition-surface:disabled { opacity: .7; pointer-events: none; }
+.oxa-workflow-diagram-designer .oxa-workflow-edge-label.designer-branch { width: 296px; max-width: 296px; min-height: 64px; box-sizing: border-box; padding: 10px 14px; border-radius: 5px; background: #fafcff; }
+.oxa-workflow-edge-label.designer-branch > span { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: #182230; font-size: 14px; font-weight: 600; }
+.oxa-workflow-edge-label.designer-branch > span > small { color: #64718a; background: #f0f4fa; border: 1px solid #dbe3ee; font-size: 11px; font-weight: 400; padding: 1px 6px; border-radius: 3px; }
+.oxa-workflow-edge-label.designer-branch > strong { display: block; margin-top: 5px; color: #617086; font-size: 12px; font-weight: 400; line-height: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.oxa-designer-inspector-icon.kind-condition { color: #e58a15; background: #fff3df; }
+.oxa-designer-publish-modal .ant-modal-title { font-size: 20px; }
+.oxa-designer-publish-modal .ant-modal-body { max-height: calc(100dvh - 220px); overflow-y: auto; padding-right: 2px; }
+.oxa-designer-publish-modal h3 { font-size: 14px; margin: 20px 0 12px; }
+.oxa-designer-publish-modal p { color: #748092; font-size: 13px; line-height: 1.7; }
+.oxa-designer-publish-modal fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.oxa-designer-publish-checks { display: flex; align-items: center; gap: 10px; padding: 14px; border: 1px solid #e1e8f2; border-radius: 6px; color: #2d7617; font-size: 13px; }
+.oxa-designer-publish-checks .anticon { font-size: 20px; }
+.oxa-designer-publish-scope { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+.oxa-designer-publish-scope > .ant-radio-wrapper { align-items: flex-start; border: 1px solid #dce4ef; padding: 14px; border-radius: 6px; margin: 0; }
+.oxa-designer-publish-scope > .ant-radio-wrapper-checked { border-color: #0066ff; background: #eaf2ff; box-shadow: 0 0 0 1px #0066ff22; }
+.oxa-designer-publish-scope strong { display: block; font-weight: 600; }
+.oxa-designer-publish-scope small { display: block; font-size: 12px; color: #748092; line-height: 1.7; margin-top: 6px; }
+.oxa-designer-publish-scope .ant-tag { margin-left: 8px; }
+.oxa-designer-publish-holds { margin: 12px 0; }
+.oxa-designer-publish-holds > summary, .oxa-designer-publish-exceptions > summary { color: #0066ff; cursor: pointer; font-size: 13px; }
+.oxa-designer-publish-holds label { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; font-size: 13px; }
+.oxa-designer-publish-counts { border: 1px solid #e1e8f2; border-radius: 6px; margin: 0; }
+.oxa-designer-publish-counts > div { display: flex; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid #e1e8f2; font-size: 13px; }
+.oxa-designer-publish-counts > div:last-child { border: 0; }
+.oxa-designer-publish-counts dt::before { content: ''; display: inline-block; width: 9px; height: 9px; margin-right: 10px; background: #8290a6; border-radius: 50%; }
+.oxa-designer-publish-counts .outcome-eligible dt::before { background: #389e0d; }
+.oxa-designer-publish-counts .outcome-deferred dt::before { background: #1677ff; }
+.oxa-designer-publish-counts .outcome-excepted dt::before { background: #fa8c16; }
+.oxa-designer-publish-counts dd { margin: 0; font-variant-numeric: tabular-nums; }
+.oxa-designer-publish-reason { display: flex; align-items: center; gap: 12px; margin: 20px 0 8px; font-size: 13px; white-space: nowrap; }
+
+@media(min-width:900px) {
+  .oxa-workflow-config-inline .oxa-workflow-mode-field .ant-form-item-row { display: flex; flex-direction: row; align-items: center; gap: 12px; }
+  .oxa-workflow-config-inline .oxa-workflow-mode-field .ant-form-item-label { flex: 0 0 auto; padding: 0; }
+  .oxa-workflow-config-inline .oxa-workflow-mode-field .ant-form-item-control { flex: 1; min-width: 0; }
+}
+.oxa-designer-workspace.without-outline .oxa-designer-outline { padding: 8px 4px; }
+.oxa-designer-workspace.without-outline .oxa-designer-outline-heading { padding: 0; justify-content: center; }
+.oxa-designer-workspace.without-outline .oxa-designer-outline nav button { justify-content: center; padding: 10px 4px; gap: 0; }
+.oxa-designer-outline nav button .anticon { flex: 0 0 20px; min-width: 20px; }
+
+.oxa-designer-ai-panel { min-height: calc(100dvh - 56px); box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; }
+.oxa-designer-ai-panel > header { flex-shrink: 0; }
+.oxa-designer-ai-panel > .ant-spin-nested-loading { flex: 1; min-height: 0; overflow-y: auto; }
+.oxa-designer-ai-panel > .oxa-designer-ai-composer { order: 10; flex-shrink: 0; margin-top: auto; padding: 12px 0 0; border-top: 1px solid #e1e8f2; }
+.oxa-designer-ai-panel .oxa-designer-ai-composer > .ant-space { width: 100%; justify-content: flex-end; margin-bottom: 0 !important; }
+.oxa-designer-ai-panel .oxa-designer-ai-composer textarea { font-size: 13px; }
+@media(max-width:899px) { .oxa-designer-ai-panel { min-height: calc(85dvh - 32px); } }

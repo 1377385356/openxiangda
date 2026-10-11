@@ -52,3 +52,34 @@ test('nullable and optional declared facts retain their presence semantics durin
   assert.deepEqual(validateWorkflowDesignerDocument(target),[]);
   for (const facts of [{},{note:null},{note:'说明'}]) assert.equal(classifyWorkflowAdoption(source,target,{ currentNodeId:'review',facts }).outcome,'eligible');
 });
+
+test('new human node can edit handling defaults within its released template authority', () => {
+  const base = definition();
+  Object.assign(base.nodes.review, {
+    fieldPolicy: { title: 'read', amount: 'edit' },
+    requiredOperations: ['approve'],
+    allowedOperations: ['approve', 'reject', 'save_form'],
+    administration: { modes: ['single', 'all'] },
+    operationPolicy: { approve: { minimumOpinion: 'optional', opinion: 'optional', label: '同意' }, reject: { commentRequired: true, label: '拒绝申请' } },
+  });
+  const template = base.nodes.review as any;
+  const binding: any = { workflowCode: 'test', schemaVersion: 'openxiangda.workflow-binding/v2', bindings: { people: { provider: 'initiator' } } };
+  const added = editWorkflowDesignerDefinition(base, { type: 'insert', from: 'review', target: 'done', node: { ...structuredClone(template), id: 'added' } });
+  const human = added.nodes.added as any;
+  human.mode = 'all';
+  human.operationPolicy.approve.label = '确认大额申请';
+  human.operationPolicy.approve.opinion = 'required';
+  human.operationPolicy.save_form = { label: '保存资料' };
+  assert.deepEqual(validateWorkflowDesignerCapabilities(base, added, binding, binding), []);
+  for (const change of [
+    (value: any) => { value.operationPolicy.reject = { opinion: 'optional' }; },
+    (value: any) => { value.operationPolicy.approve.minimumOpinion = 'none'; },
+    (value: any) => { value.mode = 'sequence'; },
+    (value: any) => { value.fieldPolicy.title = 'edit'; },
+    (value: any) => { value.requiredOperations = []; },
+    (value: any) => { value.allowedOperations = ['reject']; },
+  ]) {
+    const refused = structuredClone(added); change(refused.nodes.added);
+    assert.ok(validateWorkflowDesignerCapabilities(base, refused, binding, binding).length > 0);
+  }
+});

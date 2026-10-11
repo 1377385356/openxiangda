@@ -195,7 +195,7 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
         </> : <p className="oxa-workflow-config-help">当前人员规则由应用维护。</p>}
         {binding?.scope && <p className="oxa-workflow-config-help">人员范围由应用规则限定。</p>}
         {isHuman && (node.administration?.modes ? <>
-          <Form.Item name="mode" label={node.kind === 'handle' ? '多人办理方式' : '多人审批方式'} rules={[{ required: true }]}>
+          <Form.Item className="oxa-workflow-mode-field" name="mode" label={node.kind === 'handle' ? '多人办理方式' : '多人审批方式'} rules={[{ required: true }]}>
             <Radio.Group className="oxa-workflow-mode-options" options={node.administration.modes.map(value => ({ value, label: ({ single: '单人', any: '或签', all: '会签', sequence: '依次审批' } as Record<string, string>)[value] }))} />
           </Form.Item>
           <p className="oxa-workflow-config-help">{modeDescriptions[selectedMode]}{node.kind === 'approval' ? '任何一人拒绝后，本节点结束并按拒绝路径处理。' : ''}</p>
@@ -212,8 +212,8 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
             const automatic = operation === 'approve' && (node.effective.initiatorApprovalPolicy === 'auto_approve' || !!node.defaults.completionDeadline);
             return <tbody key={operation}><tr>
               <th scope="row">{labels[operation]}{operation === 'save_form' && <small>更多 · 不推进流程</small>}</th>
-              <td><Form.Item name={['operations', operation, 'label']} rules={[{ required: true, whitespace: true, max: 40 }]}><Input variant="borderless" maxLength={40} aria-label={`${labels[operation]}按钮文字`} /></Form.Item></td>
-              <td>{operation === 'save_form' ? <span className="oxa-workflow-config-help">—</span> : <><Form.Item name={['operations', operation, 'opinion']} noStyle><Select variant="borderless" aria-label={`${labels[operation]}意见要求`} options={opinionValues.map(value => ({ value, label: { none: '不填写', optional: '选填', required: '必填' }[value], disabled: opinionValues.indexOf(value) < opinionValues.indexOf(minimum) || automatic && value === 'required' }))} /></Form.Item>{minimum === 'required' && <small>应用要求必填</small>}</>}</td>
+              <td><Form.Item name={['operations', operation, 'label']} rules={[{ required: true, whitespace: true, max: 40 }]}><Input size={inline ? 'small' : undefined} variant="borderless" maxLength={40} aria-label={`${labels[operation]}按钮文字`} /></Form.Item></td>
+              <td>{operation === 'save_form' ? <span className="oxa-workflow-config-help">—</span> : <><Form.Item name={['operations', operation, 'opinion']} noStyle><Select size={inline ? 'small' : undefined} variant="borderless" aria-label={`${labels[operation]}意见要求`} options={opinionValues.map(value => ({ value, label: { none: '不填写', optional: '选填', required: '必填' }[value], disabled: opinionValues.indexOf(value) < opinionValues.indexOf(minimum) || automatic && value === 'required' }))} /></Form.Item>{minimum === 'required' && <small>应用要求必填</small>}</>}</td>
               <td><Form.Item name={['operations', operation, 'enabled']} valuePropName="checked" noStyle><Switch size="small" disabled={readOnly || busy || uncertain || required} aria-label={`启用${labels[operation]}`} /></Form.Item>{required && <small>流程推进所需</small>}</td>
             </tr>{operation === 'return' && returnSummary && <tr className="oxa-designer-return-summary"><td colSpan={4}>{returnSummary}</td></tr>}</tbody>;
           })}
