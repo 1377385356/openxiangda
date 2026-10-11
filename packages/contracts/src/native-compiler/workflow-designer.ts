@@ -161,7 +161,7 @@ export interface WorkflowAdoptionState {
   held?: boolean;
 }
 const pathValue = (value: Record<string, unknown>, path: string) => path.split('.').reduce<any>((current, part) => record(current) && Object.hasOwn(current, part) ? current[part] : undefined, value);
-const matchesType = (value: unknown, type: string) => type === 'unknown' ? true : type === 'null' ? value === null : type === 'number' || type === 'integer' ? typeof value === 'number' && Number.isFinite(value) && (type !== 'integer' || Number.isInteger(value)) : type === 'array' ? Array.isArray(value) : type === 'object' ? record(value) : typeof value === type;
+const matchesType = (value: unknown, type: string): boolean => type.includes(',') ? type.split(',').some(part => matchesType(value,part)) : type === 'unknown' ? true : type === 'null' ? value === null : type === 'number' || type === 'integer' ? typeof value === 'number' && Number.isFinite(value) && (type !== 'integer' || Number.isInteger(value)) : type === 'array' ? Array.isArray(value) : type === 'object' ? record(value) : typeof value === type;
 
 /** Classification is pure; the caller locks and re-reads before applying a result. */
 export function classifyWorkflowAdoption(source: WorkflowDefinition, target: WorkflowDefinition, state: WorkflowAdoptionState): { outcome: WorkflowAdoptionOutcome; reason?: string } {
@@ -187,6 +187,7 @@ export function classifyWorkflowAdoption(source: WorkflowDefinition, target: Wor
         while (queue.length) { const id = queue.pop()!; if (id === variable.source.nodeId || withoutProducer.has(id)) continue; withoutProducer.add(id); queue.push(...workflowDesignerTargets(target.nodes[id] || {}).filter(id => !!target.nodes[id])); }
         if (!withoutProducer.has(node.id)) continue;
       }
+      if (value === undefined && variable && !variable.required && (variable.source.kind !== 'step_output' || record(pathValue(state.facts,`steps.${variable.source.nodeId}`)))) continue;
       if (value === undefined || variable && !matchesType(value, variable.type)) return { outcome: 'excepted', reason: `后续条件需要的数据在该申请中不存在或类型不兼容：${variable?.label || path}` };
     }
   }
@@ -215,7 +216,8 @@ export function validateWorkflowDesignerDocument(definition: WorkflowDefinition)
     if (expression.op === 'path') {
       const variable = variables.find(item => item.path === expression.path);
       if (!variable || variable.type === 'unknown') errors.push(`WORKFLOW_DESIGNER_VARIABLE_UNKNOWN:${nodeId}:${expression.path}`);
-      return variable?.type === 'integer' ? 'number' : variable?.type || 'unknown';
+      const type = variable?.type.split(',').find(type => type !== 'null') || variable?.type || 'unknown';
+      return type === 'integer' ? 'number' : type;
     }
     if (expression.op === 'and' || expression.op === 'or') {
       if (!Array.isArray(expression.values) || expression.values.length < 1 || expression.values.length > 32) { errors.push(`WORKFLOW_DESIGNER_CONDITION_GROUP:${nodeId}`); return 'invalid'; }

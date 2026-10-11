@@ -30,7 +30,7 @@ test('malformed or oversized condition groups fail with diagnostics', () => {
   assert.ok(validateWorkflowDesignerDocument(next).some(error => error.includes('BRANCH_INVALID')));
 });
 test('new future condition input must exist with the canonical fact type', () => {
-  const source = definition();
+  const source = definition();source.inputSchema.required = ['amount'];
   const target = editWorkflowDesignerDefinition(source,{ type: 'insert',from: 'review',target: 'done',node: { id: 'branch',kind: 'condition',branches: [{ when: { op: 'gt',left: { op: 'path',path: 'amount' },right: { op: 'literal',value: 100 } },target: 'done' }],otherwise: 'done' } });
   assert.equal(classifyWorkflowAdoption(source,target,{ currentNodeId: 'review',facts: {} }).outcome,'excepted');
   assert.equal(classifyWorkflowAdoption(source,target,{ currentNodeId: 'review',facts: { amount: '200' } }).outcome,'excepted');
@@ -44,4 +44,11 @@ test('canonical drafts retain mandatory forward actions and legacy code-required
   assert.ok(validateWorkflowDesignerCapabilities(base,weaker,binding,binding).some(error => error.includes('minimumOpinion')));
   (weaker.nodes.review as any).allowedOperations = ['reject'];
   assert.ok(validateWorkflowDesignerCapabilities(base,weaker,binding,binding).some(error => error.includes('REQUIRED_ACTION')));
+});
+
+test('nullable and optional declared facts retain their presence semantics during adoption', () => {
+  const source = definition();source.inputSchema.properties = { note: { type: ['string','null'] } };source.readability = { variables: { note: { label: '说明' } } };
+  const target = editWorkflowDesignerDefinition(source,{ type: 'insert',from: 'review',target: 'done',node: { id: 'branch',kind: 'condition',branches: [{ when: { op: 'exists',value: { op: 'path',path: 'note' } },target: 'done' }],otherwise: 'done' } });
+  assert.deepEqual(validateWorkflowDesignerDocument(target),[]);
+  for (const facts of [{},{note:null},{note:'说明'}]) assert.equal(classifyWorkflowAdoption(source,target,{ currentNodeId:'review',facts }).outcome,'eligible');
 });
