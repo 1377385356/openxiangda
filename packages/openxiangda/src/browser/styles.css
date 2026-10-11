@@ -3415,7 +3415,7 @@
 .oxa-workflow-config-inline .oxa-workflow-provider-options { display: flex; flex-wrap: wrap; gap: 4px; }
 .oxa-workflow-config-inline .oxa-workflow-provider-options .ant-radio-button-wrapper { border: 1px solid #d9e2ef; border-radius: 4px; font-size: 12px; height: 28px; line-height: 26px; padding: 0 12px; }
 .oxa-workflow-config-inline .oxa-workflow-provider-options .ant-radio-button-wrapper::before { display: none; }
-.oxa-workflow-config-inline .oxa-workflow-mode-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.oxa-workflow-config-inline .oxa-workflow-mode-options { display: flex; flex-direction: row; align-items: center; flex-wrap: wrap; gap: 8px; }
 .oxa-workflow-config-inline .oxa-workflow-mode-options .ant-radio-wrapper { font-size: 12px; padding: 0; margin: 0; }
 .oxa-workflow-config-inline .oxa-workflow-mode-options + p, .oxa-workflow-config-inline .oxa-workflow-config-help { margin: 4px 0 8px; font-size: 12px; }
 .oxa-workflow-config-inline .oxa-workflow-operation-table { width: 100%; border: 1px solid #e2e8f1; border-collapse: collapse; table-layout: fixed; font-size: 12px; }

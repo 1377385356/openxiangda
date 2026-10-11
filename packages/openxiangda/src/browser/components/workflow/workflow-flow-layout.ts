@@ -7,6 +7,16 @@ const inputPort = (id: string) => `in:${id}`;
 const outputPort = (id: string) => `out:${id}`;
 
 /** Coordinates are disposable presentation data; ELK routes every edge orthogonally. */
+function connectorMidpoint(points: Point[]): Point {
+  const lengths = points.slice(1).map((point,index) => Math.hypot(point.x-points[index]!.x,point.y-points[index]!.y));
+  let distance = lengths.reduce((sum,length)=>sum+length,0)/2;
+  for (const [index,length] of lengths.entries()) {
+    if (distance <= length) { const a=points[index]!,b=points[index+1]!;const ratio=length ? distance/length : 0;return {x:a.x+(b.x-a.x)*ratio,y:a.y+(b.y-a.y)*ratio}; }
+    distance-=length;
+  }
+  return points[0]!;
+}
+
 export async function workflowFlowLayout(graph: WorkflowGraphProjection, options: { designer?: boolean } = {}) {
   if (graph.nodes.length > (options.designer ? 201 : 200) || graph.edges.length > 1024) throw new Error('WORKFLOW_GRAPH_LAYOUT_LIMIT_EXCEEDED');
   // The bundled constructor uses an in-process shim, not a persistent browser Worker.
@@ -33,7 +43,7 @@ export async function workflowFlowLayout(graph: WorkflowGraphProjection, options
       ],
     })),
     edges: forwardEdges.map(edge => ({ id: edge.id, sources: [outputPort(edge.id)], targets: [inputPort(edge.to)],
-      labels: [{ id: `label:${edge.id}`, text: edge.label, width: edge.kind === 'branch' ? 226 : options.designer ? 20 : 112, height: edge.kind === 'branch' ? 62 : options.designer ? 20 : 30 }],
+      labels: options.designer && !['branch','default'].includes(edge.kind) ? [] : [{ id: `label:${edge.id}`, text: edge.label, width: edge.kind === 'branch' ? 226 : 112, height: edge.kind === 'branch' ? 62 : 30 }],
     })),
   });
   const positions = {
@@ -51,7 +61,7 @@ export async function workflowFlowLayout(graph: WorkflowGraphProjection, options
         if (Math.abs(a.x - b.x) > .01 && Math.abs(a.y - b.y) > .01) throw new Error('WORKFLOW_GRAPH_ROUTING_NOT_ORTHOGONAL');
       }
       const label = edge.labels?.[0];
-      const fallback: Point = points[Math.floor(points.length / 2)]!;
+      const fallback = connectorMidpoint(points);
       return [edge.id, { points, label: label ? { x: label.x! + label.width! / 2, y: label.y! + label.height! / 2 } : fallback }];
     })),
   };

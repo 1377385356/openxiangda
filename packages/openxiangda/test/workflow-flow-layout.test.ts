@@ -77,6 +77,10 @@ test('designer starts and outline follow execution order without altering the im
     const points=positioned.edges.get(e.id)!.points;
     for(let index=1;index<points.length;index++) assert.ok(points[index]!.x===points[index-1]!.x||points[index]!.y===points[index-1]!.y);
   }
+  const start=positioned.nodes.get(displayed.startAt)!,first=positioned.nodes.get('a')!;
+  const startEdge=positioned.edges.get(displayed.edges[0]!.id)!;
+  assert.ok(first.y-start.y-start.height<=40,'ordinary connectors do not reserve invisible edge-label layers');
+  assert.ok(startEdge.label.y>start.y+start.height&&startEdge.label.y<first.y,'insertion control remains in the connector gap');
   const spine=[...positioned.nodes.values()].map(node=>node.x+node.width/2);
   assert.ok(Math.max(...spine)-Math.min(...spine)<1,'the start/end pills align to the same spine as tasks');
 });
