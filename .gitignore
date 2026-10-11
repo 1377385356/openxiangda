@@ -3,6 +3,7 @@ node_modules/
 .turbo/
 packages/*/dist/
 packages/cli/template/
+packages/cli/template-components/
 packages/skill-kit/skills/
 packages/openxiangda/skills/
 packages/skill-kit/docs/
