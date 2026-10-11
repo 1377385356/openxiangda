@@ -31,6 +31,7 @@ export interface WorkspaceTemplateBinding {
   schemaVersion: typeof WORKSPACE_TEMPLATE_BINDING_SCHEMA_VERSION;
   ref: string;
   digest: `sha256:${string}`;
+  components?: readonly { kind: string; code: string; digest: `sha256:${string}` }[];
 }
 
 export interface CliProtocolCapabilities {

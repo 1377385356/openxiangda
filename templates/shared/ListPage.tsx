@@ -1,0 +1,9 @@
+import { useResourceListController, useMobileResourceListController, ResourceListContainer, ResourceListActions, ResourceListQueryBar, ResourceListAdvancedFilter, ResourceListAppliedFilters, ResourceListError, ResourceListOverlays, ResourceListBatchBar, ResourceListTable, MobileResourceListContainer, MobileResourceListQueryBar, MobileResourceListError, MobileResourceListCards, MobileResourceListPagination, type ResourcePageProps } from 'openxiangda/resource';
+export function ListPage(props:ResourcePageProps){return props.variant==='mobile'?<MobileList {...props}/>:<DesktopList {...props}/>;}
+function DesktopList(props:ResourcePageProps){
+ const controller=useResourceListController(props);
+ return <ResourceListContainer controller={controller}><div className="app-visitor-title"><div><p className="app-eyebrow">数据管理</p><h2>{props.definition.name}</h2></div><span className="app-muted">共 {controller.total} 条记录</span></div>
+ <ResourceListError controller={controller}/><div className="oxa-list-toolbar"><ResourceListActions controller={controller}/><ResourceListQueryBar controller={controller}/></div>
+ <ResourceListAdvancedFilter controller={controller}/><ResourceListAppliedFilters controller={controller}/><ResourceListBatchBar controller={controller}/><ResourceListTable controller={controller}/><ResourceListOverlays controller={controller}/></ResourceListContainer>;
+}
+function MobileList(props:ResourcePageProps){const controller=useMobileResourceListController(props);return <MobileResourceListContainer controller={controller} description={false}><MobileResourceListError controller={controller}/><MobileResourceListQueryBar controller={controller}/><MobileResourceListCards controller={controller}/><MobileResourceListPagination controller={controller}/></MobileResourceListContainer>;}

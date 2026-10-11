@@ -99,3 +99,5 @@ export type { NativeRoleMembershipBatchInput, NativeRoleMembershipBatchItem, Nat
 export * from './browser/runtime-meta';
 export * from './browser/components/platform-fields/resource-query';
 export type * from './browser/components/resource/generated-resource-definition';
+
+export { createBrowserUuid } from './browser/uuid';

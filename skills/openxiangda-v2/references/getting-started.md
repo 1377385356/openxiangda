@@ -79,6 +79,8 @@ pnpm openxiangda dev
 
 将两处示例平台地址替换为同一个目标地址。`create` 先核对目标与当前登录平台，再创建本地目录、安装依赖并初始化远端应用；新应用不会自动沿用文件中最后登录的站点。CI 使用原有成对的 `OPENXIANGDA_BASE_URL` 和 `OPENXIANGDA_TOKEN` 时，可以由该显式地址指定目标。
 
+已有明确业务时可加 `--scenario visitor` 或 `--scenario crud`，使用 `template list --json` 查看四类布局、风格和模块。模板复制为应用源码，可独立修改；详见[源码模板与业务场景](application-templates.md)。
+
 初始化中断后重试同一命令；已有目录会核对原平台绑定，不能通过 `create` 改绑到其他站点。地址不一致时先检查目标并登录正确的平台；确需把工作区切换到其他站点时，使用 `openxiangda link rebind --base-url <新平台>` 显式换绑（见[跨站点与换绑](#cross-site)），不手改 link 文件绕过检查，也不要使用内部 provision 接口另建应用。创建操作应在用户要求创建应用的范围内执行。
 
 进入项目后使用 `pnpm openxiangda`，由项目依赖和锁文件决定版本。查看使用资料运行 `pnpm openxiangda docs`；查看单一主题运行 `pnpm openxiangda docs frontend`。安装到其他 AI 工具时使用 `skill install --destination <Skill根目录>`。

@@ -11,6 +11,7 @@
 - [业务模型与标准 CRUD](./application-foundation.md)：主题 ID `application-foundation`
 - [需求、设计与交付记录](./appspec.md)：主题 ID `appspec`
 - [架构与能力所有者](./concepts.md)：主题 ID `concepts`
+- [源码模板与业务场景](./application-templates.md)：主题 ID `application-templates`
 - [页面与标准组件扩展](./frontend.md)：主题 ID `frontend`
 - [字段、表单与移动控件](./field-components.md)：主题 ID `field-components`
 - [数据查询与权限](./data-authz.md)：主题 ID `data-authz`

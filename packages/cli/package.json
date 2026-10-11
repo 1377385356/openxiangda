@@ -17,6 +17,7 @@
     "bin/",
     "dist/",
     "template/",
+    "template-components/",
     "README.md"
   ],
   "scripts": {

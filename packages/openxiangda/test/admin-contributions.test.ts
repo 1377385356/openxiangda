@@ -377,3 +377,13 @@ test('resource contribution families share the resource boundary without expandi
   resources.overflow = { row: [] };
   assert.throws(() => defineApplicationContributions({}, { pages: {}, resources }), /too-many-resources/);
 });
+
+test('resource overrides are view-specific, immutable and optional for existing applications', () => {
+  const contributions=defineApplicationContributions({}, {pages:{},resourcePages:{visits:{default:{list:()=>null},today:{form:()=>null}}}});
+  assert.equal(typeof contributions.resourcePages?.visits?.default?.list,'function');
+  assert.equal(contributions.resourcePages?.visits?.default?.form,undefined);
+  assert.ok(Object.isFrozen(contributions.resourcePages?.visits?.default));
+  assert.equal(defineApplicationContributions({}, {pages:{}}).resourcePages,undefined);
+  assert.throws(()=>defineApplicationContributions({}, {pages:{},resourcePages:{visits:{default:{erase:()=>null} as never}}}),/resource-pages:component/);
+  assert.throws(()=>defineApplicationContributions({}, {pages:{},resourcePages:{'../escape':{default:{list:()=>null}}}}),/resource-pages:resource/);
+});

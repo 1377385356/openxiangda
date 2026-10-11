@@ -1,0 +1,5 @@
+import { Button } from 'antd';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useRuntime } from 'openxiangda/react';
+import { appCode } from '../../../../../packages/contracts/src/generated.js';
+export function ApplicationHome(){const navigate=useNavigate();const {hasCapability,identity}=useRuntime();const mobile=useLocation().pathname.startsWith('/m/');const base=mobile?'/m':'';return <section className="app-home"><p className="app-eyebrow">我的工作台</p><h1>让每一项记录，都清晰有序</h1><p className="app-muted">提交业务信息，随时查看和管理记录。</p><div className="app-home-actions">{hasCapability('app:'+appCode+':data:records:create')&&<Button type="primary" size="large" onClick={()=>navigate(base+'/my/records/submit')}>提交记录</Button>}{hasCapability('app:'+appCode+':data:records:read')&&<Button size="large" onClick={()=>navigate(base+'/my/records')}>查看记录</Button>}{(identity.isAppSuperAdmin||hasCapability('app:'+appCode+':data:records:update'))&&<Button size="large" onClick={()=>navigate('/admin')}>管理工作台</Button>}</div><div className="app-home-card"><h3>业务记录</h3><p>填写表单后提交。管理员可以在工作台查看、修改和整理数据。</p></div></section>;}

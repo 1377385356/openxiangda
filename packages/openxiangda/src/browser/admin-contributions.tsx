@@ -11,6 +11,9 @@ import type {
   ApplicationLoginSurfaceComponent,
   GeneratedApplicationAuthenticationSurface,
 } from './authentication';
+import type { ResourceFormDrawerState } from './components/resource/ResourceFormFrame';
+import type { GeneratedResourceDefinition } from './components/resource/generated-resource-definition';
+import type { GeneratedResourceRoutePaths } from './components/resource/resource-page-helpers';
 import type { StandardUserSurfaceContributions } from './standard-user-surfaces';
 
 const CODE_PATTERN = /^[a-z][a-z0-9]*(?:[-_.][a-z0-9]+)*$/;
@@ -88,10 +91,31 @@ export interface AdminOperationPageContribution
   component: AdminOperationPageComponent;
 }
 
+export interface ResourcePageProps {
+  definition: GeneratedResourceDefinition;
+  paths: GeneratedResourceRoutePaths;
+  mode: 'list' | 'create' | 'edit' | 'detail';
+  variant: 'desktop' | 'mobile';
+  recordId?: string;
+  onDismiss?(): void;
+  onSaved?(id: string): void;
+  onEdit?(): void;
+  drawerState?: ResourceFormDrawerState;
+  embedded?: boolean;
+}
+export type ResourcePageComponent = ComponentType<ResourcePageProps>;
+export interface ResourceViewPageContributions {
+  list?: ResourcePageComponent;
+  detail?: ResourcePageComponent;
+  form?: ResourcePageComponent;
+}
+export type ResourcePageContributions = Readonly<Record<string, Readonly<Record<string, Readonly<ResourceViewPageContributions>>>>>;
+
 export interface OpenXiangdaApplicationContributions {
   readonly [ADMIN_CONTRIBUTIONS_BRAND]: true;
   routes: readonly ApplicationRoutePageContribution[];
   resources: Readonly<Record<string, Readonly<AdminResourceContributions>>>;
+  resourcePages?: ResourcePageContributions;
   authentication: readonly ApplicationAuthenticationSurfaceContribution[];
   standardUserSurfaces?: Readonly<StandardUserSurfaceContributions>;
 }
@@ -126,6 +150,7 @@ export interface ApplicationContributionContracts<
 export interface DefineAdminContributionsInput<Routes extends RouteContracts> {
   pages: PagesFor<Routes>;
   resources?: Readonly<Record<string, AdminResourceContributions>>;
+  resourcePages?: ResourcePageContributions;
 }
 
 export interface DefineApplicationContributionsInput<
@@ -187,6 +212,26 @@ function normalizeStandardUserSurfaces(
       value.applicationTodoCenter,
     ),
   });
+}
+
+
+function normalizeResourcePages(value: ResourcePageContributions | undefined): ResourcePageContributions | undefined {
+  if (value === undefined) return undefined;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) invalid('resource-pages:invalid');
+  const resources = Object.entries(value);
+  if (resources.length > NATIVE_CONTRACT_CAPACITY_V2.resources) invalid('resource-pages:too-many-resources');
+  return Object.freeze(Object.fromEntries(resources.map(([code, views]) => {
+    if (!RESOURCE_CODE_PATTERN.test(code) || !views || typeof views !== 'object' || Array.isArray(views)) invalid('resource-pages:resource');
+    const entries = Object.entries(views);
+    if (entries.length > 21) invalid('resource-pages:too-many-views');
+    return [code, Object.freeze(Object.fromEntries(entries.map(([view, pages]) => {
+      if (!CODE_PATTERN.test(view) || !pages || typeof pages !== 'object' || Array.isArray(pages)) invalid('resource-pages:view');
+      for (const [mode, component] of Object.entries(pages)) {
+        if (!['list', 'detail', 'form'].includes(mode) || typeof component !== 'function') invalid('resource-pages:component');
+      }
+      return [view, Object.freeze({ ...pages })];
+    })))];
+  })));
 }
 
 function validateAccess(
@@ -403,6 +448,7 @@ function defineContributions<const Routes extends RouteContracts>(
     [ADMIN_CONTRIBUTIONS_BRAND]: true,
     routes: Object.freeze(routes),
     resources: Object.freeze(resources),
+    ...(input.resourcePages ? { resourcePages: normalizeResourcePages(input.resourcePages) } : {}),
     authentication: Object.freeze(authentication),
     ...(standardUserSurfaces ? { standardUserSurfaces } : {}),
   }) as OpenXiangdaApplicationContributions;
@@ -548,4 +594,9 @@ export function useAdminResourceContributions(resource: string) {
   return useAdminContributions().resources[resource] as
     | Readonly<AdminResourceContributions>
     | undefined;
+}
+
+/** Presentation extension only; the route still owns authorization. */
+export function useResourcePageContributions(resource: string, view = 'default') {
+  return useAdminContributions().resourcePages?.[resource]?.[view];
 }

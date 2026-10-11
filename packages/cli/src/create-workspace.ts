@@ -19,6 +19,7 @@ import {
   isOpenXiangdaPackageName,
   OpenXiangdaApplicationServices,
   toolchainCapsuleDiagnostic,
+  type ApplicationTemplateSelection,
 } from "openxiangda-devkit-core";
 import {
   WORKSPACE_TEMPLATE_BINDING_SCHEMA_VERSION,
@@ -30,6 +31,8 @@ import {
   resolveDefaultTemplate,
 } from "./toolchain-capsule.js";
 
+import { composeWorkspaceTemplate } from './compose-template.js';
+
 export interface CreateWorkspaceInput {
   directory: string;
   appCode: string;
@@ -40,6 +43,8 @@ export interface CreateWorkspaceInput {
   templateRef?: string;
   templateDigest?: string;
   localSdkRoot?: string;
+  selection?: ApplicationTemplateSelection;
+  templateComponents?: WorkspaceTemplateBinding["components"];
 }
 
 export type WorkspaceInstallOutput = "inherit" | "capture";
@@ -54,6 +59,14 @@ const TEMPLATE_MAX_BYTES = 20 * 1024 * 1024;
 const TEMPLATE_BINDING_PATH = join(".openxiangda", "template.json");
 
 export async function createWorkspace(input: CreateWorkspaceInput) {
+  if (input.selection && (input.templateRef || input.templateRoot || input.templateDigest)) throw new Error('TEMPLATE_SELECTION_REF_CONFLICT');
+  const composed = input.selection ? composeWorkspaceTemplate(input.selection) : undefined;
+  try {
+    return await materializeWorkspace(composed ? { ...input, templateRoot: composed.root, templateRef: composed.ref, templateComponents: composed.components } : input);
+  } finally { composed?.cleanup(); }
+}
+
+async function materializeWorkspace(input: CreateWorkspaceInput) {
   const target = resolve(input.directory);
   const template = resolveWorkspaceTemplate({
     ...(input.templateRoot ? { templateRoot: input.templateRoot } : {}),
@@ -82,6 +95,7 @@ export async function createWorkspace(input: CreateWorkspaceInput) {
     ["openxiangda-application", input.appCode],
     ["OpenXiangda 应用", input.name],
   ]);
+  if (input.templateComponents) template.binding.components = input.templateComponents;
   writeWorkspaceTemplateBinding(target, template.binding);
   const toolchainCapsule = resolveCliToolchainCapsule(template.root);
   normalizePublishedDependencies(
@@ -171,17 +185,17 @@ export function resolveWorkspaceTemplate(input: {
       );
     }
   }
+  const binding: WorkspaceTemplateBinding = { schemaVersion: WORKSPACE_TEMPLATE_BINDING_SCHEMA_VERSION, ref, digest };
   return {
     root,
-    binding: {
-      schemaVersion: WORKSPACE_TEMPLATE_BINDING_SCHEMA_VERSION,
-      ref,
-      digest,
-    } satisfies WorkspaceTemplateBinding,
+    binding,
   };
 }
 
 export function calculateTemplateDigest(templateRoot: string) {
+  return inspectWorkspaceTemplate(templateRoot).digest;
+}
+export function inspectWorkspaceTemplate(templateRoot: string) {
   const root = resolve(templateRoot);
   const hash = createHash("sha256");
   let fileCount = 0;
@@ -220,7 +234,7 @@ export function calculateTemplateDigest(templateRoot: string) {
     }
   };
   visit(root);
-  return `sha256:${hash.digest("hex")}` as const;
+  return {digest: `sha256:${hash.digest("hex")}` as const, fileCount, totalBytes};
 }
 
 export function readWorkspaceTemplateBinding(

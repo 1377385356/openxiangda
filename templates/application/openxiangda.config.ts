@@ -4,7 +4,7 @@ import { defineAdminNavigation, defineOpenXiangdaApp } from 'openxiangda/config'
  * Start with business tasks and choose their surface before reusing this starter.
  * /home is a user-page placeholder. PC admin pages belong in the standard Shell:
  * declare admin operations or explicit CRUD and frontend.admin.navigation.
- * Only user tasks with a mobile requirement need a mobile page; admin is PC-only.
+ * Choose desktop/mobile layouts by actual tasks. Editable templates keep one SDK router.
  */
 export default defineOpenXiangdaApp({
   app: { code: 'openxiangda-application', name: 'OpenXiangda 应用' },

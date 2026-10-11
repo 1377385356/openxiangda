@@ -52,7 +52,11 @@
       "types": "./dist/testing.d.ts",
       "import": "./dist/testing.js"
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./resource": {
+      "types": "./dist/resource.d.ts",
+      "import": "./dist/resource.js"
+    }
   },
   "bin": {
     "openxiangda": "./bin/run.js"

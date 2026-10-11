@@ -13,6 +13,7 @@ export const DOCUMENTATION_TOPICS = [
   { id: 'application-foundation', title: '业务模型与标准 CRUD', file: 'application-foundation.md' },
   { id: 'appspec', title: '需求、设计与交付记录', file: 'appspec.md' },
   { id: 'concepts', title: '架构与能力所有者', file: 'concepts.md' },
+  { id: 'application-templates', title: '源码模板与业务场景', file: 'application-templates.md' },
   { id: 'frontend', title: '页面与标准组件扩展', file: 'frontend.md' },
   { id: 'field-components', title: '字段、表单与移动控件', file: 'field-components.md' },
   { id: 'data-authz', title: '数据查询与权限', file: 'data-authz.md' },

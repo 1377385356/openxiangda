@@ -31,6 +31,25 @@ MCP 使用项目锁定的根包；在客户端配置下列 stdio 启动参数，
 
 工具返回相同内容的 structuredContent 与文本结果，包含 ok、operation、data 和适用的 diagnostics/nextActions。业务失败设置 isError=true；按错误码、定位和平台 recovery 决定下一步。工具协议错误同样停止当前操作。check_app 会生成文件并运行检查、测试、构建；失败后未执行的阶段标记 skipped。deploy_app 已包含完整检查，生产晋级必须传入成功的测试 DeploymentRun ID，不重新构建。详见 [校验](testing.md)与[部署](delivery.md)。
 
+## template_list
+
+发现源码模板。列出业务场景、模块依赖、四类源码外壳和主题；创建使用 CLI，不执行远端操作。
+
+- 只读：是
+- 可替换文件或改变远端状态：否
+- 幂等：否
+
+输入参数：
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
 ## authorization_status
 
 核验平台授权。只读核验明确指定站点的当前授权；不依赖工作区，不启动登录、刷新凭据或修改绑定。authorized 不代表应用管理权限。

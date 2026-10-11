@@ -79,3 +79,9 @@ async function sealTemplateDependencyVersions(root, versions) {
 function isOpenXiangdaPackageName(name) {
   return name === 'openxiangda' || name?.startsWith('openxiangda-');
 }
+
+const componentsTarget = resolve(packageRoot, 'template-components');
+await rm(componentsTarget, { recursive:true, force:true });
+for (const folder of ['frames','styles','modules','shared']) {
+  await cp(resolve(packageRoot, '../../templates', folder), resolve(componentsTarget, folder), { recursive:true });
+}
