@@ -2413,6 +2413,7 @@ export type WorkflowFieldPolicy =
   | "edit"
   | "edit_required";
 export type WorkflowCommand =
+  | "complete"
   | "save_form"
   | "approve"
   | "reject"
@@ -2469,7 +2470,7 @@ export interface WorkflowApprovalNode {
   };
 }
 
-export type WorkflowConfigurableOperation = 'approve' | 'reject' | 'save_form' | 'return' | 'transfer' | 'delegate' | 'add_assignee';
+export type WorkflowConfigurableOperation = 'complete' | 'approve' | 'reject' | 'save_form' | 'return' | 'transfer' | 'delegate' | 'add_assignee';
 export type WorkflowOperationOpinion = 'none' | 'optional' | 'required';
 export type WorkflowConfigurableAssigneeProvider = 'fixed_users' | 'app_role' | 'app_role_in_scope';
 export interface WorkflowNodeOperationPolicy {
@@ -2488,6 +2489,14 @@ export interface WorkflowApprovalAdministration {
   assigneeProviders?: WorkflowConfigurableAssigneeProvider[];
   operations?: WorkflowConfigurableOperation[];
 }
+
+/** Independent human handling: completion records no approval decision. */
+export interface WorkflowHandleNode extends Omit<WorkflowApprovalNode, 'kind' | 'onApprove' | 'onReject' | 'emptyPolicy' | 'initiatorApprovalPolicy' | 'completionDeadline'> {
+  kind: 'handle';
+  next: string;
+  emptyPolicy?: 'block';
+}
+export type WorkflowHumanNode = WorkflowApprovalNode | WorkflowHandleNode;
 
 export interface WorkflowConditionNode {
   id: string;
@@ -2525,6 +2534,7 @@ export interface WorkflowCcNode {
 }
 
 export type WorkflowNode =
+  | WorkflowHandleNode
   | WorkflowApprovalNode
   | WorkflowConditionNode
   | WorkflowEndNode
@@ -3219,6 +3229,7 @@ export interface WorkflowTask {
     | "returned"
     | "cancelled"
     | "expired";
+  nodeKind?: WorkflowNode['kind'];
   approvalMode: WorkflowApprovalMode;
   taskKind: "normal" | "return_review" | "resume";
   assignedRoleSubjectKey: string | null;
@@ -3273,6 +3284,7 @@ export interface WorkflowTaskParticipant {
   status: "pending" | "active" | "approved" | "rejected" | "cancelled";
   required: boolean;
   outcome:
+    | "completed"
     | "approved"
     | "rejected"
     | "returned"

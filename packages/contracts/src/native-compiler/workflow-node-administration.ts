@@ -3,7 +3,7 @@ import { validateWorkflowInitiatorApprovalPolicy, type WorkflowInitiatorApproval
 import { validateWorkflowRoleUnion } from './workflow-role-union.js';
 import { WORKFLOW_AUTOMATIC_CC_DEFAULT_RECIPIENTS, WORKFLOW_AUTOMATIC_CC_MAX_RECIPIENTS } from './workflow-automatic-cc.js';
 
-export const WORKFLOW_CONFIGURABLE_OPERATIONS = ['approve', 'reject', 'save_form', 'return', 'transfer', 'delegate', 'add_assignee'] as const;
+export const WORKFLOW_CONFIGURABLE_OPERATIONS = ['complete', 'approve', 'reject', 'save_form', 'return', 'transfer', 'delegate', 'add_assignee'] as const;
 export const WORKFLOW_CONFIGURABLE_PROVIDERS = ['fixed_users', 'app_role', 'app_role_in_scope'] as const;
 const modes = ['single', 'any', 'all', 'sequence'];
 type PolicyMap = Partial<Record<WorkflowConfigurableOperation, WorkflowNodeOperationPolicy>>;
@@ -27,7 +27,7 @@ const keys = (value: object, allowed: readonly string[]) => Object.keys(value).e
 const boundedList = (value: unknown, allowed: readonly string[], limit: number) => Array.isArray(value) && value.length > 0 && value.length <= limit && new Set(value).size === value.length && value.every(item => typeof item === 'string' && allowed.includes(item));
 
 export function workflowNodeAllowedOperations(node: WorkflowAdministrationNodeSource): string[] {
-  return node.allowedOperations || WORKFLOW_CONFIGURABLE_OPERATIONS.filter(operation => operation !== 'save_form' || !!node.taskPageCode);
+  return node.allowedOperations || (node.kind === 'handle' ? ['complete', 'save_form', 'return', 'transfer', 'delegate'] : WORKFLOW_CONFIGURABLE_OPERATIONS.filter(operation => operation !== 'complete')).filter(operation => operation !== 'save_form' || !!node.taskPageCode);
 }
 
 /** Frozen task policy wins; legacy rejection requires a comment when omitted. */
@@ -46,7 +46,7 @@ const opinions = ['none', 'optional', 'required'] as const;
 export function workflowOperationOpinion(operation: string, policy?: WorkflowNodeOperationPolicy): typeof opinions[number] {
   if (operation === 'save_form') return 'none';
   if (policy?.opinion) return policy.opinion;
-  return (['approve', 'reject'].includes(operation) ? workflowOperationCommentRequired(operation, policy) : workflowOperationReasonRequired(operation, policy)) ? 'required' : 'optional';
+  return (['complete', 'approve', 'reject'].includes(operation) ? workflowOperationCommentRequired(operation, policy) : workflowOperationReasonRequired(operation, policy)) ? 'required' : 'optional';
 }
 
 export function workflowOperationMinimumOpinion(operation: string, policy?: WorkflowNodeOperationPolicy): typeof opinions[number] {
@@ -65,7 +65,7 @@ function policyValid(value: unknown, operation: string, defaults: WorkflowNodeOp
   if (value.enabled !== undefined && (typeof value.enabled !== 'boolean' || operation === 'approve' && !value.enabled)) return false;
   if (value.opinion !== undefined && (!opinions.includes(value.opinion) || operation === 'save_form')) return false;
   if (value.minimumOpinion !== undefined && (!opinions.includes(value.minimumOpinion) || operation === 'save_form')) return false;
-  if (value.commentRequired !== undefined && (typeof value.commentRequired !== 'boolean' || !['approve', 'reject'].includes(operation))) return false;
+  if (value.commentRequired !== undefined && (typeof value.commentRequired !== 'boolean' || !['complete', 'approve', 'reject'].includes(operation))) return false;
   if (value.reasonRequired !== undefined && (typeof value.reasonRequired !== 'boolean' || !['transfer', 'delegate', 'add_assignee', 'return'].includes(operation))) return false;
   if (value.opinion !== undefined && [value.commentRequired, value.reasonRequired].some(required => required !== undefined && required !== (value.opinion === 'required'))) return false;
   if (configurable && (value.opinion !== undefined || value.commentRequired !== undefined || value.reasonRequired !== undefined)) {
@@ -83,9 +83,9 @@ export function validateWorkflowAdministration(definition: { nodes?: Record<stri
     if (!record(node)) continue;
     const admin = node.administration;
     const policy = node.operationPolicy;
-    if (node.kind === 'approval') {
+    if ((node.kind === 'approval' || node.kind === 'handle')) {
       const allowed = workflowNodeAllowedOperations(node);
-      if (!allowed.includes('approve')) errors.push(`WORKFLOW_NODE_FORWARD_OPERATION_REQUIRED:${id}`);
+      if (!allowed.includes(node.kind === 'handle' ? 'complete' : 'approve')) errors.push(`WORKFLOW_NODE_FORWARD_OPERATION_REQUIRED:${id}`);
       if (allowed.includes('save_form') && !node.taskPageCode) errors.push(`WORKFLOW_NODE_SAVE_PAGE_REQUIRED:${id}`);
       if (node.requiredOperations !== undefined && (!boundedList(node.requiredOperations, WORKFLOW_CONFIGURABLE_OPERATIONS, 8) || node.requiredOperations.some(operation => !allowed.includes(operation)))) errors.push(`WORKFLOW_NODE_REQUIRED_OPERATIONS_INVALID:${id}`);
     }
@@ -95,7 +95,7 @@ export function validateWorkflowAdministration(definition: { nodes?: Record<stri
       if (admin?.assigneeProviders?.includes('app_role_in_scope') && bindings && !bindings.bindings[node.binding || '']?.scope) errors.push(`WORKFLOW_NODE_ADMINISTRATION_SCOPE_REQUIRED:${id}`);
       continue;
     }
-    if (node.kind !== 'approval') {
+    if (!['approval', 'handle'].includes(node.kind)) {
       if (admin !== undefined || policy !== undefined) errors.push(`WORKFLOW_NODE_ADMINISTRATION_APPROVAL_REQUIRED:${id}`);
       continue;
     }
@@ -121,13 +121,13 @@ export function validateWorkflowNodeConfigurationPatch(node: WorkflowAdministrat
   if (Object.entries(patch.operations || {}).some(([operation, policy]) => policy?.enabled === false && node.requiredOperations?.includes(operation as WorkflowConfigurableOperation))) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_REQUIRED_OPERATION');
   for (const key of ['title', 'description'] as const) if (patch[key] !== undefined && (typeof patch[key] !== 'string' || patch[key]!.length > (key === 'title' ? 255 : 1000) || (key === 'title' && !patch[key]!.trim()))) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_PATCH_INVALID');
   const admin = node.administration;
-  if (patch.mode !== undefined && (node.kind !== 'approval' || !admin?.modes?.includes(patch.mode))) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_MODE_READONLY');
-  if (patch.operations !== undefined && (node.kind !== 'approval' || !record(patch.operations) || !Object.keys(patch.operations).length || Object.keys(patch.operations).length > 8 || Object.entries(patch.operations).some(([operation, value]) => !admin?.operations?.includes(operation as WorkflowConfigurableOperation) || !workflowNodeAllowedOperations(node).includes(operation) || !policyValid(value, operation, node.operationPolicy?.[operation as WorkflowConfigurableOperation], true)))) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_OPERATION_INVALID');
+  if (patch.mode !== undefined && (!['approval', 'handle'].includes(node.kind) || !admin?.modes?.includes(patch.mode))) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_MODE_READONLY');
+  if (patch.operations !== undefined && (!['approval', 'handle'].includes(node.kind) || !record(patch.operations) || !Object.keys(patch.operations).length || Object.keys(patch.operations).length > 8 || Object.entries(patch.operations).some(([operation, value]) => !admin?.operations?.includes(operation as WorkflowConfigurableOperation) || !workflowNodeAllowedOperations(node).includes(operation) || !policyValid(value, operation, node.operationPolicy?.[operation as WorkflowConfigurableOperation], true)))) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_OPERATION_INVALID');
   if (patch.assignee !== undefined) {
     const value = patch.assignee;
-    const allowed = admin?.assigneeProviders || (node.kind === 'approval' && binding && WORKFLOW_CONFIGURABLE_PROVIDERS.includes(binding.provider as any) ? [binding.provider] : []);
+    const allowed = admin?.assigneeProviders || ((node.kind === 'approval' || node.kind === 'handle') && binding && WORKFLOW_CONFIGURABLE_PROVIDERS.includes(binding.provider as any) ? [binding.provider] : []);
     if (binding?.selectedInputPath && !['app_role', 'app_role_in_scope'].includes(value?.provider || '')) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_PROVIDER_READONLY');
-    if (!record(value) || !['approval', 'cc'].includes(node.kind) || !allowed.includes(value.provider) || (value.provider === 'app_role_in_scope' && !binding?.scope)) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_PROVIDER_READONLY');
+    if (!record(value) || !['approval', 'handle', 'cc'].includes(node.kind) || !allowed.includes(value.provider) || (value.provider === 'app_role_in_scope' && !binding?.scope)) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_PROVIDER_READONLY');
     else if (value.provider === 'fixed_users') {
       const minimum = node.kind === 'cc' ? binding?.min ?? 1 : node.emptyPolicy === 'skip' ? 0 : 1;
       const maximum = node.kind === 'cc' ? Math.min(binding?.max ?? WORKFLOW_AUTOMATIC_CC_DEFAULT_RECIPIENTS, WORKFLOW_AUTOMATIC_CC_MAX_RECIPIENTS) : 200;
@@ -149,7 +149,7 @@ export function projectWorkflowNodePolicy(node: WorkflowAdministrationNodeSource
     const policy = { ...node.operationPolicy?.[code], ...(configured?.label !== undefined ? { label: configured.label } : {}), ...(configured?.commentRequired !== undefined ? { commentRequired: configured.commentRequired } : {}), ...(configured?.reasonRequired !== undefined ? { reasonRequired: configured.reasonRequired } : {}), ...(configured?.opinion !== undefined ? { opinion: configured.opinion } : {}) };
     if (configured?.opinion === undefined && (configured?.commentRequired !== undefined || configured?.reasonRequired !== undefined) && policy.opinion !== undefined) policy.opinion = (configured.commentRequired ?? configured.reasonRequired) ? 'required' : 'optional';
     if (policy.opinion !== undefined) {
-      if (['approve', 'reject'].includes(code)) policy.commentRequired = policy.opinion === 'required';
+      if (['complete', 'approve', 'reject'].includes(code)) policy.commentRequired = policy.opinion === 'required';
       if (['transfer', 'delegate', 'add_assignee', 'return'].includes(code)) policy.reasonRequired = policy.opinion === 'required';
     }
     return Object.keys(policy).length ? [[code, policy]] : [];

@@ -13,7 +13,7 @@ type Values = {
   users?: Array<{ value: string; label?: string }>; roleCodes?: string[]; mode?: Node['effective']['mode']; reason: string;
   operations?: WorkflowNodeConfigurationPatch['operations'];
 };
-const labels: Record<string, string> = { approve: '同意', reject: '拒绝', save_form: '保存', return: '退回', transfer: '转交', delegate: '委托', add_assignee: '加签' };
+const labels: Record<string, string> = { complete: '办理完成', approve: '同意', reject: '拒绝', save_form: '保存', return: '退回', transfer: '转交', delegate: '委托', add_assignee: '加签' };
 const modes: Record<string, string> = { single: '单人审批', any: '或签：一人通过即可', all: '会签：全部通过', sequence: '依次审批' };
 const modeDescriptions: Record<string, string> = { single: '只分派给一位审批人。', any: '任一审批人同意后，此节点完成。', all: '所有审批人同意后，此节点完成。', sequence: '按候选人顺序逐一处理。' };
 const providers: Record<string, string> = { fixed_users: '指定人员', app_role: '应用角色', app_role_in_scope: '范围内的应用角色' };
@@ -159,7 +159,7 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
           {!isCc && (node.administration?.modes ? <Form.Item name="mode" label="审批方式" rules={[{ required: true }]}><Radio.Group className="oxa-workflow-mode-options" options={node.administration.modes.map(value => ({ value, label: <span><b>{modes[value]}</b><small>{modeDescriptions[value]}</small></span> }))} /></Form.Item> : <p className="oxa-workflow-config-help">审批方式：{modes[node.effective.mode || ''] || '由开发者维护'}</p>)}
 
       </section>}
-      {node.kind === 'approval' && <section className="oxa-workflow-config-section" aria-labelledby="workflow-node-operations">
+      {(node.kind === 'approval' || node.kind === 'handle') && <section className="oxa-workflow-config-section" aria-labelledby="workflow-node-operations">
         <h3 id="workflow-node-operations">操作按钮</h3>
         <p className="oxa-workflow-config-help">同意用于推进流程，必须保留。其余操作可以在已开放的范围内调整；保存位于「更多」，只保存数据。</p>
         {node.administration?.operations?.length ? <table className="oxa-workflow-operation-table">

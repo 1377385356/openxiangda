@@ -230,7 +230,7 @@ export function validateWorkflowTaskPages(definition: Definition, resourceFields
     if (rowBudget > Math.min(ownedRowLimit, WORKFLOW_TASK_SUBTABLE_MAX_TOTAL_ROWS) || rowBudget < 0 || !Number.isSafeInteger(rowBudget) || !Number.isSafeInteger(ownedRowLimit) || ownedRowLimit < 1) diagnostics.push(`WORKFLOW_TASK_SUBTABLE_BUDGET_EXCEEDED:${pointer}`);
   }
   for (const [id, node] of Object.entries(definition.nodes || {})) if (object(node) && node.taskPageCode !== undefined) {
-    if (!['approval', 'correction'].includes(node.kind) || typeof node.taskPageCode !== 'string' || !object(pages) || !Object.hasOwn(pages, node.taskPageCode)) diagnostics.push(`WORKFLOW_TASK_PAGE_NOT_FOUND:${id}`);
+    if (!['approval', 'handle', 'correction'].includes(node.kind) || typeof node.taskPageCode !== 'string' || !object(pages) || !Object.hasOwn(pages, node.taskPageCode)) diagnostics.push(`WORKFLOW_TASK_PAGE_NOT_FOUND:${id}`);
     else if (Array.isArray(pages[node.taskPageCode]?.fields) && pages[node.taskPageCode]!.fields.some(field => field && (node.fieldPolicy?.fields?.[field.code] || node.fieldPolicy?.default) === 'hidden')) diagnostics.push(`WORKFLOW_TASK_PAGE_FIELD_HIDDEN:${id}`);
   }
   return diagnostics;

@@ -1,3 +1,4 @@
+import { validateWorkflowHandlingNodes } from './workflow-handle.js';
 import { normalizeDataMutationGrants } from './service-mutations.js';
 import { hasNativeParentReadPolicy, resolveNativeParentReadBinding, validateNativeParentReadPolicies, NativeParentReadPolicyError } from './parent-read-policy.js';
 import { requiresExtendedFieldCapacity, WORKFLOW_LAUNCH_MAX_INPUTS } from './data-capacity.js';
@@ -118,6 +119,7 @@ const ADMIN_NAVIGATION_ICONS = new Set([
   'settings',
 ]);
 const WORKFLOW_OPERATIONS = new Set([
+  'complete',
   'save_form',
   'approve',
   'reject',
@@ -832,6 +834,8 @@ export function compileRequiredPlatformCapabilitiesV3(
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'approval' && node.emptyPolicy !== undefined))
       ? [{ code: 'workflow.approval-empty-policy' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'approval' && node.emptyPolicy !== undefined)) }]
       : []),
+    ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'handle'))
+      ? [{ code: 'workflow.handling-nodes' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'handle')) }] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.completionDeadline !== undefined))
       ? [{ code: 'workflow.completion-deadline' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.completionDeadline !== undefined)) }]
       : []),
@@ -5260,7 +5264,7 @@ function compileWorkflows(config: JsonObject) {
       );
       for (const nodeValue of Object.values(nodes)) {
         const node = object(nodeValue, '/config/workflows/definitions/nodes/*');
-        if (node.kind !== 'approval') continue;
+        if (node.kind !== 'approval' && node.kind !== 'handle') continue;
         for (const operation of uniqueStrings(
           node.allowedOperations || [],
           '/config/workflows/definitions/nodes/*/allowedOperations',
@@ -7301,6 +7305,8 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
   if (ccErrors.length) fail(ccErrors[0]!, `${pointer}/nodes`);
   const taskPageErrors = validateWorkflowTaskPages(definition);
   if (taskPageErrors.length) fail(taskPageErrors[0]!, `${pointer}/taskPages`);
+  const handleErrors = validateWorkflowHandlingNodes(definition as any);
+  if (handleErrors.length) fail(handleErrors[0]!, `${pointer}/nodes`);
   const stepErrors = validateWorkflowBusinessSteps(definition);
   if (stepErrors.length) fail(stepErrors[0]!, `${pointer}/nodes`);
   if (!nodes[startAt])
@@ -7310,17 +7316,18 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
     const nodePointer = `${pointer}/nodes/${nodeId}`;
     const node = object(rawNode, nodePointer);
     equal(node.id, nodeId, `${nodePointer}/id`);
-    if (!['approval', 'condition', 'end', 'cc', 'action', 'correction'].includes(node.kind)) {
+    if (!['approval', 'handle', 'condition', 'end', 'cc', 'action', 'correction'].includes(node.kind)) {
       fail('NATIVE_WORKFLOW_NODE_KIND_INVALID', `${nodePointer}/kind`);
     }
     const targets: string[] = [];
-    if (node.kind === 'approval') {
+    if (node.kind === 'approval' || node.kind === 'handle') {
       requiredString(node.title, `${nodePointer}/title`, 255);
       workflowBindingCode(node.binding, `${nodePointer}/binding`);
       if (!['single', 'any', 'all', 'sequence'].includes(node.mode)) {
         fail('NATIVE_WORKFLOW_APPROVAL_MODE_INVALID', `${nodePointer}/mode`);
       }
-      targets.push(
+      if (node.kind === 'handle') targets.push(requiredString(node.next, `${nodePointer}/next`, 128));
+      else targets.push(
         requiredString(node.onApprove, `${nodePointer}/onApprove`, 128),
         requiredString(node.onReject, `${nodePointer}/onReject`, 128)
       );
@@ -7552,7 +7559,7 @@ function validateWorkflowDefinitionBinding(
     object(definition.nodes, `${pointer}/nodes`)
   )) {
     const node = object(rawNode, `${pointer}/nodes/${nodeId}`);
-    if (['approval', 'cc'].includes(node.kind) && !entries[node.binding]) {
+    if (['approval', 'handle', 'cc'].includes(node.kind) && !entries[node.binding]) {
       fail(
         'NATIVE_WORKFLOW_BINDING_REFERENCE_MISSING',
         `${pointer}/nodes/${nodeId}/binding`

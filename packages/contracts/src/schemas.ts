@@ -5567,6 +5567,32 @@ export const workflowBusinessStepNodeSchema = {
 const workflowNodeSchema = {
   oneOf: [
     {
+      type: 'object', additionalProperties: false,
+      required: ['id', 'kind', 'title', 'binding', 'mode', 'next', 'allowedOperations', 'requiredOperations'],
+      properties: {
+        id: nonEmptyString, kind: { const: 'handle' }, title: nonEmptyString,
+        binding: nonEmptyString, mode: { enum: ['single', 'any', 'all', 'sequence'] },
+        next: nonEmptyString, emptyPolicy: { const: 'block' },
+        taskPageCode: { type: 'string', pattern: '^[A-Za-z][A-Za-z0-9_-]{0,63}$' },
+        allowedOperations: { type: 'array', uniqueItems: true, items: { enum: ['complete', 'save_form', 'return', 'transfer', 'delegate'] } },
+        requiredOperations: { type: 'array', uniqueItems: true, items: { enum: ['complete', 'save_form', 'return', 'transfer', 'delegate'] } },
+        returnTargets: { type: 'array', items: nonEmptyString, uniqueItems: true },
+        operationPolicy: { type: 'object', additionalProperties: false, properties: Object.fromEntries(['complete','save_form','return','transfer','delegate'].map(operation => [operation, {
+          type: 'object', additionalProperties: false, minProperties: 1,
+          properties: { label: { type: 'string', minLength: 1, maxLength: 40 },
+            ...(operation !== 'save_form' ? { opinion: { enum: ['none','optional','required'] }, minimumOpinion: { enum: ['none','optional','required'] } } : {}),
+            ...(operation === 'complete' ? { commentRequired: { type: 'boolean' } } : {}),
+            ...(['return','transfer','delegate'].includes(operation) ? { reasonRequired: { type: 'boolean' } } : {}) },
+        }])) },
+        administration: { type: 'object', additionalProperties: false, properties: {
+          modes: { type: 'array', uniqueItems: true, minItems: 1, maxItems: 4, items: { enum: ['single','any','all','sequence'] } },
+          assigneeProviders: { type: 'array', uniqueItems: true, minItems: 1, maxItems: 3, items: { enum: ['fixed_users','app_role','app_role_in_scope'] } },
+          operations: { type: 'array', uniqueItems: true, minItems: 1, maxItems: 5, items: { enum: ['complete','save_form','return','transfer','delegate'] } },
+        } },
+        fieldPolicy: { type: 'object', additionalProperties: false, properties: { default: { enum: ['hidden','readonly','edit','edit_required'] }, fields: { type: 'object', additionalProperties: { enum: ['hidden','readonly','edit','edit_required'] } } } },
+      },
+    },
+    {
       type: "object",
       additionalProperties: false,
       required: [
@@ -5600,7 +5626,7 @@ const workflowNodeSchema = {
             properties: {
               label: { type: 'string', minLength: 1, maxLength: 40, pattern: '^(?!.*[\\u0000-\\u001f\\u007f])(?=.*\\S).*$' },
               ...(operation !== 'save_form' ? { opinion: { enum: ['none', 'optional', 'required'] }, minimumOpinion: { enum: ['none', 'optional', 'required'] } } : {}),
-              ...(['approve', 'reject'].includes(operation) ? { commentRequired: { type: 'boolean' } } : {}),
+              ...(['complete', 'approve', 'reject'].includes(operation) ? { commentRequired: { type: 'boolean' } } : {}),
               ...(['transfer', 'delegate', 'add_assignee', 'return'].includes(operation) ? { reasonRequired: { type: 'boolean' } } : {}),
             },
           }])),

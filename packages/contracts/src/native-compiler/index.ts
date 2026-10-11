@@ -66,3 +66,5 @@ export * from './rich-text-policy.js';
 
 export * from './service-mutations.js';
 export * from './workflow-designer.js';
+
+export * from './workflow-handle.js';

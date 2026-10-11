@@ -2,10 +2,11 @@ import type { WorkflowSurface, WorkflowTask, WorkflowTimeline } from 'openxiangd
 
 /** Only current-task facts can describe its quorum. Historical visits may differ. */
 export function workflowApprovalProgress(task: WorkflowTask | null | undefined) {
-  const label = task?.approvalMode === 'all' ? '会签' : task?.approvalMode === 'any' ? '或签' : task?.approvalMode === 'sequence' ? '依次审批' : null;
+  const handling = task?.nodeKind === 'handle';
+  const label = task?.approvalMode === 'all' ? (handling ? '共同办理' : '会签') : task?.approvalMode === 'any' ? (handling ? '任一人办理' : '或签') : task?.approvalMode === 'sequence' ? (handling ? '依次办理' : '依次审批') : null;
   if (!label || !task) return null;
   const participants = (task.participants || []).filter(person => person.required && person.status !== 'cancelled');
-  return { label, total: participants.length, approved: participants.filter(person => person.status === 'approved').length };
+  return { label, verb: handling ? '已办理' : '已同意', total: participants.length, approved: participants.filter(person => person.status === 'approved').length };
 }
 
 export function WorkflowApprovalParticipants({ surface, timeline }: { surface: WorkflowSurface; timeline: WorkflowTimeline | null }) {

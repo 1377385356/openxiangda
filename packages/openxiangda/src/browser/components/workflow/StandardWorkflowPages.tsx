@@ -661,7 +661,7 @@ export function WorkflowTimelineSection({
                   : !['completed', 'active', 'waiting'].includes(item.status) ? <StatusTag status={item.status} /> : null}
                 {item.primaryDisplayTime && item.status !== 'active' && !compact && time(item.primaryDisplayTime)}
               </div>
-              {!compact && progress && progress.total > 0 && <div className="oxa-workflow-quorum" aria-label={`${progress.label}：${progress.approved}/${progress.total} 人已同意`}>
+              {!compact && progress && progress.total > 0 && <div className="oxa-workflow-quorum" aria-label={`${progress.label}：${progress.approved}/${progress.total} 人${progress.verb}`}>
                 <span><span style={{ width: `${progress.approved / progress.total * 100}%` }} /></span><small>{progress.approved}/{progress.total}</small>
               </div>}
               {item.status === 'skipped' && <Typography.Text type="secondary">无审批人，按此节点的规则自动继续。</Typography.Text>}
@@ -997,7 +997,7 @@ function WorkflowOperations({
         throw new Error('操作已刷新，请保留当前输入并重新确认。');
       }
       const input = { ...values };
-      if (surface.taskForm && ['save_form', 'approve', 'resubmit'].includes(operation.key)) {
+      if (surface.taskForm && ['save_form', 'complete', 'approve', 'resubmit'].includes(operation.key)) {
         if (taskForm.stale) throw new Error('业务资料已更新，请先核对最新资料');
         input.form = await taskForm.build(operation.key !== 'save_form');
       }
@@ -1748,7 +1748,7 @@ function StandardWorkflowDetailRenderer({ surface, timeline, warning, operations
       <div className="oxa-workflow-main-column">
         {!workflowHasEnded(instance) && activeNode && <div className="oxa-workflow-current-section"><div className="oxa-workflow-current-node is-active" role="status">
           <strong><span className="oxa-workflow-current-dot" />{`${needsYou ? '需要你处理' : '当前节点'}：${activeNode.title}`}</strong>
-          {(progress || people) && <span>{progress ? `${progress.label}${progress.total > 0 ? ` · 已有 ${progress.approved}/${progress.total} 人同意` : ''}` : `等待${people}处理`}</span>}
+          {(progress || people) && <span>{progress ? `${progress.label}${progress.total > 0 ? ` · 已有 ${progress.approved}/${progress.total} 人${progress.verb}` : ''}` : `等待${people}处理`}</span>}
         </div></div>}
         {deadline && !workflowHasEnded(instance) && ['pending', 'failed'].includes(deadline.status) && <Alert showIcon type={deadline.status === 'failed' ? 'warning' : 'info'}
           title={deadline.status === 'failed' ? '到期自动处理未成功' : `未提前完成时，将于 ${detailTime(deadline.deadlineAt, timeZone)} 自动同意`}

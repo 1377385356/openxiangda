@@ -1,3 +1,4 @@
+import { validateWorkflowHandlingNodes } from './workflow-handle.js';
 import type { WorkflowBinding, WorkflowDefinition, WorkflowExpression, WorkflowNode } from '../types.js';
 import { workflowOperationMinimumOpinion,workflowOperationOpinion } from './workflow-node-administration.js';
 import { projectWorkflowGraph, workflowExpressionPaths, type WorkflowGraphProjection } from './workflow-graph.js';
@@ -72,13 +73,13 @@ export function validateWorkflowDesignerCapabilities(base: WorkflowDefinition, n
   if (baseBinding.workflowCode !== nextBinding.workflowCode || baseBinding.schemaVersion !== nextBinding.schemaVersion) errors.push('WORKFLOW_DESIGNER_BINDING_IDENTITY');
   const steps = Object.values(base.nodes).filter(node => node.kind === 'action');
   for (const [id, node] of Object.entries(next.nodes)) {
-    if (!record(node) || node.id !== id || !['approval', 'condition', 'cc', 'action', 'correction', 'end'].includes(node.kind)) { errors.push(`WORKFLOW_DESIGNER_NODE_INVALID:${id}`); continue; }
+    if (!record(node) || node.id !== id || !['approval', 'handle', 'condition', 'cc', 'action', 'correction', 'end'].includes(node.kind)) { errors.push(`WORKFLOW_DESIGNER_NODE_INVALID:${id}`); continue; }
     if ('taskPageCode' in node && node.taskPageCode && !base.taskPages?.[node.taskPageCode]) errors.push(`WORKFLOW_DESIGNER_PAGE_UNRELEASED:${id}`);
     if (node.kind === 'action' && !steps.some(step => step.kind === 'action' && same(step.handler, node.handler) && same(step.inputs, node.inputs) && same(step.outputSchema, node.outputSchema))) errors.push(`WORKFLOW_DESIGNER_STEP_UNRELEASED:${id}`);
-    if (node.kind === 'approval' && node.allowedOperations && (!Array.isArray(node.allowedOperations) || !node.allowedOperations.includes('approve'))) errors.push(`WORKFLOW_DESIGNER_REQUIRED_ACTION:${id}.approve`);
+    if (['approval','handle'].includes(node.kind) && 'allowedOperations' in node && node.allowedOperations && (!Array.isArray(node.allowedOperations) || !node.allowedOperations.includes(node.kind === 'handle' ? 'complete' : 'approve'))) errors.push(`WORKFLOW_DESIGNER_REQUIRED_ACTION:${id}.approve`);
     const original = base.nodes[id];
-    if (!original && node.kind === 'approval' && !Object.values(base.nodes).some(template => template.kind === 'approval' && ['fieldPolicy','administration','requiredOperations','operationPolicy','taskPageCode'].every(key => same((template as any)[key],(node as any)[key])))) errors.push(`WORKFLOW_DESIGNER_APPROVAL_TEMPLATE_REQUIRED:${id}`);
-    if (original?.kind === 'approval' && node.kind === 'approval') {
+    if (!original && (node.kind === 'approval' || node.kind === 'handle') && !Object.values(base.nodes).some(template => template.kind === node.kind && ['fieldPolicy','administration','requiredOperations','operationPolicy','taskPageCode'].every(key => same((template as any)[key],(node as any)[key])))) errors.push(`WORKFLOW_DESIGNER_APPROVAL_TEMPLATE_REQUIRED:${id}`);
+    if ((original?.kind === 'approval' || original?.kind === 'handle') && (node.kind === 'approval' || node.kind === 'handle')) {
       if (node.mode !== original.mode && !original.administration?.modes?.includes(node.mode)) errors.push(`WORKFLOW_DESIGNER_MODE_NOT_ALLOWED:${id}`);
       for (const key of ['requiredOperations', 'fieldPolicy', 'administration'] as const) if (!same(original[key], node[key])) errors.push(`WORKFLOW_DESIGNER_CODE_OWNED:${id}.${key}`);
       for (const operation of original.requiredOperations || []) if (node.allowedOperations && !node.allowedOperations.includes(operation)) errors.push(`WORKFLOW_DESIGNER_REQUIRED_ACTION:${id}.${operation}`);
@@ -198,10 +199,11 @@ export function classifyWorkflowAdoption(source: WorkflowDefinition, target: Wor
 export function validateWorkflowDesignerDocument(definition: WorkflowDefinition): string[] {
   if (!record(definition?.nodes)) return ['WORKFLOW_DESIGNER_DOCUMENT_INVALID'];
   const errors: string[] = [];
+  errors.push(...validateWorkflowHandlingNodes(definition));
   const nodes = Object.values(definition.nodes);
   if (nodes.length > 200 || !nodes.length) return ['WORKFLOW_DESIGNER_NODE_LIMIT'];
   for (const node of nodes) {
-    if (!record(node) || !['approval','condition','cc','action','correction','end'].includes(node.kind)) errors.push('WORKFLOW_DESIGNER_NODE_INVALID');
+    if (!record(node) || !['approval','handle','condition','cc','action','correction','end'].includes(node.kind)) errors.push('WORKFLOW_DESIGNER_NODE_INVALID');
     else if (node.kind === 'condition' && (!Array.isArray(node.branches) || !node.branches.length || node.branches.length > 32 || node.branches.some(branch => !record(branch) || !record(branch.when) || typeof branch.target !== 'string'))) errors.push(`WORKFLOW_DESIGNER_BRANCH_INVALID:${node.id}`);
   }
   if (errors.length) return [...new Set(errors)];
