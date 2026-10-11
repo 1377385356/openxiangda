@@ -5,7 +5,7 @@ export const workflowRoleCodesSchema = {
   items: { type: 'string', maxLength: 128, pattern: '^[a-z][a-z0-9]*(?:[-_.][a-z0-9]+)*$' },
 } as const;
 
-type Source = { provider?: string; roleCode?: string; roleCodes?: string[]; candidateField?: string; scope?: unknown };
+type Source = { provider?: string; roleCode?: string; roleCodes?: string[]; until?: string | {level?:number;roleCode?:string}; candidateField?: string; scope?: unknown };
 
 /** Validate even unused entries so an invalid source cannot become a later task. */
 export function validateWorkflowRoleUnion(entry: Source): string[] {
@@ -30,8 +30,8 @@ export function validateWorkflowRoleUnion(entry: Source): string[] {
 }
 
 /** Call after validation; order also declares the primary duty for overlapping users. */
-export function workflowBindingRoleCodes(entry: Pick<Source, 'roleCode' | 'roleCodes'>): string[] {
-  return entry.roleCodes ? [...entry.roleCodes] : entry.roleCode ? [entry.roleCode] : [];
+export function workflowBindingRoleCodes(entry: Pick<Source, 'roleCode' | 'roleCodes' | 'until'>): string[] {
+  return entry.roleCodes ? [...entry.roleCodes] : entry.roleCode ? [entry.roleCode] : typeof entry.until==='object' && entry.until.roleCode ? [entry.until.roleCode] : [];
 }
 
 export function requiresWorkflowRoleUnion(bindings: Array<{ binding: { bindings: Record<string, Source> } }>): boolean {

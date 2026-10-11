@@ -2568,6 +2568,7 @@ export type WorkflowBindingProvider =
   | "input_users"
   | "form_field_users"
   | "department_supervisor"
+  | "supervisor_chain"
   | "app_role"
   | "app_role_in_scope"
   | "business_relation"
@@ -2575,7 +2576,7 @@ export type WorkflowBindingProvider =
   | "initiator_select"
   | "application_provider";
 
-export interface WorkflowBindingEntry {
+export interface WorkflowBindingEntry extends Partial<import('./native-compiler/workflow-supervisor-chain.js').WorkflowSupervisorChainParameters> {
   provider: WorkflowBindingProvider;
   /** Reference to the constrained subject field; role/scope remain declared once. */
   candidateField?: string;

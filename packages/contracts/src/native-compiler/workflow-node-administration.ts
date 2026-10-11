@@ -21,7 +21,7 @@ export interface WorkflowAdministrationNodeSource {
   administration?: WorkflowApprovalAdministration;
   fieldPolicy?: { default?: string; fields?: Record<string, string> };
 }
-type BindingSource = { provider: string; min?: number; max?: number; selectedInputPath?: string; scope?: { dimension: string; value?: string; valueFrom?: string } };
+type BindingSource = { provider: string; continuous?:boolean; min?: number; max?: number; selectedInputPath?: string; scope?: { dimension: string; value?: string; valueFrom?: string } };
 const record = (value: unknown): value is Record<string, any> => !!value && typeof value === 'object' && !Array.isArray(value);
 const keys = (value: object, allowed: readonly string[]) => Object.keys(value).every(key => allowed.includes(key));
 const boundedList = (value: unknown, allowed: readonly string[], limit: number) => Array.isArray(value) && value.length > 0 && value.length <= limit && new Set(value).size === value.length && value.every(item => typeof item === 'string' && allowed.includes(item));
@@ -118,6 +118,7 @@ export function validateWorkflowNodeConfigurationPatch(node: WorkflowAdministrat
   const errors: string[] = [];
   if (!node || !record(input) || !Object.keys(input).length || !keys(input, ['title', 'description', 'assignee', 'mode', 'operations'])) return ['WORKFLOW_V2_NODE_CONFIGURATION_PATCH_INVALID'];
   const patch = input as WorkflowNodeConfigurationPatch;
+  if (!patch.assignee && binding?.provider === 'supervisor_chain' && binding.continuous !== false && (patch.mode || node.mode) !== 'sequence') errors.push('WORKFLOW_SUPERVISOR_CHAIN_SEQUENCE_REQUIRED');
   if (Object.entries(patch.operations || {}).some(([operation, policy]) => policy?.enabled === false && node.requiredOperations?.includes(operation as WorkflowConfigurableOperation))) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_REQUIRED_OPERATION');
   for (const key of ['title', 'description'] as const) if (patch[key] !== undefined && (typeof patch[key] !== 'string' || patch[key]!.length > (key === 'title' ? 255 : 1000) || (key === 'title' && !patch[key]!.trim()))) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_PATCH_INVALID');
   const admin = node.administration;

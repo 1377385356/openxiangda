@@ -5,7 +5,7 @@ import { canonicalJson, sha256Digest, WORKFLOW_PLATFORM_NOTIFY_INPUT_SCHEMA, WOR
 import { compileNativeApplicationConfiguration } from 'openxiangda-contracts/native-compiler';
 import { compileApplicationSources } from '../src/compiler/bundle.js';
 import { defineOpenXiangdaApp } from '../src/compiler/config.js';
-function compile(notify: boolean, reminders = false) {
+function compile(notify: boolean, reminders = false, chain = false) {
   const definition: any = { schemaVersion:'openxiangda.workflow-definition/v2',code:'review',title:'审批',acceptedCommandDeactivationPolicy:'finish-pinned',startAt: notify ? 'notice' : 'a',subject:{resourceCode:'requests',factProjection:{title:'title'}},inputSchema:{type:'object',additionalProperties:false,properties:{title:{type:'string'}}},nodes:{
     a:{id:'a',kind:'approval',title:'初审',binding:'people',mode:'single',onApprove:'b',onReject:'rejected'},
     b:{id:'b',kind:'approval',title:'复审',binding:'people',mode:'single',onApprove:'done',onReject:'rejected',returnTargets:['a'],returnPolicy:{targets:[{nodeId:'a',routes:['replay','resume'],defaultRoute:'resume'}]}},
@@ -13,9 +13,11 @@ function compile(notify: boolean, reminders = false) {
   }};
   if(notify) definition.nodes.notice={id:'notice',kind:'action',title:'通知',next:'a',handler:{code:'platform-notify-v1',version:1,mode:'reconciled-effect'},inputSchema:WORKFLOW_PLATFORM_NOTIFY_INPUT_SCHEMA,outputSchema:WORKFLOW_PLATFORM_NOTIFY_OUTPUT_SCHEMA,inputs:{text:{source:'literal',value:'通知内容'}},notification:{template:'workflow_message',recipients:{provider:'initiator'}}};
   if (reminders) definition.nodes.a.reminders={afterSeconds:60,everySeconds:120,max:3,to:['handlers']};
+  const people:any=chain?{provider:'supervisor_chain',from:'initiator',until:{level:3},continuous:true,missing:'skip_level'}:{provider:'fixed_users',users:['person']};
+  if(chain) {definition.nodes.a.mode='sequence';definition.nodes.b.mode='sequence';definition.organizationContext={department:{source:'user_primary_department',required:true}};}
   const model=defineDataModel({code:'requests',name:'申请',fields:[{code:'title',label:'事项',type:'text.short'}]});
   const modules=[defineApplicationModule({code:'requests',models:[model],crud:[{model:model.code,form:defineResourceForm(model),list:defineResourceList(model)}]})];
-  const config=defineOpenXiangdaApp({app:{code:'workflow-parity',name:'契约校验'},modules,workflows:{definitions:[{version:1,launch:{mode:'standalone'},definition}],bindings:[{version:1,binding:{schemaVersion:'openxiangda.workflow-binding/v2',workflowCode:'review',bindings:{people:{provider:'fixed_users',users:['person']}}}}],activations:[{workflowCode:'review',definitionVersion:1,bindingVersion:1,acceptedCommandDeactivationPolicy:'finish-pinned'}]}});
+  const config=defineOpenXiangdaApp({app:{code:'workflow-parity',name:'契约校验'},modules,workflows:{definitions:[{version:1,launch:{mode:'standalone'},definition}],bindings:[{version:1,binding:{schemaVersion:'openxiangda.workflow-binding/v2',workflowCode:'review',bindings:{people}}}],activations:[{workflowCode:'review',definitionVersion:1,bindingVersion:1,acceptedCommandDeactivationPolicy:'finish-pinned'}]}});
   const compiled=compileApplicationSources(config);
   compileNativeApplicationConfiguration({appCode:'workflow-parity',configBytes:canonicalJson(compiled.config.value),contractBytes:canonicalJson(compiled.contracts.value),expectedConfigDigest:sha256Digest(compiled.config.value),expectedContractDigest:sha256Digest(compiled.contracts.value)});
   return compiled.contracts.value.eventProducers.map(item=>item.eventType);
@@ -28,3 +30,5 @@ test('notification negotiates only its platform event without application step e
 });
 
 test('reminder declarations survive the developer and sealed compiler with opt-in event production',()=>{ const types=compile(false,true);assert.ok(types.includes('openxiangda.workflow.task.reminded.v2'));assert.ok(!compile(false).includes('openxiangda.workflow.task.reminded.v2')); });
+
+test('released supervisor chains negotiate the same contract in both authoring and installation',()=>{ assert.ok(compile(false,false,true).includes('openxiangda.workflow.task.created.v2')); });

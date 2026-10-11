@@ -1,3 +1,4 @@
+import { validateWorkflowSupervisorChains, validateWorkflowSupervisorChainBinding } from './workflow-supervisor-chain.js';
 import { validateWorkflowReminders } from './workflow-reminders.js';
 import { isWorkflowPlatformNotify } from './workflow-platform-notify.js';
 import { validateWorkflowReturnPolicies, workflowReturnTargets } from './workflow-return-policy.js';
@@ -799,6 +800,7 @@ export function compileRequiredPlatformCapabilitiesV3(
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'approval' && node.emptyPolicy !== undefined))
       ? [{ code: 'workflow.approval-empty-policy' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'approval' && node.emptyPolicy !== undefined)) }]
       : []),
+    ...(config.workflows.bindings.some((item: JsonObject) => Object.values(item.binding.bindings).some((entry: any) => entry.provider === 'supervisor_chain')) ? [{code:'workflow.supervisor-chain' as const,declaration:config.workflows.bindings.filter((item: JsonObject) => Object.values(item.binding.bindings).some((entry: any) => entry.provider === 'supervisor_chain'))}] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.reminders)) ? [{ code: 'workflow.reminders' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.reminders)) }] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => isWorkflowPlatformNotify(node)))
       ? [{ code: 'workflow.platform-notify' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => isWorkflowPlatformNotify(node))) }] : []),
@@ -7447,6 +7449,8 @@ function validateWorkflowBinding(binding: JsonObject, pointer: string) {
   for (const [code, raw] of Object.entries(entries)) {
     workflowBindingCode(code, `${pointer}/bindings/${code}`);
     const entry = object(raw, `${pointer}/bindings/${code}`);
+    const chainErrors = validateWorkflowSupervisorChainBinding(entry);
+    if (chainErrors.length) fail(chainErrors[0]!, `${pointer}/bindings/${code}`);
     const selectionErrors = validateWorkflowRoleInputSelection(entry);
     if (selectionErrors.length) fail(selectionErrors[0]!, `${pointer}/bindings/${code}/selectedInputPath`);
     const unionErrors = validateWorkflowRoleUnion(entry);
@@ -7463,6 +7467,7 @@ function validateWorkflowBinding(binding: JsonObject, pointer: string) {
         'input_users',
         'form_field_users',
         'department_supervisor',
+        'supervisor_chain',
         'app_role',
         'app_role_in_scope',
         'business_relation',
@@ -7517,6 +7522,8 @@ function validateWorkflowDefinitionBinding(
   binding: JsonObject,
   pointer: string
 ) {
+  const chainErrors = validateWorkflowSupervisorChains(definition,binding);
+  if (chainErrors.length) fail(chainErrors[0]!, pointer);
   equal(binding.workflowCode, definition.code, `${pointer}/workflowCode`);
   const entries = object(binding.bindings, `${pointer}/bindings`);
   for (const [code, entry] of Object.entries(entries)) {

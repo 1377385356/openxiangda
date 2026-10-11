@@ -1,3 +1,4 @@
+import { validateWorkflowSupervisorChains } from 'openxiangda-contracts';
 import { validateWorkflowReminders } from 'openxiangda-contracts';
 import {
   SCHEMA_VERSIONS,
@@ -235,6 +236,7 @@ export function validateWorkflowBinding(
   if (binding?.workflowCode !== definition?.code) {
     diagnostics.push('WORKFLOW_BINDING_CODE_MISMATCH');
   }
+  diagnostics.push(...validateWorkflowSupervisorChains(definition,binding));
   for (const [code, entry] of Object.entries(binding?.bindings || {})) {
     diagnostics.push(...validateWorkflowRoleUnion(entry).map(error => `${error}:${code}`));
     if (entry.provider === 'fixed_users' && (!Array.isArray(entry.users) || !entry.users.length && !workflowBindingAllowsEmptyUsers(definition, code)))
