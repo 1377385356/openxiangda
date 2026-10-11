@@ -57,7 +57,7 @@ export default function WorkflowFlowCanvas(props: {
   onReady: (controller: WorkflowFlowCanvasController | null) => void; onZoom: (zoom: number) => void;
 }) {
   const latest = useRef(props); latest.current = props;
-  const initialized = useRef(false);
+  const initialized = useRef<ReactFlowInstance<FlowNode, FlowEdge> | null>(null);
   const container = useRef<HTMLDivElement>(null);
   const ensureVisible = useRef<((id: string) => void) | null>(null);
   const interruptNavigation = useRef<(() => void) | null>(null);
@@ -68,7 +68,7 @@ export default function WorkflowFlowCanvas(props: {
     let active = true;
     void workflowFlowLayout(props.graph, { designer: props.designer }).then(value => { if (active) setLayoutState({ graph: props.graph, positions: value }); },
       error => { if (active) setLayoutState({ graph: props.graph, error: error instanceof Error ? error : new Error(String(error)) }); });
-    initialized.current = true;
+    initialized.current = instance;
     return () => { active = false; };
   }, [props.graph, props.designer]);
   const nodes = useMemo<FlowNode[]>(() => positions ? props.graph.nodes.map(node => {
@@ -126,14 +126,16 @@ export default function WorkflowFlowCanvas(props: {
       if (!active || navigation !== 0 || instance.getZoom() >= workflowReadableZoom) return;
       if (target) locate(target);
     });
-    initialized.current = true;
+    initialized.current = instance;
     return () => { active = false; if (focusFrame !== undefined) cancelAnimationFrame(focusFrame); ensureVisible.current = null; interruptNavigation.current = null; latest.current.onReady(null); };
   }, [instance, positions, props.startAtTop, props.designer]);
   useEffect(() => { ensureVisible.current?.(props.selectedNodeId); }, [props.selectedNodeId]);
   if (layoutState.graph === props.graph && layoutState.error) throw layoutState.error;
-  if (!positions) return <div className="oxa-workflow-canvas-loading"><Skeleton active title paragraph={{ rows: 4 }} /></div>;
+  if (!positions) return <div ref={container} className="oxa-workflow-reactflow"><div className="oxa-workflow-canvas-loading"><Skeleton active title paragraph={{ rows: 4 }} /></div></div>;
+  const start = positions.nodes.get(props.graph.startAt);
+  const initialViewport = initialized.current?.getViewport() || (props.designer && start && container.current ? { x: container.current.clientWidth / 2 - (start.x + start.width / 2) * .9, y: 24 - start.y * .9, zoom: .9 } : undefined);
   return <div ref={container} className="oxa-workflow-reactflow">
-    <ReactFlow<FlowNode, FlowEdge> nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes} onInit={setInstance}
+    <ReactFlow<FlowNode, FlowEdge> nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes} defaultViewport={initialViewport} onInit={setInstance}
       nodesDraggable={false} nodesConnectable={false} nodesFocusable={false} edgesFocusable={false} edgesReconnectable={false} elementsSelectable={false}
       deleteKeyCode={null} disableKeyboardA11y selectionOnDrag={false} selectionKeyCode={null} zoomOnDoubleClick={false}
       minZoom={.025} maxZoom={1.6} onlyRenderVisibleElements onMoveStart={event => { if (event) interruptNavigation.current?.(); }} onMoveEnd={(_event, viewport) => props.onZoom(viewport.zoom)}

@@ -3377,8 +3377,8 @@
 .oxa-workflow-diagram-designer .oxa-workflow-node.kind-handle { border-left-color: #00a4ad; }
 .oxa-workflow-diagram-designer .oxa-workflow-node.kind-condition { border-left-color: #0066ff; }
 .oxa-workflow-diagram-designer .oxa-workflow-node-kind { display: none; }
-.oxa-workflow-diagram-designer .oxa-workflow-node strong { font-size: 14px; line-height: 20px; margin: 0 0 4px; -webkit-line-clamp: 1; }
-.oxa-workflow-diagram-designer .oxa-workflow-node small { font-size: 12px; color: #617086; }
+.oxa-workflow-diagram-designer .oxa-workflow-node strong { font-size: 16px; line-height: 20px; margin: 0 0 4px; -webkit-line-clamp: 1; }
+.oxa-workflow-diagram-designer .oxa-workflow-node small { font-size: 13px; color: #617086; }
 .oxa-workflow-diagram-designer .oxa-workflow-node-icon { width: 24px; flex-basis: 24px; height: 28px; font-size: 23px; background: none; border-radius: 0; color: #0066ff; }
 .oxa-workflow-diagram-designer .kind-action .oxa-workflow-node-icon { color: #7139f3; }
 .oxa-workflow-diagram-designer .kind-handle .oxa-workflow-node-icon { color: #00a4ad; }

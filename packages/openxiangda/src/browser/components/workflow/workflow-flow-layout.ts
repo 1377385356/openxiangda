@@ -19,13 +19,13 @@ export async function workflowFlowLayout(graph: WorkflowGraphProjection, options
     layoutOptions: {
       'elk.algorithm': 'layered', 'elk.direction': 'DOWN', 'elk.edgeRouting': 'ORTHOGONAL',
       'elk.layered.spacing.nodeNodeBetweenLayers': options.designer ? '36' : '76', 'elk.spacing.nodeNode': options.designer ? '24' : '56',
-      'elk.layered.spacing.edgeNodeBetweenLayers': '32', 'elk.spacing.edgeEdge': '22',
+      'elk.layered.spacing.edgeNodeBetweenLayers': options.designer ? '0' : '32', 'elk.spacing.edgeEdge': '22',
       'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES',
       'elk.layered.edgeLabels.placement': 'CENTER',
       'elk.padding': '[top=36,left=36,bottom=36,right=36]',
     },
     children: forwardNodes.map(node => ({ id: node.id,
-      width: options.designer ? ['start','end'].includes(node.kind) ? 180 : 248 : node.kind === 'condition' ? 288 : node.kind === 'end' ? 232 : 264, height: options.designer ? ['start','end'].includes(node.kind) ? 34 : 72 : node.kind === 'end' ? 92 : 112,
+      width: options.designer ? node.kind === 'start' ? 156 : node.kind === 'end' ? 180 : 296 : node.kind === 'condition' ? 288 : node.kind === 'end' ? 232 : 264, height: options.designer ? ['start','end'].includes(node.kind) ? 42 : 72 : node.kind === 'end' ? 92 : 112,
       layoutOptions: { 'elk.portConstraints': 'FIXED_ORDER' },
       ports: [
         { id: inputPort(node.id), width: 0, height: 0, layoutOptions: { 'elk.port.side': 'NORTH' } },
