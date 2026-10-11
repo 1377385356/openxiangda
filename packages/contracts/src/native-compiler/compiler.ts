@@ -118,6 +118,7 @@ const ADMIN_NAVIGATION_ICONS = new Set([
   'settings',
 ]);
 const WORKFLOW_OPERATIONS = new Set([
+  'save_form',
   'approve',
   'reject',
   'return',

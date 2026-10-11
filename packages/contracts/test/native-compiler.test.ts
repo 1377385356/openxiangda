@@ -367,3 +367,24 @@ test('rich fields automatically require the uniform platform format and managed-
     assert.deepEqual(implementation.compileRequiredPlatformCapabilitiesV3(config).find(item => item.code === 'data.rich-text'),
       { code: 'data.rich-text', contractVersion: '1.0.0', usageDigest: 'sha256:' + sha256Digest({ policyVersion: 'rich-text-html/1' }) });
 });
+
+// Exercise the complete install compiler, beyond the per-node policy validator.
+test('configured shared Save survives ESM and CJS application validation', () => {
+  const config = JSON.parse(corpus.configuration.canonical);
+  const definition = config.workflows.definitions[0].definition;
+  const approval = Object.values(definition.nodes).find((node: any) => node.kind === 'approval') as any;
+  definition.taskPages = { ...(definition.taskPages || {}), save_page: { title: '申请内容', fields: [{ code: 'name' }] } };
+  approval.taskPageCode = 'save_page';
+  approval.allowedOperations = ['approve', 'save_form'];
+  const compileInput = () => {
+    const contract = { ...JSON.parse(corpus.contract.canonical), configDigest: sha256Digest(config) };
+    contract.workflows[0].allowedOperations = ['approve', 'save_form'];
+    return { ...input(config), contractBytes: canonicalJson(contract), expectedContractDigest: sha256Digest(contract) };
+  };
+  for (const implementation of [esm, cjs]) {
+    assert.doesNotThrow(() => implementation.compileNativeApplicationConfiguration(compileInput()));
+    approval.allowedOperations = ['approve', 'invented_save'];
+    assert.throws(() => implementation.compileNativeApplicationConfiguration(compileInput()), /NATIVE_WORKFLOW_OPERATION_INVALID/);
+    approval.allowedOperations = ['approve', 'save_form'];
+  }
+});
