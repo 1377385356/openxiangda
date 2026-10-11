@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.61.3",
+  "version": "2.62.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -94,13 +94,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.8.11",
-    "openxiangda-contracts": "2.77.0",
-    "openxiangda-devkit-core": "2.58.0",
+    "openxiangda-cli": "2.8.12",
+    "openxiangda-contracts": "2.78.0",
+    "openxiangda-devkit-core": "2.59.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.1.8",
-    "openxiangda-nest": "2.17.2",
-    "openxiangda-skill-kit": "2.3.99",
+    "openxiangda-mcp": "2.1.9",
+    "openxiangda-nest": "2.18.0",
+    "openxiangda-skill-kit": "2.3.100",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -166,35 +166,42 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.61.3",
+    "version": "2.62.0",
     "status": "reviewed",
-    "title": "Field Kit 富文本工具栏溢出操作",
-    "summary": "官方富文本 Field Kit 在桌面窄容器中显示可发现的更多工具入口，并支持稳定展开多行，避免靠后的编辑操作被隐藏。",
+    "title": "受控事件、机器回调与后台补偿原子写入",
+    "summary": "以不可变资源、操作、字段和数量声明支持 action-owned 资源的验证事件、具名机器回调及活动租约 Worker 原子事务，保留默认拒绝、CAS、幂等与原有用户权限。",
     "newFeatures": [
-      "桌面工具栏发生横向溢出时显示“更多工具”按钮，点击后展开为多行并提供收起状态。",
-      "ResizeObserver 与 MutationObserver 共同覆盖容器尺寸、菜单和动态表格工具变化，移动端继续使用原有换行布局。"
+      "platformAccess.dataMutations 固定资源、create/update/delete/increment、字段白名单和单事务数量上限；要求 data.service-mutations 1.0.0 平台能力。",
+      "ApplicationDataApiService.transactionFromServiceAction 在机器操作的已验证请求下提交同一个 Native 事务，不把机器冒充用户。",
+      "ApplicationDataApiService.withWorkerAction 使用 SDK 活动后台租约并要求 allowRuntimeWorker:true，复用既有回调/补偿服务，支持最多50条履约节点与签署完成件一并提交。"
     ],
     "fixes": [
-      "修复富文本工具栏隐藏滚动条后图片、视频、表格和撤销/重做等操作不可发现的问题。",
-      "修复展开后因重新测量导致按钮闪退的问题；组件卸载会清理观察器和待执行测量。"
+      "Correction 的业务 resubmit handler 与普通 return_review 标准 Kernel 重提分离；普通退回任务不再错误要求起草 capability，已有固定定义和实例无需重建。"
     ],
     "affectedUsers": [
-      "使用 OpenXiangda 官方 Field Kit 富文本字段的应用开发者和编辑人员。"
+      "使用 action-owned 资源、审批终态事件或真实机器回调的 OpenXiangda 2.0 应用。",
+      "需要权威查询补偿和多记录原子回写的 Scheduler/Worker 应用。"
     ],
     "upgradeSteps": [
-      "升级 openxiangda 至 2.61.3，并使用匹配的 openxiangda-cli 2.8.11。",
-      "重新构建应用前端即可获得平台组件行为；HTML、清洗、媒体上传和数据协议无需迁移。"
+      "升级配套平台并核对 data.service-mutations 1.0.0 与完整配置 validatorDigest。",
+      "将工作区所有 OpenXiangda 包升级到同一胶囊版本2.62.0并安装锁文件依赖。",
+      "事件订阅和机器操作显式声明 dataMutations；后台动作按需显式加 allowRuntimeWorker:true，保持原业务幂等键和各行CAS。",
+      "机器请求调用 transactionFromServiceAction；Worker 用 withWorkerAction 包裹现有服务；真实测试环境分别验收事件、回调、补偿和50条整事务回滚。"
     ],
     "knownLimitations": [
-      "使用自定义编辑器的应用不会自动继承官方 Field Kit 的工具栏布局；移动端按既有换行规则展示。"
+      "字段授权不替代外部供应商验签、业务状态守卫、底稿摘要或当前用户成员权限；role-member/actor-authority仍由用户动作拥有。",
+      "机器入口使用已有短期网关invocation的有效期；过期结果按原业务号核对，通过活动租约补偿，不延长或伪造证明。",
+      "Native事务自身总操作/字段/字节限额仍生效，本文档的maxOperations是单资源额外上限。",
+      "生产晋级仍须实际业务验收，不能将包测试或Pod Ready视作签署、通知或财务验收。"
     ],
     "compatibility": {
+      "generation": "v2",
       "node": ">=24",
-      "platform": "data.rich-text 1.0.0",
-      "generation": "OpenXiangda Native V2"
+      "platform": "data.service-mutations 1.0.0 and exact configuration validator",
+      "v1": "独立1.x维护包不变"
     },
     "issues": [],
-    "sha256": "b2bfeb9d8bbaaa20a142b8abf4da4f4384edf013e4b5c542bb7cdca75e966f40",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.61.3"
+    "sha256": "c547759f4a202325b30134e2db40f2bc9bdd05b74fc4da393acd46c2802832a5",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.62.0"
   }
 }
