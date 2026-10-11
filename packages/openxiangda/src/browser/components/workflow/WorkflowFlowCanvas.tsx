@@ -21,7 +21,7 @@ type FlowNode = Node<{
 }, 'workflow'>;
 type FlowEdge = Edge<{
   edge: WorkflowGraphEdge; expression: string; points: Point[]; label: Point;
-  actual: boolean; highlighted: boolean; selected: boolean; onSelect: () => void;
+  actual: boolean; highlighted: boolean; selected: boolean; onSelect: () => void; onInsert?: () => void;
 }, 'workflow'>;
 
 function DiagramNode({ data, selected }: NodeProps<FlowNode>) {
@@ -42,7 +42,7 @@ function DiagramEdge({ id, data, markerEnd }: EdgeProps<FlowEdge>) {
       style={{ transform: `translate(-50%, -50%) translate(${data.label.x}px, ${data.label.y}px)` }}
       title={`${data.edge.label}${data.expression ? `：${data.expression}` : ''}`} aria-pressed={data.selected} aria-label={`分支：${data.edge.priority ? `顺序 ${data.edge.priority}，` : ''}${data.edge.label}${data.expression ? `，${data.expression}` : ''}`} onClick={data.onSelect}>
       <span>{data.edge.priority ? <b>{data.edge.priority}</b> : null}{data.edge.label}{data.actual && <small>已执行</small>}</span>{data.expression && <strong>{data.expression}</strong>}
-    </button></EdgeLabelRenderer></>;
+    </button>{data.onInsert && <button type="button" className="oxa-workflow-edge-insert nodrag nopan" style={{ transform: `translate(-50%, -50%) translate(${data.label.x}px, ${data.label.y + 30}px)` }} aria-label={`在${data.edge.label}路径新增节点`} onClick={data.onInsert}>+</button>}</EdgeLabelRenderer></>;
 }
 const nodeTypes = { workflow: DiagramNode };
 const edgeTypes = { workflow: DiagramEdge };
@@ -52,6 +52,7 @@ export default function WorkflowFlowCanvas(props: {
   graph: WorkflowGraphProjection; selectedNodeId: string; selectedEdgeId?: string; startAtTop?: boolean;
   titles: Record<string, string>; summaries?: Record<string, string>; visits: readonly WorkflowGraphVisit[]; executedEdges: Set<string>;
   onSelectNode: (id: string) => void; onSelectEdge: (id: string) => void; onNavigate: (id: string, key: string) => boolean;
+  onInsertEdge?: (id: string) => void;
   onReady: (controller: WorkflowFlowCanvasController | null) => void; onZoom: (zoom: number) => void;
 }) {
   const latest = useRef(props); latest.current = props;
@@ -81,8 +82,8 @@ export default function WorkflowFlowCanvas(props: {
     const highlighted = props.selectedEdgeId ? selected : edge.from === props.selectedNodeId;
     return { id: edge.id, source: edge.from, sourceHandle: `out:${edge.id}`, target: edge.to, targetHandle: `in:${edge.to}`, type: 'workflow', deletable: false, reconnectable: false,
       markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: actual ? '#389e0d' : highlighted ? '#1677ff' : '#aab4c1' },
-      data: { edge, expression: edge.expression ? formatWorkflowExpression(edge.expression, props.graph.variables) : '', points: position.points, label: position.label, actual, highlighted, selected, onSelect: () => latest.current.onSelectEdge(edge.id) } };
-  }) : [], [props.graph, props.executedEdges, props.selectedNodeId, props.selectedEdgeId, positions]);
+      data: { edge, expression: edge.expression ? formatWorkflowExpression(edge.expression, props.graph.variables) : '', points: position.points, label: position.label, actual, highlighted, selected, onSelect: () => latest.current.onSelectEdge(edge.id), ...(props.onInsertEdge && !['return','resubmit'].includes(edge.kind) ? { onInsert: () => latest.current.onInsertEdge?.(edge.id) } : {}) } };
+  }) : [], [props.graph, props.executedEdges, props.selectedNodeId, props.selectedEdgeId, props.onInsertEdge, positions]);
   useEffect(() => {
     if (!instance || !positions) return;
     let active = true;
@@ -130,7 +131,7 @@ export default function WorkflowFlowCanvas(props: {
       nodesDraggable={false} nodesConnectable={false} nodesFocusable={false} edgesFocusable={false} edgesReconnectable={false} elementsSelectable={false}
       deleteKeyCode={null} disableKeyboardA11y selectionOnDrag={false} selectionKeyCode={null} zoomOnDoubleClick={false}
       minZoom={.025} maxZoom={1.6} onlyRenderVisibleElements onMoveStart={event => { if (event) interruptNavigation.current?.(); }} onMoveEnd={(_event, viewport) => props.onZoom(viewport.zoom)}
-      onEdgeClick={(_event, edge) => props.onSelectEdge(edge.id)} aria-label="只读流程画布">
+      onEdgeClick={(_event, edge) => props.onSelectEdge(edge.id)} aria-label={props.onInsertEdge ? "流程设计画布" : "只读流程画布"}>
       <Background color="#d6dde5" gap={22} size={1} />
       <MiniMap pannable zoomable position="bottom-right" aria-label="流程缩略导航" style={{ width: 150, height: 94 }} nodeColor={node => node.selected ? '#1677ff' : '#b7c2cf'} maskColor="rgba(243, 246, 250, .72)" />
     </ReactFlow>

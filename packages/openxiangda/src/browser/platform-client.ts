@@ -3359,3 +3359,34 @@ export async function correctWorkflowRecord(surface: WorkflowRecordCorrectionSur
     idempotencyKey, operations,
   } satisfies WorkflowRecordCorrectionInput) });
 }
+
+function workflowDesignerPath(workflowCode: string, suffix: string) {
+  return `${workflowBase()}/management/designers/${encodeURIComponent(workflowCode)}${suffix}`;
+}
+export async function loadWorkflowDesignerDraft(workflowCode: string) {
+  return requestRead<import('openxiangda-contracts/browser').WorkflowDesignerDraft>(`${workflowDesignerPath(workflowCode, '/draft')}?environmentKey=${encodeURIComponent(currentEnvironmentKey())}`);
+}
+async function workflowDesignerMutation<T>(workflowCode: string, suffix: string, input: object) {
+  return request<T>(workflowDesignerPath(workflowCode, suffix), { method: 'POST', headers: { 'x-openxiangda-csrf-token': await workflowCsrfToken() }, body: JSON.stringify({ ...input, environmentKey: currentEnvironmentKey() }) });
+}
+export function saveWorkflowDesignerDraft(workflowCode: string, input: import('openxiangda-contracts/browser').WorkflowDesignerSave) {
+  return workflowDesignerMutation<import('openxiangda-contracts/browser').WorkflowDesignerDraft>(workflowCode, '/draft', input);
+}
+export function previewWorkflowDesignerPublication(workflowCode: string, input: { expectedRevision: number; holds?: import('openxiangda-contracts/browser').WorkflowPublicationHold[] }) {
+  return workflowDesignerMutation<import('openxiangda-contracts/browser').WorkflowPublicationPreview>(workflowCode, '/preview', input);
+}
+export function publishWorkflowDesigner(workflowCode: string, input: import('openxiangda-contracts/browser').WorkflowDesignerPublish) {
+  return workflowDesignerMutation<import('openxiangda-contracts/browser').WorkflowPublicationReceipt>(workflowCode, '/publish', input);
+}
+export function loadWorkflowDesignerPublication(workflowCode: string, publicationId: string) {
+  return requestRead<import('openxiangda-contracts/browser').WorkflowPublicationReceipt & { items: Array<{ outcome: string; reason?: string; business_key: string }> }>(`${workflowDesignerPath(workflowCode, '/publications/')}${encodeURIComponent(publicationId)}?environmentKey=${encodeURIComponent(currentEnvironmentKey())}`);
+}
+export function listWorkflowDesignerPublications(workflowCode: string) {
+  return requestRead<Array<import('openxiangda-contracts/browser').WorkflowPublicationReceipt & { reason: string; createdAt: string }>>(`${workflowDesignerPath(workflowCode, '/publications')}?environmentKey=${encodeURIComponent(currentEnvironmentKey())}`);
+}
+export function controlWorkflowDesignerPublication(workflowCode: string, publicationId: string, input: { expectedHeadRevision: number; operationId: string; action: 'pause'|'resume'|'retry_failed'|'release_holds'; reason: string; instanceIds?: string[] }) {
+  return workflowDesignerMutation<import('openxiangda-contracts/browser').WorkflowPublicationReceipt>(workflowCode, `/publications/${encodeURIComponent(publicationId)}/control`, input);
+}
+export function restoreWorkflowDesignerVersion(workflowCode: string, input: { version: number; expectedRevision: number; expectedHeadRevision: number; operationId: string }) {
+  return workflowDesignerMutation<import('openxiangda-contracts/browser').WorkflowDesignerDraft>(workflowCode, '/restore', input);
+}
