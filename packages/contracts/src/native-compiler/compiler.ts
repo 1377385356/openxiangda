@@ -1,3 +1,4 @@
+import { isWorkflowPlatformNotify } from './workflow-platform-notify.js';
 import { validateWorkflowReturnPolicies, workflowReturnTargets } from './workflow-return-policy.js';
 import { validateWorkflowHandlingNodes } from './workflow-handle.js';
 import { normalizeDataMutationGrants } from './service-mutations.js';
@@ -160,6 +161,7 @@ export const DATA_EVENT_TYPES_V2 = [
   'openxiangda.data.record.deleted.v2',
 ] as const;
 export const WORKFLOW_EVENT_TYPES_V2 = [
+  'openxiangda.workflow.node.notified.v2',
   'openxiangda.workflow.node.skipped.v2',
   WORKFLOW_BUSINESS_STEP_EVENT,
   'openxiangda.workflow.step.result_received.v2',
@@ -835,6 +837,8 @@ export function compileRequiredPlatformCapabilitiesV3(
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'approval' && node.emptyPolicy !== undefined))
       ? [{ code: 'workflow.approval-empty-policy' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'approval' && node.emptyPolicy !== undefined)) }]
       : []),
+    ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => isWorkflowPlatformNotify(node)))
+      ? [{ code: 'workflow.platform-notify' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => isWorkflowPlatformNotify(node))) }] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.returnPolicy !== undefined))
       ? [{ code: 'workflow.return-policy' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.returnPolicy !== undefined)) }] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'handle'))
@@ -859,8 +863,8 @@ export function compileRequiredPlatformCapabilitiesV3(
       ? [{ code: 'workflow.task-rich-fields' as const, declaration: taskRichFieldDefinitions }] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.taskPages || {}).some((page: any) => page.fields.some((field: any) => field.subtable)))
       ? [{ code: 'workflow.task-owned-subtables' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.taskPages || {}).some((page: any) => page.fields.some((field: any) => field.subtable))) }] : []),
-    ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action'))
-      ? [{ code: 'workflow.durable-business-step' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action')) }]
+    ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action' && !isWorkflowPlatformNotify(node)))
+      ? [{ code: 'workflow.durable-business-step' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action' && !isWorkflowPlatformNotify(node))) }]
       : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action' && node.handler.dataTransaction))
       ? [{ code: 'workflow.step-data-transaction' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action' && node.handler.dataTransaction)) }]
@@ -1655,7 +1659,7 @@ function compileExpectedContract(
         field: trigger.field,
       })),
       ...(config.workflows.activations.length
-        ? WORKFLOW_EVENT_TYPES_V2.filter(eventType => !WORKFLOW_BUSINESS_STEP_EVENTS.includes(eventType as any) || config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action'))).filter(eventType => eventType !== 'openxiangda.workflow.node.skipped.v2' || config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'approval' && node.emptyPolicy === 'skip' || node.returnTargets?.length || node.returnPolicy?.targets?.some((target: any) => target.routes.includes('resume'))))).map(eventType => ({
+        ? WORKFLOW_EVENT_TYPES_V2.filter(eventType => eventType !== 'openxiangda.workflow.node.notified.v2' || config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => isWorkflowPlatformNotify(node)))).filter(eventType => !WORKFLOW_BUSINESS_STEP_EVENTS.includes(eventType as any) || config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action' && !isWorkflowPlatformNotify(node)))).filter(eventType => eventType !== 'openxiangda.workflow.node.skipped.v2' || config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'approval' && node.emptyPolicy === 'skip' || node.returnTargets?.length || node.returnPolicy?.targets?.some((target: any) => target.routes.includes('resume'))))).map(eventType => ({
             code: `workflow:${eventType}`,
             source: 'workflow',
             eventType,

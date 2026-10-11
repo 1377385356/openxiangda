@@ -49,3 +49,5 @@ export * from './native-compiler/rich-text-policy.js';
 export * from './native-compiler/workflow-designer.js';
 
 export * from './native-compiler/workflow-return-policy.js';
+
+export * from './native-compiler/workflow-platform-notify.js';

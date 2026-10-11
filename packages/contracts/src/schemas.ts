@@ -5554,6 +5554,14 @@ export const workflowBusinessStepNodeSchema = {
       properties: { code: { type: 'string', pattern: '^[a-z][a-z0-9-]{0,100}$' }, version: { type: 'integer', minimum: 1, maximum: 1_000_000 }, mode: { enum: ['pure', 'reconciled-effect'] }, dataTransaction: { const: true } },
       allOf: [{ if: { required: ['dataTransaction'] }, then: { properties: { mode: { const: 'reconciled-effect' } } } }],
     },
+    notification: { type: 'object', additionalProperties: false, required: ['template','recipients'], properties: {
+      template: { const: 'workflow_message' }, recipients: { oneOf: [
+        { type: 'object', additionalProperties: false, required: ['provider'], properties: { provider: { const: 'initiator' } } },
+        { type: 'object', additionalProperties: false, required: ['provider','users'], properties: { provider: { const: 'fixed_users' }, users: { type: 'array', minItems: 1, maxItems: 50, uniqueItems: true, items: { type: 'string', minLength: 1, maxLength: 255 } } } },
+        { type: 'object', additionalProperties: false, required: ['provider','roleCode'], properties: { provider: { const: 'app_role' }, roleCode: nonEmptyString } },
+        { type: 'object', additionalProperties: false, required: ['provider','inputPath'], properties: { provider: { const: 'form_field_users' }, inputPath: nonEmptyString } },
+      ] },
+    } },
     inputSchema: { type: 'object' }, outputSchema: { type: 'object' },
     inputs: { type: 'object', maxProperties: 32, additionalProperties: {
       oneOf: [

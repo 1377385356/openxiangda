@@ -62,3 +62,5 @@ export * from './native-compiler/workflow-designer.js';
 export * from './native-compiler/workflow-return-policy.js';
 
 export * from './native-compiler/workflow-handle.js';
+
+export * from './native-compiler/workflow-platform-notify.js';

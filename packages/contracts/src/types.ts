@@ -2060,6 +2060,7 @@ export const DATA_EVENT_TYPES_V2 = [
 export type DataEventTypeV2 = (typeof DATA_EVENT_TYPES_V2)[number];
 
 export const WORKFLOW_EVENT_TYPES_V2 = [
+  "openxiangda.workflow.node.notified.v2",
   "openxiangda.workflow.node.skipped.v2",
   "openxiangda.workflow.step.requested.v2",
   "openxiangda.workflow.step.result_received.v2",

@@ -1,3 +1,4 @@
+import { isWorkflowPlatformNotify, validateWorkflowPlatformNotify } from './workflow-platform-notify.js';
 import { validateWorkflowReturnPolicies } from './workflow-return-policy.js';
 import { validateWorkflowHandlingNodes } from './workflow-handle.js';
 import type { WorkflowBinding, WorkflowDefinition, WorkflowExpression, WorkflowNode } from '../types.js';
@@ -76,7 +77,7 @@ export function validateWorkflowDesignerCapabilities(base: WorkflowDefinition, n
   for (const [id, node] of Object.entries(next.nodes)) {
     if (!record(node) || node.id !== id || !['approval', 'handle', 'condition', 'cc', 'action', 'correction', 'end'].includes(node.kind)) { errors.push(`WORKFLOW_DESIGNER_NODE_INVALID:${id}`); continue; }
     if ('taskPageCode' in node && node.taskPageCode && !base.taskPages?.[node.taskPageCode]) errors.push(`WORKFLOW_DESIGNER_PAGE_UNRELEASED:${id}`);
-    if (node.kind === 'action' && !steps.some(step => step.kind === 'action' && same(step.handler, node.handler) && same(step.inputs, node.inputs) && same(step.outputSchema, node.outputSchema))) errors.push(`WORKFLOW_DESIGNER_STEP_UNRELEASED:${id}`);
+    if (node.kind === 'action' && !isWorkflowPlatformNotify(node) && !steps.some(step => step.kind === 'action' && same(step.handler, node.handler) && same(step.inputs, node.inputs) && same(step.outputSchema, node.outputSchema))) errors.push(`WORKFLOW_DESIGNER_STEP_UNRELEASED:${id}`);
     if (['approval','handle'].includes(node.kind) && 'allowedOperations' in node && node.allowedOperations && (!Array.isArray(node.allowedOperations) || !node.allowedOperations.includes(node.kind === 'handle' ? 'complete' : 'approve'))) errors.push(`WORKFLOW_DESIGNER_REQUIRED_ACTION:${id}.approve`);
     const original = base.nodes[id];
     if (!original && (node.kind === 'approval' || node.kind === 'handle') && !Object.values(base.nodes).some(template => template.kind === node.kind && ['fieldPolicy','administration','requiredOperations','operationPolicy','taskPageCode'].every(key => same((template as any)[key],(node as any)[key])))) errors.push(`WORKFLOW_DESIGNER_APPROVAL_TEMPLATE_REQUIRED:${id}`);
@@ -201,7 +202,7 @@ export function classifyWorkflowAdoption(source: WorkflowDefinition, target: Wor
 export function validateWorkflowDesignerDocument(definition: WorkflowDefinition): string[] {
   if (!record(definition?.nodes)) return ['WORKFLOW_DESIGNER_DOCUMENT_INVALID'];
   const errors: string[] = [];
-  errors.push(...validateWorkflowHandlingNodes(definition), ...validateWorkflowReturnPolicies(definition));
+  errors.push(...validateWorkflowHandlingNodes(definition), ...validateWorkflowReturnPolicies(definition), ...validateWorkflowPlatformNotify(definition));
   const nodes = Object.values(definition.nodes);
   if (nodes.length > 200 || !nodes.length) return ['WORKFLOW_DESIGNER_NODE_LIMIT'];
   for (const node of nodes) {

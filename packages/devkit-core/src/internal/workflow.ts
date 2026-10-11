@@ -16,6 +16,7 @@ import {
   validateWorkflowCorrections,
   validateWorkflowBusinessSteps,
   validateWorkflowHandlingNodes,
+  isWorkflowPlatformNotify,
   validateWorkflowReturnPolicies,
   workflowReturnTargets,
   validateWorkflowCompletionDeadlines,
@@ -310,6 +311,9 @@ export function planWorkflow(
     }
     if (node.kind === 'correction') {
       throw new WorkflowCompilationError(['WORKFLOW_CORRECTION_FORWARD_ENTRY_FORBIDDEN']);
+    }
+    if (isWorkflowPlatformNotify(node) && node.kind === 'action') {
+      steps.push({ nodeId, kind: node.kind, result: { target: node.next } }); nodeId = node.next; continue;
     }
     if (node.kind === 'action') {
       steps.push({ nodeId, kind: node.kind });

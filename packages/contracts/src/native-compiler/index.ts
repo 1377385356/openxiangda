@@ -70,3 +70,5 @@ export * from './workflow-designer.js';
 export * from './workflow-handle.js';
 
 export * from './workflow-return-policy.js';
+
+export * from './workflow-platform-notify.js';
