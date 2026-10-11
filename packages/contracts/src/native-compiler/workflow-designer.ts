@@ -81,8 +81,17 @@ export function validateWorkflowDesignerCapabilities(base: WorkflowDefinition, n
     if ('taskPageCode' in node && node.taskPageCode && !base.taskPages?.[node.taskPageCode]) errors.push(`WORKFLOW_DESIGNER_PAGE_UNRELEASED:${id}`);
     if (node.kind === 'action' && !isWorkflowPlatformNotify(node) && !steps.some(step => step.kind === 'action' && same(step.handler, node.handler) && same(step.inputs, node.inputs) && same(step.outputSchema, node.outputSchema))) errors.push(`WORKFLOW_DESIGNER_STEP_UNRELEASED:${id}`);
     if (['approval','handle'].includes(node.kind) && 'allowedOperations' in node && node.allowedOperations && (!Array.isArray(node.allowedOperations) || !node.allowedOperations.includes(node.kind === 'handle' ? 'complete' : 'approve'))) errors.push(`WORKFLOW_DESIGNER_REQUIRED_ACTION:${id}.approve`);
-    const original = base.nodes[id];
-    if (!original && (node.kind === 'approval' || node.kind === 'handle') && !Object.values(base.nodes).some(template => template.kind === node.kind && ['fieldPolicy','administration','requiredOperations','operationPolicy','taskPageCode'].every(key => same((template as any)[key],(node as any)[key])))) errors.push(`WORKFLOW_DESIGNER_APPROVAL_TEMPLATE_REQUIRED:${id}`);
+    const original = base.nodes[id] || (node.kind === 'approval' || node.kind === 'handle' ? Object.values(base.nodes).find(template => {
+      if (template.kind !== node.kind || !['approval','handle'].includes(template.kind) || !['fieldPolicy','administration','requiredOperations','taskPageCode'].every(key => same((template as any)[key],(node as any)[key]))) return false;
+      const human = template as typeof node;
+      if (node.mode !== human.mode && !human.administration?.modes?.includes(node.mode)) return false;
+      const ranks = ['none','optional','required'];
+      return Object.entries(human.operationPolicy || {}).every(([operation,policy]) => {
+        const nextPolicy = node.operationPolicy?.[operation as keyof typeof node.operationPolicy];
+        return same(policy?.minimumOpinion,nextPolicy?.minimumOpinion) && ranks.indexOf(workflowOperationOpinion(operation,nextPolicy)) >= ranks.indexOf(workflowOperationMinimumOpinion(operation,policy));
+      });
+    }) : undefined);
+    if (!original && (node.kind === 'approval' || node.kind === 'handle')) errors.push(`WORKFLOW_DESIGNER_APPROVAL_TEMPLATE_REQUIRED:${id}`);
     if ((original?.kind === 'approval' || original?.kind === 'handle') && (node.kind === 'approval' || node.kind === 'handle')) {
       if (node.mode !== original.mode && !original.administration?.modes?.includes(node.mode)) errors.push(`WORKFLOW_DESIGNER_MODE_NOT_ALLOWED:${id}`);
       for (const key of ['requiredOperations', 'fieldPolicy', 'administration'] as const) if (!same(original[key], node[key])) errors.push(`WORKFLOW_DESIGNER_CODE_OWNED:${id}.${key}`);
