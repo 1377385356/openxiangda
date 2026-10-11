@@ -139,25 +139,3 @@
 .oxa-record-detail-mobile.is-editing .oxa-form-section { padding: 18px 16px; }
 .oxa-record-detail-mobile.is-editing .oxa-actions { padding: 12px 16px max(12px, env(safe-area-inset-bottom)); flex-wrap: wrap; }
 .oxa-record-detail-mobile.is-editing .oxa-actions > button { flex: 1; min-height: 44px; }
-
-/* V2 approval reading layout; generic resource detail pages keep their own grid. */
-.oxa-workflow-approval-detail { container-type: inline-size; }
-.oxa-workflow-approval-detail .oxa-record-detail-width { max-width: 1280px; }
-.oxa-workflow-detail-sections > .oxa-workflow-task-content { margin-top: 0; }
-.oxa-workflow-audit-section { min-width: 0; border: 1px solid var(--ant-color-border-secondary); border-radius: 8px; background: var(--ant-color-bg-container); }
-.oxa-workflow-audit-section > summary { cursor: pointer; font-weight: 600; padding: 18px 20px; }
-.oxa-workflow-audit-section > summary:focus-visible { outline: 2px solid var(--ant-color-primary); outline-offset: -2px; }
-.oxa-workflow-audit-section > .oxa-record-detail-card { border: 0; }
-.oxa-workflow-more-label { display: grid; gap: 4px; text-align: left; white-space: normal; max-width: 320px; overflow-wrap: anywhere; }
-.oxa-workflow-more-label small { color: var(--ant-color-text-secondary); font-size: 12px; font-weight: 400; line-height: 1.5; }
-.oxa-workflow-more-list { display: grid; gap: 8px; padding-bottom: env(safe-area-inset-bottom); }
-.oxa-workflow-more-list > .ant-btn { justify-content: flex-start; height: auto; min-height: 48px; padding: 12px; }
-.oxa-workflow-more-drawer .ant-drawer-content-wrapper { max-height: 85dvh; }
-.oxa-workflow-more-drawer .ant-drawer-body { overflow-y: auto; }
-@container (min-width: 1200px) {
-  .oxa-workflow-detail-sections-desktop { grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr); align-items: start; }
-  .oxa-workflow-detail-sections-desktop > .oxa-workflow-application-section,
-  .oxa-workflow-detail-sections-desktop > .oxa-workflow-task-content,
-  .oxa-workflow-detail-sections-desktop > .oxa-workflow-audit-section { grid-column: 1; }
-  .oxa-workflow-detail-sections-desktop > .oxa-workflow-history-section { grid-column: 2; grid-row: 1 / span 3; position: sticky; top: 0; max-height: calc(100dvh - 220px); overflow: auto; }
-}

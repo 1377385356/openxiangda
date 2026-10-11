@@ -14,9 +14,9 @@ export function detailTime(value: unknown, timeZone?: string) {
 
 /** One presentation owner. Data, authorization and commands remain with their controllers. */
 export function RecordDetailFrame({ className = '', variant = 'desktop', title, heading, status, metadata, updatedAt,
-  children, footer, onClose, onEdit, onPrint, onDelete, drawer = false, drawerState, newPageHref, editing, busy = false,
+  children, footer, onClose, onEdit, onPrint, onDelete, drawer = false, drawerState, newPageHref, editing, busy = false, summaryHeader = false, backLabel,
 }: {
-  className?: string; editing?: ReactNode; busy?: boolean;
+  className?: string; editing?: ReactNode; busy?: boolean; summaryHeader?: boolean; backLabel?: string;
   variant?: 'desktop' | 'mobile'; title: string; heading?: ReactNode; status?: ReactNode;
   metadata?: ReactNode; updatedAt?: unknown; children: ReactNode; footer?: ReactNode;
   onClose: () => void; onEdit?: () => void; onPrint?: () => void; onDelete?: () => void; drawer?: boolean;
@@ -27,23 +27,26 @@ export function RecordDetailFrame({ className = '', variant = 'desktop', title, 
   const setFullScreen = drawerState?.setFullScreen || setLocalFullScreen;
   const zone = usePresentationTimeZone();
   const time = detailTime(updatedAt, zone);
+  const inlineSummary = summaryHeader && variant === 'desktop' && !editing;
+  const hero = heading && !editing && <div className="oxa-record-detail-hero"><div><h1>{heading}</h1>{variant === 'desktop' && status}</div>{metadata && <div className="oxa-record-detail-metadata">{metadata}</div>}</div>;
   const content = <section className={`oxa-record-detail oxa-record-detail-${variant} ${className} ${drawer ? 'is-drawer' : 'is-page'} ${editing ? 'is-editing' : ''}`} data-detail-frame="standard">
     <header className="oxa-record-detail-header"><div className="oxa-record-detail-width">
       <div className="oxa-record-detail-heading">
-        {!drawer && <Button type="text" aria-label="返回" icon={<ArrowLeftOutlined />} disabled={busy} onClick={onClose} />}
-        <h2>{editing ? '编辑数据' : title}</h2>
+        {!drawer && <Button type="text" aria-label={backLabel || "返回"} icon={<ArrowLeftOutlined />} disabled={busy} onClick={onClose}>{variant === 'desktop' ? backLabel : null}</Button>}
+        {inlineSummary ? hero : <h2>{editing ? '编辑数据' : title}</h2>}
       </div>
-      <Space size={4}>
+      <Space className="oxa-record-detail-header-tools" size={4}>
+        {summaryHeader && variant === 'mobile' && !editing && status}
         {onPrint && !editing && <Button onClick={onPrint}>打印</Button>}
         {onDelete && !editing && <Button danger disabled={busy} onClick={onDelete}>删除资料</Button>}
-        {onEdit && !editing && <Button type="link" onClick={onEdit}>编辑</Button>}
-        {drawer && <Tooltip title={fullScreen ? '退出全屏' : '全屏'}><Button type="text" aria-label={fullScreen ? '退出全屏' : '全屏'} icon={fullScreen ? <CompressOutlined /> : <ExpandOutlined />} onClick={() => setFullScreen(!fullScreen)} /></Tooltip>}
-        {drawer && newPageHref && !editing && <Tooltip title="新开页面"><Button type="text" aria-label="新开页面" icon={<ExportOutlined />} href={newPageHref} target="_blank" rel="noopener noreferrer" /></Tooltip>}
-        <Tooltip title="关闭"><Button type="text" aria-label="关闭" icon={<CloseOutlined />} disabled={busy} onClick={onClose} /></Tooltip>
+        {onEdit && !editing && !(summaryHeader && variant === 'mobile') && <Button type="link" onClick={onEdit}>编辑</Button>}
+        {drawer && !(summaryHeader && variant === 'mobile') && <Tooltip title={fullScreen ? '退出全屏' : '全屏'}><Button type="text" aria-label={fullScreen ? '退出全屏' : '全屏'} icon={fullScreen ? <CompressOutlined /> : <ExpandOutlined />} onClick={() => setFullScreen(!fullScreen)} /></Tooltip>}
+        {(drawer || (summaryHeader && variant === 'desktop')) && !(summaryHeader && variant === 'mobile') && newPageHref && !editing && <Tooltip title={summaryHeader ? "新窗口打开" : "新开页面"}><Button type="text" aria-label={summaryHeader ? "新窗口打开" : "新开页面"} icon={<ExportOutlined />} href={newPageHref} target="_blank" rel="noopener noreferrer">{summaryHeader && variant === 'desktop' ? '新窗口打开' : null}</Button></Tooltip>}
+        {(!summaryHeader || drawer) && <Tooltip title="关闭"><Button type="text" aria-label="关闭" icon={<CloseOutlined />} disabled={busy} onClick={onClose} /></Tooltip>}
       </Space>
     </div></header>
     <main className="oxa-record-detail-body"><div className="oxa-record-detail-width">
-      {heading && !editing && <div className="oxa-record-detail-hero"><div><h1>{heading}</h1>{status}</div>{metadata && <div className="oxa-record-detail-metadata">{metadata}</div>}</div>}
+      {!inlineSummary && (summaryHeader ? hero : heading && !editing && <div className="oxa-record-detail-hero"><div><h1>{heading}</h1>{status}</div>{metadata && <div className="oxa-record-detail-metadata">{metadata}</div>}</div>)}
       {editing || children}
     </div></main>
     {!editing && footer !== null && <footer className="oxa-record-detail-footer"><div className="oxa-record-detail-width">

@@ -16,6 +16,7 @@ cpSync(
   resolve(root, 'dist/browser/mobile-runtime-global.css')
 );
 cpSync(resolve(root, 'src/browser/record-detail.css'), resolve(root, 'dist/browser/record-detail.css'));
+cpSync(resolve(root, 'src/browser/workflow-approval.css'), resolve(root, 'dist/browser/workflow-approval.css'));
 cpSync(resolve(root, 'src/browser/record-print.css'), resolve(root, 'dist/browser/record-print.css'));
 cpSync(resolve(root, 'src/browser/record-comments.css'), resolve(root, 'dist/browser/record-comments.css'));
 cpSync(resolve(root, 'src/browser/record-deletion.css'), resolve(root, 'dist/browser/record-deletion.css'));

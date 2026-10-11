@@ -30,3 +30,11 @@ Focused descriptor/contract, rendering, operation/input/receipt tests and V2 che
 ## Baseline limitation discovered during implementation
 
 The current kernel follows the immutable onReject target; it does not require that target to be a rejected terminal node. S1 labels the operation 拒绝申请 and describes following the configured rejection branch, without claiming that arbitrary existing definitions terminate. Enforcing rejected-only terminal paths belongs with the versioned definition/return-policy work, not a silent UI-induced kernel change. The existing desktop confirmation dialog remains in S1 to retain focus and failed-input behavior; anchored confirmation and quick phrases remain a subsequent presentation refinement.
+
+## Approved visual reference refinement
+
+The owner reaffirmed the existing desktop and mobile approval images (`03-desktop-approval.png` and `04-mobile-approval.png`, design bundle) as the presentation authority. Use the SDK detail frame: desktop inline summary header, left reading column and sticky right progress/participants rail; mobile centered workflow title, separate business heading, label/value rows, compact nearby visits and a single action row. Attachments retain the managed-file preview/download controller. Move data-change disclosure into the progress rail without eager loading. Use real task participants for the current approval mode/count, and omit unknown historical mode/round/counts. Do not copy sample people, form fields, draft timestamps or approval facts into SDK code.
+
+The frame extension is opt-in; ordinary CRUD detail and editing behavior remain unchanged. Preserve task form/draft mounting, all file/command locks, descriptor-driven operation selection and original-request recovery. Visual fixture data belongs only in maintainer tests. Verify the reference proportions, narrow widths, long labels, overflow sheet, collapsed subtable/audit access, managed file access and input retention through the real SDK browser fixture.
+
+The server may additionally mark an existing descriptor with `uiSchema.taskFormAction: true`. The desktop task-form header repeats that operation as a shortcut, subject to the exact same enabled state, locks and confirmation/execution controller. It does not infer an operation from a command name or create a second save path; older servers simply omit the shortcut.

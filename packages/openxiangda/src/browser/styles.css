@@ -3,6 +3,7 @@
 
 @import './mobile-fields.css';
 @import './record-detail.css';
+@import './workflow-approval.css';
 @import './record-print.css';
 
 .oxa-ui-root {

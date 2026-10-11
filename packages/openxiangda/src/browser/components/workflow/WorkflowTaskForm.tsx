@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Alert, App, Button, Form, Space, Typography } from 'antd';
 import type { WorkflowTaskDraft, WorkflowTaskFormInput, WorkflowTaskFormSurface } from 'openxiangda-contracts/browser';
 import { applyWorkflowTaskPageValues, applyWorkflowTaskSubtableRows, workflowTaskPageFieldState } from 'openxiangda-contracts/browser';
@@ -160,8 +160,9 @@ export function useWorkflowTaskForm(latest?: WorkflowTaskFormSurface) {
   return { form, source, latest, current, subtableError, linkageError, setLinkageError, dirty, unsaved, stale, draft, draftNeedsSave, build, reviewLatest, committed, adoptDraft, savedDraft, removedDraft };
 }
 
-export function WorkflowTaskForm({ controller, disabled, operationPending = disabled, draftDisabled = disabled, taskId, taskVersion, onDraftBusyChange, onFileBusyChange, onRefresh, variant, resourceCode, recordId, valueLinkage, linkageContext }: {
+export function WorkflowTaskForm({ controller, actions, disabled, operationPending = disabled, draftDisabled = disabled, taskId, taskVersion, onDraftBusyChange, onFileBusyChange, onRefresh, variant, resourceCode, recordId, valueLinkage, linkageContext }: {
   controller: ReturnType<typeof useWorkflowTaskForm>;
+  actions?: ReactNode;
   disabled: boolean;
   /** Protect pending writes; a confirmed command's read failure only disables controls. */
   operationPending?: boolean;
@@ -196,11 +197,8 @@ export function WorkflowTaskForm({ controller, disabled, operationPending = disa
     content: keep ? '其他处理人的最新值已读取。保留当前填写的字段后，请逐项核对再提交。' : '当前尚未提交的输入将被最新资料替换。',
     okText: keep ? '保留并核对' : '采用最新资料', cancelText: '继续查看', onOk: () => { try { controller.reviewLatest(keep); } catch (error) { message.error(error instanceof Error ? error.message : '请先核对子表'); return Promise.reject(error); } } });
   return <section className={`oxa-workflow-task-form oxa-workflow-task-form-${variant}`} aria-label={source.page.title}>
-    <Typography.Title level={4}>{source.page.title}</Typography.Title>
-    <Typography.Paragraph type="secondary">保存补填后，任务仍由你继续办理。同意或重新提交时会一起提交资料。</Typography.Paragraph>
+    <div className="oxa-workflow-task-form-heading"><Typography.Title level={4}>{source.page.title}</Typography.Title>{actions && <Space>{actions}</Space>}</div>
     <WorkflowTaskFileRecovery files={files} />
-    {taskId && <WorkflowTaskDraftPanel controller={controller} taskId={taskId} disabled={draftDisabled || Boolean(files.pending)}
-      variant={variant} resourceCode={resourceCode} recordId={recordId} onBusyChange={onDraftBusyChange} onRefresh={onRefresh} />}
     {stale && <Alert showIcon type="warning" title="业务资料已更新，当前输入已保留" description={<>
       <p>请核对最新资料后再提交。</p>
       {latest && workflowTaskFormReviewFields(source, latest, current)
@@ -255,5 +253,8 @@ export function WorkflowTaskForm({ controller, disabled, operationPending = disa
             </div>;
       })}
     </Form>
+    <Typography.Paragraph type="secondary">保存补填后，任务仍由你继续办理。同意或重新提交时会一起提交资料。</Typography.Paragraph>
+    {taskId && <WorkflowTaskDraftPanel controller={controller} taskId={taskId} disabled={draftDisabled || Boolean(files.pending)}
+      variant={variant} resourceCode={resourceCode} recordId={recordId} onBusyChange={onDraftBusyChange} onRefresh={onRefresh} />}
   </section>;
 }

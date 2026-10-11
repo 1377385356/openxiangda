@@ -225,7 +225,7 @@ function surface(completed = false, customDetail = false) {
             audience: 'participant',
             placement: key === 'reject' ? 'primary' : 'overflow',
             prominence: key === 'return' ? 2 : key === 'reject' ? 3 : null,
-            consequence: key === 'reject' ? '拒绝后将结束本次申请；如需修改后继续审批，请选择退回。' : '提交后按照当前流程配置继续处理。',
+            consequence: { reject: '确认拒绝后进入流程配置的拒绝分支。此操作不同于退回修改。', return: '提交后当前任务结束，流程回到所选节点，重提时按选择的方式继续。', transfer: '转交给其他人处理此任务。', add_assignee: '增加处理人一同审批。' }[key],
             emphasis:
               key === 'reject'
                 ? 'danger'
@@ -1292,7 +1292,7 @@ test('renders the independent mobile task and executes only a Surface operation'
   await page.getByRole('button', { name: '确认同意' }).click();
   await expect(page.getByText('同意已提交')).toBeVisible();
   await expect(page).toHaveURL(new RegExp(`/m/workflows/${instanceId}$`));
-  await expect(page.locator('.oxa-record-detail-hero .ant-tag')).toHaveText('已同意');
+  await expect(page.locator('.oxa-record-detail-header .ant-tag')).toHaveText('已同意');
   await expect(page.getByRole('button', { name: /同\s*意/ })).toHaveCount(0);
   await expect(page.locator('.ant-alert')).toHaveCount(0);
   expect(mock.requests.filter(request => request.method === 'POST' && request.path.endsWith('/commands/approve'))).toHaveLength(1);
@@ -1520,10 +1520,64 @@ for (const rejected of [false, true]) test(`retries only the frozen standard pay
   expect(writes).toHaveLength(2); expect(writes[1]).toEqual(writes[0]);
 });
 
+// Representative owner-approved approval reference, using the real SDK renderers.
+function approvalDesignDetail() {
+  const current: any = detail();
+  const field = (label: string, type: string, widget: string, extra = {}) => ({ label, type, widget, section: '申请信息', readCapabilities: [], createCapabilities: [], updateCapabilities: [], ...extra });
+  const person = (userId: string, displayName: string, departmentDisplayName: string | null = null) => ({ userId, displayName, departmentDisplayName, avatarUrl: null });
+  const approved = (id: string, actor: ReturnType<typeof person>, reason: string, occurredAt: string) => ({ id, operation: 'approve', operationLabel: '已同意', actor, reason, occurredAt, actingForUserId: null, severity: 'normal' });
+  const applicant = person('applicant-user', '陈琳', '信息化办公室');
+  const manager = person('manager-user', '赵敏');
+  const finance = person('finance-user', '周岚');
+  const me = person('acceptance-user', '刘洋');
+  const leader = person('leader-user', '周航');
+  const startTime = '2026-10-09T06:20:00.000Z';
+  const entries = [
+    { key: 'start', kind: 'submission', nodeId: null, nodeKind: 'start', title: '发起申请', status: 'completed', enteredAt: startTime, leftAt: startTime, primaryDisplayTime: startTime, people: [applicant], operations: [], result: {}, terminalReason: null },
+    { key: 'department', kind: 'node', nodeId: 'department-review', nodeKind: 'approval', title: '部门负责人审批', status: 'completed', enteredAt: startTime, leftAt: '2026-10-09T08:05:00.000Z', primaryDisplayTime: '2026-10-09T08:05:00.000Z', people: [], operations: [approved('manager-approval', manager, '更换必要，同意。', '2026-10-09T08:05:00.000Z')], result: {}, terminalReason: null },
+    { key: 'finance', kind: 'node', nodeId: 'manager-review', nodeKind: 'approval', title: '财务复核', status: 'active', enteredAt: '2026-10-09T08:05:00.000Z', leftAt: null, primaryDisplayTime: '2026-10-10T01:12:00.000Z', people: [finance, me], operations: [approved('finance-approval', finance, '金额与报价单一致。', '2026-10-10T01:12:00.000Z')], result: {}, terminalReason: null },
+    { key: 'planned:leader', kind: 'planned_node', nodeId: 'leader-review', nodeKind: 'approval', title: '分管领导审批', status: 'waiting', enteredAt: null, leftAt: null, primaryDisplayTime: null, people: [leader], operations: [], result: {}, terminalReason: null },
+    { key: 'planned:end', kind: 'planned_node', nodeId: 'end', nodeKind: 'end', title: '结束', status: 'waiting', enteredAt: null, leftAt: null, primaryDisplayTime: null, people: [], operations: [], result: {}, terminalReason: null },
+  ];
+  current.surface.presentation.summary = { title: '办公网络交换机更换', initiator: applicant, initiatorDisplayName: applicant.displayName, departmentDisplayName: applicant.departmentDisplayName, submittedAt: startTime, businessNumber: 'CG-2026-0142' };
+  const fields = {
+    amount: field('申请金额', 'number.decimal', 'money', { scale: 2 }),
+    category: field('采购类型', 'enum.single', 'select', { options: [{ value: 'equipment', label: '设备' }] }),
+    budget: field('预算科目', 'enum.single', 'select', { options: [{ value: 'office', label: '办公设备' }] }),
+    delivery: field('期望到货日期', 'date', 'date'),
+    explanation: field('申请说明', 'text.long', 'textarea'),
+    lines: field('采购明细', 'subtable', 'subtable'),
+    attachments: field('附件', 'file', 'attachment'),
+  };
+  current.surface.presentation.businessDetail = {
+    ...current.surface.presentation.businessDetail, status: 'ready', sourceRevision: 8,
+    surface: { mutationOwner: 'workflow', fields, detail: { layout: 'sections', fieldOrder: Object.keys(fields) } },
+    record: { amount: 12800, category: 'equipment', budget: 'office', delivery: '2026-10-25', explanation: '三楼机房两台接入交换机已使用八年，端口故障频发，申请更换为 2 台 48 口千兆交换机。', attachments: [
+      { schemaVersion: 'openxiangda.data-file-ref/v2', id: '70000000-0000-4000-8000-000000000001', name: '交换机报价单.pdf', size: 1258291, contentType: 'application/pdf' },
+      { schemaVersion: 'openxiangda.data-file-ref/v2', id: '70000000-0000-4000-8000-000000000002', name: '设备清单.xlsx', size: 88064, contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
+    ] },
+    subtables: { lines: { resourceCode: 'purchase-lines', total: 2, rows: [{ id: 'line-1', name: '48 口交换机', quantity: 2 }, { id: 'line-2', name: '光纤模块', quantity: 4 }], surface: { fields: { name: field('物品名称', 'text.short', 'text'), quantity: field('数量', 'number.integer', 'number') }, detail: { layout: 'sections', fieldOrder: ['name', 'quantity'] } } } },
+  };
+  current.surface.task.approvalMode = 'all';
+  current.surface.task.participants = [{ id: 'finance', userId: finance.userId, required: true, status: 'approved' }, { id: 'me', userId: me.userId, required: true, status: 'active' }];
+  current.surface.operations.push({ ...current.surface.operations[0], key: 'save_form', label: '保存补填内容', prominence: null, emphasis: 'neutral', tone: 'neutral', group: 'task_collaboration',
+    consequence: '写入申请资料，其他处理人可见；任务仍由你继续办理。', inputSchema: { type: 'object', properties: {} }, uiSchema: { taskFormAction: true, confirmText: '确认保存补填内容' },
+    execute: { method: 'POST', href: `/openxiangda-api/v2/applications/${appCode}/workflow/tasks/${taskId}/commands/save_form`, idempotencyRequired: true } });
+  current.surface.taskForm = { pageCode: 'finance-review', page: { title: '本节点需填写', fields: [{ code: 'opinion', required: true }, { code: 'approvedAmount' }] }, expectedRevision: 8,
+    fields: { opinion: field('复核意见', 'text.long', 'textarea', { placeholder: '请输入复核意见' }), approvedAmount: field('核定金额', 'number.decimal', 'money', { scale: 2 }) }, values: { opinion: '', approvedAmount: 12800 } };
+  current.timeline.display.entries = entries;
+  current.timeline.flow = entries.map(entry => ({ key: entry.key, nodeId: entry.nodeId, kind: entry.nodeKind, title: entry.title, status: entry.status, startedAt: entry.enteredAt, completedAt: entry.leftAt,
+    assignees: entry.people.map(value => ({ ...value, status: value.userId === me.userId ? 'active' : value.userId === finance.userId ? 'approved' : undefined })), operations: [] }));
+  current.nodes = entries;
+  current.handlingRecords = entries.flatMap(entry => entry.operations);
+  return current;
+}
+
 for (const width of [320, 360, 390, 430, 900, 1024, 1280, 1440]) test(`S1 approval reading and action geometry at ${width}px`, async ({ page }, testInfo) => {
   const mobile = width <= 900; // fixture routeManifest device policy
   await page.setViewportSize({ width, height: 900 });
   await mockWorkflow(page);
+  await page.route('**/workflow/tasks/*/detail', route => route.fulfill({ json: envelope(approvalDesignDetail()) }));
   let audits = 0;
   await page.route('**/workflow/instances/*/data-audit?*', async route => {
     audits += 1;
@@ -1533,6 +1587,8 @@ for (const width of [320, 360, 390, 430, 900, 1024, 1280, 1440]) test(`S1 approv
   const bar = page.getByRole('group', { name: '审批操作', exact: true });
   await expect(bar).toBeVisible();
   await expect(page.getByRole('tablist')).toHaveCount(0);
+  await expect(page.getByText('需要你处理：财务复核')).toBeVisible();
+  await expect(page.getByText('会签 · 已有 1/2 人同意')).toBeVisible();
   await expect(bar.getByRole('button')).toHaveCount(mobile ? 3 : 4);
   const buttons = await bar.getByRole('button').evaluateAll(elements => elements.map(element => {
     const rect = element.getBoundingClientRect();
@@ -1546,6 +1602,8 @@ for (const width of [320, 360, 390, 430, 900, 1024, 1280, 1440]) test(`S1 approv
     expect(button.height).toBeGreaterThanOrEqual(40);
   }
   if (mobile) expect(buttons[2].width).toBeGreaterThan(buttons[1].width * 1.6);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  expect(await page.locator('.oxa-record-detail-body').evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
   expect(audits).toBe(0);
   await page.getByText('资料变更', { exact: true }).click();
   await expect(page.getByText('暂无变更记录')).toBeVisible();
@@ -1557,11 +1615,17 @@ for (const width of [320, 360, 390, 430, 900, 1024, 1280, 1440]) test(`S1 approv
   else expect(progress!.y).toBeGreaterThan(application!.y);
   await page.getByText('资料变更', { exact: true }).click();
   await page.locator('.oxa-record-detail-body').evaluate(element => { element.scrollTop = 0; });
-  await page.screenshot({ path: testInfo.outputPath(`approval-${width}.png`) });
+  await page.screenshot({ path: testInfo.outputPath(`approval-${width}.png`), animations: 'disabled' });
+  if (mobile && width === 390) {
+    await page.locator('.oxa-record-detail-body').evaluate(element => { element.scrollTop = element.scrollHeight; });
+    await page.screenshot({ path: testInfo.outputPath('approval-390-lower.png'), animations: 'disabled' });
+    await page.locator('.oxa-record-detail-body').evaluate(element => { element.scrollTop = 0; });
+  }
   if (mobile) {
     await bar.getByRole('button', { name: '更多', exact: true }).click();
     const more = page.getByRole('dialog', { name: '更多操作', exact: true });
     await expect(more.getByRole('button', { name: /拒绝申请/ })).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath(`approval-more-${width}.png`), animations: 'disabled' });
     await more.getByRole('button', { name: /拒绝申请/ }).click();
     await expect(page.getByRole('dialog', { name: '拒绝申请', exact: true })).toBeVisible();
   }
@@ -1584,7 +1648,7 @@ for (const mode of ['no-return', 'correction', 'forbidden', 'completed'] as cons
   if (mode === 'forbidden' || mode === 'completed') {
     await expect(bar).toHaveCount(0);
     if (mode === 'forbidden') await expect(page.locator('.oxa-record-detail-footer')).toHaveCount(0);
-    else await expect(page.locator('.oxa-record-detail-hero .ant-tag')).toHaveText('已同意');
+    else await expect(page.locator('.oxa-record-detail-header .ant-tag')).toHaveText('已同意');
   } else {
     await expect(bar.getByRole('button', { name: mode === 'correction' ? '重新提交' : '拒绝申请', exact: true })).toBeVisible();
     await expect(bar.getByRole('button', { name: '退回', exact: true })).toHaveCount(0);
@@ -1608,4 +1672,26 @@ test('S1 long mobile progress opens all visits without changing task authority',
   await history.getByRole('button', { name: /close|关闭/i }).click();
   await expect(page.getByRole('group', { name: '审批操作' }).getByRole('button', { name: /同\s*意/ })).toBeEnabled();
   expect(mock.requests.filter(request => request.method === 'POST' && request.path.includes('/commands/'))).toHaveLength(0);
+});
+test('S1 task-form shortcut requires its server descriptor and preserves input across confirmation', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const mock = await mockWorkflow(page);
+  const current = approvalDesignDetail();
+  await page.route('**/workflow/tasks/*/detail', route => route.fulfill({ json: envelope(current) }));
+  await page.goto(workflowFixtureUrl(`/tasks/${taskId}`));
+  const opinion = page.getByRole('textbox', { name: /复核意见/ });
+  await opinion.fill('已核对预算，保留这份复核意见');
+  await page.locator('.oxa-workflow-task-form-heading').getByRole('button', { name: '保存补填内容', exact: true }).click();
+  const confirmation = page.getByRole('dialog', { name: '保存补填内容', exact: true });
+  await expect(confirmation).toBeVisible();
+  await confirmation.getByRole('button', { name: /取\s*消/ }).click();
+  await expect(opinion).toHaveValue('已核对预算，保留这份复核意见');
+  expect(mock.requests.filter(request => request.method === 'POST' && request.path.includes('/commands/'))).toHaveLength(0);
+  // Read-only descriptors cannot acquire a shortcut merely because a form is present.
+  current.surface.operations = current.surface.operations.filter((operation: any) => operation.key !== 'save_form');
+  current.operations = current.surface.operations;
+  page.once('dialog', dialog => dialog.accept());
+  await page.goto(workflowFixtureUrl(`/tasks/${taskId}`));
+  await expect(page.locator('.oxa-workflow-task-form-heading')).toBeVisible();
+  await expect(page.locator('.oxa-workflow-task-form-heading').getByRole('button')).toHaveCount(0);
 });

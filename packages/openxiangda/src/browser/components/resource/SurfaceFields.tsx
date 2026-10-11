@@ -800,6 +800,7 @@ export function SurfaceFieldValue({
         files={values}
         mobile={mobile}
         imageTiles={field.type === 'image'}
+        presentation={presentation}
         resourceCode={resourceCode}
         workflowBinding={workflowFileBinding}
       />

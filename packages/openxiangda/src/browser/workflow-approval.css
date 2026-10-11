@@ -1,0 +1,209 @@
+/* Opt-in approval presentation. Resource detail/editing and application themes keep their owners. */
+.oxa-workflow-approval-detail { container-type: inline-size; background: var(--ant-color-bg-layout, #f5f6f8); }
+.oxa-workflow-approval-detail .oxa-record-detail-width { max-width: 1280px; }
+.oxa-workflow-approval-detail .oxa-record-detail-header { padding-block: 12px; min-height: 80px; }
+.oxa-workflow-approval-detail .oxa-record-detail-heading { flex: 1; }
+.oxa-workflow-approval-detail .oxa-record-detail-header .oxa-record-detail-hero { margin: 0; padding-left: 22px; border-left: 1px solid var(--ant-color-border-secondary, #e5e6eb); }
+.oxa-workflow-approval-detail .oxa-record-detail-hero h1 { font-size: 20px; line-height: 1.5; }
+.oxa-workflow-approval-detail .oxa-record-detail-header .ant-btn-text { color: var(--ant-color-primary, #1677ff); flex-shrink: 0; }
+.oxa-workflow-approval-detail .oxa-record-detail-metadata { font-size: 13px; margin-top: 4px; }
+.oxa-workflow-approval-detail .oxa-record-detail-header-tools { flex-shrink: 0; }
+.oxa-workflow-approval-detail .oxa-record-detail-body { padding-block: 20px 28px; }
+.oxa-workflow-approval-detail .oxa-workflow-detail-sections { gap: 20px; align-items: start; }
+.oxa-workflow-main-column, .oxa-workflow-progress-rail { display: grid; gap: 16px; min-width: 0; }
+.oxa-workflow-approval-detail .oxa-workflow-current-node { display: grid; justify-content: stretch; gap: 6px; padding: 18px 20px; margin: 0; border: 1px solid var(--ant-color-primary-border, #d6e4ff); border-left: 4px solid var(--ant-color-primary, #1677ff); border-radius: 6px; background: var(--ant-color-primary-bg, #f0f5ff); color: var(--ant-color-text, #1f2329); }
+.oxa-workflow-current-node > strong { display: flex; gap: 12px; align-items: center; font-size: 17px; line-height: 1.5; }
+.oxa-workflow-approval-detail .oxa-workflow-current-node > span { display: block; padding-left: 26px; color: var(--ant-color-text-secondary, #646a73); font-size: 14px; }
+.oxa-workflow-current-dot { width: 14px; height: 14px; border-radius: 50%; background: var(--ant-color-primary, #1677ff); flex-shrink: 0; }
+.oxa-workflow-approval-detail .oxa-workflow-business-sections { gap: 16px; }
+.oxa-workflow-business-section { min-width: 0; background: var(--ant-color-bg-container, #fff); border: 1px solid var(--ant-color-border-secondary, #e5e6eb); border-radius: 8px; }
+.oxa-workflow-business-section > h2 { font-size: 16px; font-weight: 600; line-height: 1.5; margin: 0; padding: 18px 20px 0; }
+.oxa-workflow-business-section > .oxa-record-detail-card { border: 0; padding: 18px 20px 20px; border-radius: 8px; }
+.oxa-workflow-approval-detail .oxa-record-detail-fields { gap: 20px 24px; }
+.oxa-workflow-approval-detail .oxa-record-detail-label { margin-bottom: 4px; color: var(--ant-color-text-secondary, #646a73); font-size: 13px; }
+.oxa-workflow-approval-detail .oxa-record-detail-value { font-size: 14px; }
+.oxa-workflow-approval-detail .oxa-record-detail-value.is-amount { font-weight: 600; font-variant-numeric: tabular-nums; }
+.oxa-workflow-approval-detail .oxa-record-detail-value > .ant-typography { margin-bottom: 0; line-height: 1.75; }
+.oxa-workflow-subtable-disclosure { border-top: 1px solid var(--ant-color-border-secondary, #e5e6eb); padding-top: 14px; }
+.oxa-workflow-subtable-disclosure > summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 14px; }
+.oxa-workflow-subtable-disclosure > summary::-webkit-details-marker { display: none; }
+.oxa-workflow-subtable-disclosure > summary > span:last-child { display: flex; align-items: center; gap: 12px; white-space: nowrap; }
+.oxa-workflow-subtable-disclosure > summary .anticon { font-size: 12px; color: var(--ant-color-text-secondary); }
+.oxa-workflow-subtable-disclosure[open] > summary { margin-bottom: 16px; }
+.oxa-workflow-subtable-disclosure[open] > summary .anticon { transform: rotate(90deg); }
+.oxa-workflow-approval-detail .oxa-file-list { gap: 0; }
+.oxa-workflow-approval-detail .oxa-workflow-file-item { border: 0; border-radius: 0; padding: 10px 0; background: none; }
+.oxa-workflow-approval-detail .oxa-workflow-file-item + .oxa-workflow-file-item { border-top: 1px solid var(--ant-color-border-secondary, #e5e6eb); }
+.oxa-workflow-approval-detail .oxa-workflow-file-item:first-child { padding-top: 0; }
+.oxa-workflow-approval-detail .oxa-workflow-file-item:last-child { padding-bottom: 0; }
+.oxa-workflow-approval-detail .oxa-file-kind { width: 28px; height: 34px; border-radius: 4px; color: var(--ant-color-primary); background: var(--ant-color-primary-bg); font-size: 23px; }
+.oxa-workflow-approval-detail .oxa-file-kind.is-pdf { color: #cf1322; background: #fff1f0; }
+.oxa-workflow-approval-detail .oxa-file-kind.is-xls, .oxa-workflow-approval-detail .oxa-file-kind.is-xlsx { color: #389e0d; background: #f6ffed; }
+.oxa-workflow-approval-detail .oxa-file-meta { display: flex; align-items: center; gap: 22px; }
+.oxa-workflow-approval-detail .oxa-file-meta strong { font-weight: 400; font-size: 14px; }
+.oxa-workflow-approval-detail .oxa-file-meta small { color: var(--ant-color-text-secondary); font-size: 13px; white-space: nowrap; }
+.oxa-workflow-approval-detail .oxa-workflow-task-content { margin: 0; padding: 18px 20px; border-radius: 8px; }
+.oxa-workflow-approval-detail .oxa-workflow-task-form { margin: 0; }
+.oxa-workflow-approval-detail .oxa-workflow-task-form > .ant-typography-secondary { font-size: 12px; margin-bottom: 16px; }
+.oxa-workflow-approval-detail .oxa-workflow-task-form .ant-form-item { margin-bottom: 16px; }
+.oxa-workflow-approval-detail .oxa-workflow-task-drafts { margin-top: 12px; border-top: 1px solid var(--ant-color-border-secondary); padding-top: 12px; text-align: right; }
+.oxa-workflow-approval-detail .oxa-workflow-task-drafts > .ant-typography { margin: 0 0 6px; font-size: 12px; color: var(--ant-color-text-secondary); }
+.oxa-workflow-approval-detail .oxa-workflow-task-drafts > .ant-space .ant-btn { font-size: 12px; height: 28px; box-shadow: none; }
+.oxa-workflow-approval-detail .oxa-workflow-task-drafts > .ant-alert { margin-top: 12px; text-align: left; }
+.oxa-workflow-approval-detail .oxa-workflow-timeline-card { border-radius: 8px; box-shadow: none; }
+.oxa-workflow-approval-detail .oxa-workflow-timeline-card > .ant-card-head { min-height: 0; padding: 16px 18px 0; border: 0; }
+.oxa-workflow-approval-detail .oxa-workflow-timeline-card .ant-card-head-title { font-size: 16px; font-weight: 600; }
+.oxa-workflow-approval-detail .oxa-workflow-timeline-card > .ant-card-body { padding: 16px 18px; }
+.oxa-workflow-approval-detail .oxa-workflow-timeline { gap: 0; }
+.oxa-workflow-timeline-card .oxa-workflow-timeline > div, .oxa-workflow-progress-drawer .oxa-workflow-timeline > div { grid-template-columns: 20px minmax(0, 1fr); gap: 12px; padding-bottom: 22px; }
+.oxa-workflow-timeline-card .oxa-workflow-timeline > div:last-child { padding-bottom: 0; }
+.oxa-workflow-timeline-card .oxa-workflow-timeline > div:not(:last-child)::before { left: 9px; top: 22px; bottom: 0; background: var(--ant-color-border-secondary, #e5e6eb); }
+.oxa-workflow-timeline-card .oxa-workflow-timeline-dot { width: 20px; height: 20px; margin-top: 1px; }
+.oxa-workflow-timeline-card .oxa-workflow-timeline-title { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; margin: 0 0 8px; font-size: 14px; }
+.oxa-workflow-timeline-card .oxa-workflow-timeline-title > strong { font-size: 14px; }
+.oxa-workflow-timeline-card .oxa-workflow-timeline .ant-tag { margin-inline-end: 0; font-size: 12px; line-height: 20px; }
+.oxa-workflow-timeline-card .oxa-workflow-primary-time { margin-left: auto; color: var(--ant-color-text-tertiary, #8f959e); font-size: 12px; white-space: nowrap; }
+.oxa-workflow-timeline-card .oxa-workflow-timeline-operations, .oxa-workflow-timeline-card .oxa-workflow-timeline-assignees { display: grid; gap: 10px; margin: 0; }
+.oxa-workflow-timeline-card .oxa-workflow-timeline-operations + .oxa-workflow-timeline-assignees { margin-top: 12px; }
+.oxa-workflow-timeline-card .oxa-workflow-timeline-operations > div { display: block; }
+.oxa-workflow-timeline-card .oxa-workflow-person-line, .oxa-workflow-progress-drawer .oxa-workflow-person-line { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-height: 24px; font-size: 13px; }
+.oxa-workflow-timeline-card .oxa-workflow-person-line > .ant-avatar { flex-shrink: 0; }
+.oxa-workflow-timeline-card .oxa-workflow-person-line > small { color: var(--ant-color-text-secondary); }
+.oxa-workflow-timeline-card .oxa-workflow-operation-opinion, .oxa-workflow-progress-drawer .oxa-workflow-operation-opinion { display: block; margin-top: 6px; padding: 6px 10px; background: var(--ant-color-fill-quaternary, #f5f6f8); border-radius: 4px; color: var(--ant-color-text-secondary); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.oxa-workflow-timeline-card .oxa-workflow-timeline .is-planned { color: var(--ant-color-text-secondary); }
+.oxa-workflow-quorum { display: flex; align-items: center; gap: 12px; margin: 0 0 12px; }
+.oxa-workflow-quorum > span { flex: 1; height: 6px; border-radius: 10px; background: var(--ant-color-fill-secondary, #ebeef2); overflow: hidden; }
+.oxa-workflow-quorum > span > span { display: block; height: 100%; background: var(--ant-color-primary, #1677ff); border-radius: inherit; }
+.oxa-workflow-quorum > small { font-size: 12px; color: var(--ant-color-text-tertiary); }
+.oxa-workflow-audit-section { margin-top: 18px; border-top: 1px solid var(--ant-color-border-secondary, #e5e6eb); }
+.oxa-workflow-audit-section > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px; color: var(--ant-color-text-secondary); padding: 12px 0 0; font-size: 13px; }
+.oxa-workflow-audit-section > summary::-webkit-details-marker { display: none; }
+.oxa-workflow-audit-section > summary > .anticon:last-child { margin-left: auto; font-size: 12px; }
+.oxa-workflow-audit-section[open] > summary > .anticon:last-child { transform: rotate(90deg); }
+.oxa-workflow-audit-section > summary:focus-visible, .oxa-workflow-subtable-disclosure > summary:focus-visible { outline: 2px solid var(--ant-color-primary); outline-offset: 4px; }
+.oxa-workflow-audit-section > .oxa-record-detail-card { border: 0; padding: 14px 0 0; }
+.oxa-workflow-participants-card { background: var(--ant-color-bg-container, #fff); border: 1px solid var(--ant-color-border-secondary); border-radius: 8px; padding: 16px 18px; }
+.oxa-workflow-participants-card h2 { margin: 0 0 14px; font-size: 16px; font-weight: 600; }
+.oxa-workflow-participants-card dl { display: grid; gap: 10px; margin: 0; font-size: 13px; }
+.oxa-workflow-participants-card dl > div { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 12px; }
+.oxa-workflow-participants-card dt { color: var(--ant-color-text-secondary); }
+.oxa-workflow-participants-card dd { margin: 0; overflow-wrap: anywhere; }
+.oxa-workflow-approval-detail .oxa-record-detail-footer { padding-block: 12px max(12px, env(safe-area-inset-bottom)); }
+.oxa-workflow-approval-detail .oxa-record-detail-updated { display: none; }
+.oxa-workflow-approval-detail .oxa-record-detail-actions { width: 100%; }
+.oxa-workflow-approval-detail .oxa-workflow-actions { width: 100%; gap: 12px; }
+.oxa-workflow-approval-detail .oxa-workflow-actions-desktop > .ant-btn { min-height: 40px; min-width: 76px; box-shadow: none; border-radius: 6px; }
+.oxa-workflow-approval-detail .oxa-workflow-actions-desktop > .oxa-workflow-approve-primary { min-width: 108px; }
+.oxa-workflow-approval-detail .oxa-workflow-actions-desktop > .oxa-workflow-more-trigger { margin-right: auto; border-color: transparent; padding-left: 0; }
+.oxa-workflow-more-label { display: grid; gap: 4px; text-align: left; white-space: normal; max-width: 320px; overflow-wrap: anywhere; }
+.oxa-workflow-more-label small { color: var(--ant-color-text-secondary); font-size: 12px; font-weight: 400; line-height: 1.5; }
+.oxa-workflow-more-list { display: grid; }
+.oxa-workflow-more-list > .ant-btn { justify-content: flex-start; height: auto; min-height: 78px; padding: 16px 20px; border-radius: 0; border-bottom: 1px solid var(--ant-color-border-secondary); gap: 20px; }
+.oxa-workflow-more-list .oxa-workflow-more-label { flex: 1; }
+.oxa-workflow-more-list .oxa-workflow-more-label > strong { font-size: 16px; font-weight: 500; }
+.oxa-workflow-more-list .oxa-workflow-more-label > small { font-size: 13px; }
+.oxa-workflow-more-icon { display: flex; font-size: 26px; flex-shrink: 0; }
+.oxa-workflow-more-drawer .ant-drawer-content-wrapper { max-height: 85dvh; }
+.oxa-workflow-more-drawer .ant-drawer-section { border-radius: 16px 16px 0 0; }
+.oxa-workflow-more-drawer .ant-drawer-header { padding: 28px 16px 16px; text-align: center; position: relative; }
+.oxa-workflow-more-drawer .ant-drawer-header::before { content: ''; position: absolute; width: 36px; height: 4px; border-radius: 4px; background: var(--ant-color-border, #d9d9d9); top: 10px; left: calc(50% - 18px); }
+.oxa-workflow-more-drawer .ant-drawer-body { overflow-y: auto; padding: 0; }
+.oxa-workflow-more-drawer .ant-drawer-footer { padding: 10px 16px max(10px, env(safe-area-inset-bottom)); }
+.oxa-workflow-more-drawer .ant-drawer-footer .ant-btn { height: 44px; font-size: 16px; color: var(--ant-color-text-secondary); }
+@container (min-width: 1200px) {
+  .oxa-workflow-approval-detail .oxa-workflow-detail-sections-desktop { grid-template-columns: minmax(0, 1.85fr) minmax(0, 1fr); }
+  .oxa-workflow-detail-sections-desktop .oxa-workflow-progress-rail { position: sticky; top: 0; }
+  .oxa-workflow-detail-sections-desktop .oxa-record-detail-fields { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-record-detail-header { min-height: 52px; padding-block: 8px; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-record-detail-header > .oxa-record-detail-width { position: relative; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-record-detail-heading h2 { position: absolute; left: 50%; transform: translateX(-50%); max-width: calc(100% - 152px); text-overflow: ellipsis; white-space: nowrap; overflow: hidden; font-size: 17px; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-record-detail-header .ant-btn-text { color: var(--ant-color-text); }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-record-detail-header .ant-tag { border: 0; background: none; margin: 0; padding: 0; font-size: 14px; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-record-detail-body { padding-top: 0; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-record-detail-width { padding-inline: 16px; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-record-detail-hero { padding: 16px 16px 12px; margin: 0 -16px; background: var(--ant-color-bg-container, #fff); }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-record-detail-hero h1 { font-size: 20px; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-record-detail-metadata { font-size: 13px; margin-top: 7px; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-current-node { position: relative; padding: 12px 14px; border-width: 0 0 0 3px; border-radius: 6px; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-current-node > strong { font-size: 15px; gap: 10px; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-current-node > span { padding-left: 24px; font-size: 13px; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-detail-sections { gap: 18px; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-main-column { gap: 16px; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-business-sections { gap: 18px; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-business-section { border: 0; background: none; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-business-section > h2 { padding: 0 4px; margin-bottom: 8px; font-size: 14px; font-weight: 500; color: var(--ant-color-text-secondary); }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-business-section > .oxa-record-detail-card { padding: 0 16px; border-radius: 10px; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-attachment-section > .oxa-record-detail-card { padding-block: 12px; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-record-detail-fields { display: block; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-record-detail-fields > div { display: flex; align-items: baseline; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--ant-color-border-secondary); }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-record-detail-fields > div:last-child { border-bottom: 0; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-record-detail-fields > div.is-wide { display: block; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-record-detail-label { font-size: 14px; margin: 0; flex: 1; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-record-detail-value { font-size: 15px; max-width: 65%; text-align: right; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .is-wide > .oxa-record-detail-value { max-width: none; text-align: left; margin-top: 8px; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-subtable-disclosure { border: 0; padding: 12px 0; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-subtable-disclosure > summary { min-height: 24px; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-subtable-disclosure > summary > span:first-child { color: var(--ant-color-text-secondary); }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-file-meta { display: grid; gap: 2px; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-file-meta strong { font-size: 15px; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-task-content { padding: 0; border: 0; background: transparent; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-task-form { display: grid; gap: 0; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-task-form > .ant-typography-secondary { margin: 0; padding: 12px 16px 0; border-radius: 10px 10px 0 0; background: var(--ant-color-bg-container); }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-task-form > .ant-form { padding: 16px 16px 0; background: var(--ant-color-bg-container); }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-task-drafts { margin: 0; padding: 12px 16px; background: var(--ant-color-bg-container); border-top: 0; border-radius: 0 0 10px 10px; text-align: left; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-timeline-card { background: none; border: 0; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-timeline-card > .ant-card-head { padding: 0 4px 8px; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-timeline-card .ant-card-head-title { font-size: 14px; font-weight: 500; color: var(--ant-color-text-secondary); }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-timeline-card .ant-card-extra .ant-btn { padding: 0; height: auto; font-size: 13px; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-timeline-card > .ant-card-body { border-radius: 10px; background: var(--ant-color-bg-container); padding: 16px; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-timeline > div { padding-bottom: 18px; gap: 12px; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-timeline-title { margin-bottom: 3px; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-timeline-title > strong { font-size: 14px; font-weight: 500; }
+.oxa-workflow-approval-detail .oxa-workflow-timeline-compact .oxa-workflow-person-line > .ant-avatar,
+.oxa-workflow-approval-detail .oxa-workflow-timeline-compact .oxa-workflow-operation-opinion { display: none; }
+.oxa-workflow-approval-detail .oxa-workflow-timeline-compact .oxa-workflow-person-line { font-size: 12px; gap: 4px; color: var(--ant-color-text-secondary); }
+.oxa-workflow-approval-detail .oxa-workflow-timeline-compact .oxa-workflow-person-line .ant-tag { background: none; border: 0; padding: 0; color: inherit; }
+.oxa-workflow-approval-detail .oxa-workflow-timeline-compact .oxa-workflow-timeline-operations + .oxa-workflow-timeline-assignees { margin-top: 4px; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-record-detail-footer { padding: 8px 0 max(8px, env(safe-area-inset-bottom)); }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-record-detail-footer .oxa-record-detail-width { padding-inline: 12px; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-actions { gap: 10px; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-actions > .ant-btn { height: 48px; border-radius: 6px; font-size: 16px; box-shadow: none; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-actions > .oxa-workflow-more-trigger { flex: 0 0 56px; flex-direction: column; gap: 0; font-size: 10px; padding: 2px 8px; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-more-trigger .anticon { font-size: 24px; line-height: 24px; }
+
+/* Reference spacing, shared by embedded progress and the complete-history sheet. */
+.oxa-workflow-timeline-card .oxa-workflow-timeline > div { min-height: 0; }
+.oxa-workflow-timeline-card .oxa-workflow-timeline > div > div { display: block; }
+.oxa-workflow-timeline-card .oxa-workflow-timeline-title { justify-content: flex-start; }
+.oxa-workflow-timeline-card .oxa-workflow-timeline-dot { border-radius: 50%; }
+.oxa-workflow-timeline-card .oxa-workflow-operation-opinion { border-left: 0; box-sizing: border-box; }
+.oxa-workflow-timeline-card .oxa-workflow-timeline .is-completed .oxa-workflow-timeline-dot { color: var(--ant-color-success-active, #389e0d); }
+.oxa-workflow-approval-detail .oxa-workflow-task-form-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.oxa-workflow-approval-detail .oxa-workflow-task-form-heading h4 { font-size: 16px; margin: 0; }
+.oxa-workflow-approval-detail .oxa-workflow-task-form > .ant-typography-secondary { margin: 10px 0 0; font-size: 12px; }
+.oxa-workflow-approval-detail.oxa-record-detail-desktop .oxa-workflow-task-form .ant-form-item-row { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 10px; }
+.oxa-workflow-approval-detail.oxa-record-detail-desktop .oxa-workflow-task-form .ant-form-item-label { text-align: left; padding: 4px 0; }
+.oxa-workflow-approval-detail.oxa-record-detail-desktop .oxa-workflow-task-form .ant-form-item-control { min-width: 0; }
+.oxa-workflow-approval-detail.oxa-record-detail-desktop .oxa-workflow-task-form .ant-input-number { max-width: 240px; }
+.oxa-workflow-approval-detail .oxa-workflow-task-required .ant-form-item-label > label::after { content: '*'; color: var(--ant-color-error); display: inline; visibility: visible; margin-left: 4px; }
+.oxa-workflow-approval-detail .oxa-workflow-task-required-hint { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-task-form-heading { margin: 0 4px 8px; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-task-form-heading h4 { font-size: 14px; font-weight: 500; color: var(--ant-color-text-secondary); }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-task-form > .ant-form { border-radius: 10px 10px 0 0; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-task-form > .ant-typography-secondary { margin: 0; padding: 0 16px; border-radius: 0; }
+.oxa-workflow-approval-detail .oxa-mobile-file-list .oxa-workflow-file-item { background: transparent; padding: 10px 0; gap: 12px; }
+.oxa-workflow-approval-detail .oxa-mobile-file-list .oxa-workflow-file-item:first-child { padding-top: 0; }
+.oxa-workflow-approval-detail .oxa-mobile-file-list .oxa-workflow-file-item:last-child { padding-bottom: 0; }
+.oxa-workflow-approval-detail .oxa-file-name-button { color: var(--ant-color-text); }
+.oxa-workflow-approval-detail.oxa-record-detail-desktop .oxa-record-detail-header { min-height: 76px; padding-block: 10px; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-task-form .oxa-mobile-field { border: 0; padding: 0 0 16px; gap: 8px; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-task-form .oxa-mobile-field > label { font-size: 14px; color: var(--ant-color-text-secondary); }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-task-required .oxa-mobile-field > label::after { content: ' *'; color: var(--ant-color-error); }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-task-form .adm-text-area { padding: 10px 12px; border: 1px solid var(--ant-color-border, #d9d9d9); background: var(--ant-color-fill-quaternary, #fafafa); border-radius: 6px; --font-size: 14px; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-task-form .oxa-mobile-field:has(> .oxa-mobile-number-field) { grid-template-columns: minmax(72px, 0.6fr) minmax(0, 1fr); align-items: center; gap: 12px; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-task-form .oxa-mobile-number-field { border: 1px solid var(--ant-color-border, #d9d9d9); padding: 4px 10px; border-radius: 6px; min-width: 0; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-task-form .oxa-mobile-field-errors { grid-column: 1 / -1; }
+.oxa-workflow-more-drawer .ant-drawer-footer .ant-btn { background: transparent; box-shadow: none; }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-current-section { margin-inline: -16px; padding: 0 16px 14px; background: var(--ant-color-bg-container, #fff); }
+.oxa-workflow-approval-detail.oxa-record-detail-mobile .oxa-workflow-application-section:first-child { margin-top: 16px; }

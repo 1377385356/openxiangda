@@ -241,9 +241,9 @@ test('desktop and mobile share the detail frame and render approval sections in 
   assert.match(desktop, /oxa-record-detail-desktop/);
   assert.match(mobile, /oxa-record-detail-mobile/);
   const history = renderToStaticMarkup(createElement(App, null, createElement(WorkflowTimelineSection, { timeline })));
-  for (const pattern of [/oxa-workflow-operation-opinion/, />意见</, /ant-avatar/, /default-avatar\.png/]) assert.match(history, pattern);
+  for (const pattern of [/oxa-workflow-operation-opinion/, /“同意申请。”/, /ant-avatar/, /default-avatar\.png/]) assert.match(history, pattern);
   for (const pattern of [/同意申请。/g, /王岚/g, />周宁</g, /请周宁继续办理。/g]) assert.equal((history.match(pattern) || []).length, 1);
-  const localCompletionTime = new Date('2026-09-02T02:05:00.000Z').toLocaleString('zh-CN');
+  const localCompletionTime = new Date('2026-09-02T02:05:00.000Z').toLocaleString('zh-CN', { hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
   assert.equal(history.split(localCompletionTime).length - 1, 1);
   for (const markup of [desktop, mobile]) {
     assert.match(markup, /合同用印申请/);
@@ -265,7 +265,7 @@ test('desktop and mobile share the detail frame and render approval sections in 
     assert.doesNotMatch(markup, /流程信息|操作记录|事件序列|记录版本/);
     assert.doesNotMatch(markup, /11111111-1111-4111-8111-111111111111/);
     assert.doesNotMatch(markup, /请输入拒绝原因/);
-    assert.match(markup, /aria-label="返回"/);
+    assert.match(markup, /aria-label="返回待办"/);
   }
 });
 
@@ -308,6 +308,11 @@ for (const [device, renderer] of [['desktop', DesktopWorkflowDetailRenderer], ['
     const markup = render(renderer, surface, current);
     assert.match(markup, /等待周宁处理/);
     assert.doesNotMatch(markup, /等待王岚|等待[^<]*陈明/);
+    if (device === 'desktop') {
+      const participants = markup.match(/<section class="oxa-workflow-participants-card"[\s\S]*?<\/section>/)?.[0] || '';
+      assert.match(participants, /周宁/);
+      assert.doesNotMatch(participants, /王岚|陈明/);
+    }
   });
 
   test(`${device} transfer and add-sign waiting uses the effective seats`, () => {
