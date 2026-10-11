@@ -3390,3 +3390,24 @@ export function controlWorkflowDesignerPublication(workflowCode: string, publica
 export function restoreWorkflowDesignerVersion(workflowCode: string, input: { version: number; expectedRevision: number; expectedHeadRevision: number; operationId: string }) {
   return workflowDesignerMutation<import('openxiangda-contracts/browser').WorkflowDesignerDraft>(workflowCode, '/restore', input);
 }
+export interface WorkflowDesignerAiProposal {
+  proposalId: string;
+  sourceRevision: number;
+  status: string;
+  summary?: string;
+  error?: string;
+  definition?: import('openxiangda-contracts/browser').WorkflowDefinition;
+  changes?: Array<{ nodeTitle: string; kind: string; fields: string[] }>;
+}
+export function requestWorkflowDesignerProposal(workflowCode: string,input: { operationId: string; expectedRevision: number; prompt: string }) {
+  return workflowDesignerMutation<WorkflowDesignerAiProposal>(workflowCode,'/assistant/proposals',input);
+}
+export function loadWorkflowDesignerProposal(workflowCode: string,proposalId: string) {
+  return requestRead<WorkflowDesignerAiProposal>(`${workflowDesignerPath(workflowCode,'/assistant/proposals/')}${encodeURIComponent(proposalId)}?environmentKey=${encodeURIComponent(currentEnvironmentKey())}`);
+}
+export function applyWorkflowDesignerProposal(workflowCode: string,proposalId: string,input: { operationId: string }) {
+  return workflowDesignerMutation<import('openxiangda-contracts/browser').WorkflowDesignerDraft>(workflowCode,`/assistant/proposals/${encodeURIComponent(proposalId)}/apply`,input);
+}
+export function cancelWorkflowDesignerProposal(workflowCode: string,proposalId: string) {
+  return workflowDesignerMutation<{ cancelled: true }>(workflowCode,`/assistant/proposals/${encodeURIComponent(proposalId)}/cancel`,{});
+}
