@@ -4,7 +4,7 @@ import { WorkflowReturnPolicyEditor } from './WorkflowReturnPolicyEditor.js';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, App, Button, Checkbox, Collapse, Drawer, Empty, Input, Modal, Popconfirm, Radio, Segmented, Select, Skeleton, Space, Spin, Table, Tag, Tooltip } from 'antd';
 import { ArrowLeftOutlined, CheckCircleOutlined, CloseOutlined, HistoryOutlined, MenuFoldOutlined, MenuUnfoldOutlined, RedoOutlined, RobotOutlined, SafetyOutlined, UndoOutlined, UserOutlined, FormOutlined, CodeOutlined, CopyOutlined, BranchesOutlined, BellOutlined, PlayCircleOutlined } from '@ant-design/icons';
-import { formatWorkflowSupervisorChain, type WorkflowSupervisorChainParameters, isWorkflowPlatformNotify, WORKFLOW_PLATFORM_NOTIFY_HANDLER, WORKFLOW_PLATFORM_NOTIFY_INPUT_SCHEMA, WORKFLOW_PLATFORM_NOTIFY_OUTPUT_SCHEMA, editWorkflowDesignerDefinition, projectWorkflowGraph, validateWorkflowDesignerDocument, workflowDesignerVariables, type WorkflowDefinition, type WorkflowDesignerDraft, type WorkflowDesignerSave, type WorkflowDesignerPublish, type WorkflowNode, type WorkflowNodeConfigurations, type WorkflowPublicationPreview, type WorkflowPublicationReceipt } from 'openxiangda-contracts/browser';
+import { workflowReturnTargets, formatWorkflowSupervisorChain, type WorkflowSupervisorChainParameters, isWorkflowPlatformNotify, WORKFLOW_PLATFORM_NOTIFY_HANDLER, WORKFLOW_PLATFORM_NOTIFY_INPUT_SCHEMA, WORKFLOW_PLATFORM_NOTIFY_OUTPUT_SCHEMA, editWorkflowDesignerDefinition, projectWorkflowGraph, validateWorkflowDesignerDocument, workflowDesignerVariables, type WorkflowDefinition, type WorkflowDesignerDraft, type WorkflowDesignerSave, type WorkflowDesignerPublish, type WorkflowNode, type WorkflowNodeConfigurations, type WorkflowPublicationPreview, type WorkflowPublicationReceipt } from 'openxiangda-contracts/browser';
 import { OpenXiangdaPlatformRequestError, loadWorkflowDesignerDraft, loadWorkflowNodeConfigurations, loadApplicationAdministrationContext, saveWorkflowDesignerDraft, previewWorkflowDesignerPublication, publishWorkflowDesigner, loadWorkflowDesignerPublication, listWorkflowDesignerPublications, restoreWorkflowDesignerVersion, controlWorkflowDesignerPublication, searchWorkflowDesignerHoldCandidates } from '../../platform-client';
 import { createBrowserUuid } from '../../uuid';
 import { WorkflowDiagram } from './WorkflowDiagram';
@@ -95,7 +95,10 @@ export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onS
   },[workflowCode,receipt?.publicationId,receipt?.status,publication]);
   const shown = publishedView ? draft?.publishedDefinition : definition;
   const graph = useMemo(() => shown ? projectWorkflowGraph(shown,'draft') : undefined,[shown]);
-  const displayGraph = useMemo(() => graph ? workflowDesignerDisplayGraph(graph, structureKeys.includes('return') ? selected : undefined) : undefined, [graph, structureKeys, selected]);
+  const displayGraph = useMemo(() => {
+    const activeReturn = structureKeys.includes('return') ? shown?.nodes[selected] : undefined;
+    return graph ? workflowDesignerDisplayGraph(graph, activeReturn?.id, activeReturn && ['approval','handle'].includes(activeReturn.kind) ? workflowReturnTargets(activeReturn as Extract<WorkflowNode,{kind:'approval'|'handle'}>) : []) : undefined;
+  }, [graph, structureKeys, selected, shown]);
   const outlineNodes = useMemo(() => displayGraph ? workflowDesignerOutlineNodes(displayGraph) : [], [displayGraph]);
   useEffect(() => { if (shown && selected !== workflowDesignerStartId && !shown.nodes[selected]) setSelected(shown.startAt); }, [shown, selected]);
   const variables = useMemo(() => definition ? workflowDesignerVariables(definition) : [],[definition]);

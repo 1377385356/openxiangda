@@ -84,3 +84,20 @@ test('designer starts and outline follow execution order without altering the im
   const spine=[...positioned.nodes.values()].map(node=>node.x+node.width/2);
   assert.ok(Math.max(...spine)-Math.min(...spine)<1,'the start/end pills align to the same spine as tasks');
 });
+
+test('return inspection projects only its canonical targets without changing the forward graph', async () => {
+  const { workflowDesignerDisplayGraph } = await import('../src/browser/components/workflow/workflow-designer-presentation');
+  const source = graph([{id:'a',kind:'approval',title:'部门'},{id:'b',kind:'approval',title:'财务'},{id:'c',kind:'approval',title:'确认'},{id:'done',kind:'end',title:'结束'}], [edge('a','b'),edge('b','c'),edge('c','done')]);
+  source.startAt='a'; const before=structuredClone(source);
+  const ordinary=workflowDesignerDisplayGraph(source);
+  const inspected=workflowDesignerDisplayGraph(source,'c',['a','b','missing']);
+  assert.deepEqual(inspected.edges.filter(edge=>edge.kind==='return').map(edge=>[edge.from,edge.to]),[['c','a'],['c','b']]);
+  assert.deepEqual(workflowDesignerDisplayGraph(source),ordinary);
+  assert.deepEqual(source,before);
+  const positioned=await workflowFlowLayout(inspected,{designer:true});
+  for(const edge of inspected.edges.filter(edge=>edge.kind==='return')) {
+    const points=positioned.edges.get(edge.id)!.points;
+    assert.ok(points.some(point=>point.x<positioned.nodes.get('a')!.x),'return routes occupy an outside lane');
+    for(let i=1;i<points.length;i++) assert.ok(points[i]!.x===points[i-1]!.x||points[i]!.y===points[i-1]!.y);
+  }
+});
