@@ -60,7 +60,7 @@ function DiagramEdge({ id, data, markerEnd }: EdgeProps<FlowEdge>) {
       style={{ transform: `translate(-50%, -50%) translate(${data.label.x}px, ${data.label.y}px)` }}
       title={`${data.edge.label}${data.expression ? `：${data.expression}` : ''}`} aria-pressed={data.selected} aria-label={`分支：${data.edge.priority ? `顺序 ${data.edge.priority}，` : ''}${data.edge.label}${data.expression ? `，${data.expression}` : ''}`} onClick={data.onSelect}>
       {data.designer && ['branch','default'].includes(data.edge.kind) ? <><span><span>{data.edge.label}</span>{data.edge.priority && <small>优先级 {data.edge.priority}</small>}</span><strong>{data.expression || '以上都不满足'}</strong></> : <><span>{data.edge.priority ? <b>{data.edge.priority}</b> : null}{data.edge.label}{data.actual && <small>已执行</small>}</span>{data.expression && <strong>{data.expression}</strong>}</>}
-    </button>}{data.onInsert && (data.insertionOptions?.length ? <Dropdown trigger={['click']} placement="bottom" menu={{ items: insertionMenu(data.insertionOptions), onClick: ({ key }) => data.onInsert?.(key) }} overlayClassName="oxa-designer-insert-menu">{insertButton}</Dropdown> : insertButton)}</EdgeLabelRenderer></>;
+    </button>}{data.onInsert && (data.insertionOptions?.length ? <Dropdown trigger={['click']} placement="bottom" menu={{ items: insertionMenu(data.insertionOptions), onClick: ({ key }) => data.onInsert?.(key) }} classNames={{ root: 'oxa-designer-insert-menu' }}>{insertButton}</Dropdown> : insertButton)}</EdgeLabelRenderer></>;
 }
 const nodeTypes = { workflow: DiagramNode };
 const edgeTypes = { workflow: DiagramEdge };
@@ -76,6 +76,7 @@ export default function WorkflowFlowCanvas(props: {
   const latest = useRef(props); latest.current = props;
   const initialized = useRef<ReactFlowInstance<FlowNode, FlowEdge> | null>(null);
   const container = useRef<HTMLDivElement>(null);
+  const layoutSpine = useRef<{ instance: ReactFlowInstance<FlowNode, FlowEdge>; x: number } | null>(null);
   const ensureVisible = useRef<((id: string) => void) | null>(null);
   const interruptNavigation = useRef<(() => void) | null>(null);
   const [instance, setInstance] = useState<ReactFlowInstance<FlowNode, FlowEdge> | null>(null);
@@ -132,7 +133,14 @@ export default function WorkflowFlowCanvas(props: {
     latest.current.onReady({ locate, fit: () => { startNavigation(); void instance.fitView({ padding: .18, maxZoom: 1, minZoom: .025, duration: 200 }); }, zoomBy: direction => { startNavigation(); void instance.zoomTo(Math.max(.025, Math.min(1.6, instance.getZoom() * (direction > 0 ? 1.25 : .8))), { duration: 120 }); } });
     const graph = renderedGraph;
     const target = [props.designer ? graph.startAt : latest.current.selectedNodeId, graph.startAt, graph.nodes[0]?.id].find(id => id && positions.nodes.has(id));
+    const spine = positions.nodes.get(graph.startAt);
     if (props.designer && initialized.current === instance) {
+      const previousSpine = layoutSpine.current;
+      if (spine && previousSpine?.instance === instance) {
+        const viewport = instance.getViewport();
+        const delta = previousSpine.x - (spine.x + spine.width / 2);
+        if (Math.abs(delta) > .5) void instance.setViewport({ ...viewport, x: viewport.x + delta * viewport.zoom });
+      }
       ensureVisible.current?.(latest.current.selectedNodeId);
     } else if (props.startAtTop && target && container.current) {
       const point = positions.nodes.get(target)!;
@@ -146,6 +154,7 @@ export default function WorkflowFlowCanvas(props: {
       if (target) locate(target);
     });
     initialized.current = instance;
+    if (spine) layoutSpine.current = { instance, x: spine.x + spine.width / 2 };
     return () => { active = false; if (focusFrame !== undefined) cancelAnimationFrame(focusFrame); ensureVisible.current = null; interruptNavigation.current = null; latest.current.onReady(null); };
   }, [instance, positions, renderedGraph, props.startAtTop, props.designer]);
   useEffect(() => {
