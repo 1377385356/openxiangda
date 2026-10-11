@@ -32,6 +32,12 @@ function initialValues(node: Node, principals: WorkflowNodeConfigurations['princ
   };
 }
 
+function comparableValues(values: Partial<Values>): string {
+  const { reason: _reason, users, ...rest } = values;
+  const canonical = (value: any): any => Array.isArray(value) ? value.map(canonical) : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
+  return JSON.stringify(canonical({ ...rest, users: (users || []).map(person => person.value) }));
+}
+
 /** Shared editor: platform console and application pages use the same bounded SDK write. */
 export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNode, principals: initialPrincipals, expectedHeadRevision, onClose, onSaved, presentation = 'drawer', readOnly = false, onStateChange, onLeaveGuardChange }: {
   workflowCode: string; node: Node; principals: WorkflowNodeConfigurations['principals']; expectedHeadRevision: number;
@@ -56,6 +62,8 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
     window.addEventListener('beforeunload', protect);
     return () => window.removeEventListener('beforeunload', protect);
   }, [dirty, busy, uncertain]);
+  const valuesChanged = () => comparableValues(form.getFieldsValue(true)) !== comparableValues(initialValues(node, principals));
+  useEffect(() => { if (!frozen.current) setDirty(valuesChanged()); }, [node, principals, form]);
   const isCc = node.kind === 'cc';
   const selectedProvider = Form.useWatch('provider', form) || node.effective.binding?.provider;
   const selectedMode = Form.useWatch('mode', form) || node.effective.mode || 'single';
@@ -168,7 +176,7 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
     <div className="oxa-designer-handling-notice">办理设置 · 保存后对后续进入的任务生效</div>
     {error && <Alert type="error" showIcon title={conflict ? '设置已被他人修改，你的输入已保留' : uncertain ? '操作结果待确认' : '办理设置未保存'} description={error} />}
     {conflict && <Button onClick={() => void refreshKeepingDraft()} disabled={busy}>载入最新设置并保留输入</Button>}
-    <Form form={form} layout="vertical" disabled={readOnly || busy || uncertain} onValuesChange={() => setDirty(true)} scrollToFirstError={{ focus: true }} initialValues={initialValues(initialNode, initialPrincipals)}>
+    <Form form={form} layout="vertical" disabled={readOnly || busy || uncertain} onValuesChange={() => setDirty(valuesChanged())} scrollToFirstError={{ focus: true }} initialValues={initialValues(initialNode, initialPrincipals)}>
       {!inline && <section className="oxa-workflow-config-section">
         <Form.Item name="title" label="节点名称" rules={[{ required: true, whitespace: true }]}><Input maxLength={255} /></Form.Item>
         <Form.Item name="description" label="节点说明"><Input.TextArea rows={2} maxLength={1000} /></Form.Item>
