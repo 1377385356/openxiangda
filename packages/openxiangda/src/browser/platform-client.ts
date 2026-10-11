@@ -3367,7 +3367,9 @@ export async function loadWorkflowDesignerDraft(workflowCode: string) {
   return requestRead<import('openxiangda-contracts/browser').WorkflowDesignerDraft>(`${workflowDesignerPath(workflowCode, '/draft')}?environmentKey=${encodeURIComponent(currentEnvironmentKey())}`);
 }
 async function workflowDesignerMutation<T>(workflowCode: string, suffix: string, input: object) {
-  return request<T>(workflowDesignerPath(workflowCode, suffix), { method: 'POST', headers: { 'x-openxiangda-csrf-token': await workflowCsrfToken() }, body: JSON.stringify({ ...input, environmentKey: currentEnvironmentKey() }) });
+  // Designer writes use the same authenticated management session as node configuration.
+  // Task-command CSRF belongs to application login and is not a management credential.
+  return request<T>(workflowDesignerPath(workflowCode, suffix), { method: 'POST', body: JSON.stringify({ ...input, environmentKey: currentEnvironmentKey() }) });
 }
 export function saveWorkflowDesignerDraft(workflowCode: string, input: import('openxiangda-contracts/browser').WorkflowDesignerSave) {
   return workflowDesignerMutation<import('openxiangda-contracts/browser').WorkflowDesignerDraft>(workflowCode, '/draft', input);
