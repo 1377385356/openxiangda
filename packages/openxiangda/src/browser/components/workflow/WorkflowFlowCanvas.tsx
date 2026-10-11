@@ -6,8 +6,8 @@ import { WorkflowNodeCard } from './WorkflowNodeCard';
 import { workflowFlowLayout } from './workflow-flow-layout';
 import { workflowNodeIsReadable, workflowReadableZoom } from './workflow-graph-presentation';
 import '@xyflow/react/dist/style.css';
-import { Skeleton } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { Dropdown, Skeleton, type MenuProps } from 'antd';
+import { PlusOutlined, BranchesOutlined, BellOutlined, CodeOutlined, UserOutlined, FormOutlined, CopyOutlined } from '@ant-design/icons';
 
 export interface WorkflowFlowCanvasController {
   locate: (id: string, focus?: boolean) => void;
@@ -22,7 +22,7 @@ type FlowNode = Node<{
 }, 'workflow'>;
 type FlowEdge = Edge<{
   edge: WorkflowGraphEdge; expression: string; points: Point[]; label: Point;
-  actual: boolean; highlighted: boolean; selected: boolean; onSelect: () => void; onInsert?: () => void; designer?: boolean;
+  actual: boolean; highlighted: boolean; selected: boolean; onSelect: () => void; onInsert?: (template?: string) => void; insertionOptions?: Array<{ value: string; label: string; kind: string }>; designer?: boolean;
 }, 'workflow'>;
 
 function DiagramNode({ data, selected }: NodeProps<FlowNode>) {
@@ -35,15 +35,25 @@ function orthogonalPath(points: Point[]) {
   return points.map((point, index) => `${index ? 'L' : 'M'} ${point.x} ${point.y}`).join(' ');
 }
 
+function insertionMenu(options: NonNullable<FlowEdge['data']>['insertionOptions']): MenuProps['items'] {
+  const names: Record<string,string> = { approval: '审批节点', handle: '办理节点', cc: '抄送节点', action: '业务步骤', condition: '条件分支', notification: '发送通知' };
+  const icons = { approval: UserOutlined, handle: FormOutlined, cc: CopyOutlined, action: CodeOutlined, condition: BranchesOutlined, notification: BellOutlined };
+  const groups = [...new Set((options || []).map(option => option.kind))];
+  return groups.map(kind => { const entries = options!.filter(option => option.kind === kind), Icon = icons[kind as keyof typeof icons] || CodeOutlined;
+    return entries.length === 1 ? { key: entries[0]!.value, icon: <Icon />, label: names[kind] || entries[0]!.label } : { key: `kind:${kind}`, icon: <Icon />, label: names[kind], children: entries.map(option => ({ key: option.value,label: option.label })) };
+  });
+}
+
 function DiagramEdge({ id, data, markerEnd }: EdgeProps<FlowEdge>) {
   if (!data) return null;
+  const insertButton = <button type="button" className="oxa-workflow-edge-insert nodrag nopan" style={{ transform: `translate(-50%, -50%) translate(${data.label.x}px, ${data.label.y + (data.designer && !['branch','default'].includes(data.edge.kind) ? 0 : 30)}px)` }} aria-label={`在${data.edge.label}路径新增节点`} onClick={data.insertionOptions?.length ? undefined : () => data.onInsert?.()}><PlusOutlined /></button>;
   return <><BaseEdge id={id} path={orthogonalPath(data.points)} markerEnd={markerEnd} interactionWidth={22} style={{ stroke: data.actual ? 'var(--ant-color-success, #389e0d)' : data.highlighted ? 'var(--ant-color-primary, #1677ff)' : '#aab4c1', strokeWidth: data.actual || data.highlighted ? 2 : 1.5,
     strokeDasharray: data.edge.kind === 'return' || data.edge.kind === 'resubmit' ? '6 4' : undefined }} />
     <EdgeLabelRenderer>{(!data.designer || ['branch','default','return','resubmit'].includes(data.edge.kind)) && <button type="button" className={`oxa-workflow-edge-label nodrag nopan ${data.actual ? 'executed' : ''} ${data.highlighted ? 'selected' : ''} ${data.edge.kind === 'branch' ? 'branch' : ''}`}
       style={{ transform: `translate(-50%, -50%) translate(${data.label.x}px, ${data.label.y}px)` }}
       title={`${data.edge.label}${data.expression ? `：${data.expression}` : ''}`} aria-pressed={data.selected} aria-label={`分支：${data.edge.priority ? `顺序 ${data.edge.priority}，` : ''}${data.edge.label}${data.expression ? `，${data.expression}` : ''}`} onClick={data.onSelect}>
       <span>{data.edge.priority ? <b>{data.edge.priority}</b> : null}{data.edge.label}{data.actual && <small>已执行</small>}</span>{data.expression && <strong>{data.expression}</strong>}
-    </button>}{data.onInsert && <button type="button" className="oxa-workflow-edge-insert nodrag nopan" style={{ transform: `translate(-50%, -50%) translate(${data.label.x}px, ${data.label.y + (data.designer && !['branch','default'].includes(data.edge.kind) ? 0 : 30)}px)` }} aria-label={`在${data.edge.label}路径新增节点`} onClick={data.onInsert}><PlusOutlined /></button>}</EdgeLabelRenderer></>;
+    </button>}{data.onInsert && (data.insertionOptions?.length ? <Dropdown trigger={['click']} placement="bottom" menu={{ items: insertionMenu(data.insertionOptions), onClick: ({ key }) => data.onInsert?.(key) }} overlayClassName="oxa-designer-insert-menu">{insertButton}</Dropdown> : insertButton)}</EdgeLabelRenderer></>;
 }
 const nodeTypes = { workflow: DiagramNode };
 const edgeTypes = { workflow: DiagramEdge };
@@ -53,7 +63,7 @@ export default function WorkflowFlowCanvas(props: {
   graph: WorkflowGraphProjection; selectedNodeId: string; selectedEdgeId?: string; startAtTop?: boolean; designer?: boolean;
   titles: Record<string, string>; summaries?: Record<string, string>; visits: readonly WorkflowGraphVisit[]; executedEdges: Set<string>;
   onSelectNode: (id: string) => void; onSelectEdge: (id: string) => void; onNavigate: (id: string, key: string) => boolean;
-  onInsertEdge?: (id: string) => void;
+  onInsertEdge?: (id: string, template?: string) => void; insertionOptions?: Array<{ value: string; label: string; kind: string }>;
   onReady: (controller: WorkflowFlowCanvasController | null) => void; onZoom: (zoom: number) => void;
 }) {
   const latest = useRef(props); latest.current = props;
@@ -85,8 +95,8 @@ export default function WorkflowFlowCanvas(props: {
     const highlighted = props.selectedEdgeId ? selected : edge.from === props.selectedNodeId;
     return { id: edge.id, source: edge.from, sourceHandle: `out:${edge.id}`, target: edge.to, targetHandle: `in:${edge.to}`, type: 'workflow', deletable: false, reconnectable: false,
       markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: actual ? '#389e0d' : highlighted ? '#1677ff' : '#aab4c1' },
-      data: { designer: props.designer, edge, expression: edge.expression ? formatWorkflowExpression(edge.expression, props.graph.variables) : '', points: position.points, label: position.label, actual, highlighted, selected, onSelect: () => latest.current.onSelectEdge(edge.id), ...(props.onInsertEdge && !['return','resubmit'].includes(edge.kind) ? { onInsert: () => latest.current.onInsertEdge?.(edge.id) } : {}) } };
-  }) : [], [props.graph, props.executedEdges, props.selectedNodeId, props.selectedEdgeId, props.onInsertEdge, positions, props.designer]);
+      data: { designer: props.designer, edge, expression: edge.expression ? formatWorkflowExpression(edge.expression, props.graph.variables) : '', points: position.points, label: position.label, actual, highlighted, selected, onSelect: () => latest.current.onSelectEdge(edge.id), ...(props.onInsertEdge && !['return','resubmit'].includes(edge.kind) ? { insertionOptions: props.insertionOptions, onInsert: (template?: string) => latest.current.onInsertEdge?.(edge.id, template) } : {}) } };
+  }) : [], [props.graph, props.executedEdges, props.selectedNodeId, props.selectedEdgeId, props.onInsertEdge, props.insertionOptions, positions, props.designer]);
   useEffect(() => {
     if (!instance || !positions) return;
     let active = true;

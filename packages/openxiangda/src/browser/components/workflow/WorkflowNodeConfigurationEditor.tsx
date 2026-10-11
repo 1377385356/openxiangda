@@ -1,9 +1,10 @@
 import { createBrowserUuid } from '../../uuid';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useUnsavedChangesGuard } from '../../navigation-guard';
 import { Alert, App, Button, Drawer, Empty, Form, Input, Radio, Select, Space, Switch, Tag, Typography } from 'antd';
-import type { WorkflowNodeConfigurations, WorkflowNodeConfigurationPatch, WorkflowNodeConfigurationMutation, WorkflowNodeConfigurationReceipt } from 'openxiangda-contracts/browser';
+import type { WorkflowNodeConfigurations, WorkflowNodeConfigurationPatch, WorkflowNodeConfigurationMutation, WorkflowNodeConfigurationReceipt, WorkflowConfigurableOperation } from 'openxiangda-contracts/browser';
 import { formatWorkflowCompletionDeadline, validateWorkflowNodeConfigurationPatch, workflowOperationOpinion, workflowOperationMinimumOpinion, WORKFLOW_AUTOMATIC_CC_DEFAULT_RECIPIENTS, WORKFLOW_AUTOMATIC_CC_MAX_RECIPIENTS } from 'openxiangda-contracts/browser';
+import { RightOutlined } from '@ant-design/icons';
 import { PlatformDirectoryPicker } from '../platform-fields/PlatformDirectoryPicker';
 import { loadApplicationAdministrationContext, loadWorkflowNodeConfigurations, saveWorkflowNodeConfiguration } from '../../platform-client';
 
@@ -39,10 +40,10 @@ function comparableValues(values: Partial<Values>): string {
 }
 
 /** Shared editor: platform console and application pages use the same bounded SDK write. */
-export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNode, principals: initialPrincipals, expectedHeadRevision, onClose, onSaved, presentation = 'drawer', readOnly = false, onStateChange, onLeaveGuardChange }: {
+export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNode, principals: initialPrincipals, expectedHeadRevision, onClose, onSaved, presentation = 'drawer', readOnly = false, onStateChange, onLeaveGuardChange, returnSummary, compact = false, onExpand }: {
   workflowCode: string; node: Node; principals: WorkflowNodeConfigurations['principals']; expectedHeadRevision: number;
   onClose: () => void; onSaved: (receipt: WorkflowNodeConfigurationReceipt) => void;
-  presentation?: 'drawer' | 'panel' | 'inline'; readOnly?: boolean;
+  presentation?: 'drawer' | 'panel' | 'inline'; readOnly?: boolean; returnSummary?: ReactNode; compact?: boolean; onExpand?: () => void;
   onStateChange?: (state: { dirty: boolean; busy: boolean; unknown: boolean }) => void;
   onLeaveGuardChange?: (guard: ((next: () => void) => void) | undefined) => void;
 }) {
@@ -169,13 +170,17 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
   </div>;
   const isHuman = node.kind === 'approval' || node.kind === 'handle';
   const operationNames = node.administration?.operations || [];
-  const operationRows = [...new Set([...(node.kind === 'handle' ? ['complete'] : ['approve']), ...operationNames])]
-    .filter(operation => operationNames.includes(operation as any));
+  const operationRows = [...new Set<WorkflowConfigurableOperation>([...(node.kind === 'handle' ? ['complete' as const] : ['approve' as const]), ...operationNames])]
+    .filter(operation => operationNames.includes(operation));
   const content = <>
     {!inline && <div className="oxa-workflow-config-context"><Typography.Title level={4}>{node.effective.title}</Typography.Title><Tag>{node.configuration.patch ? '已调整' : '默认设置'}</Tag></div>}
     <div className="oxa-designer-handling-notice">办理设置 · 保存后对后续进入的任务生效</div>
     {error && <Alert type="error" showIcon title={conflict ? '设置已被他人修改，你的输入已保留' : uncertain ? '操作结果待确认' : '办理设置未保存'} description={error} />}
     {conflict && <Button onClick={() => void refreshKeepingDraft()} disabled={busy}>载入最新设置并保留输入</Button>}
+    {inline && compact && <div className="oxa-designer-handling-summary">
+      <button type="button" onClick={onExpand}><strong>{isCc ? '抄送人' : node.kind === 'handle' ? '办理人' : '审批人'}</strong><span>{selectedProvider === 'fixed_users' ? (form.getFieldValue('users') || []).map((person: {value:string;label?:string}) => principals.users.find(user => user.value===person.value)?.label || person.label || '成员').join('、') : (form.getFieldValue('roleCodes') || []).map((code: string) => principals.roles.find(role => role.code===code)?.name || '已配置角色').join('、') || '按已配置的人员规则'}</span><span aria-hidden="true"><RightOutlined /></span></button>
+      {isHuman && <button type="button" onClick={onExpand}><strong>{node.kind === 'handle' ? '办理操作' : '审批操作'}</strong><span>{operationRows.map(operation => form.getFieldValue(['operations',operation,'label']) || labels[operation]).join('、')}</span><span aria-hidden="true"><RightOutlined /></span></button>}
+    </div>}
     <Form form={form} layout="vertical" disabled={readOnly || busy || uncertain} onValuesChange={() => setDirty(valuesChanged())} scrollToFirstError={{ focus: true }} initialValues={initialValues(initialNode, initialPrincipals)}>
       {!inline && <section className="oxa-workflow-config-section">
         <Form.Item name="title" label="节点名称" rules={[{ required: true, whitespace: true }]}><Input maxLength={255} /></Form.Item>
@@ -200,25 +205,25 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
         <h3>{node.kind === 'handle' ? '办理操作' : '审批操作'}</h3>
         {operationRows.length ? <div className="oxa-workflow-operation-scroll"><table className="oxa-workflow-operation-table">
           <thead><tr><th scope="col">操作</th><th scope="col">显示名称</th><th scope="col">意见</th><th scope="col">启用</th></tr></thead>
-          <tbody>{operationRows.map(operation => {
+          {operationRows.map(operation => {
             const required = operation === 'approve' || operation === 'complete' || node.defaults.requiredOperations?.includes(operation as any);
             const minimum = workflowOperationMinimumOpinion(operation, node.defaults.operationPolicy?.[operation as keyof NonNullable<Node['defaults']['operationPolicy']>]);
             const opinionValues = ['none', 'optional', 'required'] as const;
             const automatic = operation === 'approve' && (node.effective.initiatorApprovalPolicy === 'auto_approve' || !!node.defaults.completionDeadline);
-            return <tr key={operation}>
+            return <tbody key={operation}><tr>
               <th scope="row">{labels[operation]}{operation === 'save_form' && <small>更多 · 不推进流程</small>}</th>
               <td><Form.Item name={['operations', operation, 'label']} rules={[{ required: true, whitespace: true, max: 40 }]}><Input variant="borderless" maxLength={40} aria-label={`${labels[operation]}按钮文字`} /></Form.Item></td>
               <td>{operation === 'save_form' ? <span className="oxa-workflow-config-help">—</span> : <><Form.Item name={['operations', operation, 'opinion']} noStyle><Select variant="borderless" aria-label={`${labels[operation]}意见要求`} options={opinionValues.map(value => ({ value, label: { none: '不填写', optional: '选填', required: '必填' }[value], disabled: opinionValues.indexOf(value) < opinionValues.indexOf(minimum) || automatic && value === 'required' }))} /></Form.Item>{minimum === 'required' && <small>应用要求必填</small>}</>}</td>
               <td><Form.Item name={['operations', operation, 'enabled']} valuePropName="checked" noStyle><Switch size="small" disabled={readOnly || busy || uncertain || required} aria-label={`启用${labels[operation]}`} /></Form.Item>{required && <small>流程推进所需</small>}</td>
-            </tr>;
-          })}</tbody>
+            </tr>{operation === 'return' && returnSummary && <tr className="oxa-designer-return-summary"><td colSpan={4}>{returnSummary}</td></tr>}</tbody>;
+          })}
         </table></div> : <p className="oxa-workflow-config-help">按钮按应用规则提供。</p>}
         <p className="oxa-workflow-config-help">保存显示在审批页的「更多」中，只写入申请数据，不完成任务。</p>
       </section>}
       {(!inline || dirty) && <div className="oxa-workflow-config-reason"><Form.Item name="reason" label="修改说明" rules={[{ required: true, whitespace: true }]}><Input maxLength={1000} placeholder="说明本次办理设置的调整" /></Form.Item></div>}
     </Form>
   </>;
-  return inline ? <section className="oxa-workflow-config oxa-workflow-config-inline" aria-label="办理设置">{content}{!readOnly && footer}</section> : presentation === 'panel' ? <section className="oxa-workflow-config oxa-workflow-config-panel" aria-label="调整节点配置">
+  return inline ? <section className={`oxa-workflow-config oxa-workflow-config-inline ${compact ? 'compact' : ''}`} aria-label="办理设置">{content}{!readOnly && footer}</section> : presentation === 'panel' ? <section className="oxa-workflow-config oxa-workflow-config-panel" aria-label="调整节点配置">
     <header className="oxa-workflow-config-panel-heading"><strong>节点配置</strong><Button aria-label="关闭节点配置" disabled={busy || uncertain} onClick={close}>关闭</Button></header>
     <div className="oxa-workflow-config-panel-body">{content}</div>{footer}
   </section> : <Drawer open title="调整节点配置" size={560} rootClassName="oxa-workflow-config" onClose={close} closable={!busy && !uncertain} mask={{ closable: !busy && !uncertain }} footer={footer}>{content}</Drawer>;
