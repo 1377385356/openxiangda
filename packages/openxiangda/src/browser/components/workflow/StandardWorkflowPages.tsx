@@ -22,6 +22,7 @@ import {
   Button,
   Card,
   Descriptions,
+  Dropdown,
   Drawer,
   Empty,
   Form,
@@ -131,6 +132,7 @@ import { RecordDetailFrame, RecordDetailSections, detailTime } from '../resource
 import { RecordChangeHistory } from '../resource/RecordChangeHistory';
 import { ResourceFormContent, type ResourceFormDrawerState } from '../resource/ResourceFormFrame';
 import { WorkflowRecordEditor } from './WorkflowRecordEditor';
+import { workflowOperationGroups } from './workflow-operation-layout';
 import { PlatformAvatar } from '../PlatformAvatar';
 import { SubtableField } from '../platform-fields/SubtableField';
 import { assertNamedSubtableReadonlyFields, namedProcessFormValues, standardProcessFormValues } from './standard-process-values';
@@ -590,13 +592,18 @@ export function WorkflowStatusIcon({
 }
 
 export function WorkflowTimelineSection({
-  timeline,
+  timeline, compact = false,
 }: {
-  timeline: WorkflowTimeline | null;
+  timeline: WorkflowTimeline | null; compact?: boolean;
 }) {
-  const entries = workflowTimelineEntries(timeline);
+  const [expanded, setExpanded] = useState(false);
+  const allEntries = workflowTimelineEntries(timeline);
+  const activeIndex = allEntries.findIndex(entry => entry.status === 'active' || entry.status === 'waiting');
+  const start = Math.max(0, Math.min(activeIndex < 0 ? allEntries.length - 3 : activeIndex - 1, allEntries.length - 3));
+  const entries = compact ? allEntries.slice(start, start + 3) : allEntries;
   return (
-    <Card className="oxa-workflow-timeline-card" title="审批流程">
+    <Card className="oxa-workflow-timeline-card" title="审批进度"
+      extra={compact && allEntries.length > entries.length ? <Button type="link" onClick={() => setExpanded(true)}>查看全部</Button> : undefined}>
       {entries.length ? (
         <div className="oxa-workflow-timeline">
           {entries.map((item) => {
@@ -610,7 +617,7 @@ export function WorkflowTimelineSection({
               </span>
               <div>
                 <div className="oxa-workflow-timeline-title">
-                  <strong>{item.title}</strong>
+                  <strong>{item.kind === 'planned_node' ? '预计 · ' : ''}{item.title}</strong>
                   {businessStep?.status === 'waiting' ? <Tag color="processing">等待业务结果</Tag> : businessStep?.status === 'result_ready' ? <Tag color="warning">推进受阻</Tag> : <StatusTag status={item.status} />}
                 </div>
                 {item.status === 'skipped' && <Typography.Text type="secondary">无审批人，按此节点的规则自动继续。</Typography.Text>}
@@ -672,6 +679,9 @@ export function WorkflowTimelineSection({
           image={Empty.PRESENTED_IMAGE_SIMPLE}
         />
       )}
+      {compact && <Drawer open={expanded} onClose={() => setExpanded(false)} title="全部审批进度" placement="bottom" size="85dvh" destroyOnHidden>
+        <WorkflowTimelineSection timeline={timeline} />
+      </Drawer>}
     </Card>
   );
 }
@@ -811,10 +821,10 @@ function OperationDialog({
   const formNode = (
     <Form form={form} layout="vertical" onFinish={onSubmit} disabled={submitting}>
       {error && <Alert role="alert" title="审批尚未完成" description={error} showIcon type="error" />}
-      {ui.confirmation?.description && (
+      {(operation.consequence || ui.confirmation?.description) && (
         <Alert
           className="oxa-workflow-operation-alert"
-          description={ui.confirmation.description}
+          description={operation.consequence || ui.confirmation?.description}
           showIcon
           type={operation.emphasis === 'danger' ? 'warning' : 'info'}
         />
@@ -827,6 +837,7 @@ function OperationDialog({
       <Drawer
         extra={
           <Button
+            danger={operation.emphasis === 'danger'}
             loading={submitting}
             onClick={() => form.submit()}
             type="primary"
@@ -854,6 +865,7 @@ function OperationDialog({
       cancelText="取消"
       confirmLoading={submitting}
       cancelButtonProps={{ disabled: submitting }}
+      okButtonProps={{ danger: operation.emphasis === 'danger' }}
       okText={ui.confirmText || `确认${operation.label}`}
       onCancel={onCancel}
       onOk={() => form.submit()}
@@ -1055,16 +1067,7 @@ function WorkflowOperations({
   const commandLocked = submitting || unknown || Boolean(pendingLocator) || Boolean(refreshFailure) || confirmedReadPending;
   const locked = commandLocked || draftLocked || fileLocked;
   if (!operations.length && !surface.taskForm && !unknown && !refreshFailure) return renderLayout({ content: null, actions: null });
-  const primary = operations
-    .filter((operation) => operation.placement === 'primary')
-    .sort((left, right) => {
-      if (variant !== 'mobile') return 0;
-      const order: Record<string, number> = { reject: 0, approve: 1, resubmit: 1 };
-      return (order[left.key] ?? 10) - (order[right.key] ?? 10);
-    });
-  const secondary = operations.filter(
-    (operation) => operation.placement !== 'primary',
-  );
+  const { primary, secondary } = workflowOperationGroups(operations, variant);
   const content = surface.taskForm || commandNeedsRefresh || ((submitting || unknown) && !pendingLocator) || unknown || refreshFailure ? (
     <>
       {commandNeedsRefresh && !unknown && !pendingLocator && !refreshFailure && <Alert type="info" showIcon
@@ -1087,60 +1090,42 @@ function WorkflowOperations({
         action={<Button disabled={submitting} onClick={() => void refreshConfirmed()}>刷新资料</Button>} />}
     </>
   ) : null;
-  const actions = (
+  const actionsDisabled = locked || commandNeedsRefresh || taskForm.stale || taskForm.draftNeedsSave;
+  const choose = (operation: WorkflowOperationSurface) => {
+    if (actionsDisabled || !operation.visible || !operation.enabled) return;
+    setMoreOpen(false);
+    selectOperation(operation);
+  };
+  const moreTrigger = <Button className="oxa-workflow-more-trigger" disabled={actionsDisabled}
+    icon={<EllipsisOutlined />} aria-label="更多" aria-expanded={moreOpen && !actionsDisabled}
+    onClick={variant === 'mobile' ? () => setMoreOpen(true) : undefined}>更多</Button>;
+  const actions = operations.length ? (
     <>
-      <div className={`oxa-workflow-actions oxa-workflow-actions-${variant}`}>
-        {primary.map((operation) => (
-          <Button
-            danger={operation.emphasis === 'danger'}
-            disabled={locked || commandNeedsRefresh || taskForm.stale || taskForm.draftNeedsSave || !operation.enabled}
-            key={operation.key}
-            onClick={() => selectOperation(operation)}
-            title={operation.disabledReason}
-            type={operation.emphasis === 'primary' ? 'primary' : 'default'}
-          >
-            {operation.label}
-          </Button>
-        ))}
-        {secondary.length > 0 && (
-          <Button
-            className="oxa-workflow-more-trigger"
-            disabled={locked || commandNeedsRefresh || taskForm.stale || taskForm.draftNeedsSave}
-            icon={<EllipsisOutlined />}
-            onClick={() => setMoreOpen((value) => !value)}
-          >
-            更多操作
-          </Button>
-        )}
-        {secondary.length > 0 && moreOpen && (
-          <div className="oxa-workflow-more-actions">
-            {secondary.map((operation) => (
-              <Button
-                disabled={locked || commandNeedsRefresh || taskForm.stale || taskForm.draftNeedsSave || !operation.enabled}
-                key={operation.key}
-                onClick={() => {
-                  setMoreOpen(false);
-                  selectOperation(operation);
-                }}
-                type="text"
-                title={operation.disabledReason}
-              >
-                {operation.label}
-              </Button>
-            ))}
-          </div>
-        )}
+      <div className={`oxa-workflow-actions oxa-workflow-actions-${variant}`} role="group" aria-label="审批操作">
+        {secondary.length > 0 && (variant === 'mobile' ? moreTrigger : <Dropdown
+          open={moreOpen && !actionsDisabled} onOpenChange={setMoreOpen} trigger={['click']} placement="topLeft"
+          menu={{ items: secondary.map(operation => ({ key: operation.key, danger: operation.emphasis === 'danger',
+            disabled: actionsDisabled || !operation.enabled,
+            label: <span className="oxa-workflow-more-label"><strong>{operation.label}</strong><small>{operation.disabledReason || operation.consequence}</small></span>,
+            onClick: () => choose(operation),
+          })) }}>{moreTrigger}</Dropdown>)}
+        {primary.map(operation => <Button key={operation.key}
+          className={operation.emphasis === 'primary' ? 'oxa-workflow-approve-primary' : undefined}
+          danger={operation.emphasis === 'danger'} disabled={actionsDisabled || !operation.enabled}
+          onClick={() => choose(operation)} title={operation.disabledReason}
+          type={operation.emphasis === 'primary' ? 'primary' : 'default'}>{operation.label}</Button>)}
       </div>
-      <OperationDialog
-        error={operationError}
-        onCancel={() => { setRetainRefusedInput(false); setSelectedState(null); }}
-        onSubmit={(values) => void submit(values)}
-        operation={selected}
-        submitting={submitting}
-        variant={variant}
-      />
+      {variant === 'mobile' && <Drawer title="更多操作" open={moreOpen && !actionsDisabled && secondary.length > 0}
+        onClose={() => setMoreOpen(false)} placement="bottom" size="auto" rootClassName="oxa-workflow-more-drawer" destroyOnHidden>
+        <div className="oxa-workflow-more-list">{secondary.map(operation => <Button key={operation.key} type="text"
+          danger={operation.emphasis === 'danger'} disabled={actionsDisabled || !operation.enabled} onClick={() => choose(operation)}>
+          <span className="oxa-workflow-more-label"><strong>{operation.label}</strong><small>{operation.disabledReason || operation.consequence}</small></span>
+        </Button>)}</div>
+      </Drawer>}
+      <OperationDialog error={operationError} onCancel={() => { setRetainRefusedInput(false); setSelectedState(null); }}
+        onSubmit={values => void submit(values)} operation={selected} submitting={submitting} variant={variant} />
     </>
-  );
+  ) : null;
   return renderLayout({ content, actions });
 }
 
@@ -1707,7 +1692,7 @@ function StandardWorkflowDetailRenderer({ surface, timeline, warning, operations
 }: WorkflowDetailRendererProps & { variant: PageVariant }) {
   const navigate = useNavigate();
   const timeZone = usePresentationTimeZone();
-  const [tab, setTab] = useState('application');
+  const [auditInstance, setAuditInstance] = useState<string | null>(null);
   const instance = surfaceInstance(surface);
   const deadline = surfaceTask(surface)?.completionDeadline;
   const business = surfaceBusinessDetail(surface);
@@ -1723,9 +1708,9 @@ function StandardWorkflowDetailRenderer({ surface, timeline, warning, operations
   const hasActions = standardWorkflowOperations(surface).length > 0;
   const loadAudit = useCallback(() => loadWorkflowDataAudit(instance.id), [instance.id]);
   const back = onClose || (() => navigate(variant === 'mobile' ? '/m/work-center' : '/work-center'));
-  return <RecordDetailFrame variant={variant} title="申请详情" heading={title} status={<StatusTag status={instance.status} />}
+  return <RecordDetailFrame className="oxa-workflow-approval-detail" variant={variant} title="申请详情" heading={title} status={<StatusTag status={instance.status} />}
     metadata={[summary.initiator?.displayName || summary.initiatorDisplayName, summary.initiator?.departmentDisplayName || summary.departmentDisplayName,
-      summary.submittedAt ? `${detailTime(summary.submittedAt, timeZone)} 创建` : ''].filter(Boolean).join(' · ')}
+      summary.submittedAt ? `${detailTime(summary.submittedAt, timeZone)} 提交` : '', summary.businessNumber].filter(Boolean).join(' · ')}
     updatedAt={business.record.updated_at || instance.completedAt || instance.startedAt}
     onClose={back} onEdit={edit} editing={editing} busy={busy} drawer={drawer} drawerState={drawerState} newPageHref={newPageHref}
     footer={operations || hasActions || edit ? <>{operations}{edit && <Button onClick={edit}>编辑</Button>}</> : null}>
@@ -1735,14 +1720,23 @@ function StandardWorkflowDetailRenderer({ surface, timeline, warning, operations
     {deadline && !workflowHasEnded(instance) && ['pending', 'failed'].includes(deadline.status) && <Alert showIcon type={deadline.status === 'failed' ? 'warning' : 'info'}
       title={deadline.status === 'failed' ? '到期自动处理未成功' : `未提前完成时，将于 ${detailTime(deadline.deadlineAt, timeZone)} 自动同意`}
       description={deadline.status === 'failed' ? '流程仍可人工办理。自动处理已停止，请联系流程管理员查看执行记录。' : '可以在此之前填写可选内容并手动提交；自动处理不会代替任何人记录审批意见。'} /> }
-    <Tabs activeKey={tab} onChange={setTab} items={[
-      { key: 'application', label: '申请内容', children: <WorkflowBusinessDetailSections surface={surface} variant={variant} /> },
-      { key: 'history', label: '审批历史', children: <WorkflowTimelineSection timeline={timeline} /> },
-      { key: 'changes', label: '变更记录', children: tab === 'changes' && business.surface && business.resourceCode && business.recordId
-        ? <RecordChangeHistory resourceCode={business.resourceCode} recordId={business.recordId} surface={business.surface} readable={() => true} loadPage={loadAudit} />
-        : <Empty description="暂无变更记录" /> },
-    ]} />
-    {taskContent && <div className="oxa-workflow-task-content">{taskContent}</div>}
+    <div className={`oxa-workflow-detail-sections oxa-workflow-detail-sections-${variant}`}>
+      <section aria-label="申请内容" className="oxa-workflow-detail-section oxa-workflow-application-section">
+        <Typography.Title level={4}>申请内容</Typography.Title>
+        <WorkflowBusinessDetailSections surface={surface} variant={variant} />
+      </section>
+      {taskContent && <section aria-label="本节点需填写" className="oxa-workflow-task-content">{taskContent}</section>}
+      <section aria-label="审批进度" className="oxa-workflow-detail-section oxa-workflow-history-section">
+        <WorkflowTimelineSection timeline={timeline} compact={variant === 'mobile'} />
+      </section>
+      {['ready', 'stale'].includes(business.status) && business.surface && business.resourceCode && business.recordId &&
+        <details className="oxa-workflow-audit-section" open={auditInstance === instance.id}
+          onToggle={event => setAuditInstance(event.currentTarget.open ? instance.id : null)}>
+          <summary>资料变更</summary>
+          {auditInstance === instance.id && <RecordChangeHistory resourceCode={business.resourceCode} recordId={business.recordId}
+            surface={business.surface} readable={() => true} loadPage={loadAudit} />}
+        </details>}
+    </div>
   </RecordDetailFrame>;
 }
 

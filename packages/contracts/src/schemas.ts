@@ -6931,7 +6931,10 @@ export const workflowSurfaceSchema = {
       },
     },
     fieldPolicy: { type: "object" },
-    operations: { type: "array", items: { type: "object" } },
+    operations: { type: "array", items: { type: "object", properties: {
+      prominence: { anyOf: [{ type: "integer", minimum: 1, maximum: 1000 }, { type: "null" }] },
+      consequence: { type: "string", minLength: 1, maxLength: 1000 },
+    } } },
     extensions: { type: "object" },
   },
 } as const;
@@ -7001,7 +7004,10 @@ export const workflowDetailSurfaceSchema = {
     },
     nodes: { type: "array", items: { type: "object" } },
     handlingRecords: { type: "array", items: { type: "object" } },
-    operations: { type: "array", items: { type: "object" } },
+    operations: { type: "array", items: { type: "object", properties: {
+      prominence: { anyOf: [{ type: "integer", minimum: 1, maximum: 1000 }, { type: "null" }] },
+      consequence: { type: "string", minLength: 1, maxLength: 1000 },
+    } } },
     navigationContext: {
       type: "object",
       additionalProperties: false,

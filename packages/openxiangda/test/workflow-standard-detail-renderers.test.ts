@@ -235,7 +235,7 @@ test('workflow subtable detail keeps selected business values and hides structur
   }
 });
 
-test('desktop and mobile share the detail frame and keep approval history in its own tab', () => {
+test('desktop and mobile share the detail frame and render approval sections in one scroll', () => {
   const desktop = render(DesktopWorkflowDetailRenderer);
   const mobile = render(MobileWorkflowDetailRenderer);
   assert.match(desktop, /oxa-record-detail-desktop/);
@@ -250,9 +250,10 @@ test('desktop and mobile share the detail frame and keep approval history in its
     assert.match(markup, /商务运营部/);
     assert.match(markup, /申请标题/);
     assert.match(markup, /申请内容/);
-    assert.match(markup, /审批历史/);
-    assert.match(markup, /变更记录/);
-    assert.doesNotMatch(markup, /oxa-workflow-operation-opinion/);
+    assert.match(markup, /审批进度/);
+    assert.match(markup, /资料变更/);
+    assert.doesNotMatch(markup, /ant-tabs/);
+    assert.match(markup, /oxa-workflow-operation-opinion/);
     assert.doesNotMatch(markup, /技术场地引用|系统信息/);
     assert.doesNotMatch(markup, /demo fixture internal marker/);
     assert.doesNotMatch(markup, /44444444-4444-4444-8444-444444444444/);
@@ -425,7 +426,7 @@ test('standard detail source keeps vertical timeline, deferred opinion and descr
   assert.match(source, /className="oxa-workflow-timeline"/);
   assert.match(source, /function OperationDialog/);
   assert.match(source, /operation\.emphasis/);
-  assert.match(source, /operation\.placement === 'primary'/);
+  assert.match(source, /workflowOperationGroups/);
   assert.match(source, /内容已更新，请刷新后重试/);
   assert.match(source, /loadWorkflowTaskDetail/);
   assert.match(source, /executeWorkflowOperation/);

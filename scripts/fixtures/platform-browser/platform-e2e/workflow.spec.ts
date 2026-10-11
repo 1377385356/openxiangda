@@ -184,6 +184,8 @@ function surface(completed = false, customDetail = false) {
             group: 'decision',
             audience: 'participant',
             placement: 'primary',
+            prominence: 1,
+            consequence: '提交后记录审批意见，申请按流程继续。',
             emphasis: 'primary',
             tone: 'primary',
             visible: true,
@@ -214,7 +216,7 @@ function surface(completed = false, customDetail = false) {
             key,
             kind: 'workflow_command',
             label: {
-              reject: '拒绝',
+              reject: '拒绝申请',
               return: '退回',
               transfer: '转交',
               add_assignee: '加签',
@@ -222,6 +224,8 @@ function surface(completed = false, customDetail = false) {
             group: key === 'reject' ? 'decision' : 'task_collaboration',
             audience: 'participant',
             placement: key === 'reject' ? 'primary' : 'overflow',
+            prominence: key === 'return' ? 2 : key === 'reject' ? 3 : null,
+            consequence: key === 'reject' ? '拒绝后将结束本次申请；如需修改后继续审批，请选择退回。' : '提交后按照当前流程配置继续处理。',
             emphasis:
               key === 'reject'
                 ? 'danger'
@@ -888,8 +892,8 @@ test.describe('application timezone boundary', () => {
     await page.goto(`/workflow-experience.e2e.html?initial=/tasks/${taskId}&timeZone=Asia%2FShanghai`);
     await expect(page.getByText('会议开始时间', { exact: true })).toBeVisible();
     await expect(page.getByText('2026/3/8 02:15:00', { exact: true })).toBeVisible();
-    await expect(page.locator('.oxa-record-detail-metadata')).toContainText('2026/08/25 09:00 创建');
-    await page.getByRole('tab', { name: '审批历史' }).click();
+    await expect(page.locator('.oxa-record-detail-metadata')).toContainText('2026/08/25 09:00 提交');
+    await page.getByRole('region', { name: '审批进度', exact: true }).scrollIntoViewIfNeeded();
     await expect(page.getByText('2026/8/25 09:08:00', { exact: true })).toBeVisible();
     await page.goto('/workflow-experience.e2e.html?initial=/work-center&timeZone=Asia%2FShanghai');
     await expect(page.getByRole('row').filter({ hasText: '采购申请审批' })).toContainText('09:00:00');
@@ -958,8 +962,8 @@ test(`${mobile ? 'mobile' : 'desktop'} ${multiple ? 'CC' : 'transfer'} uses the 
       expect(horizontalOverlap <= 0 || verticalOverlap <= 0).toBe(true);
     }
   }
-  await page.getByRole('button', { name: '更多操作' }).click();
-  await page.getByRole('button', { name: label, exact: true }).click();
+  await page.getByRole('button', { name: '更多', exact: true }).click();
+  await page.getByRole(mobile ? 'button' : 'menuitem', { name: label, exact: true }).click();
   await page.getByRole('button', { name: `确认${label}` }).click();
   expect(writes).toBe(0);
   await expect(page.getByRole('combobox')).toHaveCount(0);
@@ -1207,7 +1211,7 @@ test('renders a standalone desktop detail on the canonical user URL', async ({
   await expect(page.getByText('业务数据已变化')).toHaveCount(0);
   await expect(page.getByText('流程信息')).toHaveCount(0);
   await expect(page.getByText('操作记录')).toHaveCount(0);
-  await page.getByRole('tab', { name: '审批历史' }).click();
+  await page.getByRole('region', { name: '审批进度', exact: true }).scrollIntoViewIfNeeded();
   await expect(page.getByText('由值班负责人继续处理')).toHaveCount(1);
   await expect(page.getByRole('button', { name: /同\s*意/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /拒\s*绝/ })).toBeVisible();
@@ -1280,7 +1284,7 @@ test('renders the independent mobile task and executes only a Surface operation'
   await page.goto(`/workflow-experience.e2e.html?initial=/m/tasks/${taskId}`);
   await expect(page.locator('.oxa-record-detail-mobile')).toBeVisible();
   await expect(page.getByText('¥30,000')).toBeVisible();
-  await page.getByRole('tab', { name: '审批历史' }).click();
+  await page.getByRole('region', { name: '审批进度', exact: true }).scrollIntoViewIfNeeded();
   await expect(page.getByText('财务负责人').first()).toBeVisible();
   await expect(page.getByRole('button', { name: /同\s*意/ })).toBeVisible();
   await page.getByRole('button', { name: /同\s*意/ }).click();
@@ -1514,4 +1518,94 @@ for (const rejected of [false, true]) test(`retries only the frozen standard pay
     expect(await page.evaluate(() => Object.keys(sessionStorage).filter(key => key.startsWith('openxiangda:pending-workflow:')).length)).toBe(1);
   } else await expect(page.getByTestId('custom-workflow-detail')).toBeVisible();
   expect(writes).toHaveLength(2); expect(writes[1]).toEqual(writes[0]);
+});
+
+for (const width of [320, 360, 390, 430, 900, 1024, 1280, 1440]) test(`S1 approval reading and action geometry at ${width}px`, async ({ page }, testInfo) => {
+  const mobile = width <= 900; // fixture routeManifest device policy
+  await page.setViewportSize({ width, height: 900 });
+  await mockWorkflow(page);
+  let audits = 0;
+  await page.route('**/workflow/instances/*/data-audit?*', async route => {
+    audits += 1;
+    await route.fulfill({ json: envelope({ items: [] }) });
+  });
+  await page.goto(workflowFixtureUrl(`${mobile ? '/m' : ''}/tasks/${taskId}`));
+  const bar = page.getByRole('group', { name: '审批操作', exact: true });
+  await expect(bar).toBeVisible();
+  await expect(page.getByRole('tablist')).toHaveCount(0);
+  await expect(bar.getByRole('button')).toHaveCount(mobile ? 3 : 4);
+  const buttons = await bar.getByRole('button').evaluateAll(elements => elements.map(element => {
+    const rect = element.getBoundingClientRect();
+    return { text: element.textContent!.replace(/\s/g, ''), x: rect.x, y: rect.y, width: rect.width, height: rect.height, right: rect.right };
+  }));
+  expect(buttons.map(button => button.text)).toEqual(mobile ? ['更多', '退回', '同意'] : ['更多', '拒绝申请', '退回', '同意']);
+  for (const button of buttons) {
+    expect(Math.abs(button.y - buttons[0].y)).toBeLessThan(2);
+    expect(button.x).toBeGreaterThanOrEqual(0);
+    expect(button.right).toBeLessThanOrEqual(width);
+    expect(button.height).toBeGreaterThanOrEqual(40);
+  }
+  if (mobile) expect(buttons[2].width).toBeGreaterThan(buttons[1].width * 1.6);
+  expect(audits).toBe(0);
+  await page.getByText('资料变更', { exact: true }).click();
+  await expect(page.getByText('暂无变更记录')).toBeVisible();
+  // The maintainer fixture intentionally replays mount effects with React.StrictMode.
+  expect(audits).toBe(2);
+  const application = await page.getByRole('region', { name: '申请内容', exact: true }).boundingBox();
+  const progress = await page.getByRole('region', { name: '审批进度', exact: true }).boundingBox();
+  if (width >= 1200) expect(progress!.x).toBeGreaterThan(application!.x + application!.width);
+  else expect(progress!.y).toBeGreaterThan(application!.y);
+  await page.getByText('资料变更', { exact: true }).click();
+  await page.locator('.oxa-record-detail-body').evaluate(element => { element.scrollTop = 0; });
+  await page.screenshot({ path: testInfo.outputPath(`approval-${width}.png`) });
+  if (mobile) {
+    await bar.getByRole('button', { name: '更多', exact: true }).click();
+    const more = page.getByRole('dialog', { name: '更多操作', exact: true });
+    await expect(more.getByRole('button', { name: /拒绝申请/ })).toBeVisible();
+    await more.getByRole('button', { name: /拒绝申请/ }).click();
+    await expect(page.getByRole('dialog', { name: '拒绝申请', exact: true })).toBeVisible();
+  }
+});
+
+for (const mode of ['no-return', 'correction', 'forbidden', 'completed'] as const) test(`S1 ${mode} keeps server operation boundaries`, async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await mockWorkflow(page);
+  const current = detail(mode === 'completed');
+  if (mode === 'no-return') current.surface.operations = current.surface.operations.filter(operation => operation.key !== 'return');
+  if (mode === 'forbidden') current.surface.operations = [];
+  if (mode === 'correction') current.surface.operations = [{ ...current.surface.operations[0], key: 'resubmit', label: '重新提交' }];
+  current.operations = current.surface.operations;
+  await page.route('**/workflow/tasks/*/detail', route => route.fulfill({ json: envelope(current) }));
+  await page.route('**/workflow/instances/*/detail', route => route.fulfill({ json: envelope(current) }));
+  await page.goto(workflowFixtureUrl(mode === 'completed' ? `/m/workflows/${instanceId}` : `/m/tasks/${taskId}`));
+  await expect(page.locator('.oxa-record-detail-hero')).toBeVisible();
+  await expect(page.getByText(/流程详情加载失败/)).toHaveCount(0);
+  const bar = page.getByRole('group', { name: '审批操作', exact: true });
+  if (mode === 'forbidden' || mode === 'completed') {
+    await expect(bar).toHaveCount(0);
+    if (mode === 'forbidden') await expect(page.locator('.oxa-record-detail-footer')).toHaveCount(0);
+    else await expect(page.locator('.oxa-record-detail-hero .ant-tag')).toHaveText('已同意');
+  } else {
+    await expect(bar.getByRole('button', { name: mode === 'correction' ? '重新提交' : '拒绝申请', exact: true })).toBeVisible();
+    await expect(bar.getByRole('button', { name: '退回', exact: true })).toHaveCount(0);
+  }
+});
+
+
+test('S1 long mobile progress opens all visits without changing task authority', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mock = await mockWorkflow(page);
+  const current = detail();
+  const last = current.timeline.display.entries.at(-1)!;
+  current.timeline.display.entries.push(...[1, 2, 3].map(index => ({ ...last, key: `planned-extra-${index}`, title: `后续节点${index}` })));
+  await page.route('**/workflow/tasks/*/detail', route => route.fulfill({ json: envelope(current) }));
+  await page.goto(workflowFixtureUrl(`/m/tasks/${taskId}`));
+  const progress = page.getByRole('region', { name: '审批进度', exact: true });
+  await expect(progress.locator('.oxa-workflow-timeline > div')).toHaveCount(3);
+  await progress.getByRole('button', { name: '查看全部' }).click();
+  const history = page.getByRole('dialog', { name: '全部审批进度', exact: true });
+  await expect(history.locator('.oxa-workflow-timeline > div')).toHaveCount(6);
+  await history.getByRole('button', { name: /close|关闭/i }).click();
+  await expect(page.getByRole('group', { name: '审批操作' }).getByRole('button', { name: /同\s*意/ })).toBeEnabled();
+  expect(mock.requests.filter(request => request.method === 'POST' && request.path.includes('/commands/'))).toHaveLength(0);
 });

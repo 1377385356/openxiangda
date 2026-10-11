@@ -305,6 +305,23 @@
   gap: 12px;
 }
 
+.oxa-workflow-detail-sections {
+  display: grid;
+  gap: 18px;
+}
+
+.oxa-workflow-detail-section {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.oxa-workflow-detail-section > .ant-typography {
+  margin: 0 2px;
+  color: var(--ant-color-text);
+  font-size: 18px;
+}
+
 .oxa-workflow-business,
 .oxa-workflow-timeline-card,
 .oxa-workflow-participants,
@@ -495,6 +512,15 @@
 .oxa-workflow-actions .ant-btn {
   min-width: 112px;
   min-height: 40px;
+}
+
+.oxa-workflow-actions-desktop .oxa-workflow-more-trigger {
+  order: -1;
+  margin-right: auto;
+}
+
+.oxa-workflow-actions .oxa-workflow-more-trigger {
+  flex: 0 0 auto;
 }
 
 .oxa-workflow-more-actions {
@@ -1294,6 +1320,16 @@
 .oxa-workflow-actions-mobile .ant-btn {
   flex: 1;
   min-width: 0;
+  white-space: nowrap;
+}
+
+.oxa-workflow-actions-mobile {
+  flex-wrap: nowrap;
+  justify-content: stretch;
+}
+
+.oxa-workflow-actions-mobile .oxa-workflow-approve-primary {
+  flex: 2 1 0;
 }
 
 .oxa-workflow-actions-mobile .oxa-workflow-more-trigger {

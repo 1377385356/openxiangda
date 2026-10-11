@@ -13,10 +13,10 @@ export function detailTime(value: unknown, timeZone?: string) {
 }
 
 /** One presentation owner. Data, authorization and commands remain with their controllers. */
-export function RecordDetailFrame({ variant = 'desktop', title, heading, status, metadata, updatedAt,
+export function RecordDetailFrame({ className = '', variant = 'desktop', title, heading, status, metadata, updatedAt,
   children, footer, onClose, onEdit, onPrint, onDelete, drawer = false, drawerState, newPageHref, editing, busy = false,
 }: {
-  editing?: ReactNode; busy?: boolean;
+  className?: string; editing?: ReactNode; busy?: boolean;
   variant?: 'desktop' | 'mobile'; title: string; heading?: ReactNode; status?: ReactNode;
   metadata?: ReactNode; updatedAt?: unknown; children: ReactNode; footer?: ReactNode;
   onClose: () => void; onEdit?: () => void; onPrint?: () => void; onDelete?: () => void; drawer?: boolean;
@@ -27,7 +27,7 @@ export function RecordDetailFrame({ variant = 'desktop', title, heading, status,
   const setFullScreen = drawerState?.setFullScreen || setLocalFullScreen;
   const zone = usePresentationTimeZone();
   const time = detailTime(updatedAt, zone);
-  const content = <section className={`oxa-record-detail oxa-record-detail-${variant} ${drawer ? 'is-drawer' : 'is-page'} ${editing ? 'is-editing' : ''}`} data-detail-frame="standard">
+  const content = <section className={`oxa-record-detail oxa-record-detail-${variant} ${className} ${drawer ? 'is-drawer' : 'is-page'} ${editing ? 'is-editing' : ''}`} data-detail-frame="standard">
     <header className="oxa-record-detail-header"><div className="oxa-record-detail-width">
       <div className="oxa-record-detail-heading">
         {!drawer && <Button type="text" aria-label="返回" icon={<ArrowLeftOutlined />} disabled={busy} onClick={onClose} />}

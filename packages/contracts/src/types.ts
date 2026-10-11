@@ -3290,7 +3290,12 @@ export interface WorkflowOperationSurface {
     | "administration"
     | "app_action";
   audience: "participant" | "initiator" | "administrator" | "application";
+  /** Legacy placement, retained for older consumers. */
   placement: "primary" | "secondary" | "overflow";
+  /** Server-owned order: lower is more prominent; null is always in More. */
+  prominence?: number | null;
+  /** Human-readable effect, separate from input validation and command authority. */
+  consequence?: string;
   emphasis: "primary" | "danger" | "warning" | "neutral";
   /** @deprecated Consume emphasis. Kept during the alpha package transition. */
   tone: string;

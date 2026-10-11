@@ -128,7 +128,7 @@ test('renders only platform-visible operations from an injected task Surface', (
     ),
   );
   assert.match(markup, /通\s*过/);
-  assert.match(markup, /更多操作/);
+  assert.match(markup, /更多/);
   assert.doesNotMatch(markup, /转交/);
   assert.doesNotMatch(markup, /拒绝/);
   assert.match(markup, /oxa-workflow-actions-mobile/);
@@ -236,8 +236,9 @@ test('keeps the standard task page and embedded panel on one operation core', ()
   assert.match(source, /WORKFLOW_APP_ACTION_DISABLED_REASON/);
   assert.match(source, /inputSchema/);
   assert.match(source, /uiSchema/);
-  assert.match(source, /secondary\.length > 0 && moreOpen/);
-  assert.match(source, />\s*更多操作\s*</);
+  assert.match(source, /moreOpen && !actionsDisabled/);
+  assert.match(source, /workflowOperationGroups/);
+  assert.match(source, /aria-label="更多"/);
   assert.match(source, /currentIdentifierRef/);
   assert.match(source, /generationRef/);
   assert.match(source, /const panelGeneration = generationRef\.current/);
