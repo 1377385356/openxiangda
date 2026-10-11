@@ -45,6 +45,7 @@ export function WorkflowReturnPolicyEditor({ definition, node, disabled, onChang
         </>}
       </article>;
     })}
+    <aside className="oxa-designer-return-rule"><h3>回到本节点时由谁办理</h3><p>单人、或签：优先回到退回人；该人已不在当前可办理人选中时，由本节点当前处理人办理。</p><p>会签、依次审批：本节点全部处理人重新办理。</p></aside>
     <aside className="oxa-designer-return-rule"><h3>自动改为重新审批的情况</h3><p>资料修改后不再经过本节点，或中间条件与业务步骤的输入发生变化时，系统会重新按流程审批并记录原因。</p></aside>
     <p>示例路径用于解释配置；实际进入的分支在办理时判断。</p>
   </section>;
