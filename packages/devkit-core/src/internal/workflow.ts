@@ -16,6 +16,8 @@ import {
   validateWorkflowCorrections,
   validateWorkflowBusinessSteps,
   validateWorkflowHandlingNodes,
+  validateWorkflowReturnPolicies,
+  workflowReturnTargets,
   validateWorkflowCompletionDeadlines,
   validateWorkflowAssignmentRoutingBindings,
   validateWorkflowRoleUnion,
@@ -209,14 +211,14 @@ export function validateWorkflowDefinition(definition: WorkflowDefinition) {
     walk(definition.startAt, nodes, reachable, visiting, diagnostics);
     for (const id of [...reachable]) {
       const current = nodes[id];
-      if (current?.kind === 'approval' || current?.kind === 'handle') for (const target of current.returnTargets || [])
+      if (current?.kind === 'approval' || current?.kind === 'handle') for (const target of workflowReturnTargets(current))
         if (nodes[target]?.kind === 'correction') reachable.add(target);
     }
     for (const id of Object.keys(nodes)) {
       if (!reachable.has(id)) diagnostics.push(`WORKFLOW_NODE_UNREACHABLE:${id}`);
     }
   }
-  return [...new Set([...diagnostics, ...validateWorkflowCorrections(definition), ...validateWorkflowHandlingNodes(definition)])];
+  return [...new Set([...diagnostics, ...validateWorkflowCorrections(definition), ...validateWorkflowHandlingNodes(definition), ...validateWorkflowReturnPolicies(definition)])];
 }
 
 export function validateWorkflowBinding(

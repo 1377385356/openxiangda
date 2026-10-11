@@ -5564,6 +5564,14 @@ export const workflowBusinessStepNodeSchema = {
   },
 } as const;
 
+const workflowReturnPolicySchema = {
+  type: 'object', additionalProperties: false, required: ['targets'], properties: {
+    targets: { type: 'array', maxItems: 20, items: {
+      type: 'object', additionalProperties: false, required: ['nodeId','routes','defaultRoute'],
+      properties: { nodeId: nonEmptyString, routes: { type: 'array', minItems: 1, maxItems: 2, uniqueItems: true, items: { enum: ['replay','resume'] } }, defaultRoute: { enum: ['replay','resume'] } },
+    } },
+  },
+};
 const workflowNodeSchema = {
   oneOf: [
     {
@@ -5576,6 +5584,7 @@ const workflowNodeSchema = {
         taskPageCode: { type: 'string', pattern: '^[A-Za-z][A-Za-z0-9_-]{0,63}$' },
         allowedOperations: { type: 'array', uniqueItems: true, items: { enum: ['complete', 'save_form', 'return', 'transfer', 'delegate'] } },
         requiredOperations: { type: 'array', uniqueItems: true, items: { enum: ['complete', 'save_form', 'return', 'transfer', 'delegate'] } },
+        returnPolicy: workflowReturnPolicySchema,
         returnTargets: { type: 'array', items: nonEmptyString, uniqueItems: true },
         operationPolicy: { type: 'object', additionalProperties: false, properties: Object.fromEntries(['complete','save_form','return','transfer','delegate'].map(operation => [operation, {
           type: 'object', additionalProperties: false, minProperties: 1,
@@ -5650,6 +5659,7 @@ const workflowNodeSchema = {
             ],
           },
         },
+        returnPolicy: workflowReturnPolicySchema,
         returnTargets: {
           type: "array",
           uniqueItems: true,

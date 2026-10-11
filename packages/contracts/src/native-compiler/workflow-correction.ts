@@ -1,3 +1,4 @@
+import { workflowReturnTargets } from './workflow-return-policy.js';
 /** Fixed data correction task; assignment always belongs to the instance initiator. */
 export interface WorkflowCorrectionNode {
   id: string;
@@ -16,7 +17,7 @@ export function validateWorkflowCorrections(definition: Definition): string[] {
   const errors: string[] = [];
   const targets = (node: any): string[] => node?.kind === 'approval' ? [node.onApprove, node.onReject]
     : node?.kind === 'condition' ? [...(Array.isArray(node.branches) ? node.branches : []).map((branch: any) => branch.target), node.otherwise]
-    : node?.kind === 'action' || node?.kind === 'cc' ? [node.next] : [];
+    : node?.kind === 'action' || node?.kind === 'cc' || node?.kind === 'handle' ? [node.next] : [];
   const forward = new Set<string>();
   const pending = [definition.startAt];
   while (pending.length) {
@@ -34,8 +35,8 @@ export function validateWorkflowCorrections(definition: Definition): string[] {
       errors.push('WORKFLOW_CORRECTION_REPLAY_TARGET_INVALID');
     if (forward.has(node.id) || Object.values(nodes).some(current => targets(current).includes(node.id)))
       errors.push('WORKFLOW_CORRECTION_FORWARD_ENTRY_FORBIDDEN');
-    if (!Object.values(nodes).some(current => current?.kind === 'approval' && forward.has(current.id) &&
-      Array.isArray(current.returnTargets) && current.returnTargets.includes(node.id)))
+    if (!Object.values(nodes).some(current => (current?.kind === 'approval' || current?.kind === 'handle') && forward.has(current.id) &&
+      workflowReturnTargets(current).includes(node.id)))
       errors.push('WORKFLOW_CORRECTION_RETURN_SOURCE_REQUIRED');
     const page = definition.taskPages?.[node.taskPageCode];
     if (!page || !Array.isArray(page.fields)) errors.push('WORKFLOW_CORRECTION_PAGE_REQUIRED');

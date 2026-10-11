@@ -68,3 +68,5 @@ export * from './service-mutations.js';
 export * from './workflow-designer.js';
 
 export * from './workflow-handle.js';
+
+export * from './workflow-return-policy.js';

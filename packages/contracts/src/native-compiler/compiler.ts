@@ -1,3 +1,4 @@
+import { validateWorkflowReturnPolicies, workflowReturnTargets } from './workflow-return-policy.js';
 import { validateWorkflowHandlingNodes } from './workflow-handle.js';
 import { normalizeDataMutationGrants } from './service-mutations.js';
 import { hasNativeParentReadPolicy, resolveNativeParentReadBinding, validateNativeParentReadPolicies, NativeParentReadPolicyError } from './parent-read-policy.js';
@@ -834,6 +835,8 @@ export function compileRequiredPlatformCapabilitiesV3(
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'approval' && node.emptyPolicy !== undefined))
       ? [{ code: 'workflow.approval-empty-policy' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'approval' && node.emptyPolicy !== undefined)) }]
       : []),
+    ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.returnPolicy !== undefined))
+      ? [{ code: 'workflow.return-policy' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.returnPolicy !== undefined)) }] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'handle'))
       ? [{ code: 'workflow.handling-nodes' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'handle')) }] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.completionDeadline !== undefined))
@@ -1652,7 +1655,7 @@ function compileExpectedContract(
         field: trigger.field,
       })),
       ...(config.workflows.activations.length
-        ? WORKFLOW_EVENT_TYPES_V2.filter(eventType => !WORKFLOW_BUSINESS_STEP_EVENTS.includes(eventType as any) || config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action'))).filter(eventType => eventType !== 'openxiangda.workflow.node.skipped.v2' || config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'approval' && node.emptyPolicy === 'skip'))).map(eventType => ({
+        ? WORKFLOW_EVENT_TYPES_V2.filter(eventType => !WORKFLOW_BUSINESS_STEP_EVENTS.includes(eventType as any) || config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action'))).filter(eventType => eventType !== 'openxiangda.workflow.node.skipped.v2' || config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'approval' && node.emptyPolicy === 'skip' || node.returnTargets?.length || node.returnPolicy?.targets?.some((target: any) => target.routes.includes('resume'))))).map(eventType => ({
             code: `workflow:${eventType}`,
             source: 'workflow',
             eventType,
@@ -7305,6 +7308,8 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
   if (ccErrors.length) fail(ccErrors[0]!, `${pointer}/nodes`);
   const taskPageErrors = validateWorkflowTaskPages(definition);
   if (taskPageErrors.length) fail(taskPageErrors[0]!, `${pointer}/taskPages`);
+  const returnErrors = validateWorkflowReturnPolicies(definition as any);
+  if (returnErrors.length) fail(returnErrors[0]!, `${pointer}/nodes`);
   const handleErrors = validateWorkflowHandlingNodes(definition as any);
   if (handleErrors.length) fail(handleErrors[0]!, `${pointer}/nodes`);
   const stepErrors = validateWorkflowBusinessSteps(definition);
@@ -7414,7 +7419,7 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
   walk(startAt);
   for (const id of [...reachable]) {
     const current = nodes[id];
-    if (current?.kind === 'approval') for (const target of current.returnTargets || [])
+    if (current?.kind === 'approval' || current?.kind === 'handle') for (const target of workflowReturnTargets(current))
       if (nodes[target]?.kind === 'correction') reachable.add(target);
   }
   if (reachable.size !== nodeIds.length) {

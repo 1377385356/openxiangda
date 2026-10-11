@@ -2456,6 +2456,7 @@ export interface WorkflowApprovalNode {
   onReject: string;
   allowedOperations?: WorkflowCommand[];
   returnTargets?: string[];
+  returnPolicy?: import('./native-compiler/workflow-return-policy.js').WorkflowReturnPolicy;
   /** Immutable reference to an application-owned task page input contract. */
   taskPageCode?: string;
   /** Code-owned defaults; labels never change the stable command semantics. */

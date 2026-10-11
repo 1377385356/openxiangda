@@ -388,3 +388,18 @@ test('configured shared Save survives ESM and CJS application validation', () =>
     approval.allowedOperations = ['approve', 'save_form'];
   }
 });
+
+test('policy-only applicant return is reachable and negotiates guarded resume in both compiler formats', () => {
+  const config = JSON.parse(corpus.configuration.canonical);
+  const definition = config.workflows.definitions[0].definition;
+  definition.taskPages = { revise: { title: '补正', fields: [{ code: 'name' }, { code: 'status' }] } };
+  definition.nodes.revise = { id: 'revise', kind: 'correction', title: '发起人补正', taskPageCode: 'revise', next: definition.startAt };
+  definition.nodes.review.returnPolicy = { targets: [{ nodeId: 'revise', routes: ['replay','resume'], defaultRoute: 'resume' }] };
+  const contract = { ...JSON.parse(corpus.contract.canonical), configDigest: sha256Digest(config) };
+  const eventType = 'openxiangda.workflow.node.skipped.v2';
+  contract.eventProducers.push({ code: `workflow:${eventType}`, source: 'workflow', eventType, dataSchemaVersion: '2.0.0' });
+  contract.eventProducers.sort((a: any,b: any)=>`${a.source}:${a.code}:${a.eventType}`.localeCompare(`${b.source}:${b.code}:${b.eventType}`));
+  contract.eventTypes.push(eventType);contract.eventTypes.sort();
+  const value = { ...input(config), contractBytes: canonicalJson(contract), expectedContractDigest: sha256Digest(contract) };
+  for (const implementation of [esm,cjs]) assert.equal(implementation.compileNativeApplicationConfiguration(value).requiredPlatformCapabilities.find(cap=>cap.code==='workflow.return-policy')?.contractVersion,'1.0.0');
+});

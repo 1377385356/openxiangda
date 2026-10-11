@@ -1,3 +1,4 @@
+import { validateWorkflowReturnPolicies } from './workflow-return-policy.js';
 import { validateWorkflowHandlingNodes } from './workflow-handle.js';
 import type { WorkflowBinding, WorkflowDefinition, WorkflowExpression, WorkflowNode } from '../types.js';
 import { workflowOperationMinimumOpinion,workflowOperationOpinion } from './workflow-node-administration.js';
@@ -135,7 +136,8 @@ export function editWorkflowDesignerDefinition(source: WorkflowDefinition, edit:
     if (!node || !target || target === node.id || !definition.nodes[target] || node.kind === 'end' || node.kind === 'correction') throw new Error('WORKFLOW_DESIGNER_REMOVE_INVALID');
     for (const other of Object.values(definition.nodes)) {
       rewrite(other, node.id, target);
-      if (other.kind === 'approval' && other.returnTargets) other.returnTargets = other.returnTargets.filter(id => id !== node.id);
+      if ((other.kind === 'approval' || other.kind === 'handle') && other.returnTargets) other.returnTargets = other.returnTargets.filter(id => id !== node.id);
+      if ((other.kind === 'approval' || other.kind === 'handle') && other.returnPolicy) other.returnPolicy.targets = other.returnPolicy.targets.filter(target => target.nodeId !== node.id);
     }
     if (definition.startAt === node.id) definition.startAt = target;
     delete definition.nodes[node.id];
@@ -199,7 +201,7 @@ export function classifyWorkflowAdoption(source: WorkflowDefinition, target: Wor
 export function validateWorkflowDesignerDocument(definition: WorkflowDefinition): string[] {
   if (!record(definition?.nodes)) return ['WORKFLOW_DESIGNER_DOCUMENT_INVALID'];
   const errors: string[] = [];
-  errors.push(...validateWorkflowHandlingNodes(definition));
+  errors.push(...validateWorkflowHandlingNodes(definition), ...validateWorkflowReturnPolicies(definition));
   const nodes = Object.values(definition.nodes);
   if (nodes.length > 200 || !nodes.length) return ['WORKFLOW_DESIGNER_NODE_LIMIT'];
   for (const node of nodes) {

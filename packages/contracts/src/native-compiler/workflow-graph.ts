@@ -1,3 +1,4 @@
+import { workflowReturnTargets, type WorkflowReturnPolicy } from './workflow-return-policy.js';
 /** Pure read projection. It never evaluates expressions, executes code or edits topology. */
 import type { WorkflowCompletionDeadline } from './workflow-completion-deadline.js';
 import type { WorkflowApprovedDelegationPolicy } from './workflow-approved-delegation.js';
@@ -40,6 +41,7 @@ export interface WorkflowGraphDefinitionSource {
     onApprove?: string;
     onReject?: string;
     returnTargets?: string[];
+    returnPolicy?: WorkflowReturnPolicy;
     branches?: Array<{ when: WorkflowGraphExpression; target: string; label?: string }>;
     otherwise?: string;
     next?: string;
@@ -231,7 +233,7 @@ export function projectWorkflowGraph(definition: WorkflowGraphDefinitionSource, 
       for (const [kind, target, label] of [['approve', node.onApprove, '同意'], ['reject', node.onReject, '拒绝']] as const)
         if (target) edges.push({ id: `${node.id}:${kind}`, from: node.id, to: target, kind, label, variablePaths: [] });
     }
-    if (node.kind === 'approval' || node.kind === 'handle') for (const target of new Set(node.returnTargets || [])) {
+    if (node.kind === 'approval' || node.kind === 'handle') for (const target of new Set(workflowReturnTargets(node))) {
       if (definition.nodes[target]?.kind === 'correction')
         edges.push({ id: `${node.id}:return:${target}`, from: node.id, to: target, kind: 'return', label: '退回发起人补正', variablePaths: [] });
     }

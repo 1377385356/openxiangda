@@ -664,7 +664,7 @@ export function WorkflowTimelineSection({
               {!compact && progress && progress.total > 0 && <div className="oxa-workflow-quorum" aria-label={`${progress.label}：${progress.approved}/${progress.total} 人${progress.verb}`}>
                 <span><span style={{ width: `${progress.approved / progress.total * 100}%` }} /></span><small>{progress.approved}/{progress.total}</small>
               </div>}
-              {item.status === 'skipped' && <Typography.Text type="secondary">无审批人，按此节点的规则自动继续。</Typography.Text>}
+              {item.status === 'skipped' && <Typography.Text type="secondary">{item.result.skipReason === 'return_resume' ? '重新提交后直接返回当前节点，已处理的阶段无需重复办理。' : '无审批人，按此节点的规则自动继续。'}</Typography.Text>}
               {businessStep?.status === 'result_ready' && <Typography.Text type="secondary">计算结果已收到，后续流转等待修复。</Typography.Text>}
               {operations.length > 0 && <div className="oxa-workflow-timeline-operations">
                 {operations.map(operation => <div key={operation.id}>
@@ -755,6 +755,15 @@ function OperationFields({
 }: {
   operation: WorkflowOperationSurface; variant: PageVariant;
 }) {
+  const form = Form.useFormInstance<JsonObject>();
+  const targetNodeId = Form.useWatch('targetNodeId', form) as string | undefined;
+  const returnRoutes = (operation.uiSchema as { returnRoutes?: Record<string, { routes: string[]; defaultRoute: string }> }).returnRoutes;
+  const previousTarget = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const policy = targetNodeId ? returnRoutes?.[targetNodeId] : undefined;
+    if (policy && (previousTarget.current !== targetNodeId || !policy.routes.includes(String(form.getFieldValue('resubmitMode'))))) form.setFieldsValue({ resubmitMode: policy.defaultRoute });
+    previousTarget.current = targetNodeId;
+  }, [form, targetNodeId, returnRoutes]);
   return (
     <>
       {schemaProperties(operation).map(({ key, property, required, ui }) => {
@@ -776,10 +785,10 @@ function OperationFields({
         else if (property.enum) {
           control = (
             <Select
-              options={property.enum.map((value, index) => ({
+              options={property.enum.flatMap((value, index) => key === 'resubmitMode' && targetNodeId && returnRoutes?.[targetNodeId] && !returnRoutes[targetNodeId]!.routes.includes(value) ? [] : [{
                 label: property.enumNames?.[index] || value,
                 value,
-              }))}
+              }])}
             />
           );
         } else if (property.format === 'textarea') {
@@ -1065,6 +1074,8 @@ function WorkflowOperations({
     taskForm.committed(wire.input.form as any, Number(result.dataRevision) || undefined);
     onBusyChange(false);
     message.success(`${wire.operation.label}成功`);
+    const resume = result.returnResume as { reason?: string } | undefined;
+    if (resume?.reason) message.info(resume.reason);
     // The write has succeeded. A callback or read failure can only affect refresh.
     try { await onCommandSuccess(result); }
     catch (error) { if (mounted.current) setRefreshFailure({ outcome: 'succeeded', message: errorMessage(error, '页面刷新失败') }); }
