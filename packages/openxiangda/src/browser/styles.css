@@ -3403,10 +3403,10 @@
 .oxa-workflow-designer-inspector > header .ant-tag { margin: 0; font-size: 11px; }
 .oxa-workflow-designer-inspector > header .ant-btn { margin-left: auto; }
 .oxa-designer-inspector-icon { width: 30px; height: 30px; display: grid; place-items: center; color: #0066ff; background: #eaf2ff; font-size: 22px; border-radius: 5px; }
-.oxa-workflow-designer-inspector h3 { font-size: 13px; margin: 0 0 8px; }
+.oxa-workflow-designer-inspector h3 { font-size: 14px; margin: 0 0 8px; }
 .oxa-workflow-designer-inspector p { color: #7b879a; font-size: 12px; line-height: 1.6; }
 .oxa-workflow-designer-inspector .oxa-workflow-config-inline label { display: inline-flex; flex-direction: row; margin: 0; }
-.oxa-designer-handling-notice, .oxa-designer-defaults-notice { border-radius: 4px; color: #2d7617; background: #edf8ea; padding: 9px 12px; margin-bottom: 14px; font-size: 12px; }
+.oxa-designer-handling-notice, .oxa-designer-defaults-notice { border-radius: 4px; color: #2d7617; background: #edf8ea; padding: 9px 12px; margin-bottom: 14px; font-size: 13px; line-height: 20px; }
 .oxa-designer-defaults-notice { background: #fff7e7; color: #a16b1c; }
 .oxa-workflow-config-inline .oxa-workflow-config-section { border: 0; padding: 0; margin: 0 0 14px; }
 .oxa-workflow-config-inline .ant-form-item { margin-bottom: 12px; }
@@ -3418,15 +3418,15 @@
 .oxa-workflow-config-inline .oxa-workflow-mode-options { display: flex; flex-direction: row; align-items: center; flex-wrap: wrap; gap: 8px; }
 .oxa-workflow-config-inline .oxa-workflow-mode-options .ant-radio-wrapper { font-size: 12px; padding: 0; margin: 0; }
 .oxa-workflow-config-inline .oxa-workflow-mode-options + p, .oxa-workflow-config-inline .oxa-workflow-config-help { margin: 4px 0 8px; font-size: 12px; }
-.oxa-workflow-config-inline .oxa-workflow-operation-table { width: 100%; border: 1px solid #e2e8f1; border-collapse: collapse; table-layout: fixed; font-size: 12px; }
-.oxa-workflow-config-inline .oxa-workflow-operation-table th, .oxa-workflow-config-inline .oxa-workflow-operation-table td { height: 44px; padding: 6px 8px; border: 1px solid #e2e8f1; text-align: left; vertical-align: middle; }
+.oxa-workflow-config-inline .oxa-workflow-operation-table { width: 100%; border: 1px solid #e2e8f1; border-collapse: collapse; table-layout: fixed; font-size: 13px; line-height: 20px; }
+.oxa-workflow-config-inline .oxa-workflow-operation-table th, .oxa-workflow-config-inline .oxa-workflow-operation-table td { box-sizing: border-box; height: 44px; padding: 4px 8px; border: 1px solid #e2e8f1; text-align: left; vertical-align: middle; }
 .oxa-workflow-config-inline .oxa-workflow-operation-table th { font-weight: 500; }
 .oxa-workflow-config-inline .oxa-workflow-operation-table thead th { background: #f5f7fb; color: #526178; height: 34px; }
 .oxa-workflow-config-inline .oxa-workflow-operation-table thead th:first-child { width: 23%; }
 .oxa-workflow-config-inline .oxa-workflow-operation-table thead th:last-child { width: 22%; }
 .oxa-workflow-config-inline .oxa-workflow-operation-table .ant-form-item { margin: 0; }
-.oxa-workflow-config-inline .oxa-workflow-operation-table .ant-input, .oxa-workflow-config-inline .oxa-workflow-operation-table .ant-select { font-size: 12px; padding-left: 0; width: 100%; }
-.oxa-workflow-config-inline .oxa-workflow-operation-table small { display: block; color: #7b879a; font-size: 10px; font-weight: 400; margin-top: 3px; }
+.oxa-workflow-config-inline .oxa-workflow-operation-table .ant-input, .oxa-workflow-config-inline .oxa-workflow-operation-table .ant-select { font-size: 13px; padding-left: 0; width: 100%; }
+.oxa-workflow-config-inline .oxa-workflow-operation-table small { display: block; color: #7b879a; font-size: 11px; line-height: 14px; font-weight: 400; margin-top: 2px; }
 .oxa-workflow-config-inline .oxa-workflow-operation-table .ant-switch { min-width: 28px; }
 .oxa-workflow-config-inline .oxa-workflow-config-footer { padding: 0; border: 0; background: none; justify-content: flex-end; margin: 8px 0 14px; }
 .oxa-workflow-config-inline .oxa-workflow-config-footer > span { display: none; }
@@ -3542,3 +3542,8 @@
 .oxa-designer-insert-menu .anticon.kind-condition { color: #e58a15; }
 .oxa-designer-insert-menu .anticon.kind-action { color: #7c3aed; }
 .oxa-designer-insert-menu .anticon.kind-notification { color: #e14b80; }
+
+.oxa-workflow-config-inline .oxa-workflow-operation-table .ant-form-item-control-input { min-height: 24px; }
+.oxa-workflow-config-inline .oxa-workflow-operation-table td:last-child small { display: inline; margin-left: 8px; }
+.oxa-workflow-config-inline .oxa-workflow-operation-table .ant-select-content { font-size: 13px; }
+.oxa-workflow-designer-inspector .oxa-designer-draft-band .ant-collapse-header { font-size: 13px; }
