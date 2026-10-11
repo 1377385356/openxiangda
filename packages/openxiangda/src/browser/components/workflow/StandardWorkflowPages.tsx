@@ -221,7 +221,7 @@ function errorMessage(error: unknown, fallback: string) {
     WORKFLOW_TASK_FORM_REVISION_CONFLICT: '业务资料已被其他处理人更新。请刷新并核对，当前输入会保留。',
     WORKFLOW_TASK_FORM_RECOMPUTATION_REQUIRED: '这些资料会影响已完成的计算，请退回到计算前的节点重新办理。',
     WORKFLOW_TASK_FORM_FIELD_NOT_EDITABLE: '页面规则已变化，请刷新资料后重新确认。',
-    WORKFLOW_TASK_FORM_COMMAND_FORBIDDEN: '此操作不提交补填资料，请使用保存补填、同意或重新提交。',
+    WORKFLOW_TASK_FORM_COMMAND_FORBIDDEN: '此操作不提交补填资料，请使用保存、同意或重新提交。',
   };
   if (code && taskPageMessages[code]) return taskPageMessages[code];
   return error instanceof Error ? error.message : fallback;
@@ -931,7 +931,6 @@ function WorkflowOperations({
   const [operationError, setOperationError] = useState('');
   const [retainRefusedInput, setRetainRefusedInput] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [draftLocked, setDraftLocked] = useState(false);
   const [fileLocked, setFileLocked] = useState(false);
   const [refreshFailure, setRefreshFailure] = useState<{ outcome: 'succeeded' | 'rejected'; message: string } | null>(null);
   const [unknown, setUnknown] = useState(false);
@@ -978,14 +977,14 @@ function WorkflowOperations({
       surface,
     });
   };
-  const submit = async (values: JsonObject) => {
-    if (!selected || busyRef.current || draftLocked || fileLocked || taskForm.draftNeedsSave || pendingLocator || unknown || refreshFailure || confirmedReadPending) return;
+  const submit = async (values: JsonObject, operation = selected) => {
+    if (!operation || busyRef.current || fileLocked || taskForm.draftNeedsSave || pendingLocator || unknown || refreshFailure || confirmedReadPending) return;
     setOperationError('');
     setSubmitting(true);
     busyRef.current = true;
     onBusyChange(true);
     try {
-      if (selected.kind !== 'workflow_command') {
+      if (operation.kind !== 'workflow_command') {
         throw new Error('WORKFLOW_APP_ACTION_NOT_EXECUTABLE_IN_STANDARD_PANEL');
       }
       const commandToken = surface.commandToken;
@@ -998,14 +997,14 @@ function WorkflowOperations({
         throw new Error('操作已刷新，请保留当前输入并重新确认。');
       }
       const input = { ...values };
-      if (surface.taskForm && ['save_form', 'approve', 'resubmit'].includes(selected.key)) {
+      if (surface.taskForm && ['save_form', 'approve', 'resubmit'].includes(operation.key)) {
         if (taskForm.stale) throw new Error('业务资料已更新，请先核对最新资料');
-        input.form = await taskForm.build(selected.key !== 'save_form');
+        input.form = await taskForm.build(operation.key !== 'save_form');
       }
-      const key = randomId(`workflow:${selected.key}`);
-      if (surface.task?.id) persistLocator({ taskId: String(surface.task.id), command: selected.key,
+      const key = randomId(`workflow:${operation.key}`);
+      if (surface.task?.id) persistLocator({ taskId: String(surface.task.id), command: operation.key,
         idempotencyKey: key, requestedAt: new Date().toISOString(), tokenDigest: await workflowCommandTokenDigest(commandToken) });
-      request.current = { surface, operation: selected, input: JSON.parse(JSON.stringify(input)), key };
+      request.current = { surface, operation, input: JSON.parse(JSON.stringify(input)), key };
     } catch (error) {
       const hasFreshSurface = Boolean(
         (error as { data?: { freshSurface?: unknown } })?.data?.freshSurface,
@@ -1017,7 +1016,7 @@ function WorkflowOperations({
       } else {
         const failure = (error as { status?: number })?.status === 403
           ? '当前审批资料或操作权限已变化，请刷新资料后重新确认。'
-          : errorMessage(error, `${selected.label}失败`);
+          : errorMessage(error, `${operation.label}失败`);
         setOperationError(failure);
         message.error(failure);
       }
@@ -1065,7 +1064,7 @@ function WorkflowOperations({
     setSelectedState(null);
     taskForm.committed(wire.input.form as any, Number(result.dataRevision) || undefined);
     onBusyChange(false);
-    message.success(`${wire.operation.label}已提交`);
+    message.success(`${wire.operation.label}成功`);
     // The write has succeeded. A callback or read failure can only affect refresh.
     try { await onCommandSuccess(result); }
     catch (error) { if (mounted.current) setRefreshFailure({ outcome: 'succeeded', message: errorMessage(error, '页面刷新失败') }); }
@@ -1081,14 +1080,18 @@ function WorkflowOperations({
     finally { if (mounted.current) { setSubmitting(false); busyRef.current = false; onBusyChange(false); } }
   };
   const commandLocked = submitting || unknown || Boolean(pendingLocator) || Boolean(refreshFailure) || confirmedReadPending;
-  const locked = commandLocked || draftLocked || fileLocked;
+  const locked = commandLocked || fileLocked;
   if (!operations.length && !surface.taskForm && !unknown && !refreshFailure) return renderLayout({ content: null, actions: null });
   const { primary, secondary } = workflowOperationGroups(operations, variant);
   const actionsDisabled = locked || commandNeedsRefresh || taskForm.stale || taskForm.draftNeedsSave;
   const choose = (operation: WorkflowOperationSurface) => {
     if (actionsDisabled || !operation.visible || !operation.enabled) return;
     setMoreOpen(false);
-    selectOperation(operation);
+    if (operation.uiSchema.presentation === 'direct') {
+      setRetainRefusedInput(false);
+      setSelectedState(null);
+      void submit({}, operation);
+    } else selectOperation(operation);
   };
   const content = surface.taskForm || commandNeedsRefresh || ((submitting || unknown) && !pendingLocator) || unknown || refreshFailure ? (
     <>
@@ -1096,15 +1099,12 @@ function WorkflowOperations({
         title="请刷新操作后继续办理" description="页面停留较久，需重新确认当前办理权限。刷新会保留尚未保存的输入。"
         action={<Button disabled={locked} loading={submitting} onClick={() => void refreshConfirmed()}>刷新操作</Button>} />}
       {surface.taskForm && <WorkflowTaskForm controller={taskForm} disabled={locked} variant={variant}
-        actions={variant === 'desktop' && operations.filter(operation => operation.uiSchema.taskFormAction === true).map(operation =>
-          <Button key={operation.key} size="small" disabled={actionsDisabled || !operation.enabled} title={operation.disabledReason} onClick={() => choose(operation)}>{operation.label}</Button>)}
         valueLinkage={taskFormBehavior?.valueLinkage}
         linkageContext={{ workflowCode: String(surface.instance.workflowCode || ''), nodeId: String(surface.task?.nodeId || ''), pageCode: surface.taskForm.pageCode }}
-        operationPending={submitting || unknown || Boolean(pendingLocator) || draftLocked || fileLocked}
+        operationPending={submitting || unknown || Boolean(pendingLocator) || fileLocked}
         taskVersion={surface.task?.version ? Number(surface.task.version) : undefined}
-        taskId={surface.task?.id ? String(surface.task.id) : undefined} draftDisabled={commandLocked} onRefresh={onRefresh}
-        onDraftBusyChange={busy => { setDraftLocked(busy); onBusyChange(busy || fileLocked || busyRef.current); }}
-        onFileBusyChange={busy => { setFileLocked(busy); onBusyChange(busy || draftLocked || busyRef.current); }}
+        taskId={surface.task?.id ? String(surface.task.id) : undefined}
+        onFileBusyChange={busy => { setFileLocked(busy); onBusyChange(busy || busyRef.current); }}
         resourceCode={surface.presentation.businessDetail.resourceCode || undefined} recordId={surface.presentation.businessDetail.recordId || undefined} />}
       {(submitting || unknown) && !pendingLocator && <WorkflowPendingCommandGuard />}
       {unknown && <Alert type="warning" showIcon title="保留了原提交请求" description={operationError || '提交结果待确认，请重试原请求或查询原结果。'}

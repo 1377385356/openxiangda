@@ -232,7 +232,7 @@ test('keeps the standard task page and embedded panel on one operation core', ()
   assert.match(source, /loadSurface\(requestIdentifier\)/);
   assert.match(source, /matchesSurface\(nextSurface, requestIdentifier\)/);
   assert.match(source, /executeWorkflowOperation\(wire\.surface, wire\.operation, wire\.input, \{ idempotencyKey: wire\.key \}/);
-  assert.match(source, /selected\.kind !== 'workflow_command'/);
+  assert.match(source, /operation\.kind !== 'workflow_command'/);
   assert.match(source, /WORKFLOW_APP_ACTION_DISABLED_REASON/);
   assert.match(source, /inputSchema/);
   assert.match(source, /uiSchema/);

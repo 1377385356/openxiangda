@@ -1560,8 +1560,8 @@ function approvalDesignDetail() {
   };
   current.surface.task.approvalMode = 'all';
   current.surface.task.participants = [{ id: 'finance', userId: finance.userId, required: true, status: 'approved' }, { id: 'me', userId: me.userId, required: true, status: 'active' }];
-  current.surface.operations.push({ ...current.surface.operations[0], key: 'save_form', label: '保存补填内容', prominence: null, emphasis: 'neutral', tone: 'neutral', group: 'task_collaboration',
-    consequence: '写入申请资料，其他处理人可见；任务仍由你继续办理。', inputSchema: { type: 'object', properties: {} }, uiSchema: { taskFormAction: true, confirmText: '确认保存补填内容' },
+  current.surface.operations.push({ ...current.surface.operations[0], key: 'save_form', label: '保存', prominence: null, emphasis: 'neutral', tone: 'neutral', group: 'task_collaboration',
+    consequence: '保存当前填写的申请数据，不推进审批流程。其他有权限的处理人可查看已保存内容。', inputSchema: { type: 'object', properties: {} }, uiSchema: { presentation: 'direct' },
     execute: { method: 'POST', href: `/openxiangda-api/v2/applications/${appCode}/workflow/tasks/${taskId}/commands/save_form`, idempotencyRequired: true } });
   current.surface.taskForm = { pageCode: 'finance-review', page: { title: '本节点需填写', fields: [{ code: 'opinion', required: true }, { code: 'approvedAmount' }] }, expectedRevision: 8,
     fields: { opinion: field('复核意见', 'text.long', 'textarea', { placeholder: '请输入复核意见' }), approvedAmount: field('核定金额', 'number.decimal', 'money', { scale: 2 }) }, values: { opinion: '', approvedAmount: 12800 } };
@@ -1615,6 +1615,7 @@ for (const width of [320, 360, 390, 430, 900, 1024, 1280, 1440]) test(`S1 approv
   else expect(progress!.y).toBeGreaterThan(application!.y);
   await page.getByText('资料变更', { exact: true }).click();
   await page.locator('.oxa-record-detail-body').evaluate(element => { element.scrollTop = 0; });
+  await page.mouse.move(1, 1);
   await page.screenshot({ path: testInfo.outputPath(`approval-${width}.png`), animations: 'disabled' });
   if (mobile && width === 390) {
     await page.locator('.oxa-record-detail-body').evaluate(element => { element.scrollTop = element.scrollHeight; });
@@ -1625,7 +1626,8 @@ for (const width of [320, 360, 390, 430, 900, 1024, 1280, 1440]) test(`S1 approv
     await bar.getByRole('button', { name: '更多', exact: true }).click();
     const more = page.getByRole('dialog', { name: '更多操作', exact: true });
     await expect(more.getByRole('button', { name: /拒绝申请/ })).toBeVisible();
-    await page.screenshot({ path: testInfo.outputPath(`approval-more-${width}.png`), animations: 'disabled' });
+    await page.mouse.move(1, 1);
+  await page.screenshot({ path: testInfo.outputPath(`approval-more-${width}.png`), animations: 'disabled' });
     await more.getByRole('button', { name: /拒绝申请/ }).click();
     await expect(page.getByRole('dialog', { name: '拒绝申请', exact: true })).toBeVisible();
   }
@@ -1673,25 +1675,83 @@ test('S1 long mobile progress opens all visits without changing task authority',
   await expect(page.getByRole('group', { name: '审批操作' }).getByRole('button', { name: /同\s*意/ })).toBeEnabled();
   expect(mock.requests.filter(request => request.method === 'POST' && request.path.includes('/commands/'))).toHaveLength(0);
 });
-test('S1 task-form shortcut requires its server descriptor and preserves input across confirmation', async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 });
+for (const mobile of [false, true]) test(`S1 save in More writes shared data without advancing or requiring completion fields (${mobile ? 'mobile' : 'desktop'})`, async ({ page }) => {
+  await page.setViewportSize({ width: mobile ? 390 : 1440, height: 900 });
   const mock = await mockWorkflow(page);
   const current = approvalDesignDetail();
+  const saves: any[] = [];
   await page.route('**/workflow/tasks/*/detail', route => route.fulfill({ json: envelope(current) }));
-  await page.goto(workflowFixtureUrl(`/tasks/${taskId}`));
-  const opinion = page.getByRole('textbox', { name: /复核意见/ });
-  await opinion.fill('已核对预算，保留这份复核意见');
-  await page.locator('.oxa-workflow-task-form-heading').getByRole('button', { name: '保存补填内容', exact: true }).click();
-  const confirmation = page.getByRole('dialog', { name: '保存补填内容', exact: true });
-  await expect(confirmation).toBeVisible();
-  await confirmation.getByRole('button', { name: /取\s*消/ }).click();
-  await expect(opinion).toHaveValue('已核对预算，保留这份复核意见');
-  expect(mock.requests.filter(request => request.method === 'POST' && request.path.includes('/commands/'))).toHaveLength(0);
-  // Read-only descriptors cannot acquire a shortcut merely because a form is present.
+  await page.route('**/workflow/tasks/*/surface', route => route.fulfill({ json: envelope(current.surface) }));
+  await page.route('**/workflow/tasks/*/commands/save_form', async route => {
+    const request = route.request().postDataJSON();
+    saves.push(request);
+    Object.assign(current.surface.taskForm.values, request.input.form.values);
+    current.surface.taskForm.expectedRevision = 9;
+    current.surface.instance.dataRevision = '9';
+    current.surface.task.version = 2;
+    current.surface.commandToken = 'B'.repeat(43);
+    current.surface.surfaceRevision = 'e'.repeat(64);
+    await route.fulfill({ json: envelope({ taskId, instanceId, status: 'assigned', advanced: false, dataRevision: 9 }) });
+  });
+  const entry = workflowFixtureUrl(`${mobile ? '/m' : ''}/tasks/${taskId}`);
+  await page.goto(entry);
+  await expect(page.getByText(/保存私有草稿|我的草稿|保存草稿|另存草稿/)).toHaveCount(0);
+  await expect(page.locator('.oxa-workflow-task-form-heading').getByRole('button')).toHaveCount(0);
+  const bar = page.getByRole('group', { name: '审批操作', exact: true });
+  await expect(bar.getByRole('button', { name: '保存', exact: true })).toHaveCount(0);
+  await page.getByRole(mobile ? 'textbox' : 'spinbutton', { name: '核定金额', exact: true }).fill('13500');
+  await expect(page.getByRole('textbox', { name: /复核意见/ })).toHaveValue('');
+  await bar.getByRole('button', { name: '更多', exact: true }).click();
+  await page.getByRole(mobile ? 'button' : 'menuitem', { name: /^保存/ }).click();
+  await expect.poll(() => saves.length).toBe(1);
+  expect(saves[0].input).toEqual({ form: { expectedRevision: 8, values: { approvedAmount: 13500 } } });
+  expect(saves[0].idempotencyKey).toBeTruthy();
+  await expect(page.getByRole('dialog', { name: '保存', exact: true })).toHaveCount(0);
+  await expect(page.getByRole(mobile ? 'textbox' : 'spinbutton', { name: '核定金额', exact: true })).toHaveValue(/13[,]?500/);
+  await expect(page.getByText('需要你处理：财务复核')).toBeVisible();
+  await expect(bar.getByRole('button', { name: /同\s*意/ })).toBeEnabled();
+  expect(new URL(page.url()).pathname).toBe(`${mobile ? '/m' : ''}/tasks/${taskId}`);
+  // Reopen through the fixture bootstrap and read the persisted value from the API.
+  await page.goto(entry);
+  await expect(page.getByRole(mobile ? 'textbox' : 'spinbutton', { name: '核定金额', exact: true })).toHaveValue(/13[,]?500/);
+  await expect(page.getByText('需要你处理：财务复核')).toBeVisible();
+  expect(mock.requests.filter(request => request.method === 'POST' && (request.path.includes('/commands/approve') || request.path.includes('/drafts')))).toHaveLength(0);
+});
+
+test('S1 does not invent Save when the current node surface omits it', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await mockWorkflow(page);
+  const current = approvalDesignDetail();
   current.surface.operations = current.surface.operations.filter((operation: any) => operation.key !== 'save_form');
   current.operations = current.surface.operations;
-  page.once('dialog', dialog => dialog.accept());
-  await page.goto(workflowFixtureUrl(`/tasks/${taskId}`));
-  await expect(page.locator('.oxa-workflow-task-form-heading')).toBeVisible();
-  await expect(page.locator('.oxa-workflow-task-form-heading').getByRole('button')).toHaveCount(0);
+  await page.route('**/workflow/tasks/*/detail', route => route.fulfill({ json: envelope(current) }));
+  await page.goto(workflowFixtureUrl(`/m/tasks/${taskId}`));
+  await page.getByRole('button', { name: '更多', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: '更多操作' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^保存/ })).toHaveCount(0);
+});
+
+test('S1 uncertain Save keeps the original request and prevents another write', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await mockWorkflow(page);
+  let writes = 0;
+  await page.route('**/workflow/tasks/*/detail', route => route.fulfill({ json: envelope(approvalDesignDetail()) }));
+  await page.route('**/workflow/tasks/*/commands/save_form', async route => {
+    writes += 1;
+    await route.fulfill({ status: 500, json: { code: 500, message: '连接中断，结果未知' } });
+  });
+  await page.goto(workflowFixtureUrl(`/m/tasks/${taskId}`));
+  await page.getByRole('textbox', { name: '核定金额', exact: true }).fill('13500');
+  await page.getByRole('button', { name: '更多', exact: true }).click();
+  await page.getByRole('button', { name: /^保存/ }).click();
+  await expect(page.getByText('保留了原提交请求')).toBeVisible();
+  await expect(page.getByRole('button', { name: '更多', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: /同\s*意/ })).toBeDisabled();
+  await expect(page.getByRole('textbox', { name: '核定金额', exact: true })).toHaveValue('13500');
+  expect(writes).toBe(1);
+  const locator = await page.evaluate(() => {
+    const key = Object.keys(sessionStorage).find(key => key.startsWith('openxiangda:pending-task-command:v1:'));
+    return key ? JSON.parse(sessionStorage.getItem(key)!) : null;
+  });
+  expect(locator.command).toBe('save_form');
 });
