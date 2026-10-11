@@ -93,7 +93,7 @@ export default function WorkflowFlowCanvas(props: {
     const position = positions.edges.get(edge.id)!;
     const actual = props.executedEdges.has(edge.id), selected = props.selectedEdgeId === edge.id;
     const highlighted = props.selectedEdgeId ? selected : edge.from === props.selectedNodeId;
-    return { id: edge.id, source: edge.from, sourceHandle: `out:${edge.id}`, target: edge.to, targetHandle: `in:${edge.to}`, type: 'workflow', deletable: false, reconnectable: false,
+    return { id: edge.id, ariaLabel: `${props.graph.nodes.find(node=>node.id===edge.from)?.title || '当前节点'}至${props.graph.nodes.find(node=>node.id===edge.to)?.title || '后续节点'}`, source: edge.from, sourceHandle: `out:${edge.id}`, target: edge.to, targetHandle: `in:${edge.to}`, type: 'workflow', deletable: false, reconnectable: false,
       markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: actual ? '#389e0d' : highlighted ? '#1677ff' : '#aab4c1' },
       data: { designer: props.designer, edge, expression: edge.expression ? formatWorkflowExpression(edge.expression, props.graph.variables) : '', points: position.points, label: position.label, actual, highlighted, selected, onSelect: () => latest.current.onSelectEdge(edge.id), ...(props.onInsertEdge && !['return','resubmit'].includes(edge.kind) ? { insertionOptions: props.insertionOptions, onInsert: (template?: string) => latest.current.onInsertEdge?.(edge.id, template) } : {}) } };
   }) : [], [props.graph, props.executedEdges, props.selectedNodeId, props.selectedEdgeId, props.onInsertEdge, props.insertionOptions, positions, props.designer]);

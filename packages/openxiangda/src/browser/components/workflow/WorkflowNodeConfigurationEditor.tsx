@@ -75,7 +75,7 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
   const close = () => {
     if (busy || uncertain) return;
     const finish = () => { guard.release(); onClose(); };
-    if (form.isFieldsTouched()) modal.confirm({ title: '关闭节点配置？', content: '未保存的草稿将离开编辑器。', okText: '放弃草稿', cancelText: '继续编辑', onOk: finish });
+    if (dirty) modal.confirm({ title: '关闭节点配置？', content: '未保存的草稿将离开编辑器。', okText: '放弃草稿', cancelText: '继续编辑', onOk: finish });
     else finish();
   };
   const buildPatch = (values: Values): WorkflowNodeConfigurationPatch => {
@@ -153,7 +153,7 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
       title: '办理设置有未保存的修改', content: '保存后，后续进入此节点的任务使用新设置。',
       okText: '保存并继续', cancelText: '继续编辑',
       onOk: async () => { if (await save()) next(); else throw new Error('请修正办理设置后再保存'); },
-      footer: (_, { OkBtn, CancelBtn }) => <Space><Button onClick={() => { dialog.destroy(); guard.release(); next(); }}>放弃修改</Button><CancelBtn /><OkBtn /></Space>,
+      footer: (_, { OkBtn, CancelBtn }) => <Space><Button onClick={() => { dialog.destroy();form.resetFields();setDirty(false); guard.release(); next(); }}>放弃修改</Button><CancelBtn /><OkBtn /></Space>,
     });
   };
   useEffect(() => { onStateChange?.({ dirty, busy, unknown: uncertain }); }, [dirty, busy, uncertain, onStateChange]);

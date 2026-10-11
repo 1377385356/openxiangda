@@ -3523,3 +3523,10 @@
 @media(max-width:899px) {
   .oxa-designer-workspace:not(.without-inspector), .oxa-designer-workspace.without-outline:not(.without-inspector) { grid-template-columns: minmax(0,1fr); }
 }
+
+.oxa-designer-ai-panel { padding: 16px; }
+.oxa-designer-ai-panel > header { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+.oxa-designer-ai-panel > header > .anticon { color: #0066ff; font-size: 22px; }
+.oxa-designer-ai-panel h2 { font-size: 16px; margin: 0; }
+.oxa-designer-ai-panel > header > .ant-btn { margin-left: auto; }
+.oxa-designer-ai-panel > p { font-size: 13px; color: #617086; line-height: 1.8; }

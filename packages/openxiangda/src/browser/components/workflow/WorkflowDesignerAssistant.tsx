@@ -2,11 +2,12 @@ import { useEffect,useMemo,useRef,useState } from 'react';
 import { Alert,Button,Drawer,Input,Space,Spin,Table } from 'antd';
 import { projectWorkflowGraph,type WorkflowDesignerDraft } from 'openxiangda-contracts/browser';
 import { OpenXiangdaPlatformRequestError,requestWorkflowDesignerProposal,loadWorkflowDesignerProposal,applyWorkflowDesignerProposal,cancelWorkflowDesignerProposal,type WorkflowDesignerAiProposal } from '../../platform-client';
+import { CloseOutlined, RobotOutlined } from '@ant-design/icons';
 import { createBrowserUuid } from '../../uuid';
 import { WorkflowDiagram } from './WorkflowDiagram';
 const fieldLabels: Record<string,string> = { title: '节点名称',branches: '条件分支',otherwise: '其他情况',onApprove: '同意后的路径',onReject: '拒绝后的路径',returnTargets: '退回目标',next: '后续节点',mode: '处理方式',binding: '人员规则',allowedOperations: '操作按钮',operationPolicy: '操作要求',taskPageCode: '节点页面' };
 const states: Record<string,string> = { pending: '正在生成方案',queued: '等待处理',running: '正在生成方案',ready: '方案已生成',stale: '草稿已改变，请重新生成方案',applied: '方案已应用到共享草稿',cancelled: '生成已停止',dismissed: '方案已放弃',failed: '方案生成失败',cancel_requested: '正在停止生成' };
-export function WorkflowDesignerAssistant({ workflowCode,draft,open,canApply,onClose,onApplied,onStateChange }: { workflowCode: string;draft: WorkflowDesignerDraft;open: boolean;canApply: boolean;onClose: () => void;onApplied: (draft: WorkflowDesignerDraft) => void;onStateChange: (state: { busy: boolean;unknown: boolean }) => void }) {
+export function WorkflowDesignerAssistant({ workflowCode,draft,open,canApply,onClose,onApplied,onStateChange,presentation = 'drawer' }: { presentation?: 'drawer' | 'panel'; workflowCode: string;draft: WorkflowDesignerDraft;open: boolean;canApply: boolean;onClose: () => void;onApplied: (draft: WorkflowDesignerDraft) => void;onStateChange: (state: { busy: boolean;unknown: boolean }) => void }) {
   const [prompt,setPrompt] = useState('');
   const [proposal,setProposal] = useState<WorkflowDesignerAiProposal>();
   const [busy,setBusy] = useState(false);
@@ -44,7 +45,7 @@ export function WorkflowDesignerAssistant({ workflowCode,draft,open,canApply,onC
     const proposalId = proposal.proposalId;
     frozen.current = async () => { await cancelWorkflowDesignerProposal(workflowCode,proposalId);setProposal(current => current ? { ...current,status: 'dismissed' } : current); };await execute();
   };
-  return <Drawer title="AI 助手" open={open} width={560} onClose={() => { if (!busy && !frozen.current) onClose(); }} destroyOnHidden={false}>
+  const content = <>
     <p>描述需要怎样修改流程。助手会提出方案，确认后应用到共享草稿。</p>
     <Input.TextArea aria-label="流程修改需求" value={prompt} maxLength={2000} rows={4} disabled={busy || !!frozen.current} placeholder="例如：申请金额超过 5 万元时，在财务审查后增加总经理审批；其他情况直接继续。" onChange={event => setPrompt(event.target.value)} />
     <Space style={{ margin: '12px 0' }}><Button type="primary" onClick={() => void generate()} disabled={busy || !!frozen.current || !prompt.trim() || !!proposal && ['pending','queued','running','cancel_requested'].includes(proposal.status)}>生成修改方案</Button>{proposal && !['applied','dismissed','cancelled'].includes(proposal.status) && <Button onClick={() => void cancel()} disabled={busy || !!frozen.current}>放弃方案</Button>}</Space>
@@ -54,5 +55,7 @@ export function WorkflowDesignerAssistant({ workflowCode,draft,open,canApply,onC
       {graph && <WorkflowDiagram graph={graph} selectedNodeId={selected || graph.startAt} onSelectNode={setSelected} />}
       {proposal?.status === 'ready' && <><p>应用后仍需按正常发布步骤检查并启用流程。需要新增代码能力时，由开发者先发布对应业务步骤。</p>{!canApply && <Alert type="warning" title="当前还有本地修改，请先保存或撤销，再应用此方案。" />}<Button block type="primary" disabled={!canApply || busy || !!frozen.current || !proposal.changes?.length} onClick={() => void apply()}>确认并应用到草稿</Button></>}
     </Spin>
-  </Drawer>;
+  </>;
+  const close = () => { if (!busy && !frozen.current) onClose(); };
+  return presentation === 'panel' ? open ? <section className="oxa-designer-ai-panel" aria-label="AI 助手"><header><RobotOutlined /><h2>AI 助手</h2><Button type="text" icon={<CloseOutlined />} aria-label="关闭 AI 助手" disabled={busy || !!frozen.current} onClick={close} /></header>{content}</section> : null : <Drawer title="AI 助手" open={open} width={560} onClose={close} destroyOnHidden={false}>{content}</Drawer>;
 }
