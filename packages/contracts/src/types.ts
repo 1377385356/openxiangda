@@ -2008,6 +2008,8 @@ export interface DataTransactionRequest {
 }
 
 export interface DataTransactionResult {
+  /** Historical service identity; never a reusable authority token. */
+  serviceMutation?: { kind: 'backend-event' | 'service-action'; grantsDigest: string; operationCode?: string; eventId?: string; subscriptionCode?: string };
   schemaVersion: typeof SCHEMA_VERSIONS.dataTransactionResult;
   idempotencyKey: string;
   /** Post-lock database acceptance time used by every dynamic guard assertion. */
