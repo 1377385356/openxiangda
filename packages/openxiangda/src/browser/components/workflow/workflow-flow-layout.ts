@@ -68,6 +68,7 @@ export async function workflowFlowLayout(graph: WorkflowGraphProjection, options
   // Return paths do not change the forward ranks. They occupy bounded outside
   // lanes; correction tasks are shown beside the route, not as a forward cycle.
   const mainRight = Math.max(0, ...[...positions.nodes.values()].map(node => node.x + node.width));
+  const mainLeft = Math.min(36, ...[...positions.nodes.values()].map(node => node.x));
   const mainTop = Math.min(36, ...[...positions.nodes.values()].map(node => node.y));
   const corrections = graph.nodes.filter(node => node.kind === 'correction');
   for (const [index, node] of corrections.entries()) {
@@ -84,7 +85,7 @@ export async function workflowFlowLayout(graph: WorkflowGraphProjection, options
     if (!source || !target) throw new Error('WORKFLOW_GRAPH_ROUTING_MISSING');
     const start = { x: source.x + (source.outputs.find(port => port.id === outputPort(edge.id))?.x ?? source.width / 2), y: source.y + source.height };
     const end = { x: target.x + target.input.x, y: target.y };
-    const laneX = edge.kind === 'return' ? mainRight + 80 + index * 24 : source.x + source.width + 56;
+    const laneX = edge.kind === 'return' ? options.designer ? mainLeft - 80 - index * 24 : mainRight + 80 + index * 24 : source.x + source.width + 56;
     const topY = edge.kind === 'return' ? target.y - 24 - index * 14 : mainTop - 60 - index * 14;
     const points = [start, { x: start.x, y: start.y + 18 }, { x: laneX, y: start.y + 18 },
       { x: laneX, y: topY }, { x: end.x, y: topY }, end];

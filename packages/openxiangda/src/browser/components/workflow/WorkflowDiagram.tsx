@@ -84,12 +84,12 @@ export function WorkflowDiagram({ graph, selectedNodeId, onSelectNode, titles = 
     return visit.transition ? [`${visit.nodeId}:${visit.transition}`] : [];
   })), [visits]);
   const shownGraph = useMemo(() => {
-    const projection = workflowDiagramProjection(graph);
+    const projection = presentation === 'designer' ? graph : workflowDiagramProjection(graph);
     if (!actualOnly) return projection;
     const nodes = projection.nodes.filter(node => visited.has(node.id));
     const ids = new Set(nodes.map(node => node.id));
     return { ...projection, nodes, edges: projection.edges.filter(edge => ids.has(edge.from) && ids.has(edge.to) && executedEdges.has(edge.id)) };
-  }, [graph, actualOnly, visited, executedEdges]);
+  }, [graph, actualOnly, visited, executedEdges, presentation]);
   const controller = canvas?.graph === shownGraph ? canvas.controller : null;
   const orderedNodes = useMemo(() => displayNodeOrder(shownGraph), [shownGraph]);
   useEffect(() => {

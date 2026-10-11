@@ -95,7 +95,7 @@ export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onS
   },[workflowCode,receipt?.publicationId,receipt?.status,publication]);
   const shown = publishedView ? draft?.publishedDefinition : definition;
   const graph = useMemo(() => shown ? projectWorkflowGraph(shown,'draft') : undefined,[shown]);
-  const displayGraph = useMemo(() => graph ? workflowDesignerDisplayGraph(graph) : undefined, [graph]);
+  const displayGraph = useMemo(() => graph ? workflowDesignerDisplayGraph(graph, structureKeys.includes('return') ? selected : undefined) : undefined, [graph, structureKeys, selected]);
   const outlineNodes = useMemo(() => displayGraph ? workflowDesignerOutlineNodes(displayGraph) : [], [displayGraph]);
   useEffect(() => { if (shown && selected !== workflowDesignerStartId && !shown.nodes[selected]) setSelected(shown.startAt); }, [shown, selected]);
   const variables = useMemo(() => definition ? workflowDesignerVariables(definition) : [],[definition]);
@@ -129,7 +129,7 @@ export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onS
     return () => clearTimeout(timer);
   }, [dirty, definition, busy, publishedView, errors.length]);
   const selectNode = (value: string) => {
-    const next = () => { setSelected(value); setStructureKeys([]); setInspector(value !== workflowDesignerStartId); };
+    const next = () => { setSelected(value); if (value !== selected) setStructureKeys([]); setInspector(value !== workflowDesignerStartId); };
     if (value !== selected && leaveHandling.current) leaveHandling.current(next); else next();
   };
   useEffect(() => {

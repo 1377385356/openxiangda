@@ -3,11 +3,14 @@ import { workflowDiagramProjection } from './workflow-graph-presentation';
 
 /** UI-only start node; it never enters the canonical document or command authority. */
 export const workflowDesignerStartId = '__oxa_designer_start__';
-export function workflowDesignerDisplayGraph(graph: WorkflowGraphProjection): WorkflowGraphProjection {
+export function workflowDesignerDisplayGraph(graph: WorkflowGraphProjection, returnFrom?: string): WorkflowGraphProjection {
   const forward = workflowDiagramProjection(graph);
+  const returns = returnFrom ? graph.edges.filter(edge => edge.kind === 'return' && edge.from === returnFrom) : [];
+  const corrections = graph.nodes.filter(node => node.kind === 'correction' && returns.some(edge => edge.to === node.id));
+  const resumptions = graph.edges.filter(edge => edge.kind === 'resubmit' && corrections.some(node => node.id === edge.from));
   return { ...forward, startAt: workflowDesignerStartId,
-    nodes: [{ id: workflowDesignerStartId, kind: 'start', title: '发起' }, ...forward.nodes],
-    edges: [{ id: '__oxa_designer_start_edge__', from: workflowDesignerStartId, to: graph.startAt, kind: 'next', label: '发起后', variablePaths: [] }, ...forward.edges] };
+    nodes: [{ id: workflowDesignerStartId, kind: 'start', title: '发起' }, ...forward.nodes, ...corrections],
+    edges: [{ id: '__oxa_designer_start_edge__', from: workflowDesignerStartId, to: graph.startAt, kind: 'next', label: '发起后', variablePaths: [] }, ...forward.edges, ...returns, ...resumptions] };
 }
 export function workflowDesignerOutlineNodes(graph: WorkflowGraphProjection): WorkflowGraphProjection['nodes'] {
   const ids = new Set<string>(), ordered: WorkflowGraphProjection['nodes'] = [];
