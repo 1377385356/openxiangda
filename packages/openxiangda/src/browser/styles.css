@@ -3390,7 +3390,7 @@
 .oxa-workflow-diagram-designer .kind-start .oxa-workflow-node-copy, .oxa-workflow-diagram-designer .kind-end .oxa-workflow-node-copy { flex: 0 1 auto; }
 .oxa-workflow-diagram-designer .kind-start strong, .oxa-workflow-diagram-designer .kind-end strong { margin: 0; white-space: nowrap; }
 .oxa-workflow-diagram-designer .kind-start small, .oxa-workflow-diagram-designer .kind-end small { display: none; }
-.oxa-workflow-diagram-designer .oxa-workflow-edge-insert { width: 20px; height: 20px; display: grid; place-items: center; border: 1px solid #c5d2e4; border-radius: 50%; color: #6c7e98; background: white; padding: 0; font-size: 11px; }
+.oxa-workflow-diagram-designer .oxa-workflow-edge-insert { position: absolute; pointer-events: all; width: 20px; height: 20px; display: grid; place-items: center; border: 1px solid #c5d2e4; border-radius: 50%; color: #6c7e98; background: white; padding: 0; font-size: 11px; }
 .oxa-workflow-diagram-designer .oxa-workflow-edge-insert:hover { color: #0066ff; border-color: #0066ff; }
 .oxa-workflow-diagram-designer .react-flow__handle { opacity: 0; }
 .oxa-workflow-diagram-designer .oxa-workflow-viewport-tools { bottom: 18px; left: 16px; border-radius: 5px; box-shadow: none; }
