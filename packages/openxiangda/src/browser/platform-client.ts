@@ -3379,7 +3379,7 @@ export function publishWorkflowDesigner(workflowCode: string, input: import('ope
   return workflowDesignerMutation<import('openxiangda-contracts/browser').WorkflowPublicationReceipt>(workflowCode, '/publish', input);
 }
 export function loadWorkflowDesignerPublication(workflowCode: string, publicationId: string) {
-  return requestRead<import('openxiangda-contracts/browser').WorkflowPublicationReceipt & { items: Array<{ outcome: string; reason?: string; business_key: string }> }>(`${workflowDesignerPath(workflowCode, '/publications/')}${encodeURIComponent(publicationId)}?environmentKey=${encodeURIComponent(currentEnvironmentKey())}`);
+  return requestRead<import('openxiangda-contracts/browser').WorkflowPublicationReceipt & { items: Array<{ instanceId: string; outcome: string; reason?: string; business_key: string }> }>(`${workflowDesignerPath(workflowCode, '/publications/')}${encodeURIComponent(publicationId)}?environmentKey=${encodeURIComponent(currentEnvironmentKey())}`);
 }
 export function listWorkflowDesignerPublications(workflowCode: string) {
   return requestRead<Array<import('openxiangda-contracts/browser').WorkflowPublicationReceipt & { reason: string; createdAt: string }>>(`${workflowDesignerPath(workflowCode, '/publications')}?environmentKey=${encodeURIComponent(currentEnvironmentKey())}`);
@@ -3410,4 +3410,7 @@ export function applyWorkflowDesignerProposal(workflowCode: string,proposalId: s
 }
 export function cancelWorkflowDesignerProposal(workflowCode: string,proposalId: string) {
   return workflowDesignerMutation<{ cancelled: true }>(workflowCode,`/assistant/proposals/${encodeURIComponent(proposalId)}/cancel`,{});
+}
+export function searchWorkflowDesignerHoldCandidates(workflowCode: string,keyword = '') {
+  return requestRead<Array<{ instanceId: string; businessKey: string; nodeTitle: string; fromVersion: number }>>(`${workflowDesignerPath(workflowCode,'/hold-candidates')}?${new URLSearchParams({ environmentKey: currentEnvironmentKey(),keyword })}`);
 }
