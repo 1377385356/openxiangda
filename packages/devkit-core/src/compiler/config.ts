@@ -5120,6 +5120,15 @@ function validateBackendOperations(
         ? ai.sideEffects
         : [];
       const risk = string(ai.risk);
+      if (risk === 'external' && ai.reconcile === undefined) {
+        diagnostics.push({
+          ...diagnostic('AI_EXTERNAL_RECONCILIATION_MISSING', '外部 AI 操作未声明业务结果核对能力，执行结果不确定时只能保留未知并人工核实', `${path}.ai.reconcile`),
+          severity: 'warning',
+        });
+      }
+      if (object(ai.reconcile).kind==='platform-transaction') {
+        diagnostics.push({...diagnostic('AI_APP_TRANSACTION_RECONCILIATION_UNSUPPORTED','应用业务操作的 completing 平台事务核对尚未提供；请声明只读状态操作，否则保留结果未知',`${path}.ai.reconcile`),severity:'warning'});
+      }
       const aiKeys = Object.keys(ai);
       const allowedAiKeys = new Set([
         'name',
@@ -5128,6 +5137,7 @@ function validateBackendOperations(
         'confirmation',
         'resources',
         'sideEffects',
+        'reconcile',
         'concurrency',
         'timeoutMs',
         'agent',

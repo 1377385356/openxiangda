@@ -231,6 +231,8 @@ export interface AppApiOperationAiDeclaration {
   name: string;
   description: string;
   risk: 'read' | 'write' | 'destructive' | 'external';
+  /** Same-key Native Data receipt or an authorized GET status operation; never retries. */
+  reconcile?: { kind: 'platform-transaction' } | { kind: 'status-operation'; operation: string };
   /** Ordinary writes may execute directly for an explicitly requested Agent task. */
   confirmation?: 'none' | 'required';
   resources: string[];

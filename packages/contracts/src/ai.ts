@@ -51,6 +51,8 @@ export interface AiCapability {
   concurrency: AiConcurrencyPolicy;
   limits: AiCapabilityLimits;
   sideEffects: string[];
+  /** The resolver is read-only; absence leaves an uncertain outcome unresolved. */
+  reconcile?: { kind: "platform-transaction" } | { kind: "status-operation"; operation: string };
   agent?: {
     visibility: "task" | "support";
     examples?: string[];
@@ -393,6 +395,16 @@ export function validateAiCapabilityCatalog(value: unknown): Diagnostic[] {
         );
       }
     }
+    if (raw.reconcile !== undefined) {
+      const resolver = isRecord(raw.reconcile) ? raw.reconcile : {};
+      if (risk === "read" || !["platform-transaction", "status-operation"].includes(String(resolver.kind)) ||
+          Object.keys(resolver).some(key => !["kind", "operation"].includes(key)) ||
+          (resolver.kind === "platform-transaction" && resolver.operation !== undefined) ||
+          (resolver.kind === "status-operation" && (!nonEmptyString(resolver.operation) ||
+            !/^[a-z][a-z0-9]*(?:[-.][a-z0-9]+)*$/.test(String(resolver.operation))))) {
+        diagnostics.push(diagnostic("AI_CAPABILITY_RECONCILE_INVALID", `${path}.reconcile 必须声明只读业务回执所有者`, `${path}.reconcile`));
+      }
+    }
     if (raw.agent !== undefined) {
       const agent = isRecord(raw.agent) ? raw.agent : {};
       const strings = (value: unknown, max: number, length: number) =>
@@ -630,6 +642,10 @@ export const aiCapabilityCatalogSchema = {
             },
           },
           sideEffects: { type: "array", items: { type: "string" } },
+          reconcile: { oneOf: [
+            { type: "object", additionalProperties: false, required: ["kind"], properties: { kind: { const: "platform-transaction" } } },
+            { type: "object", additionalProperties: false, required: ["kind", "operation"], properties: { kind: { const: "status-operation" }, operation: { type: "string" } } },
+          ] },
           agent: {
             type: "object", additionalProperties: false,
             required: ["visibility"],

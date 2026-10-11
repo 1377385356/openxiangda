@@ -420,3 +420,24 @@ test("publishes an ordinary-user task with bounded read-only helpers", () => {
     }] },
   }), /AI_AGENT_INPUT_CARD_EXECUTION_INVALID/);
 });
+
+
+test("reconciliation binds a declared GET read operation with fixed server query fields", () => {
+  const status = {
+    code: "reservation.status", method: "GET" as const, path: "/api/reservations/status", capability: "app:visitor-app:reservation:status",
+    requestSchema: {type:"object",additionalProperties:false,required:["invocationKey","capabilityCode","intentDigest","inputHash","initiatingUserId"],properties:Object.fromEntries(["invocationKey","capabilityCode","intentDigest","inputHash","initiatingUserId"].map(key=>[key,{type:"string"}]))},
+    responseSchema: {type:"object"},
+    ai: {name:"核对预约",description:"读取原预约流水",risk:"read" as const,resources:["reservations"],sideEffects:[]},
+  };
+  const task = {
+    code:"reservation.external",method:"POST" as const,path:"/api/reservations/external",capability:"app:visitor-app:reservation:external",
+    requestSchema:{type:"object",properties:{name:{type:"string"}}},responseSchema:{type:"object"},
+    ai:{name:"外部预约",description:"发起外部系统预约",risk:"external" as const,resources:["reservations"],sideEffects:["创建外部预约"],reconcile:{kind:"status-operation" as const,operation:status.code}},
+  };
+  const selected={...config,backend:{...config.backend,operations:[task,status]}};
+  assert.deepEqual(compileAiCapabilityCatalog(selected).capabilities.find(item=>item.binding?.operationCode===task.code)?.reconcile,task.ai.reconcile);
+  assert.throws(()=>compileAiCapabilityCatalog({...selected,backend:{...selected.backend,operations:[task]}}),/AI_AGENT_RECONCILE_OPERATION_INVALID/);
+  assert.throws(()=>compileAiCapabilityCatalog({...selected,backend:{...selected.backend,operations:[task,{...status,method:"POST",ai:{...status.ai,risk:"write",sideEffects:["修改预约"]}}]}}),/AI_AGENT_RECONCILE_OPERATION_INVALID/);
+  const {reconcile: _,...unresolved}=task.ai;
+  assert.ok(validateAppConfig({...selected,backend:{...selected.backend,operations:[{...task,ai:unresolved}]}}).some(item=>item.code==="AI_EXTERNAL_RECONCILIATION_MISSING" && item.severity==="warning"));
+});
