@@ -53,3 +53,5 @@ export * from './native-compiler/workflow-return-policy.js';
 export * from './native-compiler/workflow-platform-notify.js';
 
 export { workflowProducedEventTypes } from './native-compiler/workflow-events.js';
+
+export * from './native-compiler/workflow-reminders.js';

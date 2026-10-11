@@ -2403,6 +2403,7 @@ export type WorkflowExpression =
   | { op: "not" | "exists"; value: WorkflowExpression };
 
 export interface WorkflowApprovalNode {
+  reminders?: import('./native-compiler/workflow-reminders.js').WorkflowReminders;
   id: string;
   kind: "approval";
   title: string;

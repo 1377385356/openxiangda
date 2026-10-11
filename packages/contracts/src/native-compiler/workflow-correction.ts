@@ -1,6 +1,7 @@
 import { workflowReturnTargets } from './workflow-return-policy.js';
 /** Fixed data correction task; assignment always belongs to the instance initiator. */
 export interface WorkflowCorrectionNode {
+  reminders?: import('./workflow-reminders.js').WorkflowReminders;
   id: string;
   kind: 'correction';
   title: string;
@@ -25,7 +26,7 @@ export function validateWorkflowCorrections(definition: Definition): string[] {
     forward.add(id); pending.push(...targets(nodes[id]));
   }
   for (const node of corrections) {
-    if (!object(node) || Object.keys(node).some(key => !['id', 'kind', 'title', 'taskPageCode', 'next'].includes(key)) ||
+    if (!object(node) || Object.keys(node).some(key => !['id', 'kind', 'title', 'taskPageCode', 'next', 'reminders'].includes(key)) ||
       typeof node.id !== 'string' || !/^[A-Za-z][A-Za-z0-9_-]{0,127}$/.test(node.id) ||
       ['__proto__', 'prototype', 'constructor'].includes(node.id) || nodes[node.id] !== node ||
       typeof node.title !== 'string' || !node.title.trim() || node.title.length > 255 ||

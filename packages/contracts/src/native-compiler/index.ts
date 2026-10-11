@@ -74,3 +74,5 @@ export * from './workflow-return-policy.js';
 export * from './workflow-platform-notify.js';
 
 export { workflowProducedEventTypes } from './workflow-events.js';
+
+export * from './workflow-reminders.js';

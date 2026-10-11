@@ -1,3 +1,4 @@
+import { validateWorkflowReminders } from './workflow-reminders.js';
 import { isWorkflowPlatformNotify, validateWorkflowPlatformNotify } from './workflow-platform-notify.js';
 import { validateWorkflowReturnPolicies } from './workflow-return-policy.js';
 import { validateWorkflowHandlingNodes } from './workflow-handle.js';
@@ -68,7 +69,7 @@ export function workflowDesignerTargets(node: Record<string, any>): string[] {
 
 /** The canvas can route released capabilities; it cannot invent a business validator, page or handler. */
 export function validateWorkflowDesignerCapabilities(base: WorkflowDefinition, next: WorkflowDefinition, baseBinding: WorkflowBinding, nextBinding: WorkflowBinding): string[] {
-  const errors: string[] = [];
+  const errors: string[] = [...validateWorkflowReminders(next)];
   if (!record(next) || !record(next.nodes) || !record(nextBinding?.bindings)) return ['WORKFLOW_DESIGNER_DOCUMENT_INVALID'];
   const editable = new Set(['title', 'startAt', 'nodes', 'readability']);
   for (const key of new Set([...Object.keys(base), ...Object.keys(next)])) if (!editable.has(key) && !same((base as any)[key], (next as any)[key])) errors.push(`WORKFLOW_DESIGNER_CODE_OWNED:${key}`);

@@ -80,6 +80,7 @@ export const PLATFORM_CAPABILITY_CONTRACT_VERSIONS = {
   "workflow.approval-empty-policy": "1.0.0",
   "workflow.initiator-approval-policy": "1.0.0",
   "workflow.platform-notify": "1.0.0",
+  "workflow.reminders": "1.0.0",
   "workflow.return-policy": "1.0.0",
   "workflow.handling-nodes": "1.0.0",
   "workflow.completion-deadline": "1.0.0",

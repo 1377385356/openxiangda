@@ -1,5 +1,6 @@
 import { isWorkflowPlatformNotify } from './workflow-platform-notify.js';
 export const WORKFLOW_EVENT_TYPES_V2 = [
+  'openxiangda.workflow.task.reminded.v2',
   'openxiangda.workflow.node.notified.v2',
   'openxiangda.workflow.node.skipped.v2',
   'openxiangda.workflow.step.requested.v2',
@@ -46,6 +47,7 @@ export function workflowProducedEventTypes(definitions: readonly { definition: {
   const nodes = definitions.flatMap(item => Object.values(item.definition.nodes));
   const businessStep = nodes.some(node => node.kind === 'action' && !isWorkflowPlatformNotify(node));
   return WORKFLOW_EVENT_TYPES_V2.filter(eventType =>
+    eventType === 'openxiangda.workflow.task.reminded.v2' ? nodes.some(node => node.reminders) :
     eventType === 'openxiangda.workflow.node.notified.v2' ? nodes.some(isWorkflowPlatformNotify) :
     eventType === 'openxiangda.workflow.node.skipped.v2' ? nodes.some(node => node.kind === 'approval' && node.emptyPolicy === 'skip') :
     eventType.startsWith('openxiangda.workflow.step.') ? businessStep : true);

@@ -66,3 +66,5 @@ export * from './native-compiler/workflow-handle.js';
 export * from './native-compiler/workflow-platform-notify.js';
 
 export { workflowProducedEventTypes } from './native-compiler/workflow-events.js';
+
+export * from './native-compiler/workflow-reminders.js';

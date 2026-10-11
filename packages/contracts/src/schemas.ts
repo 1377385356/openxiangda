@@ -5544,6 +5544,7 @@ const workflowCcNodeSchema = {
   },
 } as const;
 
+const workflowReminderSchema = { type: 'object', additionalProperties: false, required: ['afterSeconds','everySeconds','max','to'], properties: { afterSeconds: { type: 'integer', minimum: 1, maximum: 2592000 }, everySeconds: { type: 'integer', minimum: 1, maximum: 2592000 }, max: { type: 'integer', minimum: 1, maximum: 10 }, to: { type: 'array', minItems: 1, maxItems: 1, items: { const: 'handlers' } } } };
 export const workflowBusinessStepNodeSchema = {
   type: 'object', additionalProperties: false,
   required: ['id', 'kind', 'title', 'next', 'handler', 'inputSchema', 'outputSchema', 'inputs'],
@@ -5586,7 +5587,7 @@ const workflowNodeSchema = {
       type: 'object', additionalProperties: false,
       required: ['id', 'kind', 'title', 'binding', 'mode', 'next', 'allowedOperations', 'requiredOperations'],
       properties: {
-        id: nonEmptyString, kind: { const: 'handle' }, title: nonEmptyString,
+        id: nonEmptyString, kind: { const: 'handle' }, title: nonEmptyString, reminders: workflowReminderSchema,
         binding: nonEmptyString, mode: { enum: ['single', 'any', 'all', 'sequence'] },
         next: nonEmptyString, emptyPolicy: { const: 'block' },
         taskPageCode: { type: 'string', pattern: '^[A-Za-z][A-Za-z0-9_-]{0,63}$' },
@@ -5624,6 +5625,7 @@ const workflowNodeSchema = {
       properties: {
         id: nonEmptyString,
         kind: { const: "approval" },
+        reminders: workflowReminderSchema,
         title: nonEmptyString,
         binding: nonEmptyString,
         mode: { enum: ["single", "any", "all", "sequence"] },
@@ -5729,7 +5731,7 @@ const workflowNodeSchema = {
     workflowCcNodeSchema,
     workflowBusinessStepNodeSchema,
     { type: 'object', additionalProperties: false, required: ['id', 'kind', 'title', 'taskPageCode', 'next'],
-      properties: { id: nonEmptyString, kind: { const: 'correction' }, title: nonEmptyString,
+      properties: { id: nonEmptyString, kind: { const: 'correction' }, title: nonEmptyString, reminders: workflowReminderSchema,
         taskPageCode: { type: 'string', pattern: '^[A-Za-z][A-Za-z0-9_-]{0,63}$' }, next: nonEmptyString } },
   ],
 } as const;

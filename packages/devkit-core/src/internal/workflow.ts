@@ -1,3 +1,4 @@
+import { validateWorkflowReminders } from 'openxiangda-contracts';
 import {
   SCHEMA_VERSIONS,
   WORKFLOW_SUMMARY_MAX_FIELDS,
@@ -219,7 +220,8 @@ export function validateWorkflowDefinition(definition: WorkflowDefinition) {
       if (!reachable.has(id)) diagnostics.push(`WORKFLOW_NODE_UNREACHABLE:${id}`);
     }
   }
-  return [...new Set([...diagnostics, ...validateWorkflowCorrections(definition), ...validateWorkflowHandlingNodes(definition), ...validateWorkflowReturnPolicies(definition)])];
+  return [...new Set([...diagnostics, ...validateWorkflowCorrections(definition), ...validateWorkflowHandlingNodes(definition),
+      ...validateWorkflowReminders(definition), ...validateWorkflowReturnPolicies(definition)])];
 }
 
 export function validateWorkflowBinding(

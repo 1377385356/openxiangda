@@ -1,3 +1,4 @@
+import { validateWorkflowReminders } from './workflow-reminders.js';
 import { isWorkflowPlatformNotify } from './workflow-platform-notify.js';
 import { validateWorkflowReturnPolicies, workflowReturnTargets } from './workflow-return-policy.js';
 import { validateWorkflowHandlingNodes } from './workflow-handle.js';
@@ -798,6 +799,7 @@ export function compileRequiredPlatformCapabilitiesV3(
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'approval' && node.emptyPolicy !== undefined))
       ? [{ code: 'workflow.approval-empty-policy' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'approval' && node.emptyPolicy !== undefined)) }]
       : []),
+    ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.reminders)) ? [{ code: 'workflow.reminders' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.reminders)) }] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => isWorkflowPlatformNotify(node)))
       ? [{ code: 'workflow.platform-notify' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => isWorkflowPlatformNotify(node))) }] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.returnPolicy !== undefined))
@@ -7275,6 +7277,8 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
   if (taskPageErrors.length) fail(taskPageErrors[0]!, `${pointer}/taskPages`);
   const returnErrors = validateWorkflowReturnPolicies(definition as any);
   if (returnErrors.length) fail(returnErrors[0]!, `${pointer}/nodes`);
+  const reminderErrors = validateWorkflowReminders(definition);
+  if (reminderErrors.length) fail(reminderErrors[0]!, `${pointer}/nodes`);
   const handleErrors = validateWorkflowHandlingNodes(definition as any);
   if (handleErrors.length) fail(handleErrors[0]!, `${pointer}/nodes`);
   const stepErrors = validateWorkflowBusinessSteps(definition);
