@@ -3625,3 +3625,11 @@
 .oxa-designer-workspace.without-outline .oxa-designer-outline-heading { padding: 0; justify-content: center; }
 .oxa-designer-workspace.without-outline .oxa-designer-outline nav button { justify-content: center; padding: 10px 4px; gap: 0; }
 .oxa-designer-outline nav button .anticon { flex: 0 0 20px; min-width: 20px; }
+
+.oxa-designer-ai-panel { min-height: calc(100dvh - 56px); box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; }
+.oxa-designer-ai-panel > header { flex-shrink: 0; }
+.oxa-designer-ai-panel > .ant-spin-nested-loading { flex: 1; min-height: 0; overflow-y: auto; }
+.oxa-designer-ai-panel > .oxa-designer-ai-composer { order: 10; flex-shrink: 0; margin-top: auto; padding: 12px 0 0; border-top: 1px solid #e1e8f2; }
+.oxa-designer-ai-panel .oxa-designer-ai-composer > .ant-space { width: 100%; justify-content: flex-end; margin-bottom: 0 !important; }
+.oxa-designer-ai-panel .oxa-designer-ai-composer textarea { font-size: 13px; }
+@media(max-width:899px) { .oxa-designer-ai-panel { min-height: calc(85dvh - 32px); } }
