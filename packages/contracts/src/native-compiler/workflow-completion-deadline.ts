@@ -18,7 +18,7 @@ type Node = {
   allowedOperations?: readonly string[];
   taskPageCode?: string;
   fieldPolicy?: { default?: string; fields?: Record<string, string> };
-  operationPolicy?: { approve?: { commentRequired?: boolean } };
+  operationPolicy?: { approve?: { commentRequired?: boolean; opinion?: 'none' | 'optional' | 'required' } };
 };
 type Definition = {
   nodes?: Record<string, Node>;
@@ -58,7 +58,7 @@ export function validateWorkflowCompletionDeadlines(definition: Definition): str
     const page = node.taskPageCode ? definition.taskPages?.[node.taskPageCode] : undefined;
     if (node.taskPageCode && (!page || requiresInput(page.fields)) ||
       [node.fieldPolicy?.default, ...Object.values(node.fieldPolicy?.fields || {})].includes('edit_required') ||
-      node.operationPolicy?.approve?.commentRequired === true || definition.commandHandlers?.approve !== undefined) {
+      (node.operationPolicy?.approve?.opinion === 'required' || node.operationPolicy?.approve?.commentRequired === true) || definition.commandHandlers?.approve !== undefined) {
       errors.push(`WORKFLOW_COMPLETION_DEADLINE_INPUT_REQUIRED:${id}`);
     }
   }

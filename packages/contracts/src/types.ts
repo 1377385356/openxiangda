@@ -2459,6 +2459,8 @@ export interface WorkflowApprovalNode {
   taskPageCode?: string;
   /** Code-owned defaults; labels never change the stable command semantics. */
   operationPolicy?: Partial<Record<WorkflowConfigurableOperation, WorkflowNodeOperationPolicy>>;
+  /** Released hard requirements; registering a command handler does not force its action on. */
+  requiredOperations?: WorkflowConfigurableOperation[];
   /** Explicit upper bound for administrator changes. Topology remains immutable. */
   administration?: WorkflowApprovalAdministration;
   fieldPolicy?: {
@@ -2467,10 +2469,15 @@ export interface WorkflowApprovalNode {
   };
 }
 
-export type WorkflowConfigurableOperation = 'approve' | 'reject' | 'return' | 'transfer' | 'delegate' | 'add_assignee';
+export type WorkflowConfigurableOperation = 'approve' | 'reject' | 'save_form' | 'return' | 'transfer' | 'delegate' | 'add_assignee';
+export type WorkflowOperationOpinion = 'none' | 'optional' | 'required';
 export type WorkflowConfigurableAssigneeProvider = 'fixed_users' | 'app_role' | 'app_role_in_scope';
 export interface WorkflowNodeOperationPolicy {
   label?: string;
+  /** Presentation default; never changes command or field authorization. */
+  opinion?: WorkflowOperationOpinion;
+  /** Released minimum. Omitted preserves legacy required baselines. */
+  minimumOpinion?: WorkflowOperationOpinion;
   /** Approve defaults to false, reject to true; explicit false is code-owned. */
   commentRequired?: boolean;
   /** Transfer/delegate/add_assignee/return default to true; administrators cannot loosen the code baseline. */
@@ -2738,7 +2745,7 @@ export interface WorkflowNodeConfigurationPatch {
   title?: string;
   description?: string;
   mode?: WorkflowApprovalMode;
-  operations?: Partial<Record<WorkflowConfigurableOperation, WorkflowNodeOperationPolicy & { enabled?: boolean }>>;
+  operations?: Partial<Record<WorkflowConfigurableOperation, Omit<WorkflowNodeOperationPolicy, 'minimumOpinion'> & { enabled?: boolean }>>;
   assignee?:
     | { provider: "fixed_users"; users: string[] }
     | { provider: "app_role" | "app_role_in_scope"; roleCode: string; roleCodes?: never }
@@ -2769,6 +2776,8 @@ export interface WorkflowNodeConfigurations {
       initiatorApprovalPolicy?: "manual" | "auto_approve";
       completionDeadline?: import('./native-compiler/workflow-completion-deadline.js').WorkflowCompletionDeadline;
       allowedOperations?: WorkflowCommand[];
+      requiredOperations?: WorkflowConfigurableOperation[];
+      taskPageCode?: string;
       operationPolicy?: Partial<Record<WorkflowConfigurableOperation, WorkflowNodeOperationPolicy>>;
       fieldPolicy?: WorkflowApprovalNode['fieldPolicy'];
     };

@@ -5599,11 +5599,13 @@ const workflowNodeSchema = {
             type: 'object', additionalProperties: false, minProperties: 1,
             properties: {
               label: { type: 'string', minLength: 1, maxLength: 40, pattern: '^(?!.*[\\u0000-\\u001f\\u007f])(?=.*\\S).*$' },
+              ...(operation !== 'save_form' ? { opinion: { enum: ['none', 'optional', 'required'] }, minimumOpinion: { enum: ['none', 'optional', 'required'] } } : {}),
               ...(['approve', 'reject'].includes(operation) ? { commentRequired: { type: 'boolean' } } : {}),
               ...(['transfer', 'delegate', 'add_assignee', 'return'].includes(operation) ? { reasonRequired: { type: 'boolean' } } : {}),
             },
           }])),
         },
+        requiredOperations: { type: 'array', minItems: 1, maxItems: 7, uniqueItems: true, items: { enum: [...WORKFLOW_CONFIGURABLE_OPERATIONS] } },
         allowedOperations: {
           type: "array",
           uniqueItems: true,

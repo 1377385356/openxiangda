@@ -3175,7 +3175,19 @@
 .oxa-workflow-config-context { margin-bottom: 16px; }
 .oxa-workflow-config-context h4 { margin: 0 0 8px; }
 .oxa-workflow-config-help { color: var(--ant-color-text-secondary, #748092); font-size: 13px; line-height: 1.7; margin: 0 0 20px; }
-.oxa-workflow-config .ant-tabs-nav { margin-bottom: 20px; }
+.oxa-workflow-config-section { margin: 0 0 24px; padding-top: 16px; border-top: 1px solid var(--ant-color-border-secondary, #e3e8ef); }
+.oxa-workflow-config-section h3 { margin: 0 0 16px; font-size: 14px; font-weight: 600; }
+.oxa-workflow-operation-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+.oxa-workflow-operation-table thead { background: var(--ant-color-fill-quaternary, #f4f6fa); color: var(--ant-color-text-secondary, #646a73); }
+.oxa-workflow-operation-table th, .oxa-workflow-operation-table td { padding: 10px 6px; text-align: left; border-bottom: 1px solid var(--ant-color-border-secondary, #e3e8ef); vertical-align: middle; }
+.oxa-workflow-operation-table th { font-weight: 500; }
+.oxa-workflow-operation-table th:nth-child(1) { width: 19%; }
+.oxa-workflow-operation-table th:nth-child(2) { width: 17%; }
+.oxa-workflow-operation-table th:nth-child(3) { width: 35%; }
+.oxa-workflow-operation-table small { display: block; margin-top: 4px; font-size: 11px; color: var(--ant-color-text-secondary, #646a73); font-weight: 400; }
+.oxa-workflow-operation-table .ant-form-item { margin: 0; }
+.oxa-workflow-operation-table .ant-select { width: 100%; }
+@media (max-width: 420px) { .oxa-workflow-operation-table th, .oxa-workflow-operation-table td { padding: 10px 4px; } .oxa-workflow-operation-table { font-size: 12px; } }
 .oxa-workflow-provider-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: 100%; }
 .oxa-workflow-provider-options .ant-radio-wrapper, .oxa-workflow-mode-options .ant-radio-wrapper { border: 1px solid var(--ant-color-border-secondary, #e0e6ed); border-radius: 6px; padding: 12px; margin: 0; align-items: start; }
 .oxa-workflow-provider-options .ant-radio-wrapper-checked, .oxa-workflow-mode-options .ant-radio-wrapper-checked { border-color: var(--ant-color-primary, #1677ff); background: var(--ant-color-primary-bg, #eef6ff); }
