@@ -1,3 +1,4 @@
+import { normalizeDataMutationGrants } from './service-mutations.js';
 import { hasNativeParentReadPolicy, resolveNativeParentReadBinding, validateNativeParentReadPolicies, NativeParentReadPolicyError } from './parent-read-policy.js';
 import { requiresExtendedFieldCapacity, WORKFLOW_LAUNCH_MAX_INPUTS } from './data-capacity.js';
 import { assertWorkflowNativeStagePolicy } from './workflow-native-stage.js';
@@ -687,6 +688,7 @@ export function compileRequiredPlatformCapabilitiesV3(
         commands: initiatorPhoneCommands.map((command: JsonObject) => ({ code: command.code, directory: command.execution.directory })),
       },
     }] : []),
+    ...(config.data.resources.some((resource: JsonObject) => resource.schema.fields.some((field: JsonObject) => field.type === 'text.rich')) ? [{ code: 'data.rich-text' as const, declaration: { policyVersion: 'rich-text-html/1' } }] : []),
     ...(usesManagedFiles
       ? [
           {
@@ -881,6 +883,8 @@ export function compileRequiredPlatformCapabilitiesV3(
           },
         ]
       : []),
+    ...(operations.some(op => op.platformAccess?.dataMutations) || config.events.subscriptions.some((sub: JsonObject) => sub.platformAccess?.dataMutations)
+      ? [{ code: 'data.service-mutations' as const, declaration: { operations: operations.filter(op => op.platformAccess?.dataMutations).map(op => ({code: op.code, grants: op.platformAccess.dataMutations})), subscriptions: config.events.subscriptions.filter((sub: JsonObject) => sub.platformAccess?.dataMutations).map((sub: JsonObject) => ({code: sub.code, grants: sub.platformAccess.dataMutations})) } }] : []),
     ...(usesNotification
       ? [
           {
@@ -1738,8 +1742,12 @@ function validateEventSubscriptionPlatformAccess(
 ) {
   if (value === undefined) return undefined;
   const access = object(value, pointer);
-  exactKeys(access, ['notification', 'managedFileCopies', 'decimalReservation'], pointer, true);
+  exactKeys(access, ['notification', 'managedFileCopies', 'decimalReservation', 'dataMutations'], pointer, true);
   const result: JsonObject = {};
+  if (access.dataMutations !== undefined) {
+    try { result.dataMutations = normalizeDataMutationGrants(access.dataMutations, declaredResources); }
+    catch { fail('NATIVE_EVENT_DATA_MUTATIONS_INVALID', `${pointer}/dataMutations`); }
+  }
   if (access.decimalReservation !== undefined) {
     try {
       result.decimalReservation = normalizeDecimalReservationEventDeclaration(
@@ -1786,7 +1794,7 @@ function validateEventSubscriptionPlatformAccess(
         sourceFields.forEach((field, fieldIndex) => {
           const sourceType = source!.get(field);
           const targetType = target!.get(targetFields[fieldIndex]!);
-          if (!['file', 'image'].includes(String(sourceType)) || sourceType !== targetType) {
+          if (!['file', 'image', 'text.rich'].includes(String(sourceType)) || sourceType !== targetType) {
             fail('NATIVE_EVENT_MANAGED_FILE_COPY_FIELD_INVALID', `${entryPointer}/sourceFieldCodes/${fieldIndex}`);
           }
         });
@@ -2823,7 +2831,7 @@ function validateOperationPlatformAccess(
   const access = object(value, pointer);
   exactKeys(
     access,
-    ['directory', 'selectedDepartments', 'managedFiles', 'managedFileCopies', 'notification', 'workflow', 'roleAssertions', 'decimalReservation', 'dataCommands', 'recordEdit', 'ownedSubject', 'workflowStage'],
+    ['directory', 'selectedDepartments', 'managedFiles', 'managedFileCopies', 'notification', 'workflow', 'roleAssertions', 'decimalReservation', 'dataCommands', 'recordEdit', 'ownedSubject', 'workflowStage', 'dataMutations'],
     pointer,
     true
   );
@@ -2831,6 +2839,10 @@ function validateOperationPlatformAccess(
     fail('NATIVE_OPERATION_PLATFORM_ACCESS_EMPTY', pointer);
   }
   const result: JsonObject = {};
+  if (access.dataMutations !== undefined) {
+    try { result.dataMutations = normalizeDataMutationGrants(access.dataMutations, declaredResourceFields); }
+    catch { fail('NATIVE_OPERATION_DATA_MUTATIONS_INVALID', `${pointer}/dataMutations`); }
+  }
   if (access.dataCommands !== undefined) {
     const commands = object(access.dataCommands, `${pointer}/dataCommands`);
     exactKeys(commands, ['mode'], `${pointer}/dataCommands`);
@@ -3022,7 +3034,7 @@ function validateOperationPlatformAccess(
         sourceFields.forEach((field, fieldIndex) => {
           const sourceType = source!.get(field);
           const targetType = target!.get(targetFields[fieldIndex]!);
-          if (!['file', 'image'].includes(String(sourceType)) || sourceType !== targetType) {
+          if (!['file', 'image', 'text.rich'].includes(String(sourceType)) || sourceType !== targetType) {
             fail('NATIVE_OPERATION_MANAGED_FILE_COPY_FIELD_INVALID', `${entryPointer}/sourceFieldCodes/${fieldIndex}`);
           }
         });

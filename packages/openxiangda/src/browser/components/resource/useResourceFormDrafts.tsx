@@ -1,3 +1,4 @@
+import { createBrowserUuid } from '../../uuid';
 import { formatPresentationTime, usePresentationTimeZone } from '../../presentation-time';
 import { Alert, Button, type FormInstance } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -5,14 +6,6 @@ import { createResourceFormDraftClient, type ResourceFormDraft } from '../../pla
 import { FormConfirmation, ResourceFormDrafts } from './ResourceFormDrafts';
 import type { SurfaceField } from './SurfaceFields';
 
-function createDraftId() {
-  // getRandomValues also works on private HTTP deployments where randomUUID is absent.
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
-  bytes[6] = (bytes[6]! & 15) | 64;
-  bytes[8] = (bytes[8]! & 63) | 128;
-  const hex = Array.from(bytes, value => value.toString(16).padStart(2, '0')).join('');
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-}
 
 export function useResourceFormDrafts({ code, viewCode, mode, recordId, mobile, fields, ready, form, encode, restore, recordRevision, onSaved }: {
   code: string; viewCode?: string; mode: 'create' | 'edit'; recordId?: string; mobile: boolean; fields: SurfaceField[]; ready: boolean;
@@ -53,7 +46,7 @@ export function useResourceFormDrafts({ code, viewCode, mode, recordId, mobile, 
     if (busyRef.current) return undefined;
     busyRef.current = true; setBusy(true); setError(''); setSaved(false);
     try {
-      const result = await client.save({ id: current?.id || (newId.current ||= createDraftId()), expectedRevision: current?.revision || 0,
+      const result = await client.save({ id: current?.id || (newId.current ||= createBrowserUuid()), expectedRevision: current?.revision || 0,
         recordRevision, values: encode(form.getFieldsValue(true)) });
       setCurrent(result); setItems(previous => [result, ...previous.filter(item => item.id !== result.id)]); setSaved(true); onSaved();
       return result;

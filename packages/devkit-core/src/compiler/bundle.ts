@@ -1,3 +1,4 @@
+import { normalizeDataMutationGrants } from 'openxiangda-contracts';
 import { compileNativeEventAction, requiresExtendedDeclarationCapacity, requiresExtendedRoleCapacity, requiresExtendedArtifactCapacity, requiresHighDensityArtifactCapacity, requiresExtendedConfigurationBytes } from 'openxiangda-contracts/native-compiler';
 import { normalizeWorkflowOwnedSubjectCreate } from 'openxiangda-contracts/native-compiler';
 import { compileWorkflowBusinessStepHandlers, validateWorkflowBusinessStepSubscriptions, WORKFLOW_BUSINESS_STEP_EVENTS } from 'openxiangda-contracts/native-compiler';
@@ -104,6 +105,7 @@ const DEFAULT_EVENT_DELIVERY = {
 
 function normalizeEventPlatformAccess(access: AppEventSubscriptionPlatformAccessDeclaration) {
   return {
+    ...(access.dataMutations ? {dataMutations:normalizeDataMutationGrants(access.dataMutations)} : {}),
     ...(access.notification ? { notification: { mode: access.notification.mode } } : {}),
     ...(access.managedFileCopies ? { managedFileCopies: sorted(
       access.managedFileCopies.map(item => ({ mode: item.mode,
@@ -395,6 +397,7 @@ export function normalizeConfiguration(
           ...(operation.platformAccess
             ? {
                 platformAccess: {
+                  ...(operation.platformAccess.dataMutations ? { dataMutations: normalizeDataMutationGrants(operation.platformAccess.dataMutations) } : {}),
                   ...(operation.platformAccess.ownedSubject ? { ownedSubject: normalizeWorkflowOwnedSubjectCreate(operation.platformAccess.ownedSubject) } : {}),
                   ...(operation.platformAccess.dataCommands ? { dataCommands: { mode: operation.platformAccess.dataCommands.mode } } : {}),
                   ...(operation.platformAccess.workflowStage ? { workflowStage: { ...operation.platformAccess.workflowStage,
@@ -1772,6 +1775,7 @@ function compileOperations(config: OpenXiangdaAppConfig) {
       ...(operation.platformAccess
         ? {
             platformAccess: {
+              ...(operation.platformAccess.dataMutations ? {dataMutations:normalizeDataMutationGrants(operation.platformAccess.dataMutations)} : {}),
               ...(operation.platformAccess.ownedSubject ? { ownedSubject: normalizeWorkflowOwnedSubjectCreate(operation.platformAccess.ownedSubject) } : {}),
               ...(operation.platformAccess.dataCommands ? { dataCommands: { mode: operation.platformAccess.dataCommands.mode } } : {}),
                   ...(operation.platformAccess.workflowStage ? { workflowStage: { ...operation.platformAccess.workflowStage,
@@ -2026,6 +2030,7 @@ function runtimeProtocolCapabilities(config: OpenXiangdaAppConfig) {
     )
       ? ['business-process.durable-command']
       : []),
+    ...(operations.some(operation => operation.platformAccess?.dataMutations) || config.events?.subscriptions.some(subscription => subscription.platformAccess?.dataMutations) ? ['data.service-mutations'] : []),
     ...(operations.some(operation => operation.platformAccess?.dataCommands) ? ['data.business-commands'] : []),
     ...(operations.some(operation => operation.platformAccess?.workflowStage) ? ['workflow.native-stage-guard'] : []),
     ...(operations.some(operation => operation.platformAccess?.roleAssertions?.actorAuthority) ? ['data.transaction-actor-authority'] : []),

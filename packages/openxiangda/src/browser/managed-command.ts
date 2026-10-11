@@ -1,3 +1,4 @@
+import { createBrowserUuid } from './uuid';
 import type { CommandReceipt, ManagedReadResult, WaitingReceipt, ManagedCommandMinePage } from 'openxiangda-contracts/browser';
 
 export interface ManagedReadRecoveryOptions {
@@ -118,7 +119,7 @@ export class ManagedCommandController {
     try {
       this.restore();
       if (!this.recovery) {
-        const key = requestKey || crypto.randomUUID();
+        const key = requestKey || createBrowserUuid();
         if (!/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$/.test(key)) throw new Error('CONCURRENCY_REQUEST_KEY_INVALID');
         this.recovery = { version: 1, input: this.input, requestKey: key, attempted: false };
         this.persist();

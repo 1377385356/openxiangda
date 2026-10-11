@@ -1,3 +1,4 @@
+import { createBrowserUuid } from '../../uuid';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, App, Button, DatePicker, Descriptions, Drawer, Empty, Form, Input, Select, Space, Table, Tag } from 'antd';
 import dayjs from 'dayjs';
@@ -115,7 +116,7 @@ function DelegationEditor({edit,catalog,onClose,onChanged,onDraftStateChange}:{e
     try {
       const values=await form.validateFields();
       let request:WorkflowDelegationMutationRequest;
-      const base={schemaVersion:'openxiangda.workflow-delegation-mutation/v2' as const,operationId:crypto.randomUUID(),environmentKey:catalog.environmentKey,reason:values.reason.trim()};
+      const base={schemaVersion:'openxiangda.workflow-delegation-mutation/v2' as const,operationId:createBrowserUuid(),environmentKey:catalog.environmentKey,reason:values.reason.trim()};
       if(edit.operation==='create') {
         const binding=sources.find(item=>item.roleSubjectKey===values.source);
         if(!binding||!selected)throw new Error('请选择审批职责和符合资格的代理人');

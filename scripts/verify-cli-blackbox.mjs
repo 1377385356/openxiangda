@@ -207,7 +207,7 @@ try {
     const sessionIndex = devRequests.findIndex(item => item.path.endsWith('/dev-sessions'));
     assert.ok(syncIndex >= 0 && sessionIndex > syncIndex);
     assert.ok(devRequests.slice(syncIndex + 1, sessionIndex).some(item => item.path.endsWith('/environments')),
-      'must read the newly selected Native Head before creating the session');
+      'must recheck the unchanged published Native Head before creating the session');
     assert.equal(deploymentWriteCount(), writesBeforeDev, 'dev must not create a formal deployment');
     assert.equal(existsSync(dockerMarker), false);
     const devCommandText = readFileSync(commandMarker, 'utf8').slice(commandTextBeforeDev.length);
@@ -274,10 +274,10 @@ try {
   capacitySufficient = false;
   const scriptsBeforeCapacity = readFileSync(commandMarker, 'utf8');
   const writesBeforeCapacity = deploymentWriteCount();
-  const capacityPlan = await runCli(['deploy', '--dry-run', '--environment-id', 'environment-test', '--cwd', appRoot, '--json'], appRoot, environment);
+  const capacityPlan = await runCli(['deploy', '--dry-run', '--environment-id', '11111111-1111-4111-8111-111111111111', '--cwd', appRoot, '--json'], appRoot, environment);
   assertEnvelope(capacityPlan, 'deployment.plan');
   assert.equal(capacityPlan.value.data.runtimeCapacity.sufficient, false);
-  assert.equal(capacityPlan.value.data.runtimeCapacity.environmentId, 'environment-test');
+  assert.equal(capacityPlan.value.data.runtimeCapacity.environmentId, '11111111-1111-4111-8111-111111111111');
   const capacityFailure = await runCli(['deploy', '--cwd', appRoot, '--json'], appRoot, environment, 1);
   assert.equal(capacityFailure.value.error.code, 'APPLICATION_V2_RUNTIME_QUOTA_INSUFFICIENT');
   assert.equal(existsSync(dockerMarker), false);
@@ -576,13 +576,13 @@ async function handlePlatformRequest(request, response) {
     return envelope(response, {
       schemaVersion: "openxiangda.application-environments/v2",
       items: [{
-        id: developmentConfiguration?.environmentId || "environment-test",
+        id: developmentConfiguration?.environmentId || "11111111-1111-4111-8111-111111111111",
         environmentKey: "preproduction",
         environmentKind: "preproduction",
         status: "active",
         activeHead: {
-          activeAppVersionId: developmentConfiguration?.appVersionId || "version-1", activatedByDeploymentId: developmentConfiguration?.configurationRunId || "test-run-1", revision: developmentConfiguration?.headRevision || 1, revisions: { backend: null },
-          activeAppVersion: { id: developmentConfiguration?.appVersionId || "version-1", appCode: "instrument-center", version: "0.1.0-test-source" },
+          activeAppVersionId: "44444444-4444-4444-8444-444444444444", activatedByDeploymentId: "test-run-1", revision: 1, revisions: { backend: null },
+          activeAppVersion: { id: "44444444-4444-4444-8444-444444444444", appCode: "instrument-center", version: "0.1.0-test-source" },
         },
       }],
       total: 1,
@@ -591,25 +591,26 @@ async function handlePlatformRequest(request, response) {
   if (method === "POST" && path.endsWith("/dev-sessions/configuration")) {
     developmentConfigurationRequests.push(body);
     developmentConfiguration = {
-      schemaVersion: "openxiangda.development-configuration/v1", appCode: "instrument-center", environmentKey: "preproduction",
+      schemaVersion: "openxiangda.development-configuration/v2", appCode: "instrument-center", environmentKey: "preproduction",
       environmentId: "11111111-1111-4111-8111-111111111111", appVersionId: "22222222-2222-4222-8222-222222222222",
-      configurationRunId: "33333333-3333-4333-8333-333333333333", headRevision: body.expectedHeadRevision + 1,
+      configurationRunId: "33333333-3333-4333-8333-333333333333", headRevision: body.expectedHeadRevision, publishedAppVersionId: "44444444-4444-4444-8444-444444444444", selection: "session",
       configDigest: body.configDigest, contractDigest: body.contractDigest, reused: false,
       runtimeArtifactsDeployed: false, backendEventsAvailable: false,
     };
     return envelope(response, developmentConfiguration);
   }
   if (method === "POST" && path.endsWith("/dev-sessions")) {
-    assert.equal(body.configuration, undefined, 'full configuration is synchronized before session creation');
+    assert.deepEqual(body.configuration, developmentConfigurationRequests[0].configuration, 'session overlay is bound to its prepared configuration');
+    assert.equal(body.configurationRunId, developmentConfiguration.configurationRunId);
     assert.equal(body.manifestDigest, developmentConfiguration.configDigest);
     return envelope(response, {
       sessionId: "dev-session-1",
       sessionToken: "one-time-dev-token",
       expiresAt: new Date(Date.now() + 30 * 60_000).toISOString(),
-      mode: "published-resources",
-      manifestOverlay: false,
+      mode: "manifest-overlay",
+      manifestOverlay: true,
       manifestDigest: body?.manifestDigest || null,
-      environment: { id: developmentConfiguration?.environmentId || "environment-test", key: "preproduction", activeAppVersionId: developmentConfiguration?.appVersionId || "version-1", headRevision: developmentConfiguration?.headRevision || 1 },
+      environment: { id: developmentConfiguration?.environmentId || "11111111-1111-4111-8111-111111111111", key: "preproduction", activeAppVersionId: "44444444-4444-4444-8444-444444444444", headRevision: 1 },
     });
   }
   if (method === "POST" && path.endsWith("/dev-sessions/current/revoke")) {
@@ -687,7 +688,7 @@ async function handlePlatformRequest(request, response) {
   if (method === 'POST' && path.endsWith('/runtime-capacity-preflight')) {
     return envelope(response, {
       schemaVersion: 'openxiangda.runtime-capacity-preflight/v1', observedAt: new Date().toISOString(),
-      environmentKey: body.environmentKey, environmentId: body.environmentId || 'environment-test',
+      environmentKey: body.environmentKey, environmentId: body.environmentId || '11111111-1111-4111-8111-111111111111',
       deploymentStrategy: body.deploymentStrategy || 'rolling',
       maintenance: body.deploymentStrategy === 'maintenance-replace' ? { downtime: true, estimatedAfterStop: true, previousAppVersionId: 'old-version', previousDeploymentId: 'old-run', headRevision: 1 } : null,
       basis: 'new-candidate', existingRun: null, sufficient: capacitySufficient,

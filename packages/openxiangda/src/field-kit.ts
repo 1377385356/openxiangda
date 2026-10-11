@@ -26,3 +26,5 @@ export * from './browser/components/resource/ResourceFormFrame';
 export * from './browser/components/resource/resource-import';
 export { uploadOperationManagedFile } from './browser/platform-client';
 export * from './browser/components/platform-fields/MobileFieldControls';
+
+export { createRichTextExtensions } from './browser/components/platform-fields/rich-text-extensions';

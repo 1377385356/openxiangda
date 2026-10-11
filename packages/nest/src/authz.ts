@@ -211,6 +211,7 @@ export class OpenXiangdaAuthzGuard implements CanActivate {
         authorization,
         perspectiveCode,
         roleCodes,
+        ...(invocation.connectedDevelopmentSessionToken ? { connectedDevelopmentSessionToken: invocation.connectedDevelopmentSessionToken } : {}),
         ...(operation ? { operation } : {}),
       };
       if (

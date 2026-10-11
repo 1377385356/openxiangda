@@ -1,3 +1,4 @@
+import { createBrowserUuid } from './uuid';
 import { parseBusinessProcessResolution, parseBusinessProcessCommitResult } from 'openxiangda-contracts/browser';
 import type { WorkflowDelegationAdministration, WorkflowDelegationCatalog, WorkflowDelegationCandidatePage, WorkflowDelegationCandidateQuery,
   WorkflowDelegationListQuery, WorkflowDelegationPage, WorkflowDelegationMutationPreview, WorkflowDelegationMutationReceipt, WorkflowDelegationMutationRequest } from 'openxiangda-contracts/browser';
@@ -523,9 +524,7 @@ let platformSessionStorageListening = false;
 const PLATFORM_AUTH_CHANNEL = 'auth-session-v2';
 const PLATFORM_LOGOUT_STORAGE_KEY = 'auth_session_v2:logout';
 const platformAuthOwnerId =
-  typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-    ? crypto.randomUUID()
-    : `openxiangda-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  createBrowserUuid();
 
 interface PlatformLogoutSignal {
   type: 'logout';
@@ -1903,7 +1902,7 @@ export function createNativeResourceClient(
 
 export async function transactNativeData(
   operations: DataTransactionOperation[],
-  idempotencyKey: string = crypto.randomUUID(),
+  idempotencyKey: string = createBrowserUuid(),
 ) {
   const transaction: DataTransactionRequest = {
     schemaVersion: SCHEMA_VERSIONS.dataTransactionRequest,
@@ -3242,8 +3241,7 @@ export async function executeWorkflowOperation(
 }
 
 function randomWorkflowIdempotencyKey(command: string) {
-  const suffix =
-    globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
+  const suffix = createBrowserUuid();
   return `workflow:${command}:${suffix}`;
 }
 

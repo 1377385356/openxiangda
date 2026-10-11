@@ -3,6 +3,221 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.62.1",
+      "status": "reviewed",
+      "title": "兼容非 HTTPS 私有入口的浏览器幂等操作",
+      "summary": "修复私有 HTTP 入口缺少 crypto.randomUUID 时工作流节点配置、路由和其他浏览器操作无法生成幂等标识的问题，统一使用 Web Crypto getRandomValues 回退生成 UUID。",
+      "newFeatures": [],
+      "fixes": [
+        "工作流节点配置保存不再依赖安全上下文专属的 crypto.randomUUID，HTTP 预发入口可以正常提交并保留原操作 ID 重试。",
+        "统一修复浏览器端管理、工作流、资源批量、文件和草稿操作的 UUID 生成，避免同类私有 HTTP 部署故障。"
+      ],
+      "affectedUsers": [
+        "通过 HTTP 私有地址访问 OpenXiangda 管理后台或应用内工作流管理页面的用户。",
+        "使用工作流节点配置、路由、委托、恢复、资源批量和文件草稿等浏览器幂等操作的应用。"
+      ],
+      "upgradeSteps": [
+        "平台管理后台和应用统一升级到 openxiangda 2.62.1 与配套 CLI 2.8.13，重新生成封存七包。",
+        "部署后用 HTTP 预发入口保存一个工作流节点描述，确认后台 configuration.revision/history 有一次写入。",
+        "继续保留原请求 ID 语义，若结果未知只重试相同请求，不新建幂等键。"
+      ],
+      "knownLimitations": [
+        "浏览器仍需要 Web Crypto getRandomValues；极旧浏览器完全没有 Web Crypto 时会明确报错，不回退到可预测的 Math.random。",
+        "包版本升级和平台部署不替代真实角色权限、CAS 冲突和业务配置验收。"
+      ],
+      "compatibility": {
+        "generation": "v2",
+        "node": ">=24",
+        "platform": "browser Web Crypto getRandomValues",
+        "v1": "独立1.x维护包不变"
+      },
+      "issues": [],
+      "sha256": "e818f70adf8c607af8a45465bfc67fee0fcb082102f4e973435b18b51525dd5b",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.62.1"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.62.0",
+      "status": "reviewed",
+      "title": "受控事件、机器回调与后台补偿原子写入",
+      "summary": "以不可变资源、操作、字段和数量声明支持 action-owned 资源的验证事件、具名机器回调及活动租约 Worker 原子事务，保留默认拒绝、CAS、幂等与原有用户权限。",
+      "newFeatures": [
+        "platformAccess.dataMutations 固定资源、create/update/delete/increment、字段白名单和单事务数量上限；要求 data.service-mutations 1.0.0 平台能力。",
+        "ApplicationDataApiService.transactionFromServiceAction 在机器操作的已验证请求下提交同一个 Native 事务，不把机器冒充用户。",
+        "ApplicationDataApiService.withWorkerAction 使用 SDK 活动后台租约并要求 allowRuntimeWorker:true，复用既有回调/补偿服务，支持最多50条履约节点与签署完成件一并提交。"
+      ],
+      "fixes": [
+        "Correction 的业务 resubmit handler 与普通 return_review 标准 Kernel 重提分离；普通退回任务不再错误要求起草 capability，已有固定定义和实例无需重建。"
+      ],
+      "affectedUsers": [
+        "使用 action-owned 资源、审批终态事件或真实机器回调的 OpenXiangda 2.0 应用。",
+        "需要权威查询补偿和多记录原子回写的 Scheduler/Worker 应用。"
+      ],
+      "upgradeSteps": [
+        "升级配套平台并核对 data.service-mutations 1.0.0 与完整配置 validatorDigest。",
+        "将工作区所有 OpenXiangda 包升级到同一胶囊版本2.62.0并安装锁文件依赖。",
+        "事件订阅和机器操作显式声明 dataMutations；后台动作按需显式加 allowRuntimeWorker:true，保持原业务幂等键和各行CAS。",
+        "机器请求调用 transactionFromServiceAction；Worker 用 withWorkerAction 包裹现有服务；真实测试环境分别验收事件、回调、补偿和50条整事务回滚。"
+      ],
+      "knownLimitations": [
+        "字段授权不替代外部供应商验签、业务状态守卫、底稿摘要或当前用户成员权限；role-member/actor-authority仍由用户动作拥有。",
+        "机器入口使用已有短期网关invocation的有效期；过期结果按原业务号核对，通过活动租约补偿，不延长或伪造证明。",
+        "Native事务自身总操作/字段/字节限额仍生效，本文档的maxOperations是单资源额外上限。",
+        "生产晋级仍须实际业务验收，不能将包测试或Pod Ready视作签署、通知或财务验收。"
+      ],
+      "compatibility": {
+        "generation": "v2",
+        "node": ">=24",
+        "platform": "data.service-mutations 1.0.0 and exact configuration validator",
+        "v1": "独立1.x维护包不变"
+      },
+      "issues": [],
+      "sha256": "c547759f4a202325b30134e2db40f2bc9bdd05b74fc4da393acd46c2802832a5",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.62.0"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.61.3",
+      "status": "reviewed",
+      "title": "Field Kit 富文本工具栏溢出操作",
+      "summary": "官方富文本 Field Kit 在桌面窄容器中显示可发现的更多工具入口，并支持稳定展开多行，避免靠后的编辑操作被隐藏。",
+      "newFeatures": [
+        "桌面工具栏发生横向溢出时显示“更多工具”按钮，点击后展开为多行并提供收起状态。",
+        "ResizeObserver 与 MutationObserver 共同覆盖容器尺寸、菜单和动态表格工具变化，移动端继续使用原有换行布局。"
+      ],
+      "fixes": [
+        "修复富文本工具栏隐藏滚动条后图片、视频、表格和撤销/重做等操作不可发现的问题。",
+        "修复展开后因重新测量导致按钮闪退的问题；组件卸载会清理观察器和待执行测量。"
+      ],
+      "affectedUsers": [
+        "使用 OpenXiangda 官方 Field Kit 富文本字段的应用开发者和编辑人员。"
+      ],
+      "upgradeSteps": [
+        "升级 openxiangda 至 2.61.3，并使用匹配的 openxiangda-cli 2.8.11。",
+        "重新构建应用前端即可获得平台组件行为；HTML、清洗、媒体上传和数据协议无需迁移。"
+      ],
+      "knownLimitations": [
+        "使用自定义编辑器的应用不会自动继承官方 Field Kit 的工具栏布局；移动端按既有换行规则展示。"
+      ],
+      "compatibility": {
+        "node": ">=24",
+        "platform": "data.rich-text 1.0.0",
+        "generation": "OpenXiangda Native V2"
+      },
+      "issues": [],
+      "sha256": "b2bfeb9d8bbaaa20a142b8abf4da4f4384edf013e4b5c542bb7cdca75e966f40",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.61.3"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.61.2",
+      "status": "reviewed",
+      "title": "富文本 Field Kit 工具栏视觉重设计",
+      "summary": "将官方 Tiptap 富文本工具栏改为图标优先的分组操作和受控菜单，降低桌面密度并改善移动端编辑体验。",
+      "newFeatures": [
+        "段落、字体、字号、行高、对齐和表情使用平台受控菜单，移除浏览器原生选择器。",
+        "富文本操作保留完整中文无障碍标签，桌面端提供分组工具栏，移动端支持横向滚动。"
+      ],
+      "fixes": [
+        "修复工具栏文字按钮堆叠、表情原生弹出框和应用样式覆盖 Field Kit 的视觉问题。"
+      ],
+      "affectedUsers": [
+        "使用 OpenXiangda Field Kit 富文本字段的应用开发者和终端编辑人员。"
+      ],
+      "upgradeSteps": [
+        "升级 openxiangda 至 2.61.2，并使用匹配的 openxiangda-cli 2.8.10。",
+        "重新构建应用前端；富文本 HTML、清洗、媒体上传和数据协议无需迁移。"
+      ],
+      "knownLimitations": [
+        "浏览器颜色选择器仍由操作系统提供，颜色值和清洗规则保持现有协议。"
+      ],
+      "compatibility": {
+        "node": ">=24",
+        "platform": "data.rich-text 1.0.0",
+        "generation": "OpenXiangda Native V2"
+      },
+      "issues": [],
+      "sha256": "90d5abb163c1fec83048497c6822b8dd7cad97a972feb02427250e9ef050f767",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.61.2"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.61.1",
+      "status": "reviewed",
+      "title": "连接开发与已部署预发版本隔离",
+      "summary": "修复启动本地连接开发后预发页面变为未部署的问题。开发配置通过独立会话选择，已部署前后端与权限、流程、订阅和调度保持原发布选择。",
+      "newFeatures": [
+        "开发会话引用独立配置快照，源码连接和短期工作负载凭证按会话隔离。"
+      ],
+      "fixes": [
+        "dev 不再切换共享预发 Head，不再清空已部署的前后端制品指针。",
+        "普通线上请求不会被导向开发者本地 Nest；关闭、过期和撤销只影响对应开发会话。",
+        "普通浏览器配置选择证明绑定签名会话与实际登录用户，不能借用开发者权限。"
+      ],
+      "affectedUsers": [
+        "使用 openxiangda dev 的应用开发者及同一应用的预发使用者。"
+      ],
+      "upgradeSteps": [
+        "先升级配套平台，确认 application.development-configuration 契约为 2.0.0。",
+        "更新工作区至 openxiangda 2.61.1，重新运行 dev 创建独立开发会话。",
+        "历史已被开发配置切换的预发版本，通过正常 rollback 恢复已部署版本。"
+      ],
+      "knownLimitations": [
+        "共享测试数据的业务写入仍然真实生效；本次隔离配置和运行选择，不隔离数据。",
+        "新模型、已发布角色及流程结构的变更需要独立测试环境或正式部署；已有模型的新增字段只增加可空物理列。",
+        "开发启动不激活后台订阅、定时或业务日期调度，后台链路仍通过正式部署批次验收。",
+        "浏览器文件流操作需要部署制品。"
+      ],
+      "compatibility": {
+        "node": ">=24",
+        "platform": "application.development-configuration 2.0.0",
+        "generation": "OpenXiangda Native V2"
+      },
+      "issues": [],
+      "sha256": "acfeb841fe4e2107fb13cf3e0ef92c1c35bad7b1836b61ac3e6028bf97ff589e",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.61.1"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.61.0",
+      "status": "reviewed",
+      "title": "OpenXiangda 2.61.0：完整富文本与受管视频",
+      "summary": "PC 与移动富文本改用免费 MIT Tiptap 引擎，统一编辑、Native 写入和公开投影的 HTML5 安全规则，保留丰富排版并支持受管视频。本次同时物化既有主线待发布维护。",
+      "newFeatures": [
+        "支持字体、字号、行高、颜色、背景色、对齐、缩进、上下标、表格、待办列表、分割线、表情选择与全屏编辑。",
+        "受管 MP4/WebM 视频每个最高100MiB，每字段最多4个；图片最多20张、每张10MiB。配套平台以授权 Range 流式读取，复用现有跨资源复制回执。",
+        "应用可使用外部编辑器，但须消费同一安全协议；text.rich 自动要求 data.rich-text:1.0.0。",
+        "收录主线已有的独立角色容量512与标准工作流详情条件显示。"
+      ],
+      "fixes": [
+        "避免前端、服务端与发布展示清洗白名单不同造成保存后格式丢失。",
+        "收录主线已有的移动已选值可访问描述与 selected-department 精确配套版本。"
+      ],
+      "affectedUsers": [
+        "使用 V2 text.rich 的所有应用，以及需要视频、复杂排版和外部编辑器的开发者。"
+      ],
+      "upgradeSteps": [
+        "先部署配套服务器并核验 data.rich-text 与 validatorDigest，再安装 openxiangda2.61.0/contracts2.76.0/devkit2.57.1/CLI2.8.8。",
+        "使用标准 RichTextField 与 RichTextValueDisplay；外部编辑器先统一清洗，上传与跨资源发布使用官方受管文件接口。",
+        "刷新同版本技能，验证保存、回填及立即/定时发布后晋级原成功测试制品。"
+      ],
+      "knownLimitations": [
+        "不支持外部视频、iframe、自动播放、转码或任意 CSS；容器支持不保证所有客户端编解码器可播放。",
+        "HTML 限1MiB，解析树限制25000节点与128层；上传还受平台原存储限额约束。",
+        "新格式保存后回退旧服务端可能在下次写入丢格式；回滚编辑器时保留新版清洗与读取规则。",
+        "本地真实浏览器与受控服务测试不替代学校业务角色及发布链路验收。"
+      ],
+      "compatibility": {
+        "node": ">=24",
+        "platform": "配套 rich-text-html/1、data.rich-text:1.0.0 与相同 contracts validatorDigest；无新增 SQL。",
+        "v1": "V1 运行时和编辑器保持独立，不消费新增 V2 规则。"
+      },
+      "issues": [],
+      "sha256": "aece510083f6d6b04ae4c62410631e99824718072c64cfb1ab605970889d065d",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.61.0"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.60.2",
       "status": "reviewed",
       "title": "OpenXiangda 2.60.2：已选部门真实事实",

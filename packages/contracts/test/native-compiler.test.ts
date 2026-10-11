@@ -359,3 +359,11 @@ test('selected department contract is preserved and capability-negotiated by the
     for(const implementation of [esm,cjs])assert.throws(()=>implementation.compileNativeApplicationConfiguration(bad));
   }
 });
+
+test('rich fields automatically require the uniform platform format and managed-video capability', () => {
+  const config = JSON.parse(corpus.configuration.canonical);
+  config.data.resources[0].schema.fields.push({ code: 'body', type: 'text.rich', nullable: true });
+  for (const implementation of [esm, cjs])
+    assert.deepEqual(implementation.compileRequiredPlatformCapabilitiesV3(config).find(item => item.code === 'data.rich-text'),
+      { code: 'data.rich-text', contractVersion: '1.0.0', usageDigest: 'sha256:' + sha256Digest({ policyVersion: 'rich-text-html/1' }) });
+});

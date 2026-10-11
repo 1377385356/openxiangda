@@ -1,3 +1,4 @@
+import { createBrowserUuid } from '../../uuid';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Descriptions, Input, Space, Spin } from 'antd';
 import type { WorkflowBusinessStepRecoveryOptions, WorkflowBusinessStepRecoveryPreview } from 'openxiangda-contracts/browser';
@@ -50,7 +51,7 @@ export function WorkflowBusinessStepRecoveryPanel({ instanceId, onCompleted, onD
       const value = await previewWorkflowBusinessStepRecovery(instanceId);
       if (current !== generation.current) return;
       setPreview(value);
-      request.current = value.commandToken ? { commandToken: value.commandToken, idempotencyKey: `step-recovery:${crypto.randomUUID()}`, input: { reason: reason.trim() } } : undefined;
+      request.current = value.commandToken ? { commandToken: value.commandToken, idempotencyKey: `step-recovery:${createBrowserUuid()}`, input: { reason: reason.trim() } } : undefined;
     } catch (e) { if (current === generation.current) setError(e instanceof Error ? e.message : String(e)); }
     finally { if (current === generation.current) setBusy(false); }
   };

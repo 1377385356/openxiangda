@@ -267,6 +267,8 @@ export type AppOperationDirectoryField =
   | 'phone';
 
 export interface AppOperationPlatformAccessDeclaration {
+  /** Bounded Native transactions from a verified backend event or machine action. */
+  dataMutations?: readonly import('./native-compiler/service-mutations.js').DataMutationGrant[];
   /** Named create-submit owns these one-level subtables in the original Native transaction. */
   ownedSubject?: import('./native-compiler/workflow-owned-subject.js').WorkflowOwnedSubjectCreate;
   /** 使用 Native 原事务回执恢复具名业务动作；不授予用户通用写入权限。 */
@@ -1005,6 +1007,8 @@ export interface AppEventDecimalReservationDeclaration {
 }
 
 export interface AppEventSubscriptionPlatformAccessDeclaration {
+  /** Bounded Native transactions from a verified backend event or machine action. */
+  dataMutations?: readonly import('./native-compiler/service-mutations.js').DataMutationGrant[];
   decimalReservation?: AppEventDecimalReservationDeclaration;
   notification?: { mode: 'business-standard' };
   managedFileCopies?: ReadonlyArray<{

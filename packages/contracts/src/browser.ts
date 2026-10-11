@@ -44,3 +44,5 @@ export * from './native-compiler/actor-authority.js';
 export * from './native-compiler/user-candidates.js';
 
 export * from './native-compiler/workflow-completion-deadline.js';
+
+export * from './native-compiler/rich-text-policy.js';

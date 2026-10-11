@@ -1,3 +1,4 @@
+import { createBrowserUuid } from '../../uuid';
 import type {
   NativeRoleMembership,
   NativeScopeGrant,
@@ -23,7 +24,7 @@ export function membershipBatchItems(
   users: string[],
   roleCode: string,
   settings: MembershipBatchSettings,
-  newKey: () => string = () => crypto.randomUUID()
+  newKey: () => string = () => createBrowserUuid()
 ): NativeRoleMembershipBatchItem[] {
   const grants = (original: NativeScopeGrant[]): NativeScopeGrant[] => {
     if (settings.scopeMode === 'keep') return structuredClone(original);

@@ -125,7 +125,7 @@ crud: [{
 
 `hidden` 仅控制展示。`system` 表示由服务端维护，默认隐藏；业务需要展示的流水号、状态可显式 `hidden: false`。隐藏不会撤销 Data API 的读写授权；授权仍用现有字段 `access` 与行策略。普通必填字段不能从可新增表单中漏掉；内部必填值应有清晰的服务端赋值责任，不能靠隐藏字段绕过数据约束。
 
-业务组件优先使用 `openxiangda/field-kit`，PC 补充使用 `antd`，移动端使用 `openxiangda/mobile` 封装的 Ant Design Mobile 控件。移动控件已覆盖文本、长文本、数字、布尔、静态选项、日期时间，以及人员／部门目录、动态资源引用和级联选择。选择弹层支持逐层浏览、搜索、翻页和已选项管理，点击确定才写回表单，关闭放弃本次修改。附件、图片、地址、子表和签名已提供移动交互，富文本在手机使用纯文本编辑并保留未修改 HTML；能力边界见[字段组件](field-components.md)。共享值协议和表单控制器，不共享桌面弹层交互。
+业务组件优先使用 `openxiangda/field-kit`，PC 补充使用 `antd`，移动端使用 `openxiangda/mobile` 封装的 Ant Design Mobile 控件。移动控件已覆盖文本、长文本、数字、布尔、静态选项、日期时间，以及人员／部门目录、动态资源引用和级联选择。选择弹层支持逐层浏览、搜索、翻页和已选项管理，点击确定才写回表单，关闭放弃本次修改。附件、图片、地址、子表和签名已提供移动交互，富文本在手机使用完整格式编辑与统一安全 HTML 协议；能力边界见[字段组件](field-components.md)。共享值协议和表单控制器，不共享桌面弹层交互。
 
 ```tsx
 import { MobileSurface, Input, Button } from 'openxiangda/mobile';

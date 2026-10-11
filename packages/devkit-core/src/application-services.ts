@@ -2644,8 +2644,9 @@ export class OpenXiangdaApplicationServices {
       workspace.config,
       this.toolchainVersion
     );
+    let configurationRunId: string | undefined;
     if (environment.environmentKey === 'preproduction') {
-      input.onStatus?.('同步test完整开发配置；不构建应用制品，后台事件和业务日期调度暂留正式批次验收');
+      input.onStatus?.('准备会话独立开发配置；保留已部署test版本、流程及调度');
       const synchronized = await client.synchronizeDevelopmentConfiguration(workspace.config.app.code, {
         schemaVersion: DEVELOPMENT_CONFIGURATION_SCHEMA, environmentKey: 'preproduction',
         expectedHeadRevision: environment.activeHead!.revision,
@@ -2657,10 +2658,11 @@ export class OpenXiangdaApplicationServices {
       });
       environments = await client.applicationEnvironments(workspace.config.app.code);
       environment = environments.items.find(item => item.id === synchronized.environmentId);
-      if (!environment?.activeHead || environment.activeHead.activeAppVersionId !== synchronized.appVersionId ||
+      if (!environment?.activeHead || environment.activeHead.activeAppVersionId !== synchronized.publishedAppVersionId ||
         environment.activeHead.revision !== synchronized.headRevision) {
         throw new Error('OPENXIANGDA_CONNECTED_DEV_CONFIGURATION_HEAD_CHANGED: 同步后环境已变化，请保留原配置运行记录');
       }
+      configurationRunId = synchronized.configurationRunId;
     }
     const selectedEnvironment = environment;
     const remoteSession = {
@@ -2670,7 +2672,7 @@ export class OpenXiangdaApplicationServices {
           {
             environmentKey: selectedEnvironment.environmentKey,
             manifestDigest: sources.config.digest,
-            ...(selectedEnvironment.environmentKey === 'production' ? { configuration: sources.config.value } : {}),
+            ...(selectedEnvironment.environmentKey === 'preproduction' ? { configuration: sources.config.value, ...(configurationRunId ? {configurationRunId} : {}) } : {}),
           }
         );
         return {
@@ -2726,7 +2728,7 @@ export class OpenXiangdaApplicationServices {
       } } : {}),
     };
     input.onStatus?.(
-      "connected dev 使用平台当前完整配置，Web/Nest保持本地源码联调"
+      "connected dev 使用会话独立配置，Web/Nest保持本地源码联调，线上test版本不切换"
     );
     const connected = await runConnectedDevelopment({
       root: workspace.root,

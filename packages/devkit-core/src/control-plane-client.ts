@@ -150,6 +150,7 @@ export interface ConnectedDevelopmentSessionStatus {
   mode: "published-resources" | "manifest-overlay";
   manifestOverlay: boolean;
   additiveSchemaSync: boolean;
+  configuration?: { runId: string; appVersionId: string; selection: "session" };
   overlay?: {
     resources: number;
     addedFields: Array<{ resourceCode: string; fieldCode: string }>;
@@ -669,6 +670,7 @@ export class OpenXiangdaControlPlaneClient {
       environmentKey: DeploymentEnvironment;
       manifestDigest?: string;
       configuration?: unknown;
+      configurationRunId?: string;
     }
   ): Promise<ConnectedDevelopmentSessionGrant> {
     return await this.json<ConnectedDevelopmentSessionGrant>(
@@ -679,7 +681,7 @@ export class OpenXiangdaControlPlaneClient {
 
   async synchronizeDevelopmentConfiguration(appCode: string, input: DevelopmentConfigurationInput) {
     const capability = (await this.capabilities()).features?.[DEVELOPMENT_CONFIGURATION_FEATURE];
-    if (capability?.status !== 'available' || capability.contractVersion !== '1.0.0') {
+    if (capability?.status !== 'available' || capability.contractVersion !== '2.0.0') {
       throw new ControlPlaneError(409, 'OPENXIANGDA_CONNECTED_DEV_CONFIGURATION_CAPABILITY_REQUIRED',
         '目标平台尚未提供完整开发配置同步；请更新配套平台，不需要先打包发布应用');
     }

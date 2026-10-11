@@ -931,7 +931,7 @@ const readyFile = await completeWorkflowTaskFileUpload(taskId, input.id);
 原 PNG 字节不改，仍受任务值1MiB限制。这些是业务采集信息，不代表平台认证的签署人、
 可信时间或法律电子签章。
 
-富文本保存清洗后的 HTML 和 Native 稳定托管图片地址，支持最多20图、单图10MiB、100MP。
+富文本保存统一清洗后的 HTML 和 Native 稳定受管图片/视频地址，支持最多20图（单图10MiB、100MP）、4个视频（MP4/WebM、单个100MiB）。视频通过同源任务文件路由流式读取，不下载完整 blob。
 PC/手机保留格式、图片和前后文字；插图未知时锁住编辑，恢复采用原插入位置并只插入一次。
 `blob:` 仅用于授权预览，不进入保存值。新任务签名/富文本图片完成时核验实际图片解码与
 声明格式。完整值经 Native 校验后，草稿和正式审批共用排序文件锁、引用验证、保留期及事务。
@@ -1210,3 +1210,5 @@ subject update和来源guards提交实际改变的派生字段；普通补填仍
 缺少规则、返回 `undefined` 或回调失败均保持原显示。PC/手机共用这一规则，
 最后一个字段被省略后对应空分组也消失。这是同步展示扩展，不发请求、不写数据，
 不改变字段授权、审批参数或流程版本；不提供该选项的应用保持既有行为。
+
+`commandHandlers.resubmit` 仅绑定固定 correction 节点的业务重校验。普通 `return_review` 任务继续由 Kernel 标准 `resubmit` 办理：Surface 不返回 correction operationCode，审批人不需要起草提交 capability。无需增加 `taskKinds` 字段、改动已有定义版本或重建在途实例；直接对普通退回任务调用 correction 业务动作仍被拒绝。

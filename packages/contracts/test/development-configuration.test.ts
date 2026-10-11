@@ -71,7 +71,7 @@ test("configuration retries bind both canonical content and the captured Head", 
   );
 });
 
-test("configuration results must prove the same app and closure, one Head transition, and an undeployed runtime", () => {
+test("configuration results must prove the same app and closure, an unchanged published Head and an independent session selection, and an undeployed runtime", () => {
   const uuid = "11111111-1111-4111-8111-111111111111";
   const result = {
     schemaVersion: DEVELOPMENT_CONFIGURATION_SCHEMA,
@@ -80,7 +80,9 @@ test("configuration results must prove the same app and closure, one Head transi
     environmentId: uuid,
     appVersionId: uuid,
     configurationRunId: uuid,
-    headRevision: 5,
+    headRevision: 4,
+    publishedAppVersionId: "22222222-2222-4222-8222-222222222222",
+    selection: "session",
     configDigest: input.configDigest,
     contractDigest: input.contractDigest,
     reused: false,
@@ -92,10 +94,14 @@ test("configuration results must prove the same app and closure, one Head transi
     result
   );
   for (const patch of [
+    { schemaVersion: "openxiangda.development-configuration/v1" },
+    { selection: "published" },
+    { publishedAppVersionId: "fabricated" },
+    { publishedAppVersionId: uuid },
     { appCode: "another-app" },
     { environmentKey: "production" },
     { configDigest: "c".repeat(64) },
-    { headRevision: 4 },
+    { headRevision: 5 },
     { headRevision: 6 },
     { configurationRunId: "fabricated" },
     { runtimeArtifactsDeployed: true },
@@ -110,4 +116,10 @@ test("configuration results must prove the same app and closure, one Head transi
       )
     );
   }
+});
+
+test("configuration reuse is isolated by its requesting manager", () => {
+  const manifest = createDevelopmentConfigurationManifest("reference-app", input);
+  assert.equal(developmentConfigurationKey(manifest,4,"manager-a"), developmentConfigurationKey(manifest,4,"manager-a"));
+  assert.notEqual(developmentConfigurationKey(manifest,4,"manager-a"), developmentConfigurationKey(manifest,4,"manager-b"));
 });
