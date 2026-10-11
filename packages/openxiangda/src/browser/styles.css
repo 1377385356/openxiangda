@@ -3371,3 +3371,7 @@
 .oxa-designer-mobile-inspector { display: none; }
 @media(max-width: 1199px) { .oxa-designer-workspace { grid-template-columns: 180px minmax(0,1fr) 360px; } .oxa-designer-workspace.without-outline { grid-template-columns: minmax(0,1fr) 360px; } }
 @media(max-width: 899px) { .oxa-designer-workspace, .oxa-designer-workspace.without-outline { grid-template-columns: minmax(0,1fr); min-height: 580px; height: calc(100dvh - 240px); } .oxa-designer-outline, .oxa-designer-desktop-inspector { display: none; } .oxa-designer-mobile-inspector { display: block; position: absolute; bottom: 18px; left: 18px; z-index: 5; } .oxa-designer-toolbar { padding: 10px; } }
+
+.oxa-workflow-diagram-standalone .kind-handle { border-top-color: #53958c; }
+.oxa-workflow-diagram-standalone .kind-notification { border-top-color: #6d9fc7; }
+.oxa-workflow-node-status.status-skipped { color: #6c7483; background: #f4f5f7; border-color: #dce0e6; }

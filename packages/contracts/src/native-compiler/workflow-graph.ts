@@ -1,3 +1,5 @@
+import { isWorkflowPlatformNotify } from './workflow-platform-notify.js';
+import type { WorkflowPlatformNotification } from './workflow-platform-notify.js';
 import { workflowReturnTargets, type WorkflowReturnPolicy } from './workflow-return-policy.js';
 /** Pure read projection. It never evaluates expressions, executes code or edits topology. */
 import type { WorkflowCompletionDeadline } from './workflow-completion-deadline.js';
@@ -50,6 +52,7 @@ export interface WorkflowGraphDefinitionSource {
     completionDeadline?: WorkflowCompletionDeadline;
     notify?: boolean;
     outcome?: string;
+    notification?: WorkflowPlatformNotification;
     handler?: { code: string; version: number; mode: 'pure' | 'reconciled-effect' };
     inputs?: Record<string, WorkflowBusinessStepInput>;
     outputSchema?: Record<string, unknown>;
@@ -85,7 +88,7 @@ export interface WorkflowGraphProjection {
   startAt: string;
   fixedTopology: true;
   branchStrategy: 'first_match';
-  nodes: Array<{ id: string; kind: string; title: string; binding?: string; mode?: string; outcome?: string; emptyPolicy?: 'block' | 'skip'; initiatorApprovalPolicy?: 'manual' | 'auto_approve'; completionDeadline?: WorkflowCompletionDeadline; notify?: boolean;
+  nodes: Array<{ presentation?: 'notification'; id: string; kind: string; title: string; binding?: string; mode?: string; outcome?: string; emptyPolicy?: 'block' | 'skip'; initiatorApprovalPolicy?: 'manual' | 'auto_approve'; completionDeadline?: WorkflowCompletionDeadline; notify?: boolean;
     businessStep?: { handler: NonNullable<WorkflowGraphDefinitionSource['nodes'][string]['handler']>; inputs: Record<string, WorkflowBusinessStepInput>; outputPaths: string[] } }>;
   edges: WorkflowGraphEdge[];
   variables: WorkflowGraphVariable[];
@@ -239,12 +242,12 @@ export function projectWorkflowGraph(definition: WorkflowGraphDefinitionSource, 
     }
     if (node.kind === 'handle' && node.next) edges.push({ id: `${node.id}:next`, from: node.id, to: node.next, kind: 'next', label: '办理完成', variablePaths: [] });
     if (node.kind === 'correction' && node.next)
-      edges.push({ id: `${node.id}:resubmit`, from: node.id, to: node.next, kind: 'resubmit', label: '重新提交，从起点重算', variablePaths: [] });
+      edges.push({ id: `${node.id}:resubmit`, from: node.id, to: node.next, kind: 'resubmit', label: '重新提交，按退回设置继续', variablePaths: [] });
     if (node.kind === 'cc' && node.next) edges.push({ id: `${node.id}:next`, from: node.id, to: node.next, kind: 'next', label: '抄送后继续', variablePaths: [] });
     if (node.kind === 'action' && node.next) {
       const paths = Object.values(node.inputs || {}).flatMap(input => input.source === 'fact' ? [input.path] : []);
       for (const path of paths) { if (!used.has(path)) used.set(path, new Set()); used.get(path)!.add(node.id); }
-      edges.push({ id: `${node.id}:next`, from: node.id, to: node.next, kind: 'next', label: '成功回执后继续', variablePaths: paths });
+      edges.push({ id: `${node.id}:next`, from: node.id, to: node.next, kind: 'next', label: isWorkflowPlatformNotify(node) ? '发送后继续' : '成功回执后继续', variablePaths: paths });
     }
     if (node.kind === 'condition') {
       for (const [index, branch] of (node.branches || []).entries()) {
@@ -279,7 +282,8 @@ export function projectWorkflowGraph(definition: WorkflowGraphDefinitionSource, 
       ...(node.binding ? { binding: node.binding } : {}), ...(node.mode ? { mode: node.mode } : {}), ...(node.outcome ? { outcome: node.outcome } : {}),
       ...(node.kind === 'cc' ? { emptyPolicy: node.emptyPolicy, notify: node.notify !== false } : {}),
       ...(node.kind === 'approval' ? { emptyPolicy: node.emptyPolicy || 'block', initiatorApprovalPolicy: node.initiatorApprovalPolicy || 'manual', ...(node.completionDeadline ? { completionDeadline: { ...node.completionDeadline } } : {}) } : {}),
-      ...(node.kind === 'action' && node.handler ? { businessStep: { handler: node.handler, inputs: node.inputs || {}, outputPaths: Object.keys(record(node.outputSchema).properties || {}).map(key => `steps.${node.id}.${key}`) } } : {}) })), edges, variables,
+      ...(isWorkflowPlatformNotify(node) ? { presentation: 'notification' as const } : {}),
+      ...(node.kind === 'action' && node.handler && !isWorkflowPlatformNotify(node) ? { businessStep: { handler: node.handler, inputs: node.inputs || {}, outputPaths: Object.keys(record(node.outputSchema).properties || {}).map(key => `steps.${node.id}.${key}`) } } : {}) })), edges, variables,
     logic, diagnostics };
 }
 

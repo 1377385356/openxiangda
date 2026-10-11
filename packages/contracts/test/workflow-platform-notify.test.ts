@@ -1,3 +1,4 @@
+import { projectWorkflowGraph } from '../src/native-compiler/workflow-graph.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
@@ -42,3 +43,5 @@ test('notification refuses arbitrary templates, handlers, output, invalid users,
   }
   assert.deepEqual(workflowBusinessStepInput(notice, {}), { text: '请查看最新进展' });
 });
+
+test('notification graph is inline and keeps delivery implementation out of the node card',()=>{const {definition}=fixture();const graph=projectWorkflowGraph(definition,'test');const node=graph.nodes.find(node=>node.id==='notice')!;assert.equal(node.presentation,'notification');assert.equal(node.businessStep,undefined);assert.equal(graph.edges.find(edge=>edge.from==='notice')?.label,'发送后继续');});
