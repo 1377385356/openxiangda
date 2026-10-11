@@ -92,3 +92,10 @@ export const workflowBusinessCommandInvocationSchema = {
     input: { type: 'object', maxProperties: 64 },
   },
 } as const;
+
+/** A resubmit business handler belongs to correction replay, never to ordinary return-review. */
+export function resolveWorkflowCommandHandler(definition: {commandHandlers?: WorkflowCommandHandlers},
+  command: string, correctionTask?: boolean) {
+  if (command==='resubmit' && correctionTask===false) return undefined;
+  return definition.commandHandlers?.[command as WorkflowBusinessCommand];
+}

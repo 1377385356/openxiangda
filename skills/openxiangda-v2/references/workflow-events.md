@@ -1210,3 +1210,5 @@ subject update和来源guards提交实际改变的派生字段；普通补填仍
 缺少规则、返回 `undefined` 或回调失败均保持原显示。PC/手机共用这一规则，
 最后一个字段被省略后对应空分组也消失。这是同步展示扩展，不发请求、不写数据，
 不改变字段授权、审批参数或流程版本；不提供该选项的应用保持既有行为。
+
+`commandHandlers.resubmit` 仅绑定固定 correction 节点的业务重校验。普通 `return_review` 任务继续由 Kernel 标准 `resubmit` 办理：Surface 不返回 correction operationCode，审批人不需要起草提交 capability。无需增加 `taskKinds` 字段、改动已有定义版本或重建在途实例；直接对普通退回任务调用 correction 业务动作仍被拒绝。
