@@ -506,8 +506,8 @@ function definition<T extends z.ZodRawShape>(title: string, description: string,
 
 /** 工具展示、输入验证与生成参考共用此表。 */
 export const MCP_TOOL_DEFINITIONS = {
-  template_list: definition('发现源码模板', '列出业务场景、模块依赖、四类源码外壳和主题；创建使用 CLI，不执行远端操作。', z.object({}).strict()),
   authorization_status: definition('核验平台授权', '只读核验明确指定站点的当前授权；不依赖工作区，不启动登录、刷新凭据或修改绑定。authorized 不代表应用管理权限。', z.object({ baseUrl: z.string().min(1).describe('明确指定目标平台地址') }).strict()),
+  template_list: definition('发现源码模板', '列出业务场景、模块依赖、四类源码外壳和主题；创建使用 CLI，不执行远端操作。', z.object({}).strict()),
   workspace_context: definition('查看工作区', '首先读取当前项目、工具链版本和绑定，不运行构建或创建远端对象。', z.object({})),
   contract_describe: definition('查看应用契约', '默认返回有界索引；用 selector 读取模型、流程、能力，或 navigation/permissions。菜单建议只复制一次，运行时不自动应用。', z.object({ selector: z.string().max(200).optional().describe('index、navigation、permissions、all 或索引给出的选择器'), offset: z.number().int().min(0).optional(), limit: z.number().int().min(1).max(100).optional() }).strict()),
   appspec_context: definition('读取需求与设计', '读取设计索引、稳定 ID 正文与引用闭包、开工和测试发布缺口；设计基线确认后制定实施计划，生产晋级核对原测试版本实际验收。', z.object({ selector: z.string().min(1).optional().describe('能力、变更、ADR 或 DES-* 设计的稳定 ID'), historyOffset: z.number().int().min(0).default(0).describe('历史索引偏移，每页 50 条') }).strict()),
