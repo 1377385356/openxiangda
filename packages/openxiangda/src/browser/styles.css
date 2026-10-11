@@ -3547,3 +3547,46 @@
 .oxa-workflow-config-inline .oxa-workflow-operation-table td:last-child small { display: inline; margin-left: 8px; }
 .oxa-workflow-config-inline .oxa-workflow-operation-table .ant-select-content { font-size: 13px; }
 .oxa-workflow-designer-inspector .oxa-designer-draft-band .ant-collapse-header { font-size: 13px; }
+
+.oxa-designer-condition-editor > .ant-alert { margin: 0 0 16px; font-size: 13px; }
+.oxa-designer-branch-selector { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.oxa-designer-branch-identity { display: flex; align-items: center; gap: 6px; margin-bottom: 20px; }
+.oxa-designer-branch-identity > .ant-input { flex: 1; min-width: 0; }
+.oxa-designer-branch-identity > .ant-tag { margin: 0; white-space: nowrap; }
+.oxa-designer-condition-surface { padding: 12px !important; border: 1px solid #e1e8f2 !important; background: #f7f9fc; border-radius: 6px; margin-bottom: 18px !important; }
+.oxa-designer-condition-surface .oxa-condition-row { grid-template-columns: minmax(0,1fr) 106px minmax(0,1fr); }
+.oxa-designer-condition-surface .oxa-condition-row > .ant-btn { grid-column: 1 / -1; justify-self: start; color: #0066ff; }
+.oxa-designer-condition-surface .ant-select, .oxa-designer-condition-surface .ant-input-number { width: 100%; min-width: 0; }
+.oxa-designer-condition-description { padding: 10px 12px; background: #f7f9fc; border: 1px solid #e1e8f2; border-radius: 5px; overflow-wrap: anywhere; }
+.oxa-designer-condition-editor > label { display: flex; flex-direction: column; gap: 8px; margin: 14px 0; font-weight: 600; }
+.oxa-designer-return-notice { background: #eaf2ff; color: #0066ff; padding: 12px; border-radius: 5px; font-weight: 600; margin-bottom: 12px; }
+.oxa-designer-return-target { border: 1px solid #e1e8f2; background: #fafbfd; border-radius: 6px; padding: 14px; margin: 12px 0; }
+.oxa-designer-return-target.enabled { background: #fff; }
+.oxa-designer-return-target > header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.oxa-designer-return-target > header > .ant-checkbox-wrapper { font-weight: 600; }
+.oxa-designer-return-target > header > label { display: flex; align-items: center; gap: 8px; color: #7b879a; font-size: 12px; }
+.oxa-designer-return-target > header .ant-select { min-width: 172px; }
+.oxa-designer-return-path { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; margin: 14px 0 10px; font-size: 12px; }
+.oxa-designer-return-path > small { color: #7b879a; margin-right: 4px; }
+.oxa-designer-return-path > span { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
+.oxa-designer-return-path > span > span { background: #eaf2ff; border-radius: 4px; padding: 5px 8px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.oxa-designer-return-path .skipped { text-decoration: line-through; color: #a0a8b6; background: #f5f7fb; }
+.oxa-workflow-designer-inspector .oxa-designer-return-warning { color: #c98113; }
+.oxa-designer-return-rule { border: 1px solid #e1e8f2; background: #f7f9fc; border-radius: 6px; padding: 14px; margin: 18px 0; }
+.oxa-designer-return-rule h3 { margin: 0 0 8px; }
+.oxa-designer-return-rule p { margin: 0; }
+.oxa-designer-return-back { padding-left: 0; margin-bottom: 8px; }
+@media(max-width:899px) {
+  .oxa-designer-branch-identity { flex-wrap: wrap; }
+  .oxa-designer-branch-identity > .ant-input { flex-basis: 100%; }
+  .oxa-designer-condition-surface .oxa-condition-row { grid-template-columns: minmax(0,1fr) 106px; }
+  .oxa-designer-condition-surface .oxa-condition-row > :nth-child(3) { grid-column: 1 / -1; }
+  .oxa-designer-return-target > header > label { width: 100%; flex-wrap: wrap; }
+  .oxa-designer-return-target > header .ant-select { flex: 1; min-width: 0; }
+}
+.oxa-designer-condition-surface:disabled { opacity: .7; pointer-events: none; }
+.oxa-workflow-diagram-designer .oxa-workflow-edge-label.designer-branch { width: 296px; max-width: 296px; min-height: 64px; box-sizing: border-box; padding: 10px 14px; border-radius: 5px; background: #fafcff; }
+.oxa-workflow-edge-label.designer-branch > span { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: #182230; font-size: 14px; font-weight: 600; }
+.oxa-workflow-edge-label.designer-branch > span > small { color: #64718a; background: #f0f4fa; border: 1px solid #dbe3ee; font-size: 11px; font-weight: 400; padding: 1px 6px; border-radius: 3px; }
+.oxa-workflow-edge-label.designer-branch > strong { display: block; margin-top: 5px; color: #617086; font-size: 12px; font-weight: 400; line-height: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.oxa-designer-inspector-icon.kind-condition { color: #e58a15; background: #fff3df; }

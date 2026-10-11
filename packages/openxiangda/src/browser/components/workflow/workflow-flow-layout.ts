@@ -43,7 +43,7 @@ export async function workflowFlowLayout(graph: WorkflowGraphProjection, options
       ],
     })),
     edges: forwardEdges.map(edge => ({ id: edge.id, sources: [outputPort(edge.id)], targets: [inputPort(edge.to)],
-      labels: options.designer && !['branch','default'].includes(edge.kind) ? [] : [{ id: `label:${edge.id}`, text: edge.label, width: edge.kind === 'branch' ? 226 : 112, height: edge.kind === 'branch' ? 62 : 30 }],
+      labels: options.designer && !['branch','default'].includes(edge.kind) ? [] : [{ id: `label:${edge.id}`, text: edge.label, width: options.designer ? 296 : edge.kind === 'branch' ? 226 : 112, height: options.designer ? 64 : edge.kind === 'branch' ? 62 : 30 }],
     })),
   });
   const positions = {
