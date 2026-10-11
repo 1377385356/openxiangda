@@ -352,3 +352,18 @@ test('selects one active half-open delegation and rejects ambiguous windows', ()
     workflowCode: 'another-workflow',
   }), false);
 });
+
+test('developer workflow validation treats handling as a pending human task', () => {
+  const definition: WorkflowDefinition = {
+    schemaVersion: SCHEMA_VERSIONS.workflowDefinition, code: 'handling', title: '材料办理',
+    acceptedCommandDeactivationPolicy: 'finish-pinned', subject: { resourceCode: 'requests', factProjection: {} },
+    inputSchema: { type: 'object', additionalProperties: false }, startAt: 'work', nodes: {
+      work: { id: 'work', kind: 'handle', title: '办理材料', binding: 'workers', mode: 'all', next: 'done', allowedOperations: ['complete'], requiredOperations: ['complete'] },
+      done: { id: 'done', kind: 'end', title: '完成', outcome: 'completed' },
+    },
+  };
+  assert.equal(planWorkflow(definition, {}).activeNode?.kind, 'handle');
+  assert.equal(planWorkflow(definition, {}, 'done').outcome, 'completed');
+  const invalid: any = structuredClone(definition); invalid.nodes.work.allowedOperations = ['approve'];
+  assert.throws(() => planWorkflow(invalid, {}), /WORKFLOW_HANDLE_OPERATIONS_INVALID/);
+});

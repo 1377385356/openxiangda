@@ -58,3 +58,5 @@ export * from './native-compiler/development-backend.js';
 export * from './native-compiler/service-mutations.js';
 
 export * from './native-compiler/workflow-designer.js';
+
+export * from './native-compiler/workflow-handle.js';
