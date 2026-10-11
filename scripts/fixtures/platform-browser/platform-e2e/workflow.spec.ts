@@ -1234,7 +1234,7 @@ for (const mobile of [false, true]) test(`approval submits once on insecure HTTP
   await page.getByRole('button', { name: /同\s*意/ }).click();
   await page.getByLabel('审批意见').fill('同意采购');
   await page.getByRole('button', { name: '确认同意' }).click();
-  await expect(page.getByText('同意已提交')).toBeVisible();
+  await expect(page.getByText('同意成功')).toBeVisible();
   expect(mock.requests.filter(request => request.method === 'POST' && request.path.endsWith('/commands/approve'))).toHaveLength(1);
   await expect(page).toHaveURL(new RegExp(`${mobile ? '/m' : ''}/workflows/${instanceId}$`));
   expect(await page.evaluate(() => Object.keys(sessionStorage).filter(key => key.startsWith('openxiangda:pending-task-command:v1:')).length)).toBe(0);
@@ -1290,7 +1290,7 @@ test('renders the independent mobile task and executes only a Surface operation'
   await page.getByRole('button', { name: /同\s*意/ }).click();
   await page.getByLabel('审批意见').fill('同意采购');
   await page.getByRole('button', { name: '确认同意' }).click();
-  await expect(page.getByText('同意已提交')).toBeVisible();
+  await expect(page.getByText('同意成功')).toBeVisible();
   await expect(page).toHaveURL(new RegExp(`/m/workflows/${instanceId}$`));
   await expect(page.locator('.oxa-record-detail-header .ant-tag')).toHaveText('已同意');
   await expect(page.getByRole('button', { name: /同\s*意/ })).toHaveCount(0);
