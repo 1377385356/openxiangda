@@ -1,3 +1,4 @@
+import { workflowProducedEventTypes } from 'openxiangda-contracts';
 import { normalizeDataMutationGrants } from 'openxiangda-contracts';
 import { compileNativeEventAction, requiresExtendedDeclarationCapacity, requiresExtendedRoleCapacity, requiresExtendedArtifactCapacity, requiresHighDensityArtifactCapacity, requiresExtendedConfigurationBytes } from 'openxiangda-contracts/native-compiler';
 import { normalizeWorkflowOwnedSubjectCreate } from 'openxiangda-contracts/native-compiler';
@@ -907,7 +908,7 @@ function compileContractBundleFromNormalized(
     }))
   ) || [];
   const workflowEventProducers = config.workflows?.activations.length
-    ? WORKFLOW_EVENT_TYPES_V2.filter(eventType => !WORKFLOW_BUSINESS_STEP_EVENTS.includes(eventType as any) || config.workflows?.definitions.some(item => Object.values(item.definition.nodes).some(node => node.kind === 'action'))).filter(eventType => eventType !== 'openxiangda.workflow.node.skipped.v2' || config.workflows?.definitions.some(item => Object.values(item.definition.nodes).some(node => node.kind === 'approval' && node.emptyPolicy === 'skip'))).map(eventType => ({
+    ? workflowProducedEventTypes(config.workflows?.definitions || []).map(eventType => ({
         code: `workflow:${eventType}`,
         source: 'workflow' as const,
         eventType,

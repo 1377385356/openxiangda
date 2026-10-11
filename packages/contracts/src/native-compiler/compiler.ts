@@ -160,47 +160,8 @@ export const DATA_EVENT_TYPES_V2 = [
   'openxiangda.data.record.updated.v2',
   'openxiangda.data.record.deleted.v2',
 ] as const;
-export const WORKFLOW_EVENT_TYPES_V2 = [
-  'openxiangda.workflow.node.notified.v2',
-  'openxiangda.workflow.node.skipped.v2',
-  WORKFLOW_BUSINESS_STEP_EVENT,
-  'openxiangda.workflow.step.result_received.v2',
-  'openxiangda.workflow.step.completed.v2',
-  'openxiangda.workflow.step.continuation_failed.v2',
-  'openxiangda.workflow.instance.started.v2',
-  'openxiangda.workflow.instance.cc_added.v2',
-  'openxiangda.workflow.instance.completed.v2',
-  'openxiangda.workflow.instance.rejected.v2',
-  'openxiangda.workflow.instance.returned.v2',
-  'openxiangda.workflow.instance.resumed.v2',
-  'openxiangda.workflow.instance.withdrawn.v2',
-  'openxiangda.workflow.instance.terminated.v2',
-  'openxiangda.workflow.task.created.v2',
-  'openxiangda.workflow.task.assigned.v2',
-  'openxiangda.workflow.task.assignment_pending.v2',
-  'openxiangda.workflow.task.assignment_resolution_failed.v2',
-  'openxiangda.workflow.task.approved.v2',
-  'openxiangda.workflow.task.completed.v2',
-  'openxiangda.workflow.task.rejected.v2',
-  'openxiangda.workflow.task.returned.v2',
-  'openxiangda.workflow.task.resubmitted.v2',
-  'openxiangda.workflow.task.transferred.v2',
-  'openxiangda.workflow.task.reassigned.v2',
-  'openxiangda.workflow.task.delegated.v2',
-  'openxiangda.workflow.task.assignee_added.v2',
-  'openxiangda.workflow.task.cancelled.v2',
-  'openxiangda.workflow.participant.activated.v2',
-  'openxiangda.workflow.participant.completed.v2',
-  'openxiangda.workflow.participant.rejected.v2',
-  'openxiangda.workflow.participant.returned.v2',
-  'openxiangda.workflow.participant.transferred.v2',
-  'openxiangda.workflow.participant.reassigned.v2',
-  'openxiangda.workflow.participant.delegated.v2',
-  'openxiangda.workflow.participant.added.v2',
-  'openxiangda.workflow.participant.suspended.v2',
-  'openxiangda.workflow.participant.resumed.v2',
-  'openxiangda.workflow.participant.cancelled.v2',
-] as const;
+export { WORKFLOW_EVENT_TYPES_V2 } from './workflow-events.js';
+import { WORKFLOW_EVENT_TYPES_V2, workflowProducedEventTypes } from './workflow-events.js';
 const WORKFLOW_EVENT_TYPE_SET_V2 = new Set<string>(WORKFLOW_EVENT_TYPES_V2);
 
 type JsonObject = Record<string, any>;
@@ -1659,7 +1620,7 @@ function compileExpectedContract(
         field: trigger.field,
       })),
       ...(config.workflows.activations.length
-        ? WORKFLOW_EVENT_TYPES_V2.filter(eventType => eventType !== 'openxiangda.workflow.node.notified.v2' || config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => isWorkflowPlatformNotify(node)))).filter(eventType => !WORKFLOW_BUSINESS_STEP_EVENTS.includes(eventType as any) || config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action' && !isWorkflowPlatformNotify(node)))).filter(eventType => eventType !== 'openxiangda.workflow.node.skipped.v2' || config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'approval' && node.emptyPolicy === 'skip' || node.returnTargets?.length || node.returnPolicy?.targets?.some((target: any) => target.routes.includes('resume'))))).map(eventType => ({
+        ? workflowProducedEventTypes(config.workflows.definitions).map(eventType => ({
             code: `workflow:${eventType}`,
             source: 'workflow',
             eventType,
