@@ -13,7 +13,7 @@ import { WorkflowDraftHandlingEditor } from './WorkflowDraftHandlingEditor';
 import { WorkflowNodeConfigurationEditor } from './WorkflowNodeConfigurationEditor';
 import { WorkflowDesignerAssistant } from './WorkflowDesignerAssistant';
 import { WorkflowConditionEditor, defaultWorkflowCondition } from './WorkflowConditionEditor';
-const kinds: Record<string,string> = { handle: '办理节点', approval: '审批', condition: '条件分支', cc: '抄送', action: '已发布业务步骤', correction: '补正', end: '结束' };
+const kinds: Record<string,string> = { handle: '办理节点', approval: '审批节点', condition: '条件分支', cc: '抄送', action: '已发布业务步骤', correction: '补正', end: '结束' };
 const id = () => `node_${createBrowserUuid().replaceAll('-','').slice(0,12)}`;
 const outcomeLabels: Record<string,string> = { eligible: '可更新', migrated: '已更新', deferred: '等待步骤完成', excepted: '需单独处理', held: '保留原版本', failed: '更新失败', completed: '已结束', superseded: '已替代' };
 const refused = (error: unknown) => error instanceof OpenXiangdaPlatformRequestError && error.status >= 400 && error.status < 500;

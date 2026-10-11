@@ -3530,3 +3530,7 @@
 .oxa-designer-ai-panel h2 { font-size: 16px; margin: 0; }
 .oxa-designer-ai-panel > header > .ant-btn { margin-left: auto; }
 .oxa-designer-ai-panel > p { font-size: 13px; color: #617086; line-height: 1.8; }
+
+.oxa-workflow-config-inline.compact .oxa-workflow-config-footer .ant-space-item { width: 100%; flex: 1; }
+.oxa-workflow-designer-inspector > header h2 { font-size: 20px; line-height: 28px; }
+.oxa-designer-workspace:not(.detail-inspector) .oxa-designer-inspector-icon { width: 40px; height: 40px; font-size: 27px; }
