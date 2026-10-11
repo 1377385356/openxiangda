@@ -17,12 +17,13 @@ export function workflowDesignerDisplayGraph(graph: WorkflowGraphProjection, ret
 }
 export function workflowDesignerOutlineNodes(graph: WorkflowGraphProjection): WorkflowGraphProjection['nodes'] {
   const ids = new Set<string>(), ordered: WorkflowGraphProjection['nodes'] = [];
-  const incoming = new Map(graph.nodes.map(node => [node.id, graph.edges.filter(edge => edge.to === node.id).length]));
+  const edges = graph.edges.filter(edge => !['return','resubmit'].includes(edge.kind));
+  const incoming = new Map(graph.nodes.map(node => [node.id, edges.filter(edge => edge.to === node.id).length]));
   const pending = graph.nodes.filter(node => incoming.get(node.id) === 0).sort((a,b) => Number(b.id === graph.startAt) - Number(a.id === graph.startAt));
   while (pending.length) {
     const node = pending.shift()!; if (ids.has(node.id)) continue;
     ids.add(node.id); ordered.push(node);
-    for (const edge of graph.edges.filter(edge => edge.from === node.id)) {
+    for (const edge of edges.filter(edge => edge.from === node.id)) {
       incoming.set(edge.to, (incoming.get(edge.to) || 0) - 1);
       const target = graph.nodes.find(item => item.id === edge.to);
       if (target && incoming.get(edge.to) === 0) pending.push(target);

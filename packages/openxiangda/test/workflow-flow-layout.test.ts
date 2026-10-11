@@ -86,13 +86,14 @@ test('designer starts and outline follow execution order without altering the im
 });
 
 test('return inspection projects only its canonical targets without changing the forward graph', async () => {
-  const { workflowDesignerDisplayGraph } = await import('../src/browser/components/workflow/workflow-designer-presentation');
+  const { workflowDesignerDisplayGraph, workflowDesignerOutlineNodes } = await import('../src/browser/components/workflow/workflow-designer-presentation');
   const source = graph([{id:'a',kind:'approval',title:'部门'},{id:'b',kind:'approval',title:'财务'},{id:'c',kind:'approval',title:'确认'},{id:'done',kind:'end',title:'结束'}], [edge('a','b'),edge('b','c'),edge('c','done')]);
   source.startAt='a'; const before=structuredClone(source);
   const ordinary=workflowDesignerDisplayGraph(source);
   const inspected=workflowDesignerDisplayGraph(source,'c',['a','b','missing']);
   assert.deepEqual(inspected.edges.filter(edge=>edge.kind==='return').map(edge=>[edge.from,edge.to]),[['c','a'],['c','b']]);
   assert.deepEqual(workflowDesignerDisplayGraph(source),ordinary);
+  assert.deepEqual(workflowDesignerOutlineNodes(inspected).map(node=>node.id),workflowDesignerOutlineNodes(ordinary).map(node=>node.id));
   assert.deepEqual(source,before);
   const positioned=await workflowFlowLayout(inspected,{designer:true});
   for(const edge of inspected.edges.filter(edge=>edge.kind==='return')) {
