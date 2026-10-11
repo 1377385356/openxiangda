@@ -622,3 +622,23 @@ CAS与写后范围检查同事务执行。应用仍负责业务规则和字典gu
 没有新增独立的部门可见范围策略。任何部门不存在或已删除时，整组失败，不按姓名匹配，
 不接受客户端标签，也不回退到应用内复制的组织表。`snapshotRevision` 描述返回事实，
 `resolvedAt` 来自数据库时间；快照不能替代后续业务事务的权限检查。
+
+## action-owned 资源的受控事件与机器回调事务
+
+声明 `platformAccess.dataMutations`，把资源、操作、字段和单事务数量上限固定到事件订阅或机器操作：
+
+```ts
+platformAccess: { dataMutations: [
+  { resourceCode: 'contracts', operations: ['update'], fieldCodes: ['status', 'signingStatus'], maxOperations: 1 },
+  { resourceCode: 'performance-plans', operations: ['update'], fieldCodes: ['planDate', 'status'], maxOperations: 50 },
+] }
+```
+
+该能力要求平台 `data.service-mutations` 1.0.0。受验证的 `@OpenXiangdaEventHandler` 内继续使用 `OpenXiangdaApplicationDataApiService.transaction`；SDK 自动携带事件来源，平台在同一事务锁定原投递与 processing receipt 的有效租约，并解析当前不可变订阅声明。
+
+机器回调在 `@OpenXiangdaOperation` 已验证请求内使用 `applicationData.transactionFromServiceAction(request, transaction)`。`request` 必须是平台已验证的 service 具名操作上下文；平台独立验证原始短期网关 invocation、机器的操作 capability 和当前部署，同时仍验证运行凭据。用户/developer、裸 OAuth data:write 和调用方填写的 operation/source 对象不能替代此证明。
+
+字段、资源、操作或数量超出声明时整事务拒绝；CAS、原幂等键、额度终态与文件绑定校验继续生效。不分批提交 50 个节点，不绕过 Native owner 门禁，不把 JWT/租约 nonce 保存到业务表。role-member/actor-authority 仍需要真实用户动作，服务源不冒充用户成员。声明相同原事件在新的有效投递租约下可按原键重试；证明不能离开处理器执行使用。
+
+可信 Scheduler/补偿 Worker：给可供后台执行的同一具名操作 `dataMutations` 条目加 `allowRuntimeWorker: true`，并使用
+`await applicationData.withWorkerAction('callback-operation-code', () => callbackService.handle(originalInput))`。此作用域中的 `.transaction()` 自动携带当前 RuntimeLeaseService 的持有者与租约证明；平台在原事务锁定当前运行凭据、部署/Head 和该后台租约，并逐资源拒绝没有该 opt-in 的条目。无需 HTTP 请求或用户身份；没有活动租约、普通 OAuth 或已过期/被替代的实例仍被拒绝。该作用域可调用现有 CallbackService、DueSweep 等服务，整批操作同事务，保持原业务幂等键。

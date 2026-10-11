@@ -1,3 +1,5 @@
+import { currentWorkerAction, runWorkerAction } from './worker-action-context.js';
+import { OpenXiangdaRuntimeLeaseService } from './runtime.js';
 import { assertWorkflowNativeStageGuard, assertWorkflowNativeStageSourceGuard } from 'openxiangda-contracts';
 import { Inject, Injectable, Optional, Scope, UnauthorizedException } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
@@ -538,7 +540,9 @@ export class OpenXiangdaApplicationDataApiService {
     @Inject(OpenXiangdaApplicationCredentials)
     private readonly credentials: OpenXiangdaApplicationCredentials,
     @Optional() @Inject(OpenXiangdaEventContext)
-    private readonly eventContext?: OpenXiangdaEventContext
+    private readonly eventContext?: OpenXiangdaEventContext,
+    @Optional() @Inject(OpenXiangdaRuntimeLeaseService)
+    private readonly runtimeLease?: OpenXiangdaRuntimeLeaseService
   ) {}
 
   /** Reconcile first; one Native transaction uses the original fixed step execution. */
@@ -698,8 +702,36 @@ export class OpenXiangdaApplicationDataApiService {
   ): Promise<DataTransactionResult> {
     assertOpenXiangdaRoleAssertions(undefined, transaction.guards);
     return await this.credentials.withAuthorization(async authorization =>
-      this.platform.transactData(authorization, null, transaction)
+      this.platform.transactData(authorization, null, transaction, undefined, undefined, currentWorkerAction())
     );
+  }
+
+  /** Calls existing business services under an explicit lease-fenced Worker action. */
+  async withWorkerAction<T>(operationCode: string, work: () => Promise<T>): Promise<T> {
+    if (!/^[A-Za-z0-9._:-]{1,128}$/.test(operationCode) || this.eventContext?.current() || currentWorkerAction())
+      throw new UnauthorizedException('OPENXIANGDA_SERVICE_MUTATION_SOURCE_CONFLICT');
+    this.runtimeLease?.assertActive();
+    const state = this.runtimeLease?.state();
+    if (!state?.active || !state.leaseToken || !state.holderId)
+      throw new UnauthorizedException('OPENXIANGDA_SERVICE_MUTATION_WORKER_LEASE_REQUIRED');
+    return runWorkerAction({operationCode,holderId:state.holderId,leaseToken:state.leaseToken}, work);
+  }
+
+  /** One atomic Native transaction, bounded by the verified machine operation's declaration. */
+  async transactionFromServiceAction(request: OpenXiangdaHttpRequest,
+    transaction: DataTransactionRequest): Promise<DataTransactionResult> {
+    const verified = request?.openxiangda;
+    if (!verified || verified.principal.principalType !== 'service' || !verified.operation ||
+        !verified.operation.platformAccess?.dataMutations?.length || !verified.authorization ||
+        (this.eventContext?.current() || currentWorkerAction()))
+      throw new UnauthorizedException('OPENXIANGDA_SERVICE_MUTATION_SOURCE_REQUIRED');
+    assertOpenXiangdaRoleAssertions(undefined, transaction.guards);
+    return this.credentials.withAuthorization(authorization => this.platform.transactData(
+      authorization, null, transaction, undefined, {
+        code: verified.operation!.code,
+        requiredCapability: verified.operation!.requiredCapability,
+        invocationAuthorization: verified.authorization,
+      }));
   }
 
   async emitEvent(

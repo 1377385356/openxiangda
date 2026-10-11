@@ -54,3 +54,5 @@ export * from './native-compiler/workflow-business-step-identity.js';
 export * from './native-compiler/user-candidates.js';
 export * from './native-compiler/development-configuration.js';
 export * from './native-compiler/development-backend.js';
+
+export * from './native-compiler/service-mutations.js';

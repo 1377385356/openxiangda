@@ -19,6 +19,7 @@ export const PLATFORM_CAPABILITY_CONTRACT_VERSIONS = {
   "environment.runtime-lifecycle": "1.0.0",
   "data.rich-text": "1.0.0",
   "data-api-v2": "1.1.0",
+  "data.service-mutations": "1.0.0",
   "data.extended-owned-subtable-capacity": "1.0.0",
   "data.aggregate-owned-subtable-capacity": "1.0.0",
   "data.extended-field-capacity": "1.0.0",

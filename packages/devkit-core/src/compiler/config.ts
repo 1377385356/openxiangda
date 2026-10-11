@@ -1,3 +1,4 @@
+import { normalizeDataMutationGrants } from 'openxiangda-contracts';
 import { parseNativeParentReadPolicy, validateNativeParentReadPolicies, NativeParentReadPolicyError, NativeDataPolicyExpressionV2Error } from 'openxiangda-contracts/native-compiler';
 import { assertWorkflowNativeStagePolicy } from 'openxiangda-contracts';
 import { WORKFLOW_LAUNCH_MAX_INPUTS } from 'openxiangda-contracts';
@@ -3251,6 +3252,10 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
             if (copyKeys.has(key)) copiesInvalid = true;
             copyKeys.add(key);
           }
+          if (access.dataMutations !== undefined) {
+            try { access.dataMutations = normalizeDataMutationGrants(access.dataMutations, eventResourceFields); }
+            catch { copiesInvalid = true; }
+          }
           let decimalInvalid = false;
           if (access.decimalReservation !== undefined) {
             try {
@@ -3260,11 +3265,11 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
           }
           if (
             decimalInvalid ||
-            Object.keys(access).some(key => !['notification', 'managedFileCopies', 'decimalReservation'].includes(key)) ||
+            Object.keys(access).some(key => !['notification', 'managedFileCopies', 'decimalReservation', 'dataMutations'].includes(key)) ||
             (access.notification !== undefined &&
               (notification.mode !== 'business-standard' ||
                 Object.keys(notification).some(key => key !== 'mode'))) ||
-            (access.notification === undefined && access.managedFileCopies === undefined && access.decimalReservation === undefined) ||
+            (access.notification === undefined && access.managedFileCopies === undefined && access.decimalReservation === undefined && access.dataMutations === undefined) ||
             copiesInvalid
           ) {
             diagnostics.push(
@@ -4732,11 +4737,16 @@ function validateBackendOperations(
         'workflowStage',
         'recordEdit',
         'ownedSubject',
+        'dataMutations',
       ]);
       let invalid =
         !isRecord(operation.platformAccess) ||
         Object.keys(access).length === 0 ||
         Object.keys(access).some(key => !allowedAccessKeys.has(key));
+      if (access.dataMutations !== undefined) {
+        try { access.dataMutations = normalizeDataMutationGrants(access.dataMutations, declaredResourceFields); }
+        catch { invalid = true; }
+      }
       if (access.ownedSubject !== undefined) {
         try { assertWorkflowOwnedSubjectCreate(access.ownedSubject); }
         catch { invalid = true; }

@@ -1,3 +1,5 @@
+import type { OpenXiangdaWorkerActionContext } from './types.js';
+import type { OpenXiangdaServiceActionContext } from './types.js';
 import type { WorkflowDelegationAdministration, WorkflowDelegationCatalog, WorkflowDelegationCandidatePage, WorkflowDelegationCandidateQuery, WorkflowDelegationListQuery, WorkflowDelegationPage, WorkflowDelegationMutationPreview, WorkflowDelegationMutationReceipt, WorkflowDelegationMutationRequest, WorkflowDelegationMutationIntent } from "openxiangda-contracts";
 import { assertOutsideManagedExecution, managedExecution } from './managed-command-private.js';
 import type { ManagedCommandExecutionVerification } from 'openxiangda-contracts';
@@ -642,7 +644,9 @@ export class OpenXiangdaPlatformClient {
     authorization: string,
     perspectiveCode: string | null,
     transaction: DataTransactionRequest,
-    businessAction?: OpenXiangdaBusinessActionContext
+    businessAction?: OpenXiangdaBusinessActionContext,
+    serviceAction?: OpenXiangdaServiceActionContext,
+    workerAction?: OpenXiangdaWorkerActionContext
   ): Promise<DataTransactionResult> {
     return await this.request<DataTransactionResult>(
       `/openxiangda-api/v2/applications/${encodeURIComponent(
@@ -650,7 +654,7 @@ export class OpenXiangdaPlatformClient {
       )}/native/data/transactions`,
       {
         method: "POST",
-        headers: this.identityHeaders(authorization, perspectiveCode, businessAction),
+        headers: this.identityHeaders(authorization, perspectiveCode, businessAction, serviceAction, workerAction),
         body: JSON.stringify({
           ...transaction,
           environmentKey: this.options.environmentKey,
@@ -1358,7 +1362,9 @@ export class OpenXiangdaPlatformClient {
   private identityHeaders(
     authorization: string,
     perspectiveCode?: string | null,
-    businessAction?: OpenXiangdaBusinessActionContext
+    businessAction?: OpenXiangdaBusinessActionContext,
+    serviceAction?: OpenXiangdaServiceActionContext,
+    workerAction?: OpenXiangdaWorkerActionContext
   ) {
     const event = this.eventContext?.current();
     return {
@@ -1383,6 +1389,16 @@ export class OpenXiangdaPlatformClient {
               : {}),
           }
         : {}),
+      ...(workerAction ? {
+        'X-OpenXiangda-Worker-Operation':workerAction.operationCode,
+        'X-OpenXiangda-Worker-Holder':workerAction.holderId,
+        'X-OpenXiangda-Worker-Lease':workerAction.leaseToken,
+      } : {}),
+      ...(serviceAction ? {
+        'X-OpenXiangda-Service-Operation': serviceAction.code,
+        'X-OpenXiangda-Service-Capability': serviceAction.requiredCapability,
+        'X-OpenXiangda-Service-Invocation': serviceAction.invocationAuthorization,
+      } : {}),
       ...(event
         ? {
             "X-OpenXiangda-Causation-Event-Id": event.eventId,
