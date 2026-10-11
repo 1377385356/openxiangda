@@ -1,4 +1,5 @@
 import type { WorkflowBinding, WorkflowDefinition, WorkflowExpression, WorkflowNode } from '../types.js';
+import { workflowOperationMinimumOpinion,workflowOperationOpinion } from './workflow-node-administration.js';
 import { projectWorkflowGraph, workflowExpressionPaths, type WorkflowGraphProjection } from './workflow-graph.js';
 
 export type WorkflowPublicationScope = 'running_and_new' | 'new_only';
@@ -74,13 +75,18 @@ export function validateWorkflowDesignerCapabilities(base: WorkflowDefinition, n
     if (!record(node) || node.id !== id || !['approval', 'condition', 'cc', 'action', 'correction', 'end'].includes(node.kind)) { errors.push(`WORKFLOW_DESIGNER_NODE_INVALID:${id}`); continue; }
     if ('taskPageCode' in node && node.taskPageCode && !base.taskPages?.[node.taskPageCode]) errors.push(`WORKFLOW_DESIGNER_PAGE_UNRELEASED:${id}`);
     if (node.kind === 'action' && !steps.some(step => step.kind === 'action' && same(step.handler, node.handler) && same(step.inputs, node.inputs) && same(step.outputSchema, node.outputSchema))) errors.push(`WORKFLOW_DESIGNER_STEP_UNRELEASED:${id}`);
+    if (node.kind === 'approval' && node.allowedOperations && (!Array.isArray(node.allowedOperations) || !node.allowedOperations.includes('approve'))) errors.push(`WORKFLOW_DESIGNER_REQUIRED_ACTION:${id}.approve`);
     const original = base.nodes[id];
     if (!original && node.kind === 'approval' && !Object.values(base.nodes).some(template => template.kind === 'approval' && ['fieldPolicy','administration','requiredOperations','operationPolicy','taskPageCode'].every(key => same((template as any)[key],(node as any)[key])))) errors.push(`WORKFLOW_DESIGNER_APPROVAL_TEMPLATE_REQUIRED:${id}`);
     if (original?.kind === 'approval' && node.kind === 'approval') {
       if (node.mode !== original.mode && !original.administration?.modes?.includes(node.mode)) errors.push(`WORKFLOW_DESIGNER_MODE_NOT_ALLOWED:${id}`);
       for (const key of ['requiredOperations', 'fieldPolicy', 'administration'] as const) if (!same(original[key], node[key])) errors.push(`WORKFLOW_DESIGNER_CODE_OWNED:${id}.${key}`);
       for (const operation of original.requiredOperations || []) if (node.allowedOperations && !node.allowedOperations.includes(operation)) errors.push(`WORKFLOW_DESIGNER_REQUIRED_ACTION:${id}.${operation}`);
-      for (const [operation, policy] of Object.entries(original.operationPolicy || {})) if (!same(policy?.minimumOpinion, node.operationPolicy?.[operation as keyof typeof node.operationPolicy]?.minimumOpinion)) errors.push(`WORKFLOW_DESIGNER_CODE_OWNED:${id}.${operation}.minimumOpinion`);
+      for (const [operation, policy] of Object.entries(original.operationPolicy || {})) {
+        const nextPolicy = node.operationPolicy?.[operation as keyof typeof node.operationPolicy];
+        const ranks = ['none','optional','required'];
+        if (!same(policy?.minimumOpinion,nextPolicy?.minimumOpinion) || ranks.indexOf(workflowOperationOpinion(operation,nextPolicy)) < ranks.indexOf(workflowOperationMinimumOpinion(operation,policy))) errors.push(`WORKFLOW_DESIGNER_CODE_OWNED:${id}.${operation}.minimumOpinion`);
+      }
     }
     if ('binding' in node && !nextBinding.bindings[node.binding]) errors.push(`WORKFLOW_DESIGNER_BINDING_MISSING:${id}`);
   }

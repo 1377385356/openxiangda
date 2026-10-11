@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { WorkflowDefinition } from '../src/types.js';
-import { editWorkflowDesignerDefinition, validateWorkflowDesignerDocument, classifyWorkflowAdoption } from '../src/native-compiler/workflow-designer.js';
+import { editWorkflowDesignerDefinition, validateWorkflowDesignerDocument, validateWorkflowDesignerCapabilities,classifyWorkflowAdoption } from '../src/native-compiler/workflow-designer.js';
 const definition = (): WorkflowDefinition => ({ schemaVersion: 'openxiangda/workflow-definition@2', code: 'test', title: '测试', acceptedCommandDeactivationPolicy: 'finish-pinned', subject: { resourceCode: 'orders', businessKeyField: 'id', factProjection: {} }, startAt: 'review', inputSchema: { type: 'object', additionalProperties: false, properties: { amount: { type: 'number' }, category: { type: 'string' } } }, readability: { variables: { amount: { label: '金额' }, category: { label: '分类' } } }, nodes: { review: { id: 'review', kind: 'approval', title: '审批', binding: 'people', mode: 'single', onApprove: 'done', onReject: 'done' }, done: { id: 'done', kind: 'end', title: '结束', outcome: 'approved' } } } as unknown as WorkflowDefinition);
 test('insert affects only selected decision, preserves IDs and source; remove reconnects', () => {
   const source = definition();
@@ -35,4 +35,13 @@ test('new future condition input must exist with the canonical fact type', () =>
   assert.equal(classifyWorkflowAdoption(source,target,{ currentNodeId: 'review',facts: {} }).outcome,'excepted');
   assert.equal(classifyWorkflowAdoption(source,target,{ currentNodeId: 'review',facts: { amount: '200' } }).outcome,'excepted');
   assert.equal(classifyWorkflowAdoption(source,target,{ currentNodeId: 'review',facts: { amount: 200 } }).outcome,'eligible');
+});
+
+test('canonical drafts retain mandatory forward actions and legacy code-required opinions', () => {
+  const base = definition();(base.nodes.review as any).operationPolicy = { approve: { commentRequired: true } };
+  const binding: any = { workflowCode: 'test',schemaVersion: 'openxiangda.workflow-binding/v2',bindings: { people: { provider: 'initiator' } } };
+  const weaker = structuredClone(base);(weaker.nodes.review as any).operationPolicy = { approve: { opinion: 'none' } };
+  assert.ok(validateWorkflowDesignerCapabilities(base,weaker,binding,binding).some(error => error.includes('minimumOpinion')));
+  (weaker.nodes.review as any).allowedOperations = ['reject'];
+  assert.ok(validateWorkflowDesignerCapabilities(base,weaker,binding,binding).some(error => error.includes('REQUIRED_ACTION')));
 });
