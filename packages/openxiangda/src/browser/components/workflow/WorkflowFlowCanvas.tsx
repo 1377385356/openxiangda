@@ -37,10 +37,17 @@ function orthogonalPath(points: Point[]) {
 
 function insertionMenu(options: NonNullable<FlowEdge['data']>['insertionOptions']): MenuProps['items'] {
   const names: Record<string,string> = { approval: '审批节点', handle: '办理节点', cc: '抄送节点', action: '业务步骤', condition: '条件分支', notification: '发送通知' };
+  const descriptions: Record<string,string> = { approval: '需要有人作出决定', handle: '需要有人完成工作并确认', cc: '让相关人知晓', action: '执行已发布的业务能力', condition: '只进入第一个满足的分支', notification: '发送消息' };
   const icons = { approval: UserOutlined, handle: FormOutlined, cc: CopyOutlined, action: CodeOutlined, condition: BranchesOutlined, notification: BellOutlined };
-  const groups = [...new Set((options || []).map(option => option.kind))];
-  return groups.map(kind => { const entries = options!.filter(option => option.kind === kind), Icon = icons[kind as keyof typeof icons] || CodeOutlined;
-    return entries.length === 1 ? { key: entries[0]!.value, icon: <Icon />, label: names[kind] || entries[0]!.label } : { key: `kind:${kind}`, icon: <Icon />, label: names[kind], children: entries.map(option => ({ key: option.value,label: option.label })) };
+  return [{ label: '人工', kinds: ['approval','handle','cc'] }, { label: '分支', kinds: ['condition'] }, { label: '自动', kinds: ['action','notification'] }].flatMap(group => {
+    const children = group.kinds.flatMap(kind => {
+      const entries = (options || []).filter(option => option.kind === kind);
+      if (!entries.length) return [];
+      const Icon = icons[kind as keyof typeof icons];
+      const label = <span className="oxa-designer-insert-option"><span>{names[kind]}</span><small>{descriptions[kind]}</small></span>;
+      return [entries.length === 1 ? { key: entries[0]!.value, icon: <Icon className={`kind-${kind}`} />, label } : { key: `kind:${kind}`, icon: <Icon className={`kind-${kind}`} />, label, children: entries.map(option => ({ key: option.value,label: option.label })) }];
+    });
+    return children.length ? [{ key: `group:${group.label}`,type: 'group' as const,label: group.label,children }] : [];
   });
 }
 
@@ -87,7 +94,7 @@ export default function WorkflowFlowCanvas(props: {
     const point = positions.nodes.get(node.id)!;
     return { id: node.id, type: 'workflow', position: { x: point.x, y: point.y }, width: point.width, height: point.height,
       style: { width: point.width, height: point.height, pointerEvents: 'all' }, selected: props.selectedNodeId === node.id, draggable: false, connectable: false, deletable: false,
-      data: { designer: props.designer, node, title: props.titles[node.id] || node.title, summary: props.summaries?.[node.id], start: node.id === props.graph.startAt,
+      data: { designer: props.designer, node, title: props.titles[node.id] || node.title, summary: props.summaries?.[node.id], start: node.id === renderedGraph.startAt,
         visit: [...props.visits].reverse().find(visit => visit.nodeId === node.id), input: point.input, outputs: point.outputs,
         onSelect: () => latest.current.onSelectNode(node.id), onNavigate: (id, key) => latest.current.onNavigate(id, key) } };
   }) : [], [renderedGraph, props.selectedNodeId, props.titles, props.summaries, props.visits, positions, props.designer]);
