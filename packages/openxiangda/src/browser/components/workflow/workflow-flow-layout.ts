@@ -7,8 +7,8 @@ const inputPort = (id: string) => `in:${id}`;
 const outputPort = (id: string) => `out:${id}`;
 
 /** Coordinates are disposable presentation data; ELK routes every edge orthogonally. */
-export async function workflowFlowLayout(graph: WorkflowGraphProjection) {
-  if (graph.nodes.length > 200 || graph.edges.length > 1024) throw new Error('WORKFLOW_GRAPH_LAYOUT_LIMIT_EXCEEDED');
+export async function workflowFlowLayout(graph: WorkflowGraphProjection, options: { designer?: boolean } = {}) {
+  if (graph.nodes.length > (options.designer ? 201 : 200) || graph.edges.length > 1024) throw new Error('WORKFLOW_GRAPH_LAYOUT_LIMIT_EXCEEDED');
   // The bundled constructor uses an in-process shim, not a persistent browser Worker.
   // Release it after this bounded request; terminateWorker requires a workerUrl factory.
   const engine = new ELK();
@@ -18,14 +18,14 @@ export async function workflowFlowLayout(graph: WorkflowGraphProjection) {
   const result = await engine.layout<ElkNode>({ id: 'workflow',
     layoutOptions: {
       'elk.algorithm': 'layered', 'elk.direction': 'DOWN', 'elk.edgeRouting': 'ORTHOGONAL',
-      'elk.layered.spacing.nodeNodeBetweenLayers': '76', 'elk.spacing.nodeNode': '56',
+      'elk.layered.spacing.nodeNodeBetweenLayers': options.designer ? '36' : '76', 'elk.spacing.nodeNode': options.designer ? '24' : '56',
       'elk.layered.spacing.edgeNodeBetweenLayers': '32', 'elk.spacing.edgeEdge': '22',
       'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES',
       'elk.layered.edgeLabels.placement': 'CENTER',
       'elk.padding': '[top=36,left=36,bottom=36,right=36]',
     },
     children: forwardNodes.map(node => ({ id: node.id,
-      width: node.kind === 'condition' ? 288 : node.kind === 'end' ? 232 : 264, height: node.kind === 'end' ? 92 : 112,
+      width: options.designer ? ['start','end'].includes(node.kind) ? 180 : 248 : node.kind === 'condition' ? 288 : node.kind === 'end' ? 232 : 264, height: options.designer ? ['start','end'].includes(node.kind) ? 34 : 72 : node.kind === 'end' ? 92 : 112,
       layoutOptions: { 'elk.portConstraints': 'FIXED_ORDER' },
       ports: [
         { id: inputPort(node.id), width: 0, height: 0, layoutOptions: { 'elk.port.side': 'NORTH' } },
@@ -33,7 +33,7 @@ export async function workflowFlowLayout(graph: WorkflowGraphProjection) {
       ],
     })),
     edges: forwardEdges.map(edge => ({ id: edge.id, sources: [outputPort(edge.id)], targets: [inputPort(edge.to)],
-      labels: [{ id: `label:${edge.id}`, text: edge.label, width: edge.kind === 'branch' ? 226 : 112, height: edge.kind === 'branch' ? 62 : 30 }],
+      labels: [{ id: `label:${edge.id}`, text: edge.label, width: edge.kind === 'branch' ? 226 : options.designer ? 20 : 112, height: edge.kind === 'branch' ? 62 : options.designer ? 20 : 30 }],
     })),
   });
   const positions = {

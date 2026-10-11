@@ -3338,40 +3338,146 @@
   .oxa-rich-text-toolbar-group-menus .oxa-rich-text-menu-button { min-width: 68px; }
   .oxa-rich-text-toolbar-group-menus .oxa-rich-text-menu-button:nth-child(2) { min-width: 76px; }
 }
-.oxa-workflow-designer { border: 1px solid #e3e8ef; border-radius: 8px; overflow: hidden; background: #f4f6fa; color: #182230; }
-.oxa-designer-toolbar { min-height: 56px; padding: 8px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #fff; border-bottom: 1px solid #e3e8ef; flex-wrap: wrap; }
-.oxa-designer-banner { padding: 10px 20px; background: #eaf2ff; color: #1677ff; font-size: 13px; }
-.oxa-designer-workspace { display: grid; grid-template-columns: 240px minmax(0,1fr) 440px; min-height: 700px; height: calc(100dvh - 180px); }
-.oxa-designer-workspace.without-outline { grid-template-columns: minmax(0,1fr) 440px; }
-.oxa-designer-outline { overflow: auto; background: white; padding: 16px 10px; border-right: 1px solid #e3e8ef; }
-.oxa-designer-outline button { display: block; width: 100%; text-align: left; padding: 12px; background: none; border: none; border-radius: 6px; cursor: pointer; color: inherit; }
-.oxa-designer-outline button[aria-pressed=true] { background: #eaf2ff; color: #1677ff; }
-.oxa-designer-outline small { display: block; color: #667085; padding-top: 3px; }
-.oxa-designer-outline footer { margin-top: 24px; border-top: 1px solid #e3e8ef; padding: 16px 10px; color: #389e0d; overflow-wrap: anywhere; }
-.oxa-designer-workspace main { min-width: 0; min-height: 0; position: relative; }
-.oxa-designer-workspace .oxa-workflow-diagram-standalone { height: 100%; }
-.oxa-designer-desktop-inspector { background: white; overflow: auto; border-left: 1px solid #e3e8ef; }
-.oxa-workflow-designer-inspector { padding: 20px 18px; }
-.oxa-workflow-designer-inspector header { display: flex; gap: 12px; align-items: center; margin-bottom: 18px; }
-.oxa-workflow-designer-inspector h2 { font-size: 18px; margin: 0; }
-.oxa-workflow-designer-inspector h3 { font-size: 14px; margin: 0 0 14px; }
-.oxa-workflow-designer-inspector h3 small { display: block; font-weight: 400; margin-top: 4px; font-size: 12px; }
-.oxa-workflow-designer-inspector label { display: flex; flex-direction: column; gap: 6px; margin: 12px 0; }
-.oxa-workflow-designer-inspector p { color: #667085; font-size: 12px; line-height: 1.7; }
-.oxa-designer-live-band, .oxa-designer-draft-band { border: 1px solid #e3e8ef; border-radius: 6px; padding: 16px; margin-bottom: 18px; }
-.oxa-designer-live-band h3 { color: #237804; }
-.oxa-designer-draft-band h3 { color: #1677ff; }
+/* Workflow editor follows the approved canvas references; read-only diagrams keep their layout. */
+.oxa-workflow-designer { height: 100%; min-height: 0; display: flex; flex-direction: column; overflow: hidden; background: #f5f7fb; color: #182230; font-size: 14px; }
+.oxa-designer-toolbar { height: 56px; flex: 0 0 56px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; background: #fff; border-bottom: 1px solid #e3e8ef; }
+.oxa-designer-toolbar-identity { display: flex; align-items: center; gap: 12px; min-width: 0; white-space: nowrap; }
+.oxa-designer-toolbar-identity > strong { font-size: 16px; max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
+.oxa-designer-toolbar-label, .oxa-designer-save-state { color: #7b879a; font-size: 12px; }
+.oxa-designer-toolbar .ant-btn { height: 32px; font-size: 13px; box-shadow: none; }
+.oxa-designer-toolbar .ant-tag { margin: 0; line-height: 23px; background: #fff; }
+.oxa-designer-toolbar .ant-segmented { border: 1px solid #d9e2ef; background: #fff; padding: 0; color: #617086; font-size: 13px; }
+.oxa-designer-toolbar .ant-segmented-item-selected { background: #eaf2ff; color: #0066ff; box-shadow: none; }
+.oxa-designer-workspace { flex: 1; min-height: 0; display: grid; grid-template-columns: 240px minmax(0,1fr) 560px; }
+.oxa-designer-workspace.without-outline { grid-template-columns: 48px minmax(0,1fr) 560px; }
+.oxa-designer-workspace.without-inspector { grid-template-columns: 240px minmax(0,1fr); }
+.oxa-designer-workspace.without-outline.without-inspector { grid-template-columns: 48px minmax(0,1fr); }
+.oxa-designer-outline { min-height: 0; overflow: auto; background: #fff; padding: 8px; border-right: 1px solid #e3e8ef; scrollbar-width: thin; }
+.oxa-designer-outline-heading { display: flex; justify-content: space-between; align-items: center; min-height: 40px; padding: 0 8px; margin-bottom: 4px; }
+.oxa-designer-outline-heading strong { font-size: 14px; }
+.oxa-designer-outline-heading .ant-btn { padding: 4px; }
+.oxa-designer-outline .ant-input-search { margin: 0 8px 12px; width: calc(100% - 16px); }
+.oxa-designer-outline nav button { width: 100%; min-height: 38px; display: flex; align-items: center; gap: 12px; text-align: left; padding: 8px 12px; background: none; border: none; border-radius: 5px; cursor: pointer; color: inherit; font: inherit; }
+.oxa-designer-outline nav button .anticon { color: #0066ff; font-size: 19px; }
+.oxa-designer-outline nav button.kind-action .anticon { color: #7139f3; }
+.oxa-designer-outline nav button.kind-handle .anticon { color: #00a4ad; }
+.oxa-designer-outline nav button.kind-start .anticon { color: #526178; }
+.oxa-designer-outline nav button.kind-end .anticon { color: #389e0d; }
+.oxa-designer-outline nav button[aria-pressed=true] { background: #eaf2ff; color: #0066ff; }
+.oxa-designer-outline nav button span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.oxa-designer-outline footer { margin: 28px 8px 0; border-top: 1px solid #e3e8ef; padding: 14px 2px; font-size: 13px; }
+.oxa-designer-outline footer strong { display: block; margin-bottom: 8px; }
+.oxa-designer-outline footer button { border: 0; background: none; color: #389e0d; padding: 0; font: inherit; cursor: pointer; }
+.oxa-designer-workspace main { display: flex; flex-direction: column; min-width: 0; min-height: 0; position: relative; }
+.oxa-designer-banner { height: 34px; flex: 0 0 34px; padding: 7px 20px; background: #eaf2ff; color: #0066ff; font-size: 12px; border-bottom: 1px solid #dce8fa; }
+.oxa-designer-workspace .oxa-workflow-diagram-standalone { flex: 1; min-height: 0; height: auto; }
+.oxa-workflow-diagram-designer .oxa-workflow-node { min-height: 0; border: 1px solid #d3dfed; border-left: 5px solid #0066ff; border-radius: 5px; padding: 12px; gap: 10px; box-shadow: none; background: #fff; }
+.oxa-workflow-diagram-designer .oxa-workflow-node.selected { background: #fff; border-color: #0066ff; box-shadow: 0 0 0 3px #0066ff22; }
+.oxa-workflow-diagram-designer .oxa-workflow-node.kind-action { border-left-color: #7139f3; }
+.oxa-workflow-diagram-designer .oxa-workflow-node.kind-handle { border-left-color: #00a4ad; }
+.oxa-workflow-diagram-designer .oxa-workflow-node.kind-condition { border-left-color: #0066ff; }
+.oxa-workflow-diagram-designer .oxa-workflow-node-kind { display: none; }
+.oxa-workflow-diagram-designer .oxa-workflow-node strong { font-size: 14px; line-height: 20px; margin: 0 0 4px; -webkit-line-clamp: 1; }
+.oxa-workflow-diagram-designer .oxa-workflow-node small { font-size: 12px; color: #617086; }
+.oxa-workflow-diagram-designer .oxa-workflow-node-icon { width: 24px; flex-basis: 24px; height: 28px; font-size: 23px; background: none; border-radius: 0; color: #0066ff; }
+.oxa-workflow-diagram-designer .kind-action .oxa-workflow-node-icon { color: #7139f3; }
+.oxa-workflow-diagram-designer .kind-handle .oxa-workflow-node-icon { color: #00a4ad; }
+.oxa-workflow-diagram-designer .oxa-workflow-node.kind-start, .oxa-workflow-diagram-designer .oxa-workflow-node.kind-end { justify-content: center; border-radius: 18px; padding: 4px 12px; gap: 8px; }
+.oxa-workflow-diagram-designer .oxa-workflow-node.kind-start { color: #fff; background: #3e4859; border: 1px solid #3e4859; }
+.oxa-workflow-diagram-designer .oxa-workflow-node.kind-start .oxa-workflow-node-icon { color: #fff; }
+.oxa-workflow-diagram-designer .oxa-workflow-node.kind-end { color: #298704; border: 1px solid #4b9f28; }
+.oxa-workflow-diagram-designer .oxa-workflow-node.kind-end .oxa-workflow-node-icon { color: #389e0d; }
+.oxa-workflow-diagram-designer .kind-start .oxa-workflow-node-copy, .oxa-workflow-diagram-designer .kind-end .oxa-workflow-node-copy { flex: 0 1 auto; }
+.oxa-workflow-diagram-designer .kind-start strong, .oxa-workflow-diagram-designer .kind-end strong { margin: 0; white-space: nowrap; }
+.oxa-workflow-diagram-designer .kind-start small, .oxa-workflow-diagram-designer .kind-end small { display: none; }
+.oxa-workflow-diagram-designer .oxa-workflow-edge-insert { width: 20px; height: 20px; display: grid; place-items: center; border: 1px solid #c5d2e4; border-radius: 50%; color: #6c7e98; background: white; padding: 0; font-size: 11px; }
+.oxa-workflow-diagram-designer .oxa-workflow-edge-insert:hover { color: #0066ff; border-color: #0066ff; }
+.oxa-workflow-diagram-designer .react-flow__handle { opacity: 0; }
+.oxa-workflow-diagram-designer .oxa-workflow-viewport-tools { bottom: 18px; left: 16px; border-radius: 5px; box-shadow: none; }
+.oxa-workflow-diagram-designer .oxa-workflow-graph-help { display: none; }
+.oxa-workflow-diagram-designer .react-flow__attribution { font-size: 8px; opacity: .55; }
+.oxa-designer-desktop-inspector { background: #fff; min-height: 0; overflow: auto; border-left: 1px solid #e3e8ef; scrollbar-width: thin; }
+.oxa-workflow-designer-inspector { padding: 14px 16px 24px; }
+.oxa-workflow-designer-inspector > header { display: flex; gap: 8px; align-items: center; min-height: 34px; margin-bottom: 14px; }
+.oxa-workflow-designer-inspector > header h2 { font-size: 16px; margin: 0; font-weight: 600; }
+.oxa-workflow-designer-inspector > header .ant-tag { margin: 0; font-size: 11px; }
+.oxa-workflow-designer-inspector > header .ant-btn { margin-left: auto; }
+.oxa-designer-inspector-icon { width: 30px; height: 30px; display: grid; place-items: center; color: #0066ff; background: #eaf2ff; font-size: 22px; border-radius: 5px; }
+.oxa-workflow-designer-inspector h3 { font-size: 13px; margin: 0 0 8px; }
+.oxa-workflow-designer-inspector p { color: #7b879a; font-size: 12px; line-height: 1.6; }
+.oxa-workflow-designer-inspector .oxa-workflow-config-inline label { display: inline-flex; flex-direction: row; margin: 0; }
+.oxa-designer-handling-notice, .oxa-designer-defaults-notice { border-radius: 4px; color: #2d7617; background: #edf8ea; padding: 9px 12px; margin-bottom: 14px; font-size: 12px; }
+.oxa-designer-defaults-notice { background: #fff7e7; color: #a16b1c; }
+.oxa-workflow-config-inline .oxa-workflow-config-section { border: 0; padding: 0; margin: 0 0 14px; }
+.oxa-workflow-config-inline .ant-form-item { margin-bottom: 12px; }
+.oxa-workflow-config-inline .ant-form-item-label { padding-bottom: 6px; }
+.oxa-workflow-config-inline .ant-form-item-label label { font-size: 13px; font-weight: 600; }
+.oxa-workflow-config-inline .oxa-workflow-provider-options { display: flex; flex-wrap: wrap; gap: 4px; }
+.oxa-workflow-config-inline .oxa-workflow-provider-options .ant-radio-button-wrapper { border: 1px solid #d9e2ef; border-radius: 4px; font-size: 12px; height: 28px; line-height: 26px; padding: 0 12px; }
+.oxa-workflow-config-inline .oxa-workflow-provider-options .ant-radio-button-wrapper::before { display: none; }
+.oxa-workflow-config-inline .oxa-workflow-mode-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.oxa-workflow-config-inline .oxa-workflow-mode-options .ant-radio-wrapper { font-size: 12px; padding: 0; margin: 0; }
+.oxa-workflow-config-inline .oxa-workflow-mode-options + p, .oxa-workflow-config-inline .oxa-workflow-config-help { margin: 4px 0 8px; font-size: 12px; }
+.oxa-workflow-config-inline .oxa-workflow-operation-table { width: 100%; border: 1px solid #e2e8f1; border-collapse: collapse; table-layout: fixed; font-size: 12px; }
+.oxa-workflow-config-inline .oxa-workflow-operation-table th, .oxa-workflow-config-inline .oxa-workflow-operation-table td { height: 44px; padding: 6px 8px; border: 1px solid #e2e8f1; text-align: left; vertical-align: middle; }
+.oxa-workflow-config-inline .oxa-workflow-operation-table th { font-weight: 500; }
+.oxa-workflow-config-inline .oxa-workflow-operation-table thead th { background: #f5f7fb; color: #526178; height: 34px; }
+.oxa-workflow-config-inline .oxa-workflow-operation-table thead th:first-child { width: 23%; }
+.oxa-workflow-config-inline .oxa-workflow-operation-table thead th:last-child { width: 22%; }
+.oxa-workflow-config-inline .oxa-workflow-operation-table .ant-form-item { margin: 0; }
+.oxa-workflow-config-inline .oxa-workflow-operation-table .ant-input, .oxa-workflow-config-inline .oxa-workflow-operation-table .ant-select { font-size: 12px; padding-left: 0; width: 100%; }
+.oxa-workflow-config-inline .oxa-workflow-operation-table small { display: block; color: #7b879a; font-size: 10px; font-weight: 400; margin-top: 3px; }
+.oxa-workflow-config-inline .oxa-workflow-operation-table .ant-switch { min-width: 28px; }
+.oxa-workflow-config-inline .oxa-workflow-config-footer { padding: 0; border: 0; background: none; justify-content: flex-end; margin: 8px 0 14px; }
+.oxa-workflow-config-inline .oxa-workflow-config-footer > span { display: none; }
+.oxa-workflow-config-inline .oxa-workflow-config-footer .ant-btn { height: 30px; font-size: 12px; color: #0066ff; border-color: #9fc4ff; box-shadow: none; }
+.oxa-workflow-config-inline .oxa-workflow-config-footer .ant-btn-primary { color: #fff; }
+.oxa-workflow-config-inline .oxa-workflow-config-footer .ant-btn:disabled { opacity: .65; }
+.oxa-designer-draft-band { border: 1px solid #dce8fb; border-radius: 5px; overflow: hidden; margin-top: 12px; }
+.oxa-designer-draft-band > h3 { padding: 9px 12px; margin: 0; color: #0066ff; background: #eaf2ff; }
+.oxa-designer-draft-band .ant-collapse-item { border-bottom: 1px solid #e8edf5; }
+.oxa-designer-draft-band .ant-collapse-item:last-child { border-bottom: 0; }
+.oxa-designer-draft-band .ant-collapse-header { padding: 10px 12px !important; align-items: center !important; font-size: 12px; }
+.oxa-designer-draft-band .ant-collapse-header-text { font-weight: 500; flex: 0 0 102px !important; }
+.oxa-designer-draft-band .ant-collapse-extra { flex: 1; color: #69788f; min-width: 0; }
+.oxa-designer-draft-band .ant-collapse-extra span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.oxa-designer-draft-band .ant-collapse-content-box { padding: 4px 12px 14px !important; }
+.oxa-designer-draft-band label { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; font-size: 12px; }
 .oxa-workflow-designer fieldset, .oxa-workflow-designer-inspector fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
-.oxa-designer-branch { padding: 12px; border: 1px solid #e3e8ef; background: #f8fafc; border-radius: 6px; margin: 14px 0; display: grid; gap: 10px; }
-.oxa-condition-row { display: grid; grid-template-columns: minmax(0,1fr) 108px; gap: 8px; margin: 10px 0; }
-.oxa-condition-row > :first-child, .oxa-condition-row > :last-child { grid-column: 1 / -1; }
-.oxa-condition-group { border-left: 2px solid #e3e8ef; padding-left: 10px; margin: 10px 0; }
-.oxa-workflow-edge-insert { position: absolute; width: 24px; height: 24px; border: 1px solid #b8c7db; border-radius: 50%; background: #fff; color: #7a8fa9; font-size: 18px; line-height: 18px; cursor: pointer; pointer-events: all; }
-.oxa-workflow-edge-insert:hover { color: #1677ff; border-color: #1677ff; }
+.oxa-designer-branch { padding: 12px; border: 1px solid #e3e8ef; background: #f8fafc; border-radius: 5px; margin: 12px 0; display: grid; gap: 10px; }
 .oxa-designer-mobile-inspector { display: none; }
-@media(max-width: 1199px) { .oxa-designer-workspace { grid-template-columns: 180px minmax(0,1fr) 360px; } .oxa-designer-workspace.without-outline { grid-template-columns: minmax(0,1fr) 360px; } }
-@media(max-width: 899px) { .oxa-designer-workspace, .oxa-designer-workspace.without-outline { grid-template-columns: minmax(0,1fr); min-height: 580px; height: calc(100dvh - 240px); } .oxa-designer-outline, .oxa-designer-desktop-inspector { display: none; } .oxa-designer-mobile-inspector { display: block; position: absolute; bottom: 18px; left: 18px; z-index: 5; } .oxa-designer-toolbar { padding: 10px; } }
-
+.oxa-designer-show-inspector { position: absolute; top: 50px; right: 12px; z-index: 5; }
+@media(max-width: 1499px) {
+  .oxa-designer-workspace { grid-template-columns: 200px minmax(0,1fr) 480px; }
+  .oxa-designer-workspace.without-outline { grid-template-columns: 48px minmax(0,1fr) 480px; }
+  .oxa-designer-workspace.without-inspector { grid-template-columns: 200px minmax(0,1fr); }
+  .oxa-designer-toolbar-label, .oxa-designer-save-state { display: none; }
+}
+@media(max-width: 1199px) {
+  .oxa-designer-workspace, .oxa-designer-workspace.without-outline { grid-template-columns: 48px minmax(0,1fr) 440px; }
+  .oxa-designer-workspace.without-inspector, .oxa-designer-workspace.without-outline.without-inspector { grid-template-columns: 48px minmax(0,1fr); }
+  .oxa-designer-outline-heading strong, .oxa-designer-outline .ant-input-search, .oxa-designer-outline nav button > span:last-child:not(.anticon), .oxa-designer-outline footer { display: none; }
+  .oxa-designer-outline { padding: 8px 4px; }
+  .oxa-designer-outline-heading { padding: 0; }
+  .oxa-designer-outline nav button { justify-content: center; padding: 10px 4px; }
+  .oxa-designer-toolbar { padding: 0 8px; gap: 8px; }
+  .oxa-designer-toolbar-identity { gap: 6px; }
+  .oxa-designer-toolbar-actions .ant-btn { font-size: 0; width: 30px; padding: 0; }
+  .oxa-designer-toolbar-actions .ant-btn .anticon { font-size: 14px; }
+  .oxa-designer-toolbar-actions .ant-btn-primary { font-size: 12px; width: auto; padding: 0 10px; }
+}
+@media(max-width: 899px) {
+  .oxa-workflow-designer { min-height: 100dvh; height: auto; }
+  .oxa-designer-workspace, .oxa-designer-workspace.without-outline, .oxa-designer-workspace.without-inspector, .oxa-designer-workspace.without-outline.without-inspector { grid-template-columns: minmax(0,1fr); min-height: calc(100dvh - 96px); }
+  .oxa-designer-outline, .oxa-designer-desktop-inspector { display: none; }
+  .oxa-designer-mobile-inspector { display: block; position: absolute; bottom: 18px; left: 18px; z-index: 5; }
+  .oxa-designer-toolbar { height: auto; flex: 0 0 auto; min-height: 56px; padding: 8px; flex-wrap: wrap; }
+  .oxa-designer-toolbar-identity { flex: 1 1 100%; }
+  .oxa-designer-toolbar-identity strong { font-size: 14px; max-width: 130px; }
+  .oxa-designer-toolbar-actions { margin-left: auto; }
+  .oxa-designer-banner { height: auto; flex-basis: auto; padding: 8px 12px; }
+  .oxa-workflow-designer-inspector { padding: 0 0 16px; }
+}
 .oxa-workflow-diagram-standalone .kind-handle { border-top-color: #53958c; }
 .oxa-workflow-diagram-standalone .kind-notification { border-top-color: #6d9fc7; }
 .oxa-workflow-node-status.status-skipped { color: #6c7483; background: #f4f5f7; border-color: #dce0e6; }

@@ -7,6 +7,7 @@ import { workflowFlowLayout } from './workflow-flow-layout';
 import { workflowNodeIsReadable, workflowReadableZoom } from './workflow-graph-presentation';
 import '@xyflow/react/dist/style.css';
 import { Skeleton } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
 
 export interface WorkflowFlowCanvasController {
   locate: (id: string, focus?: boolean) => void;
@@ -15,18 +16,18 @@ export interface WorkflowFlowCanvasController {
 }
 type Point = { x: number; y: number };
 type FlowNode = Node<{
-  node: WorkflowGraphProjection['nodes'][number]; title: string; summary?: string; start: boolean;
+  designer?: boolean; node: WorkflowGraphProjection['nodes'][number]; title: string; summary?: string; start: boolean;
   visit?: WorkflowGraphVisit; onSelect: () => void; onNavigate: (id: string, key: string) => boolean;
   input: { id: string; x: number }; outputs: Array<{ id: string; x: number }>;
 }, 'workflow'>;
 type FlowEdge = Edge<{
   edge: WorkflowGraphEdge; expression: string; points: Point[]; label: Point;
-  actual: boolean; highlighted: boolean; selected: boolean; onSelect: () => void; onInsert?: () => void;
+  actual: boolean; highlighted: boolean; selected: boolean; onSelect: () => void; onInsert?: () => void; designer?: boolean;
 }, 'workflow'>;
 
 function DiagramNode({ data, selected }: NodeProps<FlowNode>) {
   return <><Handle id={data.input.id} type="target" position={Position.Top} style={{ left: data.input.x }} isConnectable={false} />
-    <WorkflowNodeCard node={data.node} title={data.title} summary={data.summary} selected={selected} start={data.start} visit={data.visit} onClick={data.onSelect} onNavigate={data.onNavigate} />
+    <WorkflowNodeCard designer={data.designer} node={data.node} title={data.title} summary={data.summary} selected={selected} start={data.start} visit={data.visit} onClick={data.onSelect} onNavigate={data.onNavigate} />
     {data.outputs.map(port => <Handle key={port.id} id={port.id} type="source" position={Position.Bottom} style={{ left: port.x }} isConnectable={false} />)}</>;
 }
 
@@ -38,24 +39,25 @@ function DiagramEdge({ id, data, markerEnd }: EdgeProps<FlowEdge>) {
   if (!data) return null;
   return <><BaseEdge id={id} path={orthogonalPath(data.points)} markerEnd={markerEnd} interactionWidth={22} style={{ stroke: data.actual ? 'var(--ant-color-success, #389e0d)' : data.highlighted ? 'var(--ant-color-primary, #1677ff)' : '#aab4c1', strokeWidth: data.actual || data.highlighted ? 2 : 1.5,
     strokeDasharray: data.edge.kind === 'return' || data.edge.kind === 'resubmit' ? '6 4' : undefined }} />
-    <EdgeLabelRenderer><button type="button" className={`oxa-workflow-edge-label nodrag nopan ${data.actual ? 'executed' : ''} ${data.highlighted ? 'selected' : ''} ${data.edge.kind === 'branch' ? 'branch' : ''}`}
+    <EdgeLabelRenderer>{(!data.designer || ['branch','default','return','resubmit'].includes(data.edge.kind)) && <button type="button" className={`oxa-workflow-edge-label nodrag nopan ${data.actual ? 'executed' : ''} ${data.highlighted ? 'selected' : ''} ${data.edge.kind === 'branch' ? 'branch' : ''}`}
       style={{ transform: `translate(-50%, -50%) translate(${data.label.x}px, ${data.label.y}px)` }}
       title={`${data.edge.label}${data.expression ? `：${data.expression}` : ''}`} aria-pressed={data.selected} aria-label={`分支：${data.edge.priority ? `顺序 ${data.edge.priority}，` : ''}${data.edge.label}${data.expression ? `，${data.expression}` : ''}`} onClick={data.onSelect}>
       <span>{data.edge.priority ? <b>{data.edge.priority}</b> : null}{data.edge.label}{data.actual && <small>已执行</small>}</span>{data.expression && <strong>{data.expression}</strong>}
-    </button>{data.onInsert && <button type="button" className="oxa-workflow-edge-insert nodrag nopan" style={{ transform: `translate(-50%, -50%) translate(${data.label.x}px, ${data.label.y + 30}px)` }} aria-label={`在${data.edge.label}路径新增节点`} onClick={data.onInsert}>+</button>}</EdgeLabelRenderer></>;
+    </button>}{data.onInsert && <button type="button" className="oxa-workflow-edge-insert nodrag nopan" style={{ transform: `translate(-50%, -50%) translate(${data.label.x}px, ${data.label.y + (data.designer && !['branch','default'].includes(data.edge.kind) ? 0 : 30)}px)` }} aria-label={`在${data.edge.label}路径新增节点`} onClick={data.onInsert}><PlusOutlined /></button>}</EdgeLabelRenderer></>;
 }
 const nodeTypes = { workflow: DiagramNode };
 const edgeTypes = { workflow: DiagramEdge };
 
 /** Lazy module: loading a CRUD page or the node list does not instantiate React Flow. */
 export default function WorkflowFlowCanvas(props: {
-  graph: WorkflowGraphProjection; selectedNodeId: string; selectedEdgeId?: string; startAtTop?: boolean;
+  graph: WorkflowGraphProjection; selectedNodeId: string; selectedEdgeId?: string; startAtTop?: boolean; designer?: boolean;
   titles: Record<string, string>; summaries?: Record<string, string>; visits: readonly WorkflowGraphVisit[]; executedEdges: Set<string>;
   onSelectNode: (id: string) => void; onSelectEdge: (id: string) => void; onNavigate: (id: string, key: string) => boolean;
   onInsertEdge?: (id: string) => void;
   onReady: (controller: WorkflowFlowCanvasController | null) => void; onZoom: (zoom: number) => void;
 }) {
   const latest = useRef(props); latest.current = props;
+  const initialized = useRef(false);
   const container = useRef<HTMLDivElement>(null);
   const ensureVisible = useRef<((id: string) => void) | null>(null);
   const interruptNavigation = useRef<(() => void) | null>(null);
@@ -64,26 +66,27 @@ export default function WorkflowFlowCanvas(props: {
   const positions = layoutState.graph === props.graph ? layoutState.positions : undefined;
   useEffect(() => {
     let active = true;
-    void workflowFlowLayout(props.graph).then(value => { if (active) setLayoutState({ graph: props.graph, positions: value }); },
+    void workflowFlowLayout(props.graph, { designer: props.designer }).then(value => { if (active) setLayoutState({ graph: props.graph, positions: value }); },
       error => { if (active) setLayoutState({ graph: props.graph, error: error instanceof Error ? error : new Error(String(error)) }); });
+    initialized.current = true;
     return () => { active = false; };
-  }, [props.graph]);
+  }, [props.graph, props.designer]);
   const nodes = useMemo<FlowNode[]>(() => positions ? props.graph.nodes.map(node => {
     const point = positions.nodes.get(node.id)!;
     return { id: node.id, type: 'workflow', position: { x: point.x, y: point.y }, width: point.width, height: point.height,
       style: { width: point.width, height: point.height, pointerEvents: 'all' }, selected: props.selectedNodeId === node.id, draggable: false, connectable: false, deletable: false,
-      data: { node, title: props.titles[node.id] || node.title, summary: props.summaries?.[node.id], start: node.id === props.graph.startAt,
+      data: { designer: props.designer, node, title: props.titles[node.id] || node.title, summary: props.summaries?.[node.id], start: node.id === props.graph.startAt,
         visit: [...props.visits].reverse().find(visit => visit.nodeId === node.id), input: point.input, outputs: point.outputs,
         onSelect: () => latest.current.onSelectNode(node.id), onNavigate: (id, key) => latest.current.onNavigate(id, key) } };
-  }) : [], [props.graph, props.selectedNodeId, props.titles, props.summaries, props.visits, positions]);
+  }) : [], [props.graph, props.selectedNodeId, props.titles, props.summaries, props.visits, positions, props.designer]);
   const edges = useMemo<FlowEdge[]>(() => positions ? props.graph.edges.map(edge => {
     const position = positions.edges.get(edge.id)!;
     const actual = props.executedEdges.has(edge.id), selected = props.selectedEdgeId === edge.id;
     const highlighted = props.selectedEdgeId ? selected : edge.from === props.selectedNodeId;
     return { id: edge.id, source: edge.from, sourceHandle: `out:${edge.id}`, target: edge.to, targetHandle: `in:${edge.to}`, type: 'workflow', deletable: false, reconnectable: false,
       markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: actual ? '#389e0d' : highlighted ? '#1677ff' : '#aab4c1' },
-      data: { edge, expression: edge.expression ? formatWorkflowExpression(edge.expression, props.graph.variables) : '', points: position.points, label: position.label, actual, highlighted, selected, onSelect: () => latest.current.onSelectEdge(edge.id), ...(props.onInsertEdge && !['return','resubmit'].includes(edge.kind) ? { onInsert: () => latest.current.onInsertEdge?.(edge.id) } : {}) } };
-  }) : [], [props.graph, props.executedEdges, props.selectedNodeId, props.selectedEdgeId, props.onInsertEdge, positions]);
+      data: { designer: props.designer, edge, expression: edge.expression ? formatWorkflowExpression(edge.expression, props.graph.variables) : '', points: position.points, label: position.label, actual, highlighted, selected, onSelect: () => latest.current.onSelectEdge(edge.id), ...(props.onInsertEdge && !['return','resubmit'].includes(edge.kind) ? { onInsert: () => latest.current.onInsertEdge?.(edge.id) } : {}) } };
+  }) : [], [props.graph, props.executedEdges, props.selectedNodeId, props.selectedEdgeId, props.onInsertEdge, positions, props.designer]);
   useEffect(() => {
     if (!instance || !positions) return;
     let active = true;
@@ -109,20 +112,23 @@ export default function WorkflowFlowCanvas(props: {
     };
     latest.current.onReady({ locate, fit: () => { startNavigation(); void instance.fitView({ padding: .18, maxZoom: 1, minZoom: .025, duration: 200 }); }, zoomBy: direction => { startNavigation(); void instance.zoomTo(Math.max(.025, Math.min(1.6, instance.getZoom() * (direction > 0 ? 1.25 : .8))), { duration: 120 }); } });
     const graph = latest.current.graph;
-    const target = [latest.current.selectedNodeId, graph.startAt, graph.nodes[0]?.id].find(id => id && positions.nodes.has(id));
-    if (props.startAtTop && target && container.current) {
+    const target = [props.designer ? graph.startAt : latest.current.selectedNodeId, graph.startAt, graph.nodes[0]?.id].find(id => id && positions.nodes.has(id));
+    if (props.designer && initialized.current) {
+      ensureVisible.current?.(latest.current.selectedNodeId);
+    } else if (props.startAtTop && target && container.current) {
       const point = positions.nodes.get(target)!;
       const zoom = .9;
       // Leave room for the floating tools, then show the following nodes below.
       // Explicit locate/fit actions still use their ordinary viewport behavior.
       void instance.setViewport({ x: container.current.clientWidth / 2 - (point.x + point.width / 2) * zoom,
-        y: 110 - point.y * zoom, zoom });
+        y: (props.designer ? 24 : 110) - point.y * zoom, zoom });
     } else void instance.fitView({ padding: .2, maxZoom: 1, minZoom: .025 }).then(() => {
       if (!active || navigation !== 0 || instance.getZoom() >= workflowReadableZoom) return;
       if (target) locate(target);
     });
+    initialized.current = true;
     return () => { active = false; if (focusFrame !== undefined) cancelAnimationFrame(focusFrame); ensureVisible.current = null; interruptNavigation.current = null; latest.current.onReady(null); };
-  }, [instance, positions, props.startAtTop]);
+  }, [instance, positions, props.startAtTop, props.designer]);
   useEffect(() => { ensureVisible.current?.(props.selectedNodeId); }, [props.selectedNodeId]);
   if (layoutState.graph === props.graph && layoutState.error) throw layoutState.error;
   if (!positions) return <div className="oxa-workflow-canvas-loading"><Skeleton active title paragraph={{ rows: 4 }} /></div>;
@@ -132,8 +138,8 @@ export default function WorkflowFlowCanvas(props: {
       deleteKeyCode={null} disableKeyboardA11y selectionOnDrag={false} selectionKeyCode={null} zoomOnDoubleClick={false}
       minZoom={.025} maxZoom={1.6} onlyRenderVisibleElements onMoveStart={event => { if (event) interruptNavigation.current?.(); }} onMoveEnd={(_event, viewport) => props.onZoom(viewport.zoom)}
       onEdgeClick={(_event, edge) => props.onSelectEdge(edge.id)} aria-label={props.onInsertEdge ? "流程设计画布" : "只读流程画布"}>
-      <Background color="#d6dde5" gap={22} size={1} />
-      <MiniMap pannable zoomable position="bottom-right" aria-label="流程缩略导航" style={{ width: 150, height: 94 }} nodeColor={node => node.selected ? '#1677ff' : '#b7c2cf'} maskColor="rgba(243, 246, 250, .72)" />
+      <Background color="#d6dde5" gap={props.designer ? 16 : 22} size={1} />
+      <MiniMap pannable zoomable position="bottom-right" aria-label="流程缩略导航" style={{ width: props.designer ? 116 : 150, height: props.designer ? 94 : 94 }} nodeColor={node => node.selected ? '#1677ff' : '#b7c2cf'} maskColor="rgba(243, 246, 250, .72)" />
     </ReactFlow>
   </div>;
 }

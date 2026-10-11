@@ -63,3 +63,20 @@ test('correction outside lanes preserve forward ranks and orthogonal endpoints',
   }
   assert.ok(result.nodes.get('correct')!.x > Math.max(...forward.nodes.map(node => { const p = result.nodes.get(node.id)!; return p.x + p.width; })));
 });
+
+
+test('designer starts and outline follow execution order without altering the immutable projection', async () => {
+  const { workflowDesignerDisplayGraph, workflowDesignerOutlineNodes } = await import('../src/browser/components/workflow/workflow-designer-presentation');
+  const source = graph([{id:'done',kind:'end',title:'通过',outcome:'approved'}, {id:'rejected',kind:'end',title:'拒绝',outcome:'rejected'}, {id:'a',kind:'approval',title:'部门'}, {id:'b',kind:'approval',title:'财务'}], [edge('a','b'),edge('b','done'),edge('a','rejected','reject'),edge('b','rejected','reject')]);
+  source.startAt='a';const before=structuredClone(source);
+  const displayed=workflowDesignerDisplayGraph(source);
+  assert.deepEqual(workflowDesignerOutlineNodes(displayed).map(node=>node.title),['发起','部门','财务','通过']);
+  assert.deepEqual(source,before);
+  const positioned=await workflowFlowLayout(displayed,{designer:true});
+  for(const e of displayed.edges) {
+    const points=positioned.edges.get(e.id)!.points;
+    for(let index=1;index<points.length;index++) assert.ok(points[index]!.x===points[index-1]!.x||points[index]!.y===points[index-1]!.y);
+  }
+  const spine=[...positioned.nodes.values()].map(node=>node.x+node.width/2);
+  assert.ok(Math.max(...spine)-Math.min(...spine)<1,'the start/end pills align to the same spine as tasks');
+});
