@@ -168,14 +168,6 @@ const workflowNodeSchema = {
           },
         },
         requiredOperations: { type: 'array', minItems: 1, maxItems: 7, uniqueItems: true, items: { enum: [...WORKFLOW_CONFIGURABLE_OPERATIONS] } },
-        administration: {
-          type: 'object', additionalProperties: false,
-          properties: {
-            modes: { type: 'array', minItems: 1, maxItems: 4, uniqueItems: true, items: { enum: ['single', 'any', 'all', 'sequence'] } },
-            assigneeProviders: { type: 'array', minItems: 1, maxItems: 3, uniqueItems: true, items: { enum: ['fixed_users', 'app_role', 'app_role_in_scope'] } },
-            operations: { type: 'array', minItems: 1, maxItems: 7, uniqueItems: true, items: { enum: WORKFLOW_CONFIGURABLE_OPERATIONS.filter(operation => operation !== 'complete') } },
-          },
-        },
         allowedOperations: {
           type: "array",
           uniqueItems: true,

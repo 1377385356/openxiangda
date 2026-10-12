@@ -32,7 +32,7 @@ test('approval administration remains optional, bounded and strict', () => {
   for (const administration of [
     { fields: { note: ['edit'] } }, { executeShell: true }, { modes: [] },
     { modes: ['single', 'single'] }, { modes: ['parallel'] }, { assigneeProviders: ['shell'] },
-    { operations: ['admin_override'] }, { operations: ['complete'] }, { operations: ['approve', 'approve'] },
+    { operations: ['admin_override'] }, { operations: ['approve', 'approve'] },
   ]) {
     const invalid = structuredClone(definition);
     invalid.nodes.fresh.administration = administration;
@@ -47,6 +47,7 @@ test('a valid shape does not widen canvas authority or opinion minima', () => {
   definition.nodes.fresh = createWorkflowHumanNode('fresh', 'approval', '审批', 'done');
   for (const patch of [
     { administration: { modes: ['all'] } }, { fieldPolicy: { default: 'edit' } },
+    { administration: { operations: ['complete'] } },
     { operationPolicy: { reject: { opinion: 'optional', minimumOpinion: 'none' } } },
   ]) {
     const invalid = structuredClone(definition);
