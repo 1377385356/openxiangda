@@ -54,6 +54,7 @@ export function GeneratedResourceFormPage({
   const [drawerOpen, setDrawerOpen] = useState(true);
   const savedIdRef = useRef<string | null>(null);
   const [record, setRecord] = useState<ResourceRecord>();
+  const [referenceBindings, setReferenceBindings] = useState<Record<string, unknown>>({});
   const query = useOne<ResourceRecord>({
     resource: definition.code,
     id,
@@ -115,6 +116,7 @@ export function GeneratedResourceFormPage({
     ready: mode === 'create' || Boolean(record), form, fields: groups.flatMap(group => group.fields), recordRevision: record?.revision,
     encode: values => draftValues(values), onSaved: () => {},
     restore: draft => {
+      setReferenceBindings(draft.values);
       form.resetFields(); form.setFieldsValue({ ...(record ? normalizeRecordForForm(record, surface) : {}), ...draftValues(draft.values, true) });
       if (mode === 'edit' && draft.recordRevision) setRecord(current => current ? { ...current, revision: draft.recordRevision! } : current);
     },
@@ -207,10 +209,14 @@ export function GeneratedResourceFormPage({
     <ResourceFormContent
       variant={variant} mode={mode} resourceCode={code} recordId={record?.id} expectedRevision={record?.revision} groups={groups}
       form={form} busy={busy} pending={pending} submitDisabled={drafts.busy} error={submitError} feedback={drafts.feedback}
-      onValuesChange={() => drafts.clearSaved()}
+      onValuesChange={changed => {
+        setReferenceBindings(current => ({ ...current, ...normalizeFormValues(changed, surface) }));
+        drafts.clearSaved();
+      }}
       onSubmit={values => void submit(values)}
       canWriteField={field => fieldWritable(field, mode, hasCapability, identity.isAppSuperAdmin)}
       renderers={{
+        referenceBindings,
         renderSubtable: context => <SubtableField disabled={context.disabled} field={context.field} mobile={variant === 'mobile'} operation={context.operation} parentRecordId={context.recordId} />,
         signer: signatureSigner(identity.subjectProfile),
         upload: (current, file, parentId) => createNativeResourceClient(code, surface).upload(current.key, file, parentId),

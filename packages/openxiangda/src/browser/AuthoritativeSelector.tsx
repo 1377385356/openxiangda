@@ -6,6 +6,8 @@ import {
 import { Avatar, Select, Space, Spin, Tag, Typography } from 'antd';
 import type {
   DataFieldSourceLaunchBinding,
+  DataFieldSourceQuery,
+  DataFieldSourceRecord,
   DataRecordEditInput,
   DepartmentReferenceValue,
   DirectoryEntry,
@@ -24,6 +26,7 @@ import {
   type DirectoryKind,
 } from './platform-client';
 import { mobileReferenceSelectorCopy } from './selector-copy';
+import { isDirectorySearchKeyword } from './components/platform-fields/directory-keyword';
 
 type Source = DirectoryKind | 'resource';
 type Option = {
@@ -53,7 +56,7 @@ function directoryOption(source: DirectoryKind, item: DirectoryEntry): Option {
     value: item.id,
     label: item.label,
     selectable: item.selectable !== false,
-    ...(item.description ? { description: item.description } : {}),
+    ...((item.description || item.inactive) ? { description: [item.description, item.inactive ? '已停用' : undefined].filter(Boolean).join(' · ') } : {}),
     ...(item.path?.length
       ? { path: item.path.map(entry => entry.label) }
       : {}),
@@ -122,6 +125,11 @@ function useStableRecordEdit(input?: DataRecordEditInput) {
     [input?.operationCode, input?.recordId, input?.expectedRevision]);
 }
 
+function useStableSourceRecord(input?: DataFieldSourceRecord) {
+  return useMemo(() => input ? { id: input.id, expectedRevision: input.expectedRevision } : undefined,
+    [input?.id, input?.expectedRevision]);
+}
+
 function useStableTaskSource(input?: WorkflowTaskSourceBinding) {
   const subtableKey = JSON.stringify(input?.subtable);
   return useMemo(() => input ? { taskId: input.taskId, expectedRevision: input.expectedRevision,
@@ -131,7 +139,7 @@ function useStableTaskSource(input?: WorkflowTaskSourceBinding) {
 
 async function searchSource(
   source: Source,
-  operation: 'create' | 'update',
+  operation: DataFieldSourceQuery['operation'],
   keyword: string,
   cursor?: string,
   resourceCode?: string,
@@ -140,6 +148,7 @@ async function searchSource(
   launch?: DataFieldSourceLaunchBinding,
   action?: DataRecordEditInput,
   task?: WorkflowTaskSourceBinding,
+  record?: DataFieldSourceRecord,
 ) {
   try {
   if (source === 'resource') {
@@ -149,6 +158,7 @@ async function searchSource(
       launch,
       action,
       task,
+      record,
       keyword,
       cursor,
       bindings,
@@ -158,7 +168,8 @@ async function searchSource(
       nextCursor: page.nextCursor,
     };
   }
-  const page = await searchDirectory(source, { keyword, cursor });
+  if (!isDirectorySearchKeyword(keyword)) return { items: [], nextCursor: null };
+  const page = await searchDirectory(source, { keyword, cursor, ...(operation === 'filter' ? { purpose: 'filter' as const } : {}) });
   return {
     items: page.items.map(item => directoryOption(source, item)),
     nextCursor: page.nextCursor,
@@ -167,7 +178,7 @@ async function searchSource(
     const status = error && typeof error === 'object' && 'status' in error ? Number(error.status) : 0;
     const message = status === 401 ? '登录已失效，请重新登录后选择' : status === 403
       ? '你暂无权限查看这些选项，请联系管理员' : status === 409
-      ? '页面配置已更新，请刷新后重新选择' : '选项暂时无法加载，请稍后重试';
+      ? '记录或页面配置已更新，请刷新后重新选择' : '选项暂时无法加载，请稍后重试';
     throw new Error(message, { cause: error });
   }
 }
@@ -196,7 +207,7 @@ export type AuthoritativeSelectorProps = {
   value?: StoredValue | StoredValue[];
   onChange?: (value: StoredValue | StoredValue[] | undefined) => void;
   source: Source;
-  operation: 'create' | 'update';
+  operation: DataFieldSourceQuery['operation'];
   multiple?: boolean;
   disabled?: boolean;
   id?: string;
@@ -208,6 +219,7 @@ export type AuthoritativeSelectorProps = {
   launch?: DataFieldSourceLaunchBinding;
   action?: DataRecordEditInput;
   task?: WorkflowTaskSourceBinding;
+  record?: DataFieldSourceRecord;
 };
 
 export function AuthoritativeSelector({
@@ -225,10 +237,12 @@ export function AuthoritativeSelector({
   launch: launchInput,
   action: actionInput,
   task: taskInput,
+  record: recordInput,
 }: AuthoritativeSelectorProps) {
   const launch = useStableSourceLaunch(launchInput);
   const action = useStableRecordEdit(actionInput);
   const task = useStableTaskSource(taskInput);
+  const record = useStableSourceRecord(recordInput);
   const [options, setOptions] = useState<Option[]>(() =>
     storedReferenceOptions(source, value)
   );
@@ -249,7 +263,7 @@ export function AuthoritativeSelector({
     setError('');
     setOptions(current => current.filter(option => valuesRef.current.includes(option.value)));
     return () => { ++requestSequence.current; };
-  }, [action, launch, task, disabled, operation, resourceCode, fieldCode]);
+  }, [action, launch, task, record, disabled, operation, resourceCode, fieldCode]);
 
   useEffect(() => {
     setOptions(current => mergeOptions(current, storedReferenceOptions(source, value)));
@@ -257,7 +271,7 @@ export function AuthoritativeSelector({
 
   useEffect(() => {
     if (disabled) return;
-    if (keyword.trim().length < 2) {
+    if (source === 'resource' ? keyword.trim().length < 2 : !isDirectorySearchKeyword(keyword)) {
       setCursor(null);
       return;
     }
@@ -265,7 +279,7 @@ export function AuthoritativeSelector({
     const timer = window.setTimeout(() => {
       setLoading(true);
       setError('');
-      void searchSource(source, operation, keyword, undefined, resourceCode, fieldCode, bindings, launch, action, task)
+      void searchSource(source, operation, keyword, undefined, resourceCode, fieldCode, bindings, launch, action, task, record)
         .then(page => {
           if (sequence !== requestSequence.current) return;
           setOptions(current => {
@@ -287,14 +301,14 @@ export function AuthoritativeSelector({
         });
     }, 300);
     return () => window.clearTimeout(timer);
-  }, [action, launch, task, bindings, disabled, fieldCode, keyword, operation, resourceCode, source]);
+  }, [action, launch, task, record, bindings, disabled, fieldCode, keyword, operation, resourceCode, source]);
 
   useEffect(() => {
-    if (disabled || !open || keyword.trim().length >= 2) return;
+    if (disabled || !open || (source === 'resource' ? keyword.trim().length >= 2 : isDirectorySearchKeyword(keyword))) return;
     const sequence = ++requestSequence.current;
     setLoading(true);
     setError('');
-    void searchSource(source, operation, '', undefined, resourceCode, fieldCode, bindings, launch, action, task)
+    void searchSource(source, operation, source === 'resource' ? '' : keyword, undefined, resourceCode, fieldCode, bindings, launch, action, task, record)
       .then(page => {
         if (sequence !== requestSequence.current) return;
         setOptions(current => {
@@ -313,7 +327,7 @@ export function AuthoritativeSelector({
       .finally(() => {
         if (sequence === requestSequence.current) setLoading(false);
       });
-  }, [action, launch, task, bindings, disabled, fieldCode, keyword, open, operation, resourceCode, source]);
+  }, [action, launch, task, record, bindings, disabled, fieldCode, keyword, open, operation, resourceCode, source]);
 
   const loadNext = () => {
     if (!cursor || loading) return;
@@ -321,7 +335,7 @@ export function AuthoritativeSelector({
     const nextCursor = cursor;
     setLoading(true);
     setError('');
-    void searchSource(source, operation, keyword, nextCursor, resourceCode, fieldCode, bindings, launch, action, task)
+    void searchSource(source, operation, keyword, nextCursor, resourceCode, fieldCode, bindings, launch, action, task, record)
       .then(page => {
         if (sequence !== requestSequence.current) return;
         setOptions(current => mergeOptions(current, page.items));
@@ -457,17 +471,18 @@ export function MobileAuthoritativeSelector(props: AuthoritativeSelectorProps) {
 }
 
 function MobileReferenceSelection({ value, onChange, source, operation, multiple = false,
-  placeholder, resourceCode, fieldCode, bindings, launch: launchInput, action: actionInput, task: taskInput, onClose }: AuthoritativeSelectorProps & { onClose: () => void }) {
+  placeholder, resourceCode, fieldCode, bindings, launch: launchInput, action: actionInput, task: taskInput, record: recordInput, onClose }: AuthoritativeSelectorProps & { onClose: () => void }) {
   const launch = useStableSourceLaunch(launchInput);
   const action = useStableRecordEdit(actionInput);
   const task = useStableTaskSource(taskInput);
+  const record = useStableSourceRecord(recordInput);
   const copy = mobileReferenceSelectorCopy(placeholder);
   const [selected, setSelected] = useState(() => storedReferenceOptions(source, value));
   const [keyword, setKeyword] = useState('');
   const query = keyword.trim();
-  const loadPage = useCallback((cursor?: string) => searchSource(source, operation, query, cursor, resourceCode, fieldCode, bindings, launch, action, task),
-    [action, launch, task, bindings, fieldCode, operation, query, resourceCode, source]);
-  const page = useMobilePickerPage({ loadPage, enabled: query.length !== 1, delay: query ? 300 : 0 });
+  const loadPage = useCallback((cursor?: string) => searchSource(source, operation, query, cursor, resourceCode, fieldCode, bindings, launch, action, task, record),
+    [action, launch, task, record, bindings, fieldCode, operation, query, resourceCode, source]);
+  const page = useMobilePickerPage({ loadPage, enabled: source === 'resource' ? query.length !== 1 : isDirectorySearchKeyword(query), delay: query ? 300 : 0 });
   const choices = [...new Map(page.items.map(item => [item.value, item])).values()];
   const known = new Map([...selected, ...choices].map(item => [item.value, item]));
   return <MobileSelectionPanel title={copy.title} selected={selected}

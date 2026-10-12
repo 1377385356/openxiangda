@@ -2,6 +2,7 @@ import { Form } from 'antd';
 import type {
   DataFieldSurface,
   DataFieldSourceLaunchBinding,
+  DataFieldSourceRecord,
   DataRecordEditInput,
   ResourceReferenceValue,
   WorkflowTaskSourceBinding,
@@ -18,6 +19,8 @@ export function ResourceReferenceField({
   fieldCode,
   resourceCode,
   operation,
+  record,
+  bindingEdits,
   launch,
   action,
   task,
@@ -31,6 +34,8 @@ export function ResourceReferenceField({
   fieldCode: string;
   resourceCode?: string;
   operation: 'create' | 'update';
+  record?: DataFieldSourceRecord;
+  bindingEdits?: Readonly<Record<string, unknown>>;
   launch?: DataFieldSourceLaunchBinding;
   action?: DataRecordEditInput;
   task?: WorkflowTaskSourceBinding;
@@ -47,8 +52,8 @@ export function ResourceReferenceField({
     | undefined;
   const nextBindings = Object.fromEntries(
     (field.source?.filters || []).flatMap(filter =>
-      'binding' in filter
-        ? [[filter.binding.field, formValues?.[filter.binding.field]]]
+      'binding' in filter && (!record || Object.prototype.hasOwnProperty.call(bindingEdits || {}, filter.binding.field))
+        ? [[filter.binding.field, record ? bindingEdits![filter.binding.field] ?? null : formValues?.[filter.binding.field]]]
         : []
     )
   );
@@ -77,6 +82,7 @@ export function ResourceReferenceField({
         )
       }
       operation={operation}
+      record={record}
       launch={launch}
       action={action}
       task={task}

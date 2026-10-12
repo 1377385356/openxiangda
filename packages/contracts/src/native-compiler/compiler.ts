@@ -617,6 +617,13 @@ export function compileRequiredPlatformCapabilitiesV3(
     ...(resources.some(hasDataAuditReadPolicy)
       ? [{ code: 'data.audit-read-access' as const, declaration: dataUsage }]
       : []),
+    ...(resources.some(resource => resource.schema.fields.some((field: JsonObject) =>
+      /^(resource-ref|user|department)\.(single|multiple)$/.test(field.type))) || config.authz.scopeDimensions.some((dimension: JsonObject) => dimension.valueSource)
+      ? [{ code: 'data.field-source-contexts' as const, declaration: {
+          resources: resources.map(resource => ({ code: resource.code, fields: resource.schema.fields.filter((field: JsonObject) =>
+            /^(resource-ref|user|department)\.(single|multiple)$/.test(field.type)) })),
+          dimensions: config.authz.scopeDimensions.filter((dimension: JsonObject) => dimension.valueSource),
+        } }] : []),
     ...(requiresDirectoryV2
       ? [
           {

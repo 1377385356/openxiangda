@@ -5,7 +5,7 @@ PostgreSQL 物理列、索引、查询运算符、权限路径和桌面/移动�
 应用不能另外声明存储类型或第二套字段元数据。
 
 完整的架构约束、验收矩阵和进度证据见
-[数据与权限](data-authz.md)。
+[数据与权限](./data-authz.md)。
 
 ## 字段与存储
 
@@ -121,7 +121,16 @@ import { AttachmentFileList } from 'openxiangda/field-kit';
 }
 ```
 
-来源端点接受当前表单绑定值、关键字和游标；页大小由 `source.pageSize` 固定。
+来源端点接受关键字和游标；页大小由 `source.pageSize` 固定。创建表单使用 `operation: 'create'` 和当前绑定值。
+普通编辑表单使用 `operation: 'update', record: { id, expectedRevision }`，只传实际编辑的 `bindings`；平台以已保存记录合并这些编辑，检查行/字段更新权限及记录版本。没有编辑的绑定即使不可读，也由服务端参与查找，不返回它的原值。清空绑定传 `null`；最终提交仍由普通 Data API 验证必填和引用规则。
+
+列表筛选使用 `operation: 'filter'`：只需要宿主资源及字段的读取权限，目标保持当前用户的读取投影和行策略。写入 `source.filters` 不参与筛选，所以历史停用或已不满足写入条件的引用仍可查询；调用中不能携带 `bindings`、`record`、`launch`、`action` 或任务上下文。如需只展示某一类身份，可声明至多 20 个常量条件，例如 `filterWhere: [{ field: 'kind', operator: 'eq', value: 'building' }]`；支持 `eq`/`in`，不接受字段绑定。没有目标资源读取权限时，不会返回候选。
+
+普通生成表单自动传入保存上下文和实际编辑。自定义编辑表单通过 `SurfaceFieldRenderers.referenceBindings` 提供编辑值，`SurfaceFieldControl`/`MobileSurfaceFieldControl` 根据 `recordId` 和 `expectedRevision` 发送同样上下文。直接使用 `ResourceReferenceField` 时提供 `record` 和 `bindingEdits`。不传绑定编辑即使用保存值，不用把不可读字段填进浏览器。
+
+目录筛选通过现有目录检索的 `purpose: 'filter'` 返回可选的历史停用项，并标明停用；普通成员选择仍只接受有效项。范围来源支持 `operation: 'filter'`，使用读取范围授权，包含停用身份；自定义范围筛选控件使用 `renderScopeFilter`，与编辑态 `renderScope` 分开。
+
+含这些引用/目录字段或来源维度的编译包自动要求 `data.field-source-contexts` 版本 `1.0.0`，目标平台先升级后才能交付新包。
 标准流程的具名动作发起表单由 `WorkflowSubmissionPage` 自动传递 `launch: { workflowCode, operationCode }`。
 平台核对当前环境已部署的流程、动作、输入字段映射和当前用户动作权限；不要求额外授予宿主表单 CRUD 权限。
 普通 CRUD 表单不传此绑定，继续检查对应创建/修改权限。自定义选择器可通过 `searchResource` 的同名选项传递
@@ -271,7 +280,7 @@ pnpm openxiangda check
 
 ```
 
-平台维护者负责字段存储、查询运算符、索引和 RLS 的内核回归。应用开发者验证自己声明的字段、角色和业务交互，详见[检查与验收](testing.md)。
+平台维护者负责字段存储、查询运算符、索引和 RLS 的内核回归。应用开发者验证自己声明的字段、角色和业务交互，详见[检查与验收](./testing.md)。
 
 ## 移动附件和图片
 

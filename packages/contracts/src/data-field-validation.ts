@@ -343,6 +343,7 @@ function validateSource(
     'descriptionFields',
     'snapshotFields',
     'filters',
+    'filterWhere',
     'pageSize',
     'loadMode',
     'clearOnBindingChange',
@@ -428,55 +429,56 @@ function validateSource(
       )
     );
   }
-  const filters =
-    source.filters === undefined
-      ? []
-      : Array.isArray(source.filters)
-        ? source.filters
-        : [];
-  if (
-    source.filters !== undefined &&
-    (!Array.isArray(source.filters) || filters.length > 20)
-  ) {
-    diagnostics.push(
-      diagnostic(
-        'DATA_RESOURCE_FIELD_SOURCE_FILTERS_INVALID',
-        `${path}.source.filters 最多包含 20 项`,
-        `${path}.source.filters`
-      )
-    );
-  }
-  filters.forEach((filter, index) => {
-    const filterPath = `${path}.source.filters[${index}]`;
+  for (const key of ['filters', 'filterWhere'] as const) {
+    const filters =
+      source[key] === undefined
+        ? []
+        : Array.isArray(source[key])
+          ? source[key]
+          : [];
     if (
-      !isRecord(filter) ||
-      !isDataFieldCode(filter.field) ||
-      !['eq', 'in'].includes(String(filter.operator))
+      source[key] !== undefined &&
+      (!Array.isArray(source[key]) || filters.length > 20)
     ) {
       diagnostics.push(
         diagnostic(
-          'DATA_RESOURCE_FIELD_SOURCE_FILTER_INVALID',
-          `${filterPath} 必须声明字段和 eq/in`,
-          filterPath
-        )
-      );
-      return;
-    }
-    const hasValue = Object.prototype.hasOwnProperty.call(filter, 'value');
-    const binding = isRecord(filter.binding) ? filter.binding : null;
-    const hasBinding = binding?.kind === 'field' && isDataFieldCode(binding.field);
-    if (hasValue === hasBinding) {
-      diagnostics.push(
-        diagnostic(
-          'DATA_RESOURCE_FIELD_SOURCE_FILTER_VALUE_INVALID',
-          `${filterPath} 必须且只能声明 value 或 field binding`,
-          filterPath
+          'DATA_RESOURCE_FIELD_SOURCE_FILTERS_INVALID',
+          `${path}.source.${key} 最多包含 20 项`,
+          `${path}.source.${key}`
         )
       );
     }
-  });
+    filters.forEach((filter, index) => {
+      const filterPath = `${path}.source.${key}[${index}]`;
+      if (
+        !isRecord(filter) ||
+        !isDataFieldCode(filter.field) ||
+        !['eq', 'in'].includes(String(filter.operator))
+      ) {
+        diagnostics.push(
+          diagnostic(
+            'DATA_RESOURCE_FIELD_SOURCE_FILTER_INVALID',
+            `${filterPath} 必须声明字段和 eq/in`,
+            filterPath
+          )
+        );
+        return;
+      }
+      const hasValue = Object.prototype.hasOwnProperty.call(filter, 'value');
+      const binding = isRecord(filter.binding) ? filter.binding : null;
+      const hasBinding = binding?.kind === 'field' && isDataFieldCode(binding.field);
+      if (hasValue === hasBinding || (key === 'filterWhere' && (hasBinding || Object.keys(filter).some(name => !['field', 'operator', 'value'].includes(name))))) {
+        diagnostics.push(
+          diagnostic(
+            'DATA_RESOURCE_FIELD_SOURCE_FILTER_VALUE_INVALID',
+            `${filterPath} 必须且只能声明 value 或 field binding`,
+            filterPath
+          )
+        );
+      }
+    });
+  }
 }
-
 function validateScalarConfig(
   field: Record<string, unknown>,
   path: string,

@@ -1837,6 +1837,13 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
             }
           });
         }
+        (Array.isArray(source.filterWhere) ? source.filterWhere : []).forEach((rawFilter, filterIndex) => {
+          const filterField = string(object(rawFilter).field);
+          if (!targetFieldList.some(candidate => string(object(candidate).code) === filterField)) {
+            diagnostics.push(diagnostic('APP_CONFIG_DATA_RESOURCE_SOURCE_FILTER_FIELD_NOT_FOUND',
+              `动态来源筛选字段 ${filterField} 未在 ${targetCode} 声明`, `${sourcePath}.filterWhere[${filterIndex}].field`));
+          }
+        });
         const sourceFilters = Array.isArray(source.filters) ? source.filters : [];
         sourceFilters.forEach((rawFilter, filterIndex) => {
           const filter = object(rawFilter);

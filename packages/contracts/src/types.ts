@@ -1078,6 +1078,8 @@ export interface DirectoryEntry {
   hasChildren?: boolean;
   path?: Array<{ id: string; label: string }>;
   selectable?: boolean;
+  /** Historical entries remain selectable in a read filter. */
+  inactive?: boolean;
 }
 
 export interface DirectoryResolveRequest {
@@ -1103,7 +1105,7 @@ export interface DirectoryEntryPage {
 export interface NativeScopeValueResolveRequest {
   schemaVersion: typeof SCHEMA_VERSIONS.nativeScopeValueResolveRequest;
   dimensionCode: string;
-  operation: "create" | "update";
+  operation: "create" | "update" | "filter";
   values: string[];
 }
 
@@ -1123,8 +1125,8 @@ export interface NativeScopeValuePage {
   resourceCode: string;
   fieldCode: string;
   dimensionCode: string;
-  operation: "create" | "update";
-  items: Array<{ value: string; label: string; selectable: boolean }>;
+  operation: "create" | "update" | "filter";
+  items: Array<{ value: string; label: string; selectable: boolean; inactive?: boolean }>;
   nextCursor: string | null;
 }
 
@@ -1141,13 +1143,20 @@ export interface DataRecordEditInput {
   expectedRevision: number;
 }
 
+export interface DataFieldSourceRecord {
+  id: string;
+  expectedRevision: number;
+}
+
 export interface DataFieldSourceQuery {
   schemaVersion: typeof SCHEMA_VERSIONS.dataFieldSourceQuery;
-  operation: "create" | "update";
+  operation: "create" | "update" | "filter";
   keyword?: string;
   cursor?: string;
   /** Values for the source declaration's validated current-form bindings. */
   bindings?: Record<string, unknown>;
+  /** Saved row context for an ordinary update; never contains saved private values. */
+  record?: DataFieldSourceRecord;
   /** 正式流程发起意图；平台核验字段绑定和动作能力，目标仍按当前用户读取。 */
   launch?: DataFieldSourceLaunchBinding;
   action?: DataRecordEditInput;
@@ -1181,7 +1190,7 @@ export interface DataFieldSourcePage {
   resourceCode: string;
   fieldCode: string;
   sourceResourceCode: string;
-  operation: "create" | "update";
+  operation: "create" | "update" | "filter";
   items: ResourceReferenceValue[];
   nextCursor: string | null;
 }
