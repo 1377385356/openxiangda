@@ -139,6 +139,10 @@ MCP `appspec_verify` 读取同一报告与运行事实。`spec verify` 根据当
 
 ## 新任务找回上下文
 
+读取时核对 `documentReadback` 的实际文件字节、读取字节、全文/历史索引模式和不可用原因；最多128条，`total`/`unavailable`/`truncated`明确其覆盖范围。单文件上限256KiB，正文上下文上限256KiB，按UTF-8字节计。`contextBudget.requestedContentBytes` 是预算前请求正文总量，`omitted` 每项包含实际字节及 `context-budget` 原因。
+
+超限、格式错误、符号链接或读取期间变化表示文件不可用；selector会提示在已成功读取的文档中无法解析，不能据此删除、重建文档或补造确认。真实不存在仍保留原not-found。先按相对路径处理原因，保留稳定ID/确认；相关正文过多时用稳定ID选择或拆分当前总纲，历史索引不是全文。81,602字节的普通资料在当前单文件预算内，不应套用旧64KiB限制。
+
 ### 架构决定的编号与创建
 
 需要长期引用的决定写入 `appspec/decisions/` 下的 Markdown。ADR 的 `id` 格式是 `ADR-` 加**恰好四位数字**，可选 `-` 分隔的大写字母或数字后缀，例如 `ADR-0001`、`ADR-0001-DATA-OWNER`；`ADR-001` 不合法。文件名建议与 ID 一致，引用使用元数据中的 ID。当前没有独立的 ADR 创建命令，可以手工创建，随后用 `spec context <ID>` 和 `spec check` 核对。

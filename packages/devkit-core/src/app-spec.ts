@@ -6,6 +6,8 @@ import {
   readSync,
   closeSync,
   lstatSync,
+  fstatSync,
+  constants,
   mkdirSync,
   readFileSync,
   readdirSync,
@@ -34,6 +36,7 @@ export const APP_SPEC_LIMITS = {
   maximumContextBytes: 256 * 1024,
   maximumDirectoryEntries: 256,
   maximumHistoryDepth: 1,
+  maximumReadbackEntries: 128,
 } as const;
 
 export type AppSpecRisk = "L1" | "L2" | "L3";
@@ -83,6 +86,16 @@ export interface AppSpecDocumentSummary {
   acceptanceScenarioCount: number;
 }
 
+export interface AppSpecDocumentReadback {
+  path: string;
+  actualBytes: number | null;
+  readBytes: number;
+  mode: 'full' | 'history-index' | 'unavailable';
+  reason: 'read' | 'file-unreadable' | 'file-invalid' | 'file-size-budget' | 'file-count-budget'
+    | 'total-size-budget' | 'metadata-invalid' | 'changed-during-read' | 'directory-entry-budget' | 'directory-invalid';
+  maximumBytes: number | null;
+}
+
 export interface AppSpecContext {
   schemaVersion: typeof APP_SPEC_SCHEMAS.context;
   enabled: boolean;
@@ -109,9 +122,11 @@ export interface AppSpecContext {
   contextBudget: {
     maximumBytes: number;
     contentBytes: number;
+    requestedContentBytes: number;
     truncated: boolean;
-    omitted: AppSpecDocumentSummary[];
+    omitted: Array<AppSpecDocumentSummary & { reason: 'context-budget'; actualBytes: number }>;
   };
+  documentReadback: { entries: AppSpecDocumentReadback[]; total: number; unavailable: number; truncated: boolean };
   stats: {
     files: number;
     bytes: number;
@@ -446,6 +461,7 @@ export function inspectAppSpec(
     designs: budgeted.designs,
     historyPage: collection.historyPage,
     contextBudget: budgeted.contextBudget,
+    documentReadback: documentReadback(collection.readback, selector),
     stats: {
       files: allDocuments.length,
       bytes: collection.bytes,
@@ -531,9 +547,11 @@ function emptyContext(
     contextBudget: {
       maximumBytes: APP_SPEC_LIMITS.maximumContextBytes,
       contentBytes: 0,
+      requestedContentBytes: 0,
       truncated: false,
       omitted: [],
     },
+    documentReadback: { entries: [], total: 0, unavailable: 0, truncated: false },
     stats: {
       files: 0,
       bytes: 0,
@@ -598,26 +616,30 @@ function collectDocuments(root: string, diagnostics: Diagnostic[], selector?: st
     decisions: [] as AppSpecDocument[],
     designs: [] as AppSpecDocument[],
     bytes: 0,
+    readback: [] as AppSpecDocumentReadback[],
     historyPage: { offset: historyOffset, limit: 50, total: 0, nextOffset: null as number | null },
   };
   const candidates: Array<{ path: string; kind: AppSpecDocumentKind; history?: boolean }> = [];
+  const discover = (directory: string) => markdownFiles(directory, false, diagnostics, root, 0, (path, reason) => result.readback.push({
+    path: relativePath(root, path), actualBytes: null, readBytes: 0, mode: 'unavailable', reason, maximumBytes: null,
+  }));
   if (existsSync(paths.app)) candidates.push({ path: paths.app, kind: "app" });
   candidates.push(
-    ...markdownFiles(paths.capabilities, false, diagnostics, root).map(path => ({
+    ...discover(paths.capabilities).map(path => ({
       path,
       kind: "capability" as const,
     })),
-    ...markdownFiles(paths.activeChanges, false, diagnostics, root).map(path => ({
+    ...discover(paths.activeChanges).map(path => ({
       path,
       kind: "change" as const,
     })),
-    ...markdownFiles(paths.decisions, false, diagnostics, root).map(path => ({
+    ...discover(paths.decisions).map(path => ({
       path,
       kind: "decision" as const,
     }))
   );
   for (const directory of ['product', 'experience', 'design', 'reviews']) {
-    candidates.push(...markdownFiles(join(paths.root, directory), false, diagnostics, root).map(path => ({ path, kind: 'design' as const })));
+    candidates.push(...discover(join(paths.root, directory)).map(path => ({ path, kind: 'design' as const })));
   }
   if (candidates.length > APP_SPEC_LIMITS.maximumFiles) {
     diagnostics.push(
@@ -628,17 +650,24 @@ function collectDocuments(root: string, diagnostics: Diagnostic[], selector?: st
         "appspec"
       )
     );
-    candidates.splice(APP_SPEC_LIMITS.maximumFiles);
+    for (const skipped of candidates.splice(APP_SPEC_LIMITS.maximumFiles)) result.readback.push({
+      path: relativePath(root, skipped.path), actualBytes: null, readBytes: 0, mode: 'unavailable', reason: 'file-count-budget', maximumBytes: null,
+    });
   }
   const history = historyCandidates(root, selector, historyOffset, diagnostics);
   result.historyPage = history.page;
   candidates.push(...history.paths.map(path => ({ path, kind: "change" as const, history: true })));
   let historyBytes = 0;
-  for (const candidate of candidates.sort((left, right) => Number(!!left.history) - Number(!!right.history) || left.path.localeCompare(right.path))) {
+  const ordered = candidates.sort((left, right) => Number(!!left.history) - Number(!!right.history) || left.path.localeCompare(right.path));
+  for (const [candidateIndex, candidate] of ordered.entries()) {
+    const unread = (reason: AppSpecDocumentReadback['reason'], actualBytes: number | null, maximumBytes: number | null = APP_SPEC_LIMITS.maximumFileBytes, bytesRead = 0) => result.readback.push({
+      path: relativePath(root, candidate.path), actualBytes, readBytes: bytesRead, mode: 'unavailable', reason, maximumBytes,
+    });
     let stat;
     try {
       stat = lstatSync(candidate.path);
     } catch {
+      unread('file-unreadable', null);
       diagnostics.push(
         issue(
           "error",
@@ -650,6 +679,7 @@ function collectDocuments(root: string, diagnostics: Diagnostic[], selector?: st
       continue;
     }
     if (!stat.isFile() || stat.isSymbolicLink()) {
+      unread('file-invalid', null, null);
       diagnostics.push(
         issue(
           "error",
@@ -661,12 +691,14 @@ function collectDocuments(root: string, diagnostics: Diagnostic[], selector?: st
       continue;
     }
     if (stat.size > APP_SPEC_LIMITS.maximumFileBytes) {
+      unread('file-size-budget', stat.size);
       diagnostics.push(
         issue(
           "error",
           "APPSPEC_FILE_SIZE_EXCEEDED",
-          `AppSpec 单文件超过 ${APP_SPEC_LIMITS.maximumFileBytes} 字节上限`,
-          relativePath(root, candidate.path)
+          `AppSpec 文件实际 ${stat.size} 字节，超过 ${APP_SPEC_LIMITS.maximumFileBytes} 字节上限；文件已发现但未读取`,
+          relativePath(root, candidate.path),
+          { actualBytes: stat.size, maximumBytes: APP_SPEC_LIMITS.maximumFileBytes, reason: 'file-size-budget' }
         )
       );
       continue;
@@ -674,6 +706,10 @@ function collectDocuments(root: string, diagnostics: Diagnostic[], selector?: st
     const indexOnly = candidate.history && basename(candidate.path) !== `${selector}.md`;
     const readBytes = indexOnly ? Math.min(stat.size, 8192) : stat.size;
     if ((candidate.history ? historyBytes : result.bytes) + readBytes > APP_SPEC_LIMITS.maximumTotalBytes) {
+      unread('total-size-budget', stat.size, APP_SPEC_LIMITS.maximumTotalBytes);
+      for (const skipped of ordered.slice(candidateIndex + 1)) result.readback.push({
+        path: relativePath(root, skipped.path), actualBytes: null, readBytes: 0, mode: 'unavailable', reason: 'total-size-budget', maximumBytes: APP_SPEC_LIMITS.maximumTotalBytes,
+      });
       diagnostics.push(
         issue(
           "error",
@@ -686,15 +722,18 @@ function collectDocuments(root: string, diagnostics: Diagnostic[], selector?: st
     }
     if (candidate.history) historyBytes += readBytes;
     else result.bytes += readBytes;
-    let content: string;
-    if (indexOnly) {
-      const descriptor = openSync(candidate.path, 'r');
-      try {
-        const buffer = Buffer.alloc(readBytes);
-        const bytes = readSync(descriptor, buffer, 0, readBytes, 0);
-        content = buffer.subarray(0, bytes).toString('utf8').match(/^---\r?\n[\s\S]*?\r?\n---/)?.[0] || '';
-      } finally { closeSync(descriptor); }
-    } else content = readFileSync(candidate.path, "utf8");
+    let content: string, bytesRead: number;
+    try {
+      const readback = readBoundedDocument(candidate.path, stat, readBytes, Boolean(indexOnly));
+      content = readback.content; bytesRead = readback.bytesRead;
+    } catch (error) {
+      const changed = (error as { code?: string }).code === 'APPSPEC_FILE_CHANGED';
+      const read = Number((error as { bytesRead?: number }).bytesRead || 0);
+      unread(changed ? 'changed-during-read' : 'file-unreadable', changed ? null : stat.size, APP_SPEC_LIMITS.maximumFileBytes, Number.isSafeInteger(read) && read >= 0 ? read : 0);
+      diagnostics.push(issue('error', changed ? 'APPSPEC_FILE_CHANGED' : 'APPSPEC_FILE_UNREADABLE',
+        changed ? 'AppSpec 文件在读取期间发生变化；保留原资料并重新读取' : 'AppSpec 文件已发现但无法完成有界读取', relativePath(root, candidate.path)));
+      continue;
+    }
     const document = parseAppSpecDocument(
       root,
       candidate.path,
@@ -702,7 +741,9 @@ function collectDocuments(root: string, diagnostics: Diagnostic[], selector?: st
       content,
       diagnostics
     );
-    if (!document) continue;
+    if (!document) { unread('metadata-invalid', stat.size, APP_SPEC_LIMITS.maximumFileBytes, bytesRead); continue; }
+    result.readback.push({ path: document.path, actualBytes: stat.size, readBytes: bytesRead,
+      mode: indexOnly ? 'history-index' : 'full', reason: 'read', maximumBytes: APP_SPEC_LIMITS.maximumFileBytes });
     if (document.kind === 'design' && 'assets' in document.metadata) {
       try {
         const assets = document.metadata.assets;
@@ -722,17 +763,46 @@ function collectDocuments(root: string, diagnostics: Diagnostic[], selector?: st
   return result;
 }
 
+function readBoundedDocument(path: string, expected: { size: number; mtimeMs: number }, limit: number, indexOnly: boolean) {
+  const descriptor = openSync(path, constants.O_RDONLY | (constants.O_NOFOLLOW || 0) | (constants.O_NONBLOCK || 0));
+  let bytesRead = 0;
+  try {
+    const before = fstatSync(descriptor);
+    if (!before.isFile() || before.size !== expected.size || before.mtimeMs !== expected.mtimeMs
+        || before.size > APP_SPEC_LIMITS.maximumFileBytes) throw stableError('APPSPEC_FILE_CHANGED', path);
+    const buffer = Buffer.alloc(limit + (indexOnly ? 0 : 1));
+    while (bytesRead < buffer.length) {
+      const count = readSync(descriptor, buffer, bytesRead, buffer.length - bytesRead, bytesRead);
+      if (!count) break;
+      bytesRead += count;
+    }
+    const after = fstatSync(descriptor);
+    if (after.size !== before.size || after.mtimeMs !== before.mtimeMs || (!indexOnly && bytesRead !== before.size)) throw stableError('APPSPEC_FILE_CHANGED', path);
+    const content = buffer.subarray(0, bytesRead).toString('utf8');
+    return { content: indexOnly ? content.match(/^---\r?\n[\s\S]*?\r?\n---/)?.[0] || '' : content, bytesRead };
+  } catch (error) { throw Object.assign(error as object, { bytesRead }); }
+  finally { closeSync(descriptor); }
+}
+
+function documentReadback(entries: AppSpecDocumentReadback[], selector?: string): AppSpecContext['documentReadback'] {
+  const prioritized = [...entries].sort((a, b) => Number(b.path === 'appspec/app.md' || basename(b.path, '.md') === selector)
+    - Number(a.path === 'appspec/app.md' || basename(a.path, '.md') === selector));
+  return { entries: prioritized.slice(0, APP_SPEC_LIMITS.maximumReadbackEntries), total: entries.length,
+    unavailable: entries.filter(entry => entry.mode === 'unavailable').length, truncated: entries.length > APP_SPEC_LIMITS.maximumReadbackEntries };
+}
+
 function validateDocuments(
   collection: ReturnType<typeof collectDocuments>,
   contract: AppSpecContractIndex,
   diagnostics: Diagnostic[]
 ) {
   if (collection.app.length !== 1) {
+    const unavailable = collection.readback.some(entry => entry.path === 'appspec/app.md' && entry.mode === 'unavailable');
     diagnostics.push(
       issue(
         "error",
-        "APPSPEC_APPLICATION_REQUIRED",
-        "启用 AppSpec 后必须且只能存在一份 appspec/app.md",
+        unavailable ? "APPSPEC_APPLICATION_UNAVAILABLE" : "APPSPEC_APPLICATION_REQUIRED",
+        unavailable ? "appspec/app.md 已发现但未成功读取；先处理读取元数据中的原因，不重建原总纲或确认" : "启用 AppSpec 后必须且只能存在一份 appspec/app.md",
         "appspec/app.md"
       )
     );
@@ -827,7 +897,7 @@ function validateDocuments(
           issue(
             referenceSeverity,
             "APPSPEC_CHANGE_CAPABILITY_UNKNOWN",
-            `ChangeSpec 引用的能力 ${id} 不存在`,
+            collection.readback.some(entry => entry.mode === 'unavailable') ? `ChangeSpec 引用的能力 ${id} 未能在成功读取的文档中确认；先核对 documentReadback` : `ChangeSpec 引用的能力 ${id} 不存在`,
             document.path
           )
         );
@@ -851,7 +921,7 @@ function validateDocuments(
           issue(
             referenceSeverity,
             "APPSPEC_CHANGE_DECISION_UNKNOWN",
-            `ChangeSpec 引用的决策 ${id} 不存在`,
+            collection.readback.some(entry => entry.mode === 'unavailable') ? `ChangeSpec 引用的决策 ${id} 未能在成功读取的文档中确认；先核对 documentReadback` : `ChangeSpec 引用的决策 ${id} 不存在`,
             document.path
           )
         );
@@ -1234,11 +1304,12 @@ function selectBaseContext(
       decisions: [decision],
     };
   }
+  const unavailable = collection.readback.filter(entry => entry.mode === 'unavailable');
   diagnostics.push(
     issue(
       "warning",
-      "APPSPEC_SELECTOR_NOT_FOUND",
-      `未找到 AppSpec selector ${selector}，已返回应用总纲和空的相关上下文`,
+      unavailable.length ? "APPSPEC_SELECTOR_UNRESOLVED" : "APPSPEC_SELECTOR_NOT_FOUND",
+      unavailable.length ? `AppSpec selector ${selector} 未能在成功读取的记录中解析；${unavailable.length} 份文件不可用，先核对 documentReadback 的路径和实际原因` : `未找到 AppSpec selector ${selector}，已返回应用总纲和空的相关上下文`,
       "appspec"
     )
   );
@@ -1268,7 +1339,8 @@ function selectContext(collection: ReturnType<typeof collectDocuments>, selector
     if (document.kind === 'decision' && !selected.decisions.includes(document)) selected.decisions.push(document);
     for (const id of document.references.documents) {
       const target = available.find(item => item.id === id);
-      if (!target) diagnostics.push(issue('error', 'APPSPEC_DESIGN_REFERENCE_UNKNOWN', `设计引用 ${id} 不存在；先恢复资料或修正引用`, document.path));
+      if (!target) diagnostics.push(issue('error', 'APPSPEC_DESIGN_REFERENCE_UNKNOWN',
+        collection.readback.some(entry => entry.mode === 'unavailable') ? `设计引用 ${id} 未能在成功读取的文档中确认；先核对 documentReadback 中的实际原因` : `设计引用 ${id} 不存在；先恢复资料或修正引用`, document.path));
       else if (!seen.has(id)) queue.push(target);
     }
   }
@@ -1309,6 +1381,7 @@ function applyContextBudget(
   const included = new Set<string>();
   const omitted: AppSpecDocument[] = [];
   let contentBytes = 0;
+  const requestedContentBytes = prioritized.reduce((sum, document) => sum + Buffer.byteLength(document.content, 'utf8'), 0);
   for (const document of prioritized) {
     const bytes = Buffer.byteLength(document.content, "utf8");
     if (contentBytes + bytes > APP_SPEC_LIMITS.maximumContextBytes) {
@@ -1331,8 +1404,9 @@ function applyContextBudget(
     contextBudget: {
       maximumBytes: APP_SPEC_LIMITS.maximumContextBytes,
       contentBytes,
+      requestedContentBytes,
       truncated: omitted.length > 0,
-      omitted: omitted.map(summarize),
+      omitted: omitted.map(document => ({ ...summarize(document), reason: 'context-budget' as const, actualBytes: Buffer.byteLength(document.content, 'utf8') })),
     },
   };
 }
@@ -1659,10 +1733,12 @@ function markdownFiles(
   recursive: boolean,
   diagnostics: Diagnostic[],
   root: string,
-  depth = 0
+  depth = 0,
+  onUnavailable?: (path: string, reason: AppSpecDocumentReadback['reason']) => void
 ) {
   if (!existsSync(directory)) return [];
   if (!isRegularDirectory(directory)) {
+    onUnavailable?.(directory, 'directory-invalid');
     diagnostics.push(
       issue(
         "error",
@@ -1686,11 +1762,14 @@ function markdownFiles(
         relativePath(root, directory)
       )
     );
-    entries.splice(APP_SPEC_LIMITS.maximumDirectoryEntries);
+    for (const skipped of entries.splice(APP_SPEC_LIMITS.maximumDirectoryEntries)) {
+      if (skipped.name.endsWith('.md')) onUnavailable?.(join(directory, skipped.name), 'directory-entry-budget');
+    }
   }
   for (const entry of entries) {
     const path = join(directory, entry.name);
     if (entry.isSymbolicLink()) {
+      onUnavailable?.(path, entry.name.endsWith('.md') ? 'file-invalid' : 'directory-invalid');
       diagnostics.push(
         issue(
           "error",
@@ -1712,7 +1791,7 @@ function markdownFiles(
           )
         );
       } else {
-        files.push(...markdownFiles(path, true, diagnostics, root, depth + 1));
+        files.push(...markdownFiles(path, true, diagnostics, root, depth + 1, onUnavailable));
       }
     }
     else if (entry.isFile() && entry.name.endsWith(".md")) files.push(path);
@@ -2006,7 +2085,8 @@ function issue(
   severity: "info" | "warning" | "error",
   code: string,
   message: string,
-  path: string
+  path: string,
+  details?: Diagnostic['details']
 ): Diagnostic {
   return {
     schemaVersion: SCHEMA_VERSIONS.diagnostic,
@@ -2014,6 +2094,7 @@ function issue(
     severity,
     message,
     path,
+    ...(details ? { details } : {}),
     retryable: false,
     remediation:
       severity === "error"

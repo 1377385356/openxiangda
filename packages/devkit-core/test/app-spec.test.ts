@@ -5,6 +5,7 @@ import {
   readFileSync,
   rmSync,
   writeFileSync,
+  symlinkSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -177,6 +178,10 @@ test("archives a change without claiming deployment or verification", () => {
     assert.match(archived, /status: "archived"/);
     assert.match(archived, /currentSpec: "not-applicable"/);
     assert.match(archived, /归档不等于部署或生产验收/);
+    const indexed = inspectAppSpec(root, contract);
+    assert.equal(indexed.documentReadback.entries.find(entry => entry.path === result.archived)!.mode, 'history-index');
+    const selected = inspectAppSpec(root, contract, 'copy-change');
+    assert.equal(selected.documentReadback.entries.find(entry => entry.path === result.archived)!.mode, 'full');
     const archivedContext = inspectAppSpec(root, contract, "copy-change");
     assert.deepEqual(
       archivedContext.archivedChanges.map(item => item.id),
@@ -335,6 +340,9 @@ test("separates workspace and selection digests while bounding selected content"
     assert.equal(bounded.contextBudget.truncated, true);
     assert.ok(bounded.contextBudget.contentBytes <= APP_SPEC_LIMITS.maximumContextBytes);
     assert.equal(bounded.contextBudget.omitted.length, 1);
+    assert.equal(bounded.contextBudget.omitted[0]!.reason, 'context-budget');
+    assert.ok(bounded.contextBudget.omitted[0]!.actualBytes > 150 * 1024);
+    assert.ok(bounded.contextBudget.requestedContentBytes > bounded.contextBudget.maximumBytes);
     assert.deepEqual(bounded.index.capabilities.map(item => item.id), ["CAP-A", "CAP-B"]);
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -481,6 +489,8 @@ test('retains 133 real design records and the 512-document bound for a large app
     for (let index = 132; index < 511; index++) add(index);
     const exact = inspectAppSpec(root, contract);
     assert.equal(exact.stats.files, 512);
+    assert.equal(exact.documentReadback.truncated, true);
+    assert.equal(exact.documentReadback.entries.length, APP_SPEC_LIMITS.maximumReadbackEntries);
     assert.ok(!exact.diagnostics.some(item => item.code === 'APPSPEC_FILE_LIMIT_EXCEEDED'));
     add(511);
     const overflow = inspectAppSpec(root, contract);
@@ -491,8 +501,54 @@ test('retains 133 real design records and the 512-document bound for a large app
     for (let index = 0; index < 132; index++) add(index, 'x'.repeat(17000));
     const bytes = inspectAppSpec(root, contract);
     assert.ok(bytes.diagnostics.some(item => item.code === 'APPSPEC_TOTAL_SIZE_EXCEEDED'));
+    assert.ok(bytes.documentReadback.unavailable > 0);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
 });
 const APP_SPEC_SCHEMAS_FOR_TEST = { capability: 'openxiangda.appspec/capability/v1', design: 'openxiangda.appspec/design/v1' };
+
+test('reports actual UTF-8 file bytes and unavailable selectors without inventing document absence', () => {
+  const root = workspace();
+  try {
+    initializeAppSpec({ root, appCode: contract.appCode, appName: '预约应用' });
+    const path = join(root, 'appspec/app.md');
+    const original = readFileSync(path, 'utf8');
+    const normal = original + 'x'.repeat(81602 - Buffer.byteLength(original));
+    writeFileSync(path, normal);
+    const readable = inspectAppSpec(root, contract);
+    assert.equal(readable.documentReadback.entries.find(entry => entry.path === 'appspec/app.md')!.actualBytes, 81602);
+    assert.equal(readable.documentReadback.entries[0]!.mode, 'full');
+    assert.ok(readable.application);
+    assert.equal(readable.contextBudget.contentBytes, 81602);
+    const oversized = original + '汉'.repeat(APP_SPEC_LIMITS.maximumFileBytes / 3 + 1);
+    writeFileSync(path, oversized);
+    const context = inspectAppSpec(root, contract, contract.appCode);
+    const failure = context.diagnostics.find(item => item.code === 'APPSPEC_FILE_SIZE_EXCEEDED')!;
+    assert.equal(failure.details!.actualBytes, Buffer.byteLength(oversized));
+    assert.equal(failure.details!.maximumBytes, APP_SPEC_LIMITS.maximumFileBytes);
+    assert.ok(context.diagnostics.some(item => item.code === 'APPSPEC_SELECTOR_UNRESOLVED'));
+    assert.ok(!context.diagnostics.some(item => ['APPSPEC_SELECTOR_NOT_FOUND', 'APPSPEC_APPLICATION_REQUIRED'].includes(item.code)));
+    assert.equal(context.documentReadback.entries[0]!.reason, 'file-size-budget');
+    assert.equal(context.documentReadback.entries[0]!.readBytes, 0);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('distinguishes malformed and linked documents while real absence keeps the original missing diagnostic', () => {
+  const root = workspace();
+  try {
+    initializeAppSpec({ root, appCode: contract.appCode, appName: '预约应用' });
+    const malformed = join(root, 'appspec/capabilities/broken.md');
+    mkdirSync(join(root, 'appspec/capabilities'), { recursive: true });
+    writeFileSync(malformed, '# 无 metadata\n');
+    const broken = inspectAppSpec(root, contract, 'broken');
+    const entry = broken.documentReadback.entries.find(entry => entry.path.endsWith('broken.md'))!;
+    assert.equal(entry.reason, 'metadata-invalid');
+    assert.equal(entry.readBytes, Buffer.byteLength('# 无 metadata\n'));
+    symlinkSync(malformed, join(root, 'appspec/capabilities/linked.md'));
+    assert.equal(inspectAppSpec(root, contract).documentReadback.entries.find(entry => entry.path.endsWith('linked.md'))!.reason, 'file-invalid');
+    rmSync(malformed); rmSync(join(root, 'appspec/capabilities/linked.md'));
+    const missing = inspectAppSpec(root, contract, 'actually-missing');
+    assert.ok(missing.diagnostics.some(item => item.code === 'APPSPEC_SELECTOR_NOT_FOUND'));
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
