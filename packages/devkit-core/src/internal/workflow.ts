@@ -1,3 +1,4 @@
+import { validateWorkflowParallel, workflowForwardTargets } from 'openxiangda-contracts';
 import { validateWorkflowSupervisorChains } from 'openxiangda-contracts';
 import { validateWorkflowReminders } from 'openxiangda-contracts';
 import {
@@ -130,7 +131,7 @@ export function compileWorkflow(
 }
 
 export function validateWorkflowDefinition(definition: WorkflowDefinition) {
-  const diagnostics = [...validateWorkflowLaunchPreflight(definition), ...validateWorkflowCommandHandlers(definition), ...validateWorkflowInstanceCommandPolicies(definition), ...validateWorkflowReadability(definition), ...validateWorkflowAdministration(definition), ...validateWorkflowAutomaticCc(definition), ...validateWorkflowApprovalEmptyPolicy(definition), ...validateWorkflowRejectionNotification(definition), ...validateWorkflowTaskPages(definition), ...validateWorkflowBusinessSteps(definition)];
+  const diagnostics = [...validateWorkflowParallel(definition), ...validateWorkflowLaunchPreflight(definition), ...validateWorkflowCommandHandlers(definition), ...validateWorkflowInstanceCommandPolicies(definition), ...validateWorkflowReadability(definition), ...validateWorkflowAdministration(definition), ...validateWorkflowAutomaticCc(definition), ...validateWorkflowApprovalEmptyPolicy(definition), ...validateWorkflowRejectionNotification(definition), ...validateWorkflowTaskPages(definition), ...validateWorkflowBusinessSteps(definition)];
   if (definition?.schemaVersion !== SCHEMA_VERSIONS.workflowDefinition) {
     diagnostics.push('WORKFLOW_DEFINITION_SCHEMA_INVALID');
   }
@@ -188,7 +189,7 @@ export function validateWorkflowDefinition(definition: WorkflowDefinition) {
   if (!nodes[definition?.startAt]) diagnostics.push('WORKFLOW_START_NODE_NOT_FOUND');
   for (const [id, node] of Object.entries(nodes)) {
     if (node.id !== id) diagnostics.push(`WORKFLOW_NODE_ID_MISMATCH:${id}`);
-    if (!['approval', 'handle', 'condition', 'end', 'cc', 'action', 'correction'].includes(node.kind)) {
+    if (!['approval', 'handle', 'condition', 'end', 'cc', 'action', 'correction', 'parallel', 'join'].includes(node.kind)) {
       diagnostics.push(`WORKFLOW_NODE_KIND_INVALID:${id}`);
       continue;
     }
@@ -294,6 +295,8 @@ export interface WorkflowPlan {
   }>;
   activeNode?: Extract<WorkflowNode, { kind: 'approval' | 'handle' }>;
   activeStep?: Extract<WorkflowNode, { kind: 'action' }>;
+  activeParallel?: Extract<WorkflowNode, { kind: 'parallel' }>;
+  arrivedJoin?: Extract<WorkflowNode, { kind: 'join' }>;
   outcome?: string;
 }
 
@@ -309,6 +312,11 @@ export function planWorkflow(
   for (let count = 0; count <= 200; count += 1) {
     const node = definition.nodes[nodeId];
     if (!node) throw new WorkflowCompilationError([`WORKFLOW_NODE_NOT_FOUND:${nodeId}`]);
+    if (node.kind === 'parallel') {
+      steps.push({ nodeId, kind: node.kind });
+      return { steps, activeParallel: node };
+    }
+    if (node.kind === 'join') return { steps, arrivedJoin: node };
     if (node.kind === 'approval' || node.kind === 'handle') {
       steps.push({ nodeId, kind: node.kind });
       return { steps, activeNode: node };
@@ -562,12 +570,7 @@ function readPath(facts: Record<string, unknown>, path: string) {
 }
 
 function targets(node: WorkflowNode) {
-  if (node.kind === 'approval') return [node.onApprove, node.onReject];
-  if (node.kind === 'cc' || node.kind === 'action' || node.kind === 'handle') return [node.next];
-  if (node.kind === 'condition') {
-    return [...node.branches.map(branch => branch.target), node.otherwise];
-  }
-  return [];
+  return workflowForwardTargets(node);
 }
 
 function walk(

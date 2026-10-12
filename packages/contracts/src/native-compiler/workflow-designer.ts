@@ -1,3 +1,4 @@
+import { inspectWorkflowParallel, validateWorkflowParallel } from './workflow-parallel.js';
 import { validateWorkflowSupervisorChains } from './workflow-supervisor-chain.js';
 import { validateWorkflowReminders } from './workflow-reminders.js';
 import { isWorkflowPlatformNotify, validateWorkflowPlatformNotify } from './workflow-platform-notify.js';
@@ -64,6 +65,7 @@ const canonical = (value: any): any => Array.isArray(value) ? value.map(canonica
 const same = (a: unknown, b: unknown) => JSON.stringify(canonical(a)) === JSON.stringify(canonical(b));
 export function workflowDesignerTargets(node: Record<string, any>): string[] {
   if (node.kind === 'approval') return [node.onApprove, node.onReject];
+  if (node.kind === 'parallel') return [...(node.branches || []).map((branch: any) => branch.target), node.join];
   if (node.kind === 'condition') return [...(node.branches || []).map((branch: any) => branch.target), node.otherwise];
   return 'next' in node ? [node.next] : [];
 }
@@ -77,7 +79,7 @@ export function validateWorkflowDesignerCapabilities(base: WorkflowDefinition, n
   if (baseBinding.workflowCode !== nextBinding.workflowCode || baseBinding.schemaVersion !== nextBinding.schemaVersion) errors.push('WORKFLOW_DESIGNER_BINDING_IDENTITY');
   const steps = Object.values(base.nodes).filter(node => node.kind === 'action');
   for (const [id, node] of Object.entries(next.nodes)) {
-    if (!record(node) || node.id !== id || !['approval', 'handle', 'condition', 'cc', 'action', 'correction', 'end'].includes(node.kind)) { errors.push(`WORKFLOW_DESIGNER_NODE_INVALID:${id}`); continue; }
+    if (!record(node) || node.id !== id || !['approval', 'handle', 'condition', 'cc', 'action', 'correction', 'end', 'parallel', 'join'].includes(node.kind)) { errors.push(`WORKFLOW_DESIGNER_NODE_INVALID:${id}`); continue; }
     if ('taskPageCode' in node && node.taskPageCode && !base.taskPages?.[node.taskPageCode]) errors.push(`WORKFLOW_DESIGNER_PAGE_UNRELEASED:${id}`);
     if (node.kind === 'action' && !isWorkflowPlatformNotify(node) && !steps.some(step => step.kind === 'action' && same(step.handler, node.handler) && same(step.inputs, node.inputs) && same(step.outputSchema, node.outputSchema))) errors.push(`WORKFLOW_DESIGNER_STEP_UNRELEASED:${id}`);
     if (['approval','handle'].includes(node.kind) && 'allowedOperations' in node && node.allowedOperations && (!Array.isArray(node.allowedOperations) || !node.allowedOperations.includes(node.kind === 'handle' ? 'complete' : 'approve'))) errors.push(`WORKFLOW_DESIGNER_REQUIRED_ACTION:${id}.approve`);
@@ -115,6 +117,8 @@ export function validateWorkflowDesignerCapabilities(base: WorkflowDefinition, n
 }
 
 export type WorkflowDesignerEdit =
+  | { type: 'insert_parallel'; from: string; target: string; id: string; joinId: string; title: string; branches: Array<{ id: string; title: string; when?: WorkflowExpression }>; edge?: 'approve' | 'reject' | 'next' | 'default' | number }
+  | { type: 'remove_parallel_branch'; nodeId: string; branchId: string }
   | { type: 'insert'; from: string; target: string; node: WorkflowNode; edge?: 'approve' | 'reject' | 'next' | 'default' | number }
   | { type: 'remove'; nodeId: string; reconnectTo?: string }
   | { type: 'node'; nodeId: string; patch: Record<string, unknown> }
@@ -122,10 +126,17 @@ export type WorkflowDesignerEdit =
 
 /** Semantic edits are independent of canvas coordinates and preserve stable existing ids. */
 export function editWorkflowDesignerDefinition(source: WorkflowDefinition, edit: WorkflowDesignerEdit): WorkflowDefinition {
+  if (edit.type === 'insert_parallel') {
+    if (source.nodes[edit.joinId] || edit.joinId === edit.id || edit.branches.length < 2 || edit.branches.length > 8) throw new Error('WORKFLOW_DESIGNER_PARALLEL_INSERT_INVALID');
+    const next = editWorkflowDesignerDefinition(source, { type: 'insert',from: edit.from,target: edit.target,node: { id: edit.id,kind: 'parallel',title: edit.title,join: edit.joinId,branches: edit.branches.map(branch => ({ ...branch,target: edit.joinId })) },...(edit.edge === undefined ? {} : { edge: edit.edge }) });
+    next.nodes[edit.joinId] = { id: edit.joinId,kind: 'join',title: '全部完成后继续',parallel: edit.id,next: edit.target };
+    return next;
+  }
   const definition = structuredClone(source);
   const rewrite = (from: WorkflowNode, target: string, replacement: string) => {
     if (from.kind === 'approval') { if (from.onApprove === target) from.onApprove = replacement; if (from.onReject === target) from.onReject = replacement; }
     else if (from.kind === 'condition') { for (const branch of from.branches) if (branch.target === target) branch.target = replacement; if (from.otherwise === target) from.otherwise = replacement; }
+    else if (from.kind === 'parallel') { for (const branch of from.branches) if (branch.target === target) branch.target = replacement; }
     else if ('next' in from && from.next === target) from.next = replacement;
   };
   if (edit.type === 'insert') {
@@ -136,16 +147,37 @@ export function editWorkflowDesignerDefinition(source: WorkflowDefinition, edit:
       const key = edit.edge === 'reject' ? 'onReject' : 'onApprove';
       if (from[key] !== edit.target) throw new Error('WORKFLOW_DESIGNER_INSERT_EDGE_INVALID');
       from[key] = edit.node.id;
+    } else if (from.kind === 'parallel') {
+      if (typeof edit.edge !== 'number' || from.branches[edit.edge]?.target !== edit.target) throw new Error('WORKFLOW_DESIGNER_INSERT_EDGE_INVALID');
+      from.branches[edit.edge]!.target = edit.node.id;
     } else if (from.kind === 'condition') {
       if (typeof edit.edge === 'number' && from.branches[edit.edge]?.target === edit.target) from.branches[edit.edge]!.target = edit.node.id;
       else if (edit.edge === 'default' && from.otherwise === edit.target) from.otherwise = edit.node.id;
       else throw new Error('WORKFLOW_DESIGNER_INSERT_EDGE_INVALID');
     } else if ('next' in from) from.next = edit.node.id;
     else throw new Error('WORKFLOW_DESIGNER_INSERT_EDGE_INVALID');
+  } else if (edit.type === 'remove_parallel_branch') {
+    const fork = definition.nodes[edit.nodeId];
+    if (fork?.kind !== 'parallel' || fork.branches.length <= 2) throw new Error('WORKFLOW_PARALLEL_BRANCH_LIMIT');
+    const region = inspectWorkflowParallel(definition).regions.find(region => region.parallelNodeId === fork.id);
+    const branch = region?.branches.find(branch => branch.id === edit.branchId);
+    if (!branch) throw new Error('WORKFLOW_DESIGNER_PARALLEL_BRANCH_MISSING');
+    fork.branches = fork.branches.filter(branch => branch.id !== edit.branchId);
+    for (const id of branch.nodeIds) delete definition.nodes[id];
   } else if (edit.type === 'remove') {
     const node = definition.nodes[edit.nodeId];
+    if (node?.kind === 'parallel') {
+      const join = definition.nodes[node.join];
+      const region = inspectWorkflowParallel(definition).regions.find(region => region.parallelNodeId === node.id);
+      if (join?.kind !== 'join' || !region) throw new Error('WORKFLOW_DESIGNER_PARALLEL_PAIR_INVALID');
+      const removed = new Set([node.id,join.id,...region.branches.flatMap(branch => branch.nodeIds)]);
+      for (const other of Object.values(definition.nodes)) if (!removed.has(other.id)) for (const id of removed) rewrite(other,id,join.next);
+      for (const id of removed) delete definition.nodes[id];
+      if (definition.startAt === node.id) definition.startAt = join.next;
+      return definition;
+    }
     const target = edit.reconnectTo || (node?.kind === 'approval' ? node.onApprove : node && 'next' in node ? node.next : undefined);
-    if (!node || !target || target === node.id || !definition.nodes[target] || node.kind === 'end' || node.kind === 'correction') throw new Error('WORKFLOW_DESIGNER_REMOVE_INVALID');
+    if (!node || !target || target === node.id || !definition.nodes[target] || node.kind === 'end' || node.kind === 'correction' || node.kind === 'join') throw new Error('WORKFLOW_DESIGNER_REMOVE_INVALID');
     for (const other of Object.values(definition.nodes)) {
       rewrite(other, node.id, target);
       if ((other.kind === 'approval' || other.kind === 'handle') && other.returnTargets) other.returnTargets = other.returnTargets.filter(id => id !== node.id);
@@ -170,6 +202,8 @@ export function editWorkflowDesignerDefinition(source: WorkflowDefinition, edit:
 export interface WorkflowAdoptionState {
   currentNodeId?: string;
   activeNodeIds?: string[];
+  forkNodeId?: string;
+  unarrivedBranchIds?: string[];
   facts: Record<string, unknown>;
   returnTargetNodeIds?: string[];
   businessStepPending?: boolean;
@@ -187,6 +221,16 @@ export function classifyWorkflowAdoption(source: WorkflowDefinition, target: Wor
   if (active.some(id => source.nodes[id]?.kind !== target.nodes[id]?.kind)) return { outcome: 'excepted', reason: '当前节点类型已改变' };
   if ((state.returnTargetNodeIds || []).some(id => !target.nodes[id])) return { outcome: 'excepted', reason: '正在退回的目标节点已被删除' };
   if (!same(source.subject, target.subject) || !same(source.inputSchema, target.inputSchema)) return { outcome: 'excepted', reason: '申请数据或变量定义已改变，需要明确的数据转换' };
+  if (state.forkNodeId) {
+    const from = source.nodes[state.forkNodeId], to = target.nodes[state.forkNodeId];
+    if (from?.kind !== 'parallel' || to?.kind !== 'parallel' || from.join !== to.join) return { outcome: 'excepted', reason: '正在运行的并行分支或汇合点已改变' };
+    const sourceRegion = inspectWorkflowParallel(source).regions.find(region => region.parallelNodeId === from.id);
+    const targetRegion = inspectWorkflowParallel(target).regions.find(region => region.parallelNodeId === to.id);
+    for (const id of state.unarrivedBranchIds || []) {
+      const branch = targetRegion?.branches.find(branch => branch.id === id);
+      if (!branch || active.some(node => sourceRegion?.branches.find(branch => branch.id === id)?.nodeIds.includes(node) && !branch.nodeIds.includes(node))) return { outcome: 'excepted', reason: '尚未完成的并行分支或其当前节点已改变' };
+    }
+  }
   if (state.businessStepPending) return { outcome: 'deferred', reason: '业务步骤执行中，完成后自动更新' };
   const reachable = new Set<string>(), pending = [...active];
   while (pending.length) { const id = pending.pop()!; if (reachable.has(id)) continue; reachable.add(id); pending.push(...workflowDesignerTargets(target.nodes[id] || {}).filter(id => !!target.nodes[id])); }
@@ -213,11 +257,11 @@ export function classifyWorkflowAdoption(source: WorkflowDefinition, target: Wor
 export function validateWorkflowDesignerDocument(definition: WorkflowDefinition): string[] {
   if (!record(definition?.nodes)) return ['WORKFLOW_DESIGNER_DOCUMENT_INVALID'];
   const errors: string[] = [];
-  errors.push(...validateWorkflowHandlingNodes(definition), ...validateWorkflowReturnPolicies(definition), ...validateWorkflowPlatformNotify(definition));
+  errors.push(...validateWorkflowParallel(definition), ...validateWorkflowHandlingNodes(definition), ...validateWorkflowReturnPolicies(definition), ...validateWorkflowPlatformNotify(definition));
   const nodes = Object.values(definition.nodes);
   if (nodes.length > 200 || !nodes.length) return ['WORKFLOW_DESIGNER_NODE_LIMIT'];
   for (const node of nodes) {
-    if (!record(node) || !['approval','handle','condition','cc','action','correction','end'].includes(node.kind)) errors.push('WORKFLOW_DESIGNER_NODE_INVALID');
+    if (!record(node) || !['approval','handle','condition','cc','action','correction','end','parallel','join'].includes(node.kind)) errors.push('WORKFLOW_DESIGNER_NODE_INVALID');
     else if (node.kind === 'condition' && (!Array.isArray(node.branches) || !node.branches.length || node.branches.length > 32 || node.branches.some(branch => !record(branch) || !record(branch.when) || typeof branch.target !== 'string'))) errors.push(`WORKFLOW_DESIGNER_BRANCH_INVALID:${node.id}`);
   }
   if (errors.length) return [...new Set(errors)];
@@ -260,6 +304,7 @@ export function validateWorkflowDesignerDocument(definition: WorkflowDefinition)
   };
   for (const node of nodes) {
     if (!/^[a-z][a-z0-9_-]{0,127}$/.test(node.id) || definition.nodes[node.id] !== node) errors.push(`WORKFLOW_DESIGNER_NODE_ID:${node.id}`);
+    if (node.kind === 'parallel') for (const branch of node.branches) if (branch.when && expressionType(branch.when, node.id) !== 'boolean') errors.push(`WORKFLOW_DESIGNER_CONDITION_BOOLEAN:${node.id}`);
     if (node.kind === 'condition') {
       if (!node.branches.length || node.branches.length > 32) errors.push(`WORKFLOW_DESIGNER_BRANCH_LIMIT:${node.id}`);
       for (const branch of node.branches) if (expressionType(branch.when, node.id) !== 'boolean') errors.push(`WORKFLOW_DESIGNER_CONDITION_BOOLEAN:${node.id}`);

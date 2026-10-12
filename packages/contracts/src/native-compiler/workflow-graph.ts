@@ -1,3 +1,4 @@
+import { inspectWorkflowParallel } from './workflow-parallel.js';
 import { isWorkflowPlatformNotify } from './workflow-platform-notify.js';
 import type { WorkflowPlatformNotification } from './workflow-platform-notify.js';
 import { workflowReturnTargets, type WorkflowReturnPolicy } from './workflow-return-policy.js';
@@ -44,8 +45,10 @@ export interface WorkflowGraphDefinitionSource {
     onReject?: string;
     returnTargets?: string[];
     returnPolicy?: WorkflowReturnPolicy;
-    branches?: Array<{ when: WorkflowGraphExpression; target: string; label?: string }>;
+    branches?: Array<{ when?: WorkflowGraphExpression; target: string; label?: string; id?: string; title?: string }>;
     otherwise?: string;
+    join?: string;
+    parallel?: string;
     next?: string;
     emptyPolicy?: 'block' | 'skip';
     initiatorApprovalPolicy?: 'manual' | 'auto_approve';
@@ -77,6 +80,7 @@ export interface WorkflowGraphEdge {
   kind: 'approve' | 'reject' | 'branch' | 'default' | 'next' | 'return' | 'resubmit';
   label: string;
   priority?: number;
+  parallelBranch?: true;
   expression?: WorkflowGraphExpression;
   variablePaths: string[];
 }
@@ -88,7 +92,7 @@ export interface WorkflowGraphProjection {
   startAt: string;
   fixedTopology: true;
   branchStrategy: 'first_match';
-  nodes: Array<{ presentation?: 'notification'; id: string; kind: string; title: string; binding?: string; mode?: string; outcome?: string; emptyPolicy?: 'block' | 'skip'; initiatorApprovalPolicy?: 'manual' | 'auto_approve'; completionDeadline?: WorkflowCompletionDeadline; notify?: boolean;
+  nodes: Array<{ parallel?: { joinNodeId: string; branchNodeIds: string[]; branchCount: number }; presentation?: 'notification'; id: string; kind: string; title: string; binding?: string; mode?: string; outcome?: string; emptyPolicy?: 'block' | 'skip'; initiatorApprovalPolicy?: 'manual' | 'auto_approve'; completionDeadline?: WorkflowCompletionDeadline; notify?: boolean;
     businessStep?: { handler: NonNullable<WorkflowGraphDefinitionSource['nodes'][string]['handler']>; inputs: Record<string, WorkflowBusinessStepInput>; outputPaths: string[] } }>;
   edges: WorkflowGraphEdge[];
   variables: WorkflowGraphVariable[];
@@ -218,7 +222,8 @@ export function validateWorkflowReadability(definition: WorkflowGraphDefinitionS
     const node = record(raw);
     const branches = Array.isArray(node.branches) ? node.branches : [];
     for (const branch of branches as NonNullable<WorkflowGraphDefinitionSource['nodes'][string]['branches']>) {
-    const expression = workflowExpressionPaths(branch.when);
+    if (!branch.when) continue;
+    const expression = workflowExpressionPaths(branch.when!);
     errors.push(...expression.errors.map(error => `${error}:${node.id}`));
     for (const path of expression.paths) if (!schemaPath(factsSchema, path)) errors.push(`WORKFLOW_VARIABLE_SOURCE_UNKNOWN:${node.id}:${path}`);
     }
@@ -228,6 +233,7 @@ export function validateWorkflowReadability(definition: WorkflowGraphDefinitionS
 
 export function projectWorkflowGraph(definition: WorkflowGraphDefinitionSource, definitionDigest: string): WorkflowGraphProjection {
   const factsSchema = workflowBusinessStepFactSchema(definition);
+  const regions = inspectWorkflowParallel(definition as any).regions;
   const edges: WorkflowGraphEdge[] = [];
   const used = new Map<string, Set<string>>();
   const diagnostics: WorkflowGraphProjection['diagnostics'] = [];
@@ -240,6 +246,12 @@ export function projectWorkflowGraph(definition: WorkflowGraphDefinitionSource, 
       if (definition.nodes[target]?.kind === 'correction')
         edges.push({ id: `${node.id}:return:${target}`, from: node.id, to: target, kind: 'return', label: '退回发起人补正', variablePaths: [] });
     }
+    if (node.kind === 'parallel') for (const [index, branch] of (node.branches || []).entries()) {
+      const expression = branch.when ? workflowExpressionPaths(branch.when) : { paths: [], errors: [] };
+      for (const path of expression.paths) { if (!used.has(path)) used.set(path, new Set()); used.get(path)!.add(node.id); }
+      edges.push({ id: `${node.id}:parallel:${branch.id}`, from: node.id, to: branch.target, kind: 'branch', parallelBranch: true, label: branch.title || `分支 ${index + 1}`, priority: index + 1, ...(branch.when ? { expression: branch.when } : {}), variablePaths: expression.paths });
+    }
+    if (node.kind === 'join' && node.next) edges.push({ id: `${node.id}:next`, from: node.id, to: node.next, kind: 'next', label: '全部分支完成后继续', variablePaths: [] });
     if (node.kind === 'handle' && node.next) edges.push({ id: `${node.id}:next`, from: node.id, to: node.next, kind: 'next', label: '办理完成', variablePaths: [] });
     if (node.kind === 'correction' && node.next)
       edges.push({ id: `${node.id}:resubmit`, from: node.id, to: node.next, kind: 'resubmit', label: '重新提交，按退回设置继续', variablePaths: [] });
@@ -251,9 +263,9 @@ export function projectWorkflowGraph(definition: WorkflowGraphDefinitionSource, 
     }
     if (node.kind === 'condition') {
       for (const [index, branch] of (node.branches || []).entries()) {
-        const expression = workflowExpressionPaths(branch.when);
+        const expression = workflowExpressionPaths(branch.when!);
         for (const path of expression.paths) { if (!used.has(path)) used.set(path, new Set()); used.get(path)!.add(node.id); }
-        edges.push({ id: `${node.id}:branch:${index}`, from: node.id, to: branch.target, kind: 'branch', label: branch.label || `条件 ${index + 1}`, priority: index + 1, expression: branch.when, variablePaths: expression.paths });
+        edges.push({ id: `${node.id}:branch:${index}`, from: node.id, to: branch.target, kind: 'branch', label: branch.label || `条件 ${index + 1}`, priority: index + 1, expression: branch.when!, variablePaths: expression.paths });
         diagnostics.push(...expression.errors.map(code => ({ code, path: node.id })));
       }
       if (node.otherwise) edges.push({ id: `${node.id}:default`, from: node.id, to: node.otherwise, kind: 'default', label: '均不满足时', variablePaths: [] });
@@ -279,6 +291,7 @@ export function projectWorkflowGraph(definition: WorkflowGraphDefinitionSource, 
   });
   return { schemaVersion: 'openxiangda.workflow-graph/v2', workflowCode: definition.code, definitionDigest, startAt: definition.startAt,
     fixedTopology: true, branchStrategy: 'first_match', nodes: Object.values(definition.nodes).map(node => ({ id: node.id, kind: node.kind, title: node.title || node.id,
+      ...(node.kind === 'parallel' ? { parallel: { joinNodeId: node.join!,branchNodeIds: regions.find(region => region.parallelNodeId === node.id)?.branches.flatMap(branch => branch.nodeIds) || [],branchCount: node.branches?.length || 0 } } : {}),
       ...(node.binding ? { binding: node.binding } : {}), ...(node.mode ? { mode: node.mode } : {}), ...(node.outcome ? { outcome: node.outcome } : {}),
       ...(node.kind === 'cc' ? { emptyPolicy: node.emptyPolicy, notify: node.notify !== false } : {}),
       ...(node.kind === 'approval' ? { emptyPolicy: node.emptyPolicy || 'block', initiatorApprovalPolicy: node.initiatorApprovalPolicy || 'manual', ...(node.completionDeadline ? { completionDeadline: { ...node.completionDeadline } } : {}) } : {}),

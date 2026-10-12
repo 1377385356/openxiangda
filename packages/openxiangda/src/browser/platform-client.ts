@@ -2983,19 +2983,19 @@ export async function loadWorkflowBusinessStepRecovery(instanceId: string) {
   );
 }
 
-export async function previewWorkflowBusinessStepRecovery(instanceId: string) {
+export async function previewWorkflowBusinessStepRecovery(instanceId: string, selection: { executionId?: string; recovery?: 'continue' | 'recompute' | 'apply_stored' } = {}) {
   const csrf = await workflowCsrfToken();
   const preview = await request<import('openxiangda-contracts/browser').WorkflowBusinessStepRecoveryPreview>(
     `${applicationServiceBase()}/admin/workflow-instances/${encodeURIComponent(instanceId)}/preview`, {
       method: 'POST', headers: { 'x-openxiangda-csrf-token': csrf },
-      body: JSON.stringify({ environmentKey: currentEnvironmentKey(), action: 'admin_retry_step' }),
+      body: JSON.stringify({ environmentKey: currentEnvironmentKey(), action: 'admin_retry_step', ...selection }),
     },
   );
   bindWorkflowCommandCsrf(preview.commandToken, preview.expiresAt, csrf);
   return preview;
 }
 
-/** Keep this exact token/input/key until the outcome is known. Never executes the external handler. */
+/** Keep this exact token/input/key until the outcome is known. Only an explicit pure recomputation creates a new execution. */
 export async function executeWorkflowBusinessStepRecovery(instanceId: string, input: { commandToken: string; idempotencyKey: string; input: { reason: string } }) {
   return request<WorkflowCommandResult>(`${applicationServiceBase()}/admin/workflow-instances/${encodeURIComponent(instanceId)}/commands/admin_retry_step`, {
     method: 'POST', headers: { 'x-openxiangda-csrf-token': await commandBoundCsrf(input.commandToken) }, body: JSON.stringify(input),

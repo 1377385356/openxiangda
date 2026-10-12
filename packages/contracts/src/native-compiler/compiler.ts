@@ -1,6 +1,7 @@
 import { validateWorkflowSupervisorChains, validateWorkflowSupervisorChainBinding } from './workflow-supervisor-chain.js';
 import { validateWorkflowReminders } from './workflow-reminders.js';
 import { isWorkflowPlatformNotify } from './workflow-platform-notify.js';
+import { validateWorkflowParallel } from './workflow-parallel.js';
 import { validateWorkflowReturnPolicies, workflowReturnTargets } from './workflow-return-policy.js';
 import { validateWorkflowHandlingNodes } from './workflow-handle.js';
 import { normalizeDataMutationGrants } from './service-mutations.js';
@@ -7283,6 +7284,8 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
   if (reminderErrors.length) fail(reminderErrors[0]!, `${pointer}/nodes`);
   const handleErrors = validateWorkflowHandlingNodes(definition as any);
   if (handleErrors.length) fail(handleErrors[0]!, `${pointer}/nodes`);
+  const parallelErrors = validateWorkflowParallel(definition as any);
+  if (parallelErrors.length) fail(parallelErrors[0]!, `${pointer}/nodes`);
   const stepErrors = validateWorkflowBusinessSteps(definition);
   if (stepErrors.length) fail(stepErrors[0]!, `${pointer}/nodes`);
   if (!nodes[startAt])
@@ -7292,7 +7295,7 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
     const nodePointer = `${pointer}/nodes/${nodeId}`;
     const node = object(rawNode, nodePointer);
     equal(node.id, nodeId, `${nodePointer}/id`);
-    if (!['approval', 'handle', 'condition', 'end', 'cc', 'action', 'correction'].includes(node.kind)) {
+    if (!['approval', 'handle', 'condition', 'end', 'cc', 'action', 'correction', 'parallel', 'join'].includes(node.kind)) {
       fail('NATIVE_WORKFLOW_NODE_KIND_INVALID', `${nodePointer}/kind`);
     }
     const targets: string[] = [];
@@ -7339,6 +7342,17 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
     } else if (node.kind === 'cc') {
       requiredString(node.title, `${nodePointer}/title`, 255);
       workflowBindingCode(node.binding, `${nodePointer}/binding`);
+      targets.push(requiredString(node.next, `${nodePointer}/next`, 128));
+    } else if (node.kind === 'parallel') {
+      requiredString(node.title, `${nodePointer}/title`, 255);
+      targets.push(requiredString(node.join, `${nodePointer}/join`, 128));
+      for (const [index, raw] of boundedArray(node.branches, `${nodePointer}/branches`, 8).entries()) {
+        const branch = object(raw, `${nodePointer}/branches/${index}`);
+        if (branch.when !== undefined) validateWorkflowExpression(branch.when, `${nodePointer}/branches/${index}/when`, 0);
+        targets.push(requiredString(branch.target, `${nodePointer}/branches/${index}/target`, 128));
+      }
+    } else if (node.kind === 'join') {
+      requiredString(node.title, `${nodePointer}/title`, 255);
       targets.push(requiredString(node.next, `${nodePointer}/next`, 128));
     } else if (node.kind === 'condition') {
       const branches = boundedArray(

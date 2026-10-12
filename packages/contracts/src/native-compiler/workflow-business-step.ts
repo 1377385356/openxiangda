@@ -65,7 +65,7 @@ export interface WorkflowBusinessStepSummary {
   handlerVersion: number;
   mode?: WorkflowBusinessStepHandlerContract['mode'];
   nodeId?: string;
-  status: 'waiting' | 'result_ready' | 'completed' | 'cancelled';
+  status: 'waiting' | 'result_ready' | 'result_stale_inputs' | 'completed' | 'cancelled';
   inputDigest?: string;
   resultDigest?: string;
   expectedFactRevision?: number;
@@ -81,13 +81,14 @@ export interface WorkflowBusinessStepRecoveryOptions {
   status: string;
   canRetryBusinessStep: boolean;
   businessStep: WorkflowBusinessStepSummary | null;
+  businessSteps?: WorkflowBusinessStepSummary[];
 }
 export interface WorkflowBusinessStepRecoveryPreview {
   action: 'admin_retry_step';
   canCommit: boolean;
   commandToken?: string;
   expiresAt?: string;
-  target: { nodeId: string; title: string; executionId: string; resultDigest: string; lastErrorCode?: string; continuationAttempts: number; reexecutesBusinessHandler: false };
+  target: { nodeId: string; title: string; executionId: string; resultDigest: string; lastErrorCode?: string; continuationAttempts: number; reexecutesBusinessHandler: boolean; recovery?: 'continue' | 'recompute' | 'apply_stored'; inputsChanged?: boolean; mode?: WorkflowBusinessStepHandlerContract['mode'] };
 }
 
 type Definition = {
@@ -246,6 +247,8 @@ export function validateWorkflowBusinessStepHandlerContract(value: unknown): val
 
 function targets(node: Record<string, any>): string[] {
   if (node.kind === 'approval') return [node.onApprove, node.onReject];
+  if (node.kind === 'parallel') return [...(Array.isArray(node.branches) ? node.branches.map((branch: any) => branch.target) : []), node.join];
+  if (node.kind === 'join') return [node.next];
   if (node.kind === 'condition') return [...(Array.isArray(node.branches) ? node.branches.map((branch: any) => branch.target) : []), node.otherwise];
   if (node.kind === 'cc' || node.kind === 'action' || node.kind === 'handle') return [node.next];
   return [];

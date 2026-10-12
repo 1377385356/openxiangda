@@ -19,7 +19,7 @@ type FlowNode = Node<{
   designer?: boolean; node: WorkflowGraphProjection['nodes'][number]; title: string; summary?: string; start: boolean;
   visit?: WorkflowGraphVisit; onSelect: () => void; onNavigate: (id: string, key: string) => boolean;
   input: { id: string; x: number }; outputs: Array<{ id: string; x: number }>;
-}, 'workflow'>;
+}, 'workflow' | 'parallel_group'>;
 type FlowEdge = Edge<{
   edge: WorkflowGraphEdge; expression: string; points: Point[]; label: Point;
   actual: boolean; highlighted: boolean; selected: boolean; onSelect: () => void; onInsert?: (template?: string) => void; insertionOptions?: Array<{ value: string; label: string; kind: string }>; designer?: boolean;
@@ -36,10 +36,10 @@ function orthogonalPath(points: Point[]) {
 }
 
 function insertionMenu(options: NonNullable<FlowEdge['data']>['insertionOptions']): MenuProps['items'] {
-  const names: Record<string,string> = { approval: '审批节点', handle: '办理节点', cc: '抄送节点', action: '业务步骤', condition: '条件分支', notification: '发送通知' };
-  const descriptions: Record<string,string> = { approval: '需要有人作出决定', handle: '需要有人完成工作并确认', cc: '让相关人知晓', action: '执行已发布的业务能力', condition: '只进入第一个满足的分支', notification: '发送消息' };
-  const icons = { approval: UserOutlined, handle: FormOutlined, cc: CopyOutlined, action: CodeOutlined, condition: BranchesOutlined, notification: BellOutlined };
-  return [{ label: '人工', kinds: ['approval','handle','cc'] }, { label: '分支', kinds: ['condition'] }, { label: '自动', kinds: ['action','notification'] }].flatMap(group => {
+  const names: Record<string,string> = { approval: '审批节点', handle: '办理节点', cc: '抄送节点', action: '业务步骤', condition: '条件分支', parallel: '并行分支', notification: '发送通知' };
+  const descriptions: Record<string,string> = { approval: '需要有人作出决定', handle: '需要有人完成工作并确认', cc: '让相关人知晓', action: '执行已发布的业务能力', condition: '只进入第一个满足的分支', parallel: '同时执行，全部完成后继续', notification: '发送消息' };
+  const icons = { approval: UserOutlined, handle: FormOutlined, cc: CopyOutlined, action: CodeOutlined, condition: BranchesOutlined, parallel: BranchesOutlined, notification: BellOutlined };
+  return [{ label: '人工', kinds: ['approval','handle','cc'] }, { label: '分支', kinds: ['condition','parallel'] }, { label: '自动', kinds: ['action','notification'] }].flatMap(group => {
     const children = group.kinds.flatMap(kind => {
       const entries = (options || []).filter(option => option.kind === kind);
       if (!entries.length) return [];
@@ -59,10 +59,10 @@ function DiagramEdge({ id, data, markerEnd }: EdgeProps<FlowEdge>) {
     <EdgeLabelRenderer>{(!data.designer || ['branch','default','return','resubmit'].includes(data.edge.kind)) && <button type="button" className={`oxa-workflow-edge-label nodrag nopan ${data.actual ? 'executed' : ''} ${data.highlighted ? 'selected' : ''} ${data.edge.kind === 'branch' ? 'branch' : ''} ${data.designer && ['branch','default'].includes(data.edge.kind) ? 'designer-branch' : ''}`}
       style={{ transform: `translate(-50%, -50%) translate(${data.label.x}px, ${data.label.y}px)` }}
       title={`${data.edge.label}${data.expression ? `：${data.expression}` : ''}`} aria-pressed={data.selected} aria-label={`分支：${data.edge.priority ? `顺序 ${data.edge.priority}，` : ''}${data.edge.label}${data.expression ? `，${data.expression}` : ''}`} onClick={data.onSelect}>
-      {data.designer && ['branch','default'].includes(data.edge.kind) ? <><span><span>{data.edge.label}</span>{data.edge.priority && <small>优先级 {data.edge.priority}</small>}</span><strong>{data.expression || '以上都不满足'}</strong></> : <><span>{data.edge.priority ? <b>{data.edge.priority}</b> : null}{data.edge.label}{data.actual && <small>已执行</small>}</span>{data.expression && <strong>{data.expression}</strong>}</>}
+      {data.designer && ['branch','default'].includes(data.edge.kind) ? <><span><span>{data.edge.label}</span>{data.edge.parallelBranch ? <small>同时</small> : data.edge.priority && <small>优先级 {data.edge.priority}</small>}</span><strong>{data.expression || (data.edge.parallelBranch ? '始终执行' : '以上都不满足')}</strong></> : <><span>{data.edge.priority ? <b>{data.edge.priority}</b> : null}{data.edge.label}{data.actual && <small>已执行</small>}</span>{data.expression && <strong>{data.expression}</strong>}</>}
     </button>}{data.onInsert && (data.insertionOptions?.length ? <Dropdown trigger={['click']} placement="bottom" menu={{ items: insertionMenu(data.insertionOptions), onClick: ({ key }) => data.onInsert?.(key) }} classNames={{ root: 'oxa-designer-insert-menu' }}>{insertButton}</Dropdown> : insertButton)}</EdgeLabelRenderer></>;
 }
-const nodeTypes = { workflow: DiagramNode };
+const nodeTypes = { workflow: DiagramNode, parallel_group: () => <div className="oxa-workflow-parallel-region" aria-hidden="true" /> };
 const edgeTypes = { workflow: DiagramEdge };
 
 /** Lazy module: loading a CRUD page or the node list does not instantiate React Flow. */
@@ -99,13 +99,17 @@ export default function WorkflowFlowCanvas(props: {
         visit: [...props.visits].reverse().find(visit => visit.nodeId === node.id), input: point.input, outputs: point.outputs,
         onSelect: () => latest.current.onSelectNode(node.id), onNavigate: (id, key) => latest.current.onNavigate(id, key) } };
   }) : [], [renderedGraph, props.selectedNodeId, props.titles, props.summaries, props.visits, positions, props.designer]);
+  const displayNodes = useMemo<FlowNode[]>(() => [...(positions?.groups || []).flatMap(group => {
+    const source = nodes.find(node => node.id === group.nodeId);
+    return source ? [{ ...source,id: group.id,type: 'parallel_group' as const,position: { x: group.x,y: group.y },width: group.width,height: group.height,style: { width: group.width,height: group.height,pointerEvents: 'none' as const },zIndex: -1 }] : [];
+  }),...nodes], [nodes,positions]);
   const edges = useMemo<FlowEdge[]>(() => positions ? renderedGraph.edges.map(edge => {
     const position = positions.edges.get(edge.id)!;
     const actual = props.executedEdges.has(edge.id), selected = props.selectedEdgeId === edge.id;
     const highlighted = props.selectedEdgeId ? selected : edge.from === props.selectedNodeId;
     return { id: edge.id, ariaLabel: `${renderedGraph.nodes.find(node=>node.id===edge.from)?.title || '当前节点'}至${renderedGraph.nodes.find(node=>node.id===edge.to)?.title || '后续节点'}`, source: edge.from, sourceHandle: `out:${edge.id}`, target: edge.to, targetHandle: `in:${edge.to}`, type: 'workflow', deletable: false, reconnectable: false,
       markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: actual ? '#389e0d' : highlighted ? '#1677ff' : '#aab4c1' },
-      data: { designer: props.designer, edge, expression: edge.expression ? formatWorkflowExpression(edge.expression, renderedGraph.variables) : '', points: position.points, label: position.label, actual, highlighted, selected, onSelect: () => latest.current.onSelectEdge(edge.id), ...(props.onInsertEdge && !['return','resubmit'].includes(edge.kind) ? { insertionOptions: props.insertionOptions, onInsert: (template?: string) => latest.current.onInsertEdge?.(edge.id, template) } : {}) } };
+      data: { designer: props.designer, edge, expression: edge.expression ? formatWorkflowExpression(edge.expression, renderedGraph.variables) : '', points: position.points, label: position.label, actual, highlighted, selected, onSelect: () => latest.current.onSelectEdge(edge.id), ...(props.onInsertEdge && !['return','resubmit'].includes(edge.kind) ? { insertionOptions: props.insertionOptions?.filter(option => option.kind !== 'parallel' || !renderedGraph.nodes.some(node => node.parallel && (node.id === edge.from || node.parallel.branchNodeIds.includes(edge.from)))), onInsert: (template?: string) => latest.current.onInsertEdge?.(edge.id, template) } : {}) } };
   }) : [], [renderedGraph, props.executedEdges, props.selectedNodeId, props.selectedEdgeId, props.onInsertEdge, props.insertionOptions, positions, props.designer]);
   useEffect(() => {
     if (!instance || !positions) return;
@@ -178,7 +182,7 @@ export default function WorkflowFlowCanvas(props: {
   const start = positions.nodes.get(renderedGraph.startAt);
   const initialViewport = initialized.current?.getViewport() || (props.designer && start && container.current ? { x: container.current.clientWidth / 2 - (start.x + start.width / 2) * .9, y: 24 - start.y * .9, zoom: .9 } : undefined);
   return <div ref={container} className="oxa-workflow-reactflow">
-    <ReactFlow<FlowNode, FlowEdge> nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes} defaultViewport={initialViewport} onInit={setInstance}
+    <ReactFlow<FlowNode, FlowEdge> nodes={displayNodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes} defaultViewport={initialViewport} onInit={setInstance}
       nodesDraggable={false} nodesConnectable={false} nodesFocusable={false} edgesFocusable={false} edgesReconnectable={false} elementsSelectable={false}
       deleteKeyCode={null} disableKeyboardA11y selectionOnDrag={false} selectionKeyCode={null} zoomOnDoubleClick={false}
       minZoom={.025} maxZoom={1.6} onlyRenderVisibleElements onMoveStart={event => { if (event) interruptNavigation.current?.(); }} onMoveEnd={(_event, viewport) => props.onZoom(viewport.zoom)}

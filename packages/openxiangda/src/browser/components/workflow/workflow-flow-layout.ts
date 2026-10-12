@@ -35,7 +35,7 @@ export async function workflowFlowLayout(graph: WorkflowGraphProjection, options
       'elk.padding': '[top=36,left=36,bottom=36,right=36]',
     },
     children: forwardNodes.map(node => ({ id: node.id,
-      width: options.designer ? node.kind === 'start' ? 156 : node.kind === 'end' ? 180 : 296 : node.kind === 'condition' ? 288 : node.kind === 'end' ? 232 : 264, height: options.designer ? ['start','end'].includes(node.kind) ? 42 : 72 : node.kind === 'end' ? 92 : 112,
+      width: options.designer ? node.kind === 'start' ? 156 : node.kind === 'end' ? 180 : node.kind === 'join' ? 180 : node.parallel ? Math.max(616,node.parallel.branchCount*320-24) : 296 : node.kind === 'condition' ? 288 : node.kind === 'end' ? 232 : 264, height: options.designer ? ['start','end','join'].includes(node.kind) ? 42 : node.kind === 'parallel' ? 52 : 72 : node.kind === 'end' ? 92 : 112,
       layoutOptions: { 'elk.portConstraints': 'FIXED_ORDER' },
       ports: [
         { id: inputPort(node.id), width: 0, height: 0, layoutOptions: { 'elk.port.side': 'NORTH' } },
@@ -91,5 +91,11 @@ export async function workflowFlowLayout(graph: WorkflowGraphProjection, options
       { x: laneX, y: topY }, { x: end.x, y: topY }, end];
     positions.edges.set(edge.id, { points, label: { x: laneX, y: (start.y + 18 + topY) / 2 } });
   }
-  return positions;
+  const groups = options.designer ? graph.nodes.filter(node => node.parallel).flatMap(node => {
+    const members = [node.id,node.parallel!.joinNodeId,...node.parallel!.branchNodeIds].map(id => positions.nodes.get(id)).filter((position): position is NonNullable<typeof position> => !!position);
+    if (!members.length) return [];
+    const x = Math.min(...members.map(item => item.x))-16,y = Math.min(...members.map(item => item.y))-16;
+    return [{ id: `parallel-group:${node.id}`,nodeId: node.id,x,y,width: Math.max(...members.map(item => item.x+item.width))-x+16,height: Math.max(...members.map(item => item.y+item.height))-y+16 }];
+  }) : [];
+  return { ...positions,groups };
 }

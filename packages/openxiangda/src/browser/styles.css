@@ -3633,3 +3633,12 @@
 .oxa-designer-ai-panel .oxa-designer-ai-composer > .ant-space { width: 100%; justify-content: flex-end; margin-bottom: 0 !important; }
 .oxa-designer-ai-panel .oxa-designer-ai-composer textarea { font-size: 13px; }
 @media(max-width:899px) { .oxa-designer-ai-panel { min-height: calc(85dvh - 32px); } }
+
+.oxa-workflow-parallel-region { width:100%;height:100%;border:1px solid #d5e0f0;border-radius:8px;background:rgba(248,250,253,.84); }
+.oxa-workflow-node.designer-node.kind-parallel { border-color:transparent;background:transparent;box-shadow:none;border-left:0; }
+.oxa-workflow-node.designer-node.kind-parallel .oxa-workflow-node-kind { display:none; }
+.oxa-workflow-node.designer-node.kind-join { border-radius:22px;justify-content:center;padding:6px 12px; }
+.oxa-workflow-node.designer-node.kind-join .oxa-workflow-node-kind,.oxa-workflow-node.designer-node.kind-join .oxa-workflow-node-copy small { display:none; }
+.oxa-workflow-node.designer-node.kind-join .oxa-workflow-node-icon { width:22px;height:22px;font-size:14px; }
+.oxa-workflow-node.designer-node.kind-join .oxa-workflow-node-copy strong { font-size:12px;font-weight:500; }
+.oxa-designer-inspector-icon.kind-parallel,.oxa-designer-outline .kind-parallel { color:#1677ff; }

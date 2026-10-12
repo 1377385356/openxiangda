@@ -2498,6 +2498,8 @@ export interface WorkflowCcNode {
 }
 
 export type WorkflowNode =
+  | import('./native-compiler/workflow-parallel.js').WorkflowParallelNode
+  | import('./native-compiler/workflow-parallel.js').WorkflowJoinNode
   | WorkflowHandleNode
   | WorkflowApprovalNode
   | WorkflowConditionNode
