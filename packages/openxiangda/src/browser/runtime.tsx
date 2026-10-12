@@ -1,3 +1,4 @@
+import { hasRuntimeReadCapability } from './runtime-capabilities';
 import { Alert, Button, Modal, Result, Spin } from 'antd';
 import {
   createContext,
@@ -576,11 +577,7 @@ function ActiveRuntime({
       identityEpoch,
       hasCapability: code =>
         identity.isAppSuperAdmin || identity.capabilityCodes.includes(code),
-      hasReadCapability: code =>
-        identity.isAppSuperAdmin ||
-        (!perspective
-          ? identity.capabilityCodes.includes(code)
-          : perspective.capabilityCodes.includes(code)),
+      hasReadCapability: code => hasRuntimeReadCapability(identity, perspective, code),
       perspectives,
       perspective,
       setPerspective: code => {
