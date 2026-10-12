@@ -135,7 +135,8 @@ export class InMemoryOpenXiangdaEventReceiptStore implements OpenXiangdaEventRec
 export class PlatformOpenXiangdaEventReceiptStore
   implements OpenXiangdaEventReceiptStore
 {
-  private readonly claimTokens = new Map<string, string>();
+  // Equal event metadata can belong to distinct, concurrently live handler leases.
+  private readonly claimTokens = new WeakMap<OpenXiangdaEventReceiptContext, string>();
 
   constructor(
     @Inject(OPENXIANGDA_MODULE_OPTIONS)
@@ -143,7 +144,7 @@ export class PlatformOpenXiangdaEventReceiptStore
   ) {}
 
   workerClaimToken(receipt: OpenXiangdaEventReceiptContext): string | null {
-    return this.claimTokens.get(this.key(receipt)) || null;
+    return this.claimTokens.get(receipt) || null;
   }
 
   async claim(
@@ -157,7 +158,7 @@ export class PlatformOpenXiangdaEventReceiptStore
       throw error;
     }
     if (result.outcome === 'claimed' && result.claimToken) {
-      this.claimTokens.set(this.key(receipt), result.claimToken);
+      this.claimTokens.set(receipt, result.claimToken);
       return 'claimed';
     }
     if (result.outcome === 'duplicate' && result.status === 'succeeded') {
@@ -173,14 +174,14 @@ export class PlatformOpenXiangdaEventReceiptStore
 
   async complete(receipt: OpenXiangdaEventReceiptContext, result?: WorkflowBusinessStepResult): Promise<void> {
     await this.finish(receipt, 'complete', result);
-    this.claimTokens.delete(this.key(receipt));
+    this.claimTokens.delete(receipt);
   }
 
   async release(receipt: OpenXiangdaEventReceiptContext): Promise<void> {
     try {
       await this.finish(receipt, 'release');
     } finally {
-      this.claimTokens.delete(this.key(receipt));
+      this.claimTokens.delete(receipt);
     }
   }
 
@@ -189,8 +190,7 @@ export class PlatformOpenXiangdaEventReceiptStore
     action: 'complete' | 'release',
     result?: WorkflowBusinessStepResult
   ) {
-    const key = this.key(receipt);
-    const claimToken = this.claimTokens.get(key);
+    const claimToken = this.claimTokens.get(receipt);
     if (!claimToken) {
       throw new ServiceUnavailableException('当前事件缺少平台回执 claimToken');
     }
@@ -355,9 +355,6 @@ export class PlatformOpenXiangdaEventReceiptStore
       .filter(Boolean);
   }
 
-  private key(receipt: OpenXiangdaEventReceiptContext) {
-    return `${receipt.tenantId}:${receipt.appCode}:${receipt.environmentKey}:${receipt.subscriptionCode}:${receipt.eventId}`;
-  }
 }
 
 @Injectable()
