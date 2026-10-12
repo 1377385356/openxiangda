@@ -75,3 +75,8 @@ export function validateWorkflowCanvasBinding(entry: WorkflowBindingEntry, catal
   }
   return ['WORKFLOW_DESIGNER_BINDING_UNRELEASED'];
 }
+
+/** Only unreferenced new canvas bindings are removed; released bindings keep their source identity. */
+export function pruneWorkflowCanvasBindings(definition: WorkflowDefinition, binding: WorkflowBinding, published: WorkflowBinding): WorkflowBinding {
+  return {...binding,bindings:Object.fromEntries(Object.entries(binding.bindings).filter(([key])=>Object.hasOwn(published.bindings,key)||!key.startsWith('canvas_')||Object.values(definition.nodes).some(node=>'binding' in node&&node.binding===key)))};
+}

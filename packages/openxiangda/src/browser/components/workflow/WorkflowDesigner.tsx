@@ -1,4 +1,4 @@
-import { workflowAuthoringCatalog, workflowCanvasBindingKey, createWorkflowHumanNode, validateWorkflowBusinessSteps, type WorkflowBinding } from 'openxiangda-contracts/browser';
+import { workflowAuthoringCatalog, workflowCanvasBindingKey, createWorkflowHumanNode, pruneWorkflowCanvasBindings, validateWorkflowBusinessSteps, type WorkflowBinding } from 'openxiangda-contracts/browser';
 import { WorkflowBusinessStepEditor } from './WorkflowBusinessStepEditor';
 import { WorkflowParallelConfigurationEditor } from './WorkflowParallelConfigurationEditor.js';
 import { WorkflowReminderEditor } from './WorkflowReminderEditor.js';
@@ -122,7 +122,7 @@ export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onS
       const bounded = [...current,{definition,binding}].slice(-25);
       while (bounded.length > 1 && bounded.reduce((bytes,item) => bytes + JSON.stringify(item).length,0) > 4 * 1024 * 1024) bounded.shift();
       return bounded;
-    });setFuture([]);setDefinition(next);setBinding(nextBinding);setError(undefined);
+    });setFuture([]);setDefinition(next);setBinding(pruneWorkflowCanvasBindings(next,nextBinding,draft!.publishedBinding));setError(undefined);
   };
   const patch = (patch: Record<string,unknown>) => { if (definition && node) mutate(editWorkflowDesignerDefinition(definition,{ type: 'node',nodeId: node.id,patch })); };
   const save = async (quiet = false) => {
