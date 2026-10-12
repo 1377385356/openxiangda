@@ -3,13 +3,13 @@ import { Button, Checkbox, InputNumber, Select, Space } from 'antd';
 import type { WorkflowReminders } from 'openxiangda-contracts/browser';
 
 const units = [{ value: 1, label: '秒' }, { value: 60, label: '分钟' }, { value: 3600, label: '小时' }, { value: 86400, label: '天' }];
-const displayUnit = (seconds: number) => seconds % 3600 === 0 ? 3600 : seconds % 60 === 0 ? 60 : 1;
+const displayUnit = (seconds: number) => seconds % 86400 === 0 ? 86400 : seconds % 3600 === 0 ? 3600 : seconds % 60 === 0 ? 60 : 1;
 const sameRule = (a?: WorkflowReminders, b?: WorkflowReminders) => a && b ? a.afterSeconds === b.afterSeconds && a.everySeconds === b.everySeconds && a.max === b.max : a === b;
 const describeDuration = (seconds: number) => { const unit = displayUnit(seconds); return `${seconds / unit} ${units.find(item => item.value === unit)!.label}`; };
 
 /** Confirming edits only updates the canonical draft; the deadline worker owns delivery. */
-export function WorkflowReminderEditor({ rule, disabled, onChange }: {
-  rule?: WorkflowReminders; disabled: boolean; onChange: (rule: WorkflowReminders | undefined) => void;
+export function WorkflowReminderEditor({ rule, disabled, onChange, onDirtyChange }: {
+  rule?: WorkflowReminders; disabled: boolean; onChange: (rule: WorkflowReminders | undefined) => void; onDirtyChange?: (dirty: boolean) => void;
 }) {
   const [draft, setDraft] = useState<WorkflowReminders | undefined>(() => rule && structuredClone(rule));
   const [afterUnit, setAfterUnit] = useState(() => displayUnit(rule?.afterSeconds || 86400));
@@ -17,6 +17,8 @@ export function WorkflowReminderEditor({ rule, disabled, onChange }: {
   useEffect(() => { setDraft(rule && structuredClone(rule)); }, [rule]);
   const update = (patch: Partial<WorkflowReminders>) => setDraft(value => value && { ...value, ...patch });
   const dirty = !sameRule(draft, rule);
+  useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);
+  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
   const durationInput = (field: 'afterSeconds' | 'everySeconds', unit: number, setUnit: (unit: number) => void, label: string) => <Space.Compact>
     <InputNumber aria-label={label} disabled={disabled} min={1 / unit} max={2592000 / unit} step={1} value={draft![field] / unit}
       onChange={value => { if (typeof value === 'number' && Number.isFinite(value)) update({ [field]: Math.max(1, Math.min(2592000, Math.round(value * unit))) }); }} />
