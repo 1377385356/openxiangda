@@ -65,7 +65,7 @@ export function workflowSourceReferences(definition: WorkflowDefinition,binding:
   const steps = new Map<string,{ code: string; version: number; digest: string }>();
   for (const node of Object.values(definition.nodes)) if (node.kind === 'action') steps.set(`${node.handler.code}@${node.handler.version}`,{ code: node.handler.code,version: node.handler.version,digest: digest({ handler: node.handler,inputSchema: node.inputSchema,outputSchema: node.outputSchema }) });
   return { taskPages: [...pages].sort().map(code => ({ code,digest: digest(definition.taskPages?.[code]) })),steps: [...steps.values()].sort((a,b) => a.code.localeCompare(b.code) || a.version-b.version),
-    bindingKeys: Object.keys(binding.bindings).sort(),roles: [...new Set(Object.values(binding.bindings).flatMap(workflowAssignmentLeaves).flatMap(leaf => [...workflowBindingRoleCodes(leaf), ...Object.values(leaf.routing?.sources || {}).map(source => source.roleCode)]))].sort() };
+    bindingKeys: Object.keys(binding.bindings).sort(),roles: [...new Set(Object.values(binding.bindings).flatMap(entry => workflowAssignmentLeaves(entry).flatMap(leaf => [...workflowBindingRoleCodes(leaf), ...(entry.provider === 'conditional' ? Object.values(leaf.routing?.sources || {}).map(source => source.roleCode) : [])])))].sort() };
 }
 export function validateWorkflowSourceBundle(value: unknown,digest: (value: unknown) => string): string[] {
   try { return validateSourceBundle(value,digest); }

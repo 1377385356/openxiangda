@@ -71,3 +71,13 @@ test('supervisor stop roles are retained in source reference roles',()=>{
  const value=bundle();value.binding.bindings.chain={provider:'supervisor_chain',from:'initiator',until:{roleCode:'director'}};
  assert.deepEqual(workflowSourceReferences(value.definition,value.binding,digest).roles,['director']);
 });
+
+test('v1 source bundle refuses conditional declarations instead of losing handling intent', () => {
+  const value = bundle();
+  value.binding.bindings.people = { provider: 'conditional', cases: [{ when: { op: 'literal', value: true },
+    assignee: { provider: 'app_role', roleCode: 'reviewer' } }], otherwise: { provider: 'fixed_users', users: ['declared-person'] } };
+  value.origin.bindingDigest = digest(value.binding);
+  value.references = workflowSourceReferences(value.definition, value.binding, digest);
+  value.origin.catalogDigest = digest(value.references);
+  assert.deepEqual(validateWorkflowSourceBundle(value, digest), ['WORKFLOW_SOURCE_CONDITIONAL_EXPORT_UNAVAILABLE']);
+});
