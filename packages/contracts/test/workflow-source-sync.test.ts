@@ -56,7 +56,7 @@ test('ordinary source edits use the active application declaration as a base bef
 
 test('canvas source import preserves blank bindings and consumes unused released steps',()=>{
  const value=bundle(),local=structuredClone(value.definition),localBinding=structuredClone(value.binding);
- const step:any={title:'预算校验',handler:{code:'budget',version:1,mode:'pure'},inputSchema:{type:'object',additionalProperties:false,properties:{note:{type:'string'}}},outputSchema:{type:'object',additionalProperties:false,properties:{valid:{type:'boolean'}}}};
+ const step:any={title:'预算校验',handler:{code:'budget-v1',version:1,mode:'pure'},inputSchema:{type:'object',additionalProperties:false,properties:{note:{type:'string'}}},outputSchema:{type:'object',additionalProperties:false,properties:{valid:{type:'boolean'}}}};
  local.authoring={businessSteps:[step]};value.definition.authoring=structuredClone(local.authoring);
  value.definition.nodes.fresh=createWorkflowHumanNode('fresh','approval','新增审批','a');
  value.binding.bindings.canvas_fresh={provider:'app_role',roleCode:'finance'};
