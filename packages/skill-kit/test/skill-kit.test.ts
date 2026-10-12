@@ -15,6 +15,7 @@ import {
   OPENXIANGDA_SKILL_NAME,
   createSkillManifest,
   installSkills,
+  skillDirectoryDigest,
   validateSkills,
   writeSkillManifest,
 } from '../src/index.js';
@@ -114,6 +115,9 @@ test('installs the canonical skill and retires only managed legacy layouts', asy
     force: true,
   });
   assert.deepEqual(installed.installed, [OPENXIANGDA_SKILL_NAME]);
+  assert.equal(installed.provenance.source, resolve(root, OPENXIANGDA_SKILL_NAME));
+  assert.equal(installed.provenance.sha256, await skillDirectoryDigest(resolve(destination, OPENXIANGDA_SKILL_NAME)));
+  assert.ok(installed.provenance.sdkVersion);
   assert.deepEqual(installed.retired, ['openxiangda-v2-delivery']);
   await assert.rejects(
     () => readFile(resolve(destination, 'openxiangda-v2-delivery/SKILL.md')),
@@ -178,6 +182,35 @@ test('rejects nested references that masquerade as installable skills', async ()
     (await validateSkills(root)).map(issue => issue.message).join('\n'),
     /must not declare Skill frontmatter/
   );
+});
+
+test('preserves the previous skill before staging succeeds and restores it after failed readback', async () => {
+  const root = await fixture();
+  const destination = resolve(root, 'rollback');
+  const target = resolve(destination, OPENXIANGDA_SKILL_NAME);
+  await mkdir(target, { recursive: true });
+  await writeFile(resolve(target, 'keep.txt'), 'previous');
+  await assert.rejects(() => installSkillTransaction({ source: resolve(root, 'missing'), destination, name: OPENXIANGDA_SKILL_NAME }), /ENOENT/);
+  assert.equal(await readFile(resolve(target, 'keep.txt'), 'utf8'), 'previous');
+  await assert.rejects(() => installSkillTransaction({
+    source: resolve(root, OPENXIANGDA_SKILL_NAME), destination, name: OPENXIANGDA_SKILL_NAME,
+    verify: async path => { if (path === target) throw new Error('injected readback failure'); },
+  }), /injected readback failure/);
+  assert.equal(await readFile(resolve(target, 'keep.txt'), 'utf8'), 'previous');
+});
+
+test('refuses concurrent installation into the same destination', async () => {
+  const root = await fixture();
+  const destination = resolve(root, 'concurrent');
+  let proceed!: () => void;
+  let staged!: () => void;
+  const gate = new Promise<void>(done => { proceed = done; });
+  const ready = new Promise<void>(done => { staged = done; });
+  const input = { source: resolve(root, OPENXIANGDA_SKILL_NAME), destination, name: OPENXIANGDA_SKILL_NAME };
+  const first = installSkillTransaction({ ...input, verify: async () => { staged(); await gate; } });
+  await ready;
+  try { await assert.rejects(() => installSkillTransaction(input), /SKILL_INSTALL_BUSY/); }
+  finally { proceed(); await first; }
 });
 
 test('recursively rejects broken links, unknown commands, and retired identity/package terms', async () => {
