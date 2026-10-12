@@ -894,7 +894,9 @@ test.describe('application timezone boundary', () => {
     await expect(page.getByText('2026/3/8 02:15:00', { exact: true })).toBeVisible();
     await expect(page.locator('.oxa-record-detail-metadata')).toContainText('2026/08/25 09:00 提交');
     await page.getByRole('region', { name: '审批进度', exact: true }).scrollIntoViewIfNeeded();
-    await expect(page.getByText('2026/8/25 09:08:00', { exact: true })).toBeVisible();
+    const approvalTime = page.getByRole('region', { name: '审批进度', exact: true }).locator('time[datetime="2026-08-25T01:08:00.000Z"]');
+    await expect(approvalTime).toBeVisible();
+    await expect(approvalTime).toHaveText('08/25 09:08');
     await page.goto('/workflow-experience.e2e.html?initial=/work-center&timeZone=Asia%2FShanghai');
     await expect(page.getByRole('row').filter({ hasText: '采购申请审批' })).toContainText('09:00:00');
     await page.goto('/workflow-experience.e2e.html?initial=/todos&timeZone=Asia%2FShanghai');
@@ -1588,7 +1590,7 @@ for (const width of [320, 360, 390, 430, 900, 1024, 1280, 1440]) test(`S1 approv
   await expect(bar).toBeVisible();
   await expect(page.getByRole('tablist')).toHaveCount(0);
   await expect(page.getByText('需要你处理：财务复核')).toBeVisible();
-  await expect(page.getByText('会签 · 已有 1/2 人同意')).toBeVisible();
+  await expect(page.getByText('会签 · 已有 1/2 人已同意')).toBeVisible();
   await expect(bar.getByRole('button')).toHaveCount(mobile ? 3 : 4);
   const buttons = await bar.getByRole('button').evaluateAll(elements => elements.map(element => {
     const rect = element.getBoundingClientRect();

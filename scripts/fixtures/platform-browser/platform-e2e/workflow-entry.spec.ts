@@ -1,3 +1,4 @@
+import type { WorkflowTimeline } from 'openxiangda/core';
 import { namedLaunchIntent, namedLaunchContext } from './named-launch-fixture-data';
 import { expect, test, type Page } from '@playwright/test';
 import { mockPlatform, runtimeAuthorization } from './resource-platform-mock';
@@ -80,7 +81,7 @@ async function workflowEntryPlatform(page: Page) {
           subtables: state.complexFields ? { items: { resourceCode: 'purchase-lines', surface: { fields: childFields, detail: { fieldOrder: Object.keys(childFields) } }, rows: state.children, total: state.children.length } } : {}, projectionDigest: 'c'.repeat(64),
         } },
       };
-      const timeline = { engineVersion: '2.0', instanceId, instanceSequence: 4, timelineRevision: 'b'.repeat(64), flow: { nodes: [], edges: [] }, items: [], display: { entries: [] } };
+      const timeline = { engineVersion: '2.0', instanceId, instanceSequence: 4, timelineRevision: 'b'.repeat(64), flow: [], items: [], display: { entries: [] } } satisfies WorkflowTimeline;
       return ok({ schemaVersion: 'openxiangda.workflow-detail-surface/v2', protocolVersion: 'workflow_detail_surface_v2', detailRevision: 'd'.repeat(64), instanceSequence: 4, timelineRevision: timeline.timelineRevision, surface, timeline,
         currentStatus: { code: 'approved', label: '已同意', tone: 'success' }, nodes: [], handlingRecords: [], operations: [], navigationContext: { desktopReturnPath: '/admin/purchases', mobileReturnPath: '/m/admin/purchases' } });
     }
@@ -250,8 +251,8 @@ test('ordinary workflow editing uses the shared form and opens readonly detail a
   await expect(drawer.getByRole('button', { name: '关闭', exact: true })).toBeDisabled();
   await page.keyboard.press('Escape');
   await expect(drawer).toBeVisible();
-  const detail = page.getByRole('dialog', { name: '申请详情' });
-  await expect(detail.getByRole('heading', { name: '已更正的业务申请', exact: true })).toBeVisible();
+  const detail = page.getByRole('dialog', { name: '采购申请' });
+  await expect(detail.getByRole('region', { name: '申请内容', exact: true }).getByText('已更正的业务申请', { exact: true })).toBeVisible();
   await expect(detail.locator('input,textarea')).toHaveCount(0);
   await expect(detail.locator('.oxa-record-detail-hero').getByText('已同意', { exact: true })).toBeVisible();
   expect(state.correctionWrites).toHaveLength(1);
@@ -272,7 +273,7 @@ test('an uncertain workflow edit preserves input and replays the original revisi
   await expect(drawer.getByText('响应暂时不可用，请重试')).toBeVisible();
   await expect(drawer.getByLabel('申请名称', { exact: true })).toHaveValue('网络重试后保留的申请');
   await drawer.getByRole('button', { name: '保存' }).click();
-  await expect(page.getByRole('dialog', { name: '申请详情' }).getByRole('heading', { name: '网络重试后保留的申请', exact: true })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: '采购申请' }).getByRole('region', { name: '申请内容', exact: true }).getByText('网络重试后保留的申请', { exact: true })).toBeVisible();
   expect(state.correctionWrites).toHaveLength(2);
   expect(state.correctionWrites[1]).toEqual(state.correctionWrites[0]);
   expect(state.correctionEffects).toBe(1);
@@ -368,8 +369,8 @@ test('workflow launch resolves a lost response without another write and opens r
   await page.keyboard.press('Escape');
   await expect(drawer).toBeVisible();
   state.processStatus = 'started';
-  const detail = page.getByRole('dialog', { name: '申请详情' });
-  await expect(detail.getByRole('heading', { name: '抽屉新增的申请', exact: true })).toBeVisible();
+  const detail = page.getByRole('dialog', { name: '采购申请' });
+  await expect(detail.getByRole('region', { name: '申请内容', exact: true }).getByText('抽屉新增的申请', { exact: true })).toBeVisible();
   await expect(detail.locator('input,textarea')).toHaveCount(0);
   expect(state.launches).toHaveLength(1);
   expect(state.resolutionReads).toBe(1);
@@ -487,8 +488,8 @@ test('workflow change history uses the acquired Surface CSRF token', async ({ pa
   const state = await workflowEntryPlatform(page);
   await page.goto('/workflow-entry.e2e.html');
   await page.getByRole('button', { name: '查看', exact: true }).click();
-  const detail = page.getByRole('dialog', { name: '申请详情' });
-  await detail.getByRole('tab', { name: '变更记录' }).click();
+  const detail = page.getByRole('dialog', { name: '采购申请' });
+  await detail.getByText('资料变更', { exact: true }).click();
   await expect.poll(() => state.auditReads).toBeGreaterThan(0);
   await expect(detail.getByText('暂无变更记录', { exact: true })).toBeVisible();
   await expect(detail.getByText(/变更记录读取失败/)).toHaveCount(0);
@@ -498,13 +499,13 @@ test('detail switches to the ordinary full-width editor and back with only one d
   const state = await workflowEntryPlatform(page);
   await page.goto('/workflow-entry.e2e.html');
   await page.getByRole('button', { name: '查看', exact: true }).click();
-  const detail = page.getByRole('dialog', { name: '申请详情' });
-  await expect(detail.getByRole('heading', { name: '原业务申请', exact: true })).toBeVisible();
+  const detail = page.getByRole('dialog', { name: '采购申请' });
+  await expect(detail.getByRole('region', { name: '申请内容', exact: true }).getByText('原业务申请', { exact: true })).toBeVisible();
   await expect(detail).toHaveCSS('width', '850px');
   await page.screenshot({ path: testInfo.outputPath('workflow-detail-drawer-850.png'), animations: 'disabled' });
   await detail.getByRole('button', { name: '全屏', exact: true }).click();
   await expect.poll(async () => Math.round((await detail.boundingBox())!.width)).toBe(page.viewportSize()!.width);
-  await detail.getByRole('button', { name: '编辑', exact: true }).click();
+  await detail.locator('.oxa-record-detail-header-tools').getByRole('button', { name: '编辑', exact: true }).click();
   const editor = page.getByRole('dialog', { name: '编辑数据' });
   await expect(editor.getByLabel('申请名称', { exact: true })).toHaveValue('原业务申请');
   await expect(page.getByRole('dialog')).toHaveCount(1);
@@ -514,24 +515,26 @@ test('detail switches to the ordinary full-width editor and back with only one d
   await editor.getByLabel('申请名称', { exact: true }).fill('直接编辑的数据');
   await page.screenshot({ path: testInfo.outputPath('workflow-ordinary-editor-fullscreen.png'), animations: 'disabled' });
   await editor.getByRole('button', { name: '保存', exact: true }).click();
-  await expect(detail.getByRole('heading', { name: '直接编辑的数据', exact: true })).toBeVisible();
+  await expect(detail.getByRole('region', { name: '申请内容', exact: true }).getByText('直接编辑的数据', { exact: true })).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(1);
   await expect(detail.getByRole('button', { name: '退出全屏' })).toBeVisible();
   expect(state.correctionWrites[0].operations[0].id).toBe('record-1');
   expect(state.launches).toEqual([]);
 });
 
-test('standalone record detail keeps the approved content width and cancels editing in place', async ({ page }, testInfo) => {
+test('standalone workflow detail keeps the S1 content width and cancels editing in place', async ({ page }, testInfo) => {
   const state = await workflowEntryPlatform(page);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/workflow-entry.e2e.html?mode=desktop-detail');
-  const heading = page.getByRole('heading', { name: '原业务申请', exact: true });
+  const heading = page.getByRole('region', { name: '申请内容', exact: true }).getByText('原业务申请', { exact: true });
   await expect(heading).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.locator('.oxa-record-detail-body > .oxa-record-detail-width')).toHaveCSS('width', '1056px');
-  await expect(page.locator('.oxa-record-detail-hero h1')).toHaveCSS('font-size', '23px');
-  await expect(page.getByRole('tab')).toHaveCount(3);
-  await page.screenshot({ path: testInfo.outputPath('workflow-detail-standalone-1056.png'), animations: 'disabled' });
+  await expect(page.locator('.oxa-record-detail-body > .oxa-record-detail-width')).toHaveCSS('width', '1280px');
+  await expect(page.locator('.oxa-record-detail-hero h1')).toHaveCSS('font-size', '20px');
+  await expect(page.getByRole('tablist')).toHaveCount(0);
+  await expect(page.getByRole('region', { name: '申请内容', exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: '审批进度', exact: true })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('workflow-detail-standalone-1280.png'), animations: 'disabled' });
   await page.getByRole('button', { name: '编辑', exact: true }).first().click();
   await page.getByLabel('申请名称', { exact: true }).fill('取消的更改');
   await page.screenshot({ path: testInfo.outputPath('workflow-detail-standalone-inline-edit.png'), animations: 'disabled' });
@@ -545,10 +548,10 @@ test('mobile detail edits on the current page and returns to the same readonly r
   const state = await workflowEntryPlatform(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/workflow-entry.e2e.html?mode=mobile-detail');
-  await expect(page.getByRole('heading', { name: '原业务申请', exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: '申请内容', exact: true }).getByText('原业务申请', { exact: true })).toBeVisible();
   await expect(page.locator('.oxa-record-detail-hero h1')).toHaveCSS('font-size', '20px');
   await page.screenshot({ path: testInfo.outputPath('workflow-detail-mobile-390.png'), animations: 'disabled' });
-  await page.getByRole('button', { name: '编辑', exact: true }).first().click();
+  await page.locator('.oxa-record-detail-footer').getByRole('button', { name: /^编\s*辑$/ }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   const form = page.locator('.oxa-mobile-form');
   await expect(form.getByRole('textbox', { name: '申请名称', exact: true })).toHaveValue('原业务申请');
@@ -556,9 +559,9 @@ test('mobile detail edits on the current page and returns to the same readonly r
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath('workflow-ordinary-editor-mobile.png'), animations: 'disabled' });
   await form.getByRole('button', { name: '保存', exact: true }).click();
-  await expect(page.getByRole('heading', { name: '移动页面直接修改', exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: '申请内容', exact: true }).getByText('移动页面直接修改', { exact: true })).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.locator('.oxa-readonly-form input')).toHaveCount(0);
+  await expect(page.getByRole('region', { name: '申请内容', exact: true }).locator('input,textarea')).toHaveCount(0);
   expect(state.record.id).toBe('record-1');
   expect(state.launches).toEqual([]);
 });
@@ -587,9 +590,10 @@ test('ordinary workflow editing reuses Native uploads, rich text and parent-chil
   await expect(page.getByRole('dialog')).toHaveCount(1);
   await page.screenshot({ path: testInfo.outputPath('workflow-ordinary-editor-attachments-subtable.png'), animations: 'disabled' });
   await editor.getByRole('button', { name: '保存', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: '申请详情' })).toBeVisible();
-  await expect(page.getByRole('dialog', { name: '申请详情' }).getByText('保留详情说明', { exact: true })).toBeVisible();
-  await expect(page.getByRole('dialog', { name: '申请详情' }).getByText('不得显示的明细值', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: '采购申请' })).toBeVisible();
+  await page.getByRole('dialog', { name: '采购申请' }).getByText('采购明细', { exact: true }).click();
+  await expect(page.getByRole('dialog', { name: '采购申请' }).getByText('保留详情说明', { exact: true })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: '采购申请' }).getByText('不得显示的明细值', { exact: true })).toHaveCount(0);
   expect(state.uploads).toMatchObject([{ fieldCode: 'attachments', recordId: 'record-1' }]);
   const operations = state.correctionWrites[0].operations;
   expect(operations[0]).toMatchObject({ operation: 'update', id: 'record-1', expectedRevision: 8, data: { attachments: [{ id: 'file-1' }] } });
@@ -612,7 +616,7 @@ test('mobile child editing selects form fields while readonly details retain the
   await page.goto('/workflow-entry.e2e.html?mode=mobile-detail&fields=complex');
   await expect(page.locator('.oxa-workflow-subtable-mobile')).toContainText('保留详情说明');
   await expect(page.getByLabel('隐藏明细字段', { exact: true })).toHaveCount(0);
-  await page.getByRole('button', { name: '编辑', exact: true }).first().click();
+  await page.locator('.oxa-record-detail-footer').getByRole('button', { name: /^编\s*辑$/ }).click();
   const form = page.locator('.oxa-mobile-form');
   const childName = form.getByRole('textbox', { name: '品名', exact: true }).first();
   await expect(childName).toHaveValue('原明细甲');
@@ -636,7 +640,8 @@ for (const mobile of [false, true]) {
       state.instanceStatus = status;
       await page.goto(`/workflow-entry.e2e.html?mode=${mobile ? 'mobile' : 'desktop'}-detail`);
       await expect(page.locator('.oxa-record-detail-header')).toBeVisible();
-      await expect(page.locator('.oxa-record-detail-header').getByRole('button', { name: '编辑', exact: true })).toHaveCount(status === 'approved' ? 1 : 0);
+      const editTools = page.locator(mobile ? '.oxa-record-detail-footer' : '.oxa-record-detail-header-tools');
+      await expect(editTools.getByRole('button', { name: /^编\s*辑$/ })).toHaveCount(status === 'approved' ? 1 : 0);
       await expect(page.locator('.oxa-record-detail-footer').getByRole('button', { name: /关\s*闭/ })).toHaveCount(0);
       await expect(page.locator('.oxa-workflow-current-node')).toHaveCount(0);
     }
