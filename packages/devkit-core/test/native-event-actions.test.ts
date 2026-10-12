@@ -72,3 +72,22 @@ test('a legacy webhook retains its generated handler and does not gain an intern
   assert.equal(legacy.contracts.value.eventHandlerManifest.handlers.length, 1);
   assert.notEqual(legacy.contracts.digest, compiled.contracts.digest);
 });
+
+test('worker emits declared notification through both authoring and Native compilers', () => {
+  const app = fixture();
+  app.backend.enabled = true;
+  app.events.schemas = [
+    { eventType: 'native-actions.tick.v1', dataSchemaVersion: '1', jsonSchema: { type: 'object', additionalProperties: false } },
+    { eventType: 'native-actions.notice.v1', dataSchemaVersion: '1', jsonSchema: { type: 'object', additionalProperties: false } },
+  ];
+  app.events.timers = [{ code: 'tick', eventType: 'native-actions.tick.v1', cronExpression: '0 */5 * * * *', timezone: 'Asia/Shanghai', payload: {}, misfirePolicy: 'coalesce_one' }];
+  app.events.subscriptions = [{ code: 'worker', eventTypes: ['native-actions.tick.v1'], execution: {
+    kind: 'worker-effect', version: 1, resources: [{ resourceCode: 'items', readFields: ['id', 'revision', 'name'], writeFields: [], writeOperations: [] }],
+    emitEventTypes: ['native-actions.notice.v1'], maxOperations: 8, maxGuards: 24, maxQueryRecords: 500, maxIntentsPerEvent: 100,
+  } }];
+  const compiled = compileApplicationSources(app);
+  const platform = compileNativeApplicationConfiguration({ appCode: app.app.code,
+    configBytes: canonicalJson(compiled.config.value), contractBytes: canonicalJson(compiled.contracts.value),
+    expectedConfigDigest: compiled.config.digest, expectedContractDigest: compiled.contracts.digest });
+  assert.deepEqual(platform.projections.events.value.consumers[0].execution, compiled.contracts.value.eventConsumers[0]!.execution);
+});

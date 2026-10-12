@@ -126,7 +126,7 @@ export type EventSubscriptionDeclaration = Pick<
   EventSubscription,
   'code' | 'eventTypes'
 > & {
-  execution?: NativeEventActionDeclaration;
+  execution?: NativeEventActionDeclaration | import('openxiangda-contracts').EventWorkerEffectDeclaration;
   description?: string;
   filter?: EventSubscription['filter'];
   payload?: Partial<EventSubscription['payload']>;

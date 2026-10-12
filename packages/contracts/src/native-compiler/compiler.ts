@@ -1573,7 +1573,7 @@ function compileExpectedContract(
           );
         }
       });
-      const nativeAction = compileNativeEventAction(subscription, config.data.resources, pointer, { emitEventTypes: eventSchemas.map((schema: JsonObject) => String(schema.eventType)), workflowResources: config.workflows.bindings.map((binding: JsonObject) => String(binding.binding?.resourceCode || binding.resourceCode || '')) });
+      const nativeAction = compileNativeEventAction(subscription, config.data.resources, pointer, { emitEventTypes: eventSchemas.map((schema: JsonObject) => String(schema.eventType)), workflowResources: config.workflows.definitions.map((entry: JsonObject) => String(entry.definition?.subject?.resourceCode || '')) });
       const delivery = validateEventDeliveryPolicy(
         subscription.delivery,
         eventTypes,

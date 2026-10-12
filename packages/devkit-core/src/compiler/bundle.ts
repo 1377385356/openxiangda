@@ -899,7 +899,10 @@ function compileContractBundleFromNormalized(
         platformAccess: normalizeEventPlatformAccess(subscription.platformAccess),
       } : {}),
       delivery: subscription.delivery,
-      ...compileNativeEventAction(subscription, normalizedConfiguration.data.resources),
+      ...compileNativeEventAction(subscription, normalizedConfiguration.data.resources, '/events/subscriptions', {
+        emitEventTypes: normalizedConfiguration.events.schemas.map(schema => schema.eventType),
+        workflowResources: normalizedConfiguration.workflows.definitions.map(entry => entry.definition.subject.resourceCode),
+      }),
     })),
     item => item.code
   );
