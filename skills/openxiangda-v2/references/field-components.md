@@ -5,7 +5,7 @@ PostgreSQL 物理列、索引、查询运算符、权限路径和桌面/移动�
 应用不能另外声明存储类型或第二套字段元数据。
 
 完整的架构约束、验收矩阵和进度证据见
-[数据与权限](data-authz.md)。
+[数据与权限](./data-authz.md)。
 
 ## 字段与存储
 
@@ -121,7 +121,16 @@ import { AttachmentFileList } from 'openxiangda/field-kit';
 }
 ```
 
-来源端点接受当前表单绑定值、关键字和游标；页大小由 `source.pageSize` 固定。
+来源端点接受关键字和游标；页大小由 `source.pageSize` 固定。创建表单使用 `operation: 'create'` 和当前绑定值。
+普通编辑表单使用 `operation: 'update', record: { id, expectedRevision }`，只传实际编辑的 `bindings`；平台以已保存记录合并这些编辑，检查行/字段更新权限及记录版本。没有编辑的绑定即使不可读，也由服务端参与查找，不返回它的原值。清空绑定传 `null`；最终提交仍由普通 Data API 验证必填和引用规则。
+
+列表筛选使用 `operation: 'filter'`：只需要宿主资源及字段的读取权限，目标保持当前用户的读取投影和行策略。写入 `source.filters` 不参与筛选，所以历史停用或已不满足写入条件的引用仍可查询；调用中不能携带 `bindings`、`record`、`launch`、`action` 或任务上下文。如需只展示某一类身份，可声明至多 20 个常量条件，例如 `filterWhere: [{ field: 'kind', operator: 'eq', value: 'building' }]`；支持 `eq`/`in`，不接受字段绑定。没有目标资源读取权限时，不会返回候选。
+
+普通生成表单自动传入保存上下文和实际编辑。自定义编辑表单通过 `SurfaceFieldRenderers.referenceBindings` 提供编辑值，`SurfaceFieldControl`/`MobileSurfaceFieldControl` 根据 `recordId` 和 `expectedRevision` 发送同样上下文。直接使用 `ResourceReferenceField` 时提供 `record` 和 `bindingEdits`。不传绑定编辑即使用保存值，不用把不可读字段填进浏览器。
+
+目录筛选通过现有目录检索的 `purpose: 'filter'` 返回可选的历史停用项，并标明停用；普通成员选择仍只接受有效项。范围来源支持 `operation: 'filter'`，使用读取范围授权，包含停用身份；自定义范围筛选控件使用 `renderScopeFilter`，与编辑态 `renderScope` 分开。
+
+含这些引用/目录字段或来源维度的编译包自动要求 `data.field-source-contexts` 版本 `1.0.0`，目标平台先升级后才能交付新包。
 标准流程的具名动作发起表单由 `WorkflowSubmissionPage` 自动传递 `launch: { workflowCode, operationCode }`。
 平台核对当前环境已部署的流程、动作、输入字段映射和当前用户动作权限；不要求额外授予宿主表单 CRUD 权限。
 普通 CRUD 表单不传此绑定，继续检查对应创建/修改权限。自定义选择器可通过 `searchResource` 的同名选项传递
@@ -271,7 +280,7 @@ pnpm openxiangda check
 
 ```
 
-平台维护者负责字段存储、查询运算符、索引和 RLS 的内核回归。应用开发者验证自己声明的字段、角色和业务交互，详见[检查与验收](testing.md)。
+平台维护者负责字段存储、查询运算符、索引和 RLS 的内核回归。应用开发者验证自己声明的字段、角色和业务交互，详见[检查与验收](./testing.md)。
 
 ## 移动附件和图片
 
@@ -320,8 +329,7 @@ ISO instant）与 `minuteStep`（1 到 60 且整除 60）。设置步长后只�
 - 子表单使用每页十行的行内字段，手机支持折叠、添加和删除；父表提交校验所有行，包括折叠及未显示页的行。分页保留完整输入和草稿，任务完成校验会定位到错误行所在页；有待处理上传时先完成或移除文件，再翻页。
   权限、最大行数、原子事务和已存行的 revision 继续由原有资源契约约束。
 - 签名在底部画布手写并保存；图片、签名和附件仍通过托管文件接口上传与鉴权读取。
-- 手机富文本编辑降级为多行文本。未修改时保留已有 HTML；修改后将纯文本转为转义后的
-  段落 HTML，继续使用原有 `text.rich` 数据类型。
+- 手机富文本使用同一 Tiptap 引擎和安全格式协议；工具栏支持触控和滚动，保留已有排版。
 
 评分是整数的可选控件，默认五颗星，声明示例：
 
@@ -346,3 +354,39 @@ ISO instant）与 `minuteStep`（1 到 60 且整除 60）。设置步长后只�
 普通新建即使省略表也检查；编辑只检查本次提交的表。任务草稿/保存允许不足，
 完成时对可见可写表检查最终行数，删除标记不算行。旧固定声明不隐式补造数据。
 标准PC/移动表单显示下限并保留字段校验；应用可提供初始空行，平台不生成可信资料。
+
+
+### 完整富文本与受管视频
+
+`RichTextField` 默认采用 Tiptap / ProseMirror，支持标题、字体/字号、对齐、首行缩进、行高、
+文字/背景色、基础强调、上下标、引用、代码、分隔线、列表/待办、表格、表情选择、撤销/重做与全屏编辑。
+PC 和手机保存同一 HTML 字符串。平台 `data.rich-text` 能力和配套服务端必须先升级。
+
+```tsx
+import { RichTextField, RichTextValueDisplay, uploadOperationManagedFile } from 'openxiangda/field-kit';
+<RichTextField resourceCode="articles" value={body} onChange={setBody}
+  onUpload={file => uploadOperationManagedFile({ operationCode: 'save-article', resourceCode: 'articles', fieldCode: 'body', intent: 'create', file })} />
+<RichTextValueDisplay resourceCode="articles" value={body} />
+```
+
+具名动作声明 `managedFiles` 对应资源/富文本字段，普通 CRUD/任务页面沿用其上传适配器。
+图片只支持 PNG/JPEG/WebP/GIF（每值20张，每张10MiB），视频只支持 MP4/WebM（每值4个，
+每个100MiB；实际仍受租户存储上传额度限制）。服务器核验真实图片/视频容器，权限路由支持
+Range 流式读取。无转码、外站视频、iframe 和自动播放；浏览器编解码器可能不同。
+
+前端、写入和公开投影统一消费 `openxiangda-contracts/rich-text`；
+应用浏览器及 Nest 通过 `openxiangda/rich-text` 使用相同无 DOM 规则，避免后端加载 UI 包。`sanitizeRichText` 用于展示，
+`sanitizeRichTextHtml` 默认只接受 Native 受管媒体，`display:true` 才接受平台匿名公共媒体路径。
+不要保存 blob、data、OSS 签名 URL，禁止关闭清洗。外部编辑器可以使用该协议，样式仍受
+版本化白名单与数值上限约束。`createRichTextExtensions` 提供同一官方免费节点集合。
+
+需要替换全部标准字段的编辑器时，使用 `RichTextEditorProvider` 注入
+`ComponentType<RichTextFieldProps>`；自定义组件接收当前资源、字段、recordId、workflowBinding
+及同一 onUpload/onChange/disabled/mobile。必须遵守统一清洗和受管文件协议。需要默认实现
+时渲染 `DefaultRichTextField`，不要在 Provider 中递归调用 `RichTextField`。上传跨记录/字段
+切换时丢弃旧完成回调，不将新文件插入另一个表单。
+
+跨资源发布声明原有 `managedFileCopies` 的同型 `text.rich` 字段对，对每个媒体调用
+`copyManagedFile`，收到 `succeeded` 回执后用 `sanitizeRichTextHtml(html, { rewriteMedia })` 重写为
+目标资源的 canonical 路径，再执行业务事务。复制后源文件不变，目标独立引用并参与清理。
+立即/定时发布共用同一服务动作；不能直接复用另一个资源的 file ID。

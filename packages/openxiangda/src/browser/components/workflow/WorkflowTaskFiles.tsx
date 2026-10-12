@@ -1,3 +1,4 @@
+import { createBrowserUuid } from '../../uuid';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, App, Button, Space } from 'antd';
 import type { DataFileRef, WorkflowTaskFileUpload } from 'openxiangda-contracts/browser';
@@ -94,7 +95,7 @@ export function useWorkflowTaskFiles({ taskId, controller, onBusyChange }: {
       throw new Error(text);
     }
     const wire: FieldUploadIntent = { taskId, file, phase: 'initiate', onRecovered, input: {
-      ...(row ? { row } : {}), id: crypto.randomUUID(), fieldCode: field.key, fileName: file.name, fileSize: file.size, contentType: file.type,
+      ...(row ? { row } : {}), id: createBrowserUuid(), fieldCode: field.key, fileName: file.name, fileSize: file.size, contentType: file.type,
     } };
     intent.current = wire; setPending(wire);
     return run(wire, false);

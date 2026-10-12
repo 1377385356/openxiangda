@@ -1,3 +1,4 @@
+import { importWorkflowSource,readWorkflowSourceBundle,readWorkflowSourceLock,workflowSourceDeclaration,writeWorkflowRegistrationPlan,writeWorkflowSourceBundle } from './workflow-source-sync.js';
 import { assertDeploymentPrerequisites } from './deployment-prerequisites.js';
 import { collectTargetReadiness } from './target-readiness.js';
 import type { DeploymentStrategy } from 'openxiangda-contracts';
@@ -523,6 +524,37 @@ export class OpenXiangdaApplicationServices {
     const client = await this.client(workspace.root);
     return this.ok("admin.context", workspace.context.workspace,
       await client.applicationAdministrationContext(workspace.config.app.code, environment));
+  }
+
+  async workflowExport(root: string | undefined,workflowCode: string,environmentKey: string,out: string) {
+    const workspace=await this.workspace(root),environment=this.deploymentEnvironment(environmentKey);
+    const bundle=await (await this.client(workspace.root)).workflowSourceExport(workspace.config.app.code,workflowCode,environment);
+    return this.ok('workflow.export',workspace.context.workspace,writeWorkflowSourceBundle(workspace.root,resolve(workspace.root,out),bundle));
+  }
+  async workflowImport(root: string | undefined,path: string,adoptHandlingDefaults = false) {
+    const workspace=await this.workspace(root),bundle=readWorkflowSourceBundle(resolve(workspace.root,path));
+    return this.ok('workflow.import',workspace.context.workspace,importWorkflowSource(workspace.root,workspace.configPath,workspace.config,bundle,adoptHandlingDefaults));
+  }
+  async workflowPlanRegistration(root: string | undefined,environmentKey: string,write = false) {
+    const workspace=await this.workspace(root),environment=this.deploymentEnvironment(environmentKey);
+    const workflows=(workspace.config.workflows?.activations || []).map(activation => { const item=workflowSourceDeclaration(workspace.config,activation.workflowCode);return { workflowCode: activation.workflowCode,definitionDigest: item.definitionDigest,bindingDigest: item.bindingDigest,definitionVersion: item.definition.version,bindingVersion: item.binding.version }; });
+    if (!workflows.length) throw new Error('WORKFLOW_SOURCE_DECLARATION_REQUIRED');
+    const plans=await (await this.client(workspace.root)).workflowSourcePlan(workspace.config.app.code,environment,workflows);
+    return this.ok('workflow.plan-registration',workspace.context.workspace,{ plans,...(write ? { source: writeWorkflowRegistrationPlan(workspace.root,workspace.configPath,workspace.config,plans) } : {}) });
+  }
+  async workflowSync(root: string | undefined,workflowCode: string,input: { fromEnvironment: string; toEnvironment: string; expectedSourceHeadRevision: number; expectedTargetHeadRevision: number; operationId: string; reason: string; scope?: 'running_and_new' | 'new_only'; acknowledgeExceptions?: boolean; copyHandlingDefaults?: boolean }) {
+    const workspace=await this.workspace(root),client=await this.client(workspace.root);
+    const fromEnvironment=this.deploymentEnvironment(input.fromEnvironment),toEnvironment=this.deploymentEnvironment(input.toEnvironment);
+    const result=await client.workflowSourceSync(workspace.config.app.code,workflowCode,{ ...input,fromEnvironment,toEnvironment });
+    return this.ok('workflow.sync',workspace.context.workspace,result);
+  }
+  async workflowStatus(root: string | undefined,environmentKey: string,workflowCode?: string) {
+    const workspace=await this.workspace(root),environment=this.deploymentEnvironment(environmentKey),client=await this.client(workspace.root);
+    const codes=(workspace.config.workflows?.activations || []).map(item => item.workflowCode).filter(code => !workflowCode || workflowCode === code);
+    if (workflowCode && !codes.length) throw new Error('WORKFLOW_SOURCE_DECLARATION_REQUIRED');
+    const items=[];
+    for (const code of codes) { const item=workflowSourceDeclaration(workspace.config,code),lock=readWorkflowSourceLock(workspace.root,code);items.push(await client.workflowSourceStatus(workspace.config.app.code,code,environment,{ declared: { definitionDigest: item.definitionDigest,bindingDigest: item.bindingDigest },...(lock ? { base: lock.base } : {}) })); }
+    return this.ok('workflow.status',workspace.context.workspace,{ environmentKey: environment,items });
   }
 
   async workflowNodeConfigurations(root: string | undefined, workflowCode: string, environmentKey = "preproduction") {
@@ -2644,8 +2676,9 @@ export class OpenXiangdaApplicationServices {
       workspace.config,
       this.toolchainVersion
     );
+    let configurationRunId: string | undefined;
     if (environment.environmentKey === 'preproduction') {
-      input.onStatus?.('同步test完整开发配置；不构建应用制品，后台事件和业务日期调度暂留正式批次验收');
+      input.onStatus?.('准备会话独立开发配置；保留已部署test版本、流程及调度');
       const synchronized = await client.synchronizeDevelopmentConfiguration(workspace.config.app.code, {
         schemaVersion: DEVELOPMENT_CONFIGURATION_SCHEMA, environmentKey: 'preproduction',
         expectedHeadRevision: environment.activeHead!.revision,
@@ -2657,10 +2690,11 @@ export class OpenXiangdaApplicationServices {
       });
       environments = await client.applicationEnvironments(workspace.config.app.code);
       environment = environments.items.find(item => item.id === synchronized.environmentId);
-      if (!environment?.activeHead || environment.activeHead.activeAppVersionId !== synchronized.appVersionId ||
+      if (!environment?.activeHead || environment.activeHead.activeAppVersionId !== synchronized.publishedAppVersionId ||
         environment.activeHead.revision !== synchronized.headRevision) {
         throw new Error('OPENXIANGDA_CONNECTED_DEV_CONFIGURATION_HEAD_CHANGED: 同步后环境已变化，请保留原配置运行记录');
       }
+      configurationRunId = synchronized.configurationRunId;
     }
     const selectedEnvironment = environment;
     const remoteSession = {
@@ -2670,7 +2704,7 @@ export class OpenXiangdaApplicationServices {
           {
             environmentKey: selectedEnvironment.environmentKey,
             manifestDigest: sources.config.digest,
-            ...(selectedEnvironment.environmentKey === 'production' ? { configuration: sources.config.value } : {}),
+            ...(selectedEnvironment.environmentKey === 'preproduction' ? { configuration: sources.config.value, ...(configurationRunId ? {configurationRunId} : {}) } : {}),
           }
         );
         return {
@@ -2726,7 +2760,7 @@ export class OpenXiangdaApplicationServices {
       } } : {}),
     };
     input.onStatus?.(
-      "connected dev 使用平台当前完整配置，Web/Nest保持本地源码联调"
+      "connected dev 使用会话独立配置，Web/Nest保持本地源码联调，线上test版本不切换"
     );
     const connected = await runConnectedDevelopment({
       root: workspace.root,

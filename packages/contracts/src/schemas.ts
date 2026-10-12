@@ -1896,6 +1896,7 @@ const directoryEntrySchema = {
     },
     description: { type: "string" },
     selectable: { type: "boolean" },
+    inactive: { type: "boolean" },
     path: {
       type: "array",
       items: {
@@ -1973,7 +1974,7 @@ export const nativeScopeValueResolveRequestSchema = {
   properties: {
     schemaVersion: { const: SCHEMA_VERSIONS.nativeScopeValueResolveRequest },
     dimensionCode: nativeStableCode,
-    operation: { enum: ["create", "update"] },
+    operation: { enum: ["create", "update", "filter"] },
     values: {
       type: "array",
       minItems: 1,
@@ -2030,7 +2031,7 @@ export const nativeScopeValuePageSchema = {
       pattern: "^[A-Za-z][A-Za-z0-9_]{0,62}$",
     },
     dimensionCode: nativeStableCode,
-    operation: { enum: ["create", "update"] },
+    operation: { enum: ["create", "update", "filter"] },
     items: {
       type: "array",
       maxItems: 50,
@@ -2042,6 +2043,7 @@ export const nativeScopeValuePageSchema = {
           value: nonEmptyString,
           label: nonEmptyString,
           selectable: { type: "boolean" },
+          inactive: { type: "boolean" },
         },
       },
     },
@@ -2060,10 +2062,20 @@ export const dataFieldSourceQuerySchema = {
   type: "object",
   additionalProperties: false,
   required: ["schemaVersion", "operation"],
+  allOf: [
+    { if: { properties: { operation: { const: 'filter' } } },
+      then: { not: { anyOf: ['bindings', 'launch', 'action', 'record'].map(key => ({ required: [key] })) } } },
+    { if: { required: ['record'] }, then: { properties: { operation: { const: 'update' } },
+      not: { anyOf: [{ required: ['launch'] }, { required: ['action'] }] } } },
+    { if: { required: ['action'] }, then: { properties: { operation: { const: 'update' } },
+      not: { required: ['launch'] } } },
+  ],
   properties: {
     schemaVersion: { const: SCHEMA_VERSIONS.dataFieldSourceQuery },
     action: recordEditInputSchema,
-    operation: { enum: ["create", "update"] },
+    record: { type: "object", additionalProperties: false, required: ["id", "expectedRevision"],
+      properties: { id: { type: "string", format: "uuid" }, expectedRevision: { type: "integer", minimum: 1, maximum: Number.MAX_SAFE_INTEGER } } },
+    operation: { enum: ["create", "update", "filter"] },
     launch: {
       type: "object", additionalProperties: false,
       required: ["workflowCode", "operationCode"],
@@ -2139,7 +2151,7 @@ export const dataFieldSourcePageSchema = {
       pattern: "^[A-Za-z][A-Za-z0-9_]{0,62}$",
     },
     sourceResourceCode: nativeStableCode,
-    operation: { enum: ["create", "update"] },
+    operation: { enum: ["create", "update", "filter"] },
     items: {
       type: "array",
       maxItems: 100,
@@ -2351,6 +2363,11 @@ const dataFieldResourceSourceSchema = {
       type: "array",
       maxItems: 20,
       items: dataFieldResourceSourceFilterSchema,
+    },
+    filterWhere: {
+      type: "array", maxItems: 20,
+      items: { type: "object", additionalProperties: false, required: ["field", "operator", "value"],
+        properties: { field: dataFieldCode, operator: { enum: ["eq", "in"] }, value: {} } },
     },
     pageSize: { type: "integer", minimum: 1, maximum: 100 },
     loadMode: { enum: ["search", "all"] },
@@ -5572,6 +5589,7 @@ const workflowCcNodeSchema = {
   },
 } as const;
 
+const workflowReminderSchema = { type: 'object', additionalProperties: false, required: ['afterSeconds','everySeconds','max','to'], properties: { afterSeconds: { type: 'integer', minimum: 1, maximum: 2592000 }, everySeconds: { type: 'integer', minimum: 1, maximum: 2592000 }, max: { type: 'integer', minimum: 1, maximum: 10 }, to: { type: 'array', minItems: 1, maxItems: 1, items: { const: 'handlers' } } } };
 export const workflowBusinessStepNodeSchema = {
   type: 'object', additionalProperties: false,
   required: ['id', 'kind', 'title', 'next', 'handler', 'inputSchema', 'outputSchema', 'inputs'],
@@ -5582,6 +5600,14 @@ export const workflowBusinessStepNodeSchema = {
       properties: { code: { type: 'string', pattern: '^[a-z][a-z0-9-]{0,100}$' }, version: { type: 'integer', minimum: 1, maximum: 1_000_000 }, mode: { enum: ['pure', 'reconciled-effect'] }, dataTransaction: { const: true } },
       allOf: [{ if: { required: ['dataTransaction'] }, then: { properties: { mode: { const: 'reconciled-effect' } } } }],
     },
+    notification: { type: 'object', additionalProperties: false, required: ['template','recipients'], properties: {
+      template: { const: 'workflow_message' }, recipients: { oneOf: [
+        { type: 'object', additionalProperties: false, required: ['provider'], properties: { provider: { const: 'initiator' } } },
+        { type: 'object', additionalProperties: false, required: ['provider','users'], properties: { provider: { const: 'fixed_users' }, users: { type: 'array', minItems: 1, maxItems: 50, uniqueItems: true, items: { type: 'string', minLength: 1, maxLength: 255 } } } },
+        { type: 'object', additionalProperties: false, required: ['provider','roleCode'], properties: { provider: { const: 'app_role' }, roleCode: nonEmptyString } },
+        { type: 'object', additionalProperties: false, required: ['provider','inputPath'], properties: { provider: { const: 'form_field_users' }, inputPath: nonEmptyString } },
+      ] },
+    } },
     inputSchema: { type: 'object' }, outputSchema: { type: 'object' },
     inputs: { type: 'object', maxProperties: 32, additionalProperties: {
       oneOf: [
@@ -5592,8 +5618,43 @@ export const workflowBusinessStepNodeSchema = {
   },
 } as const;
 
+const workflowReturnPolicySchema = {
+  type: 'object', additionalProperties: false, required: ['targets'], properties: {
+    targets: { type: 'array', maxItems: 20, items: {
+      type: 'object', additionalProperties: false, required: ['nodeId','routes','defaultRoute'],
+      properties: { nodeId: nonEmptyString, routes: { type: 'array', minItems: 1, maxItems: 2, uniqueItems: true, items: { enum: ['replay','resume'] } }, defaultRoute: { enum: ['replay','resume'] } },
+    } },
+  },
+};
 const workflowNodeSchema = {
   oneOf: [
+    {
+      type: 'object', additionalProperties: false,
+      required: ['id', 'kind', 'title', 'binding', 'mode', 'next', 'allowedOperations', 'requiredOperations'],
+      properties: {
+        id: nonEmptyString, kind: { const: 'handle' }, title: nonEmptyString, reminders: workflowReminderSchema,
+        binding: nonEmptyString, mode: { enum: ['single', 'any', 'all', 'sequence'] },
+        next: nonEmptyString, emptyPolicy: { const: 'block' },
+        taskPageCode: { type: 'string', pattern: '^[A-Za-z][A-Za-z0-9_-]{0,63}$' },
+        allowedOperations: { type: 'array', uniqueItems: true, items: { enum: ['complete', 'save_form', 'return', 'transfer', 'delegate'] } },
+        requiredOperations: { type: 'array', uniqueItems: true, items: { enum: ['complete', 'save_form', 'return', 'transfer', 'delegate'] } },
+        returnPolicy: workflowReturnPolicySchema,
+        returnTargets: { type: 'array', items: nonEmptyString, uniqueItems: true },
+        operationPolicy: { type: 'object', additionalProperties: false, properties: Object.fromEntries(['complete','save_form','return','transfer','delegate'].map(operation => [operation, {
+          type: 'object', additionalProperties: false, minProperties: 1,
+          properties: { label: { type: 'string', minLength: 1, maxLength: 40 },
+            ...(operation !== 'save_form' ? { opinion: { enum: ['none','optional','required'] }, minimumOpinion: { enum: ['none','optional','required'] } } : {}),
+            ...(operation === 'complete' ? { commentRequired: { type: 'boolean' } } : {}),
+            ...(['return','transfer','delegate'].includes(operation) ? { reasonRequired: { type: 'boolean' } } : {}) },
+        }])) },
+        administration: { type: 'object', additionalProperties: false, properties: {
+          modes: { type: 'array', uniqueItems: true, minItems: 1, maxItems: 4, items: { enum: ['single','any','all','sequence'] } },
+          assigneeProviders: { type: 'array', uniqueItems: true, minItems: 1, maxItems: 3, items: { enum: ['fixed_users','app_role','app_role_in_scope'] } },
+          operations: { type: 'array', uniqueItems: true, minItems: 1, maxItems: 5, items: { enum: ['complete','save_form','return','transfer','delegate'] } },
+        } },
+        fieldPolicy: { type: 'object', additionalProperties: false, properties: { default: { enum: ['hidden','readonly','edit','edit_required'] }, fields: { type: 'object', additionalProperties: { enum: ['hidden','readonly','edit','edit_required'] } } } },
+      },
+    },
     {
       type: "object",
       additionalProperties: false,
@@ -5609,6 +5670,7 @@ const workflowNodeSchema = {
       properties: {
         id: nonEmptyString,
         kind: { const: "approval" },
+        reminders: workflowReminderSchema,
         title: nonEmptyString,
         binding: nonEmptyString,
         mode: { enum: ["single", "any", "all", "sequence"] },
@@ -5627,11 +5689,13 @@ const workflowNodeSchema = {
             type: 'object', additionalProperties: false, minProperties: 1,
             properties: {
               label: { type: 'string', minLength: 1, maxLength: 40, pattern: '^(?!.*[\\u0000-\\u001f\\u007f])(?=.*\\S).*$' },
-              ...(['approve', 'reject'].includes(operation) ? { commentRequired: { type: 'boolean' } } : {}),
+              ...(operation !== 'save_form' ? { opinion: { enum: ['none', 'optional', 'required'] }, minimumOpinion: { enum: ['none', 'optional', 'required'] } } : {}),
+              ...(['complete', 'approve', 'reject'].includes(operation) ? { commentRequired: { type: 'boolean' } } : {}),
               ...(['transfer', 'delegate', 'add_assignee', 'return'].includes(operation) ? { reasonRequired: { type: 'boolean' } } : {}),
             },
           }])),
         },
+        requiredOperations: { type: 'array', minItems: 1, maxItems: 7, uniqueItems: true, items: { enum: [...WORKFLOW_CONFIGURABLE_OPERATIONS] } },
         allowedOperations: {
           type: "array",
           uniqueItems: true,
@@ -5650,6 +5714,7 @@ const workflowNodeSchema = {
             ],
           },
         },
+        returnPolicy: workflowReturnPolicySchema,
         returnTargets: {
           type: "array",
           uniqueItems: true,
@@ -5711,7 +5776,7 @@ const workflowNodeSchema = {
     workflowCcNodeSchema,
     workflowBusinessStepNodeSchema,
     { type: 'object', additionalProperties: false, required: ['id', 'kind', 'title', 'taskPageCode', 'next'],
-      properties: { id: nonEmptyString, kind: { const: 'correction' }, title: nonEmptyString,
+      properties: { id: nonEmptyString, kind: { const: 'correction' }, title: nonEmptyString, reminders: workflowReminderSchema,
         taskPageCode: { type: 'string', pattern: '^[A-Za-z][A-Za-z0-9_-]{0,63}$' }, next: nonEmptyString } },
   ],
 } as const;
@@ -5931,6 +5996,7 @@ export const workflowBindingSchema = {
               "input_users",
               "form_field_users",
               "department_supervisor",
+              "supervisor_chain",
               "app_role",
               "app_role_in_scope",
               "business_relation",
@@ -5943,6 +6009,9 @@ export const workflowBindingSchema = {
           inputPath: { type: "string" },
           selectedInputPath: { type: "string", maxLength: 255, pattern: "^[A-Za-z][A-Za-z0-9_-]*(?:\\.[A-Za-z][A-Za-z0-9_-]*)*$" },
           candidateField: dataFieldCode,
+          from: { oneOf: [{const:'initiator'},{type:'object',additionalProperties:false,required:['field'],properties:{field:{type:'string',maxLength:255}}}] },
+          until: { oneOf: [{const:'top'},{type:'object',additionalProperties:false,required:['level'],properties:{level:{type:'integer',minimum:1,maximum:20}}},{type:'object',additionalProperties:false,required:['roleCode'],properties:{roleCode:nonEmptyString}}] },
+          continuous: { type:'boolean' }, missing: {enum:['skip_level','block']},
           departmentIdFrom: { type: "string" },
           level: { type: "integer", minimum: 1, maximum: 20 },
           fallbackToAncestorSupervisor: { type: "boolean" },
@@ -6959,7 +7028,10 @@ export const workflowSurfaceSchema = {
       },
     },
     fieldPolicy: { type: "object" },
-    operations: { type: "array", items: { type: "object" } },
+    operations: { type: "array", items: { type: "object", properties: {
+      prominence: { anyOf: [{ type: "integer", minimum: 1, maximum: 1000 }, { type: "null" }] },
+      consequence: { type: "string", minLength: 1, maxLength: 1000 },
+    } } },
     extensions: { type: "object" },
   },
 } as const;
@@ -7029,7 +7101,10 @@ export const workflowDetailSurfaceSchema = {
     },
     nodes: { type: "array", items: { type: "object" } },
     handlingRecords: { type: "array", items: { type: "object" } },
-    operations: { type: "array", items: { type: "object" } },
+    operations: { type: "array", items: { type: "object", properties: {
+      prominence: { anyOf: [{ type: "integer", minimum: 1, maximum: 1000 }, { type: "null" }] },
+      consequence: { type: "string", minLength: 1, maxLength: 1000 },
+    } } },
     navigationContext: {
       type: "object",
       additionalProperties: false,

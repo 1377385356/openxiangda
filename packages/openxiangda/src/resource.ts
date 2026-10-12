@@ -1,0 +1,21 @@
+/** Public presentation boundary for editable application resource pages. */
+export * from './browser/components/resource/GeneratedResourceCrud';
+export { GeneratedResourceFormPage as ResourceFormBlock } from './browser/components/resource/GeneratedResourceForm';
+export { GeneratedResourceDetailPage as ResourceDetailBlock } from './browser/components/resource/GeneratedResourceCrud';
+export * from './browser/components/resource/StandardResourcePages';
+export { ResourceAdvancedFilter } from './browser/components/resource/ResourceAdvancedFilter';
+export { ResourceListSettings } from './browser/components/resource/ResourceListSettings';
+export { ResourceSortSettings } from './browser/components/resource/ResourceSortSettings';
+export * from './browser/components/resource/ResourceBatchActions';
+export { RecordDetailSections } from './browser/components/resource/RecordDetailFrame';
+export { RecordChangeHistory } from './browser/components/resource/RecordChangeHistory';
+export { ResourceRecordComments } from './browser/components/resource/ResourceRecordComments';
+export { ResourceRecordPrintPreview } from './browser/components/resource/ResourceRecordPrintPreview';
+export { ResourceRecordDeletion } from './browser/components/resource/ResourceRecordDeletion';
+export { SurfaceFieldValue, SurfaceFilterControl } from './browser/components/resource/SurfaceFields';
+export type { SurfaceField } from './browser/components/resource/SurfaceFields';
+export type { GeneratedResourceDefinition } from './browser/components/resource/generated-resource-definition';
+export type { ResourceRecord } from './browser/components/resource/resource-page-helpers';
+export type { ResourcePageProps } from './browser/admin-contributions';
+export { createNativeResourceClient } from './browser/platform-client';
+export { useResourceDefinitions } from './browser/resource-definitions';

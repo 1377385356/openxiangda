@@ -4,7 +4,7 @@ export interface WorkflowInitiatorApprovalNodeSource {
   initiatorApprovalPolicy?: unknown;
   taskPageCode?: unknown;
   fieldPolicy?: { default?: string; fields?: Record<string, string> };
-  operationPolicy?: { approve?: { commentRequired?: boolean } };
+  operationPolicy?: { approve?: { commentRequired?: boolean; opinion?: 'none' | 'optional' | 'required' } };
 }
 export type WorkflowInitiatorApprovalPages = Record<string, { fields?: unknown }>;
 
@@ -38,7 +38,7 @@ export function validateWorkflowInitiatorApprovalPolicy(definition: {
       [node.fieldPolicy?.default, ...Object.values(node.fieldPolicy?.fields || {})].some(value => value === 'edit' || value === 'edit_required')) {
       errors.push(`WORKFLOW_INITIATOR_APPROVAL_INPUT_REQUIRED:${id}`);
     }
-    if (node.operationPolicy?.approve?.commentRequired === true) {
+    if ((node.operationPolicy?.approve?.opinion === 'required' || node.operationPolicy?.approve?.commentRequired === true)) {
       errors.push(`WORKFLOW_INITIATOR_APPROVAL_COMMENT_REQUIRED:${id}`);
     }
   }

@@ -1,0 +1,6 @@
+{
+  "code": "public-entry",
+  "requires": [
+    "time-slot"
+  ]
+}

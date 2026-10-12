@@ -3,6 +3,7 @@
 
 @import './mobile-fields.css';
 @import './record-detail.css';
+@import './workflow-approval.css';
 @import './record-print.css';
 
 .oxa-ui-root {
@@ -305,6 +306,23 @@
   gap: 12px;
 }
 
+.oxa-workflow-detail-sections {
+  display: grid;
+  gap: 18px;
+}
+
+.oxa-workflow-detail-section {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.oxa-workflow-detail-section > .ant-typography {
+  margin: 0 2px;
+  color: var(--ant-color-text);
+  font-size: 18px;
+}
+
 .oxa-workflow-business,
 .oxa-workflow-timeline-card,
 .oxa-workflow-participants,
@@ -495,6 +513,15 @@
 .oxa-workflow-actions .ant-btn {
   min-width: 112px;
   min-height: 40px;
+}
+
+.oxa-workflow-actions-desktop .oxa-workflow-more-trigger {
+  order: -1;
+  margin-right: auto;
+}
+
+.oxa-workflow-actions .oxa-workflow-more-trigger {
+  flex: 0 0 auto;
 }
 
 .oxa-workflow-more-actions {
@@ -1294,6 +1321,16 @@
 .oxa-workflow-actions-mobile .ant-btn {
   flex: 1;
   min-width: 0;
+  white-space: nowrap;
+}
+
+.oxa-workflow-actions-mobile {
+  flex-wrap: nowrap;
+  justify-content: stretch;
+}
+
+.oxa-workflow-actions-mobile .oxa-workflow-approve-primary {
+  flex: 2 1 0;
 }
 
 .oxa-workflow-actions-mobile .oxa-workflow-more-trigger {
@@ -2330,25 +2367,117 @@
   width: 100%;
 }
 
-.oxa-rich-text-toolbar {
-  border: 1px solid var(--ant-color-border);
-  border-bottom: 0;
-  border-radius: 6px 6px 0 0;
-  padding: 6px;
+.oxa-rich-text-field {
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 14px;
+  background: var(--ant-color-bg-container);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--ant-color-text) 6%, transparent);
 }
 
+.oxa-rich-text-toolbar-shell {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  min-width: 0;
+  width: 100%;
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+  background: var(--ant-color-bg-container);
+}
+
+.oxa-rich-text-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1 1 auto;
+  width: 0;
+  min-width: 0;
+  min-height: 46px;
+  padding: 6px 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 0;
+  background: var(--ant-color-bg-container);
+  scrollbar-width: none;
+}
+
+.oxa-rich-text-toolbar::-webkit-scrollbar { display: none; }
+.oxa-rich-text-toolbar-shell-expanded .oxa-rich-text-toolbar { flex-wrap: wrap; overflow: visible; row-gap: 6px; }
+.oxa-rich-text-toolbar-more.ant-btn {
+  flex: none;
+  min-width: 68px;
+  min-height: 32px;
+  margin: 7px 8px 0 4px;
+  padding-inline: 8px;
+  border-radius: 7px;
+  color: var(--ant-color-text-secondary);
+}
+.oxa-rich-text-toolbar-more.ant-btn:hover:not(:disabled) { color: var(--ant-color-text); background: var(--ant-color-fill-tertiary); }
+.oxa-rich-text-toolbar-more.ant-btn:focus-visible { outline: 2px solid color-mix(in srgb, var(--ant-color-primary) 45%, transparent); outline-offset: 1px; }
+.oxa-rich-text-toolbar-group { display: inline-flex; align-items: center; gap: 2px; flex: none; }
+.oxa-rich-text-toolbar-group-menus { gap: 4px; }
+.oxa-rich-text-toolbar-group-tail { margin-inline-start: auto; }
+.oxa-rich-text-divider { width: 1px; height: 22px; flex: none; margin: 0 4px; background: var(--ant-color-border-secondary); }
+
+.oxa-rich-text-action.ant-btn,
+.oxa-rich-text-menu-button.ant-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 7px;
+  color: var(--ant-color-text-secondary);
+  transition: color 120ms ease, background 120ms ease, box-shadow 120ms ease;
+}
+
+.oxa-rich-text-action.ant-btn { width: 32px; padding: 0; }
+.oxa-rich-text-action.ant-btn:hover:not(:disabled),
+.oxa-rich-text-menu-button.ant-btn:hover:not(:disabled) { color: var(--ant-color-text); background: var(--ant-color-fill-tertiary); }
+.oxa-rich-text-action.ant-btn.ant-btn-primary { color: var(--ant-color-primary); background: var(--ant-color-primary-bg); box-shadow: none; }
+.oxa-rich-text-action.ant-btn:focus-visible,
+.oxa-rich-text-menu-button.ant-btn:focus-visible,
+.oxa-rich-text-color:focus-within { outline: 2px solid color-mix(in srgb, var(--ant-color-primary) 45%, transparent); outline-offset: 1px; }
+.oxa-rich-text-menu-button.ant-btn { gap: 6px; min-width: 70px; color: var(--ant-color-text); font-size: 13px; }
+.oxa-rich-text-toolbar-group-menus .oxa-rich-text-menu-button:first-child { min-width: 88px; }
+.oxa-rich-text-toolbar-group-menus .oxa-rich-text-menu-button:nth-child(2) { min-width: 92px; }
+.oxa-rich-text-toolbar-group-menus .oxa-rich-text-menu-button:nth-child(3) { min-width: 70px; }
+.oxa-rich-text-menu-button .oxa-rich-text-menu-chevron { margin-inline-start: auto; color: var(--ant-color-text-tertiary); font-size: 10px; }
+
+.oxa-rich-text-color {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  color: var(--ant-color-text-secondary);
+  cursor: pointer;
+}
+
+.oxa-rich-text-color:hover { background: var(--ant-color-fill-tertiary); color: var(--ant-color-text); }
+.oxa-rich-text-color input[type="color"] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.oxa-rich-text-color::after { content: ''; position: absolute; right: 7px; bottom: 5px; left: 7px; height: 2px; border-radius: 2px; background: var(--ant-color-primary); pointer-events: none; }
+.oxa-rich-text-color[aria-label="背景色"]::after { background: var(--ant-color-warning); }
+
 .oxa-rich-text-editor {
-  border: 1px solid var(--ant-color-border);
-  border-radius: 0 0 6px 6px;
-  min-height: 160px;
+  min-height: 260px;
+  padding: 28px 32px 160px;
+  border: 0;
+  border-radius: 0;
+  border-top: 0;
   overflow-wrap: anywhere;
-  padding: 10px 12px;
+  background: var(--ant-color-bg-container);
 }
 
 .oxa-rich-text-editor:focus {
-  border-color: var(--ant-color-primary);
-  box-shadow: 0 0 0 2px
-    color-mix(in srgb, var(--ant-color-primary) 10%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--ant-color-primary) 12%, transparent);
   outline: 0;
 }
 
@@ -2360,6 +2489,25 @@
 .oxa-rich-text-field {
   min-width: 0;
   grid-template-columns: minmax(0, 1fr);
+}
+
+.oxa-rich-text-fullscreen:popover-open {
+  position: fixed;
+  inset: 8px;
+  margin: 0;
+  width: calc(100% - 16px);
+  height: calc(100dvh - 16px);
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid var(--ant-color-border);
+  background: var(--ant-color-bg-container);
+  color: var(--ant-color-text);
+  align-content: start;
+  overflow: auto;
+}
+
+.oxa-rich-text-fullscreen .oxa-rich-text-editor {
+  min-height: 55dvh;
 }
 
 .oxa-rich-text-editor img,
@@ -3027,7 +3175,19 @@
 .oxa-workflow-config-context { margin-bottom: 16px; }
 .oxa-workflow-config-context h4 { margin: 0 0 8px; }
 .oxa-workflow-config-help { color: var(--ant-color-text-secondary, #748092); font-size: 13px; line-height: 1.7; margin: 0 0 20px; }
-.oxa-workflow-config .ant-tabs-nav { margin-bottom: 20px; }
+.oxa-workflow-config-section { margin: 0 0 24px; padding-top: 16px; border-top: 1px solid var(--ant-color-border-secondary, #e3e8ef); }
+.oxa-workflow-config-section h3 { margin: 0 0 16px; font-size: 14px; font-weight: 600; }
+.oxa-workflow-operation-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+.oxa-workflow-operation-table thead { background: var(--ant-color-fill-quaternary, #f4f6fa); color: var(--ant-color-text-secondary, #646a73); }
+.oxa-workflow-operation-table th, .oxa-workflow-operation-table td { padding: 10px 6px; text-align: left; border-bottom: 1px solid var(--ant-color-border-secondary, #e3e8ef); vertical-align: middle; }
+.oxa-workflow-operation-table th { font-weight: 500; }
+.oxa-workflow-operation-table th:nth-child(1) { width: 19%; }
+.oxa-workflow-operation-table th:nth-child(2) { width: 17%; }
+.oxa-workflow-operation-table th:nth-child(3) { width: 35%; }
+.oxa-workflow-operation-table small { display: block; margin-top: 4px; font-size: 11px; color: var(--ant-color-text-secondary, #646a73); font-weight: 400; }
+.oxa-workflow-operation-table .ant-form-item { margin: 0; }
+.oxa-workflow-operation-table .ant-select { width: 100%; }
+@media (max-width: 420px) { .oxa-workflow-operation-table th, .oxa-workflow-operation-table td { padding: 10px 4px; } .oxa-workflow-operation-table { font-size: 12px; } }
 .oxa-workflow-provider-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: 100%; }
 .oxa-workflow-provider-options .ant-radio-wrapper, .oxa-workflow-mode-options .ant-radio-wrapper { border: 1px solid var(--ant-color-border-secondary, #e0e6ed); border-radius: 6px; padding: 12px; margin: 0; align-items: start; }
 .oxa-workflow-provider-options .ant-radio-wrapper-checked, .oxa-workflow-mode-options .ant-radio-wrapper-checked { border-color: var(--ant-color-primary, #1677ff); background: var(--ant-color-primary-bg, #eef6ff); }
@@ -3154,3 +3314,331 @@
 .oxa-workflow-record-history-person { margin-top: 8px; }
 .oxa-workflow-record-history[data-device="mobile"] button { min-height: 44px; }
 .oxa-workflow-history-collapse { margin-top: 16px; }
+
+/* Rich text document styles are scoped; no host document reset. */
+.oxa-rich-text-editor table, .oxa-rich-text-value table { border-collapse: collapse; max-width: 100%; table-layout: fixed; }
+.oxa-rich-text-editor td, .oxa-rich-text-editor th, .oxa-rich-text-value td, .oxa-rich-text-value th { border: 1px solid #d9d9d9; padding: 6px 8px; min-width: 40px; }
+.oxa-rich-text-editor .tableWrapper, .oxa-rich-text-value { overflow-x: auto; }
+.oxa-rich-text-editor .selectedCell { background: #e6f4ff; }
+.oxa-rich-text-editor .column-resize-handle { position: absolute; right: -2px; top: 0; bottom: 0; width: 4px; background: #1677ff; pointer-events: none; }
+.oxa-rich-text-editor td, .oxa-rich-text-editor th { position: relative; }
+.oxa-rich-text-editor video, .oxa-rich-text-value video { max-width: 100%; }
+.oxa-rich-text-editor ul[data-type="taskList"], .oxa-rich-text-value ul[data-type="taskList"] { list-style: none; padding-left: 8px; }
+.oxa-rich-text-editor li[data-type="taskItem"], .oxa-rich-text-value li[data-type="taskItem"] { display: flex; align-items: flex-start; gap: 8px; }
+.oxa-rich-text-editor li[data-type="taskItem"] > div, .oxa-rich-text-value li[data-type="taskItem"] > div { flex: 1; }
+.oxa-rich-text-editor pre, .oxa-rich-text-value pre { overflow-x: auto; background: #f5f5f5; padding: 12px; border-radius: 4px; }
+.oxa-mobile-rich-text-field .oxa-rich-text-toolbar { min-height: 52px; }
+.oxa-mobile-rich-text-field .oxa-rich-text-toolbar-group-tail { margin-inline-start: 0; }
+.oxa-mobile-rich-text-field .oxa-rich-text-toolbar button { min-height: 40px; }
+.oxa-mobile-rich-text-field .oxa-rich-text-editor { min-height: 220px; padding: 20px 18px 128px; }
+
+@media (max-width: 760px) {
+  .oxa-rich-text-editor { min-height: 220px; padding: 22px 18px 140px; }
+  .oxa-rich-text-toolbar { padding-inline: 6px; }
+  .oxa-rich-text-toolbar-group-menus .oxa-rich-text-menu-button { min-width: 68px; }
+  .oxa-rich-text-toolbar-group-menus .oxa-rich-text-menu-button:nth-child(2) { min-width: 76px; }
+}
+/* Workflow editor follows the approved canvas references; read-only diagrams keep their layout. */
+.oxa-workflow-designer { height: 100%; min-height: 0; display: flex; flex-direction: column; overflow: hidden; background: #f5f7fb; color: #182230; font-size: 14px; }
+.oxa-designer-toolbar { height: 56px; flex: 0 0 56px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; background: #fff; border-bottom: 1px solid #e3e8ef; }
+.oxa-designer-toolbar-identity { display: flex; align-items: center; gap: 12px; min-width: 0; white-space: nowrap; }
+.oxa-designer-toolbar-identity > strong { font-size: 16px; max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
+.oxa-designer-toolbar-label, .oxa-designer-save-state { color: #7b879a; font-size: 12px; }
+.oxa-designer-toolbar .ant-btn { height: 32px; font-size: 13px; box-shadow: none; }
+.oxa-designer-toolbar .ant-tag { margin: 0; line-height: 23px; background: #fff; }
+.oxa-designer-toolbar .ant-segmented { border: 1px solid #d9e2ef; background: #fff; padding: 0; color: #617086; font-size: 13px; }
+.oxa-designer-toolbar .ant-segmented-item-selected { background: #eaf2ff; color: #0066ff; box-shadow: none; }
+.oxa-designer-workspace { flex: 1; min-height: 0; display: grid; grid-template-columns: 240px minmax(0,1fr) 560px; }
+.oxa-designer-workspace.without-outline { grid-template-columns: 48px minmax(0,1fr) 560px; }
+.oxa-designer-workspace.without-inspector { grid-template-columns: 240px minmax(0,1fr); }
+.oxa-designer-workspace.without-outline.without-inspector { grid-template-columns: 48px minmax(0,1fr); }
+.oxa-designer-outline { min-height: 0; overflow: auto; background: #fff; padding: 8px; border-right: 1px solid #e3e8ef; scrollbar-width: thin; }
+.oxa-designer-outline-heading { display: flex; justify-content: space-between; align-items: center; min-height: 40px; padding: 0 8px; margin-bottom: 4px; }
+.oxa-designer-outline-heading strong { font-size: 14px; }
+.oxa-designer-outline-heading .ant-btn { padding: 4px; }
+.oxa-designer-outline .ant-input-search { margin: 0 8px 12px; width: calc(100% - 16px); }
+.oxa-designer-outline nav button { width: 100%; min-height: 38px; display: flex; align-items: center; gap: 12px; text-align: left; padding: 8px 12px; background: none; border: none; border-radius: 5px; cursor: pointer; color: inherit; font: inherit; }
+.oxa-designer-outline nav button .anticon { color: #0066ff; font-size: 19px; }
+.oxa-designer-outline nav button.kind-action .anticon { color: #7139f3; }
+.oxa-designer-outline nav button.kind-handle .anticon { color: #00a4ad; }
+.oxa-designer-outline nav button.kind-start .anticon { color: #526178; }
+.oxa-designer-outline nav button.kind-end .anticon { color: #389e0d; }
+.oxa-designer-outline nav button[aria-pressed=true] { background: #eaf2ff; color: #0066ff; }
+.oxa-designer-outline nav button span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.oxa-designer-outline footer { margin: 28px 8px 0; border-top: 1px solid #e3e8ef; padding: 14px 2px; font-size: 13px; }
+.oxa-designer-outline footer strong { display: block; margin-bottom: 8px; }
+.oxa-designer-outline footer button { border: 0; background: none; color: #389e0d; padding: 0; font: inherit; cursor: pointer; }
+.oxa-designer-workspace main { display: flex; flex-direction: column; min-width: 0; min-height: 0; position: relative; }
+.oxa-designer-banner { height: 34px; flex: 0 0 34px; padding: 7px 20px; background: #eaf2ff; color: #0066ff; font-size: 12px; border-bottom: 1px solid #dce8fa; }
+.oxa-designer-workspace .oxa-workflow-diagram-standalone { flex: 1; min-height: 0; height: auto; }
+.oxa-workflow-diagram-designer .oxa-workflow-node { min-height: 0; border: 1px solid #d3dfed; border-left: 5px solid #0066ff; border-radius: 5px; padding: 12px; gap: 10px; box-shadow: none; background: #fff; }
+.oxa-workflow-diagram-designer .oxa-workflow-node.selected { background: #fff; border-color: #0066ff; box-shadow: 0 0 0 3px #0066ff22; }
+.oxa-workflow-diagram-designer .oxa-workflow-node.kind-action { border-left-color: #7139f3; }
+.oxa-workflow-diagram-designer .oxa-workflow-node.kind-handle { border-left-color: #00a4ad; }
+.oxa-workflow-diagram-designer .oxa-workflow-node.kind-condition { border-left-color: #0066ff; }
+.oxa-workflow-diagram-designer .oxa-workflow-node-kind { display: none; }
+.oxa-workflow-diagram-designer .oxa-workflow-node strong { font-size: 16px; line-height: 20px; margin: 0 0 4px; -webkit-line-clamp: 1; }
+.oxa-workflow-diagram-designer .oxa-workflow-node small { font-size: 13px; color: #617086; }
+.oxa-workflow-diagram-designer .oxa-workflow-node-icon { width: 24px; flex-basis: 24px; height: 28px; font-size: 23px; background: none; border-radius: 0; color: #0066ff; }
+.oxa-workflow-diagram-designer .kind-action .oxa-workflow-node-icon { color: #7139f3; }
+.oxa-workflow-diagram-designer .kind-handle .oxa-workflow-node-icon { color: #00a4ad; }
+.oxa-workflow-diagram-designer .oxa-workflow-node.kind-start, .oxa-workflow-diagram-designer .oxa-workflow-node.kind-end { justify-content: center; border-radius: 18px; padding: 4px 12px; gap: 8px; }
+.oxa-workflow-diagram-designer .oxa-workflow-node.kind-start { color: #fff; background: #3e4859; border: 1px solid #3e4859; }
+.oxa-workflow-diagram-designer .oxa-workflow-node.kind-start .oxa-workflow-node-icon { color: #fff; }
+.oxa-workflow-diagram-designer .oxa-workflow-node.kind-end { color: #298704; border: 1px solid #4b9f28; }
+.oxa-workflow-diagram-designer .oxa-workflow-node.kind-end .oxa-workflow-node-icon { color: #389e0d; }
+.oxa-workflow-diagram-designer .kind-start .oxa-workflow-node-copy, .oxa-workflow-diagram-designer .kind-end .oxa-workflow-node-copy { flex: 0 1 auto; }
+.oxa-workflow-diagram-designer .kind-start strong, .oxa-workflow-diagram-designer .kind-end strong { margin: 0; white-space: nowrap; }
+.oxa-workflow-diagram-designer .kind-start small, .oxa-workflow-diagram-designer .kind-end small { display: none; }
+.oxa-workflow-diagram-designer .oxa-workflow-edge-insert { position: absolute; pointer-events: all; width: 20px; height: 20px; display: grid; place-items: center; border: 1px solid #c5d2e4; border-radius: 50%; color: #6c7e98; background: white; padding: 0; font-size: 11px; }
+.oxa-workflow-diagram-designer .oxa-workflow-edge-insert:hover { color: #0066ff; border-color: #0066ff; }
+.oxa-workflow-diagram-designer .react-flow__handle { opacity: 0; }
+.oxa-workflow-diagram-designer .oxa-workflow-viewport-tools { bottom: 18px; left: 16px; border-radius: 5px; box-shadow: none; }
+.oxa-workflow-diagram-designer .oxa-workflow-graph-help { display: none; }
+.oxa-workflow-diagram-designer .react-flow__attribution { font-size: 8px; opacity: .55; }
+.oxa-designer-desktop-inspector { background: #fff; min-height: 0; overflow: auto; border-left: 1px solid #e3e8ef; scrollbar-width: thin; }
+.oxa-workflow-designer-inspector { padding: 14px 16px 24px; }
+.oxa-workflow-designer-inspector > header { display: flex; gap: 8px; align-items: center; min-height: 34px; margin-bottom: 14px; }
+.oxa-workflow-designer-inspector > header h2 { font-size: 16px; margin: 0; font-weight: 600; }
+.oxa-workflow-designer-inspector > header .ant-tag { margin: 0; font-size: 11px; }
+.oxa-workflow-designer-inspector > header .ant-btn { margin-left: auto; }
+.oxa-designer-inspector-icon { width: 30px; height: 30px; display: grid; place-items: center; color: #0066ff; background: #eaf2ff; font-size: 22px; border-radius: 5px; }
+.oxa-workflow-designer-inspector h3 { font-size: 14px; margin: 0 0 8px; }
+.oxa-workflow-designer-inspector p { color: #7b879a; font-size: 12px; line-height: 1.6; }
+.oxa-workflow-designer-inspector .oxa-workflow-config-inline label { display: inline-flex; flex-direction: row; margin: 0; }
+.oxa-designer-handling-notice, .oxa-designer-defaults-notice { border-radius: 4px; color: #2d7617; background: #edf8ea; padding: 9px 12px; margin-bottom: 14px; font-size: 13px; line-height: 20px; }
+.oxa-designer-defaults-notice { background: #fff7e7; color: #a16b1c; }
+.oxa-workflow-config-inline .oxa-workflow-config-section { border: 0; padding: 0; margin: 0 0 14px; }
+.oxa-workflow-config-inline .ant-form-item { margin-bottom: 12px; }
+.oxa-workflow-config-inline .ant-form-item-label { padding-bottom: 6px; }
+.oxa-workflow-config-inline .ant-form-item-label label { font-size: 13px; font-weight: 600; }
+.oxa-workflow-config-inline .oxa-workflow-provider-options { display: flex; flex-wrap: wrap; gap: 4px; }
+.oxa-workflow-config-inline .oxa-workflow-provider-options .ant-radio-button-wrapper { border: 1px solid #d9e2ef; border-radius: 4px; font-size: 12px; height: 28px; line-height: 26px; padding: 0 12px; }
+.oxa-workflow-config-inline .oxa-workflow-provider-options .ant-radio-button-wrapper::before { display: none; }
+.oxa-workflow-config-inline .oxa-workflow-mode-options { display: flex; flex-direction: row; align-items: center; flex-wrap: wrap; gap: 8px; }
+.oxa-workflow-config-inline .oxa-workflow-mode-options .ant-radio-wrapper { font-size: 12px; padding: 0; margin: 0; }
+.oxa-workflow-config-inline .oxa-workflow-mode-options + p, .oxa-workflow-config-inline .oxa-workflow-config-help { margin: 4px 0 8px; font-size: 12px; }
+.oxa-workflow-config-inline .oxa-workflow-operation-table { width: 100%; border: 1px solid #e2e8f1; border-collapse: collapse; table-layout: fixed; font-size: 13px; line-height: 20px; }
+.oxa-workflow-config-inline .oxa-workflow-operation-table th, .oxa-workflow-config-inline .oxa-workflow-operation-table td { box-sizing: border-box; height: 44px; padding: 4px 8px; border: 1px solid #e2e8f1; text-align: left; vertical-align: middle; }
+.oxa-workflow-config-inline .oxa-workflow-operation-table th { font-weight: 500; }
+.oxa-workflow-config-inline .oxa-workflow-operation-table thead th { background: #f5f7fb; color: #526178; height: 34px; }
+.oxa-workflow-config-inline .oxa-workflow-operation-table thead th:first-child { width: 23%; }
+.oxa-workflow-config-inline .oxa-workflow-operation-table thead th:last-child { width: 22%; }
+.oxa-workflow-config-inline .oxa-workflow-operation-table .ant-form-item { margin: 0; }
+.oxa-workflow-config-inline .oxa-workflow-operation-table .ant-input, .oxa-workflow-config-inline .oxa-workflow-operation-table .ant-select { font-size: 13px; padding-left: 0; width: 100%; }
+.oxa-workflow-config-inline .oxa-workflow-operation-table small { display: block; color: #7b879a; font-size: 11px; line-height: 14px; font-weight: 400; margin-top: 2px; }
+.oxa-workflow-config-inline .oxa-workflow-operation-table .ant-switch { min-width: 28px; }
+.oxa-workflow-config-inline .oxa-workflow-config-footer { padding: 0; border: 0; background: none; justify-content: flex-end; margin: 8px 0 14px; }
+.oxa-workflow-config-inline .oxa-workflow-config-footer > span { display: none; }
+.oxa-workflow-config-inline .oxa-workflow-config-footer .ant-btn { height: 30px; font-size: 12px; color: #0066ff; border-color: #9fc4ff; box-shadow: none; }
+.oxa-workflow-config-inline .oxa-workflow-config-footer .ant-btn-primary { color: #fff; }
+.oxa-workflow-config-inline .oxa-workflow-config-footer .ant-btn:disabled { opacity: .65; }
+.oxa-designer-draft-band { border: 1px solid #dce8fb; border-radius: 5px; overflow: hidden; margin-top: 12px; }
+.oxa-designer-draft-band > h3 { padding: 9px 12px; margin: 0; color: #0066ff; background: #eaf2ff; }
+.oxa-designer-draft-band .ant-collapse-item { border-bottom: 1px solid #e8edf5; }
+.oxa-designer-draft-band .ant-collapse-item:last-child { border-bottom: 0; }
+.oxa-designer-draft-band .ant-collapse-header { padding: 10px 12px !important; align-items: center !important; font-size: 12px; }
+.oxa-designer-draft-band .ant-collapse-header-text { font-weight: 500; flex: 0 0 102px !important; }
+.oxa-designer-draft-band .ant-collapse-extra { flex: 1; color: #69788f; min-width: 0; }
+.oxa-designer-draft-band .ant-collapse-extra span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.oxa-designer-draft-band .ant-collapse-content-box { padding: 4px 12px 14px !important; }
+.oxa-designer-draft-band label { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; font-size: 12px; }
+.oxa-workflow-designer fieldset, .oxa-workflow-designer-inspector fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.oxa-designer-branch { padding: 12px; border: 1px solid #e3e8ef; background: #f8fafc; border-radius: 5px; margin: 12px 0; display: grid; gap: 10px; }
+.oxa-designer-mobile-inspector { display: none; }
+.oxa-designer-show-inspector { position: absolute; top: 50px; right: 12px; z-index: 5; }
+@media(max-width: 1499px) {
+  .oxa-designer-workspace { grid-template-columns: 200px minmax(0,1fr) 480px; }
+  .oxa-designer-workspace.without-outline { grid-template-columns: 48px minmax(0,1fr) 480px; }
+  .oxa-designer-workspace.without-inspector { grid-template-columns: 200px minmax(0,1fr); }
+  .oxa-designer-toolbar-label, .oxa-designer-save-state { display: none; }
+}
+@media(max-width: 1199px) {
+  .oxa-designer-workspace, .oxa-designer-workspace.without-outline { grid-template-columns: 48px minmax(0,1fr) 440px; }
+  .oxa-designer-workspace.without-inspector, .oxa-designer-workspace.without-outline.without-inspector { grid-template-columns: 48px minmax(0,1fr); }
+  .oxa-designer-outline-heading strong, .oxa-designer-outline .ant-input-search, .oxa-designer-outline nav button > span:last-child:not(.anticon), .oxa-designer-outline footer { display: none; }
+  .oxa-designer-outline { padding: 8px 4px; }
+  .oxa-designer-outline-heading { padding: 0; }
+  .oxa-designer-outline nav button { justify-content: center; padding: 10px 4px; }
+  .oxa-designer-toolbar { padding: 0 8px; gap: 8px; }
+  .oxa-designer-toolbar-identity { gap: 6px; }
+  .oxa-designer-toolbar-actions .ant-btn { font-size: 0; width: 30px; padding: 0; }
+  .oxa-designer-toolbar-actions .ant-btn .anticon { font-size: 14px; }
+  .oxa-designer-toolbar-actions .ant-btn-primary { font-size: 12px; width: auto; padding: 0 10px; }
+}
+@media(max-width: 899px) {
+  .oxa-workflow-designer { min-height: 100dvh; height: auto; }
+  .oxa-designer-workspace, .oxa-designer-workspace.without-outline, .oxa-designer-workspace.without-inspector, .oxa-designer-workspace.without-outline.without-inspector { grid-template-columns: minmax(0,1fr); min-height: calc(100dvh - 96px); }
+  .oxa-designer-outline, .oxa-designer-desktop-inspector { display: none; }
+  .oxa-designer-mobile-inspector { display: block; position: absolute; bottom: 18px; left: 18px; z-index: 5; }
+  .oxa-designer-toolbar { height: auto; flex: 0 0 auto; min-height: 56px; padding: 8px; flex-wrap: wrap; }
+  .oxa-designer-toolbar-identity { flex: 1 1 100%; }
+  .oxa-designer-toolbar-identity strong { font-size: 14px; max-width: 130px; }
+  .oxa-designer-toolbar-actions { margin-left: auto; }
+  .oxa-designer-banner { height: auto; flex-basis: auto; padding: 8px 12px; }
+  .oxa-workflow-designer-inspector { padding: 0 0 16px; }
+}
+.oxa-workflow-diagram-standalone .kind-handle { border-top-color: #53958c; }
+.oxa-workflow-diagram-standalone .kind-notification { border-top-color: #6d9fc7; }
+.oxa-workflow-node-status.status-skipped { color: #6c7483; background: #f4f5f7; border-color: #dce0e6; }
+
+.oxa-workflow-config-inline .oxa-workflow-mode-options > .ant-radio-wrapper { width: auto; flex: 0 0 auto; display: inline-flex; min-height: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+.oxa-designer-inspector-backdrop { position: fixed; inset: 0; z-index: 1000; border: 0; background: #0006; }
+@media(max-width:899px) {
+  .oxa-designer-workspace .oxa-designer-desktop-inspector { display: block; position: fixed; inset: auto 0 0; height: 85dvh; z-index: 1001; padding: 16px; border: 0; border-radius: 12px 12px 0 0; box-shadow: 0 -8px 32px #1d355326; }
+}
+
+.oxa-designer-insert-menu .ant-dropdown-menu { min-width: min(320px, calc(100vw - 32px)); padding: 8px; border: 1px solid #dbe3ee; border-radius: 8px; }
+.oxa-designer-insert-menu .ant-dropdown-menu-item, .oxa-designer-insert-menu .ant-dropdown-menu-submenu-title { min-height: 44px; font-size: 13px; }
+.oxa-designer-insert-menu .anticon { font-size: 18px; color: #0066ff; }
+.oxa-designer-return-summary > td { background: #f8faff; }
+.oxa-designer-return-summary > td > div { display: flex; align-items: flex-start; gap: 8px; }
+.oxa-designer-return-summary p { margin: 0; font-size: 11px; line-height: 1.8; }
+.oxa-designer-return-summary .ant-tag { font-size: 10px; margin: 0; line-height: 18px; }
+.oxa-designer-return-summary .ant-btn { margin-left: auto; padding: 0; font-size: 11px; }
+
+.oxa-designer-workspace:not(.detail-inspector):not(.without-inspector) { grid-template-columns: 240px minmax(0,1fr) 496px; }
+.oxa-designer-workspace.without-outline:not(.detail-inspector):not(.without-inspector) { grid-template-columns: 48px minmax(0,1fr) 496px; }
+.oxa-designer-workspace.detail-inspector:not(.without-inspector) { grid-template-columns: 240px minmax(0,1fr) 640px; }
+.oxa-designer-workspace.without-outline.detail-inspector:not(.without-inspector) { grid-template-columns: 48px minmax(0,1fr) 640px; }
+.oxa-workflow-config-inline.compact { border: 1px solid #dcebdc; border-radius: 5px; overflow: hidden; }
+.oxa-workflow-config-inline.compact .oxa-designer-handling-notice { border-radius: 0; margin-bottom: 0; }
+.oxa-workflow-config-inline.compact form { display: none; }
+.oxa-designer-handling-summary { padding: 0 14px; }
+.oxa-designer-handling-summary button { width: 100%; min-height: 50px; display: flex; align-items: center; gap: 14px; padding: 8px 0; background: none; border: 0; border-bottom: 1px solid #e6ecf2; font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.oxa-designer-handling-summary strong { flex: 0 0 76px; font-weight: 500; }
+.oxa-designer-handling-summary span:nth-child(2) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #617086; }
+.oxa-designer-handling-summary span:last-child { color: #617086; }
+.oxa-workflow-config-inline.compact .oxa-workflow-config-footer { padding: 12px 14px; margin: 0; }
+.oxa-workflow-config-inline.compact .oxa-workflow-config-footer .ant-space, .oxa-workflow-config-inline.compact .oxa-workflow-config-footer .ant-btn { width: 100%; }
+@media(max-width:1499px) {
+  .oxa-designer-workspace:not(.detail-inspector):not(.without-inspector) { grid-template-columns: 200px minmax(0,1fr) 440px; }
+  .oxa-designer-workspace.without-outline:not(.detail-inspector):not(.without-inspector) { grid-template-columns: 48px minmax(0,1fr) 440px; }
+  .oxa-designer-workspace.detail-inspector:not(.without-inspector) { grid-template-columns: 200px minmax(0,1fr) 560px; }
+  .oxa-designer-workspace.without-outline.detail-inspector:not(.without-inspector) { grid-template-columns: 48px minmax(0,1fr) 560px; }
+}
+@media(max-width:1199px) {
+  .oxa-designer-workspace:not(.without-inspector), .oxa-designer-workspace.without-outline:not(.without-inspector) { grid-template-columns: 48px minmax(0,1fr) 440px; }
+}
+@media(max-width:899px) {
+  .oxa-designer-workspace:not(.without-inspector), .oxa-designer-workspace.without-outline:not(.without-inspector) { grid-template-columns: minmax(0,1fr); }
+}
+
+.oxa-designer-ai-panel { padding: 16px; }
+.oxa-designer-ai-panel > header { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+.oxa-designer-ai-panel > header > .anticon { color: #0066ff; font-size: 22px; }
+.oxa-designer-ai-panel h2 { font-size: 16px; margin: 0; }
+.oxa-designer-ai-panel > header > .ant-btn { margin-left: auto; }
+.oxa-designer-ai-panel > p { font-size: 13px; color: #617086; line-height: 1.8; }
+
+.oxa-workflow-config-inline.compact .oxa-workflow-config-footer .ant-space-item { width: 100%; flex: 1; }
+.oxa-workflow-designer-inspector > header h2 { font-size: 20px; line-height: 28px; }
+.oxa-designer-workspace:not(.detail-inspector) .oxa-designer-inspector-icon { width: 40px; height: 40px; font-size: 27px; }
+
+.oxa-designer-insert-option { display: flex; align-items: center; gap: 18px; }
+.oxa-designer-insert-option > span { min-width: 64px; }
+.oxa-designer-insert-option > small { color: #7a879b; font-size: 12px; white-space: normal; }
+.oxa-designer-insert-menu .ant-dropdown-menu-item-group-title { padding: 8px 12px 4px; color: #445169; font-size: 13px; font-weight: 600; }
+.oxa-designer-insert-menu .anticon.kind-condition { color: #e58a15; }
+.oxa-designer-insert-menu .anticon.kind-action { color: #7c3aed; }
+.oxa-designer-insert-menu .anticon.kind-notification { color: #e14b80; }
+
+.oxa-workflow-config-inline .oxa-workflow-operation-table .ant-form-item-control-input { min-height: 24px; }
+.oxa-workflow-config-inline .oxa-workflow-operation-table td:last-child small { display: inline; margin-left: 8px; }
+.oxa-workflow-config-inline .oxa-workflow-operation-table .ant-select-content { font-size: 13px; }
+.oxa-workflow-designer-inspector .oxa-designer-draft-band .ant-collapse-header { font-size: 13px; }
+
+.oxa-designer-condition-editor > .ant-alert { margin: 0 0 16px; font-size: 13px; }
+.oxa-designer-branch-selector { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.oxa-designer-branch-identity { display: flex; align-items: center; gap: 6px; margin-bottom: 20px; }
+.oxa-designer-branch-identity > .ant-input { flex: 1; min-width: 0; }
+.oxa-designer-branch-identity > .ant-tag { margin: 0; white-space: nowrap; }
+.oxa-designer-condition-surface { padding: 12px !important; border: 1px solid #e1e8f2 !important; background: #f7f9fc; border-radius: 6px; margin-bottom: 18px !important; }
+.oxa-designer-condition-surface .oxa-condition-row { grid-template-columns: minmax(0,1fr) 106px minmax(0,1fr); }
+.oxa-designer-condition-surface .oxa-condition-row > .ant-btn { grid-column: 1 / -1; justify-self: start; color: #0066ff; }
+.oxa-designer-condition-surface .ant-select, .oxa-designer-condition-surface .ant-input-number { width: 100%; min-width: 0; }
+.oxa-designer-condition-description { padding: 10px 12px; background: #f7f9fc; border: 1px solid #e1e8f2; border-radius: 5px; overflow-wrap: anywhere; }
+.oxa-designer-condition-editor > label { display: flex; flex-direction: column; gap: 8px; margin: 14px 0; font-weight: 600; }
+.oxa-designer-return-notice { background: #eaf2ff; color: #0066ff; padding: 12px; border-radius: 5px; font-weight: 600; margin-bottom: 12px; }
+.oxa-designer-return-target { border: 1px solid #e1e8f2; background: #fafbfd; border-radius: 6px; padding: 14px; margin: 12px 0; }
+.oxa-designer-return-target.enabled { background: #fff; }
+.oxa-designer-return-target > header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.oxa-designer-return-target > header > .ant-checkbox-wrapper { font-weight: 600; }
+.oxa-designer-return-target > header > label { display: flex; align-items: center; gap: 8px; color: #7b879a; font-size: 12px; }
+.oxa-designer-return-target > header .ant-select { min-width: 172px; }
+.oxa-designer-return-path { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; margin: 14px 0 10px; font-size: 12px; }
+.oxa-designer-return-path > small { color: #7b879a; margin-right: 4px; }
+.oxa-designer-return-path > span { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
+.oxa-designer-return-path > span > span { background: #eaf2ff; border-radius: 4px; padding: 5px 8px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.oxa-designer-return-path .skipped { text-decoration: line-through; color: #a0a8b6; background: #f5f7fb; }
+.oxa-workflow-designer-inspector .oxa-designer-return-warning { color: #c98113; }
+.oxa-designer-return-rule { border: 1px solid #e1e8f2; background: #f7f9fc; border-radius: 6px; padding: 14px; margin: 18px 0; }
+.oxa-designer-return-rule h3 { margin: 0 0 8px; }
+.oxa-designer-return-rule p { margin: 0; }
+.oxa-designer-return-back { padding-left: 0; margin-bottom: 8px; }
+@media(max-width:899px) {
+  .oxa-designer-branch-identity { flex-wrap: wrap; }
+  .oxa-designer-branch-identity > .ant-input { flex-basis: 100%; }
+  .oxa-designer-condition-surface .oxa-condition-row { grid-template-columns: minmax(0,1fr) 106px; }
+  .oxa-designer-condition-surface .oxa-condition-row > :nth-child(3) { grid-column: 1 / -1; }
+  .oxa-designer-return-target > header > label { width: 100%; flex-wrap: wrap; }
+  .oxa-designer-return-target > header .ant-select { flex: 1; min-width: 0; }
+}
+.oxa-designer-condition-surface:disabled { opacity: .7; pointer-events: none; }
+.oxa-workflow-diagram-designer .oxa-workflow-edge-label.designer-branch { width: 296px; max-width: 296px; min-height: 64px; box-sizing: border-box; padding: 10px 14px; border-radius: 5px; background: #fafcff; }
+.oxa-workflow-edge-label.designer-branch > span { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: #182230; font-size: 14px; font-weight: 600; }
+.oxa-workflow-edge-label.designer-branch > span > small { color: #64718a; background: #f0f4fa; border: 1px solid #dbe3ee; font-size: 11px; font-weight: 400; padding: 1px 6px; border-radius: 3px; }
+.oxa-workflow-edge-label.designer-branch > strong { display: block; margin-top: 5px; color: #617086; font-size: 12px; font-weight: 400; line-height: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.oxa-designer-inspector-icon.kind-condition { color: #e58a15; background: #fff3df; }
+.oxa-designer-publish-modal .ant-modal-title { font-size: 20px; }
+.oxa-designer-publish-modal .ant-modal-body { max-height: calc(100dvh - 220px); overflow-y: auto; padding-right: 2px; }
+.oxa-designer-publish-modal h3 { font-size: 14px; margin: 20px 0 12px; }
+.oxa-designer-publish-modal p { color: #748092; font-size: 13px; line-height: 1.7; }
+.oxa-designer-publish-modal fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.oxa-designer-publish-checks { display: flex; align-items: center; gap: 10px; padding: 14px; border: 1px solid #e1e8f2; border-radius: 6px; color: #2d7617; font-size: 13px; }
+.oxa-designer-publish-checks .anticon { font-size: 20px; }
+.oxa-designer-publish-scope { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+.oxa-designer-publish-scope > .ant-radio-wrapper { align-items: flex-start; border: 1px solid #dce4ef; padding: 14px; border-radius: 6px; margin: 0; }
+.oxa-designer-publish-scope > .ant-radio-wrapper-checked { border-color: #0066ff; background: #eaf2ff; box-shadow: 0 0 0 1px #0066ff22; }
+.oxa-designer-publish-scope strong { display: block; font-weight: 600; }
+.oxa-designer-publish-scope small { display: block; font-size: 12px; color: #748092; line-height: 1.7; margin-top: 6px; }
+.oxa-designer-publish-scope .ant-tag { margin-left: 8px; }
+.oxa-designer-publish-holds { margin: 12px 0; }
+.oxa-designer-publish-holds > summary, .oxa-designer-publish-exceptions > summary { color: #0066ff; cursor: pointer; font-size: 13px; }
+.oxa-designer-publish-holds label { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; font-size: 13px; }
+.oxa-designer-publish-counts { border: 1px solid #e1e8f2; border-radius: 6px; margin: 0; }
+.oxa-designer-publish-counts > div { display: flex; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid #e1e8f2; font-size: 13px; }
+.oxa-designer-publish-counts > div:last-child { border: 0; }
+.oxa-designer-publish-counts dt::before { content: ''; display: inline-block; width: 9px; height: 9px; margin-right: 10px; background: #8290a6; border-radius: 50%; }
+.oxa-designer-publish-counts .outcome-eligible dt::before { background: #389e0d; }
+.oxa-designer-publish-counts .outcome-deferred dt::before { background: #1677ff; }
+.oxa-designer-publish-counts .outcome-excepted dt::before { background: #fa8c16; }
+.oxa-designer-publish-counts dd { margin: 0; font-variant-numeric: tabular-nums; }
+.oxa-designer-publish-reason { display: flex; align-items: center; gap: 12px; margin: 20px 0 8px; font-size: 13px; white-space: nowrap; }
+
+@media(min-width:900px) {
+  .oxa-workflow-config-inline .oxa-workflow-mode-field .ant-form-item-row { display: flex; flex-direction: row; align-items: center; gap: 12px; }
+  .oxa-workflow-config-inline .oxa-workflow-mode-field .ant-form-item-label { flex: 0 0 auto; padding: 0; }
+  .oxa-workflow-config-inline .oxa-workflow-mode-field .ant-form-item-control { flex: 1; min-width: 0; }
+}
+.oxa-designer-workspace.without-outline .oxa-designer-outline { padding: 8px 4px; }
+.oxa-designer-workspace.without-outline .oxa-designer-outline-heading { padding: 0; justify-content: center; }
+.oxa-designer-workspace.without-outline .oxa-designer-outline nav button { justify-content: center; padding: 10px 4px; gap: 0; }
+.oxa-designer-outline nav button .anticon { flex: 0 0 20px; min-width: 20px; }
+
+.oxa-designer-ai-panel { min-height: calc(100dvh - 56px); box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; }
+.oxa-designer-ai-panel > header { flex-shrink: 0; }
+.oxa-designer-ai-panel > .ant-spin-nested-loading { flex: 1; min-height: 0; overflow-y: auto; }
+.oxa-designer-ai-panel > .oxa-designer-ai-composer { order: 10; flex-shrink: 0; margin-top: auto; padding: 12px 0 0; border-top: 1px solid #e1e8f2; }
+.oxa-designer-ai-panel .oxa-designer-ai-composer > .ant-space { width: 100%; justify-content: flex-end; margin-bottom: 0 !important; }
+.oxa-designer-ai-panel .oxa-designer-ai-composer textarea { font-size: 13px; }
+@media(max-width:899px) { .oxa-designer-ai-panel { min-height: calc(85dvh - 32px); } }
+
+.oxa-workflow-parallel-region { width:100%;height:100%;border:1px solid #d5e0f0;border-radius:8px;background:rgba(248,250,253,.84); }
+.oxa-workflow-node.designer-node.kind-parallel { border-color:transparent;background:transparent;box-shadow:none;border-left:0; }
+.oxa-workflow-node.designer-node.kind-parallel .oxa-workflow-node-kind { display:none; }
+.oxa-workflow-node.designer-node.kind-join { border-radius:22px;justify-content:center;padding:6px 12px; }
+.oxa-workflow-node.designer-node.kind-join .oxa-workflow-node-kind,.oxa-workflow-node.designer-node.kind-join .oxa-workflow-node-copy small { display:none; }
+.oxa-workflow-node.designer-node.kind-join .oxa-workflow-node-icon { width:22px;height:22px;font-size:14px; }
+.oxa-workflow-node.designer-node.kind-join .oxa-workflow-node-copy strong { font-size:12px;font-weight:500; }
+.oxa-designer-inspector-icon.kind-parallel,.oxa-designer-outline .kind-parallel { color:#1677ff; }

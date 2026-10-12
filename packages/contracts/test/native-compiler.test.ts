@@ -359,3 +359,62 @@ test('selected department contract is preserved and capability-negotiated by the
     for(const implementation of [esm,cjs])assert.throws(()=>implementation.compileNativeApplicationConfiguration(bad));
   }
 });
+
+test('rich fields automatically require the uniform platform format and managed-video capability', () => {
+  const config = JSON.parse(corpus.configuration.canonical);
+  config.data.resources[0].schema.fields.push({ code: 'body', type: 'text.rich', nullable: true });
+  for (const implementation of [esm, cjs])
+    assert.deepEqual(implementation.compileRequiredPlatformCapabilitiesV3(config).find(item => item.code === 'data.rich-text'),
+      { code: 'data.rich-text', contractVersion: '1.0.0', usageDigest: 'sha256:' + sha256Digest({ policyVersion: 'rich-text-html/1' }) });
+});
+
+// Exercise the complete install compiler, beyond the per-node policy validator.
+test('configured shared Save survives ESM and CJS application validation', () => {
+  const config = JSON.parse(corpus.configuration.canonical);
+  const definition = config.workflows.definitions[0].definition;
+  const approval = Object.values(definition.nodes).find((node: any) => node.kind === 'approval') as any;
+  definition.taskPages = { ...(definition.taskPages || {}), save_page: { title: '申请内容', fields: [{ code: 'name' }] } };
+  approval.taskPageCode = 'save_page';
+  approval.allowedOperations = ['approve', 'save_form'];
+  const compileInput = () => {
+    const contract = { ...JSON.parse(corpus.contract.canonical), configDigest: sha256Digest(config) };
+    contract.workflows[0].allowedOperations = ['approve', 'save_form'];
+    return { ...input(config), contractBytes: canonicalJson(contract), expectedContractDigest: sha256Digest(contract) };
+  };
+  for (const implementation of [esm, cjs]) {
+    assert.doesNotThrow(() => implementation.compileNativeApplicationConfiguration(compileInput()));
+    approval.allowedOperations = ['approve', 'invented_save'];
+    assert.throws(() => implementation.compileNativeApplicationConfiguration(compileInput()), /NATIVE_WORKFLOW_OPERATION_INVALID/);
+    approval.allowedOperations = ['approve', 'save_form'];
+  }
+});
+
+test('policy-only applicant return is reachable and negotiates guarded resume in both compiler formats', () => {
+  const config = JSON.parse(corpus.configuration.canonical);
+  const definition = config.workflows.definitions[0].definition;
+  definition.taskPages = { revise: { title: '补正', fields: [{ code: 'name' }, { code: 'status' }] } };
+  definition.nodes.revise = { id: 'revise', kind: 'correction', title: '发起人补正', taskPageCode: 'revise', next: definition.startAt };
+  definition.nodes.review.returnPolicy = { targets: [{ nodeId: 'revise', routes: ['replay','resume'], defaultRoute: 'resume' }] };
+  const contract = { ...JSON.parse(corpus.contract.canonical), configDigest: sha256Digest(config) };
+  const value = { ...input(config), contractBytes: canonicalJson(contract), expectedContractDigest: sha256Digest(contract) };
+  for (const implementation of [esm,cjs]) assert.equal(implementation.compileNativeApplicationConfiguration(value).requiredPlatformCapabilities.find(cap=>cap.code==='workflow.return-policy')?.contractVersion,'1.0.0');
+});
+
+test('source-base metadata is optional and is sealed identically in ESM and CJS', () => {
+  for (const implementation of [esm,cjs]) {
+    const original=JSON.parse(corpus.configuration.canonical);
+    assert.doesNotThrow(() => implementation.compileNativeApplicationConfiguration(input(original)));
+    const config=structuredClone(original),base={ definitionDigest: 'a'.repeat(64),bindingDigest: 'b'.repeat(64) };
+    config.workflows.activations[0].sourceBase=base;
+    const contract={ ...JSON.parse(corpus.contract.canonical),configDigest: sha256Digest(config) };
+    const compileInput=() => ({ ...input(config),contractBytes: canonicalJson(contract),expectedContractDigest: sha256Digest(contract) });
+    const result=implementation.compileNativeApplicationConfiguration(compileInput());
+    assert.deepEqual(result.projections.workflows.value.activations[0].sourceBase,base);
+    config.workflows.activations[0].sourceBase.headRevision=987654;
+    contract.configDigest=sha256Digest(config);
+    assert.throws(() => implementation.compileNativeApplicationConfiguration(compileInput()),/NATIVE_PROPERTY_UNKNOWN/);
+    delete config.workflows.activations[0].sourceBase.headRevision;
+    config.workflows.activations[0].sourceBase.definitionDigest='malformed';contract.configDigest=sha256Digest(config);
+    assert.throws(() => implementation.compileNativeApplicationConfiguration(compileInput()),/NATIVE_WORKFLOW_SOURCE_BASE_INVALID/);
+  }
+});

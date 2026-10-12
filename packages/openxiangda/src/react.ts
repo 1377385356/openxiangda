@@ -104,3 +104,4 @@ export type * from './browser/components/resource/generated-resource-definition'
 export * from "./browser/components/workflow/WorkflowBusinessStepRecoveryPanel";
 
 export * from './browser/components/workflow/WorkflowRecordHistoryPanel';
+export * from './browser/components/workflow/WorkflowDesigner';

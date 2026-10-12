@@ -94,7 +94,7 @@ export function developmentBackendOperationMatches(method: string, path: string,
   });
 }
 
-const requestHeader = /^(?:authorization|content-type|content-length|accept|if-match|idempotency-key|x-request-id|x-openxiangda-(?:gateway-assertion|forwarded-by|perspective|csrf-token|mcp-bus-token))$/i;
+const requestHeader = /^(?:authorization|content-type|content-length|accept|if-match|idempotency-key|x-request-id|x-openxiangda-(?:gateway-assertion|forwarded-by|perspective|csrf-token|mcp-bus-token|dev-selection))$/i;
 const responseHeader = /^(?:content-type|content-disposition|cache-control|etag|last-modified|retry-after)$/i;
 export function developmentBackendInvocationHeadersValid(value: unknown, response = false): value is Record<string, string> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;

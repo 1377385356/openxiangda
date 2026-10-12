@@ -9,7 +9,6 @@ import { workflowTaskFieldValueForData } from './workflow-task-field-codec';
 import { MobileSurfaceFieldControl, SurfaceFieldControl, SurfaceFieldValue } from '../resource/SurfaceFields';
 import type { WorkflowFileBinding } from '../../platform-client';
 import { useWorkflowTaskFiles, WorkflowTaskFileRecovery } from './WorkflowTaskFiles';
-import { WorkflowTaskDraftPanel } from './WorkflowTaskDraftPanel';
 import { SubtableField } from '../platform-fields/SubtableField';
 import { resourceReferenceBindingPatch } from '../platform-fields/reference-binding-change';
 import { rebaseWorkflowTaskSubtable, workflowTaskSubtableDataRows, workflowTaskSubtableFormRows } from './workflow-task-subtable';
@@ -160,17 +159,14 @@ export function useWorkflowTaskForm(latest?: WorkflowTaskFormSurface) {
   return { form, source, latest, current, subtableError, linkageError, setLinkageError, dirty, unsaved, stale, draft, draftNeedsSave, build, reviewLatest, committed, adoptDraft, savedDraft, removedDraft };
 }
 
-export function WorkflowTaskForm({ controller, disabled, operationPending = disabled, draftDisabled = disabled, taskId, taskVersion, onDraftBusyChange, onFileBusyChange, onRefresh, variant, resourceCode, recordId, valueLinkage, linkageContext }: {
+export function WorkflowTaskForm({ controller, disabled, operationPending = disabled, taskId, taskVersion, onFileBusyChange, variant, resourceCode, recordId, valueLinkage, linkageContext }: {
   controller: ReturnType<typeof useWorkflowTaskForm>;
   disabled: boolean;
   /** Protect pending writes; a confirmed command's read failure only disables controls. */
   operationPending?: boolean;
-  draftDisabled?: boolean;
   taskId?: string;
   taskVersion?: number;
-  onDraftBusyChange?: (busy: boolean) => void;
   onFileBusyChange?: (busy: boolean) => void;
-  onRefresh?: () => Promise<void>;
   variant: 'desktop' | 'mobile';
   resourceCode?: string;
   recordId?: string;
@@ -183,7 +179,7 @@ export function WorkflowTaskForm({ controller, disabled, operationPending = disa
     ? { taskId, resourceCode, recordId, fieldCode } : undefined;
   const { form, source, latest, current, unsaved, stale } = controller;
   useUnsavedChangesGuard({ when: unsaved || operationPending, preventNavigation: operationPending,
-    message: operationPending ? '资料操作结果尚待确认，请先确认原操作结果。' : '当前输入尚未提交或保存私有草稿，离开后将丢失。' });
+    message: operationPending ? '资料操作结果尚待确认，请先确认原操作结果。' : '当前修改尚未保存，离开后将丢失。' });
   useEffect(() => {
     if (!unsaved && !operationPending) return;
     const handler = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
@@ -196,11 +192,8 @@ export function WorkflowTaskForm({ controller, disabled, operationPending = disa
     content: keep ? '其他处理人的最新值已读取。保留当前填写的字段后，请逐项核对再提交。' : '当前尚未提交的输入将被最新资料替换。',
     okText: keep ? '保留并核对' : '采用最新资料', cancelText: '继续查看', onOk: () => { try { controller.reviewLatest(keep); } catch (error) { message.error(error instanceof Error ? error.message : '请先核对子表'); return Promise.reject(error); } } });
   return <section className={`oxa-workflow-task-form oxa-workflow-task-form-${variant}`} aria-label={source.page.title}>
-    <Typography.Title level={4}>{source.page.title}</Typography.Title>
-    <Typography.Paragraph type="secondary">保存补填后，任务仍由你继续办理。同意或重新提交时会一起提交资料。</Typography.Paragraph>
+    <div className="oxa-workflow-task-form-heading"><Typography.Title level={4}>{source.page.title}</Typography.Title></div>
     <WorkflowTaskFileRecovery files={files} />
-    {taskId && <WorkflowTaskDraftPanel controller={controller} taskId={taskId} disabled={draftDisabled || Boolean(files.pending)}
-      variant={variant} resourceCode={resourceCode} recordId={recordId} onBusyChange={onDraftBusyChange} onRefresh={onRefresh} />}
     {stale && <Alert showIcon type="warning" title="业务资料已更新，当前输入已保留" description={<>
       <p>请核对最新资料后再提交。</p>
       {latest && workflowTaskFormReviewFields(source, latest, current)
@@ -236,7 +229,7 @@ export function WorkflowTaskForm({ controller, disabled, operationPending = disa
               <SurfaceFieldValue field={field} value={source.values[state.code]} resourceCode={resourceCode} workflowFileBinding={binding(state.code)} mobile={variant === 'mobile'} />
             </div></div>
           : <div key={state.code} className={state.required ? 'oxa-workflow-task-required' : undefined}>
-              {uploadNeedsSave && <Alert type="info" showIcon title="请先保存补填，让该附件字段生效，再上传文件。" />}
+              {uploadNeedsSave && <Alert type="info" showIcon title="请先保存数据，让该附件字段生效，再上传文件。" />}
               <Control field={field} disabled={disabled || stale || uploadNeedsSave} operation="update" resourceCode={resourceCode} recordId={recordId}
                 expectedRevision={source.expectedRevision} workflowCandidateBinding={{ taskId: taskId || '', expectedTaskVersion: taskVersion }}
                 workflowFileBinding={binding(state.code)} renderers={{ upload: files.upload,
@@ -255,5 +248,6 @@ export function WorkflowTaskForm({ controller, disabled, operationPending = disa
             </div>;
       })}
     </Form>
+    <Typography.Paragraph type="secondary">保存仅更新申请数据，不推进审批。同意或重新提交时会同时保存当前填写内容。</Typography.Paragraph>
   </section>;
 }

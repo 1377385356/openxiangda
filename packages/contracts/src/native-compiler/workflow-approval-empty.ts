@@ -1,6 +1,6 @@
 /** Only these sources can currently attest a genuine empty approval result. */
 export const WORKFLOW_APPROVAL_EMPTY_PROVIDERS = [
-  'fixed_users', 'input_users', 'form_field_users', 'app_role', 'app_role_in_scope',
+  'supervisor_chain', 'fixed_users', 'input_users', 'form_field_users', 'app_role', 'app_role_in_scope',
 ] as const;
 
 type Node = { kind: string; emptyPolicy?: unknown; binding?: string };

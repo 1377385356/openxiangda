@@ -371,6 +371,7 @@ function customCapability(
     concurrency: operation.ai.concurrency || "none",
     limits: { timeoutMs: operation.ai.timeoutMs || DEFAULT_TIMEOUT_MS },
     sideEffects: operation.ai.sideEffects,
+    ...(operation.ai.reconcile ? { reconcile: operation.ai.reconcile } : {}),
     ...(operation.ai.agent ? {
       agent: {
         visibility: operation.ai.agent.visibility,
@@ -430,6 +431,17 @@ export function compileAiCapabilityCatalog(
     );
   const byCode = new Map(capabilities.map(capability => [capability.code, capability]));
   for (const capability of capabilities) {
+    if (capability.reconcile?.kind === "status-operation") {
+      const code = capability.reconcile.operation;
+      const resolver = capabilities.find(item => item.binding?.operationCode === code);
+      const schema = resolver?.inputSchema as { type?: string; additionalProperties?: boolean; required?: string[]; properties?: Record<string,{type?:string}> } | undefined;
+      const keys = ["invocationKey", "capabilityCode", "intentDigest", "inputHash", "initiatingUserId"];
+      if (!resolver || resolver.kind !== "customAction" || resolver.risk !== "read" || resolver.binding?.method !== "GET" ||
+          schema?.type !== "object" || schema.additionalProperties !== false ||
+          Object.keys(schema.properties || {}).length !== keys.length || schema.required?.length !== keys.length ||
+          keys.some(key => schema.properties?.[key]?.type !== "string" || !schema.required?.includes(key)))
+        throw new Error(`AI_AGENT_RECONCILE_OPERATION_INVALID:${capability.code}:${code}`);
+    }
     const agent = capability.agent;
     if (!agent || agent.visibility !== "task") continue;
     const referenced = new Set([

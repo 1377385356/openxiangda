@@ -56,3 +56,24 @@ export * from './native-compiler/development-configuration.js';
 export * from './native-compiler/development-backend.js';
 
 export * from './event-worker-effect.js';
+export * from './native-compiler/service-mutations.js';
+
+export * from './native-compiler/workflow-designer.js';
+
+export * from './native-compiler/workflow-return-policy.js';
+
+export * from './native-compiler/workflow-handle.js';
+
+export * from './native-compiler/workflow-platform-notify.js';
+
+export { workflowProducedEventTypes } from './native-compiler/workflow-events.js';
+
+export * from './native-compiler/workflow-reminders.js';
+
+export * from './native-compiler/workflow-supervisor-chain.js';
+
+export * from './native-compiler/resource-query.js';
+export * from './native-compiler/cascade-value.js';
+export * from './native-compiler/address-value.js';
+export * from './native-compiler/workflow-parallel.js';
+export * from './native-compiler/workflow-source-sync.js';

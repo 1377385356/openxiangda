@@ -1078,6 +1078,8 @@ export interface DirectoryEntry {
   hasChildren?: boolean;
   path?: Array<{ id: string; label: string }>;
   selectable?: boolean;
+  /** Historical entries remain selectable in a read filter. */
+  inactive?: boolean;
 }
 
 export interface DirectoryResolveRequest {
@@ -1103,7 +1105,7 @@ export interface DirectoryEntryPage {
 export interface NativeScopeValueResolveRequest {
   schemaVersion: typeof SCHEMA_VERSIONS.nativeScopeValueResolveRequest;
   dimensionCode: string;
-  operation: "create" | "update";
+  operation: "create" | "update" | "filter";
   values: string[];
 }
 
@@ -1123,8 +1125,8 @@ export interface NativeScopeValuePage {
   resourceCode: string;
   fieldCode: string;
   dimensionCode: string;
-  operation: "create" | "update";
-  items: Array<{ value: string; label: string; selectable: boolean }>;
+  operation: "create" | "update" | "filter";
+  items: Array<{ value: string; label: string; selectable: boolean; inactive?: boolean }>;
   nextCursor: string | null;
 }
 
@@ -1141,13 +1143,20 @@ export interface DataRecordEditInput {
   expectedRevision: number;
 }
 
+export interface DataFieldSourceRecord {
+  id: string;
+  expectedRevision: number;
+}
+
 export interface DataFieldSourceQuery {
   schemaVersion: typeof SCHEMA_VERSIONS.dataFieldSourceQuery;
-  operation: "create" | "update";
+  operation: "create" | "update" | "filter";
   keyword?: string;
   cursor?: string;
   /** Values for the source declaration's validated current-form bindings. */
   bindings?: Record<string, unknown>;
+  /** Saved row context for an ordinary update; never contains saved private values. */
+  record?: DataFieldSourceRecord;
   /** 正式流程发起意图；平台核验字段绑定和动作能力，目标仍按当前用户读取。 */
   launch?: DataFieldSourceLaunchBinding;
   action?: DataRecordEditInput;
@@ -1181,7 +1190,7 @@ export interface DataFieldSourcePage {
   resourceCode: string;
   fieldCode: string;
   sourceResourceCode: string;
-  operation: "create" | "update";
+  operation: "create" | "update" | "filter";
   items: ResourceReferenceValue[];
   nextCursor: string | null;
 }
@@ -2008,6 +2017,8 @@ export interface DataTransactionRequest {
 }
 
 export interface DataTransactionResult {
+  /** Historical service identity; never a reusable authority token. */
+  serviceMutation?: { kind: 'backend-event' | 'service-action'; grantsDigest: string; operationCode?: string; eventId?: string; subscriptionCode?: string };
   schemaVersion: typeof SCHEMA_VERSIONS.dataTransactionResult;
   idempotencyKey: string;
   /** Post-lock database acceptance time used by every dynamic guard assertion. */
@@ -2057,46 +2068,8 @@ export const DATA_EVENT_TYPES_V2 = [
 
 export type DataEventTypeV2 = (typeof DATA_EVENT_TYPES_V2)[number];
 
-export const WORKFLOW_EVENT_TYPES_V2 = [
-  "openxiangda.workflow.node.skipped.v2",
-  "openxiangda.workflow.step.requested.v2",
-  "openxiangda.workflow.step.result_received.v2",
-  "openxiangda.workflow.step.completed.v2",
-  "openxiangda.workflow.step.continuation_failed.v2",
-  "openxiangda.workflow.instance.started.v2",
-  "openxiangda.workflow.instance.completed.v2",
-  "openxiangda.workflow.instance.rejected.v2",
-  "openxiangda.workflow.instance.returned.v2",
-  "openxiangda.workflow.instance.resumed.v2",
-  "openxiangda.workflow.instance.withdrawn.v2",
-  "openxiangda.workflow.instance.terminated.v2",
-  "openxiangda.workflow.instance.cc_added.v2",
-  "openxiangda.workflow.task.created.v2",
-  "openxiangda.workflow.task.assigned.v2",
-  "openxiangda.workflow.task.assignment_pending.v2",
-  "openxiangda.workflow.task.assignment_resolution_failed.v2",
-  "openxiangda.workflow.task.approved.v2",
-  "openxiangda.workflow.task.completed.v2",
-  "openxiangda.workflow.task.rejected.v2",
-  "openxiangda.workflow.task.returned.v2",
-  "openxiangda.workflow.task.resubmitted.v2",
-  "openxiangda.workflow.task.transferred.v2",
-  "openxiangda.workflow.task.reassigned.v2",
-  "openxiangda.workflow.task.delegated.v2",
-  "openxiangda.workflow.task.assignee_added.v2",
-  "openxiangda.workflow.task.cancelled.v2",
-  "openxiangda.workflow.participant.activated.v2",
-  "openxiangda.workflow.participant.completed.v2",
-  "openxiangda.workflow.participant.rejected.v2",
-  "openxiangda.workflow.participant.returned.v2",
-  "openxiangda.workflow.participant.transferred.v2",
-  "openxiangda.workflow.participant.reassigned.v2",
-  "openxiangda.workflow.participant.delegated.v2",
-  "openxiangda.workflow.participant.added.v2",
-  "openxiangda.workflow.participant.suspended.v2",
-  "openxiangda.workflow.participant.resumed.v2",
-  "openxiangda.workflow.participant.cancelled.v2",
-] as const;
+import { WORKFLOW_EVENT_TYPES_V2 } from './native-compiler/workflow-events.js';
+export { WORKFLOW_EVENT_TYPES_V2 } from './native-compiler/workflow-events.js';
 
 export type WorkflowEventTypeV2 = (typeof WORKFLOW_EVENT_TYPES_V2)[number];
 
@@ -2411,6 +2384,7 @@ export type WorkflowFieldPolicy =
   | "edit"
   | "edit_required";
 export type WorkflowCommand =
+  | "complete"
   | "save_form"
   | "approve"
   | "reject"
@@ -2438,6 +2412,7 @@ export type WorkflowExpression =
   | { op: "not" | "exists"; value: WorkflowExpression };
 
 export interface WorkflowApprovalNode {
+  reminders?: import('./native-compiler/workflow-reminders.js').WorkflowReminders;
   id: string;
   kind: "approval";
   title: string;
@@ -2453,10 +2428,13 @@ export interface WorkflowApprovalNode {
   onReject: string;
   allowedOperations?: WorkflowCommand[];
   returnTargets?: string[];
+  returnPolicy?: import('./native-compiler/workflow-return-policy.js').WorkflowReturnPolicy;
   /** Immutable reference to an application-owned task page input contract. */
   taskPageCode?: string;
   /** Code-owned defaults; labels never change the stable command semantics. */
   operationPolicy?: Partial<Record<WorkflowConfigurableOperation, WorkflowNodeOperationPolicy>>;
+  /** Released hard requirements; registering a command handler does not force its action on. */
+  requiredOperations?: WorkflowConfigurableOperation[];
   /** Explicit upper bound for administrator changes. Topology remains immutable. */
   administration?: WorkflowApprovalAdministration;
   fieldPolicy?: {
@@ -2465,10 +2443,15 @@ export interface WorkflowApprovalNode {
   };
 }
 
-export type WorkflowConfigurableOperation = 'approve' | 'reject' | 'return' | 'transfer' | 'delegate' | 'add_assignee';
+export type WorkflowConfigurableOperation = 'complete' | 'approve' | 'reject' | 'save_form' | 'return' | 'transfer' | 'delegate' | 'add_assignee';
+export type WorkflowOperationOpinion = 'none' | 'optional' | 'required';
 export type WorkflowConfigurableAssigneeProvider = 'fixed_users' | 'app_role' | 'app_role_in_scope';
 export interface WorkflowNodeOperationPolicy {
   label?: string;
+  /** Presentation default; never changes command or field authorization. */
+  opinion?: WorkflowOperationOpinion;
+  /** Released minimum. Omitted preserves legacy required baselines. */
+  minimumOpinion?: WorkflowOperationOpinion;
   /** Approve defaults to false, reject to true; explicit false is code-owned. */
   commentRequired?: boolean;
   /** Transfer/delegate/add_assignee/return default to true; administrators cannot loosen the code baseline. */
@@ -2479,6 +2462,14 @@ export interface WorkflowApprovalAdministration {
   assigneeProviders?: WorkflowConfigurableAssigneeProvider[];
   operations?: WorkflowConfigurableOperation[];
 }
+
+/** Independent human handling: completion records no approval decision. */
+export interface WorkflowHandleNode extends Omit<WorkflowApprovalNode, 'kind' | 'onApprove' | 'onReject' | 'emptyPolicy' | 'initiatorApprovalPolicy' | 'completionDeadline'> {
+  kind: 'handle';
+  next: string;
+  emptyPolicy?: 'block';
+}
+export type WorkflowHumanNode = WorkflowApprovalNode | WorkflowHandleNode;
 
 export interface WorkflowConditionNode {
   id: string;
@@ -2516,6 +2507,9 @@ export interface WorkflowCcNode {
 }
 
 export type WorkflowNode =
+  | import('./native-compiler/workflow-parallel.js').WorkflowParallelNode
+  | import('./native-compiler/workflow-parallel.js').WorkflowJoinNode
+  | WorkflowHandleNode
   | WorkflowApprovalNode
   | WorkflowConditionNode
   | WorkflowEndNode
@@ -2585,6 +2579,7 @@ export type WorkflowBindingProvider =
   | "input_users"
   | "form_field_users"
   | "department_supervisor"
+  | "supervisor_chain"
   | "app_role"
   | "app_role_in_scope"
   | "business_relation"
@@ -2592,7 +2587,7 @@ export type WorkflowBindingProvider =
   | "initiator_select"
   | "application_provider";
 
-export interface WorkflowBindingEntry {
+export interface WorkflowBindingEntry extends Partial<import('./native-compiler/workflow-supervisor-chain.js').WorkflowSupervisorChainParameters> {
   provider: WorkflowBindingProvider;
   /** Reference to the constrained subject field; role/scope remain declared once. */
   candidateField?: string;
@@ -2736,7 +2731,7 @@ export interface WorkflowNodeConfigurationPatch {
   title?: string;
   description?: string;
   mode?: WorkflowApprovalMode;
-  operations?: Partial<Record<WorkflowConfigurableOperation, WorkflowNodeOperationPolicy & { enabled?: boolean }>>;
+  operations?: Partial<Record<WorkflowConfigurableOperation, Omit<WorkflowNodeOperationPolicy, 'minimumOpinion'> & { enabled?: boolean }>>;
   assignee?:
     | { provider: "fixed_users"; users: string[] }
     | { provider: "app_role" | "app_role_in_scope"; roleCode: string; roleCodes?: never }
@@ -2767,6 +2762,8 @@ export interface WorkflowNodeConfigurations {
       initiatorApprovalPolicy?: "manual" | "auto_approve";
       completionDeadline?: import('./native-compiler/workflow-completion-deadline.js').WorkflowCompletionDeadline;
       allowedOperations?: WorkflowCommand[];
+      requiredOperations?: WorkflowConfigurableOperation[];
+      taskPageCode?: string;
       operationPolicy?: Partial<Record<WorkflowConfigurableOperation, WorkflowNodeOperationPolicy>>;
       fieldPolicy?: WorkflowApprovalNode['fieldPolicy'];
     };
@@ -3208,6 +3205,7 @@ export interface WorkflowTask {
     | "returned"
     | "cancelled"
     | "expired";
+  nodeKind?: WorkflowNode['kind'];
   approvalMode: WorkflowApprovalMode;
   taskKind: "normal" | "return_review" | "resume";
   assignedRoleSubjectKey: string | null;
@@ -3262,6 +3260,7 @@ export interface WorkflowTaskParticipant {
   status: "pending" | "active" | "approved" | "rejected" | "cancelled";
   required: boolean;
   outcome:
+    | "completed"
     | "approved"
     | "rejected"
     | "returned"
@@ -3290,7 +3289,12 @@ export interface WorkflowOperationSurface {
     | "administration"
     | "app_action";
   audience: "participant" | "initiator" | "administrator" | "application";
+  /** Legacy placement, retained for older consumers. */
   placement: "primary" | "secondary" | "overflow";
+  /** Server-owned order: lower is more prominent; null is always in More. */
+  prominence?: number | null;
+  /** Human-readable effect, separate from input validation and command authority. */
+  consequence?: string;
   emphasis: "primary" | "danger" | "warning" | "neutral";
   /** @deprecated Consume emphasis. Kept during the alpha package transition. */
   tone: string;

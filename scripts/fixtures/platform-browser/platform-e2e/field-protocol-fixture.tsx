@@ -15,6 +15,7 @@ import {
   SurfaceAuditFieldValue,
   SurfaceFieldControl,
   SurfaceFieldValue,
+  RichTextField,
   type SurfaceField,
   type SurfaceFieldRenderers,
 } from 'openxiangda/field-kit';
@@ -302,6 +303,21 @@ function MobileFacadeAcceptance() {
   </MobileSurface>;
 }
 
+function RichTextScopeAcceptance() {
+  const [recordId, setRecordId] = useState('record-a');
+  const [value, setValue] = useState('');
+  const [finish, setFinish] = useState<(() => void) | null>(null);
+  return <><Button onClick={() => { setRecordId('record-b'); setValue(''); }}>切换记录</Button>
+    <Button disabled={!finish} onClick={() => finish?.()}>完成旧上传</Button>
+    <RichTextField resourceCode="field-records" fieldCode="body" recordId={recordId} value={value} onChange={setValue}
+      onUpload={(_file, recovered) => new Promise(resolve => {
+        setFinish(() => () => {
+          const file = { schemaVersion: 'openxiangda.data-file-ref/v2' as const, id: '11111111-1111-4111-8111-111111111111', name: 'example.png', contentType: 'image/png', size: 1 };
+          recovered?.(file); recovered?.(file); resolve(file);
+        });
+      })} />
+    <output data-rich-scope={recordId}>{value}</output></>;
+}
 function AcceptancePage() {
   const mobile = new URLSearchParams(location.search).get('mode') === 'mobile';
   const Control = mobile ? MobileSurfaceFieldControl : SurfaceFieldControl;
@@ -395,6 +411,6 @@ function AcceptancePage() {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    {new URLSearchParams(location.search).get('mode') === 'mobile-surface' ? <MobileFacadeAcceptance /> : <AcceptancePage />}
+    {new URLSearchParams(location.search).has('richScope') ? <RichTextScopeAcceptance /> : new URLSearchParams(location.search).get('mode') === 'mobile-surface' ? <MobileFacadeAcceptance /> : <AcceptancePage />}
   </React.StrictMode>
 );

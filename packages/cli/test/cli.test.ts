@@ -28,7 +28,9 @@ const expected = [
   "context",
   "docs",
   "admin",
+  "template",
   "create",
+  "workflow",
   "source",
   "dev",
   "check",
@@ -54,8 +56,8 @@ test("publishes lifecycle commands, optional acceptance, and Skill installation"
     .map(String)
     .filter(name => name.endsWith(".ts"))
     .sort();
-  assert.deepEqual(files, expected.map(name => `${name}.ts`).sort());
-  assert.equal(files.some(name => name.includes("/")), false);
+  assert.deepEqual(files, expected.map(name => name === "template" ? "template/list.ts" : `${name}.ts`).sort());
+  assert.deepEqual(files.filter(name => name.includes("/")), ["template/list.ts"]);
   assert.equal(Rollback.flags["operation-id"].required, undefined);
 });
 

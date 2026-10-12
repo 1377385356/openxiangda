@@ -1,3 +1,10 @@
+import { validateWorkflowSupervisorChains, validateWorkflowSupervisorChainBinding } from './workflow-supervisor-chain.js';
+import { validateWorkflowReminders } from './workflow-reminders.js';
+import { isWorkflowPlatformNotify } from './workflow-platform-notify.js';
+import { validateWorkflowParallel } from './workflow-parallel.js';
+import { validateWorkflowReturnPolicies, workflowReturnTargets } from './workflow-return-policy.js';
+import { validateWorkflowHandlingNodes } from './workflow-handle.js';
+import { normalizeDataMutationGrants } from './service-mutations.js';
 import { hasNativeParentReadPolicy, resolveNativeParentReadBinding, validateNativeParentReadPolicies, NativeParentReadPolicyError } from './parent-read-policy.js';
 import { requiresExtendedFieldCapacity, WORKFLOW_LAUNCH_MAX_INPUTS } from './data-capacity.js';
 import { assertWorkflowNativeStagePolicy } from './workflow-native-stage.js';
@@ -117,6 +124,8 @@ const ADMIN_NAVIGATION_ICONS = new Set([
   'settings',
 ]);
 const WORKFLOW_OPERATIONS = new Set([
+  'complete',
+  'save_form',
   'approve',
   'reject',
   'return',
@@ -154,46 +163,8 @@ export const DATA_EVENT_TYPES_V2 = [
   'openxiangda.data.record.updated.v2',
   'openxiangda.data.record.deleted.v2',
 ] as const;
-export const WORKFLOW_EVENT_TYPES_V2 = [
-  'openxiangda.workflow.node.skipped.v2',
-  WORKFLOW_BUSINESS_STEP_EVENT,
-  'openxiangda.workflow.step.result_received.v2',
-  'openxiangda.workflow.step.completed.v2',
-  'openxiangda.workflow.step.continuation_failed.v2',
-  'openxiangda.workflow.instance.started.v2',
-  'openxiangda.workflow.instance.cc_added.v2',
-  'openxiangda.workflow.instance.completed.v2',
-  'openxiangda.workflow.instance.rejected.v2',
-  'openxiangda.workflow.instance.returned.v2',
-  'openxiangda.workflow.instance.resumed.v2',
-  'openxiangda.workflow.instance.withdrawn.v2',
-  'openxiangda.workflow.instance.terminated.v2',
-  'openxiangda.workflow.task.created.v2',
-  'openxiangda.workflow.task.assigned.v2',
-  'openxiangda.workflow.task.assignment_pending.v2',
-  'openxiangda.workflow.task.assignment_resolution_failed.v2',
-  'openxiangda.workflow.task.approved.v2',
-  'openxiangda.workflow.task.completed.v2',
-  'openxiangda.workflow.task.rejected.v2',
-  'openxiangda.workflow.task.returned.v2',
-  'openxiangda.workflow.task.resubmitted.v2',
-  'openxiangda.workflow.task.transferred.v2',
-  'openxiangda.workflow.task.reassigned.v2',
-  'openxiangda.workflow.task.delegated.v2',
-  'openxiangda.workflow.task.assignee_added.v2',
-  'openxiangda.workflow.task.cancelled.v2',
-  'openxiangda.workflow.participant.activated.v2',
-  'openxiangda.workflow.participant.completed.v2',
-  'openxiangda.workflow.participant.rejected.v2',
-  'openxiangda.workflow.participant.returned.v2',
-  'openxiangda.workflow.participant.transferred.v2',
-  'openxiangda.workflow.participant.reassigned.v2',
-  'openxiangda.workflow.participant.delegated.v2',
-  'openxiangda.workflow.participant.added.v2',
-  'openxiangda.workflow.participant.suspended.v2',
-  'openxiangda.workflow.participant.resumed.v2',
-  'openxiangda.workflow.participant.cancelled.v2',
-] as const;
+export { WORKFLOW_EVENT_TYPES_V2 } from './workflow-events.js';
+import { WORKFLOW_EVENT_TYPES_V2, workflowProducedEventTypes } from './workflow-events.js';
 const WORKFLOW_EVENT_TYPE_SET_V2 = new Set<string>(WORKFLOW_EVENT_TYPES_V2);
 
 type JsonObject = Record<string, any>;
@@ -646,6 +617,13 @@ export function compileRequiredPlatformCapabilitiesV3(
     ...(resources.some(hasDataAuditReadPolicy)
       ? [{ code: 'data.audit-read-access' as const, declaration: dataUsage }]
       : []),
+    ...(resources.some(resource => resource.schema.fields.some((field: JsonObject) =>
+      /^(resource-ref|user|department)\.(single|multiple)$/.test(field.type))) || config.authz.scopeDimensions.some((dimension: JsonObject) => dimension.valueSource)
+      ? [{ code: 'data.field-source-contexts' as const, declaration: {
+          resources: resources.map(resource => ({ code: resource.code, fields: resource.schema.fields.filter((field: JsonObject) =>
+            /^(resource-ref|user|department)\.(single|multiple)$/.test(field.type)) })),
+          dimensions: config.authz.scopeDimensions.filter((dimension: JsonObject) => dimension.valueSource),
+        } }] : []),
     ...(requiresDirectoryV2
       ? [
           {
@@ -687,6 +665,7 @@ export function compileRequiredPlatformCapabilitiesV3(
         commands: initiatorPhoneCommands.map((command: JsonObject) => ({ code: command.code, directory: command.execution.directory })),
       },
     }] : []),
+    ...(config.data.resources.some((resource: JsonObject) => resource.schema.fields.some((field: JsonObject) => field.type === 'text.rich')) ? [{ code: 'data.rich-text' as const, declaration: { policyVersion: 'rich-text-html/1' } }] : []),
     ...(usesManagedFiles
       ? [
           {
@@ -831,6 +810,14 @@ export function compileRequiredPlatformCapabilitiesV3(
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'approval' && node.emptyPolicy !== undefined))
       ? [{ code: 'workflow.approval-empty-policy' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'approval' && node.emptyPolicy !== undefined)) }]
       : []),
+    ...(config.workflows.bindings.some((item: JsonObject) => Object.values(item.binding.bindings).some((entry: any) => entry.provider === 'supervisor_chain')) ? [{code:'workflow.supervisor-chain' as const,declaration:config.workflows.bindings.filter((item: JsonObject) => Object.values(item.binding.bindings).some((entry: any) => entry.provider === 'supervisor_chain'))}] : []),
+    ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.reminders)) ? [{ code: 'workflow.reminders' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.reminders)) }] : []),
+    ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => isWorkflowPlatformNotify(node)))
+      ? [{ code: 'workflow.platform-notify' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => isWorkflowPlatformNotify(node))) }] : []),
+    ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.returnPolicy !== undefined))
+      ? [{ code: 'workflow.return-policy' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.returnPolicy !== undefined)) }] : []),
+    ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'handle'))
+      ? [{ code: 'workflow.handling-nodes' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'handle')) }] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.completionDeadline !== undefined))
       ? [{ code: 'workflow.completion-deadline' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.completionDeadline !== undefined)) }]
       : []),
@@ -851,8 +838,8 @@ export function compileRequiredPlatformCapabilitiesV3(
       ? [{ code: 'workflow.task-rich-fields' as const, declaration: taskRichFieldDefinitions }] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.taskPages || {}).some((page: any) => page.fields.some((field: any) => field.subtable)))
       ? [{ code: 'workflow.task-owned-subtables' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.taskPages || {}).some((page: any) => page.fields.some((field: any) => field.subtable))) }] : []),
-    ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action'))
-      ? [{ code: 'workflow.durable-business-step' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action')) }]
+    ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action' && !isWorkflowPlatformNotify(node)))
+      ? [{ code: 'workflow.durable-business-step' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action' && !isWorkflowPlatformNotify(node))) }]
       : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action' && node.handler.dataTransaction))
       ? [{ code: 'workflow.step-data-transaction' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action' && node.handler.dataTransaction)) }]
@@ -883,6 +870,8 @@ export function compileRequiredPlatformCapabilitiesV3(
           },
         ]
       : []),
+    ...(operations.some(op => op.platformAccess?.dataMutations) || config.events.subscriptions.some((sub: JsonObject) => sub.platformAccess?.dataMutations)
+      ? [{ code: 'data.service-mutations' as const, declaration: { operations: operations.filter(op => op.platformAccess?.dataMutations).map(op => ({code: op.code, grants: op.platformAccess.dataMutations})), subscriptions: config.events.subscriptions.filter((sub: JsonObject) => sub.platformAccess?.dataMutations).map((sub: JsonObject) => ({code: sub.code, grants: sub.platformAccess.dataMutations})) } }] : []),
     ...(usesNotification
       ? [
           {
@@ -1645,7 +1634,7 @@ function compileExpectedContract(
         field: trigger.field,
       })),
       ...(config.workflows.activations.length
-        ? WORKFLOW_EVENT_TYPES_V2.filter(eventType => !WORKFLOW_BUSINESS_STEP_EVENTS.includes(eventType as any) || config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action'))).filter(eventType => eventType !== 'openxiangda.workflow.node.skipped.v2' || config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'approval' && node.emptyPolicy === 'skip'))).map(eventType => ({
+        ? workflowProducedEventTypes(config.workflows.definitions).map(eventType => ({
             code: `workflow:${eventType}`,
             source: 'workflow',
             eventType,
@@ -1740,8 +1729,12 @@ function validateEventSubscriptionPlatformAccess(
 ) {
   if (value === undefined) return undefined;
   const access = object(value, pointer);
-  exactKeys(access, ['notification', 'managedFileCopies', 'decimalReservation'], pointer, true);
+  exactKeys(access, ['notification', 'managedFileCopies', 'decimalReservation', 'dataMutations'], pointer, true);
   const result: JsonObject = {};
+  if (access.dataMutations !== undefined) {
+    try { result.dataMutations = normalizeDataMutationGrants(access.dataMutations, declaredResources); }
+    catch { fail('NATIVE_EVENT_DATA_MUTATIONS_INVALID', `${pointer}/dataMutations`); }
+  }
   if (access.decimalReservation !== undefined) {
     try {
       result.decimalReservation = normalizeDecimalReservationEventDeclaration(
@@ -1788,7 +1781,7 @@ function validateEventSubscriptionPlatformAccess(
         sourceFields.forEach((field, fieldIndex) => {
           const sourceType = source!.get(field);
           const targetType = target!.get(targetFields[fieldIndex]!);
-          if (!['file', 'image'].includes(String(sourceType)) || sourceType !== targetType) {
+          if (!['file', 'image', 'text.rich'].includes(String(sourceType)) || sourceType !== targetType) {
             fail('NATIVE_EVENT_MANAGED_FILE_COPY_FIELD_INVALID', `${entryPointer}/sourceFieldCodes/${fieldIndex}`);
           }
         });
@@ -2825,7 +2818,7 @@ function validateOperationPlatformAccess(
   const access = object(value, pointer);
   exactKeys(
     access,
-    ['directory', 'selectedDepartments', 'managedFiles', 'managedFileCopies', 'notification', 'workflow', 'roleAssertions', 'decimalReservation', 'dataCommands', 'recordEdit', 'ownedSubject', 'workflowStage'],
+    ['directory', 'selectedDepartments', 'managedFiles', 'managedFileCopies', 'notification', 'workflow', 'roleAssertions', 'decimalReservation', 'dataCommands', 'recordEdit', 'ownedSubject', 'workflowStage', 'dataMutations'],
     pointer,
     true
   );
@@ -2833,6 +2826,10 @@ function validateOperationPlatformAccess(
     fail('NATIVE_OPERATION_PLATFORM_ACCESS_EMPTY', pointer);
   }
   const result: JsonObject = {};
+  if (access.dataMutations !== undefined) {
+    try { result.dataMutations = normalizeDataMutationGrants(access.dataMutations, declaredResourceFields); }
+    catch { fail('NATIVE_OPERATION_DATA_MUTATIONS_INVALID', `${pointer}/dataMutations`); }
+  }
   if (access.dataCommands !== undefined) {
     const commands = object(access.dataCommands, `${pointer}/dataCommands`);
     exactKeys(commands, ['mode'], `${pointer}/dataCommands`);
@@ -3024,7 +3021,7 @@ function validateOperationPlatformAccess(
         sourceFields.forEach((field, fieldIndex) => {
           const sourceType = source!.get(field);
           const targetType = target!.get(targetFields[fieldIndex]!);
-          if (!['file', 'image'].includes(String(sourceType)) || sourceType !== targetType) {
+          if (!['file', 'image', 'text.rich'].includes(String(sourceType)) || sourceType !== targetType) {
             fail('NATIVE_OPERATION_MANAGED_FILE_COPY_FIELD_INVALID', `${entryPointer}/sourceFieldCodes/${fieldIndex}`);
           }
         });
@@ -5249,7 +5246,7 @@ function compileWorkflows(config: JsonObject) {
       );
       for (const nodeValue of Object.values(nodes)) {
         const node = object(nodeValue, '/config/workflows/definitions/nodes/*');
-        if (node.kind !== 'approval') continue;
+        if (node.kind !== 'approval' && node.kind !== 'handle') continue;
         for (const operation of uniqueStrings(
           node.allowedOperations || [],
           '/config/workflows/definitions/nodes/*/allowedOperations',
@@ -6932,12 +6929,17 @@ function validateWorkflowReferences(config: JsonObject) {
         'acceptedCommandDeactivationPolicy',
       ],
       pointer,
-      ['environmentKey']
+      ['environmentKey','sourceBase']
     );
     const code = stableCode(activation.workflowCode, `${pointer}/workflowCode`);
     if (activationCodes.has(code))
       fail('NATIVE_WORKFLOW_ACTIVATION_DUPLICATE', pointer);
     activationCodes.add(code);
+    if (activation.sourceBase !== undefined) {
+      const base=object(activation.sourceBase,`${pointer}/sourceBase`);
+      exactKeys(base,['definitionDigest','bindingDigest'],`${pointer}/sourceBase`);
+      for (const key of ['definitionDigest','bindingDigest']) if (!/^(sha256:)?[a-f0-9]{64}$/.test(String(base[key] || ''))) fail('NATIVE_WORKFLOW_SOURCE_BASE_INVALID',`${pointer}/sourceBase/${key}`);
+    }
     const definitionKey = `${code}:${positiveInteger(
       activation.definitionVersion,
       `${pointer}/definitionVersion`
@@ -7290,6 +7292,14 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
   if (ccErrors.length) fail(ccErrors[0]!, `${pointer}/nodes`);
   const taskPageErrors = validateWorkflowTaskPages(definition);
   if (taskPageErrors.length) fail(taskPageErrors[0]!, `${pointer}/taskPages`);
+  const returnErrors = validateWorkflowReturnPolicies(definition as any);
+  if (returnErrors.length) fail(returnErrors[0]!, `${pointer}/nodes`);
+  const reminderErrors = validateWorkflowReminders(definition);
+  if (reminderErrors.length) fail(reminderErrors[0]!, `${pointer}/nodes`);
+  const handleErrors = validateWorkflowHandlingNodes(definition as any);
+  if (handleErrors.length) fail(handleErrors[0]!, `${pointer}/nodes`);
+  const parallelErrors = validateWorkflowParallel(definition as any);
+  if (parallelErrors.length) fail(parallelErrors[0]!, `${pointer}/nodes`);
   const stepErrors = validateWorkflowBusinessSteps(definition);
   if (stepErrors.length) fail(stepErrors[0]!, `${pointer}/nodes`);
   if (!nodes[startAt])
@@ -7299,17 +7309,18 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
     const nodePointer = `${pointer}/nodes/${nodeId}`;
     const node = object(rawNode, nodePointer);
     equal(node.id, nodeId, `${nodePointer}/id`);
-    if (!['approval', 'condition', 'end', 'cc', 'action', 'correction'].includes(node.kind)) {
+    if (!['approval', 'handle', 'condition', 'end', 'cc', 'action', 'correction', 'parallel', 'join'].includes(node.kind)) {
       fail('NATIVE_WORKFLOW_NODE_KIND_INVALID', `${nodePointer}/kind`);
     }
     const targets: string[] = [];
-    if (node.kind === 'approval') {
+    if (node.kind === 'approval' || node.kind === 'handle') {
       requiredString(node.title, `${nodePointer}/title`, 255);
       workflowBindingCode(node.binding, `${nodePointer}/binding`);
       if (!['single', 'any', 'all', 'sequence'].includes(node.mode)) {
         fail('NATIVE_WORKFLOW_APPROVAL_MODE_INVALID', `${nodePointer}/mode`);
       }
-      targets.push(
+      if (node.kind === 'handle') targets.push(requiredString(node.next, `${nodePointer}/next`, 128));
+      else targets.push(
         requiredString(node.onApprove, `${nodePointer}/onApprove`, 128),
         requiredString(node.onReject, `${nodePointer}/onReject`, 128)
       );
@@ -7345,6 +7356,17 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
     } else if (node.kind === 'cc') {
       requiredString(node.title, `${nodePointer}/title`, 255);
       workflowBindingCode(node.binding, `${nodePointer}/binding`);
+      targets.push(requiredString(node.next, `${nodePointer}/next`, 128));
+    } else if (node.kind === 'parallel') {
+      requiredString(node.title, `${nodePointer}/title`, 255);
+      targets.push(requiredString(node.join, `${nodePointer}/join`, 128));
+      for (const [index, raw] of boundedArray(node.branches, `${nodePointer}/branches`, 8).entries()) {
+        const branch = object(raw, `${nodePointer}/branches/${index}`);
+        if (branch.when !== undefined) validateWorkflowExpression(branch.when, `${nodePointer}/branches/${index}/when`, 0);
+        targets.push(requiredString(branch.target, `${nodePointer}/branches/${index}/target`, 128));
+      }
+    } else if (node.kind === 'join') {
+      requiredString(node.title, `${nodePointer}/title`, 255);
       targets.push(requiredString(node.next, `${nodePointer}/next`, 128));
     } else if (node.kind === 'condition') {
       const branches = boundedArray(
@@ -7396,7 +7418,7 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
   walk(startAt);
   for (const id of [...reachable]) {
     const current = nodes[id];
-    if (current?.kind === 'approval') for (const target of current.returnTargets || [])
+    if (current?.kind === 'approval' || current?.kind === 'handle') for (const target of workflowReturnTargets(current))
       if (nodes[target]?.kind === 'correction') reachable.add(target);
   }
   if (reachable.size !== nodeIds.length) {
@@ -7455,6 +7477,8 @@ function validateWorkflowBinding(binding: JsonObject, pointer: string) {
   for (const [code, raw] of Object.entries(entries)) {
     workflowBindingCode(code, `${pointer}/bindings/${code}`);
     const entry = object(raw, `${pointer}/bindings/${code}`);
+    const chainErrors = validateWorkflowSupervisorChainBinding(entry);
+    if (chainErrors.length) fail(chainErrors[0]!, `${pointer}/bindings/${code}`);
     const selectionErrors = validateWorkflowRoleInputSelection(entry);
     if (selectionErrors.length) fail(selectionErrors[0]!, `${pointer}/bindings/${code}/selectedInputPath`);
     const unionErrors = validateWorkflowRoleUnion(entry);
@@ -7471,6 +7495,7 @@ function validateWorkflowBinding(binding: JsonObject, pointer: string) {
         'input_users',
         'form_field_users',
         'department_supervisor',
+        'supervisor_chain',
         'app_role',
         'app_role_in_scope',
         'business_relation',
@@ -7525,6 +7550,8 @@ function validateWorkflowDefinitionBinding(
   binding: JsonObject,
   pointer: string
 ) {
+  const chainErrors = validateWorkflowSupervisorChains(definition,binding);
+  if (chainErrors.length) fail(chainErrors[0]!, pointer);
   equal(binding.workflowCode, definition.code, `${pointer}/workflowCode`);
   const entries = object(binding.bindings, `${pointer}/bindings`);
   for (const [code, entry] of Object.entries(entries)) {
@@ -7541,7 +7568,7 @@ function validateWorkflowDefinitionBinding(
     object(definition.nodes, `${pointer}/nodes`)
   )) {
     const node = object(rawNode, `${pointer}/nodes/${nodeId}`);
-    if (['approval', 'cc'].includes(node.kind) && !entries[node.binding]) {
+    if (['approval', 'handle', 'cc'].includes(node.kind) && !entries[node.binding]) {
       fail(
         'NATIVE_WORKFLOW_BINDING_REFERENCE_MISSING',
         `${pointer}/nodes/${nodeId}/binding`

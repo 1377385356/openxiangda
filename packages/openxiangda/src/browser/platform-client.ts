@@ -1,3 +1,4 @@
+import { createBrowserUuid } from './uuid';
 import { parseBusinessProcessResolution, parseBusinessProcessCommitResult } from 'openxiangda-contracts/browser';
 import type { WorkflowDelegationAdministration, WorkflowDelegationCatalog, WorkflowDelegationCandidatePage, WorkflowDelegationCandidateQuery,
   WorkflowDelegationListQuery, WorkflowDelegationPage, WorkflowDelegationMutationPreview, WorkflowDelegationMutationReceipt, WorkflowDelegationMutationRequest } from 'openxiangda-contracts/browser';
@@ -523,9 +524,7 @@ let platformSessionStorageListening = false;
 const PLATFORM_AUTH_CHANNEL = 'auth-session-v2';
 const PLATFORM_LOGOUT_STORAGE_KEY = 'auth_session_v2:logout';
 const platformAuthOwnerId =
-  typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-    ? crypto.randomUUID()
-    : `openxiangda-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  createBrowserUuid();
 
 interface PlatformLogoutSignal {
   type: 'logout';
@@ -1288,7 +1287,7 @@ export async function loadChinaDivisions(parentAdcode?: string) {
 
 export async function searchDirectory(
   kind: DirectoryKind,
-  options: { keyword: string; cursor?: string },
+  options: { keyword: string; cursor?: string; purpose?: 'filter' },
 ) {
   const params = new URLSearchParams({
     environmentKey: currentEnvironmentKey(),
@@ -1296,6 +1295,7 @@ export async function searchDirectory(
     limit: '20',
   });
   if (options.cursor) params.set('cursor', options.cursor);
+  if (options.purpose) params.set('purpose', options.purpose);
   return request<DirectoryEntryPage>(
     `${nativeBase().replace(/\/native$/, '')}/directory/${kind}s?${params}`,
   );
@@ -1361,7 +1361,8 @@ export async function searchResource(
   resourceCode: string,
   fieldCode: string,
   options: {
-    operation: 'create' | 'update';
+    operation: DataFieldSourceQuery['operation'];
+    record?: DataFieldSourceQuery['record'];
     keyword: string;
     cursor?: string;
     bindings?: Record<string, unknown>;
@@ -1371,7 +1372,7 @@ export async function searchResource(
   },
 ) {
   if (options.task) {
-    if (options.operation !== 'update' || options.launch || options.action)
+    if (options.operation !== 'update' || options.launch || options.action || options.record)
       throw new Error('WORKFLOW_TASK_FIELD_SOURCE_CONTEXT_INVALID');
     const input: WorkflowTaskFieldSourceQuery = {
       schemaVersion: SCHEMA_VERSIONS.workflowTaskFieldSourceQuery,
@@ -1389,6 +1390,7 @@ export async function searchResource(
   const query: DataFieldSourceQuery = {
     schemaVersion: SCHEMA_VERSIONS.dataFieldSourceQuery,
     operation: options.operation,
+    ...(options.record ? { record: options.record } : {}),
     ...(options.launch ? { launch: options.launch } : {}),
     ...(options.action ? { action: options.action } : {}),
     ...(options.keyword.trim() ? { keyword: options.keyword.trim() } : {}),
@@ -1903,7 +1905,7 @@ export function createNativeResourceClient(
 
 export async function transactNativeData(
   operations: DataTransactionOperation[],
-  idempotencyKey: string = crypto.randomUUID(),
+  idempotencyKey: string = createBrowserUuid(),
 ) {
   const transaction: DataTransactionRequest = {
     schemaVersion: SCHEMA_VERSIONS.dataTransactionRequest,
@@ -2984,19 +2986,19 @@ export async function loadWorkflowBusinessStepRecovery(instanceId: string) {
   );
 }
 
-export async function previewWorkflowBusinessStepRecovery(instanceId: string) {
+export async function previewWorkflowBusinessStepRecovery(instanceId: string, selection: { executionId?: string; recovery?: 'continue' | 'recompute' | 'apply_stored' } = {}) {
   const csrf = await workflowCsrfToken();
   const preview = await request<import('openxiangda-contracts/browser').WorkflowBusinessStepRecoveryPreview>(
     `${applicationServiceBase()}/admin/workflow-instances/${encodeURIComponent(instanceId)}/preview`, {
       method: 'POST', headers: { 'x-openxiangda-csrf-token': csrf },
-      body: JSON.stringify({ environmentKey: currentEnvironmentKey(), action: 'admin_retry_step' }),
+      body: JSON.stringify({ environmentKey: currentEnvironmentKey(), action: 'admin_retry_step', ...selection }),
     },
   );
   bindWorkflowCommandCsrf(preview.commandToken, preview.expiresAt, csrf);
   return preview;
 }
 
-/** Keep this exact token/input/key until the outcome is known. Never executes the external handler. */
+/** Keep this exact token/input/key until the outcome is known. Only an explicit pure recomputation creates a new execution. */
 export async function executeWorkflowBusinessStepRecovery(instanceId: string, input: { commandToken: string; idempotencyKey: string; input: { reason: string } }) {
   return request<WorkflowCommandResult>(`${applicationServiceBase()}/admin/workflow-instances/${encodeURIComponent(instanceId)}/commands/admin_retry_step`, {
     method: 'POST', headers: { 'x-openxiangda-csrf-token': await commandBoundCsrf(input.commandToken) }, body: JSON.stringify(input),
@@ -3242,8 +3244,7 @@ export async function executeWorkflowOperation(
 }
 
 function randomWorkflowIdempotencyKey(command: string) {
-  const suffix =
-    globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
+  const suffix = createBrowserUuid();
   return `workflow:${command}:${suffix}`;
 }
 
@@ -3360,4 +3361,61 @@ export async function correctWorkflowRecord(surface: WorkflowRecordCorrectionSur
     schemaVersion: 'openxiangda.workflow-record-correction/v2', environmentKey: surface.environmentKey,
     idempotencyKey, operations,
   } satisfies WorkflowRecordCorrectionInput) });
+}
+
+function workflowDesignerPath(workflowCode: string, suffix: string) {
+  return `${workflowBase()}/management/designers/${encodeURIComponent(workflowCode)}${suffix}`;
+}
+export async function loadWorkflowDesignerDraft(workflowCode: string) {
+  return requestRead<import('openxiangda-contracts/browser').WorkflowDesignerDraft>(`${workflowDesignerPath(workflowCode, '/draft')}?environmentKey=${encodeURIComponent(currentEnvironmentKey())}`);
+}
+async function workflowDesignerMutation<T>(workflowCode: string, suffix: string, input: object) {
+  // Designer writes use the same authenticated management session as node configuration.
+  // Task-command CSRF belongs to application login and is not a management credential.
+  return request<T>(workflowDesignerPath(workflowCode, suffix), { method: 'POST', body: JSON.stringify({ ...input, environmentKey: currentEnvironmentKey() }) });
+}
+export function saveWorkflowDesignerDraft(workflowCode: string, input: import('openxiangda-contracts/browser').WorkflowDesignerSave) {
+  return workflowDesignerMutation<import('openxiangda-contracts/browser').WorkflowDesignerDraft>(workflowCode, '/draft', input);
+}
+export function previewWorkflowDesignerPublication(workflowCode: string, input: { expectedRevision: number; holds?: import('openxiangda-contracts/browser').WorkflowPublicationHold[] }) {
+  return workflowDesignerMutation<import('openxiangda-contracts/browser').WorkflowPublicationPreview>(workflowCode, '/preview', input);
+}
+export function publishWorkflowDesigner(workflowCode: string, input: import('openxiangda-contracts/browser').WorkflowDesignerPublish) {
+  return workflowDesignerMutation<import('openxiangda-contracts/browser').WorkflowPublicationReceipt>(workflowCode, '/publish', input);
+}
+export function loadWorkflowDesignerPublication(workflowCode: string, publicationId: string) {
+  return requestRead<import('openxiangda-contracts/browser').WorkflowPublicationReceipt & { items: Array<{ instanceId: string; outcome: string; reason?: string; business_key: string }> }>(`${workflowDesignerPath(workflowCode, '/publications/')}${encodeURIComponent(publicationId)}?environmentKey=${encodeURIComponent(currentEnvironmentKey())}`);
+}
+export function listWorkflowDesignerPublications(workflowCode: string) {
+  return requestRead<Array<import('openxiangda-contracts/browser').WorkflowPublicationReceipt & { reason: string; createdAt: string }>>(`${workflowDesignerPath(workflowCode, '/publications')}?environmentKey=${encodeURIComponent(currentEnvironmentKey())}`);
+}
+export function controlWorkflowDesignerPublication(workflowCode: string, publicationId: string, input: { expectedHeadRevision: number; operationId: string; action: 'pause'|'resume'|'retry_failed'|'release_holds'; reason: string; instanceIds?: string[] }) {
+  return workflowDesignerMutation<import('openxiangda-contracts/browser').WorkflowPublicationReceipt>(workflowCode, `/publications/${encodeURIComponent(publicationId)}/control`, input);
+}
+export function restoreWorkflowDesignerVersion(workflowCode: string, input: { version: number; expectedRevision: number; expectedHeadRevision: number; operationId: string }) {
+  return workflowDesignerMutation<import('openxiangda-contracts/browser').WorkflowDesignerDraft>(workflowCode, '/restore', input);
+}
+export interface WorkflowDesignerAiProposal {
+  proposalId: string;
+  sourceRevision: number;
+  status: string;
+  summary?: string;
+  error?: string;
+  definition?: import('openxiangda-contracts/browser').WorkflowDefinition;
+  changes?: Array<{ nodeTitle: string; kind: string; fields: string[] }>;
+}
+export function requestWorkflowDesignerProposal(workflowCode: string,input: { operationId: string; expectedRevision: number; prompt: string }) {
+  return workflowDesignerMutation<WorkflowDesignerAiProposal>(workflowCode,'/assistant/proposals',input);
+}
+export function loadWorkflowDesignerProposal(workflowCode: string,proposalId: string) {
+  return requestRead<WorkflowDesignerAiProposal>(`${workflowDesignerPath(workflowCode,'/assistant/proposals/')}${encodeURIComponent(proposalId)}?environmentKey=${encodeURIComponent(currentEnvironmentKey())}`);
+}
+export function applyWorkflowDesignerProposal(workflowCode: string,proposalId: string,input: { operationId: string }) {
+  return workflowDesignerMutation<import('openxiangda-contracts/browser').WorkflowDesignerDraft>(workflowCode,`/assistant/proposals/${encodeURIComponent(proposalId)}/apply`,input);
+}
+export function cancelWorkflowDesignerProposal(workflowCode: string,proposalId: string) {
+  return workflowDesignerMutation<{ cancelled: true }>(workflowCode,`/assistant/proposals/${encodeURIComponent(proposalId)}/cancel`,{});
+}
+export function searchWorkflowDesignerHoldCandidates(workflowCode: string,keyword = '') {
+  return requestRead<Array<{ instanceId: string; businessKey: string; nodeTitle: string; fromVersion: number }>>(`${workflowDesignerPath(workflowCode,'/hold-candidates')}?${new URLSearchParams({ environmentKey: currentEnvironmentKey(),keyword })}`);
 }

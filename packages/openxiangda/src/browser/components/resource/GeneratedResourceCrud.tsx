@@ -41,7 +41,7 @@ import type {
   DataAuditEntry,
   DataResourceSurface,
 } from 'openxiangda-contracts/browser';
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState, type ReactNode, type Dispatch, type SetStateAction } from 'react';
 import { useHref, useNavigate, useParams } from 'react-router-dom';
 import {
   MobileResourceDetailPage,
@@ -76,6 +76,7 @@ import {
 import {
   isAdminContributionAllowed,
   useAdminResourceContributions,
+  useResourcePageContributions,
 } from '../../admin-contributions';
 import {
   SubtableValueDisplay,
@@ -100,7 +101,15 @@ import { RecordDetailFrame, RecordDetailSections, detailTime } from './RecordDet
 import { RecordChangeHistory } from './RecordChangeHistory';
 import { WorkflowRecordEditor } from '../workflow/WorkflowRecordEditor';
 import { WorkflowRecordHistoryPanel } from '../workflow/WorkflowRecordHistoryPanel';
+import { StandardUserSurfaceErrorBoundary } from '../../standard-user-surfaces';
 import type { ResourceFormDrawerState } from './ResourceFormFrame';
+
+export interface ResourceListControllerOptions {
+  definition: GeneratedResourceDefinition;
+  paths: GeneratedResourceRoutePaths;
+  mobileFields?: readonly string[];
+  columnRenderers?: Readonly<Record<string, (input: { value: unknown; record: ResourceRecord; field: SurfaceField }) => ReactNode>>;
+}
 
 async function exportResourceRows(
   code: string,
@@ -144,10 +153,25 @@ export function systemSortFieldOptions(defaultSortField?: string): Array<{ key: 
     .map(code => ({ key: code, label: SYSTEM_SORT_FIELD_LABELS[code] ?? code }));
 }
 
+export interface ResourceListQueryState {
+  defaultSorts: ResourceSort[];
+  draft: Partial<GenericResourceQuery>;
+  query: Partial<GenericResourceQuery>;
+  page: number;
+  pageSize: number;
+  sorts: ResourceSort[];
+  setDraft: Dispatch<SetStateAction<Partial<GenericResourceQuery>>>;
+  setQuery: Dispatch<SetStateAction<Partial<GenericResourceQuery>>>;
+  setPage: Dispatch<SetStateAction<number>>;
+  setPageSize: Dispatch<SetStateAction<number>>;
+  setSorts: Dispatch<SetStateAction<ResourceSort[]>>;
+  list: { result: { data: ResourceRecord[]; total: number | undefined }; query: { isError: boolean; isFetching: boolean; error: unknown; refetch(): Promise<unknown> } };
+}
+
 function useGeneratedList(
   definition: GeneratedResourceDefinition,
   readableFieldCodes: Set<string>
-) {
+): ResourceListQueryState {
   const { code, surface } = definition;
   const declaredDefaultSort = surface.list?.defaultSort?.field;
   const defaultSortField =
@@ -198,6 +222,7 @@ export function GeneratedResourcePage({
   variant = 'desktop',
   definition: providedDefinition,
   paths,
+  ...lifecycle
 }: {
   resourceCode: string;
   viewCode?: string;
@@ -205,9 +230,17 @@ export function GeneratedResourcePage({
   variant?: 'desktop' | 'mobile';
   definition?: GeneratedResourceDefinition;
   paths: GeneratedResourceRoutePaths;
+  recordId?: string;
+  onDismiss?(): void;
+  onSaved?(id: string): void;
+  onEdit?(): void;
+  drawerState?: ResourceFormDrawerState;
+  embedded?: boolean;
 }) {
   const definitions = useResourceDefinitions();
   const params = useParams();
+  const { hasCapability, hasReadCapability } = useRuntime();
+  const pages = useResourcePageContributions(resourceCode, viewCode ?? providedDefinition?.viewCode);
   const definition = useMemo(() => {
     const base = providedDefinition || definitions[resourceCode];
     if (!base || viewCode === undefined) return base;
@@ -228,17 +261,23 @@ export function GeneratedResourcePage({
   ) {
     return <Result status="500" title="生成资源路由合同不完整" />;
   }
-  const pageKey = `${mode}:${resourceCode}:${viewCode || ""}:${params.id || ''}`;
+  const permitted = mode === 'list' || mode === 'detail'
+    ? hasReadCapability(definition.capabilities.read)
+    : hasCapability(definition.capabilities[mode === 'edit' ? 'update' : 'create']);
+  if (!permitted) return <Result status="403" title="当前平台用户无此页面权限" />;
+  const Page = pages?.[mode === 'create' || mode === 'edit' ? 'form' : mode];
+  const pageKey = `${mode}:${resourceCode}:${viewCode || ""}:${lifecycle.recordId || params.id || ''}`;
+  if (Page) return <StandardUserSurfaceErrorBoundary resetKey={pageKey}><Page definition={definition} paths={paths} variant={variant} mode={mode} {...lifecycle} /></StandardUserSurfaceErrorBoundary>;
   if (mode === 'list') return <GeneratedResourceListPage key={pageKey} definition={definition} paths={paths} variant={variant} />;
-  if (mode === 'detail') return <GeneratedResourceDetailPage key={pageKey} definition={definition} paths={paths} variant={variant} />;
-  return <GeneratedResourceFormPage key={pageKey} definition={definition} mode={mode} paths={paths} variant={variant} />;
+  if (mode === 'detail') return <GeneratedResourceDetailPage key={pageKey} definition={definition} paths={paths} variant={variant} {...lifecycle} />;
+  return <GeneratedResourceFormPage key={pageKey} definition={definition} mode={mode} paths={paths} variant={variant} {...lifecycle} />;
 }
 
 function GeneratedResourceListPage({ definition, paths, variant }: { definition: GeneratedResourceDefinition; paths: GeneratedResourceRoutePaths; variant: 'desktop' | 'mobile' }) {
   return variant === 'mobile' ? <GeneratedMobileList definition={definition} paths={paths} /> : <GeneratedDesktopList definition={definition} paths={paths} />;
 }
 
-function GeneratedDesktopList({ definition, paths }: { definition: GeneratedResourceDefinition; paths: GeneratedResourceRoutePaths }) {
+export function useResourceListController({ definition, paths, columnRenderers }: ResourceListControllerOptions) {
   const navigate = useNavigate();
   const { message } = App.useApp();
   const { hasCapability, hasReadCapability, identity } = useRuntime();
@@ -450,7 +489,7 @@ function GeneratedDesktopList({ definition, paths }: { definition: GeneratedReso
           sorter: field.sortable ? { multiple: Math.max(1, fields.length - state.sorts.findIndex(sort => sort.field === field.key)) } : false,
           sortOrder: state.sorts.find(sort => sort.field === field.key)?.order === 'asc' ? 'ascend' as const : state.sorts.find(sort => sort.field === field.key)?.order === 'desc' ? 'descend' as const : null,
           render: (value: unknown, record: ResourceRecord) => {
-            const rendered = (
+            const rendered = columnRenderers?.[field.key] ? columnRenderers[field.key]!({ value, record, field }) : (
               <SurfaceFieldValue
                 field={field}
                 resourceCode={code}
@@ -537,6 +576,7 @@ function GeneratedDesktopList({ definition, paths }: { definition: GeneratedReso
       },
     ],
     [
+      columnRenderers,
       capabilities.delete,
       capabilities.update,
       code,
@@ -644,16 +684,22 @@ function GeneratedDesktopList({ definition, paths }: { definition: GeneratedReso
         label: `${fieldFor(surface, key).label}：${filterValueLabel(state.query.filters?.[key])}`,
       })),
   ];
-  return (
-    <ResourceListPage
+
+  return { definition, paths, navigate, message, hasCapability, hasReadCapability, identity, code, name, surface, capabilities, generated, workflowDefinitions, contributions, fields, readableFieldCodes, state, exporting, setExporting, moreFiltersOpen, setMoreFiltersOpen, settingsOpen, setSettingsOpen, formTarget, setFormTarget, detailId, setDetailId, workflowOpen, setWorkflowOpen, correctionId, setCorrectionId, entryFullScreen, setEntryFullScreen, drawerState, sortsOpen, setSortsOpen, frozenKeys, setFrozenKeys, columnOrder, setColumnOrder, savedDisplay, setSavedDisplay, density, setDensity, visibleColumnKeys, setVisibleColumnKeys, selectedRowKeys, setSelectedRowKeys, preferenceReady, setPreferenceReady, preferenceSaving, setPreferenceSaving, hasSavedPreference, setHasSavedPreference, remove, rows, formFields, importWritableFieldCodes, standardWorkflows, standardWorkflow, workflowImportFieldCodes, batchWritableFields, selectedRows, toolbarContributions, rowContributions, canBatch, configurableColumns, listKey, filterFields, filterDefinitions, sortFields, orderedKeys, display, displaySignature, displayDirty, preferencePayload, firstVisibleBusinessField, columns, handleExport, changeDisplay, savePreference, restorePreference, searchableFields, searchLabels, keywordPlaceholder, activeAdditionalCount, applyQuery, removeAppliedFilter, appliedConditions, total: state.list.result.total || 0, loading: state.list.query.isFetching, error: state.list.query.error, refresh: () => state.list.query.refetch() };
+}
+export type ResourceListController = ReturnType<typeof useResourceListController>;
+export function ResourceListContainer({ controller, children }: { controller: ResourceListController; children: ReactNode }) { const { paths, code, name, surface, capabilities, generated } = controller;
+return (<ResourceListPage
       createCapability={generated.create ? capabilities.create : undefined}
       createPath={generated.create ? paths.create : undefined}
       readCapability={capabilities.read}
       resource={code}
       surface={surface}
       title={name}
-    >
-      {state.list.query.isError && (
+    >{children}</ResourceListPage>);
+}
+export function ResourceListError({ controller }: { controller: ResourceListController }) { const { message, state } = controller;
+return (<>{state.list.query.isError && (
         <Alert
           action={
             <Button onClick={() => void state.list.query.refetch()} size="small">
@@ -665,11 +711,14 @@ function GeneratedDesktopList({ definition, paths }: { definition: GeneratedReso
           title="数据读取失败"
           type="error"
         />
-      )}
-      <ResourceAdvancedFilter open={moreFiltersOpen} fields={filterDefinitions} value={state.query.where}
-        resourceCode={code} onClose={() => setMoreFiltersOpen(false)} onApply={where => applyQuery({ ...state.query, filters: undefined, where })} />
-      <div className="oxa-list-toolbar">
-        <Space className="oxa-list-toolbar-primary" wrap>
+      )}</>);
+}
+export function ResourceListAdvancedFilter({ controller }: { controller: ResourceListController }) { const { code, fields, state, moreFiltersOpen, setMoreFiltersOpen, filterDefinitions, applyQuery } = controller;
+return (<><ResourceAdvancedFilter open={moreFiltersOpen} fields={filterDefinitions} value={state.query.where}
+        resourceCode={code} onClose={() => setMoreFiltersOpen(false)} onApply={where => applyQuery({ ...state.query, filters: undefined, where })} /></>);
+}
+export function ResourceListActions({ controller }: { controller: ResourceListController }) { const { hasCapability, code, name, surface, capabilities, generated, state, exporting, setFormTarget, setWorkflowOpen, importWritableFieldCodes, standardWorkflow, workflowImportFieldCodes, selectedRows, toolbarContributions, handleExport } = controller;
+return (<Space className="oxa-list-toolbar-primary" wrap>
           {standardWorkflow && <Button aria-label="新增流程申请" icon={<PlusOutlined />} type="primary" onClick={() => setWorkflowOpen(true)}>新增</Button>}
           {generated.create && hasCapability(capabilities.create) && (
             <Button aria-label="新增" icon={<PlusOutlined />} onClick={() => setFormTarget({ mode: 'create' })} type="primary">
@@ -708,8 +757,10 @@ function GeneratedDesktopList({ definition, paths }: { definition: GeneratedReso
               })}
             </Fragment>
           ))}
-        </Space>
-        <Space className="oxa-list-toolbar-secondary" wrap>
+        </Space>);
+}
+export function ResourceListQueryBar({ controller }: { controller: ResourceListController }) { const { message, fields, state, setMoreFiltersOpen, settingsOpen, setSettingsOpen, sortsOpen, setSortsOpen, savedDisplay, visibleColumnKeys, preferenceReady, preferenceSaving, configurableColumns, listKey, filterFields, sortFields, display, displaySignature, displayDirty, preferencePayload, columns, changeDisplay, savePreference, restorePreference, searchableFields, keywordPlaceholder, activeAdditionalCount, applyQuery } = controller;
+return (<Space className="oxa-list-toolbar-secondary" wrap>
           {displayDirty && <span className="oxa-list-dirty">你调整了显示列配置 <Button type="link" aria-label="保存显示列配置" loading={preferenceSaving} disabled={!visibleColumnKeys.length} onClick={() => void savePreference()}>保存</Button></span>}
           {searchableFields.length > 0 && <Input.Search
             className="oxa-list-search"
@@ -743,9 +794,11 @@ function GeneratedDesktopList({ definition, paths }: { definition: GeneratedReso
           <Button aria-label="刷新数据" icon={<ReloadOutlined />} loading={state.list.query.isFetching}
             onClick={() => void state.list.query.refetch()} />
         </Tooltip>
-        </Space>
-      </div>
-        {appliedConditions.length > 0 && (
+        </Space>);
+}
+export function ResourceListToolbar({ controller }: {controller: ResourceListController}) { return <div className="oxa-list-toolbar"><ResourceListActions controller={controller}/><ResourceListQueryBar controller={controller}/></div>; }
+export function ResourceListAppliedFilters({ controller }: { controller: ResourceListController }) { const { applyQuery, removeAppliedFilter, appliedConditions } = controller;
+return (<>{appliedConditions.length > 0 && (
           <div className="oxa-applied-filters">
             <span>已选条件</span>
             <div className="oxa-applied-filter-tags">
@@ -764,19 +817,23 @@ function GeneratedDesktopList({ definition, paths }: { definition: GeneratedReso
             </div>
             <Button onClick={() => applyQuery({})} type="link">清空全部</Button>
           </div>
-        )}
-      {correctionId && <WorkflowRecordEditor resourceCode={code} recordId={correctionId} drawerState={drawerState} onDismiss={() => { setCorrectionId(undefined); setEntryFullScreen(false); }} onSaved={id => { setCorrectionId(undefined); if (generated.detail) setDetailId(id); void state.list.query.refetch(); }} />}
-      {workflowOpen && standardWorkflow && <WorkflowSubmissionPage workflowCode={standardWorkflow.code} onDismiss={() => setWorkflowOpen(false)}
+        )}</>);
+}
+export function ResourceListOverlays({ controller }: { controller: ResourceListController }) { const { definition, paths, code, surface, generated, state, formTarget, setFormTarget, detailId, setDetailId, workflowOpen, setWorkflowOpen, correctionId, setCorrectionId, setEntryFullScreen, drawerState, standardWorkflow } = controller;
+return (<>{correctionId && <WorkflowRecordEditor resourceCode={code} recordId={correctionId} drawerState={drawerState} onDismiss={() => { setCorrectionId(undefined); setEntryFullScreen(false); }} onSaved={id => { setCorrectionId(undefined); if (generated.detail) setDetailId(id); void state.list.query.refetch(); }} />}
+{workflowOpen && standardWorkflow && <WorkflowSubmissionPage workflowCode={standardWorkflow.code} onDismiss={() => setWorkflowOpen(false)}
         onCompleted={id => { setWorkflowOpen(false); if (generated.detail) setDetailId(id); void state.list.query.refetch(); }} />}
-      {detailId && <GeneratedResourceDetailPage definition={definition} paths={paths} variant="desktop"
+{detailId && <GeneratedResourcePage resourceCode={code} definition={definition} mode="detail" paths={paths} variant="desktop"
         recordId={detailId} drawerState={drawerState} onDismiss={() => { setDetailId(undefined); setEntryFullScreen(false); }} onEdit={() => { if (surface.mutationOwner === 'workflow') setCorrectionId(detailId); else setFormTarget({ mode: 'edit', id: detailId }); setDetailId(undefined); }} />}
-      {formTarget && <GeneratedResourceFormPage
+{formTarget && <GeneratedResourcePage resourceCode={code}
         key={`${formTarget.mode}:${formTarget.id || ''}`}
         definition={definition} paths={paths} variant="desktop" mode={formTarget.mode} recordId={formTarget.id}
         drawerState={drawerState} onDismiss={() => { setFormTarget(undefined); setEntryFullScreen(false); }}
         onSaved={id => { setFormTarget(undefined); if (generated.detail) setDetailId(id); void state.list.query.refetch(); }}
-      />}
-      <ResourceBatchActions
+      />}</>);
+}
+export function ResourceListBatchBar({ controller }: { controller: ResourceListController }) { const { hasCapability, code, name, surface, capabilities, generated, state, setSelectedRowKeys, rows, batchWritableFields, selectedRows } = controller;
+return (<><ResourceBatchActions
         canDelete={Boolean(generated.delete && hasCapability(capabilities.delete))}
         code={code}
         name={name}
@@ -785,8 +842,10 @@ function GeneratedDesktopList({ definition, paths }: { definition: GeneratedReso
         rows={selectedRows}
         surface={surface}
         writableFields={batchWritableFields}
-      />
-      <Table<ResourceRecord>
+      /></>);
+}
+export function ResourceListTable({ controller }: { controller: ResourceListController }) { const { message, name, state, density, visibleColumnKeys, selectedRowKeys, setSelectedRowKeys, rows, canBatch, orderedKeys, columns } = controller;
+return (<><Table<ResourceRecord>
         columns={[...columns.filter(column => column.key !== 'actions')].sort((a, b) => orderedKeys.indexOf(String(a.key)) - orderedKeys.indexOf(String(b.key))).sort((a, b) => Number(b.fixed === 'left') - Number(a.fixed === 'left')).concat(columns.filter(column => column.key === 'actions'))}
         dataSource={rows}
         loading={state.list.query.isFetching}
@@ -824,12 +883,18 @@ function GeneratedDesktopList({ definition, paths }: { definition: GeneratedReso
             state.setPageSize(size);
           },
         }}
-      />
-    </ResourceListPage>
-  );
+      /></>);
 }
+function GeneratedDesktopList(props: ResourceListControllerOptions) { const controller = useResourceListController(props); return <ResourceListContainer controller={controller}><ResourceListError controller={controller} />
+<ResourceListAdvancedFilter controller={controller} />
+<ResourceListToolbar controller={controller} />
+<ResourceListAppliedFilters controller={controller} />
+<ResourceListOverlays controller={controller} />
+<ResourceListBatchBar controller={controller} />
+<ResourceListTable controller={controller} /></ResourceListContainer>; }
 
-function GeneratedMobileList({ definition, paths }: { definition: GeneratedResourceDefinition; paths: GeneratedResourceRoutePaths }) {
+
+export function useMobileResourceListController({ definition, paths, mobileFields }: ResourceListControllerOptions) {
   const navigate = useNavigate();
   const { hasCapability, hasReadCapability, identity } = useRuntime();
   const { message } = App.useApp();
@@ -843,9 +908,9 @@ function GeneratedMobileList({ definition, paths }: { definition: GeneratedResou
   const state = useGeneratedList(definition, readableFieldCodes);
   const [exporting, setExporting] = useState(false);
   const rows = (state.list.result.data || []) as unknown as ResourceRecord[];
-  const fields = selectedSurfaceFields(surface, 'list')
-    .filter((field) => fieldReadable(field, hasReadCapability, identity.isAppSuperAdmin))
-    .slice(0, 4);
+  const availableFields = selectedSurfaceFields(surface, 'list')
+    .filter((field) => fieldReadable(field, hasReadCapability, identity.isAppSuperAdmin));
+  const fields = mobileFields ? [...new Set(mobileFields)].flatMap(key => availableFields.filter(field => field.key === key)) : availableFields.slice(0, 4);
   const handleExport = async () => {
     setExporting(true);
     try {
@@ -857,18 +922,24 @@ function GeneratedMobileList({ definition, paths }: { definition: GeneratedResou
       setExporting(false);
     }
   };
-  return (
-    <MobileResourceListPage
+
+  return { definition, paths, navigate, hasCapability, hasReadCapability, identity, message, code, name, surface, capabilities, generated, readableFieldCodes, state, exporting, setExporting, rows, fields, handleExport, total: state.list.result.total || 0, loading: state.list.query.isFetching, error: state.list.query.error, refresh: () => state.list.query.refetch() };
+}
+export type MobileResourceListController = ReturnType<typeof useMobileResourceListController>;
+export function MobileResourceListContainer({ controller, children, description }: { controller: MobileResourceListController; children: ReactNode; description?: string | false }) { const { paths, code, name, surface, capabilities, generated, handleExport } = controller;
+return (<MobileResourceListPage
       createCapability={generated.create ? capabilities.create : undefined}
       createPath={generated.create ? paths.create : undefined}
-      description={`${code} 资源`}
+      description={description === false ? undefined : description ?? `${code} 资源`}
       onExport={surface.list?.actions?.export !== false ? () => void handleExport() : undefined}
       readCapability={capabilities.read}
       resource={code}
       surface={surface}
       title={name}
-    >
-      {state.list.query.isError && (
+    >{children}</MobileResourceListPage>);
+}
+export function MobileResourceListError({ controller }: { controller: MobileResourceListController }) { const { message, state } = controller;
+return (<>{state.list.query.isError && (
         <Alert
           action={
             <Button onClick={() => void state.list.query.refetch()} size="small">
@@ -880,8 +951,10 @@ function GeneratedMobileList({ definition, paths }: { definition: GeneratedResou
           title="数据读取失败"
           type="error"
         />
-      )}
-      <div className="oxa-mobile-filter">
+      )}</>);
+}
+export function MobileResourceListQueryBar({ controller }: { controller: MobileResourceListController }) { const { state } = controller;
+return (<><div className="oxa-mobile-filter">
         <Input
           allowClear
           placeholder="关键词"
@@ -903,8 +976,10 @@ function GeneratedMobileList({ definition, paths }: { definition: GeneratedResou
         >
           查询
         </Button>
-      </div>
-      {state.list.query.isFetching ? (
+      </div></>);
+}
+export function MobileResourceListCards({ controller }: { controller: MobileResourceListController }) { const { paths, navigate, hasCapability, code, name, capabilities, generated, state, rows, fields } = controller;
+return (<>{state.list.query.isFetching ? (
         <div className="oxa-page-loading">
           <Spin />
         </div>
@@ -962,8 +1037,10 @@ function GeneratedMobileList({ definition, paths }: { definition: GeneratedResou
         <Card>
           <Empty description={`暂无${name}`} />
         </Card>
-      )}
-      <div className="oxa-mobile-pagination">
+      )}</>);
+}
+export function MobileResourceListPagination({ controller }: { controller: MobileResourceListController }) { const { surface, state, rows } = controller;
+return (<><div className="oxa-mobile-pagination">
         <Button disabled={state.page <= 1} onClick={() => state.setPage((item) => item - 1)}>
           上一页
         </Button>
@@ -971,12 +1048,15 @@ function GeneratedMobileList({ definition, paths }: { definition: GeneratedResou
         <Button disabled={rows.length < (surface.list?.defaultPageSize || 20)} onClick={() => state.setPage((item) => item + 1)}>
           下一页
         </Button>
-      </div>
-    </MobileResourceListPage>
-  );
+      </div></>);
 }
+function GeneratedMobileList(props: ResourceListControllerOptions) { const controller = useMobileResourceListController(props); return <MobileResourceListContainer controller={controller}><MobileResourceListError controller={controller} />
+<MobileResourceListQueryBar controller={controller} />
+<MobileResourceListCards controller={controller} />
+<MobileResourceListPagination controller={controller} /></MobileResourceListContainer>; }
 
-function GeneratedResourceDetailPage({ definition, paths, variant, recordId, onDismiss, onEdit, drawerState }: { definition: GeneratedResourceDefinition; paths: GeneratedResourceRoutePaths; variant: 'desktop' | 'mobile'; recordId?: string; onDismiss?: () => void; onEdit?: () => void; drawerState?: ResourceFormDrawerState }) {
+
+export function GeneratedResourceDetailPage({ definition, paths, variant, recordId, onDismiss, onEdit, drawerState }: { definition: GeneratedResourceDefinition; paths: GeneratedResourceRoutePaths; variant: 'desktop' | 'mobile'; recordId?: string; onDismiss?: () => void; onEdit?: () => void; drawerState?: ResourceFormDrawerState }) {
   if (definition.surface.mutationOwner === 'workflow') return <WorkflowRecordDetailPage resourceCode={definition.code} recordId={recordId} variant={variant} onDismiss={onDismiss} drawerState={drawerState} />;
   return <NativeResourceDetailPage definition={definition} paths={paths} variant={variant} recordId={recordId} onDismiss={onDismiss} onEdit={onEdit} drawerState={drawerState} />;
 }

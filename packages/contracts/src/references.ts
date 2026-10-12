@@ -25,6 +25,8 @@ export interface DataFieldResourceSource {
   descriptionFields?: string[];
   snapshotFields?: string[];
   filters?: DataFieldResourceSourceFilter[];
+  /** Read-filter identity constraints; never write bindings or selection rules. */
+  filterWhere?: Array<Extract<DataFieldResourceSourceFilter, { value: unknown }>>;
   pageSize?: number;
   loadMode?: 'search' | 'all';
   /** Clear old selections only when users change a declared form binding. */

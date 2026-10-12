@@ -130,6 +130,19 @@ export interface OpenXiangdaVerifiedContext {
   operation?: AppApiOperationContract;
 }
 
+export interface OpenXiangdaWorkerActionContext {
+  operationCode: string;
+  holderId: string;
+  leaseToken: string;
+}
+
+export interface OpenXiangdaServiceActionContext {
+  code: string;
+  requiredCapability: string;
+  /** Verified short invocation; never persist or log. */
+  invocationAuthorization: string;
+}
+
 export interface OpenXiangdaBusinessActionContext {
   code: string;
   requiredCapability: string;
@@ -199,6 +212,7 @@ export interface OpenXiangdaServicePrincipal extends Principal {
 
 export interface OpenXiangdaGatewayTransportContext
   extends GatewayInvocationPrincipal {
+  connectedDevelopmentSessionToken?: string;
   authorization: string;
   perspectiveCode: string | null;
 }

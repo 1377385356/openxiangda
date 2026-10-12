@@ -141,12 +141,15 @@ export interface SurfaceFieldRenderers {
   fileResourceCodes?: Readonly<Record<string, string>>;
   referenceLaunch?: DataFieldSourceLaunchBinding;
   referenceTask?: WorkflowTaskSourceBinding;
+  /** Only edited values for ordinary saved-record source lookup; omitted uses server-held bindings. */
+  referenceBindings?: Readonly<Record<string, unknown>>;
   /** Search intent only; never part of a Native write or workflow payload. */
   candidateScopeValues?: Readonly<Record<string, unknown>>;
   recordEditInput?: DataRecordEditInput;
   renderExtra?: (context: SurfaceFieldEditContext) => ReactNode;
   renderScope?: (context: SurfaceFieldEditContext) => ReactNode;
   renderSubtable?: (context: SurfaceFieldEditContext) => ReactNode;
+  renderScopeFilter?: (context: SurfaceFilterContext) => ReactNode;
   renderFilter?: (context: SurfaceFilterContext) => ReactNode;
   upload?: (
     field: SurfaceField,
@@ -195,7 +198,7 @@ export function SurfaceFilterControl({
   onChange,
   range = false,
   renderers,
-}: SurfaceFilterContext & { range?: boolean; renderers?: Pick<SurfaceFieldRenderers, 'renderScope' | 'renderFilter'> }) {
+}: SurfaceFilterContext & { range?: boolean; renderers?: Pick<SurfaceFieldRenderers, 'renderScopeFilter' | 'renderFilter'> }) {
   const custom = renderers?.renderFilter?.({ field, value, onChange });
   if (custom !== undefined) return custom;
   const placeholder = `筛选${field.label}`;
@@ -242,17 +245,17 @@ export function SurfaceFilterControl({
       }
       return <InputNumber {...numberInputProps(field)} onChange={onChange} placeholder={placeholder} value={value as number | string | null | undefined} />;
     case 'scope':
-      return renderers?.renderScope?.({ field, disabled: false, operation: 'update' }) || <Input allowClear value={value as string | undefined} onChange={event => onChange(event.target.value)} placeholder={placeholder} />;
+      return renderers?.renderScopeFilter?.({ field, resourceCode, value, onChange }) || <Input allowClear value={value as string | undefined} onChange={event => onChange(event.target.value)} placeholder={placeholder} />;
     case 'directory-user':
     case 'directory-department':
-      return <PlatformDirectoryPicker kind={field.widget === 'directory-user' ? 'user' : 'department'} multiple={field.type.endsWith('.multiple')} onChange={onChange as (value: UserReferenceValue | DepartmentReferenceValue | Array<UserReferenceValue | DepartmentReferenceValue> | undefined) => void} placeholder={placeholder} value={value as UserReferenceValue | DepartmentReferenceValue | Array<UserReferenceValue | DepartmentReferenceValue> | undefined} />;
+      return <AuthoritativeSelector source={field.widget === 'directory-user' ? 'user' : 'department'} operation="filter" multiple={field.type.endsWith('.multiple')} onChange={onChange} placeholder={placeholder} value={value as UserReferenceValue | DepartmentReferenceValue | Array<UserReferenceValue | DepartmentReferenceValue> | undefined} />;
     case 'resource':
       return (
         <AuthoritativeSelector
           fieldCode={field.key}
           multiple={field.type === 'resource-ref.multiple'}
           onChange={onChange}
-          operation="update"
+          operation="filter"
           placeholder={placeholder}
           resourceCode={resourceCode}
           source="resource"
@@ -420,6 +423,8 @@ export function SurfaceFieldControl({
           field={field}
           fieldCode={field.key}
           operation={taskSourceBinding ? 'update' : operation}
+          record={operation === 'update' && recordId && expectedRevision && !taskSourceBinding && !renderers?.referenceLaunch && !renderers?.recordEditInput ? { id: recordId, expectedRevision } : undefined}
+          bindingEdits={renderers?.referenceBindings}
           launch={renderers?.referenceLaunch}
           action={renderers?.recordEditInput}
           task={taskSourceBinding}
@@ -461,6 +466,8 @@ export function SurfaceFieldControl({
           field={field}
           fieldCode={field.key}
           operation={taskSourceBinding ? 'update' : operation}
+          record={operation === 'update' && recordId && expectedRevision && !taskSourceBinding && !renderers?.referenceLaunch && !renderers?.recordEditInput ? { id: recordId, expectedRevision } : undefined}
+          bindingEdits={renderers?.referenceBindings}
           launch={renderers?.referenceLaunch}
           action={renderers?.recordEditInput}
           task={taskSourceBinding}
@@ -511,6 +518,8 @@ export function SurfaceFieldControl({
     case 'rich-text':
       control = (
         <RichTextField
+          recordId={recordId}
+          fieldCode={field.key}
           disabled={disabled}
           onUpload={renderers?.upload
             ? (file, onRecovered) => renderers.upload!(field, file, recordId, onRecovered)
@@ -622,6 +631,8 @@ export function MobileSurfaceFieldControl({
           fieldCode={field.key}
           mobile
           operation={taskSourceBinding ? 'update' : operation}
+          record={operation === 'update' && recordId && expectedRevision && !taskSourceBinding && !renderers?.referenceLaunch && !renderers?.recordEditInput ? { id: recordId, expectedRevision } : undefined}
+          bindingEdits={renderers?.referenceBindings}
           launch={renderers?.referenceLaunch}
           action={renderers?.recordEditInput}
           task={taskSourceBinding}
@@ -665,6 +676,8 @@ export function MobileSurfaceFieldControl({
           fieldCode={field.key}
           mobile
           operation={taskSourceBinding ? 'update' : operation}
+          record={operation === 'update' && recordId && expectedRevision && !taskSourceBinding && !renderers?.referenceLaunch && !renderers?.recordEditInput ? { id: recordId, expectedRevision } : undefined}
+          bindingEdits={renderers?.referenceBindings}
           launch={renderers?.referenceLaunch}
           action={renderers?.recordEditInput}
           task={taskSourceBinding}
@@ -715,7 +728,7 @@ export function MobileSurfaceFieldControl({
       control = <AddressField disabled={disabled} mobile />;
       break;
     case 'rich-text':
-      control = <RichTextField disabled={disabled} mobile
+      control = <RichTextField recordId={recordId} fieldCode={field.key} disabled={disabled} mobile
         onUpload={renderers?.upload
           ? (file, onRecovered) => renderers.upload!(field, file, recordId, onRecovered)
           : undefined}
@@ -798,6 +811,7 @@ export function SurfaceFieldValue({
         files={values}
         mobile={mobile}
         imageTiles={field.type === 'image'}
+        presentation={presentation}
         resourceCode={resourceCode}
         workflowBinding={workflowFileBinding}
       />

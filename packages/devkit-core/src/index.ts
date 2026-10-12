@@ -30,3 +30,5 @@ export * from './documentation.js';
 
 export { developerError } from './developer-errors.js';
 export { withWorkspaceOperation } from './workspace-operation.js';
+
+export * from './application-template-catalog.js';

@@ -43,8 +43,10 @@ export interface WorkflowDiagramProps {
   visits?: readonly WorkflowGraphVisit[];
   selectedEdgeId?: string;
   onSelectEdge?: (edgeId: string) => void;
+  onInsertEdge?: (edgeId: string, template?: string) => void;
+  insertionOptions?: Array<{ value: string; label: string; kind: string }>;
   /** Fill the host canvas; code explanations can be shown in the host's node panel. */
-  presentation?: 'embedded' | 'canvas';
+  presentation?: 'embedded' | 'canvas' | 'designer';
 }
 
 class CanvasBoundary extends Component<{ children: ReactNode; onList: () => void }, { failed: boolean }> {
@@ -56,7 +58,7 @@ class CanvasBoundary extends Component<{ children: ReactNode; onList: () => void
 }
 
 /** Read-only graph and accessible list share the platform's immutable projection. */
-export function WorkflowDiagram({ graph, selectedNodeId, onSelectNode, titles = emptyTitles, summaries, visits = emptyVisits, selectedEdgeId, onSelectEdge, presentation = 'embedded' }: WorkflowDiagramProps) {
+export function WorkflowDiagram({ graph, selectedNodeId, onSelectNode, titles = emptyTitles, summaries, visits = emptyVisits, selectedEdgeId, onSelectEdge, onInsertEdge, insertionOptions, presentation = 'embedded' }: WorkflowDiagramProps) {
   const [canvas, setCanvas] = useState<{ graph: WorkflowGraphProjection; controller: WorkflowFlowCanvasController } | null>(null);
   const list = useRef<HTMLOListElement>(null);
   const listButtons = useRef(new Map<string, HTMLButtonElement>());
@@ -82,12 +84,12 @@ export function WorkflowDiagram({ graph, selectedNodeId, onSelectNode, titles = 
     return visit.transition ? [`${visit.nodeId}:${visit.transition}`] : [];
   })), [visits]);
   const shownGraph = useMemo(() => {
-    const projection = workflowDiagramProjection(graph);
+    const projection = presentation === 'designer' ? graph : workflowDiagramProjection(graph);
     if (!actualOnly) return projection;
     const nodes = projection.nodes.filter(node => visited.has(node.id));
     const ids = new Set(nodes.map(node => node.id));
     return { ...projection, nodes, edges: projection.edges.filter(edge => ids.has(edge.from) && ids.has(edge.to) && executedEdges.has(edge.id)) };
-  }, [graph, actualOnly, visited, executedEdges]);
+  }, [graph, actualOnly, visited, executedEdges, presentation]);
   const controller = canvas?.graph === shownGraph ? canvas.controller : null;
   const orderedNodes = useMemo(() => displayNodeOrder(shownGraph), [shownGraph]);
   useEffect(() => {
@@ -124,16 +126,16 @@ export function WorkflowDiagram({ graph, selectedNodeId, onSelectNode, titles = 
     if (edge) onSelectNode(edge.from);
     setLocalEdge(id); onSelectEdge?.(id);
   };
-  if (graph.nodes.length > 200) return <Alert type="error" title="流程图超出 200 节点的显示上限" />;
-  return <section className={`oxa-workflow-diagram ${presentation === 'canvas' ? 'oxa-workflow-diagram-standalone' : ''}`} aria-label="固定流程结构">
-    <div className="oxa-workflow-diagram-tools">
+  if (graph.nodes.length > (presentation === 'designer' ? 201 : 200)) return <Alert type="error" title="流程图超出 200 节点的显示上限" />;
+  return <section className={`oxa-workflow-diagram ${presentation !== 'embedded' ? 'oxa-workflow-diagram-standalone' : ''} ${presentation === 'designer' ? 'oxa-workflow-diagram-designer' : ''}`} aria-label={onInsertEdge ? "编辑流程结构" : "固定流程结构"}>
+    {presentation !== 'designer' && <div className="oxa-workflow-diagram-tools">
       <Segmented aria-label="流程查看方式" value={effectiveView} disabled={narrow} onChange={value => setView(value as typeof view)} options={[{ value: 'graph', label: '流程图' }, { value: 'list', label: '节点列表' }]} />
       <div className="oxa-workflow-node-search"><Input.Search aria-label="搜索流程节点" placeholder="搜索节点" value={keyword} allowClear onChange={event => setKeyword(event.target.value)} onSearch={() => options[0] && locate(options[0].value)} />
         <Select aria-label="定位流程节点" labelInValue value={shownGraph.nodes.some(node => node.id === selectedNodeId) ? { value: selectedNodeId, label: title(selectedNodeId) } : undefined} options={options} onChange={option => locate(option.value)} notFoundContent="没有匹配的节点" popupMatchSelectWidth={300} /></div>
       {visits.length > 0 && <Space size="small"><Switch size="small" checked={actualOnly} onChange={setActualOnly} aria-label="只看已执行节点" /><span>已执行路径</span></Space>}
-      <span className="oxa-workflow-readonly"><LockOutlined /> 结构只读</span>
-    </div>
-    {presentation !== 'canvas' && graph.logic.length > 0 && <details className="oxa-workflow-logic" aria-label="固定代码逻辑说明">
+      {!onInsertEdge && <span className="oxa-workflow-readonly"><LockOutlined /> 结构只读</span>}
+    </div>}
+    {presentation === 'embedded' && graph.logic.length > 0 && <details className="oxa-workflow-logic" aria-label="固定代码逻辑说明">
       <summary>代码逻辑说明 <span>{graph.logic.length}</span></summary>
       <div className="oxa-workflow-logic-content">
         <p className="oxa-workflow-logic-help">按处理阶段查看开发者提供的代码说明。实际执行记录请查看办理历史。</p>
@@ -156,7 +158,7 @@ export function WorkflowDiagram({ graph, selectedNodeId, onSelectNode, titles = 
     </details>}
     {effectiveView === 'graph' ? <div className="oxa-workflow-canvas">
       {!shownGraph.nodes.length ? <Empty description="尚无已执行节点" /> : <CanvasBoundary onList={() => setView('list')}><Suspense fallback={<div className="oxa-workflow-canvas-loading"><Skeleton active title paragraph={{ rows: 4 }} /></div>}>
-        <FlowCanvas graph={shownGraph} startAtTop={presentation === 'canvas'} selectedNodeId={selectedNodeId} selectedEdgeId={selectedEdgeId || localEdge} onSelectNode={onSelectNode} onSelectEdge={selectEdge} titles={titles} summaries={nodeSummaries} visits={visits} executedEdges={executedEdges} onNavigate={navigate} onReady={value => setCanvas(value ? { graph: shownGraph, controller: value } : null)} onZoom={setZoom} />
+        <FlowCanvas graph={shownGraph} startAtTop={presentation !== 'embedded'} designer={presentation === 'designer'} selectedNodeId={selectedNodeId} selectedEdgeId={selectedEdgeId || localEdge} onSelectNode={onSelectNode} onSelectEdge={selectEdge} onInsertEdge={onInsertEdge} insertionOptions={insertionOptions} titles={titles} summaries={nodeSummaries} visits={visits} executedEdges={executedEdges} onNavigate={navigate} onReady={value => setCanvas(value ? { graph: shownGraph, controller: value } : null)} onZoom={setZoom} />
       </Suspense></CanvasBoundary>}
       <div className="oxa-workflow-viewport-tools" aria-label="画布导航"><Tooltip title="缩小"><Button aria-label="缩小流程图" icon={<MinusOutlined />} disabled={!controller || zoom <= .025} onClick={() => controller?.zoomBy(-1)} /></Tooltip><span>{Math.round(zoom * 100)}%</span><Tooltip title="放大"><Button aria-label="放大流程图" icon={<PlusOutlined />} disabled={!controller || zoom >= 1.6} onClick={() => controller?.zoomBy(1)} /></Tooltip>
         <Tooltip title="适应全图"><Button aria-label="适应全图" icon={<BorderOutlined />} disabled={!controller} onClick={() => controller?.fit()} /></Tooltip><Tooltip title="聚焦选中节点"><Button aria-label="聚焦选中节点" icon={<AimOutlined />} disabled={!controller} onClick={() => locate(selectedNodeId)} /></Tooltip></div>

@@ -63,3 +63,24 @@ export * from './date-event-projection.js';
 export * from './parent-read-policy.js';
 
 export * from './event-worker-effect.js';
+export * from './rich-text-policy.js';
+
+export * from './service-mutations.js';
+export * from './workflow-designer.js';
+
+export * from './workflow-handle.js';
+
+export * from './workflow-return-policy.js';
+
+export * from './workflow-platform-notify.js';
+
+export { workflowProducedEventTypes } from './workflow-events.js';
+
+export * from './workflow-reminders.js';
+
+export * from './workflow-supervisor-chain.js';
+
+/** Standard lists and agent view tasks share one pure query constructor. */
+export * from './resource-query.js';
+export * from './workflow-parallel.js';
+export * from './workflow-source-sync.js';

@@ -931,7 +931,7 @@ const readyFile = await completeWorkflowTaskFileUpload(taskId, input.id);
 原 PNG 字节不改，仍受任务值1MiB限制。这些是业务采集信息，不代表平台认证的签署人、
 可信时间或法律电子签章。
 
-富文本保存清洗后的 HTML 和 Native 稳定托管图片地址，支持最多20图、单图10MiB、100MP。
+富文本保存统一清洗后的 HTML 和 Native 稳定受管图片/视频地址，支持最多20图（单图10MiB、100MP）、4个视频（MP4/WebM、单个100MiB）。视频通过同源任务文件路由流式读取，不下载完整 blob。
 PC/手机保留格式、图片和前后文字；插图未知时锁住编辑，恢复采用原插入位置并只插入一次。
 `blob:` 仅用于授权预览，不进入保存值。新任务签名/富文本图片完成时核验实际图片解码与
 声明格式。完整值经 Native 校验后，草稿和正式审批共用排序文件锁、引用验证、保留期及事务。
@@ -1210,3 +1210,38 @@ subject update和来源guards提交实际改变的派生字段；普通补填仍
 缺少规则、返回 `undefined` 或回调失败均保持原显示。PC/手机共用这一规则，
 最后一个字段被省略后对应空分组也消失。这是同步展示扩展，不发请求、不写数据，
 不改变字段授权、审批参数或流程版本；不提供该选项的应用保持既有行为。
+
+`commandHandlers.resubmit` 仅绑定固定 correction 节点的业务重校验。普通 `return_review` 任务继续由 Kernel 标准 `resubmit` 办理：Surface 不返回 correction operationCode，审批人不需要起草提交 capability。无需增加 `taskKinds` 字段、改动已有定义版本或重建在途实例；直接对普通退回任务调用 correction 业务动作仍被拒绝。
+
+## 画布、源码与测试环境同步
+
+管理员可以在画布修改节点和条件并直接发布。发布默认更新在途申请与新申请，当前已经进入的任务继续保留其人员、操作按钮、页面与字段权限；后续流转使用新版本。只让新申请生效、保留个别在途申请属于显式例外。
+
+应用源码与画布共同引用同一份不可变定义和绑定登记。画布修改后，后续仅改页面或后端的应用部署会保留兼容的画布版本。两边都改了流程而基线不一致时，部署返回 `WORKFLOW_SOURCE_DIVERGED`，需要先把正式环境流程导回源码：
+
+```sh
+pnpm openxiangda workflow export request-review --environment production --out platform/workflows/request-review.bundle.json
+pnpm openxiangda workflow import platform/workflows/request-review.bundle.json --to source
+pnpm openxiangda workflow plan-registration --environment test --write
+pnpm openxiangda workflow status --environment test
+```
+
+`export` 包含规范定义、绑定、任务页面与代码步骤契约、办理设置摘要；不含申请、待办、审批日志、密钥或环境内部标识。源码本来声明的固定用户标识会保留；管理员实际指定人员的覆盖只导出数量。`import` 只改 `openxiangda.config.ts` 中显式的 `workflows` 声明及 `platform/workflows/<code>.lock.json`，保留其他代码。新增或变化的代码步骤、页面契约需要先由开发者补齐；缺少这些契约的导入会在写文件前拒绝。
+
+可加 `--adopt-handling-defaults` 把办理模式与按钮开关、文案作为源码默认值。它保留原有必需动作，不把管理员指定人员复制成源码默认值。导入的摘要基线写在源码 activation 的 `sourceBase`；来源环境与修订号只保留在审计锁文件，不进入密封应用制品。锁文件与导出的规范文档可能包含合法源码用户引用，应按项目访问权限管理。
+
+`plan-registration` 是服务器只读查询，返回相同内容已有的版本号或下一整数；`--write` 只把数字写入本机源码。最终准备仍检查编号冲突、内容冲突和跳号。准备成功但后续部署失败的版本保留为未启用的不可变登记，相同制品可复用这些数字；不会删除或重排。`status` 显示 `in_sync`、`behind`、`ahead`、`diverged`、`not_active` 和未启用登记数量。它没有远端写入。
+
+如果只希望把正式环境的流程规则同步到已有测试环境，可先读取两边的 `status`，记录实际流程 Head 修订号，再显式执行同步：
+
+```sh
+pnpm openxiangda workflow sync request-review --from production --to test \
+  --expected-source-head 14 --expected-target-head 3 \
+  --operation-id workflow-sync-20261012-01 --reason '同步正式环境流程到测试'
+```
+
+示例修订号必须替换成实际读取值。源和目标必须属于同一应用且均有已启用流程。同步检查目标现有页面、代码步骤、角色与固定人员引用，复用源版本，并通过正常发布与在途适用规则生效。默认同时更新在途和新申请；`--new-only` 只更新新申请。存在不兼容在途申请时，在确认预览结果后加 `--acknowledge-exceptions`，这些申请继续保留原版本。
+
+`--copy-handling-defaults` 可复制办理模式、按钮和角色覆盖；两边的指定人员覆盖都保持环境所有。源环境不被修改。同步后的目标画布草稿若基线已经过时，需要重读或合并，不能覆盖新的 Head。请求不确定时，保留相同操作标识、两个修订号和完整参数重试；不要换标识重做。CLI 与 MCP 共用这些权限、校验、幂等和发布入口。
+
+部署前记录目标流程修订号，激活前再次核对。期间若有人发布了画布，激活返回 `WORKFLOW_SOURCE_HEAD_CHANGED`，应用 Head 与流程 Head 在同一事务回滚；已准备的不可变登记保留。同步成功、源码检查成功、包发布与真实审批验收分别核对。

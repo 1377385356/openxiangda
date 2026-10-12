@@ -232,6 +232,8 @@ export interface AppApiOperationAiDeclaration {
   name: string;
   description: string;
   risk: 'read' | 'write' | 'destructive' | 'external';
+  /** Same-key Native Data receipt or an authorized GET status operation; never retries. */
+  reconcile?: { kind: 'platform-transaction' } | { kind: 'status-operation'; operation: string };
   /** Ordinary writes may execute directly for an explicitly requested Agent task. */
   confirmation?: 'none' | 'required';
   resources: string[];
@@ -268,6 +270,8 @@ export type AppOperationDirectoryField =
   | 'phone';
 
 export interface AppOperationPlatformAccessDeclaration {
+  /** Bounded Native transactions from a verified backend event or machine action. */
+  dataMutations?: readonly import('./native-compiler/service-mutations.js').DataMutationGrant[];
   /** Named create-submit owns these one-level subtables in the original Native transaction. */
   ownedSubject?: import('./native-compiler/workflow-owned-subject.js').WorkflowOwnedSubjectCreate;
   /** 使用 Native 原事务回执恢复具名业务动作；不授予用户通用写入权限。 */
@@ -1006,6 +1010,8 @@ export interface AppEventDecimalReservationDeclaration {
 }
 
 export interface AppEventSubscriptionPlatformAccessDeclaration {
+  /** Bounded Native transactions from a verified backend event or machine action. */
+  dataMutations?: readonly import('./native-compiler/service-mutations.js').DataMutationGrant[];
   decimalReservation?: AppEventDecimalReservationDeclaration;
   notification?: { mode: 'business-standard' };
   managedFileCopies?: ReadonlyArray<{
@@ -1052,6 +1058,7 @@ export interface NativeWorkflowBindingDeclaration {
 
 export interface NativeWorkflowActivationDeclaration {
   workflowCode: string;
+  sourceBase?: import('./native-compiler/workflow-source-sync.js').WorkflowSourceDigests;
   definitionVersion: number;
   bindingVersion: number;
   acceptedCommandDeactivationPolicy:

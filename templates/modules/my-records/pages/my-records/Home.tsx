@@ -1,0 +1,5 @@
+import { Button } from 'antd';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useRuntime } from 'openxiangda/react';
+import { appCode } from '../../../../../packages/contracts/src/generated.js';
+export function ApplicationHome(){const navigate=useNavigate();const {hasCapability,identity}=useRuntime();const mobile=useLocation().pathname.startsWith('/m/');const base=mobile?'/m':'';return <section className="app-home"><p className="app-eyebrow">我的工作台</p><h1>为下一次见面，做好准备</h1><p className="app-muted">邀请访客、查看自己的预约和接待进展。</p><div className="app-home-actions">{hasCapability('app:'+appCode+':data:visits:create')&&<Button type="primary" size="large" onClick={()=>navigate(base+'/my/visits/submit')}>邀请访客</Button>}{hasCapability('app:'+appCode+':data:visits:read')&&<Button size="large" onClick={()=>navigate(base+'/my/visits')}>我的来访</Button>}{(identity.isAppSuperAdmin||hasCapability('app:'+appCode+':data:visits:update'))&&<Button size="large" onClick={()=>navigate('/admin')}>管理工作台</Button>}</div><div className="app-home-card"><h3>来访安排</h3><p>选择接待区域和时间，确认访客姓名、单位和来访目的。前台登记后，可在我的来访中查看状态。</p></div></section>;}

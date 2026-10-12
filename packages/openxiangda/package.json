@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.60.2",
+  "version": "2.63.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -26,6 +26,10 @@
       "types": "./dist/field-kit.d.ts",
       "import": "./dist/field-kit.js"
     },
+    "./rich-text": {
+      "types": "./dist/rich-text.d.ts",
+      "import": "./dist/rich-text.js"
+    },
     "./react": {
       "types": "./dist/react.d.ts",
       "import": "./dist/react.js"
@@ -48,7 +52,11 @@
       "types": "./dist/testing.d.ts",
       "import": "./dist/testing.js"
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./resource": {
+      "types": "./dist/resource.d.ts",
+      "import": "./dist/resource.js"
+    }
   },
   "bin": {
     "openxiangda": "./bin/run.js"
@@ -74,18 +82,29 @@
     "@noble/hashes": "2.0.1",
     "@rc-component/async-validator": "6.0.0",
     "@rc-component/picker": "1.10.0",
+    "@tiptap/core": "3.31.4",
+    "@tiptap/extension-image": "3.31.4",
+    "@tiptap/extension-list": "3.31.4",
+    "@tiptap/extension-subscript": "3.31.4",
+    "@tiptap/extension-superscript": "3.31.4",
+    "@tiptap/extension-table": "3.31.4",
+    "@tiptap/extension-text-align": "3.31.4",
+    "@tiptap/extension-text-style": "3.31.4",
+    "@tiptap/pm": "3.31.4",
+    "@tiptap/react": "3.31.4",
+    "@tiptap/starter-kit": "3.31.4",
     "@xyflow/react": "12.12.0",
     "antd-mobile": "5.42.3",
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.8.7",
-    "openxiangda-contracts": "2.75.0",
-    "openxiangda-devkit-core": "2.57.0",
+    "openxiangda-cli": "2.9.0",
+    "openxiangda-contracts": "2.79.0",
+    "openxiangda-devkit-core": "2.60.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.1.6",
-    "openxiangda-nest": "2.17.0",
-    "openxiangda-skill-kit": "2.3.97",
+    "openxiangda-mcp": "2.2.0",
+    "openxiangda-nest": "2.18.1",
+    "openxiangda-skill-kit": "2.3.101",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -151,33 +170,47 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.60.2",
+    "version": "2.63.0",
     "status": "reviewed",
-    "title": "OpenXiangda 2.60.2：已选部门真实事实",
-    "summary": "具名后端动作可基于平台目录解析有界已选部门名称与路径，保存可信展示快照而不复制组织权限。",
+    "title": "Workflow design, handling nodes and editable application templates",
+    "summary": "Publish the reviewed mainline workflow designer and handling capabilities, shared-record Save, structured parallel branches and guarded workflow source synchronisation. Add editable templates, resource reference read/update contexts and read-only AI command reconciliation. The platform must use the same public contracts 2.79.0 pure compiler as the SDK.",
     "newFeatures": [
-      "新增 directory.selected-departments 能力和 selectedDepartments 声明，SDK 使用真实发起人、固定环境与动作证明读取平台目录事实。",
-      "至多50个不重复部门按输入顺序返回声明字段，整体检查缺失、删除、授权与当前 Head，并附真实数据库时间及摘要。"
+      "Canonical workflow designer definitions, target/variable catalogs, administration, proposals and instance adoption share the same pure validation rules.",
+      "Independent handling and correction nodes support explicit completion actions, opinion requirements, shared-record Save, return policies, durable reminders, platform notifications and supervisor-chain assignments.",
+      "Paired parallel/join nodes have bounded disjoint branches, branch-scoped position proofs and publication validation while retaining immutable task-entry authority.",
+      "Workflow source export/import, read-only version registration plans and environment synchronisation use digest and target-head guards and preserve prepared version history.",
+      "Editable application templates cover administration, PC, mobile and login frames, with shared resource-page controllers, source digests and composition validation.",
+      "Resource reference filtering has an independent read intent; ordinary edits supply saved-record id/revision and actual edits for authoritative server-side merge.",
+      "AI reconciliation binds a read-only GET/read operation to the original command receipt instead of replaying a business mutation."
     ],
-    "fixes": [],
+    "fixes": [
+      "Give the new workflow pure-rule APIs a fresh public contracts version so platforms need not privately add exports under an already published semver.",
+      "Correct canvas branch selection, outline hierarchy and approval action presentation while retaining permissions, CAS, idempotency and unknown-result recovery.",
+      "Export standard resource query, cascade and address helpers from shared contracts so browser and platform consumers use the same query semantics."
+    ],
     "affectedUsers": [
-      "需要在 V2 业务动作中保存部门名称、父级或完整路径快照的应用开发者。"
+      "OpenXiangda V2 platforms and applications using workflow design, independent handling, shared Save, reminders, notifications or instance adoption.",
+      "V2 workspaces using editable template composition, resource reference fields or read-only AI result reconciliation."
     ],
     "upgradeSteps": [
-      "先按精确平台组合部署目录能力，再锁定同版本公开工具包并刷新契约。",
-      "具名动作显式声明字段与上限，快照只作展示，实际权限和审批路由仍由平台目录及角色控制。"
+      "Deploy a platform matching the actual contracts 2.79.0 native validator first. Server contracts must come from the official published tarball with verified SRI.",
+      "Upgrade the complete workspace distribution to public openxiangda 2.63.0, install the lockfile and refresh project documentation and MCP sessions.",
+      "Preserve application, record, task, workflow-version and idempotency identities. Run normal check/deploy preflight against the actual platform capabilities and validator digest.",
+      "Verify workflow design, shared Save, handling completion, return paths, notification recipients and reference reads/updates with real roles before environment promotion."
     ],
     "knownLimitations": [
-      "本次主题仅提供当前租户未删除部门的已有目录读取范围；不引入未实现的每部门可见策略。",
-      "无学校真实角色或页面验收声明；source/SDK聚焦测试不代替上线业务验证。"
+      "New reference contexts and workflow contracts require the matching platform to be deployed first; declaring a different digest does not establish compatibility.",
+      "Template appearance and package regressions do not replace real-role, notification, instance-adoption and business-data acceptance.",
+      "The separate event-receipt lease-ownership and worker-effect candidates are not included in this public release."
     ],
     "compatibility": {
+      "generation": "v2",
       "node": ">=24",
-      "platform": "directory.selected-departments 1.0.0 与配套contracts/devkit/nest",
-      "v1": "V1 API 与未声明此能力的 V2 动作保持现有行为。"
+      "platform": "contracts 2.79.0 exact native validator and matching workflow/resource contexts",
+      "v1": "Independent 1.x maintenance distribution is unchanged"
     },
     "issues": [],
-    "sha256": "c5897f1bec938ea57c4c4d9e04381c39bc78bf47e4dce018890d42d696bbf341",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.60.2"
+    "sha256": "ef4279a6f846a604d68dbd1adc2473203ffef4287e2dc74b51aa17727a7397b5",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.63.0"
   }
 }

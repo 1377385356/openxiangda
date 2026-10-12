@@ -1,0 +1,6 @@
+{
+  "code": "pass-and-checkin",
+  "requires": [
+    "time-slot"
+  ]
+}

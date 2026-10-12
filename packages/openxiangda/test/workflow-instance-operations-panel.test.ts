@@ -114,7 +114,7 @@ test('exports and renders the instance operation panel from a matching Surface',
       }),
     ),
   );
-  assert.match(markup, /更多操作/);
+  assert.match(markup, /更多/);
   assert.doesNotMatch(markup, /撤回申请/);
   assert.match(markup, /oxa-workflow-actions-mobile/);
   assert.doesNotMatch(markup, /终止流程/);

@@ -1,3 +1,4 @@
+import { createBrowserUuid } from '../../uuid';
 import { Button as MobileButton } from '../../mobile';
 import {
   DeleteOutlined,
@@ -333,13 +334,13 @@ export function SubtableField({
         actions={task?.page.reorder && <Space><MobileButton fill="none" disabled={navigationBlocked || index === 0} aria-label={`上移第${index + 1}项`} onClick={() => moveRow(index, -1)}>上移</MobileButton><MobileButton fill="none" disabled={navigationBlocked || index === visibleRows.length - 1} aria-label={`下移第${index + 1}项`} onClick={() => moveRow(index, 1)}>下移</MobileButton></Space>} />;
     })}
     {!disabled && !launch?.fixedRows && <MobileButton block fill="none" color="primary" disabled={navigationBlocked || !canCreate || visibleRows.length >= maxRows}
-      onClick={() => { emit([...rows, { key: crypto.randomUUID(), state: 'created', data: {} }]); setRequestedPage(Math.floor(visibleRows.length / SUBTABLE_PAGE_SIZE) + 1); }}><PlusOutlined /> 新增一项</MobileButton>}
+      onClick={() => { emit([...rows, { key: createBrowserUuid(), state: 'created', data: {} }]); setRequestedPage(Math.floor(visibleRows.length / SUBTABLE_PAGE_SIZE) + 1); }}><PlusOutlined /> 新增一项</MobileButton>}
   </div></SubtableEditActivityContext.Provider>;
 
   const fields = rowFields().filter(child => canReadField(child) || (canCreate && canWriteField(child, 'create')) || (canUpdate && canWriteField(child, 'update')));
   const writableCodes = fields.filter(child => canWriteField(child, 'create')).map(child => child.key);
   const appendRows = (data: Record<string, unknown>[]) => { if (launch?.fixedRows) return; const start = subtablePage(rowsRef.current, 1).visible.length; emit([...rowsRef.current, ...data.map(item => ({
-    key: crypto.randomUUID(), state: 'created' as const,
+    key: createBrowserUuid(), state: 'created' as const,
     data: Object.fromEntries(Object.entries(item).map(([key, value]) => [key, fieldValueForForm(definition.surface.fields[key], value)])),
   }))]); setRequestedPage(Math.floor(start / SUBTABLE_PAGE_SIZE) + 1); };
   const downloadTemplate = async () => {

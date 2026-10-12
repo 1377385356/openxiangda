@@ -1,0 +1,6 @@
+{
+  "code": "my-records",
+  "requires": [
+    "time-slot"
+  ]
+}

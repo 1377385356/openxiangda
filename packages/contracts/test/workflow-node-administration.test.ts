@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { projectWorkflowNodePolicy, workflowOperationCommentRequired, workflowOperationReasonRequired, validateWorkflowAdministration, validateWorkflowNodeConfigurationPatch } from '../src/native-compiler/workflow-node-administration.js';
+import { projectWorkflowNodePolicy, workflowTaskSaveEnabled, workflowOperationCommentRequired, workflowOperationReasonRequired, validateWorkflowAdministration, validateWorkflowNodeConfigurationPatch } from '../src/native-compiler/workflow-node-administration.js';
 import type { WorkflowApprovalNode } from '../src/types.js';
 
 const node: WorkflowApprovalNode = {
@@ -107,4 +107,48 @@ test('reason policies cannot be placed on decision or administrative commands', 
     assert.ok(validateWorkflowAdministration({ nodes: { review: { ...node, operationPolicy: { [operation]: { reasonRequired: false } } } } }).length);
   }
   assert.equal(workflowOperationReasonRequired('admin_reassign', { reasonRequired: false }), true);
+});
+
+test('save is configured, reject is optional, and the forward and domain-required actions cannot be disabled', () => {
+  const editable: WorkflowApprovalNode = { ...node, taskPageCode: 'review', allowedOperations: ['approve', 'reject', 'save_form', 'return'], requiredOperations: ['return'], administration: { operations: ['approve', 'reject', 'save_form', 'return'] } };
+  assert.deepEqual(validateWorkflowAdministration({ nodes: { review: editable } }), []);
+  const patch = { operations: { reject: { enabled: false }, save_form: { enabled: false, label: '保存数据' } } };
+  assert.deepEqual(validateWorkflowNodeConfigurationPatch(editable, binding, patch), []);
+  assert.deepEqual(projectWorkflowNodePolicy(editable, patch).allowedOperations, ['approve', 'return']);
+  for (const operation of ['approve', 'return'] as const) assert.ok(validateWorkflowNodeConfigurationPatch(editable, binding, { operations: { [operation]: { enabled: false } } }).length);
+  assert.ok(validateWorkflowAdministration({ nodes: { review: { ...editable, taskPageCode: undefined } } }).includes('WORKFLOW_NODE_SAVE_PAGE_REQUIRED:review'));
+});
+
+test('an explicit opinion minimum permits business defaults to change without weakening domain requirements', () => {
+  const editable: WorkflowApprovalNode = { ...node, operationPolicy: { reject: { opinion: 'required', minimumOpinion: 'none' }, transfer: { opinion: 'optional', minimumOpinion: 'optional' } } };
+  for (const opinion of ['none', 'optional', 'required'] as const) {
+    const patch = { operations: { reject: { opinion, label: '不同意' } } };
+    assert.deepEqual(validateWorkflowNodeConfigurationPatch(editable, binding, patch), []);
+    const effective = projectWorkflowNodePolicy(editable, patch);
+    assert.equal(effective.operationPolicy.reject?.opinion, opinion);
+    assert.equal(workflowOperationCommentRequired('reject', effective.operationPolicy.reject), opinion === 'required');
+    assert.equal(effective.allowedOperations.includes('reject'), true);
+  }
+  assert.ok(validateWorkflowNodeConfigurationPatch(editable, binding, { operations: { transfer: { opinion: 'none' } } }).length);
+  assert.ok(validateWorkflowNodeConfigurationPatch(editable, binding, { operations: { reject: { minimumOpinion: 'none' } } }).length);
+  assert.ok(validateWorkflowNodeConfigurationPatch(node, binding, { operations: { approve: { opinion: 'optional' } } }).length);
+  assert.ok(validateWorkflowAdministration({ nodes: { review: { ...editable, operationPolicy: { reject: { opinion: 'none', minimumOpinion: 'required' } } } } }).length);
+});
+
+test('new opinion policies and old boolean patches project to consistent runtime requirements', () => {
+  const editable = { ...node, operationPolicy: { approve: { commentRequired: false }, reject: { opinion: 'required' as const, minimumOpinion: 'none' as const } } };
+  const effective = projectWorkflowNodePolicy(editable, { operations: { reject: { commentRequired: false }, approve: { opinion: 'required' } } });
+  assert.equal(effective.operationPolicy.reject?.opinion, 'optional');
+  assert.equal(effective.operationPolicy.reject?.commentRequired, false);
+  assert.equal(effective.operationPolicy.approve?.commentRequired, true);
+  assert.ok(validateWorkflowNodeConfigurationPatch(editable, binding, { operations: { reject: { opinion: 'optional', commentRequired: true } } }).length);
+});
+
+
+test('entered-task save availability preserves legacy tasks and rejects disabled or unknown new operation models', () => {
+  assert.equal(workflowTaskSaveEnabled({ hasTaskPage: true, allowedOperations: ['approve'] }), true);
+  assert.equal(workflowTaskSaveEnabled({ hasTaskPage: true, allowedOperations: ['approve'], operationModel: 'configured-v1' }), false);
+  assert.equal(workflowTaskSaveEnabled({ hasTaskPage: true, allowedOperations: ['approve', 'save_form'], operationModel: 'configured-v1' }), true);
+  assert.equal(workflowTaskSaveEnabled({ hasTaskPage: false, allowedOperations: ['save_form'] }), false);
+  assert.equal(workflowTaskSaveEnabled({ hasTaskPage: true, allowedOperations: ['save_form'], operationModel: 'unknown' }), false);
 });

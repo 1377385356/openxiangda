@@ -1,7 +1,7 @@
 import { Args, Flags } from "@oclif/core";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
-import { normalizePlatformBaseUrl, OpenXiangdaDeveloperSession, workspaceSessionPath } from "openxiangda-devkit-core";
+import { normalizePlatformBaseUrl, OpenXiangdaDeveloperSession, workspaceSessionPath, resolveApplicationTemplateSelection } from "openxiangda-devkit-core";
 import { OpenXiangdaCommand, cliEventFlags } from "../base.js";
 import {
   createWorkspace,
@@ -20,6 +20,10 @@ export default class Create extends OpenXiangdaCommand {
   };
   static flags = {
     ...cliEventFlags,
+    scenario: Flags.string({summary:'业务场景；先用 template list 查看'}),
+    style: Flags.string({summary:'模板主题风格'}),
+    admin: Flags.string({summary:'后台布局'}), pc: Flags.string({summary:'PC 用户端布局'}), mobile: Flags.string({summary:'移动用户端布局'}), login: Flags.string({summary:'登录布局'}),
+    with: Flags.string({summary:'追加模块，逗号分隔'}), without: Flags.string({summary:'移除模块，逗号分隔'}),
     "base-url": Flags.string({
       summary: "新应用的目标平台；已有工作区必须与原绑定一致",
       helpValue: "<platform>",
@@ -52,23 +56,29 @@ export default class Create extends OpenXiangdaCommand {
         "TEMPLATE_REF_DIGEST_PAIR_REQUIRED: --template-ref 与 --template-digest 必须一起提供"
       );
     }
+    const hasSelection = [flags.scenario,flags.style,flags.admin,flags.pc,flags.mobile,flags.login,flags.with,flags.without].some(value=>value!==undefined);
+    if(hasSelection && flags["template-ref"]) throw new Error("TEMPLATE_SELECTION_REF_CONFLICT");
+    const selection=hasSelection?{...(flags.scenario?{scenario:flags.scenario}:{}),...(flags.style?{style:flags.style}:{}),...(flags.admin?{admin:flags.admin}:{}),...(flags.pc?{pc:flags.pc}:{}),...(flags.mobile?{mobile:flags.mobile}:{}),...(flags.login?{login:flags.login}:{}),...(flags.with!==undefined?{with:flags.with.split(',').map(code=>code.trim())}:{}),...(flags.without!==undefined?{without:flags.without.split(',').map(code=>code.trim())}:{})}:undefined;
+    const selected=selection?resolveApplicationTemplateSelection(selection):undefined;
     const templateInput = flags["template-ref"]
       ? {
           templateRef: flags["template-ref"],
           templateDigest: flags["template-digest"]!,
         }
-      : {};
+      : selection ? {selection} : {};
+    if(selected) this.emitCliStatus("已选择源码模板",{stage:"template",...selected});
     const baseUrl = resolveCreatePlatform(
       root,
       appCode,
       flags["base-url"] || process.env.OPENXIANGDA_BASE_URL
     );
-    const retryCommand = renderCreateRetryCommand(root, {
+    let retryCommand = renderCreateRetryCommand(root, {
       baseUrl,
       ...(flags["app-code"] ? { appCode } : {}),
       ...(flags.name ? { name } : {}),
-      ...templateInput,
+      ...(flags["template-ref"] ? {templateRef:flags["template-ref"],templateDigest:flags["template-digest"]!}:{}),
     });
+    if(selection) for(const [key,value] of Object.entries(selection)) if(value!==undefined) retryCommand+=' --'+key+' '+shellArgument(Array.isArray(value)?value.join(','):value);
     const installOutput: WorkspaceInstallOutput = this.machineOutputEnabled()
       ? "capture"
       : "inherit";
@@ -92,10 +102,16 @@ export default class Create extends OpenXiangdaCommand {
       reusable ? "正在恢复已有工作区" : "正在生成应用工作区",
       { stage: "workspace", reusable }
     );
+    if(reusable && selected) {
+      const binding=readWorkspaceTemplateBinding(root);
+      const expected=[...Object.entries(selected.frames).map(([kind,code])=>kind+':'+code),'style:'+selected.style,...selected.modules.map(code=>'module:'+code)].sort();
+      const actual=(binding?.components||[]).filter(item=>!['base','shared'].includes(item.kind)).map(item=>item.kind+':'+item.code).sort();
+      if(binding?.ref!=='builtin:composed:'+selected.scenario || JSON.stringify(expected)!==JSON.stringify(actual)) throw new Error('TEMPLATE_SELECTION_WORKSPACE_MISMATCH: 初始化选择与已有工作区不一致');
+    }
     const workspace = reusable
       ? await this.reuseWorkspace(root, appCode, name, installOutput, {
           explicitName: Boolean(flags.name),
-          ...templateInput,
+          ...(flags["template-ref"] ? {templateRef:flags["template-ref"],templateDigest:flags["template-digest"]!}:{}),
         })
       : await createWorkspace({
           directory: root,

@@ -4,6 +4,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
 import { z } from 'zod/v4';
 import { resolve } from 'node:path';
 import {
+  applicationTemplateCatalog,
   OPENXIANGDA_TOOLCHAIN_VERSION,
   OpenXiangdaApplicationServices,
   checkApplication, deployApplication, developerEnvironment, watchDeployment,
@@ -506,6 +507,7 @@ function definition<T extends z.ZodRawShape>(title: string, description: string,
 /** 工具展示、输入验证与生成参考共用此表。 */
 export const MCP_TOOL_DEFINITIONS = {
   authorization_status: definition('核验平台授权', '只读核验明确指定站点的当前授权；不依赖工作区，不启动登录、刷新凭据或修改绑定。authorized 不代表应用管理权限。', z.object({ baseUrl: z.string().min(1).describe('明确指定目标平台地址') }).strict()),
+  template_list: definition('发现源码模板', '列出业务场景、模块依赖、四类源码外壳和主题；创建使用 CLI，不执行远端操作。', z.object({}).strict()),
   workspace_context: definition('查看工作区', '首先读取当前项目、工具链版本和绑定，不运行构建或创建远端对象。', z.object({})),
   contract_describe: definition('查看应用契约', '默认返回有界索引；用 selector 读取模型、流程、能力，或 navigation/permissions。菜单建议只复制一次，运行时不自动应用。', z.object({ selector: z.string().max(200).optional().describe('index、navigation、permissions、all 或索引给出的选择器'), offset: z.number().int().min(0).optional(), limit: z.number().int().min(1).max(100).optional() }).strict()),
   appspec_context: definition('读取需求与设计', '读取设计索引、稳定 ID 正文与引用闭包、开工和测试发布缺口；设计基线确认后制定实施计划，生产晋级核对原测试版本实际验收。', z.object({ selector: z.string().min(1).optional().describe('能力、变更、ADR 或 DES-* 设计的稳定 ID'), historyOffset: z.number().int().min(0).default(0).describe('历史索引偏移，每页 50 条') }).strict()),
@@ -519,6 +521,11 @@ export const MCP_TOOL_DEFINITIONS = {
     inputSchema: fromJsonSchema(APPLICATION_OPERATION_SCHEMA as never),
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false },
   },
+  workflow_sync: definition('同步流程到目标环境','按目标流程修订号显式同步，默认同时更新在途和新申请；复用发布及版本适用规则。保留指定人员边界。',z.object({ workflowCode: z.string().min(1).max(128),fromEnvironment: z.enum(['test','production']),toEnvironment: z.enum(['test','production']),expectedSourceHeadRevision: z.number().int().min(1),expectedTargetHeadRevision: z.number().int().min(1),operationId: z.string().min(1).max(128),reason: z.string().min(1).max(1000),scope: z.enum(['running_and_new','new_only']).optional(),acknowledgeExceptions: z.boolean().optional(),copyHandlingDefaults: z.boolean().optional() }).strict(),false,true,true),
+  workflow_export: definition('导出流程到工作区','只读导出环境中的规范定义、绑定和办理设置摘要；不包含运行记录或环境内部标识。',z.object({ environment,workflowCode: z.string().min(1),out: z.string().min(1) }).strict(),false),
+  workflow_import: definition('把流程导入源码','验证代码能力和摘要后修改工作区显式流程声明，保留人员配置边界。',z.object({ path: z.string().min(1),adoptHandlingDefaults: z.boolean().default(false) }).strict(),false,true),
+  workflow_plan_registration: definition('规划流程版本登记','服务器只读查询已有摘要和下一版本数字；write 只写源码版本数字，不写环境观察。',z.object({ environment,write: z.boolean().default(false) }).strict(),false),
+  workflow_status: definition('查看流程源码同步状态','比较源声明、导入基线和环境摘要，显示待导回源码、待部署或冲突及未启用版本数量。',z.object({ environment,workflowCode: z.string().min(1).optional() }).strict()),
   workflow_node_configurations: definition('查看流程有效参数', '修改已部署流程前，读取管理员维护的节点配置。已有任务和后续节点进入使用各自适用版本。', z.object({ environment, workflowCode: z.string().min(1).describe('流程声明中的 code') }).strict()),
   check_app: definition('检查完整应用', '先在本地完成完整配置校验，默认核对平台同源规则与只读环境条件，再生成、静态检查、测试和构建。local 仅用于本地或 CI 验证，不证明目标环境可部署；正式 deploy 始终预检平台。会写本地文件，前置失败即停止。', z.object({ environment, local: z.boolean().default(false).describe('仅本地完整检查；结果 validationScope=local，不核对现场条件') }).strict(), false, true),
   deployment_plan: definition('预览应用发布', '只读预览测试部署的运行配额，或指定测试版本的生产晋级；返回容量与缺口，不构建、上传或提交运行。', deploymentInput),
@@ -570,6 +577,7 @@ export function createOpenXiangdaMcpServer(options: { services?: OpenXiangdaAppl
     { title: '中文使用专题', description: '从资料目录的 URI 读取当前根包正文', mimeType: 'text/markdown' },
     async (uri, variables) => ({ contents: [{ uri: uri.href, mimeType: 'text/markdown', text: readDocumentation(String(variables.topic), undefined, options.documentationRoot).content }] })
   );
+  register('template_list', async()=>({ok:true,operation:'template.list',data:applicationTemplateCatalog}));
   register('workspace_context', () => services.workspaceContext(root));
   register('contract_describe', input => services.contractContext(root, { ...(input.selector ? { selector: input.selector } : {}), ...(input.offset !== undefined ? { offset: input.offset } : {}), ...(input.limit !== undefined ? { limit: input.limit } : {}) }));
   register('appspec_context', input => services.appSpecContext(root, input.selector, input.historyOffset));
@@ -589,6 +597,11 @@ export function createOpenXiangdaMcpServer(options: { services?: OpenXiangdaAppl
     }
     return { ...(result.ok === false ? { isError: true } : {}), content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }], structuredContent: result };
   });
+  register('workflow_sync',input => services.workflowSync(root,input.workflowCode,{ fromEnvironment: developerEnvironment(input.fromEnvironment),toEnvironment: developerEnvironment(input.toEnvironment),expectedSourceHeadRevision: input.expectedSourceHeadRevision,expectedTargetHeadRevision: input.expectedTargetHeadRevision,operationId: input.operationId,reason: input.reason,scope: input.scope || 'running_and_new',acknowledgeExceptions: !!input.acknowledgeExceptions,copyHandlingDefaults: !!input.copyHandlingDefaults }));
+  register('workflow_export',input => services.workflowExport(root,input.workflowCode,developerEnvironment(input.environment),input.out));
+  register('workflow_import',input => services.workflowImport(root,input.path,input.adoptHandlingDefaults));
+  register('workflow_plan_registration',input => services.workflowPlanRegistration(root,developerEnvironment(input.environment),input.write));
+  register('workflow_status',input => services.workflowStatus(root,developerEnvironment(input.environment),input.workflowCode));
   register('workflow_node_configurations', input => services.workflowNodeConfigurations(root, input.workflowCode, developerEnvironment(input.environment)));
   register('check_app', (input, onProgress) => checkApplication(services, { ...local, environment: input.environment, local: input.local, onProgress }));
   register('deployment_plan', (input, onProgress) => deployApplication(services, { ...local, ...definedDeploymentInput(input), dryRun: true, onProgress }));

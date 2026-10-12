@@ -8,7 +8,9 @@
 | `pnpm openxiangda context` | 只读 | 只读查看工作区、版本与平台绑定 |
 | `pnpm openxiangda docs` | 只读 | 按主题和章节读取当前版本中文资料 |
 | `pnpm openxiangda admin` | 远端变更 | 查看管理能力、自助操作契约，或按明确环境执行事件、密钥及通知操作 |
+| `pnpm openxiangda template` | 只读 | 列出场景、模块、布局和风格模板 |
 | `pnpm openxiangda create` | 远端变更 | 创建、绑定并初始化应用 |
+| `pnpm openxiangda workflow` | 远端变更 | 导出流程、导入到源码、规划版本登记、查看状态并显式同步到目标环境 |
 | `pnpm openxiangda source` | 远端变更 | 配置应用源码仓库、查看状态或提交推送 |
 | `pnpm openxiangda dev` | 本地写入 | 连接平台测试数据启动本地 Web，按需启动 Nest |
 | `pnpm openxiangda check` | 本地写入 | 生成契约并在目标平台预检后执行检查、测试和构建 |

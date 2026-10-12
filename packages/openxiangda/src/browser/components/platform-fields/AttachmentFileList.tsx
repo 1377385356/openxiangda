@@ -2,6 +2,7 @@ import {
   CloseOutlined,
   DownloadOutlined,
   EyeOutlined,
+  RightOutlined,
   FileExcelOutlined,
   FileImageOutlined,
   FilePdfOutlined,
@@ -160,6 +161,7 @@ export function AttachmentFileList({
   removable = false,
   mobile = false,
   imageTiles = false,
+  presentation = 'default',
   uploadTile,
   onRemove,
 }: {
@@ -169,6 +171,7 @@ export function AttachmentFileList({
   removable?: boolean;
   mobile?: boolean;
   imageTiles?: boolean;
+  presentation?: 'default' | 'workflow-detail';
   uploadTile?: import('react').ReactNode;
   onRemove?: (file: DataFileRef) => void;
 }) {
@@ -284,12 +287,12 @@ export function AttachmentFileList({
     <>
       <div className={mobile ? `oxa-mobile-scope oxa-file-list oxa-mobile-file-list${imageTiles ? " oxa-mobile-image-grid" : ""}` : "oxa-file-list"}>
         {files.map(file => (
-          <div className="oxa-file-item" key={file.id}>
+          <div className={`oxa-file-item${presentation === 'workflow-detail' ? ' oxa-workflow-file-item' : ''}`} key={file.id}>
             {imageTiles && mobile ? <MobileButton fill="none" aria-label={`预览${file.name}`} className="oxa-file-kind" onClick={() => openPreview(file)}>
               <ManagedImageThumbnail file={file} resourceCode={resourceCode} workflowBinding={workflowBinding} />
             </MobileButton> : imageTiles ? <Button type="text" aria-label={`预览${file.name}`} className="oxa-file-kind" onClick={() => openPreview(file)}>
               <ManagedImageThumbnail file={file} resourceCode={resourceCode} workflowBinding={workflowBinding} />
-            </Button> : <span className="oxa-file-kind">
+            </Button> : <span className={`oxa-file-kind is-${extension(file.name)}`}>
               {isImage(file) ? <ManagedImageThumbnail file={file} resourceCode={resourceCode} workflowBinding={workflowBinding} /> : fileIcon(file)}
             </span>}
             <button
@@ -299,29 +302,29 @@ export function AttachmentFileList({
               type="button"
             >
               <strong>{file.name}</strong>
-              <small>{formatManagedFileSize(file.size)}{mobile ? "" : " · 已上传"}</small>
+              <small>{formatManagedFileSize(file.size)}{mobile || presentation === 'workflow-detail' ? "" : " · 已上传"}</small>
             </button>
             {mobile ? <div className="oxa-mobile-file-actions">
-              <MobileButton aria-label={`预览${file.name}`} loading={openingId === file.id} fill="none" onClick={() => openPreview(file)}><EyeOutlined /></MobileButton>
-              <MobileButton aria-label={`下载${file.name}`} loading={downloadingId === file.id} fill="none" onClick={() => void download(file)}><DownloadOutlined /></MobileButton>
+              <MobileButton aria-label={`预览${file.name}`} loading={openingId === file.id} fill="none" onClick={() => openPreview(file)}>{presentation === 'workflow-detail' ? <RightOutlined /> : <EyeOutlined />}</MobileButton>
+              {presentation !== 'workflow-detail' && <MobileButton aria-label={`下载${file.name}`} loading={downloadingId === file.id} fill="none" onClick={() => void download(file)}><DownloadOutlined /></MobileButton>}
               {removable && <MobileButton className="oxa-mobile-file-remove" aria-label={`移除${file.name}`} fill="none" onClick={() => onRemove?.(file)}><CloseOutlined /></MobileButton>}
             </div> : <Space size={2}>
               <Button
                 aria-label={`预览${file.name}`}
-                icon={<EyeOutlined />}
+                icon={presentation === 'workflow-detail' ? undefined : <EyeOutlined />}
                 loading={openingId === file.id}
                 onClick={() => openPreview(file)}
                 size="small"
-                type="text"
-              />
+                type={presentation === 'workflow-detail' ? 'link' : 'text'}
+              >{presentation === 'workflow-detail' ? '预览' : null}</Button>
               <Button
                 aria-label={`下载${file.name}`}
-                icon={<DownloadOutlined />}
+                icon={presentation === 'workflow-detail' ? undefined : <DownloadOutlined />}
                 loading={downloadingId === file.id}
                 onClick={() => void download(file)}
                 size="small"
-                type="text"
-              />
+                type={presentation === 'workflow-detail' ? 'link' : 'text'}
+              >{presentation === 'workflow-detail' ? '下载' : null}</Button>
               {removable && (
                 <Button
                   aria-label={`移除${file.name}`}

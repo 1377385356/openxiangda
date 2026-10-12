@@ -1,3 +1,4 @@
+import { isWorkflowPlatformNotify, validateWorkflowPlatformNotify, type WorkflowPlatformNotification } from './workflow-platform-notify.js';
 
 export const WORKFLOW_BUSINESS_STEP_EVENT = 'openxiangda.workflow.step.requested.v2';
 export const WORKFLOW_BUSINESS_STEP_EVENTS = [WORKFLOW_BUSINESS_STEP_EVENT, 'openxiangda.workflow.step.result_received.v2', 'openxiangda.workflow.step.completed.v2', 'openxiangda.workflow.step.continuation_failed.v2'] as const;
@@ -27,6 +28,7 @@ export interface WorkflowBusinessStepNode {
   inputSchema: Record<string, unknown>;
   outputSchema: Record<string, unknown>;
   inputs: Record<string, WorkflowBusinessStepInput>;
+  notification?: WorkflowPlatformNotification;
 }
 
 /** This result is authenticated by the claimed request event, never by a userId. */
@@ -63,7 +65,7 @@ export interface WorkflowBusinessStepSummary {
   handlerVersion: number;
   mode?: WorkflowBusinessStepHandlerContract['mode'];
   nodeId?: string;
-  status: 'waiting' | 'result_ready' | 'completed' | 'cancelled';
+  status: 'waiting' | 'result_ready' | 'result_stale_inputs' | 'completed' | 'cancelled';
   inputDigest?: string;
   resultDigest?: string;
   expectedFactRevision?: number;
@@ -79,13 +81,14 @@ export interface WorkflowBusinessStepRecoveryOptions {
   status: string;
   canRetryBusinessStep: boolean;
   businessStep: WorkflowBusinessStepSummary | null;
+  businessSteps?: WorkflowBusinessStepSummary[];
 }
 export interface WorkflowBusinessStepRecoveryPreview {
   action: 'admin_retry_step';
   canCommit: boolean;
   commandToken?: string;
   expiresAt?: string;
-  target: { nodeId: string; title: string; executionId: string; resultDigest: string; lastErrorCode?: string; continuationAttempts: number; reexecutesBusinessHandler: false };
+  target: { nodeId: string; title: string; executionId: string; resultDigest: string; lastErrorCode?: string; continuationAttempts: number; reexecutesBusinessHandler: boolean; recovery?: 'continue' | 'recompute' | 'apply_stored'; inputsChanged?: boolean; mode?: WorkflowBusinessStepHandlerContract['mode'] };
 }
 
 type Definition = {
@@ -244,8 +247,10 @@ export function validateWorkflowBusinessStepHandlerContract(value: unknown): val
 
 function targets(node: Record<string, any>): string[] {
   if (node.kind === 'approval') return [node.onApprove, node.onReject];
+  if (node.kind === 'parallel') return [...(Array.isArray(node.branches) ? node.branches.map((branch: any) => branch.target) : []), node.join];
+  if (node.kind === 'join') return [node.next];
   if (node.kind === 'condition') return [...(Array.isArray(node.branches) ? node.branches.map((branch: any) => branch.target) : []), node.otherwise];
-  if (node.kind === 'cc' || node.kind === 'action') return [node.next];
+  if (node.kind === 'cc' || node.kind === 'action' || node.kind === 'handle') return [node.next];
   return [];
 }
 
@@ -262,11 +267,11 @@ export function validateWorkflowBusinessSteps(definition: Definition, binding?: 
   const nodes = definition.nodes;
   const actions = Object.entries(nodes).filter(([, node]) => node?.kind === 'action');
   if (!actions.length) return [];
-  const errors: string[] = [];
+  const errors: string[] = [...validateWorkflowPlatformNotify(definition)];
   if (Object.hasOwn(definition.inputSchema?.properties || {}, 'steps')) errors.push('WORKFLOW_STEP_FACT_NAMESPACE_RESERVED');
   const factSchema = workflowBusinessStepFactSchema(definition);
   for (const [id, node] of actions) {
-    if (Object.keys(node).some(key => !['id', 'kind', 'title', 'next', 'handler', 'inputSchema', 'outputSchema', 'inputs'].includes(key)) ||
+    if (Object.keys(node).some(key => !['id', 'kind', 'title', 'next', 'handler', 'inputSchema', 'outputSchema', 'inputs', ...(isWorkflowPlatformNotify(node) ? ['notification'] : [])].includes(key)) ||
         node.id !== id || !keyPattern.test(id) || forbidden.has(id) || typeof node.title !== 'string' || !node.title.trim() || node.title.length > 255 || typeof node.next !== 'string' || !Object.hasOwn(nodes, node.next)) errors.push(`WORKFLOW_STEP_NODE_INVALID:${id}`);
     const handler = node.handler;
     if (!record(handler) || Object.keys(handler).some(key => !['code', 'version', 'mode', 'dataTransaction'].includes(key)) ||
@@ -313,7 +318,7 @@ export function validateWorkflowBusinessSteps(definition: Definition, binding?: 
       if (nodes[producer]?.kind !== 'action' || producer === id || !schemaHasPath(factSchema, path) || canReachWithout(id, producer)) errors.push(`WORKFLOW_STEP_OUTPUT_NOT_AVAILABLE:${id}:${path}`);
     }
   }
-  if (binding) for (const [, action] of actions) {
+  if (binding) for (const [, action] of actions.filter(([, node]) => !isWorkflowPlatformNotify(node))) {
     const visited = new Set<string>(), queue = [action.next];
     while (queue.length && visited.size <= 200) {
       const id = queue.shift()!;
@@ -368,7 +373,7 @@ export function compileWorkflowBusinessStepHandlers(definitions: readonly Defini
     const errors = validateWorkflowBusinessSteps(definition);
     if (errors.length) throw new Error(errors.join('; '));
     for (const node of Object.values(definition.nodes || {})) {
-      if (node.kind !== 'action') continue;
+      if (node.kind !== 'action' || isWorkflowPlatformNotify(node)) continue;
       const contract = { version: node.handler.version, mode: node.handler.mode,
         ...(node.handler.dataTransaction ? { dataTransaction: true as const } : {}), inputSchema: node.inputSchema, outputSchema: node.outputSchema };
       const previous = result[node.handler.code];

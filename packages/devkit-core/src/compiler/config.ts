@@ -1,3 +1,4 @@
+import { normalizeDataMutationGrants } from 'openxiangda-contracts';
 import { parseNativeParentReadPolicy, validateNativeParentReadPolicies, NativeParentReadPolicyError, NativeDataPolicyExpressionV2Error } from 'openxiangda-contracts/native-compiler';
 import { assertWorkflowNativeStagePolicy } from 'openxiangda-contracts';
 import { WORKFLOW_LAUNCH_MAX_INPUTS } from 'openxiangda-contracts';
@@ -158,6 +159,7 @@ export interface WorkflowBindingDeclaration {
 
 export interface WorkflowActivationDeclaration {
   workflowCode: string;
+  sourceBase?: import('openxiangda-contracts').WorkflowSourceDigests;
   definitionVersion: number;
   bindingVersion: number;
   acceptedCommandDeactivationPolicy:
@@ -1836,6 +1838,13 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
             }
           });
         }
+        (Array.isArray(source.filterWhere) ? source.filterWhere : []).forEach((rawFilter, filterIndex) => {
+          const filterField = string(object(rawFilter).field);
+          if (!targetFieldList.some(candidate => string(object(candidate).code) === filterField)) {
+            diagnostics.push(diagnostic('APP_CONFIG_DATA_RESOURCE_SOURCE_FILTER_FIELD_NOT_FOUND',
+              `动态来源筛选字段 ${filterField} 未在 ${targetCode} 声明`, `${sourcePath}.filterWhere[${filterIndex}].field`));
+          }
+        });
         const sourceFilters = Array.isArray(source.filters) ? source.filters : [];
         sourceFilters.forEach((rawFilter, filterIndex) => {
           const filter = object(rawFilter);
@@ -3236,8 +3245,8 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
               targetFields.length > 16 ||
               new Set(sourceFields).size !== sourceFields.length ||
               new Set(targetFields).size !== targetFields.length ||
-              sourceFields.some(field => !['file', 'image'].includes(source?.get(field) || '')) ||
-              targetFields.some(field => !['file', 'image'].includes(target?.get(field) || '')) ||
+              sourceFields.some(field => !['file', 'image', 'text.rich'].includes(source?.get(field) || '')) ||
+              targetFields.some(field => !['file', 'image', 'text.rich'].includes(target?.get(field) || '')) ||
               sourceFields.length !== targetFields.length ||
               sourceFields.some((field, i) => source?.get(field) !== target?.get(targetFields[i] || '')) ||
               Object.keys(copy).some(key => ![
@@ -3251,6 +3260,10 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
             if (copyKeys.has(key)) copiesInvalid = true;
             copyKeys.add(key);
           }
+          if (access.dataMutations !== undefined) {
+            try { access.dataMutations = normalizeDataMutationGrants(access.dataMutations, eventResourceFields); }
+            catch { copiesInvalid = true; }
+          }
           let decimalInvalid = false;
           if (access.decimalReservation !== undefined) {
             try {
@@ -3260,11 +3273,11 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
           }
           if (
             decimalInvalid ||
-            Object.keys(access).some(key => !['notification', 'managedFileCopies', 'decimalReservation'].includes(key)) ||
+            Object.keys(access).some(key => !['notification', 'managedFileCopies', 'decimalReservation', 'dataMutations'].includes(key)) ||
             (access.notification !== undefined &&
               (notification.mode !== 'business-standard' ||
                 Object.keys(notification).some(key => key !== 'mode'))) ||
-            (access.notification === undefined && access.managedFileCopies === undefined && access.decimalReservation === undefined) ||
+            (access.notification === undefined && access.managedFileCopies === undefined && access.decimalReservation === undefined && access.dataMutations === undefined) ||
             copiesInvalid
           ) {
             diagnostics.push(
@@ -4196,6 +4209,7 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
               'definitionVersion',
               'bindingVersion',
               'acceptedCommandDeactivationPolicy',
+              'sourceBase',
             ].includes(key)
         )
       ) {
@@ -4226,6 +4240,10 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
             `${path}.environmentKey`
           )
         );
+      }
+      if (activation.sourceBase !== undefined) {
+        const base=object(activation.sourceBase);
+        if (Object.keys(base).length !== 2 || !['definitionDigest','bindingDigest'].every(key => /^(sha256:)?[a-f0-9]{64}$/.test(String(base[key] || '')))) diagnostics.push(diagnostic('APP_CONFIG_WORKFLOW_SOURCE_BASE_INVALID','源码基线只能包含 definitionDigest 和 bindingDigest',`${path}.sourceBase`));
       }
       const definitionVersion = Number(activation.definitionVersion);
       const bindingVersion = Number(activation.bindingVersion);
@@ -4732,11 +4750,16 @@ function validateBackendOperations(
         'workflowStage',
         'recordEdit',
         'ownedSubject',
+        'dataMutations',
       ]);
       let invalid =
         !isRecord(operation.platformAccess) ||
         Object.keys(access).length === 0 ||
         Object.keys(access).some(key => !allowedAccessKeys.has(key));
+      if (access.dataMutations !== undefined) {
+        try { access.dataMutations = normalizeDataMutationGrants(access.dataMutations, declaredResourceFields); }
+        catch { invalid = true; }
+      }
       if (access.ownedSubject !== undefined) {
         try { assertWorkflowOwnedSubjectCreate(access.ownedSubject); }
         catch { invalid = true; }
@@ -4860,8 +4883,8 @@ function validateBackendOperations(
             targetFields.length > 16 ||
             new Set(sourceFields).size !== sourceFields.length ||
             new Set(targetFields).size !== targetFields.length ||
-            sourceFields.some(field => !['file', 'image'].includes(source?.get(field) || '')) ||
-            targetFields.some(field => !['file', 'image'].includes(target?.get(field) || '')) ||
+            sourceFields.some(field => !['file', 'image', 'text.rich'].includes(source?.get(field) || '')) ||
+            targetFields.some(field => !['file', 'image', 'text.rich'].includes(target?.get(field) || '')) ||
             sourceFields.length !== targetFields.length ||
             sourceFields.some((field, i) => source?.get(field) !== target?.get(targetFields[i] || '')) ||
             Object.keys(copy).some(key => ![
@@ -5110,6 +5133,15 @@ function validateBackendOperations(
         ? ai.sideEffects
         : [];
       const risk = string(ai.risk);
+      if (risk === 'external' && ai.reconcile === undefined) {
+        diagnostics.push({
+          ...diagnostic('AI_EXTERNAL_RECONCILIATION_MISSING', '外部 AI 操作未声明业务结果核对能力，执行结果不确定时只能保留未知并人工核实', `${path}.ai.reconcile`),
+          severity: 'warning',
+        });
+      }
+      if (object(ai.reconcile).kind==='platform-transaction') {
+        diagnostics.push({...diagnostic('AI_APP_TRANSACTION_RECONCILIATION_UNSUPPORTED','应用业务操作的 completing 平台事务核对尚未提供；请声明只读状态操作，否则保留结果未知',`${path}.ai.reconcile`),severity:'warning'});
+      }
       const aiKeys = Object.keys(ai);
       const allowedAiKeys = new Set([
         'name',
@@ -5118,6 +5150,7 @@ function validateBackendOperations(
         'confirmation',
         'resources',
         'sideEffects',
+        'reconcile',
         'concurrency',
         'timeoutMs',
         'agent',

@@ -26,6 +26,7 @@ export function workflowOperationStringError(
 export function workflowOperationSignature(operation: WorkflowOperationSurface): string {
   return JSON.stringify({
     key: operation.key, kind: operation.kind, label: operation.label,
+    prominence: operation.prominence, consequence: operation.consequence,
     placement: operation.placement, group: operation.group, audience: operation.audience,
     emphasis: operation.emphasis, tone: operation.tone,
     visible: operation.visible, enabled: operation.enabled, disabledReason: operation.disabledReason,

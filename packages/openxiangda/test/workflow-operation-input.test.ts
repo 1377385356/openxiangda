@@ -63,6 +63,7 @@ for (const [name, changed] of Object.entries({
 }
 
 for (const [name, changed] of Object.entries({
+  consequence: { ...operation, consequence: 'The effect changed; confirm again.' },
   hidden: { ...operation, visible: false }, disabled: { ...operation, enabled: false },
   schema: { ...operation, inputSchema: { type: 'object', required: ['different'] } },
   target: { ...operation, execute: { ...operation.execute, href: '/tasks/another-task/commands/transfer' } },

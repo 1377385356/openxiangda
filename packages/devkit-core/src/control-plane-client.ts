@@ -1,3 +1,4 @@
+import type { WorkflowSourceBundle,WorkflowRegistrationPlan,WorkflowSourceDigests } from 'openxiangda-contracts';
 import { createHash } from 'node:crypto';
 import { gunzipSync } from 'node:zlib';
 import type { ApplicationArtifactTransferCapability, ApplicationArtifactUploadSession } from 'openxiangda-contracts';
@@ -150,6 +151,7 @@ export interface ConnectedDevelopmentSessionStatus {
   mode: "published-resources" | "manifest-overlay";
   manifestOverlay: boolean;
   additiveSchemaSync: boolean;
+  configuration?: { runId: string; appVersionId: string; selection: "session" };
   overlay?: {
     resources: number;
     addedFields: Array<{ resourceCode: string; fieldCode: string }>;
@@ -669,6 +671,7 @@ export class OpenXiangdaControlPlaneClient {
       environmentKey: DeploymentEnvironment;
       manifestDigest?: string;
       configuration?: unknown;
+      configurationRunId?: string;
     }
   ): Promise<ConnectedDevelopmentSessionGrant> {
     return await this.json<ConnectedDevelopmentSessionGrant>(
@@ -679,7 +682,7 @@ export class OpenXiangdaControlPlaneClient {
 
   async synchronizeDevelopmentConfiguration(appCode: string, input: DevelopmentConfigurationInput) {
     const capability = (await this.capabilities()).features?.[DEVELOPMENT_CONFIGURATION_FEATURE];
-    if (capability?.status !== 'available' || capability.contractVersion !== '1.0.0') {
+    if (capability?.status !== 'available' || capability.contractVersion !== '2.0.0') {
       throw new ControlPlaneError(409, 'OPENXIANGDA_CONNECTED_DEV_CONFIGURATION_CAPABILITY_REQUIRED',
         '目标平台尚未提供完整开发配置同步；请更新配套平台，不需要先打包发布应用');
     }
@@ -1818,6 +1821,19 @@ export class OpenXiangdaControlPlaneClient {
     return await this.json<ApplicationAdministrationContext>(
       `${this.administrationPath(appCode)}/context?${this.query({ environmentKey })}`
     );
+  }
+
+  async workflowSourceExport(appCode: string,workflowCode: string,environmentKey: DeploymentEnvironment): Promise<WorkflowSourceBundle> {
+    return this.json<WorkflowSourceBundle>(`${this.workflowPath(appCode)}/management/source/${encodeURIComponent(workflowCode)}/export?${this.query({ environmentKey })}`);
+  }
+  async workflowSourcePlan(appCode: string,environmentKey: DeploymentEnvironment,workflows: Array<{ workflowCode: string;definitionDigest: string;bindingDigest: string;definitionVersion?: number;bindingVersion?: number }>): Promise<WorkflowRegistrationPlan[]> {
+    return this.json<WorkflowRegistrationPlan[]>(`${this.workflowPath(appCode)}/management/source/plan-registration`,{ method: 'POST',body: JSON.stringify({ environmentKey,workflows }) });
+  }
+  async workflowSourceSync(appCode: string,workflowCode: string,input: import('openxiangda-contracts').WorkflowSourceSyncRequest): Promise<unknown> {
+    return this.json(`${this.workflowPath(appCode)}/management/source/${encodeURIComponent(workflowCode)}/sync`,{ method: 'POST',body: JSON.stringify(input) });
+  }
+  async workflowSourceStatus(appCode: string,workflowCode: string,environmentKey: DeploymentEnvironment,input: { declared: WorkflowSourceDigests;base?: WorkflowSourceDigests }): Promise<unknown> {
+    return this.json(`${this.workflowPath(appCode)}/management/source/${encodeURIComponent(workflowCode)}/status`,{ method: 'POST',body: JSON.stringify({ environmentKey,...input }) });
   }
 
   async workflowNodeConfigurations(appCode: string, workflowCode: string, environmentKey: DeploymentEnvironment): Promise<WorkflowNodeConfigurations> {

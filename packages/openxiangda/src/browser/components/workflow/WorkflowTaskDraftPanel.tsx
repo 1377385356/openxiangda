@@ -1,3 +1,4 @@
+import { createBrowserUuid } from '../../uuid';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, App, Button, Empty, Modal, Space, Typography } from 'antd';
 import type { WorkflowTaskDraft, WorkflowTaskDraftList, WorkflowTaskDraftReference, WorkflowTaskDraftSave } from 'openxiangda-contracts/browser';
@@ -78,7 +79,7 @@ export function WorkflowTaskDraftPanel({ controller, taskId, disabled, variant, 
       if (!form) return;
       const saved = !createNew && controller.draft;
       await send({ kind: 'save', input: {
-        id: saved ? saved.id : crypto.randomUUID(), expectedRevision: saved ? saved.revision : 0,
+        id: saved ? saved.id : createBrowserUuid(), expectedRevision: saved ? saved.revision : 0,
         recordRevision: form.expectedRevision, values: JSON.parse(JSON.stringify(form.values)),
       } });
     } catch (error) { setFailure(failureMessage(error)); }

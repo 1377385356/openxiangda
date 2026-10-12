@@ -1,3 +1,4 @@
+import { createBrowserUuid } from '../../uuid';
 import {
   DeleteOutlined,
   DownloadOutlined,
@@ -86,7 +87,7 @@ export function ResourceImportButton({
     if (!preview?.operations.length || preview.errors.length) return;
     setSubmitting(true);
     try {
-      const key = idempotencyKey || crypto.randomUUID();
+      const key = idempotencyKey || createBrowserUuid();
       if (!idempotencyKey) setIdempotencyKey(key);
       const result = await transactNativeData(preview.operations, key);
       message.success(`已导入 ${result.items.length} 条${name}`);
@@ -168,7 +169,7 @@ export function ResourceImportButton({
               setPreview(undefined);
               try {
                 setPreview(await parseResourceImportFile(file, code, surface, writableFieldCodes));
-                setIdempotencyKey(crypto.randomUUID());
+                setIdempotencyKey(createBrowserUuid());
               } finally {
                 setParsing(false);
               }
@@ -293,7 +294,7 @@ export function WorkflowResourceImportButton({
   const submit = async () => {
     if (!preview || preview.errors.length || !pendingRows.length) return;
     setSubmitting(true);
-    const stableBatchId = batchId || crypto.randomUUID();
+    const stableBatchId = batchId || createBrowserUuid();
     if (!batchId) setBatchId(stableBatchId);
     try {
       const completed = await launchWorkflowImportRows({
@@ -407,7 +408,7 @@ export function WorkflowResourceImportButton({
                     writableFieldCodes,
                   ),
                 );
-                setBatchId(crypto.randomUUID());
+                setBatchId(createBrowserUuid());
               } finally {
                 setParsing(false);
               }
@@ -493,7 +494,7 @@ export function ResourceBatchActions({
     }
     setSubmitting(true);
     try {
-      const key = idempotencyKey || crypto.randomUUID();
+      const key = idempotencyKey || createBrowserUuid();
       if (!idempotencyKey) setIdempotencyKey(key);
       await transactNativeData(
         changed.map((row) => ({
@@ -521,7 +522,7 @@ export function ResourceBatchActions({
   const submitDelete = async () => {
     setSubmitting(true);
     try {
-      const key = idempotencyKey || crypto.randomUUID();
+      const key = idempotencyKey || createBrowserUuid();
       if (!idempotencyKey) setIdempotencyKey(key);
       await transactNativeData(
         rows.map((row) => ({
