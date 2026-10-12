@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.65.1",
+  "status": "reviewed",
+  "title": "条件审批人共享基础正式配对",
+  "summary": "将已合并的条件审批人纯规则基础纳入正式共享契约发布，保持既有流程语义和能力启用边界。",
+  "newFeatures": [
+    "有序首命中与必填默认来源的纯规则基础，按节点事实检查、叶子权限上限与有界严格求值。"
+  ],
+  "fixes": [],
+  "affectedUsers": [
+    "平台维护者及使用 OpenXiangda V2 工作流契约的应用开发者。"
+  ],
+  "upgradeSteps": [
+    "统一更新 openxiangda、CLI 和 contracts 的配对版本；平台采用同一正式候选的七包归档与精确源码指针。"
+  ],
+  "knownLimitations": [
+    "仅发布共享基础，不开放流程注册 provider、编辑器或真实人员解析，不改变报销审批及财务提交策略。"
+  ],
+  "compatibility": {
+    "node": ">=24",
+    "pnpm": "10.15.1"
+  },
+  "issues": []
+}
