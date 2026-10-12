@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.64.0",
+  "version": "2.65.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -98,13 +98,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.9.2",
-    "openxiangda-contracts": "2.80.0",
-    "openxiangda-devkit-core": "2.61.0",
+    "openxiangda-cli": "2.9.3",
+    "openxiangda-contracts": "2.81.0",
+    "openxiangda-devkit-core": "2.62.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.2.2",
-    "openxiangda-nest": "2.18.3",
-    "openxiangda-skill-kit": "2.3.103",
+    "openxiangda-mcp": "2.2.3",
+    "openxiangda-nest": "2.18.4",
+    "openxiangda-skill-kit": "2.3.104",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -170,32 +170,32 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.64.0",
+    "version": "2.65.0",
     "status": "reviewed",
-    "title": "工作流与原生任务能力更新",
-    "summary": "汇总已审阅的工作流画布、并行流程、源码助手契约和应用代理选择能力更新。",
+    "title": "原生助手命令与工作流布局更新",
+    "summary": "发布已审阅的原生助手部分更新命令契约和工作流条件分支布局修复。",
     "newFeatures": [
-      "增强工作流画布节点、并行流程和能力目录配置。",
-      "增加应用源码助手契约及代理选择能力。"
+      "原生助手更新使用有界 id、expectedRevision 和 data 命令结构。",
+      "保留字段声明必填属性并支持部分更新。"
     ],
     "fixes": [
-      "保持流程节点配置、提醒控制和发布后业务步骤的一致性。"
+      "修复 PC 工作流条件分支、默认分支和汇聚节点的对称布局。"
     ],
     "affectedUsers": [
-      "使用 OpenXiangda V2 工作流或源码助手能力的应用开发者"
+      "使用 OpenXiangda V2 原生助手或工作流画布的应用开发者"
     ],
     "upgradeSteps": [
       "按同一候选版本更新 openxiangda、openxiangda-cli 与共享 contracts 包。"
     ],
     "knownLimitations": [
-      "不改变既有应用的业务数据和财务副作用策略。"
+      "不改变既有业务数据、报销审批或财务提交副作用策略。"
     ],
     "compatibility": {
       "node": ">=24",
       "pnpm": "10.15.1"
     },
     "issues": [],
-    "sha256": "3b23d18a5381652b20281527402e8cd406a8666a4c9c392f93131104660705bc",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.64.0"
+    "sha256": "02a56d082f6749c7949b47b8f7b03fd87b0a43475aead7f471eeb1b9a8533f6c",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.65.0"
   }
 }
