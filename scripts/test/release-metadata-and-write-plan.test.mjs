@@ -39,6 +39,17 @@ test('actual npm subprocess metadata distinguishes 404, authentication and outpu
   await assert.rejects(queryReleaseMetadata({...options,timeoutMs:20}),/timeout-or-output-budget/);
   body('process.stdout.write("x".repeat(2*1024*1024));');
   await assert.rejects(queryReleaseMetadata(options),/QUERY_FAILED/);
+  body('setInterval(()=>{},1000);');
+  await assert.rejects(queryReleaseMetadata({...options,timeoutMs:1000,batchTimeoutMs:40}),/BATCH_TIMEOUT/);
+});
+
+test('async metadata callers also have a batch deadline and never dispatch the next read after it', async () => {
+  let started=0;
+  await assert.rejects(queryReleaseMetadata({registry,names:['openxiangda','openxiangda-cli'],concurrency:1,batchTimeoutMs:25,
+    query:async()=>{started++;await new Promise(resolve=>setTimeout(resolve,80));return {versions:[],'dist-tags':{}};}}),/BATCH_TIMEOUT/);
+  await new Promise(resolve=>setTimeout(resolve,100));
+  assert.equal(started,1);
+  await assert.rejects(queryReleaseMetadata({registry,names:['openxiangda'],batchTimeoutMs:200001}),/BUDGET_INVALID/);
 });
 
 test('invalid metadata inputs and failed reads never produce a successful snapshot', async () => {

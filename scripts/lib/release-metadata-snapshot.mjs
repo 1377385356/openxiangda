@@ -10,9 +10,10 @@ function stopReads(children = active) {
   }
 }
 
-export async function queryReleaseMetadata({cwd, registry, names, concurrency = 3, timeoutMs = 60_000, query} = {}) {
+export async function queryReleaseMetadata({cwd, registry, names, concurrency = 3, timeoutMs = 60_000, batchTimeoutMs = 200_000, query} = {}) {
   if (!Array.isArray(names) || !names.length || names.length > 7 || new Set(names).size !== names.length || names.some(n => !PUBLIC_PACKAGE_NAMES.includes(n))) throw new Error('RELEASE_METADATA_INVENTORY_INVALID');
   if (!Number.isSafeInteger(concurrency) || concurrency < 1 || concurrency > 4 || !Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 60_000) throw new Error('RELEASE_METADATA_BUDGET_INVALID');
+  if (!Number.isSafeInteger(batchTimeoutMs) || batchTimeoutMs < 1 || batchTimeoutMs > 200_000 || (query !== undefined && typeof query !== 'function')) throw new Error('RELEASE_METADATA_BUDGET_INVALID');
   const endpoint = new URL(registry);
   if (!['http:', 'https:'].includes(endpoint.protocol) || endpoint.username || endpoint.password || endpoint.search || endpoint.hash) throw new Error('RELEASE_METADATA_REGISTRY_INVALID');
   const started = performance.now();
@@ -51,9 +52,21 @@ export async function queryReleaseMetadata({cwd, registry, names, concurrency = 
       finally { running--; }
     }
   }
-  await Promise.all(Array.from({length: Math.min(concurrency, names.length)}, worker));
+  let timer;
+  try {
+    await Promise.race([
+      Promise.all(Array.from({length: Math.min(concurrency, names.length)}, worker)),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => {
+          failure ||= new Error('RELEASE_METADATA_BATCH_TIMEOUT');
+          stopReads(children);
+          reject(failure);
+        }, batchTimeoutMs);
+      }),
+    ]);
+  } finally { clearTimeout(timer); }
   if (failure) throw failure;
-  return {schemaVersion: 'openxiangda.release-metadata/v1', registry, concurrency, peakActive: peak, elapsedMs: performance.now()-started, entries};
+  return {schemaVersion: 'openxiangda.release-metadata/v1', registry, concurrency, peakActive: peak, elapsedMs: performance.now()-started, budget: {queryTimeoutMs: timeoutMs, batchTimeoutMs}, entries};
 }
 
 export function readReleaseMetadataSnapshot(cwd, registry, names, {concurrency = 3} = {}) {
