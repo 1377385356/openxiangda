@@ -221,6 +221,7 @@ export interface WorkspaceContext {
     nodeVersion: string;
     packageManager: string;
     cli?: CliProtocolCapabilities;
+    installed?: Record<string, unknown>;
   };
   environments: Array<{
     id?: string;
