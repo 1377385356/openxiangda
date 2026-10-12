@@ -399,3 +399,22 @@ test('policy-only applicant return is reachable and negotiates guarded resume in
   const value = { ...input(config), contractBytes: canonicalJson(contract), expectedContractDigest: sha256Digest(contract) };
   for (const implementation of [esm,cjs]) assert.equal(implementation.compileNativeApplicationConfiguration(value).requiredPlatformCapabilities.find(cap=>cap.code==='workflow.return-policy')?.contractVersion,'1.0.0');
 });
+
+test('source-base metadata is optional and is sealed identically in ESM and CJS', () => {
+  for (const implementation of [esm,cjs]) {
+    const original=JSON.parse(corpus.configuration.canonical);
+    assert.doesNotThrow(() => implementation.compileNativeApplicationConfiguration(input(original)));
+    const config=structuredClone(original),base={ definitionDigest: 'a'.repeat(64),bindingDigest: 'b'.repeat(64) };
+    config.workflows.activations[0].sourceBase=base;
+    const contract={ ...JSON.parse(corpus.contract.canonical),configDigest: sha256Digest(config) };
+    const compileInput=() => ({ ...input(config),contractBytes: canonicalJson(contract),expectedContractDigest: sha256Digest(contract) });
+    const result=implementation.compileNativeApplicationConfiguration(compileInput());
+    assert.deepEqual(result.projections.workflows.value.activations[0].sourceBase,base);
+    config.workflows.activations[0].sourceBase.headRevision=987654;
+    contract.configDigest=sha256Digest(config);
+    assert.throws(() => implementation.compileNativeApplicationConfiguration(compileInput()),/NATIVE_PROPERTY_UNKNOWN/);
+    delete config.workflows.activations[0].sourceBase.headRevision;
+    config.workflows.activations[0].sourceBase.definitionDigest='malformed';contract.configDigest=sha256Digest(config);
+    assert.throws(() => implementation.compileNativeApplicationConfiguration(compileInput()),/NATIVE_WORKFLOW_SOURCE_BASE_INVALID/);
+  }
+});

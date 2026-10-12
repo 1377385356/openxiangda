@@ -6918,10 +6918,9 @@ function validateWorkflowReferences(config: JsonObject) {
         'definitionVersion',
         'bindingVersion',
         'acceptedCommandDeactivationPolicy',
-        'sourceBase',
       ],
       pointer,
-      ['environmentKey']
+      ['environmentKey','sourceBase']
     );
     const code = stableCode(activation.workflowCode, `${pointer}/workflowCode`);
     if (activationCodes.has(code))
