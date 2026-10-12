@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.66.2",
+  "version": "2.67.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -102,13 +102,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.10.2",
-    "openxiangda-contracts": "2.84.0",
-    "openxiangda-devkit-core": "2.63.1",
+    "openxiangda-cli": "2.10.3",
+    "openxiangda-contracts": "2.85.0",
+    "openxiangda-devkit-core": "2.63.2",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.2.6",
-    "openxiangda-nest": "2.19.1",
-    "openxiangda-skill-kit": "2.3.108",
+    "openxiangda-mcp": "2.2.7",
+    "openxiangda-nest": "2.19.2",
+    "openxiangda-skill-kit": "2.3.109",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -174,31 +174,35 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.66.2",
+    "version": "2.67.0",
     "status": "reviewed",
-    "title": "工具链事实契约兼容修复",
-    "summary": "保持现有 worker-effect 能力，并修复工作区工具链事实的公开契约。",
+    "title": "应用Agent接口与事件worker声明修复",
+    "summary": "新增作用域内应用Agent客户端，并补齐事件worker编译上下文及节点条件配置契约。",
     "newFeatures": [
-      "事件消费者支持受限查询、冻结事务、原键提交与回执恢复；平台统一执行并验证事件租约。"
+      "公开openxiangda/agent客户端与hooks，沿用平台当前身份和持久游标，未知写入不自动重放。"
     ],
     "fixes": [
-      "允许工作区上下文返回已安装工具链事实。"
+      "worker-effect编译传入显式emitEventTypes与实际工作流subject，避免合法声明被误拒绝。",
+      "配置类型公开worker-effect执行声明，避免应用使用类型绕过。",
+      "共享节点人员配置支持完整条件规则与权威来源边界。"
     ],
     "affectedUsers": [
-      "需要定时业务事务的 OpenXiangda V2 应用开发者与平台维护者。"
+      "OpenXiangda V2应用开发者和平台维护者"
     ],
     "upgradeSteps": [
-      "配对升级 SDK、CLI、共享契约和平台服务；为事件订阅显式声明 worker-effect 资源、字段及容量。"
+      "按同批版本升级工具链，重新生成并检查应用契约。",
+      "配套升级平台共享契约后验证TEST，真实角色验收独立执行。"
     ],
     "knownLimitations": [
-      "投递至少一次，业务事务依赖原幂等意图去重；不允许工作流拥有的资源写入或任意业务身份冒用。"
+      "事件至少一次投递，依赖原业务意图和平台回执去重。",
+      "工具链发布不代表学校平台部署或应用业务验收完成。"
     ],
     "compatibility": {
       "node": ">=24",
       "pnpm": "10.15.1"
     },
     "issues": [],
-    "sha256": "f597de89ed6ca7b7270427f35e2d9078576f1ee3ec06f961cd09b65e5298ebb8",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.66.2"
+    "sha256": "535f00f729995cc1f8ce0925c3ddbd5976e1ed6283ef60d2888955ae95393d02",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.67.0"
   }
 }
