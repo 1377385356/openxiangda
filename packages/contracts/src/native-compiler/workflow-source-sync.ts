@@ -1,5 +1,7 @@
 import type { WorkflowApprovalMode, WorkflowBinding, WorkflowDefinition, WorkflowNodeOperationPolicy, WorkflowConfigurableOperation } from '../types.js';
 import { validateWorkflowDesignerCapabilities,validateWorkflowDesignerDocument } from './workflow-designer.js';
+import { workflowAuthoringCatalog } from './workflow-authoring.js';
+import { workflowBindingRoleCodes } from './workflow-role-union.js';
 
 export const WORKFLOW_SOURCE_BUNDLE_SCHEMA = 'openxiangda.workflow-source-bundle/v1';
 export const WORKFLOW_SOURCE_BUNDLE_MAX_BYTES = 3 * 1024 * 1024;
@@ -62,7 +64,7 @@ export function workflowSourceReferences(definition: WorkflowDefinition,binding:
   const steps = new Map<string,{ code: string; version: number; digest: string }>();
   for (const node of Object.values(definition.nodes)) if (node.kind === 'action') steps.set(`${node.handler.code}@${node.handler.version}`,{ code: node.handler.code,version: node.handler.version,digest: digest({ handler: node.handler,inputSchema: node.inputSchema,outputSchema: node.outputSchema }) });
   return { taskPages: [...pages].sort().map(code => ({ code,digest: digest(definition.taskPages?.[code]) })),steps: [...steps.values()].sort((a,b) => a.code.localeCompare(b.code) || a.version-b.version),
-    bindingKeys: Object.keys(binding.bindings).sort(),roles: [...new Set(Object.values(binding.bindings).flatMap(entry => [...(entry.roleCode ? [entry.roleCode] : []),...entry.roleCodes || []]))].sort() };
+    bindingKeys: Object.keys(binding.bindings).sort(),roles: [...new Set(Object.values(binding.bindings).flatMap(workflowBindingRoleCodes))].sort() };
 }
 export function validateWorkflowSourceBundle(value: unknown,digest: (value: unknown) => string): string[] {
   try { return validateSourceBundle(value,digest); }
@@ -120,10 +122,8 @@ export function workflowSourceImportDrift(localDefinition: WorkflowDefinition,lo
   const errors = validateWorkflowSourceBundle(bundle,digest);
   if (errors.length) return errors;
   errors.push(...validateWorkflowDesignerCapabilities(localDefinition,bundle.definition,localBinding,bundle.binding).map(error => `WORKFLOW_IMPORT_CODE_OWNED_DRIFT:${error}`));
-  let localReferences: WorkflowSourceReferences;
-  try { localReferences = workflowSourceReferences(localDefinition,localBinding,digest); }
-  catch { return [...new Set([...errors,'WORKFLOW_IMPORT_CODE_OWNED_DRIFT:catalog'])]; }
   for (const page of bundle.references.taskPages) if (!localDefinition.taskPages?.[page.code] || !workflowSourceDigestEqual(digest(localDefinition.taskPages[page.code]),page.digest)) errors.push(`WORKFLOW_IMPORT_CODE_OWNED_DRIFT:taskPage:${page.code}`);
-  for (const step of bundle.references.steps) if (!localReferences.steps.some(candidate => candidate.code === step.code && candidate.version === step.version && workflowSourceDigestEqual(candidate.digest,step.digest))) errors.push(`WORKFLOW_IMPORT_CODE_OWNED_DRIFT:step:${step.code}@${step.version}`);
+  const releasedSteps = workflowAuthoringCatalog(localDefinition,localBinding).steps.map(step => ({code:step.handler.code,version:step.handler.version,digest:digest({handler:step.handler,inputSchema:step.inputSchema,outputSchema:step.outputSchema})}));
+  for (const step of bundle.references.steps) if (!releasedSteps.some(candidate => candidate.code === step.code && candidate.version === step.version && workflowSourceDigestEqual(candidate.digest,step.digest))) errors.push(`WORKFLOW_IMPORT_CODE_OWNED_DRIFT:step:${step.code}@${step.version}`);
   return [...new Set(errors)];
 }

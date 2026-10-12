@@ -1,3 +1,4 @@
+import { createWorkflowHumanNode } from '../src/native-compiler/workflow-authoring.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -51,4 +52,22 @@ test('ordinary source edits use the active application declaration as a base bef
   assert.equal(workflowSourceStatus({ declared: changed,activeDeclaration: original,head: original }),'ahead');
   assert.equal(workflowSourceStatus({ declared: original,activeDeclaration: original,head: changed }),'behind');
   assert.equal(workflowSourceStatus({ declared: changed,activeDeclaration: original,head: { ...changed,definitionDigest: 'other-edit' } }),'diverged');
+});
+
+test('canvas source import preserves blank bindings and consumes unused released steps',()=>{
+ const value=bundle(),local=structuredClone(value.definition),localBinding=structuredClone(value.binding);
+ const step:any={title:'预算校验',handler:{code:'budget',version:1,mode:'pure'},inputSchema:{type:'object',additionalProperties:false,properties:{note:{type:'string'}}},outputSchema:{type:'object',additionalProperties:false,properties:{valid:{type:'boolean'}}}};
+ local.authoring={businessSteps:[step]};value.definition.authoring=structuredClone(local.authoring);
+ value.definition.nodes.fresh=createWorkflowHumanNode('fresh','approval','新增审批','a');
+ value.binding.bindings.canvas_fresh={provider:'app_role',roleCode:'finance'};
+ value.definition.nodes.step={...structuredClone(step),id:'step',kind:'action',next:'fresh',inputs:{note:{source:'literal',value:'check'}}};value.definition.startAt='step';
+ const refresh=()=>{value.references=workflowSourceReferences(value.definition,value.binding,digest);value.origin.definitionDigest=digest(value.definition);value.origin.bindingDigest=digest(value.binding);value.origin.catalogDigest=digest(value.references);};
+ refresh();const before=structuredClone(value);
+ assert.deepEqual(workflowSourceImportDrift(local,localBinding,value,digest),[]);assert.deepEqual(value,before);
+ (value.definition.nodes.step as any).handler.version=2;refresh();
+ assert.ok(workflowSourceImportDrift(local,localBinding,value,digest).some(error=>error.includes('CODE_OWNED_DRIFT')));
+});
+test('supervisor stop roles are retained in source reference roles',()=>{
+ const value=bundle();value.binding.bindings.chain={provider:'supervisor_chain',from:'initiator',until:{roleCode:'director'}};
+ assert.deepEqual(workflowSourceReferences(value.definition,value.binding,digest).roles,['director']);
 });
