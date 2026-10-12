@@ -293,6 +293,53 @@ MCP 使用项目锁定的根包；在客户端配置下列 stdio 启动参数，
       "additionalProperties": false,
       "properties": {
         "operation": {
+          "const": "diagnostics.execution-health",
+          "description": "按原ID核对未来计划、暂停、claim和租约；不恢复或重放"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "test",
+            "production"
+          ]
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "legacy-schedule",
+                "timer",
+                "date-trigger",
+                "event-delivery"
+              ]
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 36,
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            }
+          },
+          "required": [
+            "kind",
+            "id"
+          ]
+        }
+      },
+      "required": [
+        "operation",
+        "environment",
+        "input"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
           "const": "events.status",
           "description": "读取队列积压、消费者健康、写入保护阈值和恢复条件"
         },
