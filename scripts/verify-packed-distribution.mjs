@@ -664,7 +664,7 @@ function verifyTarball(packageName, tarball) {
       .map(String)
       .filter(name => name.endsWith(".js"))
       .sort();
-    const expected = publicCliCommands().map(name => `${name}.js`).sort();
+    const expected = publicCliCommands().map(name => name === "template" ? "template/list.js" : `${name}.js`).sort();
     if (JSON.stringify(commandFiles) !== JSON.stringify(expected)) {
       fail(`openxiangda-cli tarball command set is ${commandFiles.join(", ")}`);
     }
