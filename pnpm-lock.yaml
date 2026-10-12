@@ -42,7 +42,7 @@ importers:
         specifier: 2.2.6
         version: link:../mcp
       openxiangda-skill-kit:
-        specifier: 2.3.107
+        specifier: 2.3.108
         version: link:../skill-kit
     devDependencies:
       tsx:
@@ -215,7 +215,7 @@ importers:
         specifier: 0.12.0
         version: 0.12.0
       openxiangda-cli:
-        specifier: 2.10.1
+        specifier: 2.10.2
         version: link:../cli
       openxiangda-contracts:
         specifier: 2.84.0
@@ -233,7 +233,7 @@ importers:
         specifier: 2.19.1
         version: link:../nest
       openxiangda-skill-kit:
-        specifier: 2.3.107
+        specifier: 2.3.108
         version: link:../skill-kit
       xlsx:
         specifier: https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz
