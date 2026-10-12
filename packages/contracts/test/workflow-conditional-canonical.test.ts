@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { canonicalJson, sha256Digest } from '../src/canonical.js';
 import * as esm from '../dist/native-compiler/index.js';
 import { workflowSourceReferences } from '../src/native-compiler/workflow-source-sync.js';
@@ -14,13 +15,6 @@ const entry: WorkflowBindingEntry = {
   cases: [{ when: { op: 'literal', value: true }, assignee: { provider: 'app_role', roleCode: 'reviewer' } }],
   otherwise: { provider: 'fixed_users', users: ['member'] },
 };
-// Canonical types reject mixed/nested declarations, not only their JSON.
-// @ts-expect-error standard fields cannot be attached to a conditional declaration
-const mixed: WorkflowBindingEntry = { ...entry, roleCode: 'reviewer' };
-const nested: WorkflowBindingEntry = { provider: 'conditional', cases: [],
-  // @ts-expect-error otherwise must be a nonconditional leaf
-  otherwise: entry };
-void mixed; void nested;
 function config(): any {
   const value = JSON.parse(corpus.configuration.canonical);
   value.workflows.bindings[0].binding.bindings.reviewer = structuredClone(entry);
@@ -90,4 +84,28 @@ test('target compilers reject invalid unselected leaves, facts and undeclared ro
     const compiled = impl.compileNativeApplicationConfiguration(input(config()));
     assert.equal(compiled.requiredPlatformCapabilities.find(item => item.code === 'workflow.conditional-assignment')?.contractVersion, '1.0.0');
   }
+});
+
+test('canonical declaration type fixtures are checked by tsc, including negative cases', () => {
+  const compiler = createRequire(import.meta.url).resolve('typescript/bin/tsc');
+  const result = spawnSync(process.execPath, [compiler, '--noEmit', '--skipLibCheck', '--module', 'NodeNext',
+    '--target', 'ES2022', '--strict', '--exactOptionalPropertyTypes', new URL('./fixtures/types/conditional-assignment.ts', import.meta.url).pathname],
+    { encoding: 'utf8', timeout: 30_000, maxBuffer: 1024 * 1024 });
+  assert.equal(result.status, 0, `${result.error || ''}\n${result.stdout}\n${result.stderr}`);
+});
+
+test('launch preflight examines every leaf and keeps unsupported leaf kinds blocked', () => {
+  const value = config(); definition(value).launchPreflight = { requiredApprovalNodes: ['review'] };
+  for (const impl of [esm, cjs]) {
+    assert.deepEqual(impl.validateWorkflowLaunchPreflight(definition(value), value.workflows.bindings[0].binding), []);
+    current(value).otherwise = { provider: 'input_users', inputPath: 'people' };
+    assert.deepEqual(impl.validateWorkflowLaunchPreflight(definition(value), value.workflows.bindings[0].binding), ['WORKFLOW_LAUNCH_PREFLIGHT_PROVIDER_UNSUPPORTED:review']);
+    current(value).otherwise = { provider: 'fixed_users', users: ['member'] };
+  }
+});
+
+test('canvas conditional insertion remains unavailable even when a matching source is released', () => {
+  const value = config();
+  for (const impl of [esm, cjs]) assert.deepEqual(impl.validateWorkflowCanvasBinding(current(value),
+    impl.workflowAuthoringCatalog(definition(value), value.workflows.bindings[0].binding)), ['WORKFLOW_DESIGNER_CONDITIONAL_ASSIGNMENT_UNAVAILABLE']);
 });
