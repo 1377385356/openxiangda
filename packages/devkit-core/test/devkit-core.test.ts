@@ -2419,6 +2419,21 @@ test("requires every derived platform capability to be available at the exact co
   );
 });
 
+test("conditional assignment requires an explicit available exact target capability", () => {
+  const requirement = requiredCapability('workflow.conditional-assignment');
+  const base = platformCapabilitiesFixture();
+  for (const advertised of [undefined, { contractVersion: '1.0.0', status: 'planned' },
+    { contractVersion: '1.0.0', status: 'preview' }, { contractVersion: '0.0.0', status: 'available' }]) {
+    const target = { ...base, features: advertised ? { 'workflow.conditional-assignment': advertised } : {} } as PlatformCapabilities;
+    assert.throws(() => assertRequiredCapabilitiesAvailable(target, [requirement]),
+      (error: unknown) => error instanceof ControlPlaneError && error.code === 'OPENXIANGDA_REQUIRED_CAPABILITY_UNAVAILABLE' &&
+        (error.data as any)?.unavailable?.[0]?.code === 'workflow.conditional-assignment');
+  }
+  assert.doesNotThrow(() => assertRequiredCapabilitiesAvailable({ ...base,
+    features: { 'workflow.conditional-assignment': availableCapability('workflow.conditional-assignment') },
+  }, [requirement]));
+});
+
 test("accepts only the implemented basic unique capability compatibility", () => {
   const requirement = (contractVersion: string) => ({
     ...requiredCapability('data.unique-keys'), contractVersion,

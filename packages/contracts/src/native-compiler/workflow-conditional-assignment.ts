@@ -1,21 +1,17 @@
-import type { WorkflowBindingEntry, WorkflowDefinition, WorkflowExpression } from '../types.js';
+import type { WorkflowBinding, WorkflowBindingEntry, WorkflowStandardBindingEntry, WorkflowDefinition, WorkflowExpression } from '../types.js';
 import { evaluateWorkflowExpression } from './workflow-expression.js';
 import { validateWorkflowRoleInputSelection, validateWorkflowRoleUnion } from './workflow-role-union.js';
 import { validateWorkflowSupervisorChainBinding, validateWorkflowSupervisorChains } from './workflow-supervisor-chain.js';
 import { validateWorkflowAssignmentRoutingPolicy } from './workflow-assignment-routing.js';
-import { workflowBindingSchema, workflowExpressionSchema } from './workflow-schema.js';
+import { workflowStandardBindingEntrySchema } from './workflow-standard-binding-schema.js';
 
-export const WORKFLOW_CONDITIONAL_ASSIGNMENT_MAX_CASES = 20;
-export const WORKFLOW_CONDITIONAL_ASSIGNMENT_MAX_BYTES = 16_384;
-export const WORKFLOW_CONDITIONAL_ASSIGNMENT_LEAF_PROVIDERS = [
-  'fixed_users', 'app_role', 'app_role_in_scope', 'supervisor_chain',
-  'form_field_users', 'input_users', 'initiator', 'previous_node_actor', 'business_relation',
-] as const;
-export type WorkflowConditionalAssignmentLeaf = WorkflowBindingEntry & {
+export { WORKFLOW_CONDITIONAL_ASSIGNMENT_MAX_CASES, WORKFLOW_CONDITIONAL_ASSIGNMENT_MAX_BYTES, WORKFLOW_CONDITIONAL_ASSIGNMENT_LEAF_PROVIDERS, workflowConditionalAssignmentSchema } from './workflow-conditional-assignment-schema.js';
+import { WORKFLOW_CONDITIONAL_ASSIGNMENT_MAX_CASES, WORKFLOW_CONDITIONAL_ASSIGNMENT_MAX_BYTES, WORKFLOW_CONDITIONAL_ASSIGNMENT_LEAF_PROVIDERS } from './workflow-conditional-assignment-schema.js';
+export type WorkflowConditionalAssignmentLeaf = WorkflowStandardBindingEntry & {
   provider: typeof WORKFLOW_CONDITIONAL_ASSIGNMENT_LEAF_PROVIDERS[number];
 };
-/** Staged contract: not yet part of WorkflowBindingProvider or registration. */
-export interface WorkflowConditionalAssignment {
+/** Canonical code-owned declaration. Target platforms must explicitly advertise support. */
+export interface WorkflowConditionalAssignment extends Partial<Record<Exclude<keyof WorkflowStandardBindingEntry, 'provider'>, never>> {
   provider: 'conditional';
   cases: Array<{ label?: string; when: WorkflowExpression; assignee: WorkflowConditionalAssignmentLeaf }>;
   otherwise: WorkflowConditionalAssignmentLeaf;
@@ -24,24 +20,13 @@ export interface WorkflowConditionalAssignmentContext {
   definition: WorkflowDefinition;
   nodeId: string;
   /** Supplied by the active AppVersion owner, never a browser's catalogue. */
-  releasedSources: Record<string, WorkflowBindingEntry>;
+  releasedSources: Record<string, WorkflowStandardBindingEntry>;
   /** Supplied by the immutable published definition owner. */
   frozenDefault?: WorkflowBindingEntry | WorkflowConditionalAssignment;
   standardProviders: readonly ('fixed_users' | 'app_role' | 'app_role_in_scope')[];
   scopeDimensions?: readonly string[];
 }
-const leafSchema = workflowBindingSchema.properties.bindings.additionalProperties;
-export const workflowConditionalAssignmentSchema = {
-  type: 'object', additionalProperties: false, required: ['provider', 'cases', 'otherwise'],
-  properties: {
-    provider: { const: 'conditional' },
-    cases: { type: 'array', minItems: 1, maxItems: WORKFLOW_CONDITIONAL_ASSIGNMENT_MAX_CASES,
-      items: { type: 'object', additionalProperties: false, required: ['when', 'assignee'],
-        properties: { label: { type: 'string', minLength: 1, maxLength: 160 }, when: workflowExpressionSchema,
-          assignee: { ...leafSchema, properties: { ...leafSchema.properties, provider: { enum: WORKFLOW_CONDITIONAL_ASSIGNMENT_LEAF_PROVIDERS } } } } } },
-    otherwise: { ...leafSchema, properties: { ...leafSchema.properties, provider: { enum: WORKFLOW_CONDITIONAL_ASSIGNMENT_LEAF_PROVIDERS } } },
-  },
-} as const;
+const leafSchema = workflowStandardBindingEntrySchema;
 const record = (value: unknown): value is Record<string, any> => !!value && typeof value === 'object' &&
   !Array.isArray(value) && [Object.prototype, null].includes(Object.getPrototypeOf(value));
 const keys = (value: object, allowed: readonly string[]) => Object.keys(value).every(key => allowed.includes(key));
@@ -96,10 +81,35 @@ function leafErrors(entry: unknown): string[] {
 }
 
 /** One bounded iterator for future role, capability, principal and source-sync consumers. No recursion. */
-export function workflowAssignmentLeaves(entry: WorkflowBindingEntry | WorkflowConditionalAssignment): WorkflowBindingEntry[] {
+export function workflowAssignmentLeaves(entry: WorkflowBindingEntry | WorkflowConditionalAssignment): WorkflowStandardBindingEntry[] {
   if (entry.provider !== 'conditional') return [entry];
   if (validateWorkflowConditionalAssignmentShape(entry).length) throw new Error('WORKFLOW_CONDITIONAL_BINDING_INVALID');
   return [...entry.cases.map(rule => rule.assignee), entry.otherwise];
+}
+
+/** Code-owned defaults establish their own ceiling; administrator edits do not. */
+export function validateWorkflowConditionalBindingDefinition(definition: WorkflowDefinition, binding: WorkflowBinding): string[] {
+  const errors: string[] = [];
+  for (const [key, entry] of Object.entries(binding.bindings)) {
+    if (entry.provider !== 'conditional') continue;
+    const shape = validateWorkflowConditionalAssignmentShape(entry);
+    if (shape.length) { errors.push(...shape.map(error => `${error}:${key}`)); continue; }
+    for (const node of Object.values(definition.nodes)) {
+      if (!('binding' in node) || node.binding !== key) continue;
+      errors.push(...validateWorkflowConditionalAssignment(entry, {
+        definition, nodeId: node.id, frozenDefault: entry, releasedSources: {}, standardProviders: [],
+      }).map(error => `${error}:${key}:${node.id}`));
+    }
+  }
+  return [...new Set(errors)];
+}
+
+/** For flat-only validators with no graph semantics (routing, roles and field candidates). */
+export function workflowAssignmentLeafBinding(binding: WorkflowBinding): { bindings: Record<string, WorkflowStandardBindingEntry> } {
+  return { bindings: Object.fromEntries(Object.entries(binding.bindings).flatMap(([key, entry]) =>
+    entry.provider === 'conditional'
+      ? workflowAssignmentLeaves(entry).map((leaf, index) => [`${key}/leaves/${index}`, leaf] as const)
+      : [[key, entry] as const])) };
 }
 
 function expressionErrors(value: unknown, depth = 0, budget = { remaining: 1024 }): string[] {
@@ -205,7 +215,7 @@ function validateFacts(expression: WorkflowExpression, definition: WorkflowDefin
   }
 }
 
-function authorable(entry: WorkflowBindingEntry, context: WorkflowConditionalAssignmentContext): boolean {
+function authorable(entry: WorkflowStandardBindingEntry, context: WorkflowConditionalAssignmentContext): boolean {
   if (!context.standardProviders.includes(entry.provider as any)) return false;
   if (entry.provider === 'fixed_users') return keys(entry, ['provider', 'users']);
   if (entry.provider === 'app_role') return keys(entry, ['provider', 'roleCode', 'roleCodes']);
