@@ -10,6 +10,7 @@ import { dirname, relative, resolve } from 'node:path';
 import {
   DEVKIT_COMMANDS,
   DOCUMENTATION_TOPICS,
+  OPENXIANGDA_TOOLCHAIN_VERSION,
   documentationReferenceFile,
   renderDevkitCommandReference,
 } from 'openxiangda-devkit-core';
@@ -191,13 +192,20 @@ export async function createSkillManifest(skillsRoot: string): Promise<SkillMani
   return { schemaVersion: 1, skills: entries.sort((left, right) => left.name.localeCompare(right.name)) };
 }
 
-async function skillDirectoryDigest(root: string) {
+export async function skillDirectoryDigest(root: string) {
   const files: string[] = [];
+  let entries = 0;
+  let bytes = 0;
   const visit = async (directory: string) => {
     for (const entry of await readdir(directory, { withFileTypes: true })) {
+      if (++entries > 10_000) throw new Error('SKILL_CONTENT_LIMIT: 超过 10000 项');
       const path = resolve(directory, entry.name);
       if (entry.isDirectory()) await visit(path);
-      else if (entry.isFile()) files.push(path);
+      else if (entry.isFile()) {
+        bytes += (await stat(path)).size;
+        if (bytes > 32 * 1024 * 1024) throw new Error('SKILL_CONTENT_LIMIT: 超过 32 MiB');
+        files.push(path);
+      } else throw new Error(`SKILL_CONTENT_INVALID: ${path}`);
     }
   };
   await visit(root);
@@ -228,11 +236,18 @@ export async function installSkills(input: InstallSkillsInput) {
   }
 
   const retired = await managedRetiredSkillNames(input.destination);
+  const source = resolve(input.skillsRoot, skill.directory);
+  const sha256 = await skillDirectoryDigest(source);
   await installSkillTransaction({
-    source: resolve(input.skillsRoot, skill.directory),
+    source,
     destination: input.destination,
     name: OPENXIANGDA_SKILL_NAME,
     retiredNames: retired,
+    verify: async path => {
+      if (await skillDirectoryDigest(path) !== sha256) {
+        throw new Error('SKILL_INSTALL_READBACK_MISMATCH: 指南内容与源摘要不一致，已停止安装');
+      }
+    },
   });
 
   return {
@@ -240,6 +255,13 @@ export async function installSkills(input: InstallSkillsInput) {
     installed: [OPENXIANGDA_SKILL_NAME],
     retired,
     references: resolve(target, 'references'),
+    provenance: {
+      source,
+      installedPath: target,
+      sha256,
+      sdkVersion: OPENXIANGDA_TOOLCHAIN_VERSION,
+      verifiedAt: new Date().toISOString(),
+    },
   };
 }
 

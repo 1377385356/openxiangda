@@ -2576,7 +2576,7 @@ export interface WorkflowSubjectDefinition {
   summaryFields?: string[];
 }
 
-export type WorkflowBindingProvider =
+export type WorkflowStandardBindingProvider =
   | "fixed_users"
   | "initiator"
   | "input_users"
@@ -2590,8 +2590,8 @@ export type WorkflowBindingProvider =
   | "initiator_select"
   | "application_provider";
 
-export interface WorkflowBindingEntry extends Partial<import('./native-compiler/workflow-supervisor-chain.js').WorkflowSupervisorChainParameters> {
-  provider: WorkflowBindingProvider;
+export interface WorkflowStandardBindingEntry extends Partial<import('./native-compiler/workflow-supervisor-chain.js').WorkflowSupervisorChainParameters> {
+  provider: WorkflowStandardBindingProvider;
   /** Reference to the constrained subject field; role/scope remain declared once. */
   candidateField?: string;
   users?: string[];
@@ -2618,6 +2618,9 @@ export interface WorkflowBindingEntry extends Partial<import('./native-compiler/
   /** Code-owned dimensions and native sources; administrators only maintain bounded rules. */
   routing?: WorkflowAssignmentRoutingPolicy;
 }
+
+export type WorkflowBindingProvider = WorkflowStandardBindingProvider | 'conditional';
+export type WorkflowBindingEntry = WorkflowStandardBindingEntry | import('./native-compiler/workflow-conditional-assignment.js').WorkflowConditionalAssignment;
 
 export interface WorkflowAssignmentRoutingPolicy {
   policyCode: string;

@@ -1,3 +1,4 @@
+import { validateWorkflowConditionalBindingDefinition, validateWorkflowConditionalAssignmentShape, workflowAssignmentLeafBinding } from 'openxiangda-contracts';
 import { validateWorkflowParallel, workflowForwardTargets } from 'openxiangda-contracts';
 import { validateWorkflowSupervisorChains } from 'openxiangda-contracts';
 import { validateWorkflowReminders } from 'openxiangda-contracts';
@@ -230,15 +231,20 @@ export function validateWorkflowBinding(
   definition: WorkflowDefinition,
   binding: WorkflowBinding
 ) {
-  const diagnostics: string[] = [...validateWorkflowLaunchPreflight(definition, binding), ...validateWorkflowAdministration(definition, binding), ...validateWorkflowAssignmentRoutingBindings([binding]), ...validateWorkflowAutomaticCc(definition, binding), ...validateWorkflowApprovalEmptyPolicy(definition, binding), ...validateWorkflowBusinessSteps(definition, binding)];
+  const diagnostics: string[] = [...validateWorkflowLaunchPreflight(definition, binding), ...validateWorkflowAdministration(definition, binding), ...validateWorkflowAutomaticCc(definition, binding), ...validateWorkflowApprovalEmptyPolicy(definition, binding), ...validateWorkflowBusinessSteps(definition, binding)];
   if (binding?.schemaVersion !== SCHEMA_VERSIONS.workflowBinding) {
     diagnostics.push('WORKFLOW_BINDING_SCHEMA_INVALID');
   }
   if (binding?.workflowCode !== definition?.code) {
     diagnostics.push('WORKFLOW_BINDING_CODE_MISMATCH');
   }
+  diagnostics.push(...validateWorkflowConditionalBindingDefinition(definition,binding));
   diagnostics.push(...validateWorkflowSupervisorChains(definition,binding));
   for (const [code, entry] of Object.entries(binding?.bindings || {})) {
+    if (entry.provider === 'conditional') {
+      diagnostics.push(...validateWorkflowConditionalAssignmentShape(entry).map(error => `${error}:${code}`));
+      continue;
+    }
     diagnostics.push(...validateWorkflowRoleUnion(entry).map(error => `${error}:${code}`));
     if (entry.provider === 'fixed_users' && (!Array.isArray(entry.users) || !entry.users.length && !workflowBindingAllowsEmptyUsers(definition, code)))
       diagnostics.push(`WORKFLOW_BINDING_USERS_REQUIRED:${code}`);
@@ -254,6 +260,8 @@ export function validateWorkflowBinding(
       diagnostics.push(`WORKFLOW_BINDING_CANDIDATE_LIMIT_INVALID:${code}`);
     }
   }
+  if (!Object.values(binding?.bindings || {}).some(entry => entry.provider === 'conditional' && validateWorkflowConditionalAssignmentShape(entry).length))
+    diagnostics.push(...validateWorkflowAssignmentRoutingBindings([workflowAssignmentLeafBinding(binding)]));
   for (const node of Object.values(definition?.nodes || {})) {
     if (node.kind !== 'approval' && node.kind !== 'handle' && node.kind !== 'cc') continue;
     const entry = binding?.bindings?.[node.binding];

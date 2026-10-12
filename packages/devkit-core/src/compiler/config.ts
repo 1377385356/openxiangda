@@ -1,3 +1,4 @@
+import { workflowAssignmentLeafBinding, workflowAssignmentLeaves, workflowBindingRoleCodes, validateWorkflowConditionalAssignmentShape } from 'openxiangda-contracts';
 import { compileApplicationAgentsV2, NativeApplicationAgentContractError } from 'openxiangda-contracts/native-compiler';
 import type { ApplicationAgentDeclarationV2 } from 'openxiangda-contracts';
 import { normalizeDataMutationGrants } from 'openxiangda-contracts';
@@ -4205,6 +4206,15 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
           )
         );
       }
+      const declaredRoles = new Set((Array.isArray(authz.roles) ? authz.roles : []).map(item => string(object(item).code)));
+      for (const [code, entry] of Object.entries(binding.bindings || {})) {
+        if (entry.provider !== 'conditional') continue;
+        const shape = validateWorkflowConditionalAssignmentShape(entry);
+        for (const error of shape) diagnostics.push(diagnostic('APP_CONFIG_WORKFLOW_BINDING_INVALID', error, `${path}.binding.bindings.${code}`));
+        if (shape.length) continue;
+        for (const leaf of workflowAssignmentLeaves(entry)) for (const role of [...workflowBindingRoleCodes(leaf), ...Object.values(leaf.routing?.sources || {}).map(source => source.roleCode)])
+          if (!declaredRoles.has(role)) diagnostics.push(diagnostic('WORKFLOW_CONDITIONAL_ROLE_UNDECLARED', '条件人员来源引用了未声明的角色', `${path}.binding.bindings.${code}`));
+      }
       bindingByKey.set(key, binding);
     });
     const activationWorkflowCodes = new Set<string>();
@@ -4287,6 +4297,7 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
           diagnostic('APP_CONFIG_WORKFLOW_BINDING_INVALID', error, path)
         );
       }
+      if (Object.values(binding.bindings || {}).some(entry => entry.provider === 'conditional' && validateWorkflowConditionalAssignmentShape(entry).length)) return;
       try {
         const resource = (Array.isArray(data.resources) ? data.resources : []).map(object).find(item => item.code === definition.subject.resourceCode);
         const fields = object(resource?.schema).fields;
@@ -4317,7 +4328,7 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
         }
       }
     });
-    for (const error of validateWorkflowAssignmentRoutingBindings(activeRoutingBindings)) diagnostics.push(diagnostic('APP_CONFIG_WORKFLOW_ROUTING_INVALID', error, 'workflows.activations'));
+    for (const error of validateWorkflowAssignmentRoutingBindings(activeRoutingBindings.map(workflowAssignmentLeafBinding))) diagnostics.push(diagnostic('APP_CONFIG_WORKFLOW_ROUTING_INVALID', error, 'workflows.activations'));
     editableParameters.forEach((item, index) => {
       const parameter = object(item);
       const workflowCode = string(parameter.workflowCode);

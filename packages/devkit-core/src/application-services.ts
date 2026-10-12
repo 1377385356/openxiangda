@@ -10,6 +10,7 @@ import { operationStage, skippedOperationStage, updateOperationStage } from './o
 import { developmentLifecycle, summarizeLifecycle, lifecycleAtCommit, verifyBusinessAcceptance } from './development-lifecycle.js';
 import { runCommandProcess } from './command-process.js';
 import { compileLocalConfiguration } from './configuration-preflight.js';
+import { installedToolchainFacts, preflightIssueOwner } from './toolchain-facts.js';
 import { NativeConfigurationCompilerError, NATIVE_CONFIGURATION_VALIDATOR_DIGEST } from 'openxiangda-contracts/native-compiler';
 import {
   existsSync,
@@ -98,6 +99,7 @@ import {
   collectWorkspaceToolchainDependencies,
   defaultDevkitCoreToolchainCapsule,
   ToolchainCapsuleScanLimitError,
+  ToolchainCapsuleInputError,
   toolchainCapsuleDiagnostic,
   type ToolchainCapsule,
 } from "./toolchain-capsule.js";
@@ -197,7 +199,7 @@ export class OpenXiangdaApplicationServices {
     return this.ok(
       "workspace.context",
       workspace.context.workspace,
-      { ...workspace.context, development: {
+      { ...workspace.context, toolchain: { ...workspace.context.toolchain, installed: installedToolchainFacts(workspace.root) }, development: {
         ...summarizeLifecycle(lifecycle),
         application: lifecycle.context.application ? { path: lifecycle.context.application.path, content: lifecycle.context.application.content } : null,
         records: [
@@ -1580,7 +1582,7 @@ export class OpenXiangdaApplicationServices {
     );
     const lifecycle = developmentLifecycle(workspace.root, this.appSpecContractIndex(workspace, false));
     const diagnostics = [
-      ...validateAppConfig(workspace.config),
+      ...validateAppConfig(workspace.config).map(issue => ({ ...issue, details: { ...issue.details, resolution: preflightIssueOwner(issue) } })),
       ...this.versionTrainDiagnostics(workspace),
       ...validateNestInjectionContract(workspace.root),
       ...validateNestControllerOperationContract(workspace.root),
@@ -2901,6 +2903,7 @@ export class OpenXiangdaApplicationServices {
         '按错误指针修正应用声明，运行 openxiangda check 复核', {
           pointer: error.pointer, identifiers: error.identifiers, validatorDigest: NATIVE_CONFIGURATION_VALIDATOR_DIGEST,
           validationOwner: 'local-shared-compiler',
+          resolution: preflightIssueOwner(error),
         });
     }
     const data =
@@ -2934,6 +2937,7 @@ export class OpenXiangdaApplicationServices {
       required,
       supported: [],
       ...data,
+      resolution: preflightIssueOwner({ code: (error as { code?: unknown })?.code, pointer }),
       ...(error instanceof ControlPlaneError && error.remote?.requestId ? { requestId: error.remote.requestId } : {}),
     };
     const diagnostic = this.diagnostic(
@@ -3183,15 +3187,18 @@ export class OpenXiangdaApplicationServices {
   private versionTrainDiagnostics(workspace: LoadedWorkspace) {
     let dependencies: ReturnType<typeof collectWorkspaceToolchainDependencies>;
     try {
-      dependencies = collectWorkspaceToolchainDependencies(workspace.root);
+      const dockerfile = join(workspace.root, workspace.config.backend.root, "Dockerfile");
+      dependencies = collectWorkspaceToolchainDependencies(workspace.root, {
+        ...(backendRuntimeRequired(workspace.config) && existsSync(dockerfile) ? { dockerfile } : {}),
+      });
     } catch (error) {
-      if (error instanceof ToolchainCapsuleScanLimitError) {
+      if (error instanceof ToolchainCapsuleScanLimitError || error instanceof ToolchainCapsuleInputError) {
         return [
           this.diagnostic(
             error.code,
-            "工作区 package.json 扫描超过安全资源上限",
+            error instanceof ToolchainCapsuleInputError ? "工作区依赖输入无效" : "工作区 package.json 扫描超过安全资源上限",
             "package.json",
-            "减少工作区中纳入检查的 package.json 数量或文件大小后重试",
+            "核对 workspace 声明、实际制品输入及本地依赖路径后重试",
             { message: error.message }
           ),
         ];

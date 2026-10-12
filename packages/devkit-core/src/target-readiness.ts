@@ -1,6 +1,7 @@
 import type { ApplicationContractCompatibility, ConfigurationValidationResult, PlatformCapabilities, RequiredPlatformCapabilityContract } from 'openxiangda-contracts';
 import { ControlPlaneError } from './control-plane-client.js';
 import { assertApplicationContractCompatible, assertRequiredCapabilitiesAvailable } from './deployment.js';
+import { preflightIssueOwner } from './toolchain-facts.js';
 
 export interface TargetReadinessFacts {
   site: string; appCode: string; environmentKey: string; platformVersion: string; observedAt: string;
@@ -28,7 +29,7 @@ export async function collectTargetReadiness(input: {
       ...unavailable.map((item: {code: string}) => ({ code: 'OPENXIANGDA_REQUIRED_CAPABILITY_UNAVAILABLE', pointer: `/requiredPlatformCapabilities/${item.code}`, capability: item })),
       ...(Array.isArray(data.issues) ? data.issues : configurationError ? [{ code: configurationError instanceof ControlPlaneError ? configurationError.code : 'OPENXIANGDA_DEPLOYMENT_PREFLIGHT_UNAVAILABLE', pointer: typeof data.pointer === 'string' ? data.pointer : '/' }] : []),
     ];
-    throw withTarget(first, target, { ...data, unavailable, issues,
+    throw withTarget(first, target, { ...data, unavailable, issues: issues.map(issue => ({ ...issue, resolution: preflightIssueOwner(issue) })),
       ...(configurationError instanceof ControlPlaneError && configurationError.remote?.requestId ? { configurationRequestId: configurationError.remote.requestId } : {}) });
   }
   return { result: result!, target };

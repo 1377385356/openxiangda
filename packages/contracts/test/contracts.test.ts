@@ -954,7 +954,7 @@ test('publishes one revision-bound desktop and mobile workflow launch Surface', 
 test('allows workflow bindings to disable long-term delegation explicitly', () => {
   assert.deepEqual(
     contractSchemas.workflowBinding.properties.bindings.additionalProperties
-      .properties.delegatable,
+      .oneOf[0].properties.delegatable,
     { type: 'boolean' }
   );
 });
@@ -984,7 +984,7 @@ test('publishes the closed Workflow trust boundary and provider request v2.1', (
     64
   );
   const bindingEntry =
-    contractSchemas.workflowBinding.properties.bindings.additionalProperties;
+    contractSchemas.workflowBinding.properties.bindings.additionalProperties.oneOf[0];
   assert.equal(bindingEntry.properties.min.maximum, 200);
   assert.equal(bindingEntry.properties.max.maximum, 200);
 

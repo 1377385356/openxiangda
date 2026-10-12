@@ -70,6 +70,7 @@ export const PLATFORM_CAPABILITY_CONTRACT_VERSIONS = {
   "workflow.instance-cancellation-policy": "1.0.0",
   "workflow.node-administration": "1.0.0",
   "workflow.assignment-routing": "1.0.0",
+  "workflow.conditional-assignment": "1.0.0",
   "workflow.role-union": "1.0.0",
   "workflow.role-input-selection": "1.0.0",
   "workflow.named-owned-create": "1.0.0",

@@ -1,3 +1,5 @@
+import { workflowAssignmentLeaves, workflowAssignmentLeafBinding, validateWorkflowConditionalAssignmentShape, validateWorkflowConditionalBindingDefinition } from './workflow-conditional-assignment.js';
+import { workflowBindingRoleCodes } from './workflow-role-union.js';
 import { compileApplicationAgentsV2 } from './application-agent.js';
 import { validateWorkflowSupervisorChains, validateWorkflowSupervisorChainBinding } from './workflow-supervisor-chain.js';
 import { validateWorkflowReminders } from './workflow-reminders.js';
@@ -35,7 +37,7 @@ import { validateWorkflowTaskPages } from './workflow-task-page.js';
 import { requiresExtendedOwnedSubtableCapacity, requiresAggregateOwnedSubtableCapacity, dataOwnedRowLimit, isDataOwnedRowLimit } from './data-capacity.js';
 import { validateWorkflowBusinessSteps, compileWorkflowBusinessStepHandlers, validateWorkflowBusinessStepSubscriptions, WORKFLOW_BUSINESS_STEP_EVENT, WORKFLOW_BUSINESS_STEP_EVENTS } from './workflow-business-step.js';
 import { validateWorkflowAssignmentRoutingBindings, validateWorkflowAssignmentRoutingPolicy } from './workflow-assignment-routing.js';
-import { requiresWorkflowRoleUnion, validateWorkflowRoleUnion, requiresWorkflowRoleInputSelection, validateWorkflowRoleInputSelection } from './workflow-role-union.js';
+import { validateWorkflowRoleUnion, validateWorkflowRoleInputSelection } from './workflow-role-union.js';
 import { assertWorkflowOwnedSubjectCreate, assertWorkflowOwnedSubjectCreateResources } from './workflow-owned-subject.js';
 import * as crypto from 'crypto';
 import {
@@ -733,10 +735,10 @@ export function compileRequiredPlatformCapabilitiesV3(
     ...(config.data.resources.some((resource: JsonObject) => resource.schema.fields.some((field: JsonObject) => field.userCandidates !== undefined))
       ? [{ code: 'data.user-candidates' as const, declaration: config.data.resources.filter((resource: JsonObject) => resource.schema.fields.some((field: JsonObject) => field.userCandidates !== undefined)) }]
       : []),
-    ...(requiresWorkflowRoleInputSelection(config.workflows.bindings)
-      ? [{ code: 'workflow.role-input-selection' as const, declaration: config.workflows.bindings.filter((item: JsonObject) => Object.values(item.binding.bindings).some((entry: any) => entry.selectedInputPath !== undefined)) }] : []),
-    ...(requiresWorkflowRoleUnion(config.workflows.bindings)
-      ? [{ code: 'workflow.role-union' as const, declaration: config.workflows.bindings.filter((item: JsonObject) => Object.values(item.binding.bindings).some((entry: any) => entry.roleCodes !== undefined)) }] : []),
+    ...(config.workflows.bindings.some((item: JsonObject) => Object.values(item.binding.bindings).flatMap((entry: any) => workflowAssignmentLeaves(entry)).some(entry => entry.selectedInputPath !== undefined))
+      ? [{ code: 'workflow.role-input-selection' as const, declaration: config.workflows.bindings.filter((item: JsonObject) => Object.values(item.binding.bindings).flatMap((entry: any) => workflowAssignmentLeaves(entry)).some(entry => entry.selectedInputPath !== undefined)) }] : []),
+    ...(config.workflows.bindings.some((item: JsonObject) => Object.values(item.binding.bindings).flatMap((entry: any) => workflowAssignmentLeaves(entry)).some(entry => entry.roleCodes !== undefined))
+      ? [{ code: 'workflow.role-union' as const, declaration: config.workflows.bindings.filter((item: JsonObject) => Object.values(item.binding.bindings).flatMap((entry: any) => workflowAssignmentLeaves(entry)).some(entry => entry.roleCodes !== undefined)) }] : []),
     ...(config.backend.operations.some((item: JsonObject) => item.platformAccess?.ownedSubject)
       ? [{ code: 'workflow.named-owned-create' as const, declaration: config.backend.operations.filter((item: JsonObject) => item.platformAccess?.ownedSubject) }] : []),
     ...(requiresUserCandidateLaunchScope(config.data.resources)
@@ -812,7 +814,9 @@ export function compileRequiredPlatformCapabilitiesV3(
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'approval' && node.emptyPolicy !== undefined))
       ? [{ code: 'workflow.approval-empty-policy' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'approval' && node.emptyPolicy !== undefined)) }]
       : []),
-    ...(config.workflows.bindings.some((item: JsonObject) => Object.values(item.binding.bindings).some((entry: any) => entry.provider === 'supervisor_chain')) ? [{code:'workflow.supervisor-chain' as const,declaration:config.workflows.bindings.filter((item: JsonObject) => Object.values(item.binding.bindings).some((entry: any) => entry.provider === 'supervisor_chain'))}] : []),
+    ...(config.workflows.bindings.some((item: JsonObject) => Object.values(item.binding.bindings).some((entry: any) => entry.provider === 'conditional'))
+      ? [{ code: 'workflow.conditional-assignment' as const, declaration: config.workflows.bindings.filter((item: JsonObject) => Object.values(item.binding.bindings).some((entry: any) => entry.provider === 'conditional')) }] : []),
+    ...(config.workflows.bindings.some((item: JsonObject) => Object.values(item.binding.bindings).flatMap((entry: any) => workflowAssignmentLeaves(entry)).some(entry => entry.provider === 'supervisor_chain')) ? [{code:'workflow.supervisor-chain' as const,declaration:config.workflows.bindings.filter((item: JsonObject) => Object.values(item.binding.bindings).flatMap((entry: any) => workflowAssignmentLeaves(entry)).some(entry => entry.provider === 'supervisor_chain'))}] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.reminders)) ? [{ code: 'workflow.reminders' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.reminders)) }] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => isWorkflowPlatformNotify(node)))
       ? [{ code: 'workflow.platform-notify' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => isWorkflowPlatformNotify(node))) }] : []),
@@ -846,8 +850,8 @@ export function compileRequiredPlatformCapabilitiesV3(
     ...(config.workflows.definitions.some((item: JsonObject) => [...Object.values(item.definition.nodes), ...item.definition.authoring?.businessSteps || []].some((node: any) => node.handler?.dataTransaction))
       ? [{ code: 'workflow.step-data-transaction' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => [...Object.values(item.definition.nodes), ...item.definition.authoring?.businessSteps || []].some((node: any) => node.handler?.dataTransaction)) }]
       : []),
-    ...(config.workflows.bindings.some((item: JsonObject) => Object.values(item.binding.bindings).some((entry: any) => entry.routing !== undefined))
-      ? [{ code: 'workflow.assignment-routing' as const, declaration: config.workflows.bindings.filter((item: JsonObject) => Object.values(item.binding.bindings).some((entry: any) => entry.routing !== undefined)) }]
+    ...(config.workflows.bindings.some((item: JsonObject) => Object.values(item.binding.bindings).flatMap((entry: any) => workflowAssignmentLeaves(entry)).some(entry => entry.routing !== undefined))
+      ? [{ code: 'workflow.assignment-routing' as const, declaration: config.workflows.bindings.filter((item: JsonObject) => Object.values(item.binding.bindings).flatMap((entry: any) => workflowAssignmentLeaves(entry)).some(entry => entry.routing !== undefined)) }]
       : []),
     ...(usesBusinessProcess
       ? [
@@ -6919,6 +6923,17 @@ function validateWorkflowReferences(config: JsonObject) {
     );
     bindingValues.set(key, binding);
   }
+  // Conditional defaults must never hide undeclared roles in an unselected leaf.
+  const conditionalRoleCodes = new Set(config.authz.roles.map((role: any) => role.code));
+  for (const [index, item] of config.workflows.bindings.entries()) {
+    for (const [key, entry] of Object.entries<any>(item.binding.bindings)) {
+      if (entry.provider !== 'conditional') continue;
+      for (const leaf of workflowAssignmentLeaves(entry)) {
+        const roles = [...workflowBindingRoleCodes(leaf), ...Object.values(leaf.routing?.sources || {}).map(source => source.roleCode)];
+        for (const role of roles) if (!conditionalRoleCodes.has(role)) fail('WORKFLOW_CONDITIONAL_ROLE_UNDECLARED', `/config/workflows/bindings/${index}/binding/bindings/${key}`);
+      }
+    }
+  }
   const activationCodes = new Set<string>();
   const activeBindings = new Map<string, JsonObject>();
   for (const [index, raw] of config.workflows.activations.entries()) {
@@ -6999,7 +7014,7 @@ function validateWorkflowReferences(config: JsonObject) {
     activeBindings.set(code, binding);
   }
 
-  const routingErrors = validateWorkflowAssignmentRoutingBindings([...activeBindings.values()] as any);
+  const routingErrors = validateWorkflowAssignmentRoutingBindings([...activeBindings.values()].map(binding => workflowAssignmentLeafBinding(binding as any)));
   if (routingErrors.length) fail(routingErrors[0]!, '/config/workflows/activations');
   const providerCodes = new Set<string>();
   config.workflows.providers.forEach((raw: any, index: number) => {
@@ -7481,6 +7496,11 @@ function validateWorkflowBinding(binding: JsonObject, pointer: string) {
   for (const [code, raw] of Object.entries(entries)) {
     workflowBindingCode(code, `${pointer}/bindings/${code}`);
     const entry = object(raw, `${pointer}/bindings/${code}`);
+    if (entry.provider === 'conditional') {
+      const errors = validateWorkflowConditionalAssignmentShape(entry);
+      if (errors.length) fail(errors[0]!, `${pointer}/bindings/${code}`);
+      continue;
+    }
     const chainErrors = validateWorkflowSupervisorChainBinding(entry);
     if (chainErrors.length) fail(chainErrors[0]!, `${pointer}/bindings/${code}`);
     const selectionErrors = validateWorkflowRoleInputSelection(entry);
@@ -7554,6 +7574,8 @@ function validateWorkflowDefinitionBinding(
   binding: JsonObject,
   pointer: string
 ) {
+  const conditionalErrors = validateWorkflowConditionalBindingDefinition(definition as any, binding as any);
+  if (conditionalErrors.length) fail(conditionalErrors[0]!, pointer);
   const chainErrors = validateWorkflowSupervisorChains(definition,binding);
   if (chainErrors.length) fail(chainErrors[0]!, pointer);
   equal(binding.workflowCode, definition.code, `${pointer}/workflowCode`);

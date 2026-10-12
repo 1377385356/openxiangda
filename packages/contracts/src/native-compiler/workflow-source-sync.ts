@@ -1,3 +1,4 @@
+import { workflowAssignmentLeaves } from './workflow-conditional-assignment.js';
 import type { WorkflowApprovalMode, WorkflowBinding, WorkflowDefinition, WorkflowNodeOperationPolicy, WorkflowConfigurableOperation } from '../types.js';
 import { validateWorkflowDesignerCapabilities,validateWorkflowDesignerDocument } from './workflow-designer.js';
 import { workflowAuthoringCatalog } from './workflow-authoring.js';
@@ -64,7 +65,7 @@ export function workflowSourceReferences(definition: WorkflowDefinition,binding:
   const steps = new Map<string,{ code: string; version: number; digest: string }>();
   for (const node of Object.values(definition.nodes)) if (node.kind === 'action') steps.set(`${node.handler.code}@${node.handler.version}`,{ code: node.handler.code,version: node.handler.version,digest: digest({ handler: node.handler,inputSchema: node.inputSchema,outputSchema: node.outputSchema }) });
   return { taskPages: [...pages].sort().map(code => ({ code,digest: digest(definition.taskPages?.[code]) })),steps: [...steps.values()].sort((a,b) => a.code.localeCompare(b.code) || a.version-b.version),
-    bindingKeys: Object.keys(binding.bindings).sort(),roles: [...new Set(Object.values(binding.bindings).flatMap(workflowBindingRoleCodes))].sort() };
+    bindingKeys: Object.keys(binding.bindings).sort(),roles: [...new Set(Object.values(binding.bindings).flatMap(entry => workflowAssignmentLeaves(entry).flatMap(leaf => [...workflowBindingRoleCodes(leaf), ...(entry.provider === 'conditional' ? Object.values(leaf.routing?.sources || {}).map(source => source.roleCode) : [])])))].sort() };
 }
 export function validateWorkflowSourceBundle(value: unknown,digest: (value: unknown) => string): string[] {
   try { return validateSourceBundle(value,digest); }
@@ -78,6 +79,8 @@ function validateSourceBundle(value: unknown,digest: (value: unknown) => string)
   if (!exact(origin,['environmentKey','headRevision','definitionVersion','bindingVersion','definitionDigest','bindingDigest','handlingDigest','catalogDigest']) || !['preproduction','production'].includes(origin.environmentKey) ||
     ![origin.headRevision,origin.definitionVersion,origin.bindingVersion].every(number => Number.isSafeInteger(number) && number >= 1) || ![origin.definitionDigest,origin.bindingDigest,origin.handlingDigest,origin.catalogDigest].every(digestValue)) return ['WORKFLOW_BUNDLE_CORRUPT'];
   if (!record(bundle.definition?.nodes) || !record(bundle.binding?.bindings) || bundle.definition.code !== bundle.workflowCode || bundle.binding.workflowCode !== bundle.workflowCode) return ['WORKFLOW_BUNDLE_CORRUPT'];
+  // v1 handling cannot represent conditional defaults without losing privacy/intent.
+  if (Object.values(bundle.binding.bindings).some(entry => entry.provider === 'conditional')) return ['WORKFLOW_SOURCE_CONDITIONAL_EXPORT_UNAVAILABLE'];
   if (validateWorkflowDesignerDocument(bundle.definition).length) errors.push('WORKFLOW_BUNDLE_DEFINITION_INVALID');
   if (!workflowSourceDigestEqual(digest(bundle.definition),origin.definitionDigest) || !workflowSourceDigestEqual(digest(bundle.binding),origin.bindingDigest) || !workflowSourceDigestEqual(digest(bundle.handling),origin.handlingDigest) || !workflowSourceDigestEqual(digest(bundle.references),origin.catalogDigest)) errors.push('WORKFLOW_BUNDLE_CORRUPT');
   if (!workflowSourceDigestEqual(digest(workflowSourceReferences(bundle.definition,bundle.binding,digest)),digest(bundle.references))) errors.push('WORKFLOW_BUNDLE_CATALOG_CORRUPT');
