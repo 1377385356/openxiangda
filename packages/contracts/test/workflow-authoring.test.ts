@@ -5,8 +5,23 @@ import { validateWorkflowDesignerCapabilities } from '../src/native-compiler/wor
 import { validateWorkflowBusinessSteps, compileWorkflowBusinessStepHandlers } from '../src/native-compiler/workflow-business-step.js';
 import { evaluateWorkflowExpression } from '../src/native-compiler/workflow-expression.js';
 import { workflowReturnEligibility } from '../src/native-compiler/workflow-return-eligibility.js';
+import Ajv2020 from 'ajv/dist/2020.js';
+import { workflowDefinitionSchema, workflowBindingSchema } from '../src/native-compiler/workflow-schema.js';
 function fixture(): any { return {schemaVersion:'openxiangda.workflow-definition/v2',code:'purchase',title:'采购',acceptedCommandDeactivationPolicy:'finish-pinned',subject:{resourceCode:'purchase',factProjection:{}},startAt:'done',inputSchema:{type:'object',additionalProperties:false,properties:{amount:{type:'number'}}},taskPages:{review:{title:'审批表单',fields:[{code:'note'},{code:'amount',readonly:true}]}},nodes:{done:{id:'done',kind:'end',title:'完成',outcome:'approved'}}}; }
 const binding = () => ({schemaVersion:'openxiangda.workflow-binding/v2',workflowCode:'purchase',bindings:{}} as any);
+test('all blank human kinds pass the canonical strict document schemas', () => {
+ const ajv = new Ajv2020({strict:false,allErrors:true});
+ const validateDefinition = ajv.compile(workflowDefinitionSchema), validateBinding = ajv.compile(workflowBindingSchema);
+ for (const kind of ['approval','handle','cc'] as const) {
+  const definition=fixture(), bindings=binding();
+  definition.nodes.fresh=createWorkflowHumanNode('fresh',kind,'新增','done'); definition.startAt='fresh';
+  bindings.bindings.canvas_fresh={provider:'fixed_users',users:[]};
+  assert.equal(validateDefinition(definition),true,JSON.stringify(validateDefinition.errors));
+  assert.equal(validateBinding(bindings),true,JSON.stringify(validateBinding.errors));
+  definition.nodes.fresh.administration.unknownRuntimeCapability=true;
+  assert.equal(validateDefinition(definition),false,'unknown administration properties must remain forbidden');
+ }
+});
 test('approval, handling and CC can be inserted without an existing human template',()=>{
  for(const kind of ['approval','handle','cc'] as const){const base=fixture(),next=structuredClone(base),bindings=binding();next.nodes.fresh=createWorkflowHumanNode('fresh',kind,'新增','done');next.startAt='fresh';bindings.bindings[workflowCanvasBindingKey('fresh')]={provider:'fixed_users',users:['member']};assert.deepEqual(validateWorkflowDesignerCapabilities(base,next,binding(),bindings),[]);}
 });
