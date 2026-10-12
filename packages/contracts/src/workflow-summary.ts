@@ -2,7 +2,8 @@ import type { DataFieldType, WorkflowSurface } from './types.js';
 import { normalizeWorkflowBusinessDetail } from './workflow-detail.js';
 
 /** Maximum number of business fields carried by a workflow summary. */
-export const WORKFLOW_SUMMARY_MAX_FIELDS = 16 as const;
+export { WORKFLOW_SUMMARY_MAX_FIELDS } from './native-compiler/workflow-schema-constants.js';
+import { WORKFLOW_SUMMARY_MAX_FIELDS } from './native-compiler/workflow-schema-constants.js';
 /** UTF-8 byte limit for a long-text field in a workflow summary. */
 export const WORKFLOW_SUMMARY_TEXT_LONG_MAX_BYTES = 2048 as const;
 /** UTF-8 byte limit for the complete workflow businessData envelope. */

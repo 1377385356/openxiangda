@@ -1,3 +1,4 @@
+import { WORKFLOW_DEFINITION_SCHEMA_VERSION, WORKFLOW_BINDING_SCHEMA_VERSION } from './native-compiler/workflow-schema-constants.js';
 import { OPENXIANGDA_COMPILER_CONTRACT_VERSION, PLATFORM_CAPABILITY_CONTRACT_VERSIONS, OPENXIANGDA_CONTRACT_VERSION } from "./native-version.js";
 export { OPENXIANGDA_COMPILER_CONTRACT_VERSION, PLATFORM_CAPABILITY_CONTRACT_VERSIONS, OPENXIANGDA_CONTRACT_VERSION } from "./native-version.js";
 import type { DataFieldSurface, DataResourceSurface } from "./surface.js";
@@ -121,8 +122,8 @@ export const SCHEMA_VERSIONS = {
   eventReceiptResult: "openxiangda.event-receipt-result/v2",
   timerSubscription: "openxiangda.timer-subscription/v2",
   dateTrigger: "openxiangda.date-trigger/v2",
-  workflowDefinition: "openxiangda.workflow-definition/v2",
-  workflowBinding: "openxiangda.workflow-binding/v2",
+  workflowDefinition: WORKFLOW_DEFINITION_SCHEMA_VERSION,
+  workflowBinding: WORKFLOW_BINDING_SCHEMA_VERSION,
   workflowPreparation: "openxiangda.workflow-preparation/v2",
   workflowInstance: "openxiangda.workflow-instance/v2",
   workflowTask: "openxiangda.workflow-task/v2",
