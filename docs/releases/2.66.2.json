@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.66.2",
+  "status": "reviewed",
+  "title": "统一发布资料入口",
+  "summary": "区分测试环境部署、生产原版本晋级和维护者 npm 发布，统一当前发布资料入口。",
+  "newFeatures": [
+    "补充当前发布渠道、工作区事实和生产晋级边界说明。"
+  ],
+  "fixes": [
+    "移除过时的 CI 独占发布操作表述，避免把验证、发布和生产部署混为一体。"
+  ],
+  "affectedUsers": [
+    "使用 OpenXiangda CLI、应用 SDK 或维护者发布流程的开发者。"
+  ],
+  "upgradeSteps": [
+    "升级 SDK、CLI 和技能包后重新执行项目检查。",
+    "先完成测试环境验证和真实角色验收，再按发布资料决定生产晋级。"
+  ],
+  "knownLimitations": [
+    "本版本不自动部署业务应用，也不替代目标平台的能力协商和业务验收。"
+  ],
+  "compatibility": {
+    "node": ">=24",
+    "pnpm": "10.15.1"
+  },
+  "issues": []
+}
