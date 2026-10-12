@@ -8,22 +8,15 @@ import { createReleaseValidationPlan } from "./lib/release-validation-plan.mjs";
 import { resolveReleaseRegistry } from "./lib/release-package-state.mjs";
 import { assertReleaseHeadOnMainline, frozenArtifactManifestAllowsMainlineAdvance } from "./lib/release-mainline.mjs";
 
+import { releasePaths } from "./lib/release-paths.mjs";
+
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const full = process.argv.includes("--full");
 const json = process.argv.includes("--json");
 assertReleaseVersionsMaterialized(repositoryRoot);
 const head = runCaptured("git", ["rev-parse", "HEAD"]);
-const gitCommonDirectory = resolve(
-  repositoryRoot,
-  runCaptured("git", ["rev-parse", "--git-common-dir"])
-);
-const artifactRoot = resolve(
-  gitCommonDirectory,
-  `openxiangda-release-artifacts-${head}`
-);
-const releaseLock = acquireReleaseProcessLock(
-  resolve(gitCommonDirectory, "openxiangda-release.lock")
-);
+const { artifactRoot, lockPath } = releasePaths(repositoryRoot, head);
+const releaseLock = acquireReleaseProcessLock(lockPath);
 let plan;
 try {
   const status = runCaptured("git", ["status", "--porcelain"]);

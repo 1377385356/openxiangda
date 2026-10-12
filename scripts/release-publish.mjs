@@ -50,6 +50,8 @@ import { releaseNpmEnvironment, resolveConvergenceBudgetMs } from "./lib/release
 import { archiveCompletedRelease } from "./lib/release-history.mjs";
 import { assertReleaseHeadOnMainline, frozenReleaseAllowsMainlineAdvance, frozenArtifactManifestAllowsMainlineAdvance } from './lib/release-mainline.mjs';
 
+import { releasePaths } from "./lib/release-paths.mjs";
+
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const full = process.argv.includes("--full");
 const validateOnly = process.argv.includes("--validate-only");
@@ -63,18 +65,11 @@ const markValidated = process.argv.includes("--mark-validated");
 // 本机是正式发布通道；组织若需要 CI-only，可在受控环境自行设置外部门禁。
 // 发布状态机本身不因运行位置拒绝维护者的可信本机发布。
 const head = git(["rev-parse", "HEAD"]);
-const receiptPath = resolve(
-  repositoryRoot,
-  git(["rev-parse", "--git-path", "openxiangda-release-receipt.json"])
-);
-const releaseProcessLock = acquireReleaseProcessLock(join(dirname(receiptPath), 'openxiangda-release.lock'));
+const { receiptPath, artifactRoot, lockPath } = releasePaths(repositoryRoot, head);
+const releaseProcessLock = acquireReleaseProcessLock(lockPath);
 process.once('exit', releaseProcessLock);
 process.once('SIGINT', () => process.exit(130));
 process.once('SIGTERM', () => process.exit(143));
-const artifactRoot = resolve(
-  dirname(receiptPath),
-  `openxiangda-release-artifacts-${head}`
-);
 const artifactManifestPath = join(artifactRoot, "manifest.json");
 
 let receipt = loadReceipt();
