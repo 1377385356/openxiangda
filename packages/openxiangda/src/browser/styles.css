@@ -3442,7 +3442,7 @@
 .oxa-designer-draft-band .ant-collapse-extra { flex: 1; color: #69788f; min-width: 0; }
 .oxa-designer-draft-band .ant-collapse-extra span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .oxa-designer-draft-band .ant-collapse-content-box { padding: 4px 12px 14px !important; }
-.oxa-designer-draft-band label { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; font-size: 12px; }
+.oxa-designer-draft-band label:not(.ant-checkbox-wrapper):not(.ant-radio-wrapper) { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; font-size: 12px; }
 .oxa-workflow-designer fieldset, .oxa-workflow-designer-inspector fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .oxa-designer-branch { padding: 12px; border: 1px solid #e3e8ef; background: #f8fafc; border-radius: 5px; margin: 12px 0; display: grid; gap: 10px; }
 .oxa-designer-mobile-inspector { display: none; }

@@ -19,6 +19,12 @@ test('platform CSS keeps the host document unchanged and uses library defaults',
   assert.ok(variables.every(name => name.startsWith('--ant-')));
 });
 
+test('workflow authoring field labels do not stack library-owned checkbox/radio controls', () => {
+  const styles = readFileSync(new URL('../src/browser/styles.css', import.meta.url), 'utf8');
+  assert.doesNotMatch(styles, /\.oxa-designer-draft-band label\s*\{/);
+  assert.match(styles, /\.oxa-designer-draft-band label:not\(\.ant-checkbox-wrapper\):not\(\.ant-radio-wrapper\)/);
+});
+
 test('rich text Field Kit owns a stable desktop overflow disclosure', () => {
   const component = readFileSync(new URL('../src/browser/components/platform-fields/RichTextField.tsx', import.meta.url), 'utf8');
   const styles = readFileSync(new URL('../src/browser/styles.css', import.meta.url), 'utf8');
