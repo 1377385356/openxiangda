@@ -7,6 +7,7 @@ import { defineOpenXiangdaApp, validateAppConfig, type OpenXiangdaAppDeclaration
 import { compileApplicationSources } from '../src/compiler/bundle.js';
 import { loadAppConfig, loadWorkspace } from '../src/workspace-loader.js';
 import { createWorkspaceContext } from '../src/workspace.js';
+import { compileAppPackage } from '../src/compiler/package-compiler.js';
 
 function declaration(): OpenXiangdaAppDeclaration {
   const capability = 'app:canvas-warning:action:probe-model';
@@ -34,6 +35,10 @@ test('external AI reconciliation warning does not invalidate construction, and r
   assert.equal(diagnostics.find(item => item.code === 'AI_EXTERNAL_RECONCILIATION_MISSING')?.severity, 'warning');
   assert.equal(config.backend.operations[0].ai?.reconcile, undefined, 'no fictitious reconciliation is invented');
   assert.doesNotThrow(() => compileApplicationSources(config));
+  assert.doesNotThrow(() => compileAppPackage({ config, version: '0.1.0',
+    source: { repository: 'https://example.invalid/canvas-probe.git', commit: 'a'.repeat(40), dirty: false },
+    toolchainVersion: '2.63.3', artifacts: [], manifests: {}, minimumPlatformVersion: '2.0.0',
+  }));
 });
 
 test('a real declaration error still blocks alongside warnings', () => {
@@ -66,6 +71,15 @@ test('workspace construction still rejects real errors, not warnings', () => {
   config.backend.operations[0].path = 'not-an-absolute-path';
   assert.throws(() => createWorkspaceContext(config, {
     root: process.cwd(), toolchainVersion: 'test', nodeVersion: process.version, packageManager: 'pnpm',
+  }), (error: unknown) => {
+    const diagnostics = (error as { diagnostics: Array<{ severity: string }> }).diagnostics;
+    assert.ok(diagnostics.length > 0);
+    assert.ok(diagnostics.every(item => item.severity === 'error'));
+    return true;
+  });
+  assert.throws(() => compileAppPackage({ config, version: '0.1.0',
+    source: { repository: 'https://example.invalid/canvas-probe.git', commit: 'a'.repeat(40), dirty: false },
+    toolchainVersion: '2.63.3', artifacts: [], manifests: {}, minimumPlatformVersion: '2.0.0',
   }), (error: unknown) => {
     const diagnostics = (error as { diagnostics: Array<{ severity: string }> }).diagnostics;
     assert.ok(diagnostics.length > 0);

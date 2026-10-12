@@ -55,7 +55,7 @@ export function requiredPlatformCapabilitiesFromConfiguration(
 export function compileAppPackage(
   input: CompileAppPackageInput
 ): CompiledAppPackage {
-  const diagnostics = validateAppConfig(input.config);
+  const diagnostics = validateAppConfig(input.config).filter(item => item.severity === 'error');
   if (diagnostics.length > 0) throw new AppConfigValidationError(diagnostics);
   const manifest: AppPackage = {
     schemaVersion: SCHEMA_VERSIONS.appPackage,
