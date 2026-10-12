@@ -143,10 +143,32 @@ test('browser acceptance serializes the prewarmed Vite HTML entrypoints', () => 
     .filter(name => name.endsWith('.e2e.html'))
     .sort();
   assert.ok(htmlEntries.length > 0, 'browser acceptance requires maintainer HTML entrypoints');
+  const dedicatedFixture = 'field-source-contexts.e2e.html';
+  const dedicatedConfig = readFileSync(
+    new URL('vite.field-source-contexts.config.ts', browserFixtureRoot),
+    'utf8'
+  );
+  assert.ok(htmlEntries.includes(dedicatedFixture), 'dedicated field-source fixture must exist');
   for (const entry of htmlEntries) {
-    assert.ok(viteConfig.includes(`'${entry}'`), `missing optimizeDeps entry ${entry}`);
+    const ownerConfig = entry === dedicatedFixture ? dedicatedConfig : viteConfig;
+    assert.ok(ownerConfig.includes(`'${entry}'`), `missing optimizeDeps entry ${entry} in its Vite owner`);
   }
   assert.match(playwrightConfig, /workers:\s*1/);
+});
+
+test('field-source contexts acceptance binds its dedicated prewarm configuration and serial executor', () => {
+  const viteConfig = readFileSync(
+    new URL('vite.field-source-contexts.config.ts', browserFixtureRoot),
+    'utf8'
+  );
+  const executor = readFileSync(
+    new URL('../../verify-field-source-context-browser.mjs', browserFixtureRoot),
+    'utf8'
+  );
+  assert.match(viteConfig, /optimizeDeps:\s*\{\s*entries:\s*\[\s*'field-source-contexts\.e2e\.html'\s*\]/);
+  assert.match(executor, /configFile:\s*resolve\(root, 'scripts\/fixtures\/platform-browser\/vite\.field-source-contexts\.config\.ts'\)/);
+  assert.match(executor, /await page\.goto\(`\$\{baseURL\}\/field-source-contexts\.e2e\.html/);
+  assert.match(executor, /for \(const width of \[1440, 390\]\)/);
 });
 
 test('the platform package owns Web build verification policy', () => {
