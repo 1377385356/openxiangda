@@ -139,15 +139,22 @@ export function validateWorkflowNodeConfigurationPatch(node: WorkflowAdministrat
         const actualNode = conditionalContext.definition.nodes[conditionalContext.nodeId];
         if (!actualNode || !('binding' in actualNode) || actualNode.kind !== node.kind || actualNode.binding !== node.binding)
           errors.push('WORKFLOW_V2_NODE_CONFIGURATION_CONDITIONAL_CONTEXT_INVALID');
-        else errors.push(...validateWorkflowConditionalAssignment(value, {
-          ...conditionalContext,
-          definition: { ...conditionalContext.definition, nodes: {
-            ...conditionalContext.definition.nodes,
-            [conditionalContext.nodeId]: { ...actualNode, ...('mode' in actualNode ? { mode: patch.mode || actualNode.mode } : {}) },
-          } },
-          frozenDefault: binding as WorkflowBindingEntry,
-          standardProviders: allowed as WorkflowConditionalAssignmentContext['standardProviders'],
-        }));
+        else {
+          // The contextual published node, not a caller's presentation copy,
+          // owns editable providers, mode/operation ceilings and empty policy.
+          if ('emptyPolicy' in actualNode && actualNode.emptyPolicy === 'skip') errors.push('WORKFLOW_APPROVAL_EMPTY_PROVIDER_UNSUPPORTED');
+          errors.push(...validateWorkflowNodeConfigurationPatch(actualNode, undefined, { ...patch, assignee: undefined }, taskPages));
+          const contextualProviders = 'administration' in actualNode ? actualNode.administration?.assigneeProviders : undefined;
+          errors.push(...validateWorkflowConditionalAssignment(value, {
+            ...conditionalContext,
+            definition: { ...conditionalContext.definition, nodes: {
+              ...conditionalContext.definition.nodes,
+              [conditionalContext.nodeId]: { ...actualNode, ...('mode' in actualNode ? { mode: patch.mode || actualNode.mode } : {}) },
+            } },
+            frozenDefault: binding as WorkflowBindingEntry,
+            standardProviders: contextualProviders || ((actualNode.kind === 'approval' || actualNode.kind === 'handle') && WORKFLOW_CONFIGURABLE_PROVIDERS.includes(binding.provider as any) ? [binding.provider] : []) as WorkflowConditionalAssignmentContext['standardProviders'],
+          }));
+        }
       }
     } else {
       if (binding?.selectedInputPath && !['app_role', 'app_role_in_scope'].includes(value?.provider || '')) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_PROVIDER_READONLY');

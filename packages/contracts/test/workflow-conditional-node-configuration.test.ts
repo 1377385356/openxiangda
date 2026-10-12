@@ -62,3 +62,18 @@ test('CC, skip and a different graph node cannot authorize the same rule', () =>
     assert.ok(h.run().length, variant);
   }
 });
+
+
+test('a presentation copy cannot widen the contextual published node permissions or empty policy', () => {
+  const h = fixture();
+  const presentation: any = structuredClone(h.definition.nodes.review);
+  (h.definition.nodes.review as any).administration.assigneeProviders = ['fixed_users'];
+  assert.ok(validateWorkflowNodeConfigurationPatch(presentation, h.binding, h.patch, undefined, h.context).some(error => error.startsWith('WORKFLOW_CONDITIONAL_LEAF_UNRELEASED')));
+  (h.definition.nodes.review as any).administration.assigneeProviders = ['fixed_users', 'app_role'];
+  (h.definition.nodes.review as any).emptyPolicy = 'skip';
+  assert.ok(validateWorkflowNodeConfigurationPatch(presentation, h.binding, h.patch, undefined, h.context).includes('WORKFLOW_APPROVAL_EMPTY_PROVIDER_UNSUPPORTED'));
+  delete (h.definition.nodes.review as any).emptyPolicy;
+  h.patch.mode = 'sequence';
+  (h.definition.nodes.review as any).administration.modes = ['single'];
+  assert.ok(validateWorkflowNodeConfigurationPatch(presentation, h.binding, h.patch, undefined, h.context).includes('WORKFLOW_V2_NODE_CONFIGURATION_MODE_READONLY'));
+});
