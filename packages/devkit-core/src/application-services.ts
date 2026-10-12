@@ -10,6 +10,7 @@ import { operationStage, skippedOperationStage, updateOperationStage } from './o
 import { developmentLifecycle, summarizeLifecycle, lifecycleAtCommit, verifyBusinessAcceptance } from './development-lifecycle.js';
 import { runCommandProcess } from './command-process.js';
 import { compileLocalConfiguration } from './configuration-preflight.js';
+import { installedToolchainFacts, preflightIssueOwner } from './toolchain-facts.js';
 import { NativeConfigurationCompilerError, NATIVE_CONFIGURATION_VALIDATOR_DIGEST } from 'openxiangda-contracts/native-compiler';
 import {
   existsSync,
@@ -198,7 +199,7 @@ export class OpenXiangdaApplicationServices {
     return this.ok(
       "workspace.context",
       workspace.context.workspace,
-      { ...workspace.context, development: {
+      { ...workspace.context, toolchain: { ...workspace.context.toolchain, installed: installedToolchainFacts(workspace.root) }, development: {
         ...summarizeLifecycle(lifecycle),
         application: lifecycle.context.application ? { path: lifecycle.context.application.path, content: lifecycle.context.application.content } : null,
         records: [
@@ -1581,7 +1582,7 @@ export class OpenXiangdaApplicationServices {
     );
     const lifecycle = developmentLifecycle(workspace.root, this.appSpecContractIndex(workspace, false));
     const diagnostics = [
-      ...validateAppConfig(workspace.config),
+      ...validateAppConfig(workspace.config).map(issue => ({ ...issue, details: { ...issue.details, resolution: preflightIssueOwner(issue) } })),
       ...this.versionTrainDiagnostics(workspace),
       ...validateNestInjectionContract(workspace.root),
       ...validateNestControllerOperationContract(workspace.root),
@@ -2902,6 +2903,7 @@ export class OpenXiangdaApplicationServices {
         '按错误指针修正应用声明，运行 openxiangda check 复核', {
           pointer: error.pointer, identifiers: error.identifiers, validatorDigest: NATIVE_CONFIGURATION_VALIDATOR_DIGEST,
           validationOwner: 'local-shared-compiler',
+          resolution: preflightIssueOwner(error),
         });
     }
     const data =
@@ -2935,6 +2937,7 @@ export class OpenXiangdaApplicationServices {
       required,
       supported: [],
       ...data,
+      resolution: preflightIssueOwner({ code: (error as { code?: unknown })?.code, pointer }),
       ...(error instanceof ControlPlaneError && error.remote?.requestId ? { requestId: error.remote.requestId } : {}),
     };
     const diagnostic = this.diagnostic(
