@@ -553,7 +553,7 @@ export class OpenXiangdaApplicationServices {
     const codes=(workspace.config.workflows?.activations || []).map(item => item.workflowCode).filter(code => !workflowCode || workflowCode === code);
     if (workflowCode && !codes.length) throw new Error('WORKFLOW_SOURCE_DECLARATION_REQUIRED');
     const items=[];
-    for (const code of codes) { const item=workflowSourceDeclaration(workspace.config,code),lock=readWorkflowSourceLock(workspace.root,code);items.push(await client.workflowSourceStatus(workspace.config.app.code,code,environment,{ declared: { definitionDigest: item.definitionDigest,bindingDigest: item.bindingDigest },...(lock ? { base: lock.base } : {}) })); }
+    for (const code of codes) { const item=workflowSourceDeclaration(workspace.config,code),lock=readWorkflowSourceLock(workspace.root,code);items.push(await client.workflowSourceStatus(workspace.config.app.code,code,environment,{ declared: { definitionDigest: item.definitionDigest,bindingDigest: item.bindingDigest },...(lock ? { base: lock.base,originEnvironment: lock.origin.environmentKey } : {}) })); }
     return this.ok('workflow.status',workspace.context.workspace,{ environmentKey: environment,items });
   }
 

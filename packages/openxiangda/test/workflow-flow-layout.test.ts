@@ -118,3 +118,21 @@ test('parallel outline groups each branch body once and lets branch rows target 
   assert.equal(new Set(rows.map(row => row.id)).size,rows.length);
   assert.deepEqual(rows.filter(row => row.edgeId).map(row => row.nodeId),['fork','fork']);
 });
+
+test('designer parallel branch cards stay centred above their own approval cards', async () => {
+  const source=graph([{ id: 'fork',kind: 'parallel',title: 'Parallel',parallel: { joinNodeId: 'join',branchNodeIds: ['a','b'],branchCount: 2 } },{ id: 'a',kind: 'approval',title: 'A' },{ id: 'b',kind: 'approval',title: 'B' },{ id: 'join',kind: 'join',title: 'Together' }],
+    [{ ...edge('fork','a','branch'),parallelBranch: true },{ ...edge('fork','b','branch'),parallelBranch: true },edge('a','join'),edge('b','join')]);
+  const positions=await workflowFlowLayout(source,{ designer: true });
+  for (const route of source.edges.filter(route => route.parallelBranch)) {
+    const target=positions.nodes.get(route.to)!,label=positions.edges.get(route.id)!.label;
+    assert.equal(label.x,target.x+target.width/2);assert.equal(label.y,target.y-68);
+  }
+});
+
+test('an empty paired parallel region keeps two separate branch cards for inserting its first nodes', async () => {
+  const source=graph([{ id: 'fork',kind: 'parallel',title: 'Parallel',parallel: { joinNodeId: 'join',branchNodeIds: [],branchCount: 2 } },{ id: 'join',kind: 'join',title: 'Together' }],
+    [{ ...edge('fork','join','branch'),id: 'branch-one',parallelBranch: true },{ ...edge('fork','join','branch'),id: 'branch-two',parallelBranch: true }]);
+  const positions=await workflowFlowLayout(source,{ designer: true });
+  const first=positions.edges.get('branch-one')!.label,second=positions.edges.get('branch-two')!.label;
+  assert.ok(second.x-first.x >= 296);assert.equal(first.y,second.y);
+});

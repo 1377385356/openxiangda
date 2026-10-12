@@ -5,11 +5,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { canonicalJson,workflowSourceReferences,type WorkflowSourceBundle } from 'openxiangda-contracts';
-import { importWorkflowSource,prepareWorkflowSourceImport,writeWorkflowRegistrationPlan,rewriteWorkflowSourceConfig } from '../src/workflow-source-sync.js';
+import { importWorkflowSource,workflowSourceDeclaration,readWorkflowSourceLock,prepareWorkflowSourceImport,writeWorkflowRegistrationPlan,rewriteWorkflowSourceConfig } from '../src/workflow-source-sync.js';
 const digest=(value: unknown) => createHash('sha256').update(canonicalJson(value)).digest('hex');
 function fixture() {
   const root=mkdtempSync(join(tmpdir(),'workflow-source-')),path=join(root,'openxiangda.config.ts');
-  const definition: any={ schemaVersion: 'openxiangda.workflow-definition/v2',code: 'review',title: 'Review',acceptedCommandDeactivationPolicy: 'finish-pinned',subject: { resourceCode: 'requests',factProjection: {} },inputSchema: { type: 'object',additionalProperties: false,properties: {} },startAt: 'a',nodes: { a: { id: 'a',kind: 'approval',title: 'A',binding: 'people',mode: 'single',onApprove: 'done',onReject: 'done' },done: { id: 'done',kind: 'end',title: 'Done',outcome: 'approved' } } };
+  const definition: any={ schemaVersion: 'openxiangda.workflow-definition/v2',code: 'review',title: 'Review',acceptedCommandDeactivationPolicy: 'finish-pinned',subject: { resourceCode: 'requests',factProjection: {},summaryFields: [] },inputSchema: { type: 'object',additionalProperties: false,properties: {} },startAt: 'a',nodes: { a: { id: 'a',kind: 'approval',title: 'A',binding: 'people',mode: 'single',onApprove: 'done',onReject: 'done' },done: { id: 'done',kind: 'end',title: 'Done',outcome: 'approved' } } };
   const binding: any={ schemaVersion: 'openxiangda.workflow-binding/v2',workflowCode: 'review',bindings: { people: { provider: 'fixed_users',users: ['declared-person'] } } };
   const config: any={ app: { code: 'app' },workflows: { definitions: [{ version: 1,definition,launch: { mode: 'standalone' } }],bindings: [{ version: 1,binding }],activations: [{ workflowCode: 'review',definitionVersion: 1,bindingVersion: 1,acceptedCommandDeactivationPolicy: 'finish-pinned' }] } };
   const original=`const outside = { untouched: true };\nexport default { app: { code: 'app' }, workflows: ${JSON.stringify(config.workflows)} };\n`;
@@ -77,5 +77,32 @@ test('registration plans refuse a retained different-content version before file
     const retained=structuredClone(f.config.workflows.definitions[0]);retained.version=2;retained.definition.title='Retained';f.config.workflows.definitions.push(retained);
     assert.throws(() => writeWorkflowRegistrationPlan(f.root,f.path,f.config,[{ workflowCode: 'review',definition: { resolution: 'suggested',number: 2,digest: digest(f.config.workflows.definitions[0].definition) },binding: { resolution: 'existing',number: 1,digest: digest(f.bundle.binding) },observedHead: null }]),/LOCAL_VERSION_CONFLICT/);
     assert.equal(readFileSync(f.path,'utf8'),f.original);
+  } finally { rmSync(f.root,{ recursive: true,force: true }); }
+});
+
+test('a corrupted origin lock refuses source status rather than guessing an environment', () => {
+  const f=fixture();
+  try {
+    const imported=importWorkflowSource(f.root,f.path,f.config,f.bundle),lock=JSON.parse(readFileSync(imported.lockPath,'utf8'));
+    lock.origin.environmentKey='foreign';writeFileSync(imported.lockPath,JSON.stringify(lock));
+    assert.throws(() => readWorkflowSourceLock(f.root,'review'),/WORKFLOW_SOURCE_LOCK_INVALID/);
+  } finally { rmSync(f.root,{ recursive: true,force: true }); }
+});
+
+test('registration and import use the same definition normalisation as the sealed compiler', () => {
+  const f=fixture();
+  try {
+    delete f.config.workflows.definitions[0].definition.subject.summaryFields;
+    assert.equal(workflowSourceDeclaration(f.config,'review').definitionDigest,digest({ ...f.config.workflows.definitions[0].definition,subject: { ...f.config.workflows.definitions[0].definition.subject,summaryFields: [] } }));
+    assert.doesNotThrow(() => prepareWorkflowSourceImport(f.config,f.bundle));
+  } finally { rmSync(f.root,{ recursive: true,force: true }); }
+});
+
+test('source import only rewrites workflows owned by the exported application config', () => {
+  const f=fixture();
+  try {
+    assert.throws(() => rewriteWorkflowSourceConfig("const unrelated={app:{code:'app'},workflows:{}};export default {app:{code:'app'}};",f.path,f.config.workflows),/REWRITE_AMBIGUOUS/);
+    const linked=`const config={app:{code:'app'},workflows:{}};export default defineOpenXiangdaApp(config);`;
+    assert.ok(rewriteWorkflowSourceConfig(linked,f.path,f.config.workflows).includes('"definitions"'));
   } finally { rmSync(f.root,{ recursive: true,force: true }); }
 });

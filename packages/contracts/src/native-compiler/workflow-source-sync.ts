@@ -101,11 +101,12 @@ function validateSourceBundle(value: unknown,digest: (value: unknown) => string)
   }
   return [...new Set(errors)];
 }
-export function workflowSourceStatus(input: { declared: WorkflowSourceDigests; base?: WorkflowSourceDigests; head: WorkflowSourceDigests | null }): WorkflowSourceStatus {
+export function workflowSourceStatus(input: { declared: WorkflowSourceDigests; base?: WorkflowSourceDigests; activeDeclaration?: WorkflowSourceDigests; head: WorkflowSourceDigests | null }): WorkflowSourceStatus {
   if (!input.head) return 'not_active';
   if (equalPair(input.declared,input.head)) return 'in_sync';
-  if (input.base && equalPair(input.base,input.head)) return 'ahead';
-  return !input.base || equalPair(input.declared,input.base) ? 'behind' : 'diverged';
+  const base=input.base || input.activeDeclaration;
+  if (base && equalPair(base,input.head)) return 'ahead';
+  return !base || equalPair(input.declared,base) ? 'behind' : 'diverged';
 }
 /** The deployment job persists the resulting head revision; observations never modify package bytes. */
 export function classifyWorkflowSourceDeployment(input: { declared: WorkflowSourceDigests; base?: WorkflowSourceDigests; head: WorkflowSourceDigests | null; activeDeclaration?: WorkflowSourceDigests }): 'preserve' | 'reuse' | 'advance' | 'diverged' {
