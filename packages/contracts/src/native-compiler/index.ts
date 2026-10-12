@@ -86,3 +86,9 @@ export * from './workflow-source-sync.js';
 
 export * from './application-agent.js';
 export * from './field-value-schemas.js';
+
+export * from "./workflow-authoring.js";
+
+export * from "./workflow-expression.js";
+
+export * from "./workflow-return-eligibility.js";

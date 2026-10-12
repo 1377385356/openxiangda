@@ -838,11 +838,11 @@ export function compileRequiredPlatformCapabilitiesV3(
       ? [{ code: 'workflow.task-rich-fields' as const, declaration: taskRichFieldDefinitions }] : []),
     ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.taskPages || {}).some((page: any) => page.fields.some((field: any) => field.subtable)))
       ? [{ code: 'workflow.task-owned-subtables' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.taskPages || {}).some((page: any) => page.fields.some((field: any) => field.subtable))) }] : []),
-    ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action' && !isWorkflowPlatformNotify(node)))
-      ? [{ code: 'workflow.durable-business-step' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action' && !isWorkflowPlatformNotify(node))) }]
+    ...(config.workflows.definitions.some((item: JsonObject) => (item.definition.authoring?.businessSteps?.length || Object.values(item.definition.nodes).some((node: any) => node.kind === 'action' && !isWorkflowPlatformNotify(node))))
+      ? [{ code: 'workflow.durable-business-step' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => (item.definition.authoring?.businessSteps?.length || Object.values(item.definition.nodes).some((node: any) => node.kind === 'action' && !isWorkflowPlatformNotify(node)))) }]
       : []),
-    ...(config.workflows.definitions.some((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action' && node.handler.dataTransaction))
-      ? [{ code: 'workflow.step-data-transaction' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => Object.values(item.definition.nodes).some((node: any) => node.kind === 'action' && node.handler.dataTransaction)) }]
+    ...(config.workflows.definitions.some((item: JsonObject) => [...Object.values(item.definition.nodes), ...item.definition.authoring?.businessSteps || []].some((node: any) => node.handler?.dataTransaction))
+      ? [{ code: 'workflow.step-data-transaction' as const, declaration: config.workflows.definitions.filter((item: JsonObject) => [...Object.values(item.definition.nodes), ...item.definition.authoring?.businessSteps || []].some((node: any) => node.handler?.dataTransaction)) }]
       : []),
     ...(config.workflows.bindings.some((item: JsonObject) => Object.values(item.binding.bindings).some((entry: any) => entry.routing !== undefined))
       ? [{ code: 'workflow.assignment-routing' as const, declaration: config.workflows.bindings.filter((item: JsonObject) => Object.values(item.binding.bindings).some((entry: any) => entry.routing !== undefined)) }]
@@ -7253,7 +7253,7 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
       'nodes',
     ],
     pointer,
-    ['organizationContext', 'instanceCommands', 'readability', 'taskPages', 'rejectionNotification', 'commandHandlers', 'launchPreflight', 'approvedDelegation']
+    ['authoring', 'organizationContext', 'instanceCommands', 'readability', 'taskPages', 'rejectionNotification', 'commandHandlers', 'launchPreflight', 'approvedDelegation']
   );
   equal(
     definition.schemaVersion,

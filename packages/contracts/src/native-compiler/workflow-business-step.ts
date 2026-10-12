@@ -92,6 +92,7 @@ export interface WorkflowBusinessStepRecoveryPreview {
 }
 
 type Definition = {
+  authoring?: { businessSteps?: Array<Record<string,any>> };
   code?: string;
   startAt?: string;
   inputSchema?: Record<string, any>;
@@ -262,12 +263,29 @@ function expressionPaths(value: unknown, depth = 0): string[] {
   );
 }
 
+/** Handler declarations not yet placed on a graph still need a released execution contract. */
+export function validateWorkflowAuthoringSteps(definition: Definition): string[] {
+  if (definition.authoring === undefined) return [];
+  const authoring=definition.authoring;
+  if (!record(authoring) || Object.keys(authoring).some(key=>key!=='businessSteps') || authoring.businessSteps !== undefined && (!Array.isArray(authoring.businessSteps) || authoring.businessSteps.length>100)) return ['WORKFLOW_AUTHORING_CATALOG_INVALID'];
+  const errors:string[]=[], codes=new Set<string>();
+  for(const step of authoring.businessSteps || []) {
+    const handler=step?.handler;
+    if(!record(step)||Object.keys(step).some(key=>!['title','handler','inputSchema','outputSchema'].includes(key))||typeof step.title!=='string'||!step.title.trim()||step.title.length>160||
+      !record(handler)||Object.keys(handler).some(key=>!['code','version','mode','dataTransaction'].includes(key))||!Number.isSafeInteger(handler.version)||handler.version<1||handler.version>1000000||
+      !/^[a-z][a-z0-9-]{0,100}$/.test(handler.code||'')||!handler.code.endsWith(`-v${handler.version}`)||!['pure','reconciled-effect'].includes(handler.mode)||handler.dataTransaction!==undefined&&(handler.dataTransaction!==true||handler.mode!=='reconciled-effect')||
+      !validateWorkflowBusinessStepSchema(step.inputSchema)||!validateWorkflowBusinessStepSchema(step.outputSchema)||codes.has(handler.code)) errors.push('WORKFLOW_AUTHORING_STEP_INVALID');
+    if(handler?.code)codes.add(handler.code);
+  }
+  return errors;
+}
+
 export function validateWorkflowBusinessSteps(definition: Definition, binding?: { bindings?: Record<string, Record<string, any>> }): string[] {
   if (!record(definition) || !record(definition.nodes)) return ['WORKFLOW_STEP_DEFINITION_INVALID'];
   const nodes = definition.nodes;
   const actions = Object.entries(nodes).filter(([, node]) => node?.kind === 'action');
   if (!actions.length) return [];
-  const errors: string[] = [...validateWorkflowPlatformNotify(definition)];
+  const errors: string[] = [...validateWorkflowPlatformNotify(definition), ...validateWorkflowAuthoringSteps(definition)];
   if (Object.hasOwn(definition.inputSchema?.properties || {}, 'steps')) errors.push('WORKFLOW_STEP_FACT_NAMESPACE_RESERVED');
   const factSchema = workflowBusinessStepFactSchema(definition);
   for (const [id, node] of actions) {
@@ -372,8 +390,8 @@ export function compileWorkflowBusinessStepHandlers(definitions: readonly Defini
   for (const definition of definitions) {
     const errors = validateWorkflowBusinessSteps(definition);
     if (errors.length) throw new Error(errors.join('; '));
-    for (const node of Object.values(definition.nodes || {})) {
-      if (node.kind !== 'action' || isWorkflowPlatformNotify(node)) continue;
+    for (const node of [...Object.values(definition.nodes || {}), ...definition.authoring?.businessSteps || []]) {
+      if (!node.handler || isWorkflowPlatformNotify(node)) continue;
       const contract = { version: node.handler.version, mode: node.handler.mode,
         ...(node.handler.dataTransaction ? { dataTransaction: true as const } : {}), inputSchema: node.inputSchema, outputSchema: node.outputSchema };
       const previous = result[node.handler.code];

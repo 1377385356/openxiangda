@@ -3643,3 +3643,34 @@
 .oxa-workflow-node.designer-node.kind-join .oxa-workflow-node-icon { width:22px;height:22px;font-size:14px; }
 .oxa-workflow-node.designer-node.kind-join .oxa-workflow-node-copy strong { font-size:12px;font-weight:500; }
 .oxa-designer-inspector-icon.kind-parallel,.oxa-designer-outline .kind-parallel { color:#1677ff; }
+
+.oxa-workflow-reminder-editor { padding:16px;border:1px solid #dce5f0;border-radius:6px;background:#fff; }
+.oxa-workflow-reminder-editor h3 { margin:0 0 14px;font-size:14px;color:#1c293b; }
+.oxa-workflow-reminder-fields { display:grid;gap:14px;margin-top:16px; }
+.oxa-workflow-reminder-fields > div { display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:#64748b;font-size:12px; }
+.oxa-workflow-reminder-fields .ant-input-number { width:78px; }
+.oxa-workflow-reminder-fields .ant-select { width:76px; }
+.oxa-workflow-reminder-fields .ant-space-compact { flex-shrink:0; }
+.oxa-workflow-reminder-summary { margin:0;padding:10px 12px;background:#f5f8fc;border-radius:4px;color:#3d597b;font-size:12px;line-height:1.7; }
+.oxa-workflow-reminder-editor > footer { display:flex;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid #e8edf3; }
+
+/* Capability configuration follows the inspector design, not a template picker. */
+.oxa-workflow-people-sources { display: grid; gap: 12px; }
+.oxa-workflow-people-sources > label { display: grid; gap: 8px; }
+.oxa-designer-business-step h3 { font-size: 14px; margin: 24px 0 12px; }
+.oxa-designer-business-step > p { color: var(--oxa-color-text-secondary); font-size: 13px; line-height: 1.7; }
+.oxa-designer-step-catalog { display: grid; gap: 8px; margin-top: 12px; max-height: 260px; overflow-y: auto; }
+.oxa-designer-step-catalog button { display: flex; align-items: center; gap: 12px; min-height: 48px; background: #fff; border: 1px solid #dce4ee; border-radius: 6px; padding: 10px 12px; text-align: left; cursor: pointer; }
+.oxa-designer-step-catalog button[aria-pressed=true] { border-color: #1677ff; background: #eff6ff; }
+.oxa-designer-step-catalog button > strong { flex: 1; }
+.oxa-designer-step-catalog button > .anticon { color: #1677ff; }
+.oxa-designer-business-step .oxa-workflow-operation-table td:last-child { min-width: 220px; }
+.oxa-designer-business-step .oxa-workflow-operation-table .ant-select { width: 100%; margin-bottom: 6px; }
+.oxa-designer-required { color: #d4380d; }
+.oxa-designer-condition-examples > p { color: var(--oxa-color-text-secondary); font-size: 12px; line-height: 1.6; }
+.oxa-designer-condition-examples article { margin: 12px 0; padding: 12px; background: #f7f9fc; border: 1px solid #e4eaf2; border-radius: 6px; }
+.oxa-designer-condition-examples article > header { display: flex; gap: 8px; margin-bottom: 12px; }
+.oxa-designer-example-fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+.oxa-designer-example-fields label { display: grid; gap: 6px; font-size: 12px; }
+.oxa-designer-example-fields .ant-input-number { width: 100%; }
+.oxa-designer-condition-examples article > p { margin: 12px 0 0; color: #1677ff; }

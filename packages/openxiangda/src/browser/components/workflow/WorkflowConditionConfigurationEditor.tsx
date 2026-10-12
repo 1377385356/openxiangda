@@ -1,3 +1,4 @@
+import { WorkflowConditionExamples } from './WorkflowConditionExamples';
 import { useEffect, useState } from 'react';
 import { Alert, Button, Input, Select, Tag } from 'antd';
 import { ArrowRightOutlined, ArrowLeftOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
@@ -45,6 +46,7 @@ export function WorkflowConditionConfigurationEditor({ node, variables, targets,
     <p className="oxa-designer-condition-description">{formatWorkflowExpression(branch.when, variables)}</p>
     <label>满足条件后进入<Select aria-label={`分支 ${active + 1} 目标`} disabled={disabled} value={branch.target} options={targets} onChange={target => patchBranch({ target })} /></label>
     <label>其他情况<Select aria-label="其他情况目标" disabled={disabled} value={node.otherwise} options={targets} onChange={otherwise => onChange({ ...node, otherwise })} /></label>
+    <WorkflowConditionExamples node={node} variables={variables} />
     <p>此配置属于流程草稿，发布并启用后生效。</p>
   </section>;
 }

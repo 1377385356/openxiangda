@@ -1,7 +1,7 @@
 import { Checkbox, Select } from 'antd';
 import { RightOutlined, WarningOutlined } from '@ant-design/icons';
 import type { WorkflowReturnPolicy, WorkflowReturnTargetPolicy, WorkflowDefinition, WorkflowHumanNode } from 'openxiangda-contracts/browser';
-import { projectWorkflowGraph, workflowReturnTargets, workflowReturnTargetPolicy } from 'openxiangda-contracts/browser';
+import { workflowReturnEligibility, projectWorkflowGraph, workflowReturnTargets, workflowReturnTargetPolicy } from 'openxiangda-contracts/browser';
 
 const routeChoices = [{ value: 'replay', label: '重新按流程审批' }, { value: 'resume', label: '直接回到本节点' }];
 
@@ -30,17 +30,19 @@ export function WorkflowReturnPolicyEditor({ definition, node, disabled, onChang
     <p>退回后申请继续，并开启新一轮办理。为每个目标选择重新提交后的继续方式。</p>
     {!candidates.length && <p>当前流程没有可配置的退回目标。</p>}
     {candidates.map(candidate => {
+      const eligibility=workflowReturnEligibility(definition,node.id,candidate.id);
       const target = targets.find(target => target.nodeId === candidate.id);
       const path = target ? examplePath(definition, candidate.id, node.id) : [];
       const title = candidate.kind === 'correction' ? `${candidate.title || '补正'}（发起人）` : candidate.title || '办理节点';
       return <article key={candidate.id} className={`oxa-designer-return-target ${target ? 'enabled' : ''}`}>
         <header>
-          <Checkbox aria-label={`允许退回到${title}`} checked={!!target} disabled={disabled || !target && targets.length >= 20} onChange={event => onChange({ targets: event.target.checked ? [...targets, { nodeId: candidate.id, routes: ['replay','resume'], defaultRoute: 'replay' }] : targets.filter(target => target.nodeId !== candidate.id) })}>{title}</Checkbox>
+          <Checkbox aria-label={`允许退回到${title}`} checked={!!target} disabled={disabled || !target && (!eligibility.allowed || targets.length >= 20)} onChange={event => onChange({ targets: event.target.checked ? [...targets, { nodeId: candidate.id, routes: ['replay','resume'], defaultRoute: 'replay' }] : targets.filter(target => target.nodeId !== candidate.id) })}>{title}</Checkbox>
           <label>重新提交后<Select aria-label={`${title}重新提交后的方式`} disabled={disabled || !target} value={target?.defaultRoute} options={routeChoices} onChange={defaultRoute => update(candidate.id, { defaultRoute, routes: target!.routes.length > 1 ? target!.routes : [defaultRoute] })} placeholder="请选择" /></label>
         </header>
+        {!eligibility.allowed && <p className="oxa-workflow-config-help">{eligibility.reason}{target && '（请取消此退回目标后再发布）'}</p>}
         {target && <>
           {path.length > 0 && <div className="oxa-designer-return-path" aria-label="示例路径"><small>示例路径</small>{path.slice(0, 12).map((id, index) => <span key={id}>{index > 0 && <RightOutlined />}<span className={target.defaultRoute === 'resume' && index > 0 && index < path.length - 1 ? 'skipped' : ''}>{definition.nodes[id]?.title || '节点'}</span></span>)}{path.length > 12 && <span>…</span>}</div>}
-          <p className="oxa-designer-return-warning"><WarningOutlined />{target.defaultRoute === 'resume' ? '跳过中间节点，直接回到本节点，并记入审批记录。' : '重新经过后续节点，业务步骤按应用的执行规则处理。'}</p>
+          <p className="oxa-designer-return-warning"><WarningOutlined />{target.defaultRoute === 'resume' ? '跳过示例路径中的中间节点，直接回到本节点，并记入审批记录；输入变化时仍会自动改为重新审批。' : '重新经过后续节点，业务步骤按应用的执行规则处理。'}</p>
           <Checkbox checked={target.routes.length > 1} disabled={disabled} onChange={event => update(candidate.id, { routes: event.target.checked ? ['replay','resume'] : [target.defaultRoute] })}>办理时允许调整继续方式</Checkbox>
         </>}
       </article>;

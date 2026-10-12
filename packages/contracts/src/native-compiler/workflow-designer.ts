@@ -1,3 +1,4 @@
+import { workflowAuthoringCatalog, workflowCanvasBindingKey, validateWorkflowCanvasHuman, validateWorkflowCanvasBinding, type WorkflowDesignerCatalog } from "./workflow-authoring.js";
 import { inspectWorkflowParallel, validateWorkflowParallel } from './workflow-parallel.js';
 import { validateWorkflowSupervisorChains } from './workflow-supervisor-chain.js';
 import { validateWorkflowReminders } from './workflow-reminders.js';
@@ -21,6 +22,9 @@ export interface WorkflowDesignerDraft {
   binding: WorkflowBinding;
   publishedDefinition: WorkflowDefinition;
   publishedBinding: WorkflowBinding;
+  capabilities?: WorkflowDesignerCatalog;
+  diagnostics?: string[];
+  publishable?: boolean;
   updatedAt?: string;
   updatedBy?: string;
 }
@@ -71,17 +75,18 @@ export function workflowDesignerTargets(node: Record<string, any>): string[] {
 }
 
 /** The canvas can route released capabilities; it cannot invent a business validator, page or handler. */
-export function validateWorkflowDesignerCapabilities(base: WorkflowDefinition, next: WorkflowDefinition, baseBinding: WorkflowBinding, nextBinding: WorkflowBinding): string[] {
+export function validateWorkflowDesignerCapabilities(base: WorkflowDefinition, next: WorkflowDefinition, baseBinding: WorkflowBinding, nextBinding: WorkflowBinding, options: { catalog?: WorkflowDesignerCatalog; allowIncomplete?: boolean } = {}): string[] {
   const errors: string[] = [...validateWorkflowReminders(next),...validateWorkflowSupervisorChains(next,nextBinding)];
   if (!record(next) || !record(next.nodes) || !record(nextBinding?.bindings)) return ['WORKFLOW_DESIGNER_DOCUMENT_INVALID'];
   const editable = new Set(['title', 'startAt', 'nodes', 'readability']);
   for (const key of new Set([...Object.keys(base), ...Object.keys(next)])) if (!editable.has(key) && !same((base as any)[key], (next as any)[key])) errors.push(`WORKFLOW_DESIGNER_CODE_OWNED:${key}`);
   if (baseBinding.workflowCode !== nextBinding.workflowCode || baseBinding.schemaVersion !== nextBinding.schemaVersion) errors.push('WORKFLOW_DESIGNER_BINDING_IDENTITY');
-  const steps = Object.values(base.nodes).filter(node => node.kind === 'action');
+  const catalog = options.catalog || workflowAuthoringCatalog(base, baseBinding);
+  const steps = catalog.steps;
   for (const [id, node] of Object.entries(next.nodes)) {
     if (!record(node) || node.id !== id || !['approval', 'handle', 'condition', 'cc', 'action', 'correction', 'end', 'parallel', 'join'].includes(node.kind)) { errors.push(`WORKFLOW_DESIGNER_NODE_INVALID:${id}`); continue; }
-    if ('taskPageCode' in node && node.taskPageCode && !base.taskPages?.[node.taskPageCode]) errors.push(`WORKFLOW_DESIGNER_PAGE_UNRELEASED:${id}`);
-    if (node.kind === 'action' && !isWorkflowPlatformNotify(node) && !steps.some(step => step.kind === 'action' && same(step.handler, node.handler) && same(step.inputs, node.inputs) && same(step.outputSchema, node.outputSchema))) errors.push(`WORKFLOW_DESIGNER_STEP_UNRELEASED:${id}`);
+    if ('taskPageCode' in node && node.taskPageCode && !catalog.taskPages[node.taskPageCode]) errors.push(`WORKFLOW_DESIGNER_PAGE_UNRELEASED:${id}`);
+    if (node.kind === 'action' && !isWorkflowPlatformNotify(node) && !steps.some(step => same(step.handler, node.handler) && same(step.inputSchema, node.inputSchema) && same(step.outputSchema, node.outputSchema))) errors.push(`WORKFLOW_DESIGNER_STEP_UNRELEASED:${id}`);
     if (['approval','handle'].includes(node.kind) && 'allowedOperations' in node && node.allowedOperations && (!Array.isArray(node.allowedOperations) || !node.allowedOperations.includes(node.kind === 'handle' ? 'complete' : 'approve'))) errors.push(`WORKFLOW_DESIGNER_REQUIRED_ACTION:${id}.approve`);
     const original = base.nodes[id] || (node.kind === 'approval' || node.kind === 'handle' ? Object.values(base.nodes).find(template => {
       if (template.kind !== node.kind || !['approval','handle'].includes(template.kind) || !['fieldPolicy','administration','requiredOperations','taskPageCode'].every(key => same((template as any)[key],(node as any)[key]))) return false;
@@ -93,7 +98,7 @@ export function validateWorkflowDesignerCapabilities(base: WorkflowDefinition, n
         return same(policy?.minimumOpinion,nextPolicy?.minimumOpinion) && ranks.indexOf(workflowOperationOpinion(operation,nextPolicy)) >= ranks.indexOf(workflowOperationMinimumOpinion(operation,policy));
       });
     }) : undefined);
-    if (!original && (node.kind === 'approval' || node.kind === 'handle')) errors.push(`WORKFLOW_DESIGNER_APPROVAL_TEMPLATE_REQUIRED:${id}`);
+    if (!original && ['approval', 'handle', 'cc'].includes(node.kind)) { if ('binding' in node && node.binding !== workflowCanvasBindingKey(id)) errors.push(`WORKFLOW_DESIGNER_APPROVAL_TEMPLATE_REQUIRED:${id}`);else errors.push(...validateWorkflowCanvasHuman(node, catalog).map(error => `${error}:${id}`)); }
     if ((original?.kind === 'approval' || original?.kind === 'handle') && (node.kind === 'approval' || node.kind === 'handle')) {
       if (node.mode !== original.mode && !original.administration?.modes?.includes(node.mode)) errors.push(`WORKFLOW_DESIGNER_MODE_NOT_ALLOWED:${id}`);
       for (const key of ['requiredOperations', 'fieldPolicy', 'administration'] as const) if (!same(original[key], node[key])) errors.push(`WORKFLOW_DESIGNER_CODE_OWNED:${id}.${key}`);
@@ -109,10 +114,12 @@ export function validateWorkflowDesignerCapabilities(base: WorkflowDefinition, n
   if (!same(base.readability?.logic, next.readability?.logic)) errors.push('WORKFLOW_DESIGNER_CODE_OWNED:readability.logic');
   for (const [key, entry] of Object.entries(nextBinding.bindings)) {
     const original = baseBinding.bindings[key];
-    if (!original && !Object.values(baseBinding.bindings).some(value => same(value, entry))) errors.push(`WORKFLOW_DESIGNER_BINDING_UNRELEASED:${key}`);
+    const owner = Object.values(next.nodes).find(node => 'binding' in node && node.binding === key && key === workflowCanvasBindingKey(node.id));
+    if (!original && owner) errors.push(...validateWorkflowCanvasBinding(entry, catalog, options.allowIncomplete).map(error => `${error}:${key}`));
+    else if (!original && !Object.values(baseBinding.bindings).some(value => same(value, entry))) errors.push(`WORKFLOW_DESIGNER_BINDING_UNRELEASED:${key}`);
     if (original && !same(original, entry)) errors.push(`WORKFLOW_DESIGNER_BINDING_CODE_OWNED:${key}`);
   }
-  errors.push(...validateWorkflowDesignerDocument(next));
+  if (!options.allowIncomplete) errors.push(...validateWorkflowDesignerDocument(next));
   return [...new Set(errors)];
 }
 

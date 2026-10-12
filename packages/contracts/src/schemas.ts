@@ -5769,6 +5769,16 @@ export const workflowDefinitionSchema = {
   ],
   properties: {
     schemaVersion: { const: SCHEMA_VERSIONS.workflowDefinition },
+    authoring: {
+      type: 'object', additionalProperties: false, properties: {
+        businessSteps: { type: 'array', maxItems: 100, items: {
+          type: 'object', additionalProperties: false, required: ['title', 'handler', 'inputSchema', 'outputSchema'],
+          properties: { title: {type:'string',minLength:1,maxLength:160},
+            handler: {type:'object',additionalProperties:false,required:['code','version','mode'],properties:{code:{type:'string',pattern:'^[a-z][a-z0-9_-]{0,127}$'},version:{type:'integer',minimum:1},mode:{enum:['pure','reconciled-effect']},dataTransaction:{const:true}}},
+            inputSchema: {type:'object'}, outputSchema: {type:'object'} }
+        } }
+      }
+    },
     code: { type: "string", pattern: "^[A-Za-z][A-Za-z0-9_-]{0,127}$" },
     title: nonEmptyString,
     launchPreflight: {

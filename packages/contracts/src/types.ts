@@ -2518,6 +2518,8 @@ export type WorkflowNode =
   | WorkflowBusinessStepNode;
 
 export interface WorkflowDefinition {
+  /** Source-owned capabilities available to the canvas, including unused handlers. */
+  authoring?: import("./native-compiler/workflow-authoring.js").WorkflowAuthoring;
   schemaVersion: typeof SCHEMA_VERSIONS.workflowDefinition;
   code: string;
   title: string;

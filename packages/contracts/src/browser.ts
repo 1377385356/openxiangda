@@ -65,3 +65,9 @@ export * from './native-compiler/workflow-parallel.js';
 export type { WorkflowSourceBundle, WorkflowSourceLock, WorkflowSourceDigests, WorkflowRegistrationPlan } from './native-compiler/workflow-source-sync.js';
 
 export * from './application-agent.js';
+
+export * from "./native-compiler/workflow-authoring.js";
+
+export * from "./native-compiler/workflow-expression.js";
+
+export * from "./native-compiler/workflow-return-eligibility.js";
