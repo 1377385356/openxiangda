@@ -14,6 +14,8 @@ import {
   createAdminInformationArchitecture,
   firstAllowedAdminPath,
   isAdminPageAllowed,
+  isAdminNavigationItemAllowed,
+  resolveAdminEntry,
 } from '../src/react';
 
 test('exports the typed admin navigation authoring helpers', () => {
@@ -177,4 +179,71 @@ test('keeps standard resource details and list values visually neutral', () => {
   assert.match(resourceSource, /aria-label="新增"/);
   assert.match(resourceSource, /type === 'number\.integer' \|\| field\.type === 'number\.decimal'/);
   assert.match(fieldSource, /return <WorkflowPlainReferenceValue value=\{value\} \/>/);
+});
+
+
+const menuCapability = 'app:demo:ui:members-menu';
+
+function navigationWithItemAccess(access: { allOf?: readonly string[]; anyOf?: readonly string[] }) {
+  return [{ ...navigation[0], items: [
+    { ...navigation[0].items[0], access },
+    navigation[0].items[1],
+  ] }];
+}
+
+test('menu access can hide an authorized page without denying its deep link', () => {
+  const architecture = createAdminInformationArchitecture(pages, navigationWithItemAccess({ allOf: [menuCapability] }));
+  const page = architecture.pagesByCode.get('resource:members:list')!;
+  const item = architecture.navigation[0]!.items[0]!;
+  const hasCapability = () => false;
+  const hasReadCapability = (capability: string) => capability === page.capability;
+  assert.equal(isAdminPageAllowed(page, hasCapability, hasReadCapability), true);
+  assert.equal(isAdminNavigationItemAllowed(item, page, hasCapability, hasReadCapability), false);
+  assert.equal(firstAllowedAdminPath(architecture, hasCapability, hasReadCapability, route => route === 'member-import'),
+    '/admin/operations/member-import');
+  const onlyHidden = createAdminInformationArchitecture(pages, [{ ...architecture.navigation[0]!, items: [item] }]);
+  assert.deepEqual(resolveAdminEntry(onlyHidden, hasCapability, hasReadCapability), { kind: 'forbidden' });
+});
+
+test('menu capability never replaces page read authority or operation route closure', () => {
+  const architecture = createAdminInformationArchitecture(pages, navigationWithItemAccess({ anyOf: [menuCapability] }));
+  const item = architecture.navigation[0]!.items[0]!;
+  const page = architecture.pagesByCode.get(item.pageCode)!;
+  assert.equal(isAdminNavigationItemAllowed(item, page, capability => capability === menuCapability, () => false), false);
+  assert.equal(isAdminNavigationItemAllowed({ ...item, pageCode: 'resource:wrong:list' }, page, () => true, () => true), false);
+  const operation = architecture.pagesByCode.get('operation:member-import')!;
+  const operationItem = { pageCode: operation.code, order: 0, access: { allOf: [menuCapability] } };
+  assert.equal(isAdminNavigationItemAllowed(operationItem, operation, () => true, () => true, () => false), false);
+  assert.equal(isAdminNavigationItemAllowed(operationItem, operation, () => true, () => true, () => true), true);
+});
+
+test('menu allOf and anyOf use current platform capabilities and observe revocation', () => {
+  const other = 'app:demo:ui:members-secondary-menu';
+  const architecture = createAdminInformationArchitecture(pages, navigationWithItemAccess({
+    allOf: [menuCapability], anyOf: [other, 'app:demo:ui:members-alternate-menu'],
+  }));
+  const item = architecture.navigation[0]!.items[0]!;
+  const page = architecture.pagesByCode.get(item.pageCode)!;
+  const grants = new Set([menuCapability]);
+  const hasCapability = (capability: string) => grants.has(capability);
+  assert.equal(isAdminNavigationItemAllowed(item, page, hasCapability, () => true), false);
+  grants.add(other);
+  assert.equal(isAdminNavigationItemAllowed(item, page, hasCapability, () => true), true);
+  grants.delete(menuCapability);
+  assert.equal(isAdminNavigationItemAllowed(item, page, hasCapability, () => true), false);
+  assert.equal(isAdminPageAllowed(page, hasCapability, () => true), true);
+});
+
+test('navigation copies and freezes access arrays and leaves old items unchanged', () => {
+  const original = [menuCapability];
+  const architecture = createAdminInformationArchitecture(pages, navigationWithItemAccess({ allOf: original }));
+  const item = architecture.navigation[0]!.items[0]!;
+  original.push('app:demo:ui:unexpected');
+  assert.deepEqual(item.access, { allOf: [menuCapability] });
+  assert.equal(Object.isFrozen(item.access), true);
+  assert.equal(Object.isFrozen(item.access?.allOf), true);
+  assert.throws(() => (item.access!.allOf! as string[]).push('app:demo:ui:unexpected'), TypeError);
+  assert.deepEqual(architecture.navigation[0]!.items[1], navigation[0].items[1]);
+  const legacy = createAdminInformationArchitecture(pages, navigation);
+  assert.equal(firstAllowedAdminPath(legacy, () => false, () => true), '/admin/resources/members');
 });

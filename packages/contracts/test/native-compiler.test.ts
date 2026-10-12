@@ -418,3 +418,52 @@ test('source-base metadata is optional and is sealed identically in ESM and CJS'
     assert.throws(() => implementation.compileNativeApplicationConfiguration(compileInput()),/NATIVE_WORKFLOW_SOURCE_BASE_INVALID/);
   }
 });
+
+
+function nativeNavigationAccessInput(access: unknown, generatedAccess: unknown = access) {
+  const config = JSON.parse(corpus.configuration.canonical);
+  config.frontend.admin.navigation[0].items[0].access = access;
+  const contract = JSON.parse(corpus.contract.canonical);
+  contract.configDigest = sha256Digest(config);
+  if (generatedAccess !== undefined) contract.adminNavigation[0].items[0].access = generatedAccess;
+  return { ...input(config), contractBytes: canonicalJson(contract), expectedContractDigest: sha256Digest(contract) };
+}
+
+const nativeNavigationRead = `app:${corpus.appCode}:data:records-01:read`;
+const nativeNavigationUpdate = `app:${corpus.appCode}:data:records-01:update`;
+
+test('ESM and CJS validate and seal optional menu access with a new platform requirement', () => {
+  const sourceAccess = { allOf: [nativeNavigationUpdate, nativeNavigationRead], anyOf: [nativeNavigationRead] };
+  const generatedAccess = { allOf: [nativeNavigationRead, nativeNavigationUpdate], anyOf: [nativeNavigationRead] };
+  const results = [esm, cjs].map(implementation => {
+    assert.equal(implementation.PLATFORM_CAPABILITY_CONTRACT_VERSIONS['application.admin-navigation-item-access'], '1.0.0');
+    const oldResult = implementation.compileNativeApplicationConfiguration(input());
+    assert.equal(oldResult.requiredPlatformCapabilities.some(item => item.code === 'application.admin-navigation-item-access'), false);
+    const result = implementation.compileNativeApplicationConfiguration(nativeNavigationAccessInput(sourceAccess, generatedAccess));
+    assert.equal(result.requiredPlatformCapabilities.find(item => item.code === 'application.admin-navigation-item-access')?.contractVersion, '1.0.0');
+    return result;
+  });
+  assert.deepEqual(results[0], results[1]);
+});
+
+test('both compiler formats reject malformed, unknown and stripped menu access', () => {
+  const malformed: unknown[] = [null, [], {}, { allOf: [] }, { allOf: 'invalid', anyOf: [nativeNavigationRead] },
+    { anyOf: [nativeNavigationRead], roleCode: 'admin' }, { anyOf: [nativeNavigationRead, nativeNavigationRead] },
+    { allOf: [nativeNavigationRead], anyOf: null }, { anyOf: ['invalid'] },
+    { anyOf: Array.from({ length: 51 }, () => nativeNavigationRead) }];
+  for (const implementation of [esm, cjs]) {
+    for (const access of malformed) {
+      assert.throws(() => implementation.compileNativeApplicationConfiguration(nativeNavigationAccessInput(access)),
+        error => typeof error === 'object' && error !== null && String((error as { pointer?: string }).pointer).includes('/config/frontend/admin/navigation/0/items/0/access'));
+    }
+    for (const key of ['allOf', 'anyOf'] as const) {
+      assert.throws(() => implementation.compileNativeApplicationConfiguration(nativeNavigationAccessInput({ [key]: [`app:${corpus.appCode}:ui:unknown-menu`] })),
+        /NATIVE_CAPABILITY_REFERENCE_MISSING/);
+    }
+    const tampered = nativeNavigationAccessInput({ allOf: [nativeNavigationRead] });
+    const contract = JSON.parse(tampered.contractBytes);
+    delete contract.adminNavigation[0].items[0].access;
+    assert.throws(() => implementation.compileNativeApplicationConfiguration({ ...tampered,
+      contractBytes: canonicalJson(contract), expectedContractDigest: sha256Digest(contract) }), /NATIVE_CONTRACT_CLOSURE_MISMATCH/);
+  }
+});

@@ -9,6 +9,9 @@ export * from './field-physical-plan.js';
 export * from './scope-source-field-path.js';
 export * from './field-query-path.js';
 export * from './compiler.js';
+
+/** Runtime metadata shared by ESM and CommonJS platform consumers. */
+export { PLATFORM_CAPABILITY_CONTRACT_VERSIONS } from '../native-version.js';
 export * from './data-policy-expression.js';
 export * from './workflow-instance-policy.js';
 export * from './workflow-graph.js';

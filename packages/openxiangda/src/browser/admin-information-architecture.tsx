@@ -1,10 +1,12 @@
 import type {
   AppAdminNavigationGroupContract,
+  AppAdminNavigationItemContract,
   AppAdminPageContract,
   AppRouteManifestEntryV3,
 } from 'openxiangda-contracts/browser';
 import { createContext, useContext, type ReactNode } from 'react';
 import type { DeepReadonly } from './components/resource/generated-resource-definition';
+import { isAdminAccessAllowed } from './admin-access';
 
 export type AdminPagesInput = DeepReadonly<readonly AppAdminPageContract[]>;
 export type AdminNavigationInput = DeepReadonly<
@@ -29,7 +31,21 @@ export function createAdminInformationArchitecture(
     navigationInput.map(group =>
       Object.freeze({
         ...group,
-        items: Object.freeze(group.items.map(item => Object.freeze({ ...item }))),
+        items: Object.freeze(group.items.map(item => Object.freeze({
+          ...item,
+          ...(item.access === undefined
+            ? {}
+            : {
+                access: Object.freeze({
+                  ...(item.access.allOf === undefined
+                    ? {}
+                    : { allOf: Object.freeze([...item.access.allOf]) }),
+                  ...(item.access.anyOf === undefined
+                    ? {}
+                    : { anyOf: Object.freeze([...item.access.anyOf]) }),
+                }),
+              }),
+        }))),
       }),
     ),
   ) as readonly Readonly<AppAdminNavigationGroupContract>[];
@@ -109,6 +125,26 @@ export function isAdminPageAllowed(
   );
 }
 
+/** A menu condition can only narrow access to its independently authorized page. */
+export function isAdminNavigationItemAllowed(
+  item: Readonly<AppAdminNavigationItemContract>,
+  page: Readonly<AppAdminPageContract>,
+  hasCapability: (capability: string) => boolean,
+  hasReadCapability: (capability: string) => boolean,
+  isOperationAllowed?: (routeCode: string) => boolean,
+) {
+  return (
+    item.pageCode === page.code &&
+    isAdminPageAllowed(
+      page,
+      hasCapability,
+      hasReadCapability,
+      isOperationAllowed,
+    ) &&
+    isAdminAccessAllowed(item.access, hasCapability)
+  );
+}
+
 export function firstAllowedAdminPath(
   architecture: AdminInformationArchitecture,
   hasCapability: (capability: string) => boolean,
@@ -120,7 +156,8 @@ export function firstAllowedAdminPath(
       const page = architecture.pagesByCode.get(item.pageCode);
       if (
         page &&
-        isAdminPageAllowed(
+        isAdminNavigationItemAllowed(
+          item,
           page,
           hasCapability,
           hasReadCapability,

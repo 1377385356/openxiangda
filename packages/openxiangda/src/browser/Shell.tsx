@@ -36,7 +36,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { matchRoutes, useLocation, useNavigate } from 'react-router-dom';
 import {
   firstAllowedAdminPath,
-  isAdminPageAllowed,
+  isAdminNavigationItemAllowed,
   useAdminInformationArchitecture,
 } from './admin-information-architecture';
 import {
@@ -151,7 +151,8 @@ export function Shell({ children }: { children: ReactNode }) {
             const page = architecture.pagesByCode.get(item.pageCode);
             return (
               page && !centers.some(entry => entry.desktop.path === page.path) &&
-              isAdminPageAllowed(
+              isAdminNavigationItemAllowed(
+                item,
                 page,
                 hasCapability,
                 hasReadCapability,

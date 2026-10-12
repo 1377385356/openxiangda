@@ -4,6 +4,7 @@ export const OPENXIANGDA_CONTRACT_VERSION = "2.0.0-alpha.5" as const;
 
 export const PLATFORM_CAPABILITY_CONTRACT_VERSIONS = {
   "application-native-2": "1.0.0",
+  "application.admin-navigation-item-access": "1.0.0",
   "application.extended-declaration-capacity": "1.0.0",
   "application.extended-role-capacity": "1.0.0",
   "application.extended-artifact-capacity": "1.0.0",

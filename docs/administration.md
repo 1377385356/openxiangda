@@ -11,6 +11,28 @@
 
 自定义管理页面按“候选字段引用该角色、有效流程范围职责引用该角色，或任一数据策略规则适用于该角色”筛选维度。每条策略须单独处理 `unrestrictedRoleCodes`；不能仅依据汇总 `allRoles`、`roleCodes` 或全局排除列表判断。未返回 `candidateFields` 或 `workflowBindings` 时按空列表处理。流程职责的范围维护不授予普通数据读写权限，也不改变已创建任务的参与人快照。
 
+## 单独限制业务菜单的显示 {#navigation-item-access}
+
+页面访问与菜单显示可以分别声明。导航项的可选 `access` 复用页面的 `allOf` / `anyOf` capability 表达式；`allOf` 必须全部满足，非空 `anyOf` 至少满足一项，同时配置时两组条件都要满足。每组最多 50 个、无重复且已声明的 capability，不接受角色名。
+
+```ts
+import { adminNavigationGroup, adminOperationPage, defineAdminNavigation } from 'openxiangda/config';
+
+const navigation = defineAdminNavigation([
+  adminNavigationGroup('communications', '通知管理', [
+    adminOperationPage('announcements', {
+      access: { allOf: ['app:example:ui:announcements-menu'] },
+    }),
+  ]),
+]);
+```
+
+示例的应用编码、操作页面与菜单 capability 须先在当前应用声明，再把 `navigation` 放入 `frontend.admin.navigation`。`announcements` 页面仍在 `frontend.routes` 声明自己的 `capability` 或 `access`；平台当前用户授权数据决定两项条件。
+
+菜单显示同时要求页面授权和导航项授权。单独缺少菜单 capability 的用户仍可按页面权限打开直接链接；拥有菜单 capability 不会获得页面、数据、操作或成员管理权限。默认后台入口跳过隐藏菜单，全部隐藏时返回无可用入口。未配置导航项 `access` 的旧应用保持原行为。
+
+只有使用此声明的应用才要求 `application.admin-navigation-item-access@1.0.0`。先发布配套 SDK 与平台编译器，再部署应用；旧平台预检会拒绝该要求，不能通过只修改平台能力广告或本地隐藏菜单完成升级。
+
 ## 发现当前入口 {#context}
 
 ```bash

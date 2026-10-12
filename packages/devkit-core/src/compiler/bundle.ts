@@ -772,6 +772,9 @@ export function normalizeConfiguration(
           ...(group.order !== undefined ? { order: group.order } : {}),
           items: group.items.map(item => ({
             page: { ...item.page },
+            ...(item.access !== undefined
+              ? { access: compileAdminNavigationAccess(item.access) }
+              : {}),
             ...(item.label ? { label: item.label } : {}),
             ...(item.icon ? { icon: item.icon } : {}),
             ...(item.order !== undefined ? { order: item.order } : {}),
@@ -1625,6 +1628,15 @@ function pageCodeForReference(
   return `operation:${reference.routeCode}`;
 }
 
+function compileAdminNavigationAccess(
+  access: NonNullable<AppAdminNavigationGroupContract['items'][number]['access']>
+) {
+  return {
+    ...(access.allOf === undefined ? {} : { allOf: uniqueSorted([...access.allOf]) }),
+    ...(access.anyOf === undefined ? {} : { anyOf: uniqueSorted([...access.anyOf]) }),
+  };
+}
+
 function compileAdminNavigation(
   config: OpenXiangdaAppConfig
 ): AppAdminNavigationGroupContract[] {
@@ -1637,6 +1649,9 @@ function compileAdminNavigation(
       items: group.items
         .map((item, itemIndex) => ({
           pageCode: pageCodeForReference(item.page),
+          ...(item.access !== undefined
+            ? { access: compileAdminNavigationAccess(item.access) }
+            : {}),
           ...(item.label ? { label: item.label } : {}),
           ...(item.icon ? { icon: item.icon } : {}),
           order: item.order ?? itemIndex,

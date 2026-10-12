@@ -511,6 +511,14 @@ export function compileRequiredPlatformCapabilitiesV3(
     code: OpenXiangdaPlatformCapabilityCode;
     declaration: unknown;
   }> = [
+    ...(config.frontend.admin.navigation.some((group: JsonObject) =>
+      group.items.some((item: JsonObject) => item.access !== undefined))
+      ? [{ code: 'application.admin-navigation-item-access' as const,
+          declaration: config.frontend.admin.navigation
+            .flatMap((group: JsonObject) => group.items
+              .filter((item: JsonObject) => item.access !== undefined)
+              .map((item: JsonObject) => ({ page: item.page, access: item.access }))) }]
+      : []),
     ...(requiresExtendedRoleCapacity(config)
       ? [{ code: 'application.extended-role-capacity' as const,
           declaration: { roles: config.authz.roles.length, maximum: NATIVE_CONTRACT_CAPACITY_V2.roles } }] : []),
@@ -1332,7 +1340,8 @@ function validateConfigurationEnvelope(config: JsonObject, appCode: string) {
   }
   validateAdminNavigationDeclaration(
     admin.navigation,
-    '/config/frontend/admin/navigation'
+    '/config/frontend/admin/navigation',
+    config.appCode
   );
 
   const runtime = object(config.runtime, '/config/runtime');
@@ -1495,7 +1504,8 @@ function validateContractEnvelope(
   validateAdminPageContracts(contract.adminPages, '/contracts/adminPages');
   validateAdminNavigationContracts(
     contract.adminNavigation,
-    '/contracts/adminNavigation'
+    '/contracts/adminNavigation',
+    appCode
   );
 }
 
@@ -4410,6 +4420,11 @@ function compileAdminNavigation(config: JsonObject) {
       items: group.items
         .map((item: JsonObject, itemIndex: number) => ({
           pageCode: pageCodeForReference(item.page),
+          ...(item.access === undefined ? {} : {
+            access: normalizeAccessExpression(item.access,
+              `/config/frontend/admin/navigation/${groupIndex}/items/${itemIndex}/access`,
+              config.appCode),
+          }),
           ...(item.label === undefined ? {} : { label: item.label }),
           ...(item.icon === undefined ? {} : { icon: item.icon }),
           order: item.order ?? itemIndex,
@@ -4426,7 +4441,11 @@ function compileAdminNavigation(config: JsonObject) {
     );
 }
 
-function validateAdminNavigationDeclaration(value: unknown, pointer: string) {
+function validateAdminNavigationDeclaration(
+  value: unknown,
+  pointer: string,
+  appCode: string
+) {
   const groups = boundedArray(
     value,
     pointer,
@@ -4459,7 +4478,10 @@ function validateAdminNavigationDeclaration(value: unknown, pointer: string) {
     items.forEach((rawItem, itemIndex) => {
       const itemPointer = `${groupPointer}/items/${itemIndex}`;
       const item = object(rawItem, itemPointer);
-      exactKeys(item, ['page', 'label', 'icon', 'order'], itemPointer, true);
+      exactKeys(item, ['page', 'label', 'icon', 'order', 'access'], itemPointer, true);
+      if (item.access !== undefined) {
+        normalizeAccessExpression(item.access, `${itemPointer}/access`, appCode);
+      }
       validateAdminPageReference(item.page, `${itemPointer}/page`);
       if (item.label !== undefined) {
         requiredString(item.label, `${itemPointer}/label`, 255);
@@ -4597,7 +4619,11 @@ function validateAdminPageContracts(value: unknown, pointer: string) {
   });
 }
 
-function validateAdminNavigationContracts(value: unknown, pointer: string) {
+function validateAdminNavigationContracts(
+  value: unknown,
+  pointer: string,
+  appCode: string
+) {
   const groups = boundedArray(
     value,
     pointer,
@@ -4631,11 +4657,14 @@ function validateAdminNavigationContracts(value: unknown, pointer: string) {
       const item = object(rawItem, itemPointer);
       exactKeys(
         item,
-        ['pageCode', 'label', 'icon', 'order'],
+        ['pageCode', 'label', 'icon', 'order', 'access'],
         itemPointer,
         true
       );
       requiredString(item.pageCode, `${itemPointer}/pageCode`, 255);
+      if (item.access !== undefined) {
+        normalizeAccessExpression(item.access, `${itemPointer}/access`, appCode);
+      }
       if (item.label !== undefined)
         requiredString(item.label, `${itemPointer}/label`, 255);
       validateAdminIcon(item.icon, `${itemPointer}/icon`);
@@ -5900,6 +5929,21 @@ function validateAuthorizationReferences(
             'NATIVE_CAPABILITY_REFERENCE_MISSING',
             `/config/frontend/admin/access/${key}/${capabilityIndex}`
           );
+        }
+      }
+    }
+  }
+  for (const [groupIndex, group] of config.frontend.admin.navigation.entries()) {
+    for (const [itemIndex, item] of group.items.entries()) {
+      if (item.access === undefined) continue;
+      const pointer = `/config/frontend/admin/navigation/${groupIndex}/items/${itemIndex}/access`;
+      normalizeAccessExpression(item.access, pointer, config.appCode);
+      for (const key of ['allOf', 'anyOf'] as const) {
+        const values = item.access[key] || [];
+        for (const [capabilityIndex, capability] of values.entries()) {
+          if (!capabilityCodes.has(capability)) {
+            fail('NATIVE_CAPABILITY_REFERENCE_MISSING', `${pointer}/${key}/${capabilityIndex}`);
+          }
         }
       }
     }

@@ -762,6 +762,8 @@ export type AppAdminPageReference =
 
 export interface AppAdminNavigationItemDeclaration {
   page: AppAdminPageReference;
+  /** Additional menu visibility only; the referenced page keeps its own access. */
+  access?: AppFrontendRouteAccess;
   label?: string;
   icon?: AppAdminNavigationIcon;
   order?: number;
@@ -800,6 +802,8 @@ export interface AppAdminPageContract {
 
 export interface AppAdminNavigationItemContract {
   pageCode: string;
+  /** Additional menu visibility only; never authorizes a page or data operation. */
+  access?: AppFrontendRouteAccess;
   label?: string;
   icon?: AppAdminNavigationIcon;
   order: number;

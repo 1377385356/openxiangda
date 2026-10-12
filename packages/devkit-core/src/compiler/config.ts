@@ -568,6 +568,7 @@ function renderAdminNavigationOptions(
     icon?: string | undefined;
     order?: number | undefined;
     viewCode?: string | undefined;
+    access?: AppAdminNavigationItemDeclaration['access'];
   }
 ) {
   const entries = [
@@ -581,6 +582,9 @@ function renderAdminNavigationOptions(
       ? [`icon: ${JSON.stringify(options.icon)}`]
       : []),
     ...(options.order !== undefined ? [`order: ${options.order}`] : []),
+    ...(options.access !== undefined
+      ? [`access: ${JSON.stringify(options.access)}`]
+      : []),
   ];
   return entries.length > 0 ? `{ ${entries.join(', ')} }` : undefined;
 }
@@ -6431,7 +6435,20 @@ function validateAdminAccess(
   config: OpenXiangdaAppConfig,
   diagnostics: Diagnostic[]
 ) {
-  const accessValue = config.frontend.admin?.access;
+  validateAdminAccessExpression(
+    config.frontend.admin?.access,
+    'frontend.admin.access',
+    'APP_CONFIG_ADMIN_ACCESS_INVALID',
+    diagnostics
+  );
+}
+
+function validateAdminAccessExpression(
+  accessValue: unknown,
+  path: string,
+  code: string,
+  diagnostics: Diagnostic[]
+) {
   if (accessValue === undefined) return;
   const access = object(accessValue);
   const allOf = Array.isArray(access.allOf) ? access.allOf : [];
@@ -6441,6 +6458,8 @@ function validateAdminAccess(
     typeof accessValue !== 'object' ||
     Array.isArray(accessValue) ||
     Object.keys(access).some(key => !['allOf', 'anyOf'].includes(key)) ||
+    (access.allOf !== undefined && !Array.isArray(access.allOf)) ||
+    (access.anyOf !== undefined && !Array.isArray(access.anyOf)) ||
     (allOf.length === 0 && anyOf.length === 0) ||
     allOf.length > 50 ||
     anyOf.length > 50 ||
@@ -6451,9 +6470,9 @@ function validateAdminAccess(
   if (invalid) {
     diagnostics.push(
       diagnostic(
-        'APP_CONFIG_ADMIN_ACCESS_INVALID',
-        'frontend.admin.access 必须包含非空、无重复且有效的 allOf 或 anyOf capability 数组',
-        'frontend.admin.access'
+        code,
+        `${path} 必须包含非空、无重复且有效的 allOf 或 anyOf capability 数组`,
+        path
       )
     );
   }
@@ -6569,7 +6588,7 @@ function validateAdminNavigation(
       }
       if (
         Object.keys(item).some(
-          key => !['page', 'label', 'icon', 'order'].includes(key)
+          key => !['page', 'label', 'icon', 'order', 'access'].includes(key)
         ) ||
         ![
           'resource',
@@ -6582,11 +6601,17 @@ function validateAdminNavigation(
         diagnostics.push(
           diagnostic(
             'APP_CONFIG_ADMIN_ITEM_INVALID',
-            '导航项必须使用受支持的页面 helper、label、icon 和 order',
+            '导航项必须使用受支持的页面 helper、label、icon、order 和 access',
             itemPath
           )
         );
       }
+      validateAdminAccessExpression(
+        item.access,
+        `${itemPath}.access`,
+        'APP_CONFIG_ADMIN_ITEM_ACCESS_INVALID',
+        diagnostics
+      );
       if (!exists) {
         diagnostics.push(
           diagnostic(
@@ -6843,6 +6868,22 @@ function validateCapabilityClosure(
       })
     );
   }
+  const adminNavigation = object(frontend.admin).navigation;
+  (Array.isArray(adminNavigation) ? adminNavigation : []).forEach((rawGroup, groupIndex) => {
+    const group = object(rawGroup);
+    (Array.isArray(group.items) ? group.items : []).forEach((rawItem, itemIndex) => {
+      const access = object(object(rawItem).access);
+      for (const key of ['allOf', 'anyOf'] as const) {
+        const values = Array.isArray(access[key]) ? access[key] : [];
+        values.forEach((value, capabilityIndex) =>
+          references.push({
+            capability: string(value),
+            path: `frontend.admin.navigation[${groupIndex}].items[${itemIndex}].access.${key}[${capabilityIndex}]`,
+          })
+        );
+      }
+    });
+  });
   for (const reference of references) {
     if (
       !catalog.has(reference.capability) ||

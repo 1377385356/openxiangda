@@ -5181,3 +5181,64 @@ test('date source projection keeps the immutable source schema and negotiates id
   const spoofed = structuredClone(declaration); (spoofed.events.dateTriggers[0]!.payload as any).projection = { owner: { value: 'attacker' } };
   assert.throws(() => defineOpenXiangdaApp(spoofed), (error: any) => error.diagnostics.some((d: any) => d.code === 'APP_CONFIG_DATE_TRIGGER_INVALID'));
 });
+
+
+const navigationReadCapability = 'app:reference-app:data:instruments:read';
+const navigationUpdateCapability = 'app:reference-app:data:instruments:update';
+type NavigationItemAccess = NonNullable<Parameters<typeof adminResourcePage>[1]>['access'];
+
+function declarationWithNavigationItemAccess(access?: NavigationItemAccess) {
+  return defineOpenXiangdaApp({ ...sourceDeclaration, frontend: {
+    ...sourceDeclaration.frontend,
+    admin: { navigation: defineAdminNavigation([
+      adminNavigationGroup('instruments', '仪器管理', [
+        adminResourcePage('instruments', access === undefined ? {} : { access }),
+      ]),
+    ]) },
+  } });
+}
+
+test('menu access is canonical, sealed and independently negotiated without changing page or data grants', () => {
+  const legacy = compileApplicationSources(declarationWithNavigationItemAccess());
+  const access = { allOf: [navigationUpdateCapability, navigationReadCapability], anyOf: [navigationReadCapability] };
+  const app = declarationWithNavigationItemAccess(access);
+  const compiled = compileApplicationSources(app);
+  const expected = { allOf: [navigationReadCapability, navigationUpdateCapability], anyOf: [navigationReadCapability] };
+  assert.deepEqual(compiled.config.value.frontend.admin.navigation[0]!.items[0]!.access, expected);
+  assert.deepEqual(compiled.contracts.value.adminNavigation[0]!.items[0]!.access, expected);
+  assert.deepEqual(compiled.contracts.value.adminPages, legacy.contracts.value.adminPages);
+  assert.deepEqual(compiled.config.value.authz, legacy.config.value.authz);
+  const target = compileNativeApplicationConfiguration({ appCode: app.app.code,
+    configBytes: compiled.config.content, contractBytes: compiled.contracts.content,
+    expectedConfigDigest: compiled.config.digest, expectedContractDigest: compiled.contracts.digest });
+  const feature = target.requiredPlatformCapabilities.find(item => item.code === 'application.admin-navigation-item-access');
+  assert.equal(feature?.contractVersion, '1.0.0');
+  const sealed = compileAppPackage({ config: app, version: '0.1.0',
+    source: { repository: 'https://example.invalid/lab.git', commit: 'a'.repeat(40), dirty: false },
+    toolchainVersion: '2.63.1', artifacts: [], manifests: {}, minimumPlatformVersion: '2.0.0' });
+  assert.deepEqual(sealed.manifest.compatibility.requiredPlatformCapabilities, target.requiredPlatformCapabilities);
+  assert.deepEqual(requiredPlatformCapabilities(app), target.requiredPlatformCapabilities);
+  assert.equal(requiredPlatformCapabilities(declarationWithNavigationItemAccess()).some(item => item.code === 'application.admin-navigation-item-access'), false);
+  assert.equal(Object.hasOwn(legacy.contracts.value.adminNavigation[0]!.items[0]!, 'access'), false);
+  const reordered = compileApplicationSources(declarationWithNavigationItemAccess({ allOf: [...access.allOf].reverse(), anyOf: access.anyOf }));
+  assert.equal(reordered.config.digest, compiled.config.digest);
+  assert.equal(reordered.contracts.digest, compiled.contracts.digest);
+});
+
+test('menu access rejects malformed expressions and undeclared capabilities at the item pointer', () => {
+  const malformed: unknown[] = [null, [], {}, { allOf: [] }, { anyOf: [] },
+    { allOf: 'invalid', anyOf: [navigationReadCapability] },
+    { allOf: [navigationReadCapability], anyOf: null },
+    { allOf: [navigationReadCapability, navigationReadCapability] },
+    { anyOf: [navigationReadCapability], roleCode: 'instrument_admin' },
+    { anyOf: ['invalid capability!'] },
+    { anyOf: Array.from({ length: 51 }, () => navigationReadCapability) }];
+  for (const access of malformed) {
+    assert.throws(() => declarationWithNavigationItemAccess(access as NavigationItemAccess),
+      error => diagnosticOf(error, 'APP_CONFIG_ADMIN_ITEM_ACCESS_INVALID', 'frontend.admin.navigation[0].items[0].access'));
+  }
+  for (const key of ['allOf', 'anyOf'] as const) {
+    assert.throws(() => declarationWithNavigationItemAccess({ [key]: ['app:reference-app:ui:unknown-menu'] }),
+      error => diagnosticOf(error, 'APP_CONFIG_CAPABILITY_CLOSURE_FAILED', `frontend.admin.navigation[0].items[0].access.${key}[0]`));
+  }
+});
