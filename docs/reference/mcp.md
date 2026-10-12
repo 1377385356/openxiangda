@@ -31,25 +31,6 @@ MCP 使用项目锁定的根包；在客户端配置下列 stdio 启动参数，
 
 工具返回相同内容的 structuredContent 与文本结果，包含 ok、operation、data 和适用的 diagnostics/nextActions。业务失败设置 isError=true；按错误码、定位和平台 recovery 决定下一步。工具协议错误同样停止当前操作。check_app 会生成文件并运行检查、测试、构建；失败后未执行的阶段标记 skipped。deploy_app 已包含完整检查，生产晋级必须传入成功的测试 DeploymentRun ID，不重新构建。详见 [校验](../testing.md)与[部署](../delivery.md)。
 
-## template_list
-
-发现源码模板。列出业务场景、模块依赖、四类源码外壳和主题；创建使用 CLI，不执行远端操作。
-
-- 只读：是
-- 可替换文件或改变远端状态：否
-- 幂等：否
-
-输入参数：
-
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "type": "object",
-  "properties": {},
-  "additionalProperties": false
-}
-```
-
 ## authorization_status
 
 核验平台授权。只读核验明确指定站点的当前授权；不依赖工作区，不启动登录、刷新凭据或修改绑定。authorized 不代表应用管理权限。
@@ -74,6 +55,25 @@ MCP 使用项目锁定的根包；在客户端配置下列 stdio 启动参数，
   "required": [
     "baseUrl"
   ],
+  "additionalProperties": false
+}
+```
+
+## template_list
+
+发现源码模板。列出业务场景、模块依赖、四类源码外壳和主题；创建使用 CLI，不执行远端操作。
+
+- 只读：是
+- 可替换文件或改变远端状态：否
+- 幂等：否
+
+输入参数：
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {},
   "additionalProperties": false
 }
 ```
@@ -1372,6 +1372,225 @@ MCP 使用项目锁定的根包；在客户端配置下列 stdio 启动参数，
       ]
     }
   ]
+}
+```
+
+## workflow_sync
+
+同步流程到目标环境。按目标流程修订号显式同步，默认同时更新在途和新申请；复用发布及版本适用规则。保留指定人员边界。
+
+- 只读：否
+- 可替换文件或改变远端状态：是
+- 幂等：是
+
+输入参数：
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "workflowCode": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "fromEnvironment": {
+      "type": "string",
+      "enum": [
+        "test",
+        "production"
+      ]
+    },
+    "toEnvironment": {
+      "type": "string",
+      "enum": [
+        "test",
+        "production"
+      ]
+    },
+    "expectedSourceHeadRevision": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "expectedTargetHeadRevision": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "operationId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000
+    },
+    "scope": {
+      "type": "string",
+      "enum": [
+        "running_and_new",
+        "new_only"
+      ]
+    },
+    "acknowledgeExceptions": {
+      "type": "boolean"
+    },
+    "copyHandlingDefaults": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "workflowCode",
+    "fromEnvironment",
+    "toEnvironment",
+    "expectedSourceHeadRevision",
+    "expectedTargetHeadRevision",
+    "operationId",
+    "reason"
+  ],
+  "additionalProperties": false
+}
+```
+
+## workflow_export
+
+导出流程到工作区。只读导出环境中的规范定义、绑定和办理设置摘要；不包含运行记录或环境内部标识。
+
+- 只读：否
+- 可替换文件或改变远端状态：否
+- 幂等：否
+
+输入参数：
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "environment": {
+      "default": "test",
+      "description": "目标环境；默认 test，production 必须明确选择",
+      "type": "string",
+      "enum": [
+        "test",
+        "production"
+      ]
+    },
+    "workflowCode": {
+      "type": "string",
+      "minLength": 1
+    },
+    "out": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "workflowCode",
+    "out"
+  ],
+  "additionalProperties": false
+}
+```
+
+## workflow_import
+
+把流程导入源码。验证代码能力和摘要后修改工作区显式流程声明，保留人员配置边界。
+
+- 只读：否
+- 可替换文件或改变远端状态：是
+- 幂等：否
+
+输入参数：
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "adoptHandlingDefaults": {
+      "default": false,
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "path"
+  ],
+  "additionalProperties": false
+}
+```
+
+## workflow_plan_registration
+
+规划流程版本登记。服务器只读查询已有摘要和下一版本数字；write 只写源码版本数字，不写环境观察。
+
+- 只读：否
+- 可替换文件或改变远端状态：否
+- 幂等：否
+
+输入参数：
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "environment": {
+      "default": "test",
+      "description": "目标环境；默认 test，production 必须明确选择",
+      "type": "string",
+      "enum": [
+        "test",
+        "production"
+      ]
+    },
+    "write": {
+      "default": false,
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+## workflow_status
+
+查看流程源码同步状态。比较源声明、导入基线和环境摘要，显示待导回源码、待部署或冲突及未启用版本数量。
+
+- 只读：是
+- 可替换文件或改变远端状态：否
+- 幂等：否
+
+输入参数：
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "environment": {
+      "default": "test",
+      "description": "目标环境；默认 test，production 必须明确选择",
+      "type": "string",
+      "enum": [
+        "test",
+        "production"
+      ]
+    },
+    "workflowCode": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "additionalProperties": false
 }
 ```
 

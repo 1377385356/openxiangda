@@ -102,3 +102,19 @@ test('return inspection projects only its canonical targets without changing the
     for(let i=1;i<points.length;i++) assert.ok(points[i]!.x===points[i-1]!.x||points[i]!.y===points[i-1]!.y);
   }
 });
+
+test('parallel outline groups each branch body once and lets branch rows target the owning fork', async () => {
+  const { workflowDesignerOutlineRows }=await import('../src/browser/components/workflow/workflow-designer-presentation');
+  const graph: any={ schemaVersion: 'openxiangda.workflow-graph/v2',mode: 'draft',startAt: 'fork',variables: [],nodes: [
+    { id: 'fork',kind: 'parallel',title: '并行审核',parallel: { joinNodeId: 'join',branchNodeIds: ['a','a2','b'],branchCount: 2 } },
+    { id: 'a',kind: 'approval',title: '法务' },{ id: 'a2',kind: 'handle',title: '法务复核' },{ id: 'b',kind: 'approval',title: '财务' },{ id: 'join',kind: 'join',title: '全部完成' },
+  ],edges: [
+    { id: 'fork:parallel:legal',from: 'fork',to: 'a',kind: 'branch',parallelBranch: true,label: '法务分支',priority: 1 },
+    { id: 'fork:parallel:finance',from: 'fork',to: 'b',kind: 'branch',parallelBranch: true,label: '财务分支',priority: 2 },
+    { id: 'a:next',from: 'a',to: 'a2',kind: 'next' },{ id: 'a2:next',from: 'a2',to: 'join',kind: 'next' },{ id: 'b:next',from: 'b',to: 'join',kind: 'next' },
+  ] };
+  const rows=workflowDesignerOutlineRows(graph);
+  assert.deepEqual(rows.map(row => [row.title,row.depth]),[['并行审核',0],['法务分支',1],['法务',2],['法务复核',2],['财务分支',1],['财务',2],['全部完成',0]]);
+  assert.equal(new Set(rows.map(row => row.id)).size,rows.length);
+  assert.deepEqual(rows.filter(row => row.edgeId).map(row => row.nodeId),['fork','fork']);
+});

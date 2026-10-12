@@ -688,6 +688,7 @@ export function normalizeConfiguration(
       activations: sorted(
         (config.workflows?.activations || []).map(item => ({
           workflowCode: item.workflowCode,
+          ...(item.sourceBase ? { sourceBase: item.sourceBase } : {}),
           definitionVersion: item.definitionVersion,
           bindingVersion: item.bindingVersion,
           acceptedCommandDeactivationPolicy:

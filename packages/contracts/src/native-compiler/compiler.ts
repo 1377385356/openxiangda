@@ -6927,12 +6927,17 @@ function validateWorkflowReferences(config: JsonObject) {
         'acceptedCommandDeactivationPolicy',
       ],
       pointer,
-      ['environmentKey']
+      ['environmentKey','sourceBase']
     );
     const code = stableCode(activation.workflowCode, `${pointer}/workflowCode`);
     if (activationCodes.has(code))
       fail('NATIVE_WORKFLOW_ACTIVATION_DUPLICATE', pointer);
     activationCodes.add(code);
+    if (activation.sourceBase !== undefined) {
+      const base=object(activation.sourceBase,`${pointer}/sourceBase`);
+      exactKeys(base,['definitionDigest','bindingDigest'],`${pointer}/sourceBase`);
+      for (const key of ['definitionDigest','bindingDigest']) if (!/^(sha256:)?[a-f0-9]{64}$/.test(String(base[key] || ''))) fail('NATIVE_WORKFLOW_SOURCE_BASE_INVALID',`${pointer}/sourceBase/${key}`);
+    }
     const definitionKey = `${code}:${positiveInteger(
       activation.definitionVersion,
       `${pointer}/definitionVersion`

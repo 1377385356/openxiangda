@@ -1,3 +1,4 @@
+import type { WorkflowSourceBundle,WorkflowRegistrationPlan,WorkflowSourceDigests } from 'openxiangda-contracts';
 import { createHash } from 'node:crypto';
 import { gunzipSync } from 'node:zlib';
 import type { ApplicationArtifactTransferCapability, ApplicationArtifactUploadSession } from 'openxiangda-contracts';
@@ -1820,6 +1821,19 @@ export class OpenXiangdaControlPlaneClient {
     return await this.json<ApplicationAdministrationContext>(
       `${this.administrationPath(appCode)}/context?${this.query({ environmentKey })}`
     );
+  }
+
+  async workflowSourceExport(appCode: string,workflowCode: string,environmentKey: DeploymentEnvironment): Promise<WorkflowSourceBundle> {
+    return this.json<WorkflowSourceBundle>(`${this.workflowPath(appCode)}/management/source/${encodeURIComponent(workflowCode)}/export?${this.query({ environmentKey })}`);
+  }
+  async workflowSourcePlan(appCode: string,environmentKey: DeploymentEnvironment,workflows: Array<{ workflowCode: string;definitionDigest: string;bindingDigest: string;definitionVersion?: number;bindingVersion?: number }>): Promise<WorkflowRegistrationPlan[]> {
+    return this.json<WorkflowRegistrationPlan[]>(`${this.workflowPath(appCode)}/management/source/plan-registration`,{ method: 'POST',body: JSON.stringify({ environmentKey,workflows }) });
+  }
+  async workflowSourceSync(appCode: string,workflowCode: string,input: import('openxiangda-contracts').WorkflowSourceSyncRequest): Promise<unknown> {
+    return this.json(`${this.workflowPath(appCode)}/management/source/${encodeURIComponent(workflowCode)}/sync`,{ method: 'POST',body: JSON.stringify(input) });
+  }
+  async workflowSourceStatus(appCode: string,workflowCode: string,environmentKey: DeploymentEnvironment,input: { declared: WorkflowSourceDigests;base?: WorkflowSourceDigests }): Promise<unknown> {
+    return this.json(`${this.workflowPath(appCode)}/management/source/${encodeURIComponent(workflowCode)}/status`,{ method: 'POST',body: JSON.stringify({ environmentKey,...input }) });
   }
 
   async workflowNodeConfigurations(appCode: string, workflowCode: string, environmentKey: DeploymentEnvironment): Promise<WorkflowNodeConfigurations> {

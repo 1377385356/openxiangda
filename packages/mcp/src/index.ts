@@ -521,6 +521,11 @@ export const MCP_TOOL_DEFINITIONS = {
     inputSchema: fromJsonSchema(APPLICATION_OPERATION_SCHEMA as never),
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false },
   },
+  workflow_sync: definition('同步流程到目标环境','按目标流程修订号显式同步，默认同时更新在途和新申请；复用发布及版本适用规则。保留指定人员边界。',z.object({ workflowCode: z.string().min(1).max(128),fromEnvironment: z.enum(['test','production']),toEnvironment: z.enum(['test','production']),expectedSourceHeadRevision: z.number().int().min(1),expectedTargetHeadRevision: z.number().int().min(1),operationId: z.string().min(1).max(128),reason: z.string().min(1).max(1000),scope: z.enum(['running_and_new','new_only']).optional(),acknowledgeExceptions: z.boolean().optional(),copyHandlingDefaults: z.boolean().optional() }).strict(),false,true,true),
+  workflow_export: definition('导出流程到工作区','只读导出环境中的规范定义、绑定和办理设置摘要；不包含运行记录或环境内部标识。',z.object({ environment,workflowCode: z.string().min(1),out: z.string().min(1) }).strict(),false),
+  workflow_import: definition('把流程导入源码','验证代码能力和摘要后修改工作区显式流程声明，保留人员配置边界。',z.object({ path: z.string().min(1),adoptHandlingDefaults: z.boolean().default(false) }).strict(),false,true),
+  workflow_plan_registration: definition('规划流程版本登记','服务器只读查询已有摘要和下一版本数字；write 只写源码版本数字，不写环境观察。',z.object({ environment,write: z.boolean().default(false) }).strict(),false),
+  workflow_status: definition('查看流程源码同步状态','比较源声明、导入基线和环境摘要，显示待导回源码、待部署或冲突及未启用版本数量。',z.object({ environment,workflowCode: z.string().min(1).optional() }).strict()),
   workflow_node_configurations: definition('查看流程有效参数', '修改已部署流程前，读取管理员维护的节点配置。已有任务和后续节点进入使用各自适用版本。', z.object({ environment, workflowCode: z.string().min(1).describe('流程声明中的 code') }).strict()),
   check_app: definition('检查完整应用', '先在本地完成完整配置校验，默认核对平台同源规则与只读环境条件，再生成、静态检查、测试和构建。local 仅用于本地或 CI 验证，不证明目标环境可部署；正式 deploy 始终预检平台。会写本地文件，前置失败即停止。', z.object({ environment, local: z.boolean().default(false).describe('仅本地完整检查；结果 validationScope=local，不核对现场条件') }).strict(), false, true),
   deployment_plan: definition('预览应用发布', '只读预览测试部署的运行配额，或指定测试版本的生产晋级；返回容量与缺口，不构建、上传或提交运行。', deploymentInput),
@@ -592,6 +597,11 @@ export function createOpenXiangdaMcpServer(options: { services?: OpenXiangdaAppl
     }
     return { ...(result.ok === false ? { isError: true } : {}), content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }], structuredContent: result };
   });
+  register('workflow_sync',input => services.workflowSync(root,input.workflowCode,{ fromEnvironment: developerEnvironment(input.fromEnvironment),toEnvironment: developerEnvironment(input.toEnvironment),expectedSourceHeadRevision: input.expectedSourceHeadRevision,expectedTargetHeadRevision: input.expectedTargetHeadRevision,operationId: input.operationId,reason: input.reason,scope: input.scope || 'running_and_new',acknowledgeExceptions: !!input.acknowledgeExceptions,copyHandlingDefaults: !!input.copyHandlingDefaults }));
+  register('workflow_export',input => services.workflowExport(root,input.workflowCode,developerEnvironment(input.environment),input.out));
+  register('workflow_import',input => services.workflowImport(root,input.path,input.adoptHandlingDefaults));
+  register('workflow_plan_registration',input => services.workflowPlanRegistration(root,developerEnvironment(input.environment),input.write));
+  register('workflow_status',input => services.workflowStatus(root,developerEnvironment(input.environment),input.workflowCode));
   register('workflow_node_configurations', input => services.workflowNodeConfigurations(root, input.workflowCode, developerEnvironment(input.environment)));
   register('check_app', (input, onProgress) => checkApplication(services, { ...local, environment: input.environment, local: input.local, onProgress }));
   register('deployment_plan', (input, onProgress) => deployApplication(services, { ...local, ...definedDeploymentInput(input), dryRun: true, onProgress }));

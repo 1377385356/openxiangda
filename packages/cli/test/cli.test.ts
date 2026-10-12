@@ -30,6 +30,7 @@ const expected = [
   "admin",
   "template",
   "create",
+  "workflow",
   "source",
   "dev",
   "check",

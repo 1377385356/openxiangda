@@ -159,6 +159,7 @@ export interface WorkflowBindingDeclaration {
 
 export interface WorkflowActivationDeclaration {
   workflowCode: string;
+  sourceBase?: import('openxiangda-contracts').WorkflowSourceDigests;
   definitionVersion: number;
   bindingVersion: number;
   acceptedCommandDeactivationPolicy:
@@ -4208,6 +4209,7 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
               'definitionVersion',
               'bindingVersion',
               'acceptedCommandDeactivationPolicy',
+              'sourceBase',
             ].includes(key)
         )
       ) {
@@ -4238,6 +4240,10 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
             `${path}.environmentKey`
           )
         );
+      }
+      if (activation.sourceBase !== undefined) {
+        const base=object(activation.sourceBase);
+        if (Object.keys(base).length !== 2 || !['definitionDigest','bindingDigest'].every(key => /^(sha256:)?[a-f0-9]{64}$/.test(String(base[key] || '')))) diagnostics.push(diagnostic('APP_CONFIG_WORKFLOW_SOURCE_BASE_INVALID','源码基线只能包含 definitionDigest 和 bindingDigest',`${path}.sourceBase`));
       }
       const definitionVersion = Number(activation.definitionVersion);
       const bindingVersion = Number(activation.bindingVersion);

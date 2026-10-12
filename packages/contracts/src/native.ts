@@ -1057,6 +1057,7 @@ export interface NativeWorkflowBindingDeclaration {
 
 export interface NativeWorkflowActivationDeclaration {
   workflowCode: string;
+  sourceBase?: import('./native-compiler/workflow-source-sync.js').WorkflowSourceDigests;
   definitionVersion: number;
   bindingVersion: number;
   acceptedCommandDeactivationPolicy:

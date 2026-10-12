@@ -75,3 +75,4 @@ export * from './native-compiler/resource-query.js';
 export * from './native-compiler/cascade-value.js';
 export * from './native-compiler/address-value.js';
 export * from './native-compiler/workflow-parallel.js';
+export * from './native-compiler/workflow-source-sync.js';
