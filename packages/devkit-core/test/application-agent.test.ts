@@ -68,8 +68,27 @@ test('source definitions, native bindings, digests, command values and public sc
   assert.deepEqual(data.required, ['visitorName', 'arriveAt']);
   assert.equal((form.inputSchema.properties as any).target, undefined);
   const update = pure.capabilities.find(c => c.operation === 'update')!;
-  assert.deepEqual((update.inputSchema.properties as any).target.required, ['id', 'expectedRevision']);
+  assert.equal((update.inputSchema.properties as any).target, undefined);
+  assert.deepEqual(update.inputSchema.required, ['data', 'id', 'expectedRevision']);
   assert.equal((update.inputSchema.properties as any).data.required, undefined, 'update is a partial patch');
+});
+
+test('update commands use the ordinary envelope and required descriptors do not force untouched fields', () => {
+  const input: any = { ...declaration(), agents: agents() };
+  input.agents[0].tasks[2].fields = ['arriveAt', 'notes'];
+  const capability = shared(defineOpenXiangdaApp(input)).capabilities.find(c => c.operation === 'update')!;
+  const validate = ajv.compile(capability.inputSchema);
+  const command = { id: '12345678-1234-4123-8123-123456789012', expectedRevision: 7, data: {} };
+  assert.equal(validate(command), true, 'required fields can be left untouched');
+  assert.equal(validate({ ...command, data: { notes: null } }), true);
+  for (const data of [{ arriveAt: null }, { arriveAt: '2026-10-12T09:00:00' }, { unknown: 'x' }])
+    assert.equal(validate({ ...command, data }), false, JSON.stringify(data));
+  assert.equal(validate({ target: { id: command.id, expectedRevision: 7 }, data: {} }), false);
+  assert.equal(capability.agent!.nativeTask!.form!.fields.find(field => field.path === 'arriveAt')!.required, true);
+  assert.equal(capability.agent!.nativeTask!.form!.fields.find(field => field.path === 'notes')!.required, false);
+  const validateHints = ajv.compile(capability.agent!.nativeTask!.hintSchema);
+  assert.equal(validateHints({ record: { handle: 'receipt:0' }, data: { notes: null } }), true);
+  assert.equal(validateHints(command), false, 'the model cannot supply a command target');
 });
 
 test('model hints reject identity metadata and numbers for exact decimals, and datetime requires an offset', () => {
