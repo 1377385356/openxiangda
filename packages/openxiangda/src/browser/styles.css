@@ -3559,6 +3559,7 @@
 .oxa-designer-condition-surface .ant-select, .oxa-designer-condition-surface .ant-input-number { width: 100%; min-width: 0; }
 .oxa-designer-condition-description { padding: 10px 12px; background: #f7f9fc; border: 1px solid #e1e8f2; border-radius: 5px; overflow-wrap: anywhere; }
 .oxa-designer-condition-editor > label { display: flex; flex-direction: column; gap: 8px; margin: 14px 0; font-weight: 600; }
+.oxa-designer-condition-editor > .oxa-designer-parallel-toggle { flex-direction: row; align-items: center; justify-content: flex-start; }
 .oxa-designer-return-notice { background: #eaf2ff; color: #0066ff; padding: 12px; border-radius: 5px; font-weight: 600; margin-bottom: 12px; }
 .oxa-designer-return-target { border: 1px solid #e1e8f2; background: #fafbfd; border-radius: 6px; padding: 14px; margin: 12px 0; }
 .oxa-designer-return-target.enabled { background: #fff; }

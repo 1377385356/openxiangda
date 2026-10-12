@@ -65,6 +65,17 @@ export async function workflowFlowLayout(graph: WorkflowGraphProjection, options
       return [edge.id, { points, label: label ? { x: label.x! + label.width! / 2, y: label.y! + label.height! / 2 } : fallback }];
     })),
   };
+  // Parallel branch cards belong directly above their first node. ELK's side
+  // labels otherwise extend beyond the canvas and detach from their branches.
+  if (options.designer) for (const edge of forwardEdges.filter(edge => edge.parallelBranch)) {
+    const target=positions.nodes.get(edge.to),route=positions.edges.get(edge.id);
+    const fork=graph.nodes.find(node => node.id === edge.from),source=positions.nodes.get(edge.from);
+    if (fork?.parallel && edge.to === fork.parallel.joinNodeId && source && route) {
+      const branches=forwardEdges.filter(branch => branch.from === edge.from && branch.parallelBranch);
+      const index=branches.findIndex(branch => branch.id === edge.id);
+      route.label={ x: source.x+source.width*(index+.5)/branches.length,y: source.y+source.height+54 };
+    } else if (target && route) route.label={ x: target.x+target.width/2,y: target.y-68 };
+  }
   // Return paths do not change the forward ranks. They occupy bounded outside
   // lanes; correction tasks are shown beside the route, not as a forward cycle.
   const mainRight = Math.max(0, ...[...positions.nodes.values()].map(node => node.x + node.width));
