@@ -233,8 +233,8 @@ function compileTask(appCode: string, agentCode: string, task: ApplicationAgentT
   const binding: NativeAgentTaskBindingV2 = { kind: 'native-form', resourceCode: resource.code,
     viewCode: task.view, action: task.action, fields: [...fields] };
   const inputSchema = objectSchema({ data: dataSchema, ...(task.action === 'update' ? {
-    target: objectSchema({ id: { type: 'string', format: 'uuid' }, expectedRevision: { type: 'integer', minimum: 1 } }, ['id', 'expectedRevision']),
-  } : {}) }, ['data', ...(task.action === 'update' ? ['target'] : [])]);
+    id: { type: 'string', format: 'uuid' }, expectedRevision: { type: 'integer', minimum: 1 },
+  } : {}) }, ['data', ...(task.action === 'update' ? ['id', 'expectedRevision'] : [])]);
   return { ...base, operation: task.action, inputSchema, outputSchema: resultSchema,
     authorization: { capabilities: [resource.capabilities[task.action]] }, risk: 'write',
     confirmation: task.confirmation || 'required', idempotency: 'required', concurrency: task.action === 'update' ? 'revision' : 'none',
@@ -243,7 +243,7 @@ function compileTask(appCode: string, agentCode: string, task: ApplicationAgentT
       hintSchema: objectSchema({ data: objectSchema(hints), ...(task.action === 'update' ? { record: handleSchema } : {}) }), coverage: coverage(fields),
       form: { contractVersion: 2, action: task.action, title: base.name, submitLabel: '提交', resource: resource.code, view: task.view,
         fields: definitions.map(field => ({ path: field.code, label: resource.surface!.fields[field.code]!.label,
-          fieldType: field.type, required: required.includes(field.code), source: { resource: resource.code, field: field.code },
+          fieldType: field.type, required: nativeFieldRequiresCreateInputV2(field, resource.surface!.fields[field.code]), source: { resource: resource.code, field: field.code },
           ...(routes.get(field.code)?.selector ? { selector: routes.get(field.code)!.selector } : {}) })) },
     } },
   };
