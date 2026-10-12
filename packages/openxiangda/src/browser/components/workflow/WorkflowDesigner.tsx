@@ -142,7 +142,14 @@ export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onS
   const autosave = useRef(save); autosave.current = save;
   useEffect(() => {
     if (!dirty || !definition || stepInputInvalid || reminderDirty || busy || publishedView || frozenSave.current || frozenPublish.current || frozenAux.current || attemptedAutosave.current === JSON.stringify({definition,binding})) return;
-    const timer = setTimeout(() => { attemptedAutosave.current = JSON.stringify({definition,binding}); void autosave.current(true); }, 900);
+    let timer: ReturnType<typeof setTimeout>;
+    const persist = () => {
+      if (inspectorElement.current?.querySelector('[role="combobox"][aria-expanded="true"]')) {
+        timer = setTimeout(persist,300);return;
+      }
+      attemptedAutosave.current = JSON.stringify({definition,binding});void autosave.current(true);
+    };
+    timer = setTimeout(persist,900);
     return () => clearTimeout(timer);
   }, [dirty, definition, binding, busy, publishedView, stepInputInvalid, reminderDirty]);
   const inspectorReady = () => {
