@@ -47,7 +47,7 @@ function agents(): ApplicationAgentDeclarationV2[] {
     ] }];
 }
 function config() { return defineOpenXiangdaApp({ ...declaration(), agents: agents() }); }
-function shared(input = config()) { return compileApplicationAgentsV2(input.app.code, input.agents, input.data!.resources); }
+function shared(input = config()) { return compileApplicationAgentsV2(input.app.code, input.agents, input.data!.resources, { authz: input.authz }); }
 
 test('source definitions, native bindings, digests, command values and public schemas agree', () => {
   const app = config(), sources = compileApplicationSources(app), pure = shared(app);
@@ -161,4 +161,69 @@ test('instructions are inlined by the real workspace loader and reject escapes, 
       assert.throws(() => inlineApplicationAgentInstructionsV2(root, source), /NATIVE_APPLICATION_AGENT/);
     }
   } finally { rmSync(root, { recursive: true, force: true }); rmSync(outside, { recursive: true, force: true }); }
+});
+
+function routedConfig() {
+  const input: any = { ...declaration(), agents: agents(), authz: {
+    capabilities: [], roles: [{ code: 'host', name: '接待人', capabilities: [] }],
+    scopeDimensions: [{ code: 'site', name: '园区', valueType: 'uuid',
+      valueSource: { kind: 'native_resource', resourceCode: 'buildings', labelField: 'name' } }],
+    dataPolicies: [{ code: 'site-policy', name: '园区范围', resourceCode: 'visits', matchMode: 'AND', rules: [{ field: 'site', dimensionCode: 'site' }] }],
+  } };
+  const resource = input.data.resources[1];
+  resource.fields.push({ code: 'site', label: '所属园区', type: 'uuid', filter: true },
+    { code: 'host', label: '接待人', type: 'user.single', filter: true, userCandidates: { kind: 'app-role', roleCode: 'host' } });
+  resource.dataPolicyCode = 'site-policy';
+  for (const task of input.agents[0].tasks) {
+    if (task.kind === 'view') task.filters = ['site', 'host'];
+    else task.fields.push('site', 'host');
+  }
+  return structuredClone(defineOpenXiangdaApp(input));
+}
+
+test('selector routes come from field and policy authority, keeping ordinary command values and label-only scope hints', () => {
+  const app = routedConfig(), compiled = shared(app);
+  const create = compiled.capabilities.find(capability => capability.operation === 'create')!;
+  assert.ok(validateCatalogSchema(compileAiCapabilityCatalog(app)), JSON.stringify(validateCatalogSchema.errors));
+  assert.equal(create.agent!.nativeTask!.form!.fields.find(field => field.path === 'host')!.selector!.owner, 'user-candidates');
+  assert.deepEqual(create.agent!.nativeTask!.form!.fields.find(field => field.path === 'site')!.selector, { owner: 'scope', dimensionCode: 'site' });
+  const validateHints = ajv.compile(create.agent!.nativeTask!.hintSchema);
+  assert.ok(validateHints({ data: { site: { label: '东区' }, host: { label: '张伟' } } }));
+  assert.equal(validateHints({ data: { site: 'internal-id' } }), false);
+  const command = (create.inputSchema.properties as any).data.properties;
+  assert.equal(command.site.anyOf[0].type, 'string', 'scope remains an ordinary scalar');
+  assert.ok(create.agent!.nativeTask!.coverage!.some(field => field.field === 'site' && field.output === 'label'));
+  assert.ok(create.agent!.nativeTask!.coverage!.some(field => field.field === 'host' && field.create));
+  const sources = compileApplicationSources(app);
+  assert.deepEqual(sources.agentDefinitions!.value, compiled.definitions);
+  assert.doesNotThrow(() => compileNativeApplicationConfiguration({ appCode: app.app.code, configBytes: sources.config.content,
+    contractBytes: sources.contracts.content, expectedConfigDigest: sources.config.digest, expectedContractDigest: sources.contracts.digest }));
+});
+
+test('record-scoped candidates require another create owner and the update dependent closure', () => {
+  const app = routedConfig(), host = app.data!.resources[1]!.schema.fields.find(field => field.code === 'host')!;
+  host.userCandidates!.scope = { dimensionCode: 'site', operation: 'read', field: 'site' };
+  assert.throws(() => shared(app), /CANDIDATE_CREATE_OWNER_REQUIRED.*visit.invite.*host.*user-candidates.*流程发起/);
+  const create = app.agents![0]!.tasks.find(task => task.kind === 'form' && task.action === 'create')!;
+  if (create.kind === 'form') create.fields = create.fields.filter(field => field !== 'host');
+  assert.doesNotThrow(() => shared(app));
+  const update = app.agents![0]!.tasks.find(task => task.kind === 'form' && task.action === 'update')!;
+  if (update.kind === 'form') update.fields = ['site'];
+  assert.throws(() => shared(app), /UPDATE_DEPENDENT_REQUIRED/);
+  if (update.kind === 'form') update.fields = ['host'];
+  assert.doesNotThrow(() => shared(app), 'unchanged private saved scope remains server-held');
+});
+
+test('multi-dimension scope fields remain on the card but are not offered as model hints or raw output', () => {
+  const app = routedConfig();
+  app.authz!.scopeDimensions!.push({ ...app.authz!.scopeDimensions![0]!, code: 'campus' });
+  app.authz!.dataPolicies![0]!.rules.push({ field: 'site', dimensionCode: 'campus' });
+  const compiled = shared(app), create = compiled.capabilities.find(capability => capability.operation === 'create')!;
+  assert.ok(create.agent!.nativeTask!.form!.fields.some(field => field.path === 'site'));
+  assert.equal((create.agent!.nativeTask!.hintSchema.properties as any).data.properties.site, undefined);
+  const view = compiled.capabilities.find(capability => capability.operation === 'query')!;
+  assert.equal((view.agent!.nativeTask!.hintSchema.properties as any).filters.properties.site, undefined);
+  assert.ok(view.agent!.nativeTask!.coverage!.some(field => field.field === 'site' && field.output === 'page' && field.reason === 'multiple-scope-dimensions'));
+  app.authz!.dataPolicies![0] = { ...app.authz!.dataPolicies![0]!, rules: [], readExpression: { anyOf: [{ field: 'site', dimensionCode: 'site' }, { field: 'site', dimensionCode: 'campus' }] } } as any;
+  assert.equal((shared(app).capabilities.find(capability => capability.operation === 'query')!.agent!.nativeTask!.hintSchema.properties as any).filters.properties.site, undefined);
 });

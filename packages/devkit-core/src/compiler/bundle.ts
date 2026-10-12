@@ -185,7 +185,7 @@ export function compileApplicationSources(
   const contractDigest = sha256Bytes(contractContent);
   return {
     ...(config.agents?.length ? (() => {
-      const value = compileApplicationAgentsV2(config.app.code, config.agents, configuration.data.resources).definitions;
+      const value = compileApplicationAgentsV2(config.app.code, config.agents, configuration.data.resources, { authz: configuration.authz }).definitions;
       const content = canonicalJson(value);
       return { agentDefinitions: { value, content, digest: sha256Bytes(content), mediaType: 'application/vnd.openxiangda.application-agent-definitions.v2+json' as const } };
     })() : {}),

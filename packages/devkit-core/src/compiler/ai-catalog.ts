@@ -416,7 +416,7 @@ export function compileAiCapabilityCatalog(
       generatedCrudCapabilityOperations(resource)
         .map(operation => generatedCapability(resource, operation))
     )
-    .concat(compileApplicationAgentsV2(config.app.code, config.agents, resources).capabilities)
+    .concat(compileApplicationAgentsV2(config.app.code, config.agents, resources, { authz: config.authz }).capabilities)
     .concat(
       (config.backend.operations || [])
         .filter(

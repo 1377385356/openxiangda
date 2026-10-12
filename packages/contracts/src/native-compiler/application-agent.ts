@@ -3,7 +3,8 @@ import { fieldValueSchemaForDefinition } from './field-value-schemas.js';
 import type { AiCapability, AiJsonSchema } from '../ai.js';
 import type { DataFieldDefinition, DataResource } from '../types.js';
 import type { ApplicationAgentDefinitionsV2,
-  ApplicationAgentTaskDeclarationV2, NativeAgentTaskBindingV2 } from '../application-agent.js';
+  ApplicationAgentTaskDeclarationV2, NativeAgentTaskBindingV2, NativeAgentSelectorV2, NativeAgentFieldCoverageV2 } from '../application-agent.js';
+import type { ConfigurationBundleV3 } from '../native.js';
 import { projectDataResourceView } from './resource-view.js';
 import { nativeFieldRequiresCreateInputV2, parseNativeDataFieldsV2, NativeDataFieldContractV2Error } from './data-field.js';
 import { isDataAuditMetadataField, isDataSystemSortField } from './data-audit-access.js';
@@ -65,9 +66,38 @@ const labelHint: AiJsonSchema = { type: 'object', additionalProperties: false, r
   properties: { label: { type: 'string', minLength: 1, maxLength: 500 } } };
 const references = /^(option|user|department|resource-ref)\.(single|multiple)$/;
 const unavailable = new Set(['file', 'image', 'signature', 'subtable', 'text.rich', 'json', 'serial-number']);
+export type NativeAgentSelectorAuthorityV2 = Partial<Pick<ConfigurationBundleV3['authz'], 'scopeDimensions' | 'dataPolicies'>>;
+
+/** The policy, not the view widget, owns scalar scope selection. */
+export function nativeAgentFieldSelectorV2(resource: DataResource, field: DataFieldDefinition,
+  authz?: NativeAgentSelectorAuthorityV2): { selector?: NativeAgentSelectorV2; ambiguousScope?: true } {
+  if (field.type.startsWith('user.')) return { selector: { owner: field.userCandidates ? 'user-candidates' : 'directory' } };
+  if (field.type.startsWith('department.')) return { selector: { owner: 'directory' } };
+  if (field.type.startsWith('resource-ref.')) return { selector: { owner: 'field-source' } };
+  if (field.type.startsWith('option.') || field.type.startsWith('cascade.')) return { selector: { owner: 'options' } };
+  if (!['text.short', 'uuid'].includes(field.type)) return {};
+  const policy = authz?.dataPolicies?.find(policy => policy.code === resource.dataPolicyCode && policy.resourceCode === resource.code);
+  const rules: any[] = [...policy?.rules || []];
+  const pending: any[] = policy?.readExpression ? [policy.readExpression] : [];
+  while (pending.length) {
+    const expression = pending.shift();
+    if (rules.length + pending.length > 2000) fail('SELECTOR_POLICY_LIMIT', `/data/resources/${resource.code}`, '范围路由超过规则预算');
+    if (expression?.allOf) pending.push(...expression.allOf);
+    else if (expression?.anyOf) pending.push(...expression.anyOf);
+    else rules.push(expression);
+  }
+  const dimensions = new Set(rules.flatMap(rule => rule && 'dimensionCode' in rule && rule.field === field.code &&
+    authz?.scopeDimensions?.some(dimension => dimension.code === rule.dimensionCode && dimension.valueSource)
+    ? [rule.dimensionCode] : []));
+  return dimensions.size === 1 ? { selector: { owner: 'scope', dimensionCode: [...dimensions][0]! } } :
+    dimensions.size > 1 ? { ambiguousScope: true } : {};
+}
 
 /** A projection for assistance only; ordinary field schemas remain the command's only value contract. */
-export function nativeAgentFieldHintSchemaV2(field: DataFieldDefinition, filter = false): AiJsonSchema | undefined {
+export function nativeAgentFieldHintSchemaV2(field: DataFieldDefinition, filter = false,
+  route?: { selector?: NativeAgentSelectorV2; ambiguousScope?: true }): AiJsonSchema | undefined {
+  if (route?.ambiguousScope) return undefined;
+  if (route?.selector?.owner === 'scope') return !filter && field.nullable !== false ? { anyOf: [labelHint, { type: 'null' }] } : labelHint;
   if (references.test(field.type)) {
     const schema = field.type.endsWith('.multiple') ? { type: 'array', minItems: filter ? 1 : 0, maxItems: 50, items: labelHint } : labelHint;
     return !filter && field.nullable !== false ? { anyOf: [schema, { type: 'null' }] } : schema;
@@ -86,7 +116,8 @@ function objectSchema(properties: Record<string, AiJsonSchema>, required: string
 }
 function formBindings(resource: DataResource, field: DataFieldDefinition): string[] {
   const source = field.source || resource.surface?.fields[field.code]?.source;
-  return (source?.filters || []).flatMap(filter => 'binding' in filter ? [filter.binding.field] : []);
+  return [...(source?.filters || []).flatMap(filter => 'binding' in filter ? [filter.binding.field] : []),
+    ...(field.userCandidates?.scope?.field ? [field.userCandidates.scope.field] : [])];
 }
 const handleSchema = { type: 'object', additionalProperties: false, required: ['handle'],
   properties: { handle: { type: 'string', minLength: 1, maxLength: 80 } } };
@@ -99,7 +130,7 @@ const resultSchema = { type: 'object', additionalProperties: false, properties: 
 } };
 
 function compileTask(appCode: string, agentCode: string, task: ApplicationAgentTaskDeclarationV2,
-  resources: DataResource[], pointer: string): AiCapability {
+  resources: DataResource[], pointer: string, authz?: NativeAgentSelectorAuthorityV2): AiCapability {
   const resource = resources.find(item => item && typeof item === 'object' && item.code === task.resource && item.status !== 'retired');
   if (!resource?.surface || !resource.surface.fields || !Array.isArray(resource.schema?.fields) ||
     resource.schema.fields.some(field => !field || typeof field.code !== 'string' || typeof field.type !== 'string')) fail('RESOURCE_UNAVAILABLE', `${pointer}/resource`, '需要当前模型及标准视图');
@@ -114,6 +145,19 @@ function compileTask(appCode: string, agentCode: string, task: ApplicationAgentT
   const view = task.view === 'default' && !resource.surface.views?.length ? resource.surface :
     projectDataResourceView(resource.surface, task.view);
   const byField = new Map(resource.schema.fields.map(field => [field.code, field]));
+  const routes = new Map(resource.schema.fields.map(field => [field.code, nativeAgentFieldSelectorV2(resource, field, authz)]));
+  const coverage = (names: string[]): NativeAgentFieldCoverageV2[] => [...new Set(names)].flatMap(name => {
+    const field = byField.get(name), route = routes.get(name);
+    if (!field || !route) return [];
+    const savedScope = Boolean(field.userCandidates?.scope?.field);
+    return [{ field: name, ...(route.selector ? { selector: route.selector } : {}),
+      create: task.kind === 'form' && task.action === 'create' && !savedScope,
+      update: task.kind === 'form' && task.action === 'update',
+      filter: task.kind === 'view' && (task.filters ?? view.list?.filterFields ?? []).includes(name) && !route.ambiguousScope,
+      output: route.ambiguousScope ? 'page' : route.selector ? 'label' : 'value',
+      ...(route.ambiguousScope ? { reason: 'multiple-scope-dimensions' as const } : savedScope ? { reason: 'saved-scope-required' as const } : {}),
+    }];
+  });
   const base = { code: `${appCode}.agent.${agentCode}.${task.code}`, appCode,
     name: task.name || `${resource.name}${task.kind === 'view' ? '查询' : task.action === 'create' ? '新增' : '修改'}`.slice(0, 80),
     description: task.description || `通过${resource.name}的${task.view}标准视图${task.kind === 'view' ? '查询' : '填写'}，遵守当前用户权限`,
@@ -122,11 +166,12 @@ function compileTask(appCode: string, agentCode: string, task: ApplicationAgentT
   };
   if (task.kind === 'view') {
     if (view.generated?.list === false) fail('LIST_DISABLED', pointer, '该视图未生成列表');
-    const filterFields = task.filters ?? view.list?.filterFields ?? [];
-    if (filterFields.some(field => !view.list?.filterFields?.includes(field))) fail('FILTER_WIDENING', `${pointer}/filters`, '任务只能缩小视图筛选字段');
+    const requestedFilters = task.filters ?? view.list?.filterFields ?? [];
+    if (requestedFilters.some(field => !view.list?.filterFields?.includes(field))) fail('FILTER_WIDENING', `${pointer}/filters`, '任务只能缩小视图筛选字段');
+    const filterFields = requestedFilters.filter(field => !routes.get(field)?.ambiguousScope);
     const filters = Object.fromEntries(filterFields.map(field => {
       const definition = byField.get(field);
-      const hint = definition && nativeAgentFieldHintSchemaV2(definition, true);
+      const hint = definition && nativeAgentFieldHintSchemaV2(definition, true, routes.get(field));
       if (!hint) fail('FILTER_TYPE_UNSUPPORTED', `${pointer}/filters`, `字段 ${field} 暂不支持模型筛选提示`);
       return [field, hint];
     }));
@@ -142,7 +187,8 @@ function compileTask(appCode: string, agentCode: string, task: ApplicationAgentT
       authorization: { capabilities: [resource.capabilities.read] }, risk: 'read', confirmation: 'none',
       idempotency: 'none', concurrency: 'none', sideEffects: [], limits: { ...base.limits, maxRows: 100 },
       binding: { kind: 'native-view', resourceCode: resource.code, viewCode: task.view, filterFields },
-      agent: { ...base.agent, nativeTask: { contractVersion: 2, agentCode, taskCode: task.code, hintSchema } },
+      agent: { ...base.agent, nativeTask: { contractVersion: 2, agentCode, taskCode: task.code, hintSchema,
+        coverage: coverage([...requestedFilters, ...view.list?.fieldOrder || [], ...view.detail?.fieldOrder || []]) } },
     };
   }
   if ((resource.surface.mutationOwner || 'native') !== 'native' || view.generated?.[task.action] === false)
@@ -157,6 +203,8 @@ function compileTask(appCode: string, agentCode: string, task: ApplicationAgentT
       fail('FORM_FIELD_UNSUPPORTED', `${pointer}/fields`, `字段 ${field} 不属于可编辑的标准单控件表单`);
     if (!Array.isArray(display[`${task.action}Capabilities`]) || display[`${task.action}Capabilities`].length === 0)
       fail('FORM_FIELD_UNWRITABLE', `${pointer}/fields`, `字段 ${field} 未提供 ${task.action} 权限`);
+    if (task.action === 'create' && definition.userCandidates?.scope?.field)
+      fail('CANDIDATE_CREATE_OWNER_REQUIRED', `${pointer}/fields`, `任务 ${task.code} 字段 ${field} (user-candidates) 的范围取自记录字段，新建需通过流程发起或 Nest 业务操作办理`);
   }
   const included = new Set(fields);
   if (task.action === 'create') {
@@ -177,7 +225,7 @@ function compileTask(appCode: string, agentCode: string, task: ApplicationAgentT
     nativeFieldRequiresCreateInputV2(field, resource.surface!.fields[field.code])).map(field => field.code) : [];
   const dataSchema = objectSchema(Object.fromEntries(definitions.map(field => [field.code, field.nullable === false ? fieldValueSchemaForDefinition(field) : { anyOf: [fieldValueSchemaForDefinition(field), { type: 'null' }] }])), required);
   const hints = Object.fromEntries(definitions.flatMap(field => {
-    const hint = nativeAgentFieldHintSchemaV2(field);
+    const hint = nativeAgentFieldHintSchemaV2(field, false, routes.get(field.code));
     return hint ? [[field.code, hint]] : [];
   }));
   const binding: NativeAgentTaskBindingV2 = { kind: 'native-form', resourceCode: resource.code,
@@ -190,16 +238,17 @@ function compileTask(appCode: string, agentCode: string, task: ApplicationAgentT
     confirmation: task.confirmation || 'required', idempotency: 'required', concurrency: task.action === 'update' ? 'revision' : 'none',
     sideEffects: [`${resource.code}:${task.action}`], reconcile: { kind: 'platform-transaction' }, binding,
     agent: { ...base.agent, nativeTask: { contractVersion: 2, agentCode, taskCode: task.code,
-      hintSchema: objectSchema({ data: objectSchema(hints), ...(task.action === 'update' ? { record: handleSchema } : {}) }),
+      hintSchema: objectSchema({ data: objectSchema(hints), ...(task.action === 'update' ? { record: handleSchema } : {}) }), coverage: coverage(fields),
       form: { contractVersion: 2, action: task.action, title: base.name, submitLabel: '提交', resource: resource.code, view: task.view,
         fields: definitions.map(field => ({ path: field.code, label: resource.surface!.fields[field.code]!.label,
-          fieldType: field.type, required: required.includes(field.code), source: { resource: resource.code, field: field.code } })) },
+          fieldType: field.type, required: required.includes(field.code), source: { resource: resource.code, field: field.code },
+          ...(routes.get(field.code)?.selector ? { selector: routes.get(field.code)!.selector } : {}) })) },
     } },
   };
 }
 
 export function compileApplicationAgentsV2(appCode: string, input: unknown, resources: DataResource[],
-  options: { allowInstructionFiles?: boolean } = {}): { definitions: ApplicationAgentDefinitionsV2; capabilities: AiCapability[] } {
+  options: { allowInstructionFiles?: boolean; authz?: NativeAgentSelectorAuthorityV2 | undefined } = {}): { definitions: ApplicationAgentDefinitionsV2; capabilities: AiCapability[] } {
   const definitions: ApplicationAgentDefinitionsV2 = { schemaVersion: 'openxiangda.application-agent-definitions/v2', appCode, agents: [] };
   const capabilities: AiCapability[] = [];
   if (input === undefined) return { definitions, capabilities };
@@ -239,7 +288,7 @@ export function compileApplicationAgentsV2(appCode: string, input: unknown, reso
         if (!Array.isArray(task.fields)) fail('FIELDS_REQUIRED', `${path}/fields`, '需要字段列表');
         strings(task.fields, 20, 100, `${path}/fields`);
       }
-      return compileTask(appCode, agentCode, task as ApplicationAgentTaskDeclarationV2, resources, path);
+      return compileTask(appCode, agentCode, task as ApplicationAgentTaskDeclarationV2, resources, path, options.authz);
     });
     const definition = { code: agentCode, name, purpose, instructions: typeof instruction === 'string' ? instruction : '', starters,
       tasks: agentCapabilities.map(capability => ({ code: capability.agent!.nativeTask!.taskCode, capabilityCode: capability.code })) };

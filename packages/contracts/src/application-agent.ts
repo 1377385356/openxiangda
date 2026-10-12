@@ -49,6 +49,21 @@ export interface ApplicationAgentDefinitionsV2 {
   agents: ApplicationAgentDefinitionV2[];
 }
 
+/** Routing only. The selected owner still authorizes the ordinary field value. */
+export type NativeAgentSelectorV2 =
+  | { owner: 'directory' | 'user-candidates' | 'field-source' | 'options' }
+  | { owner: 'scope'; dimensionCode: string };
+
+export interface NativeAgentFieldCoverageV2 {
+  field: string;
+  selector?: NativeAgentSelectorV2;
+  create: boolean;
+  update: boolean;
+  filter: boolean;
+  output: 'label' | 'value' | 'page';
+  reason?: 'multiple-scope-dimensions' | 'saved-scope-required';
+}
+
 /** The command owns field value schemas; this descriptor never redescribes them. */
 export interface NativeAgentFormDescriptorV2 {
   contractVersion: 2;
@@ -63,6 +78,7 @@ export interface NativeAgentFormDescriptorV2 {
     fieldType: DataFieldType;
     required: boolean;
     source: { resource: string; field: string };
+    selector?: NativeAgentSelectorV2;
   }>;
 }
 
@@ -72,6 +88,7 @@ export interface NativeAgentTaskMetadataV2 {
   taskCode: string;
   /** Input assistance only. It cannot be sent to the command owner. */
   hintSchema: AiJsonSchema;
+  coverage?: NativeAgentFieldCoverageV2[];
   form?: NativeAgentFormDescriptorV2;
 }
 
@@ -81,6 +98,16 @@ export type NativeAgentTaskBindingV2 =
 
 const stableCode = { type: 'string', minLength: 1, maxLength: 100, pattern: '^[a-z][a-z0-9]*(?:[-.][a-z0-9]+)*$' };
 const fieldNames = { type: 'array', maxItems: 20, uniqueItems: true, items: { type: 'string', minLength: 1, maxLength: 100 } };
+const selectorSchema = { oneOf: [
+  { type: 'object', additionalProperties: false, required: ['owner'], properties: { owner: { enum: ['directory', 'user-candidates', 'field-source', 'options'] } } },
+  { type: 'object', additionalProperties: false, required: ['owner', 'dimensionCode'], properties: { owner: { const: 'scope' }, dimensionCode: stableCode } },
+] };
+const coverageSchema = { type: 'array', maxItems: 500, items: {
+  type: 'object', additionalProperties: false, required: ['field', 'create', 'update', 'filter', 'output'],
+  properties: { field: { type: 'string', minLength: 1, maxLength: 100 }, selector: selectorSchema,
+    create: { type: 'boolean' }, update: { type: 'boolean' }, filter: { type: 'boolean' },
+    output: { enum: ['label', 'value', 'page'] }, reason: { enum: ['multiple-scope-dimensions', 'saved-scope-required'] } },
+} };
 const taskBase = { code: stableCode, name: { type: 'string', minLength: 1, maxLength: 80 },
   description: { type: 'string', minLength: 1, maxLength: 1000 }, resource: stableCode, view: stableCode,
   examples: { type: 'array', maxItems: 12, uniqueItems: true, items: { type: 'string', minLength: 1, maxLength: 160 } } };
@@ -109,6 +136,7 @@ export const nativeAgentTaskBindingSchemaV2 = { oneOf: [
 export const nativeAgentTaskMetadataSchemaV2 = {
   type: 'object', additionalProperties: false, required: ['contractVersion', 'agentCode', 'taskCode', 'hintSchema'],
   properties: { contractVersion: { const: 2 }, agentCode: stableCode, taskCode: stableCode, hintSchema: { type: 'object' },
+    coverage: coverageSchema,
     form: { type: 'object', additionalProperties: false,
       required: ['contractVersion', 'action', 'title', 'submitLabel', 'resource', 'view', 'fields'],
       properties: { contractVersion: { const: 2 }, action: { enum: ['create', 'update'] },
@@ -117,6 +145,7 @@ export const nativeAgentTaskMetadataSchemaV2 = {
           items: { type: 'object', additionalProperties: false, required: ['path', 'label', 'fieldType', 'required', 'source'],
             properties: { path: { type: 'string', minLength: 1, maxLength: 100 }, label: { type: 'string', minLength: 1, maxLength: 500 },
               fieldType: { enum: DATA_FIELD_TYPES }, required: { type: 'boolean' },
+              selector: selectorSchema,
               source: { type: 'object', additionalProperties: false, required: ['resource', 'field'],
                 properties: { resource: stableCode, field: { type: 'string', minLength: 1, maxLength: 100 } } } } } } },
     },
@@ -134,10 +163,19 @@ export function validNativeAgentCapabilityV2(raw: Record<string, any>): boolean 
     !exact(raw.agent, ['visibility', 'examples', 'nativeTask']) ||
     (raw.agent.examples !== undefined && (!Array.isArray(raw.agent.examples) || raw.agent.examples.length > 12 ||
       new Set(raw.agent.examples).size !== raw.agent.examples.length || raw.agent.examples.some((example: any) => !nonEmpty(example, 160)))) ||
-    !exact(meta, ['contractVersion', 'agentCode', 'taskCode', 'hintSchema', 'form']) || meta.contractVersion !== 2 ||
+    !exact(meta, ['contractVersion', 'agentCode', 'taskCode', 'hintSchema', 'coverage', 'form']) || meta.contractVersion !== 2 ||
     !nonEmpty(meta.agentCode) || !nonEmpty(meta.taskCode) || !isObject(meta.hintSchema) || meta.hintSchema.type !== 'object' ||
     !nonEmpty(binding.resourceCode) || !nonEmpty(binding.viewCode) || raw.resources?.length !== 1 || raw.resources[0] !== binding.resourceCode ||
     raw.generatedFrom !== undefined || raw.code !== `${raw.appCode}.agent.${meta.agentCode}.${meta.taskCode}`) return false;
+  const validSelector = (v: any) => isObject(v) && (v.owner === 'scope'
+    ? exact(v, ['owner', 'dimensionCode']) && nonEmpty(v.dimensionCode)
+    : exact(v, ['owner']) && ['directory', 'user-candidates', 'field-source', 'options'].includes(v.owner));
+  if (meta.coverage !== undefined && (!Array.isArray(meta.coverage) || meta.coverage.length > 500 ||
+    new Set(meta.coverage.map((entry: any) => entry?.field)).size !== meta.coverage.length || meta.coverage.some((entry: any) =>
+      !isObject(entry) || !exact(entry, ['field', 'selector', 'create', 'update', 'filter', 'output', 'reason']) || !nonEmpty(entry.field) ||
+      ['create', 'update', 'filter'].some(key => typeof entry[key] !== 'boolean') || !['label', 'value', 'page'].includes(entry.output) ||
+      (entry.selector !== undefined && !validSelector(entry.selector)) ||
+      (entry.reason !== undefined && !['multiple-scope-dimensions', 'saved-scope-required'].includes(entry.reason))))) return false;
   if (binding.kind === 'native-view') return exact(binding, ['kind', 'resourceCode', 'viewCode', 'filterFields']) && names(binding.filterFields) &&
     meta.form === undefined && raw.operation === 'query' && raw.risk === 'read' && raw.confirmation === 'none' && raw.idempotency === 'none' && raw.concurrency === 'none';
   if (binding.kind !== 'native-form' || !exact(binding, ['kind', 'resourceCode', 'viewCode', 'action', 'fields']) || !names(binding.fields, 1) ||
@@ -147,7 +185,8 @@ export function validNativeAgentCapabilityV2(raw: Record<string, any>): boolean 
   return isObject(form) && exact(form, ['contractVersion', 'action', 'title', 'submitLabel', 'resource', 'view', 'fields']) &&
     form.contractVersion === 2 && form.action === binding.action && form.resource === binding.resourceCode && form.view === binding.viewCode &&
     nonEmpty(form.title, 80) && nonEmpty(form.submitLabel, 40) && Array.isArray(form.fields) && form.fields.length === binding.fields.length &&
-    form.fields.every((field: any, i: number) => isObject(field) && exact(field, ['path', 'label', 'fieldType', 'required', 'source']) &&
+    form.fields.every((field: any, i: number) => isObject(field) && exact(field, ['path', 'label', 'fieldType', 'required', 'source', 'selector']) &&
+      (field.selector === undefined || validSelector(field.selector)) &&
       field.path === binding.fields[i] && nonEmpty(field.label, 500) && DATA_FIELD_TYPES.includes(field.fieldType) && typeof field.required === 'boolean' &&
       isObject(field.source) && exact(field.source, ['resource', 'field']) && field.source.resource === binding.resourceCode && field.source.field === field.path);
 }
