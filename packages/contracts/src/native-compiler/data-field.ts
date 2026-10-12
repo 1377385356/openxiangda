@@ -104,6 +104,7 @@ export interface NativeDataFieldResourceSourceV2 {
   descriptionFields?: string[];
   snapshotFields?: string[];
   filters?: NativeDataFieldSourceFilterV2[];
+  filterWhere?: Array<Extract<NativeDataFieldSourceFilterV2, { value: unknown }>>;
   pageSize?: number;
   loadMode?: 'search' | 'all';
   clearOnBindingChange?: boolean;
@@ -577,6 +578,11 @@ function validateSourceReferences(
       }
     }
   }
+  for (const [index, filter] of (source.filterWhere || []).entries()) {
+    if (!targetFields.has(filter.field)) {
+      issue('NATIVE_DATA_FIELD_SOURCE_FILTER_FIELD_MISSING', `${pointer}/filterWhere/${index}/field`);
+    }
+  }
   for (const [index, filter] of (source.filters || []).entries()) {
     if (!targetFields.has(filter.field)) {
       issue(
@@ -706,6 +712,7 @@ function parseSource(
       'descriptionFields',
       'snapshotFields',
       'filters',
+      'filterWhere',
       'pageSize',
       'loadMode',
       'clearOnBindingChange',
@@ -756,6 +763,7 @@ function parseSource(
     loadMode = source.loadMode as 'search' | 'all';
   }
   const filters = parseSourceFilters(source.filters, `${pointer}/filters`);
+  const filterWhere = parseSourceFilters(source.filterWhere, `${pointer}/filterWhere`, false) as NativeDataFieldResourceSourceV2['filterWhere'];
   if (source.clearOnBindingChange !== undefined && typeof source.clearOnBindingChange !== 'boolean') {
     issue('NATIVE_DATA_FIELD_SOURCE_BINDING_RESET_INVALID', `${pointer}/clearOnBindingChange`);
   }
@@ -767,6 +775,7 @@ function parseSource(
     ...(descriptionFields ? { descriptionFields } : {}),
     ...(snapshotFields ? { snapshotFields } : {}),
     ...(filters ? { filters } : {}),
+    ...(filterWhere ? { filterWhere } : {}),
     ...(pageSize === undefined ? {} : { pageSize }),
     ...(loadMode ? { loadMode } : {}),
     ...(source.clearOnBindingChange === undefined ? {} : { clearOnBindingChange: source.clearOnBindingChange as boolean }),
@@ -775,7 +784,8 @@ function parseSource(
 
 function parseSourceFilters(
   value: unknown,
-  pointer: string
+  pointer: string,
+  allowBindings = true
 ): NativeDataFieldSourceFilterV2[] | undefined {
   if (value === undefined) return undefined;
   if (!Array.isArray(value) || value.length > 20) {
@@ -793,7 +803,7 @@ function parseSourceFilters(
         : ['field', 'operator', 'binding'],
       filterPointer
     );
-    if (hasValue === hasBinding) {
+    if (hasValue === hasBinding || (hasBinding && !allowBindings)) {
       issue('NATIVE_DATA_FIELD_SOURCE_FILTER_VALUE_INVALID', filterPointer);
     }
     const filterField = fieldCode(filter.field, `${filterPointer}/field`);

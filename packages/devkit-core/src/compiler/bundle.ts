@@ -2772,6 +2772,7 @@ function normalizeDataFieldSource(
           ),
         }
       : {}),
+    ...(source.filterWhere ? { filterWhere: source.filterWhere.map(filter => ({ ...filter })) } : {}),
     ...(source.pageSize !== undefined ? { pageSize: source.pageSize } : {}),
     ...(source.loadMode ? { loadMode: source.loadMode } : {}),
     ...(source.clearOnBindingChange === undefined ? {} : { clearOnBindingChange: source.clearOnBindingChange }),

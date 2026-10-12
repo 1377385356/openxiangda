@@ -32,6 +32,7 @@ export const PLATFORM_CAPABILITY_CONTRACT_VERSIONS = {
   "data.decimal-reservation-lifecycle": "1.0.0",
   "data.unique-keys": "1.1.0",
   "data.user-candidates": "1.0.0",
+  "data.field-source-contexts": "1.0.0",
   "data.user-candidate-launch-scope": "1.0.0",
   "data.datetime-minute-precision": "1.0.0",
   "data.subtable-minimum-rows": "1.0.0",

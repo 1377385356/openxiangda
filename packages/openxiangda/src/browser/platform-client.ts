@@ -1287,7 +1287,7 @@ export async function loadChinaDivisions(parentAdcode?: string) {
 
 export async function searchDirectory(
   kind: DirectoryKind,
-  options: { keyword: string; cursor?: string },
+  options: { keyword: string; cursor?: string; purpose?: 'filter' },
 ) {
   const params = new URLSearchParams({
     environmentKey: currentEnvironmentKey(),
@@ -1295,6 +1295,7 @@ export async function searchDirectory(
     limit: '20',
   });
   if (options.cursor) params.set('cursor', options.cursor);
+  if (options.purpose) params.set('purpose', options.purpose);
   return request<DirectoryEntryPage>(
     `${nativeBase().replace(/\/native$/, '')}/directory/${kind}s?${params}`,
   );
@@ -1360,7 +1361,8 @@ export async function searchResource(
   resourceCode: string,
   fieldCode: string,
   options: {
-    operation: 'create' | 'update';
+    operation: DataFieldSourceQuery['operation'];
+    record?: DataFieldSourceQuery['record'];
     keyword: string;
     cursor?: string;
     bindings?: Record<string, unknown>;
@@ -1370,7 +1372,7 @@ export async function searchResource(
   },
 ) {
   if (options.task) {
-    if (options.operation !== 'update' || options.launch || options.action)
+    if (options.operation !== 'update' || options.launch || options.action || options.record)
       throw new Error('WORKFLOW_TASK_FIELD_SOURCE_CONTEXT_INVALID');
     const input: WorkflowTaskFieldSourceQuery = {
       schemaVersion: SCHEMA_VERSIONS.workflowTaskFieldSourceQuery,
@@ -1388,6 +1390,7 @@ export async function searchResource(
   const query: DataFieldSourceQuery = {
     schemaVersion: SCHEMA_VERSIONS.dataFieldSourceQuery,
     operation: options.operation,
+    ...(options.record ? { record: options.record } : {}),
     ...(options.launch ? { launch: options.launch } : {}),
     ...(options.action ? { action: options.action } : {}),
     ...(options.keyword.trim() ? { keyword: options.keyword.trim() } : {}),

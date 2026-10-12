@@ -33,3 +33,19 @@ test("reference registry rejects package names that could alter YAML", () => {
     /INVALID_REFERENCE_CANDIDATE_PACKAGE/
   );
 });
+
+
+test("task uplink proxy affects official upstream and keeps candidates local", () => {
+  const configuration = referenceRegistryConfiguration(["openxiangda-cli"], { uplinkProxy: "http://192.168.2.181:19390" });
+  assert.match(configuration, /url: https:\/\/registry\.npmjs\.org\//);
+  assert.match(configuration, /http_proxy: "http:\/\/192\.168\.2\.181:19390"/);
+  assert.match(configuration, /https_proxy: "http:\/\/192\.168\.2\.181:19390"/);
+  assert.doesNotMatch(packageSection(configuration, "openxiangda-cli"), /proxy:/);
+  assert.doesNotMatch(referenceRegistryConfiguration([]), /https?_proxy/);
+});
+
+test("task uplink proxy rejects credentials and URL content that could alter configuration", () => {
+  for (const proxy of ["file:///etc/passwd", "http://user:password@localhost:1234", "http://localhost:1234/other", "http://localhost:1234/?option=value", "http://localhost:1234/#fragment"]) {
+    assert.throws(() => referenceRegistryConfiguration([], { uplinkProxy: proxy }), /INVALID_REFERENCE_UPLINK_PROXY/);
+  }
+});

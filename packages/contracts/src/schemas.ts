@@ -1896,6 +1896,7 @@ const directoryEntrySchema = {
     },
     description: { type: "string" },
     selectable: { type: "boolean" },
+    inactive: { type: "boolean" },
     path: {
       type: "array",
       items: {
@@ -1973,7 +1974,7 @@ export const nativeScopeValueResolveRequestSchema = {
   properties: {
     schemaVersion: { const: SCHEMA_VERSIONS.nativeScopeValueResolveRequest },
     dimensionCode: nativeStableCode,
-    operation: { enum: ["create", "update"] },
+    operation: { enum: ["create", "update", "filter"] },
     values: {
       type: "array",
       minItems: 1,
@@ -2030,7 +2031,7 @@ export const nativeScopeValuePageSchema = {
       pattern: "^[A-Za-z][A-Za-z0-9_]{0,62}$",
     },
     dimensionCode: nativeStableCode,
-    operation: { enum: ["create", "update"] },
+    operation: { enum: ["create", "update", "filter"] },
     items: {
       type: "array",
       maxItems: 50,
@@ -2042,6 +2043,7 @@ export const nativeScopeValuePageSchema = {
           value: nonEmptyString,
           label: nonEmptyString,
           selectable: { type: "boolean" },
+          inactive: { type: "boolean" },
         },
       },
     },
@@ -2060,10 +2062,20 @@ export const dataFieldSourceQuerySchema = {
   type: "object",
   additionalProperties: false,
   required: ["schemaVersion", "operation"],
+  allOf: [
+    { if: { properties: { operation: { const: 'filter' } } },
+      then: { not: { anyOf: ['bindings', 'launch', 'action', 'record'].map(key => ({ required: [key] })) } } },
+    { if: { required: ['record'] }, then: { properties: { operation: { const: 'update' } },
+      not: { anyOf: [{ required: ['launch'] }, { required: ['action'] }] } } },
+    { if: { required: ['action'] }, then: { properties: { operation: { const: 'update' } },
+      not: { required: ['launch'] } } },
+  ],
   properties: {
     schemaVersion: { const: SCHEMA_VERSIONS.dataFieldSourceQuery },
     action: recordEditInputSchema,
-    operation: { enum: ["create", "update"] },
+    record: { type: "object", additionalProperties: false, required: ["id", "expectedRevision"],
+      properties: { id: { type: "string", format: "uuid" }, expectedRevision: { type: "integer", minimum: 1, maximum: Number.MAX_SAFE_INTEGER } } },
+    operation: { enum: ["create", "update", "filter"] },
     launch: {
       type: "object", additionalProperties: false,
       required: ["workflowCode", "operationCode"],
@@ -2139,7 +2151,7 @@ export const dataFieldSourcePageSchema = {
       pattern: "^[A-Za-z][A-Za-z0-9_]{0,62}$",
     },
     sourceResourceCode: nativeStableCode,
-    operation: { enum: ["create", "update"] },
+    operation: { enum: ["create", "update", "filter"] },
     items: {
       type: "array",
       maxItems: 100,
@@ -2351,6 +2363,11 @@ const dataFieldResourceSourceSchema = {
       type: "array",
       maxItems: 20,
       items: dataFieldResourceSourceFilterSchema,
+    },
+    filterWhere: {
+      type: "array", maxItems: 20,
+      items: { type: "object", additionalProperties: false, required: ["field", "operator", "value"],
+        properties: { field: dataFieldCode, operator: { enum: ["eq", "in"] }, value: {} } },
     },
     pageSize: { type: "integer", minimum: 1, maximum: 100 },
     loadMode: { enum: ["search", "all"] },
