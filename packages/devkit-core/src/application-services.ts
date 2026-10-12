@@ -98,6 +98,7 @@ import {
   collectWorkspaceToolchainDependencies,
   defaultDevkitCoreToolchainCapsule,
   ToolchainCapsuleScanLimitError,
+  ToolchainCapsuleInputError,
   toolchainCapsuleDiagnostic,
   type ToolchainCapsule,
 } from "./toolchain-capsule.js";
@@ -3183,15 +3184,18 @@ export class OpenXiangdaApplicationServices {
   private versionTrainDiagnostics(workspace: LoadedWorkspace) {
     let dependencies: ReturnType<typeof collectWorkspaceToolchainDependencies>;
     try {
-      dependencies = collectWorkspaceToolchainDependencies(workspace.root);
+      const dockerfile = join(workspace.root, workspace.config.backend.root, "Dockerfile");
+      dependencies = collectWorkspaceToolchainDependencies(workspace.root, {
+        ...(backendRuntimeRequired(workspace.config) && existsSync(dockerfile) ? { dockerfile } : {}),
+      });
     } catch (error) {
-      if (error instanceof ToolchainCapsuleScanLimitError) {
+      if (error instanceof ToolchainCapsuleScanLimitError || error instanceof ToolchainCapsuleInputError) {
         return [
           this.diagnostic(
             error.code,
-            "工作区 package.json 扫描超过安全资源上限",
+            error instanceof ToolchainCapsuleInputError ? "工作区依赖输入无效" : "工作区 package.json 扫描超过安全资源上限",
             "package.json",
-            "减少工作区中纳入检查的 package.json 数量或文件大小后重试",
+            "核对 workspace 声明、实际制品输入及本地依赖路径后重试",
             { message: error.message }
           ),
         ];

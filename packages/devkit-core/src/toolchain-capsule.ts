@@ -2,14 +2,16 @@ import {
   SCHEMA_VERSIONS,
   type Diagnostic,
 } from "openxiangda-contracts";
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { relative } from "node:path";
 import { OPENXIANGDA_TOOLCHAIN_VERSION } from "./version.js";
+import { workspacePackageInputs, WORKSPACE_MAX_PACKAGE_FILES, WORKSPACE_MAX_MANIFEST_BYTES } from "./workspace-inputs.js";
+export { WorkspaceInputLimitError as ToolchainCapsuleScanLimitError, WorkspaceInputError as ToolchainCapsuleInputError } from "./workspace-inputs.js";
 
 export const TOOLCHAIN_CAPSULE_SCHEMA_VERSION =
   "openxiangda.toolchain-capsule/v1" as const;
-export const TOOLCHAIN_CAPSULE_MAX_PACKAGE_FILES = 2_000;
-export const TOOLCHAIN_CAPSULE_MAX_MANIFEST_BYTES = 1_000_000;
+export const TOOLCHAIN_CAPSULE_MAX_PACKAGE_FILES = WORKSPACE_MAX_PACKAGE_FILES;
+export const TOOLCHAIN_CAPSULE_MAX_MANIFEST_BYTES = WORKSPACE_MAX_MANIFEST_BYTES;
 
 /**
  * These are the minimum app-facing packages owned by the official application
@@ -44,15 +46,6 @@ export interface ToolchainCapsuleMismatch {
   readonly actual: string;
   readonly packageFile: string;
   readonly section: string;
-}
-
-export class ToolchainCapsuleScanLimitError extends Error {
-  readonly code = "OPENXIANGDA_WORKSPACE_CAPSULE_SCAN_LIMIT" as const;
-
-  constructor(message: string) {
-    super(message);
-    this.name = "ToolchainCapsuleScanLimitError";
-  }
 }
 
 export function createToolchainCapsule(
@@ -104,82 +97,23 @@ export function defaultDevkitCoreToolchainCapsule(): ToolchainCapsule {
 }
 
 export function collectWorkspaceToolchainDependencies(
-  root: string
+  root: string,
+  options: { dockerfile?: string } = {}
 ): WorkspaceToolchainDependency[] {
   const dependencies: WorkspaceToolchainDependency[] = [];
-  let packageFileCount = 0;
-  const visit = (directory: string) => {
-    for (const entry of readdirSync(directory, { withFileTypes: true }).sort(
-      (left, right) => left.name.localeCompare(right.name)
-    )) {
-      if (
-        [
-          "node_modules",
-          "dist",
-          "coverage",
-          "playwright-report",
-          "test-results",
-          ".git",
-          ".openxiangda",
-          ".turbo",
-        ].includes(entry.name)
-      ) {
-        continue;
-      }
-      const path = join(directory, entry.name);
-      if (entry.isDirectory()) {
-        visit(path);
-        continue;
-      }
-      if (!entry.isFile() || entry.name !== "package.json") continue;
-      packageFileCount += 1;
-      if (packageFileCount > TOOLCHAIN_CAPSULE_MAX_PACKAGE_FILES) {
-        throw new ToolchainCapsuleScanLimitError(
-          `workspace package.json count exceeds ${TOOLCHAIN_CAPSULE_MAX_PACKAGE_FILES}`
-        );
-      }
-      const manifestBytes = statSync(path).size;
-      if (manifestBytes > TOOLCHAIN_CAPSULE_MAX_MANIFEST_BYTES) {
-        throw new ToolchainCapsuleScanLimitError(
-          `${relative(root, path)} exceeds ${TOOLCHAIN_CAPSULE_MAX_MANIFEST_BYTES} bytes`
-        );
-      }
-      const packageJson = JSON.parse(readFileSync(path, "utf8")) as Record<
-        string,
-        unknown
-      >;
-      for (const section of [
-        "dependencies",
-        "devDependencies",
-        "peerDependencies",
-        "optionalDependencies",
-      ]) {
-        const values = packageJson[section];
-        if (!values || typeof values !== "object") continue;
-        for (const [name, specifier] of Object.entries(
-          values as Record<string, unknown>
-        )) {
-          if (!isOpenXiangdaPackageName(name)) {
-            continue;
-          }
-          dependencies.push({
-            name,
-            specifier: String(specifier),
-            packageFile: relative(root, path).replaceAll("\\", "/"),
-            section,
-          });
-        }
+  if (!existsSync(root)) return dependencies;
+  root = realpathSync(root);
+  for (const [path, packageJson] of workspacePackageInputs(root, options)) {
+    for (const section of ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"]) {
+      const values = packageJson[section];
+      if (!values || typeof values !== "object") continue;
+      for (const [name, specifier] of Object.entries(values as Record<string, unknown>)) {
+        if (!isOpenXiangdaPackageName(name)) continue;
+        dependencies.push({ name, specifier: String(specifier), packageFile: relative(root, path).replaceAll("\\", "/"), section });
       }
     }
-  };
-  if (!existsSync(root)) return dependencies;
-  visit(root);
-  return dependencies.sort(
-    (left, right) =>
-      left.name.localeCompare(right.name) ||
-      left.packageFile.localeCompare(right.packageFile) ||
-      left.section.localeCompare(right.section)
-  );
+  }
+  return dependencies.sort((a, b) => a.name.localeCompare(b.name) || a.packageFile.localeCompare(b.packageFile) || a.section.localeCompare(b.section));
 }
 
 export function toolchainCapsuleMismatches(
