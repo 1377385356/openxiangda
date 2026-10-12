@@ -1832,7 +1832,7 @@ export class OpenXiangdaControlPlaneClient {
   async workflowSourceSync(appCode: string,workflowCode: string,input: import('openxiangda-contracts').WorkflowSourceSyncRequest): Promise<unknown> {
     return this.json(`${this.workflowPath(appCode)}/management/source/${encodeURIComponent(workflowCode)}/sync`,{ method: 'POST',body: JSON.stringify(input) });
   }
-  async workflowSourceStatus(appCode: string,workflowCode: string,environmentKey: DeploymentEnvironment,input: { declared: WorkflowSourceDigests;base?: WorkflowSourceDigests }): Promise<unknown> {
+  async workflowSourceStatus(appCode: string,workflowCode: string,environmentKey: DeploymentEnvironment,input: { declared: WorkflowSourceDigests;base?: WorkflowSourceDigests;originEnvironment?: string }): Promise<unknown> {
     return this.json(`${this.workflowPath(appCode)}/management/source/${encodeURIComponent(workflowCode)}/status`,{ method: 'POST',body: JSON.stringify({ environmentKey,...input }) });
   }
 

@@ -45,3 +45,10 @@ test('unchanged application workflow preserves a canvas head; unrelated revision
   assert.equal(classifyWorkflowSourceDeployment({ declared: candidate,base: canvas,head: original }),'diverged');
   assert.equal(classifyWorkflowSourceDeployment({ declared: candidate,head: candidate }),'reuse');
 });
+
+test('ordinary source edits use the active application declaration as a base before the first canvas import', () => {
+  const original={ definitionDigest: 'original',bindingDigest: 'people' },changed={ definitionDigest: 'source-edit',bindingDigest: 'people' };
+  assert.equal(workflowSourceStatus({ declared: changed,activeDeclaration: original,head: original }),'ahead');
+  assert.equal(workflowSourceStatus({ declared: original,activeDeclaration: original,head: changed }),'behind');
+  assert.equal(workflowSourceStatus({ declared: changed,activeDeclaration: original,head: { ...changed,definitionDigest: 'other-edit' } }),'diverged');
+});

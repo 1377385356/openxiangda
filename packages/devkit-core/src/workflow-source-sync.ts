@@ -2,6 +2,7 @@ import { createHash,randomUUID } from 'node:crypto';
 import { existsSync,lstatSync,mkdirSync,readFileSync,renameSync,unlinkSync,writeFileSync } from 'node:fs';
 import { dirname,relative,resolve,sep } from 'node:path';
 import ts from 'typescript';
+import { normalizeWorkflowDefinition } from './internal/workflow.js';
 import { canonicalJson,validateWorkflowSourceBundle,workflowSourceImportDrift,WORKFLOW_SOURCE_BUNDLE_MAX_BYTES,
   workflowNodeAllowedOperations,type WorkflowSourceBundle,type WorkflowSourceLock,type WorkflowRegistrationPlan,type WorkflowDefinition } from 'openxiangda-contracts';
 import { NATIVE_CONTRACT_CAPACITY_V2 } from 'openxiangda-contracts/native-compiler';
@@ -37,7 +38,8 @@ export function workflowSourceDeclaration(config: OpenXiangdaAppConfig,code: str
   const definition = config.workflows?.definitions.find(item => item.definition.code === code && item.version === activation?.definitionVersion);
   const binding = config.workflows?.bindings.find(item => item.binding.workflowCode === code && item.version === activation?.bindingVersion);
   if (!activation || !definition || !binding) fail('WORKFLOW_SOURCE_DECLARATION_REQUIRED',code);
-  return { activation,definition,binding,definitionDigest: digest(definition.definition),bindingDigest: digest(binding.binding) };
+  const normalizedDefinition={ ...definition,definition: normalizeWorkflowDefinition(definition.definition) };
+  return { activation,definition: normalizedDefinition,binding,definitionDigest: digest(normalizedDefinition.definition),bindingDigest: digest(binding.binding) };
 }
 function handlingDefaults(source: WorkflowDefinition,bundle: WorkflowSourceBundle): WorkflowDefinition {
   const next = structuredClone(source);
@@ -77,7 +79,7 @@ export function prepareWorkflowSourceImport(config: OpenXiangdaAppConfig,bundle:
   const sourceBinding = workflows.bindings.find(item => item.binding.workflowCode === bundle.workflowCode && item.version === current.binding.version)!;
   const definitionCollision = workflows.definitions.find(item => item !== sourceDefinition && item.definition.code === bundle.workflowCode && item.version === bundle.origin.definitionVersion);
   const bindingCollision = workflows.bindings.find(item => item !== sourceBinding && item.binding.workflowCode === bundle.workflowCode && item.version === bundle.origin.bindingVersion);
-  if (definitionCollision && digest(definitionCollision.definition) !== digest(definition) || bindingCollision && digest(bindingCollision.binding) !== digest(bundle.binding)) fail('WORKFLOW_IMPORT_LOCAL_VERSION_CONFLICT');
+  if (definitionCollision && digest(normalizeWorkflowDefinition(definitionCollision.definition)) !== digest(definition) || bindingCollision && digest(bindingCollision.binding) !== digest(bundle.binding)) fail('WORKFLOW_IMPORT_LOCAL_VERSION_CONFLICT');
   sourceDefinition.definition=definition;sourceDefinition.version=bundle.origin.definitionVersion;
   sourceBinding.binding=structuredClone(bundle.binding);sourceBinding.version=bundle.origin.bindingVersion;
   if (definitionCollision) workflows.definitions=workflows.definitions.filter(item => item !== definitionCollision);
@@ -96,7 +98,22 @@ export function rewriteWorkflowSourceConfig(source: string,path: string,workflow
   const matches: ts.PropertyAssignment[]=[];
   const visit=(node: ts.Node) => { if (ts.isPropertyAssignment(node) && (ts.isIdentifier(node.name) || ts.isStringLiteral(node.name)) && node.name.text === 'workflows') matches.push(node);ts.forEachChild(node,visit); };
   visit(file);
-  if (matches.length !== 1) fail('WORKFLOW_SOURCE_REWRITE_AMBIGUOUS','配置必须有一个显式 workflows 属性；代码能力检查通过后才会写入');
+  const exported=file.statements.filter((statement): statement is ts.ExportAssignment => ts.isExportAssignment(statement) && !statement.isExportEquals);
+  const declarations=file.statements.flatMap(statement => ts.isVariableStatement(statement) ? [...statement.declarationList.declarations] : []);
+  const resolveOwner=(expression: ts.Expression,seen=new Set<string>(),depth=0): ts.ObjectLiteralExpression | undefined => {
+    if (depth > 16) return undefined;
+    if (ts.isParenthesizedExpression(expression) || ts.isAsExpression(expression) || ts.isTypeAssertionExpression(expression) || ts.isSatisfiesExpression(expression)) return resolveOwner(expression.expression,seen,depth+1);
+    if (ts.isObjectLiteralExpression(expression)) return expression;
+    if (ts.isCallExpression(expression) && expression.arguments.length === 1) return resolveOwner(expression.arguments[0]!,seen,depth+1);
+    if (ts.isIdentifier(expression) && !seen.has(expression.text)) {
+      seen.add(expression.text);
+      const declaration=declarations.find(item => ts.isIdentifier(item.name) && item.name.text === expression.text);
+      return declaration?.initializer ? resolveOwner(declaration.initializer,seen,depth+1) : undefined;
+    }
+    return undefined;
+  };
+  const owner=exported.length === 1 ? resolveOwner(exported[0]!.expression) : undefined;
+  if (matches.length !== 1 || !owner || matches[0]!.parent !== owner || !owner.properties.some(property => 'name' in property && property.name && (ts.isIdentifier(property.name) || ts.isStringLiteral(property.name)) && property.name.text === 'app')) fail('WORKFLOW_SOURCE_CONFIG_REWRITE_AMBIGUOUS');
   const expression=matches[0]!.initializer;
   return source.slice(0,expression.getStart(file))+JSON.stringify(workflows,null,2)+source.slice(expression.getEnd());
 }
@@ -138,7 +155,7 @@ export function writeWorkflowRegistrationPlan(root: string,configPath: string,co
     const binding=workflows.bindings.find(item => item.binding.workflowCode === plan.workflowCode && item.version === current.binding.version)!;
     const definitionCollision=workflows.definitions.find(item => item !== definition && item.definition.code === plan.workflowCode && item.version === plan.definition.number);
     const bindingCollision=workflows.bindings.find(item => item !== binding && item.binding.workflowCode === plan.workflowCode && item.version === plan.binding.number);
-    if (definitionCollision && digest(definitionCollision.definition) !== current.definitionDigest || bindingCollision && digest(bindingCollision.binding) !== current.bindingDigest) fail('WORKFLOW_SOURCE_PLAN_LOCAL_VERSION_CONFLICT');
+    if (definitionCollision && digest(normalizeWorkflowDefinition(definitionCollision.definition)) !== current.definitionDigest || bindingCollision && digest(bindingCollision.binding) !== current.bindingDigest) fail('WORKFLOW_SOURCE_PLAN_LOCAL_VERSION_CONFLICT');
     if (definitionCollision) workflows.definitions=workflows.definitions.filter(item => item !== definitionCollision);
     if (bindingCollision) workflows.bindings=workflows.bindings.filter(item => item !== bindingCollision);
     definition.version=plan.definition.number;binding.version=plan.binding.number;
@@ -156,7 +173,9 @@ export function writeWorkflowSourceBundle(root: string,path: string,bundle: Work
 export function readWorkflowSourceLock(root: string,code: string): WorkflowSourceLock | undefined {
   const path=workflowSourceLockPath(root,code);inside(root,path);if (!existsSync(path)) return undefined;
   if (lstatSync(path).size > 8192) fail('WORKFLOW_SOURCE_LOCK_INVALID');
-  const lock=JSON.parse(readFileSync(path,'utf8')) as WorkflowSourceLock;
-  if (lock.schemaVersion !== 'openxiangda.workflow-source-lock/v1' || lock.workflowCode !== code || !lock.base || !/^(sha256:)?[a-f0-9]{64}$/.test(lock.base.definitionDigest) || !/^(sha256:)?[a-f0-9]{64}$/.test(lock.base.bindingDigest)) fail('WORKFLOW_SOURCE_LOCK_INVALID');
+  let lock: WorkflowSourceLock;
+  try { lock=JSON.parse(readFileSync(path,'utf8')) as WorkflowSourceLock; } catch { fail('WORKFLOW_SOURCE_LOCK_INVALID'); }
+  if (!lock || lock.schemaVersion !== 'openxiangda.workflow-source-lock/v1' || lock.workflowCode !== code || Object.keys(lock).some(key => !['schemaVersion','workflowCode','base','origin'].includes(key)) || !lock.base || !/^(sha256:)?[a-f0-9]{64}$/.test(lock.base.definitionDigest) || !/^(sha256:)?[a-f0-9]{64}$/.test(lock.base.bindingDigest) ||
+    ![lock.base.definitionVersion,lock.base.bindingVersion].every(number => Number.isSafeInteger(number) && number >= 1 && number <= 1000000) || !lock.origin || !['preproduction','production'].includes(lock.origin.environmentKey) || !Number.isSafeInteger(lock.origin.headRevision) || lock.origin.headRevision < 1) fail('WORKFLOW_SOURCE_LOCK_INVALID');
   return lock;
 }
