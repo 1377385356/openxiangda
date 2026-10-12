@@ -3,6 +3,36 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.64.0",
+      "status": "reviewed",
+      "title": "工作流与原生任务能力更新",
+      "summary": "汇总已审阅的工作流画布、并行流程、源码助手契约和应用代理选择能力更新。",
+      "newFeatures": [
+        "增强工作流画布节点、并行流程和能力目录配置。",
+        "增加应用源码助手契约及代理选择能力。"
+      ],
+      "fixes": [
+        "保持流程节点配置、提醒控制和发布后业务步骤的一致性。"
+      ],
+      "affectedUsers": [
+        "使用 OpenXiangda V2 工作流或源码助手能力的应用开发者"
+      ],
+      "upgradeSteps": [
+        "按同一候选版本更新 openxiangda、openxiangda-cli 与共享 contracts 包。"
+      ],
+      "knownLimitations": [
+        "不改变既有应用的业务数据和财务副作用策略。"
+      ],
+      "compatibility": {
+        "node": ">=24",
+        "pnpm": "10.15.1"
+      },
+      "issues": [],
+      "sha256": "3b23d18a5381652b20281527402e8cd406a8666a4c9c392f93131104660705bc",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.64.0"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.63.1",
       "status": "reviewed",
       "title": "流程设计、独立办理与公开契约配套发行",

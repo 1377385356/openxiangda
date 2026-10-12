@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.63.1",
+  "version": "2.64.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -98,13 +98,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.9.1",
-    "openxiangda-contracts": "2.79.1",
-    "openxiangda-devkit-core": "2.60.1",
+    "openxiangda-cli": "2.9.2",
+    "openxiangda-contracts": "2.80.0",
+    "openxiangda-devkit-core": "2.61.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.2.1",
-    "openxiangda-nest": "2.18.2",
-    "openxiangda-skill-kit": "2.3.102",
+    "openxiangda-mcp": "2.2.2",
+    "openxiangda-nest": "2.18.3",
+    "openxiangda-skill-kit": "2.3.103",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -170,48 +170,32 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.63.1",
+    "version": "2.64.0",
     "status": "reviewed",
-    "title": "流程设计、独立办理与公开契约配套发行",
-    "summary": "正式发行已评审的流程设计、办理节点、共享数据保存、结构化并行、提醒通知和流程源码同步能力，提供可编辑应用模板、资源引用读取上下文及只读 AI 回执核对，同时修复首次导入前的源基线比较和配置写入边界。公开 SDK 与 contracts 2.79.1 使用同一冻结分发。",
+    "title": "工作流与原生任务能力更新",
+    "summary": "汇总已审阅的工作流画布、并行流程、源码助手契约和应用代理选择能力更新。",
     "newFeatures": [
-      "流程设计、变量和目标目录、管理员配置、设计提案及历史实例接管共用规范定义与纯校验规则。",
-      "独立办理与补正节点支持明确完成动作、意见要求、共享数据保存、退回策略、持久提醒、平台通知和主管链规则。",
-      "结构化 parallel/join 节点支持有界独立分支、分支位置证明及发布校验，保留任务进入时的权威事实。",
-      "流程源码导出、导入、版本注册和环境同步使用源摘要及目标版本守卫，保留准备版本历史。",
-      "可编辑模板覆盖后台、PC、移动端和登录外观，资源页控制器、来源摘要及组合校验共用标准边界。",
-      "资源引用筛选使用独立读取意图；普通关联编辑提供记录 id/revision 和实际编辑上下文，由平台合并权威绑定。",
-      "AI 核对通过只读 GET/read 查询原幂等键的提交回执，不重新执行业务命令。"
+      "增强工作流画布节点、并行流程和能力目录配置。",
+      "增加应用源码助手契约及代理选择能力。"
     ],
     "fixes": [
-      "首次导入前按目标应用声明比较流程源状态，忽略其他环境观察，复用规范摘要、校验源锁并将写入限定于应用导出的配置。",
-      "并行分支卡片居中且条件开关保持单行，审批布局继续保留权限、CAS、幂等和未知结果恢复。",
-      "新增流程规则使用正式公开 contracts 新版本，不在已公开旧版本号下私有添加 API。",
-      "封包清单正确检查 template/list 命令，参考候选仓库支持显式任务代理访问官方上游。"
+      "保持流程节点配置、提醒控制和发布后业务步骤的一致性。"
     ],
     "affectedUsers": [
-      "使用流程设计、独立办理、共享保存、提醒通知、流程源同步或历史实例接管的 OpenXiangda 2.0 平台和应用。",
-      "使用可编辑模板、资源引用字段或只读 AI 结果核对的 2.0 工作区。"
+      "使用 OpenXiangda V2 工作流或源码助手能力的应用开发者"
     ],
     "upgradeSteps": [
-      "先部署与 contracts 2.79.1 实际纯规则摘要一致的平台；服务器使用官方公开 tarball 并核对 SRI。",
-      "完整工作区分发升级到 openxiangda 2.63.1，按锁文件安装并刷新资料及 MCP 连接。",
-      "保留原应用、数据、任务、流程版本和幂等标识，正常 check/deploy 核对实际能力与 validatorDigest。",
-      "按真实角色验证设计、保存、办理完成、退回、通知收件人及关联字段读写，再执行原晋级流程。"
+      "按同一候选版本更新 openxiangda、openxiangda-cli 与共享 contracts 包。"
     ],
     "knownLimitations": [
-      "新增读取上下文和流程契约需要配套平台先升级，修改摘要不能代替真实兼容性。",
-      "包测试和模板外观不代替真实角色、通知、实例接管及业务数据读回验收。",
-      "事件回执租约对象归属和 Worker 原子效果仍为独立 PLT-040 候选，本次不包含未整合改动。"
+      "不改变既有应用的业务数据和财务副作用策略。"
     ],
     "compatibility": {
-      "generation": "v2",
       "node": ">=24",
-      "platform": "contracts 2.79.1 exact native validator and matching workflow/resource contexts",
-      "v1": "独立 1.x 维护分发不变"
+      "pnpm": "10.15.1"
     },
     "issues": [],
-    "sha256": "364565fc1ab2b4a1db89328b684ca7f5d1b261ad882e00e5da7c1687e5be7861",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.63.1"
+    "sha256": "3b23d18a5381652b20281527402e8cd406a8666a4c9c392f93131104660705bc",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.64.0"
   }
 }
