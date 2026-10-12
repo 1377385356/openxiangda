@@ -27,6 +27,7 @@ import {
 import { verifyCreateJsonOutputBoundary } from "./lib/create-json-output-blackbox.mjs";
 import { DOCUMENTATION_TOPICS } from '../packages/devkit-core/dist/documentation.js';
 import { DEVKIT_COMMANDS } from "../packages/devkit-core/dist/command-registry.js";
+import { assertPublicCliHelpSurface } from "./lib/public-cli-help-surface.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const packagesRoot = join(repositoryRoot, "packages");
@@ -448,13 +449,11 @@ export default class Ninth extends Command { async run() { this.log("injected");
       `Root CLI version is not bound to openxiangda@${installedRootManifest.version}: ${version.trim()}`
     );
   }
-  if (/^TOPICS$/m.test(help)) fail("openxiangda help exposed a topic tree");
-  const commands = [...help.matchAll(/^  ([a-z][a-z-]*)\s{2,}/gm)]
-    .map(match => match[1])
-    .sort();
   const expected = publicCliCommands().sort();
-  if (JSON.stringify(commands) !== JSON.stringify(expected)) {
-    fail(`openxiangda help command set is ${commands.join(", ")}`);
+  try {
+    assertPublicCliHelpSurface(help, DEVKIT_COMMANDS);
+  } catch (error) {
+    fail(`openxiangda help does not match its declared public surface: ${error.message}`);
   }
   for (const command of expected) {
     const commandHelp = runCaptured(
