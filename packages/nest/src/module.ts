@@ -1,3 +1,4 @@
+import { OpenXiangdaEventWorkerEffectService } from './event-worker-effect.js';
 import { OpenXiangdaManagedCommandController, OpenXiangdaManagedCommandRegistry } from './managed-command.js';
 import { DynamicModule, Global, Module } from '@nestjs/common';
 import { APP_GUARD, DiscoveryModule, Reflector } from '@nestjs/core';
@@ -132,6 +133,7 @@ export class OpenXiangdaModule {
         OpenXiangdaApplicationDataApiService,
         OpenXiangdaEventReceiver,
         OpenXiangdaEventContext,
+        OpenXiangdaEventWorkerEffectService,
         OpenXiangdaEventRegistry,
         OpenXiangdaManagedCommandRegistry,
         OpenXiangdaNotificationService,
@@ -157,6 +159,7 @@ export class OpenXiangdaModule {
         OpenXiangdaApplicationDataApiService,
         OpenXiangdaEventReceiver,
         OpenXiangdaEventContext,
+        OpenXiangdaEventWorkerEffectService,
         OpenXiangdaEventRegistry,
         OpenXiangdaNotificationService,
         OpenXiangdaBusinessNotificationService,

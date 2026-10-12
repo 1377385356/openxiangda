@@ -1,3 +1,5 @@
+import { compileEventWorkerEffect } from './event-worker-effect.js';
+import type { EventWorkerEffectPlan } from './event-worker-effect.js';
 import { sha256Digest } from '../canonical.js';
 import type { NativeEventActionPlan } from '../native.js';
 import type { EventSubscriptionPayload } from '../types.js';
@@ -11,9 +13,14 @@ export class NativeEventActionContractError extends Error {
 export function compileNativeEventAction(
   subscription: Record<string, any>,
   resources: readonly Record<string, any>[],
-  pointer = '/events/subscriptions'
-): { execution: NativeEventActionPlan; payload: EventSubscriptionPayload } | undefined {
+  pointer = '/events/subscriptions',
+  context?: { emitEventTypes: string[]; workflowResources: string[] }
+): { execution: NativeEventActionPlan | EventWorkerEffectPlan; payload: EventSubscriptionPayload } | undefined {
   if (subscription.execution === undefined) return;
+  if (subscription.execution?.kind === 'worker-effect') {
+    if (subscription.platformAccess) throw new NativeEventActionContractError(`${pointer}/platformAccess`, 'Worker effect grants cannot be combined with other runtime capabilities');
+    return { execution: compileEventWorkerEffect(subscription.execution, resources, context?.emitEventTypes || [], context?.workflowResources || [], `${pointer}/execution`), payload: subscription.payload };
+  }
   const fail = (path: string, message: string): never => {
     throw new NativeEventActionContractError(`${pointer}${path}`, message);
   };

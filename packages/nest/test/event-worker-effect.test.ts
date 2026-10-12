@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { OpenXiangdaEventWorkerEffectService } from '../src/event-worker-effect.js';
+import { OpenXiangdaEventContext } from '../src/event-context.js';
+const event:any={id:'00000000-0000-4000-8000-000000000001',tenantid:'tenant',environment:'preproduction',appcode:'app',data:{},type:'app.timer'};
+const options:any={appCode:'app',environmentKey:'preproduction',platformBaseUrl:'https://platform/service',eventSigningSecrets:{worker:'fixture-signing-secret'}};
+test('facade fails closed outside verified processing receipt and does not request OAuth',async()=>{const context=new OpenXiangdaEventContext(),worker=new OpenXiangdaEventWorkerEffectService(options,context);await assert.rejects(worker.resolve('intent'),/AUTHORITY_REQUIRED/);await context.run(event,'delivery','worker',async()=>{await assert.rejects(worker.resolve('intent'),/AUTHORITY_REQUIRED/);});});
+test('facade hides identity, event scope and claim token in the signed platform command',async()=>{let seen:any;const context=new OpenXiangdaEventContext();const worker=new OpenXiangdaEventWorkerEffectService({...options,fetch:async(url:any,init:any)=>{seen={url,init};return new Response(JSON.stringify({code:200,data:null}),{status:200});}},context);
+  await context.run(event,'delivery','worker',async()=>{assert.equal(await worker.resolve('order-stage'),null);},'receipt-fence');
+  const body=JSON.parse(seen.init.body);assert.equal(body.tenantId,'tenant');assert.equal(body.claimToken,'receipt-fence');assert.equal(body.intentKey,'order-stage');assert.equal(seen.url,'https://platform/service/openxiangda-api/v2/event-effects');assert.match(seen.init.headers['X-OpenXiangda-Signature'],/^v1=[a-f0-9]{64}$/);assert.equal(seen.init.headers.Authorization,undefined);
+});
+test('transport loss is an unknown result and is never retried or assigned a new intent',async()=>{let calls=0;const context=new OpenXiangdaEventContext();const worker=new OpenXiangdaEventWorkerEffectService({...options,fetch:async()=>{calls++;throw new Error('connection reset');}},context);
+  await context.run(event,'delivery','worker',async()=>{await assert.rejects(worker.commit('original','digest'),/RESULT_UNKNOWN/);},'receipt-fence');assert.equal(calls,1);
+});

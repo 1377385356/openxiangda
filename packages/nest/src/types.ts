@@ -107,6 +107,9 @@ export interface OpenXiangdaEventReceiptContext {
 }
 
 export interface OpenXiangdaEventReceiptStore {
+  /** SDK-internal lease fence; custom receipt stores without it fail closed for effects. */
+  workerClaimToken?(receipt: OpenXiangdaEventReceiptContext): string | null;
+
   claim(
     receipt: OpenXiangdaEventReceiptContext
   ): Promise<"claimed" | "duplicate" | "busy">;

@@ -1,3 +1,4 @@
+import type { EventWorkerEffectDeclaration, EventWorkerEffectPlan } from './event-worker-effect.js';
 import type {
   ApplicationEventSchemaDeclaration,
   DataFieldType,
@@ -979,7 +980,7 @@ export interface NativeEventActionPlan extends NativeEventActionDeclaration {
 }
 
 export interface NativeEventSubscriptionDeclaration {
-  execution?: NativeEventActionDeclaration;
+  execution?: NativeEventActionDeclaration | EventWorkerEffectDeclaration;
   code: string;
   eventTypes: string[];
   filter: EventSubscriptionFilter;
@@ -1159,7 +1160,7 @@ export interface AppResourceContract {
 }
 
 export interface AppEventConsumerContract {
-  execution?: NativeEventActionPlan;
+  execution?: NativeEventActionPlan | EventWorkerEffectPlan;
   code: string;
   endpointPath: string;
   eventTypes: string[];

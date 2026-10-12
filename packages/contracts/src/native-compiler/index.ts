@@ -62,6 +62,7 @@ export * from './date-event-projection.js';
 
 export * from './parent-read-policy.js';
 
+export * from './event-worker-effect.js';
 export * from './rich-text-policy.js';
 
 export * from './service-mutations.js';
