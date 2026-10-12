@@ -101,7 +101,7 @@ export default function WorkflowFlowCanvas(props: {
   }) : [], [renderedGraph, props.selectedNodeId, props.titles, props.summaries, props.visits, positions, props.designer]);
   const displayNodes = useMemo<FlowNode[]>(() => [...(positions?.groups || []).flatMap(group => {
     const source = nodes.find(node => node.id === group.nodeId);
-    return source ? [{ ...source,id: group.id,type: 'parallel_group' as const,position: { x: group.x,y: group.y },width: group.width,height: group.height,style: { width: group.width,height: group.height,pointerEvents: 'none' as const },zIndex: -1 }] : [];
+    return source ? [{ ...source,id: group.id,type: 'parallel_group' as const,position: { x: group.x,y: group.y },width: group.width,height: group.height,selected: false,selectable: false,focusable: false,style: { width: group.width,height: group.height,pointerEvents: 'none' as const },zIndex: -1 }] : [];
   }),...nodes], [nodes,positions]);
   const edges = useMemo<FlowEdge[]>(() => positions ? renderedGraph.edges.map(edge => {
     const position = positions.edges.get(edge.id)!;

@@ -69,7 +69,7 @@ export function inspectWorkflowParallel(definition: Definition): { regions: Work
     const branchIds = new Set<string>();
     const rejectedEnds = new Set<string>();
     for (const branch of fork.branches) {
-      if (!record(branch) || !code(branch.id) || typeof branch.title !== 'string' || !branch.title.trim() || branchIds.has(branch.id)) {
+      if (!record(branch) || !code(branch.id) || typeof branch.title !== 'string' || !branch.title.trim() || branch.title.length > 255 || branchIds.has(branch.id)) {
         errors.push(`WORKFLOW_PARALLEL_BRANCH_INVALID:${fork.id}`);
         continue;
       }
