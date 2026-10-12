@@ -273,7 +273,8 @@ export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onS
         next=createWorkflowHumanNode(nodeId,source.kind,chosenTitle.trim(),edge.to,'taskPageCode' in source?source.taskPageCode:undefined,catalog!.taskPages,source.kind==='approval'?source.onReject:undefined);
         if(next.kind==='approval'||next.kind==='handle')next.mode=source.kind==='approval'||source.kind==='handle'?source.mode:'single';
         nextBinding={...binding!,bindings:{...binding!.bindings,[workflowCanvasBindingKey(nodeId)]:structuredClone(draft!.publishedBinding.bindings[source.binding]!)}};
-      }else next={...structuredClone(source),id:nodeId,title:chosenTitle.trim(),next:edge.to};
+      }else if(source.kind==='action')next={...structuredClone(source),id:nodeId,title:chosenTitle.trim(),next:edge.to};
+      else return;
     }
     try {
       mutate(edge.from === workflowDesignerStartId ? { ...definition, startAt: next.id, nodes: { ...definition.nodes, [next.id]: next } } : editWorkflowDesignerDefinition(definition,{ type: 'insert',from: edge.from,target: edge.to,node: next,edge: edge.kind === 'branch' ? (edge.priority || 1) - 1 : edge.kind === 'default' ? 'default' : edge.kind as 'approve'|'reject'|'next' }),nextBinding);
