@@ -1,6 +1,6 @@
 import ELK from 'elkjs/lib/elk.bundled.js';
 import type { ElkNode, LayoutOptions } from 'elkjs/lib/elk-api';
-import { connectorMidpoint, layoutDesignerParallelRegions, type WorkflowFlowPositions } from './workflow-parallel-layout';
+import { connectorMidpoint, layoutDesignerRegions, type WorkflowFlowPositions } from './workflow-parallel-layout';
 import type { WorkflowGraphProjection } from 'openxiangda-contracts/browser';
 
 const inputPort = (id: string) => `in:${id}`;
@@ -54,7 +54,7 @@ export async function workflowFlowLayout(graph: WorkflowGraphProjection, options
       return [edge.id, { points, label: label ? { x: label.x! + label.width! / 2, y: label.y! + label.height! / 2 } : fallback }];
     })),
   };
-  if (options.designer && forwardNodes.some(node => node.parallel)) positions = await layoutDesignerParallelRegions(graph, positions, engine, layoutOptions);
+  if (options.designer && forwardNodes.some(node => node.parallel || node.kind === 'condition')) positions = await layoutDesignerRegions(graph, positions, engine, layoutOptions);
   // Return paths do not change the forward ranks. They occupy bounded outside
   // lanes; correction tasks are shown beside the route, not as a forward cycle.
   const mainRight = Math.max(0, ...[...positions.nodes.values()].map(node => node.x + node.width));

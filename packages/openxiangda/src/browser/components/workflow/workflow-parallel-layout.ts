@@ -27,124 +27,143 @@ export function connectorMidpoint(points: Point[]): Point {
   return points[0]!;
 }
 
-/** A paired parallel region is one block in the outer layout. This prevents
- * ELK's preference for a straight branch from pulling the join off the spine.
- * Branch bodies retain their own routed geometry, including condition graphs. */
-export async function layoutDesignerParallelRegions(
+/** Structured forks are atomic blocks in their enclosing layout. Conditions use
+ * their nearest common post-dominator, never an inferred executable graph edge.
+ * A branch's local merge is virtual when shared with its enclosing fork. */
+export async function layoutDesignerRegions(
   graph: WorkflowGraphProjection,
   positions: WorkflowFlowPositions,
   engine: { layout: (graph: ElkNode) => Promise<ElkNode> },
   layoutOptions: LayoutOptions,
 ): Promise<WorkflowFlowPositions> {
-  const edges = graph.edges.filter(edge => !['return', 'resubmit'].includes(edge.kind));
-  const owner = new Map<string, string>();
-  const regions = graph.nodes.filter(node => node.parallel).map(fork => {
-    const joinId = fork.parallel!.joinNodeId;
-    const allowed = new Set(fork.parallel!.branchNodeIds);
-    const branches = edges.filter(edge => edge.from === fork.id && edge.parallelBranch)
-      .sort((a, b) => (a.priority || 0) - (b.priority || 0)).map(edge => {
-        const members = new Set<string>(), pending = [edge.to];
-        while (pending.length) {
-          const id = pending.pop()!;
-          if (!allowed.has(id) || members.has(id)) continue;
-          members.add(id);
-          pending.push(...edges.filter(next => next.from === id).map(next => next.to));
-        }
-        const internal = edges.filter(next => members.has(next.from) && members.has(next.to));
-        const entry = edge.to === joinId ? undefined : positions.nodes.get(edge.to);
-        const center = entry ? entry.x + entry.width / 2 : 0;
-        const xs = [...members].flatMap(id => {
-          const node = positions.nodes.get(id)!;
-          return [node.x, node.x + node.width];
-        });
-        for (const next of internal) {
-          const route = positions.edges.get(next.id)!;
-          xs.push(...route.points.map(point => point.x));
-          if (['branch', 'default'].includes(next.kind)) xs.push(route.label.x - branchCardWidth / 2, route.label.x + branchCardWidth / 2);
-        }
-        return { edge, members, internal, entry, center, radius: Math.max(branchCardWidth / 2, ...xs.map(x => Math.abs(x - center))) };
-      });
-    const laneWidth = Math.max(branchCardWidth, ...branches.map(branch => branch.radius * 2));
-    const width = branches.length * (laneWidth + laneGap) - laneGap;
-    const forkPosition = positions.nodes.get(fork.id)!, joinPosition = positions.nodes.get(joinId)!;
-    const nodes = new Map<string, NodePosition>(), routes: WorkflowFlowPositions['edges'] = new Map();
-    const centered = (node: NodePosition, y: number, nodeWidth = node.width): NodePosition => ({
-      ...node, x: (width - nodeWidth) / 2, y, width: nodeWidth,
-      input: { ...node.input, x: nodeWidth / 2 }, outputs: node.outputs.map(port => ({ ...port, x: nodeWidth / 2 })),
+  type Edge = WorkflowGraphProjection['edges'][number];
+  const forward = graph.edges.filter(edge => !['return', 'resubmit'].includes(edge.kind));
+  const centers = (node: NodePosition): NodePosition => ({ ...node,
+    input: { ...node.input, x: node.width / 2 },
+    outputs: node.outputs.map(port => ({ ...port, x: node.width / 2 })),
+  });
+  const translateRoute = (route: WorkflowFlowPositions['edges'] extends Map<string, infer R> ? R : never, dx: number, dy: number) => ({
+    points: route.points.map(point => ({ x: point.x + dx, y: point.y + dy })),
+    label: { x: route.label.x + dx, y: route.label.y + dy },
+  });
+  async function scope(ids: Set<string>, edges: Edge[]): Promise<WorkflowFlowPositions> {
+    const outgoing = new Map([...ids].map(id => [id, edges.filter(edge => edge.from === id)]));
+    const postdominators = new Map<string, Set<string>>(), visiting = new Set<string>();
+    function postdom(id: string): Set<string> {
+      if (postdominators.has(id)) return postdominators.get(id)!;
+      if (visiting.has(id)) return new Set(); // Unstructured cycles stay with ELK.
+      visiting.add(id);
+      const successors = (outgoing.get(id) || []).map(edge => postdom(edge.to));
+      const common = successors.length ? [...successors[0]!].filter(next => successors.every(set => set.has(next))) : [];
+      visiting.delete(id);
+      const result = new Set([id, ...common]); postdominators.set(id, result); return result;
+    }
+    function membersUntil(entry: string, join: string): Set<string> {
+      const members = new Set<string>(), pending = [entry];
+      while (pending.length) {
+        const id = pending.pop()!;
+        if (id === join || members.has(id)) continue;
+        members.add(id); pending.push(...(outgoing.get(id) || []).map(edge => edge.to));
+      }
+      return members;
+    }
+    const candidates = graph.nodes.filter(node => ids.has(node.id)).flatMap(fork => {
+      const branches = [...(outgoing.get(fork.id) || [])].sort((a,b) => (a.priority || 0) - (b.priority || 0));
+      if (!(fork.parallel || fork.kind === 'condition') || branches.length < 2) return [];
+      if (branches.some(edge => !['branch','default'].includes(edge.kind))) return [];
+      const common = [...postdom(branches[0]!.to)].filter(id => id !== fork.id && branches.every(edge => postdom(edge.to).has(id)));
+      // The nearest common post-dominator dominates all later common merges.
+      const joinId = fork.parallel?.joinNodeId || common.find(id => common.every(other => postdom(id).has(other)));
+      if (!joinId || !ids.has(joinId) || !common.includes(joinId)) return [];
+      const bodies = branches.map(edge => ({ edge, members: membersUntil(edge.to,joinId) }));
+      const seen = new Set<string>();
+      for (const body of bodies) for (const id of body.members) {
+        if (id === fork.id || seen.has(id)) return []; // Crossing/shared bodies are not structured lanes.
+        seen.add(id);
+      }
+      const all = new Set([fork.id,joinId,...seen]);
+      if (edges.some(edge => all.has(edge.to) && edge.to !== fork.id && !all.has(edge.from))) return [];
+      return [{ fork,joinId,bodies,all }];
     });
-    nodes.set(fork.id, centered(forkPosition, 0, width));
-    const firstY = forkPosition.height + branchGap;
-    let bottom = firstY;
-    for (const [index, branch] of branches.entries()) {
-      const center = laneWidth / 2 + index * (laneWidth + laneGap);
-      const dx = center - branch.center, dy = firstY - (branch.entry?.y || 0);
-      for (const id of branch.members) {
-        const node = positions.nodes.get(id)!;
-        nodes.set(id, { ...node, x: node.x + dx, y: node.y + dy });
-        bottom = Math.max(bottom, node.y + dy + node.height);
+    const regions = candidates.filter(candidate => !candidates.some(parent => parent !== candidate && parent.all.size > candidate.all.size && parent.all.has(candidate.fork.id)));
+    const owner = new Map<string,string>();
+    const blocks = new Map<string, { width: number; height: number; layout: WorkflowFlowPositions }>();
+    for (const region of regions) {
+      const fork = positions.nodes.get(region.fork.id)!, join = positions.nodes.get(region.joinId)!;
+      const branches = [];
+      for (const body of region.bodies) {
+        const branchIds = new Set([...body.members,region.joinId]);
+        const branchEdges = edges.filter(edge => body.members.has(edge.from) && branchIds.has(edge.to));
+        const layout = await scope(branchIds,branchEdges);
+        const entry = body.edge.to === region.joinId ? undefined : layout.nodes.get(body.edge.to);
+        const center = entry ? entry.x + entry.width / 2 : layout.nodes.get(region.joinId)!.x + join.width / 2;
+        const xs = [...layout.nodes.entries()].flatMap(([id,node]) => id === region.joinId ? [] : [node.x,node.x+node.width]);
+        for (const [id,route] of layout.edges) {
+          xs.push(...route.points.map(point => point.x));
+          if (['branch','default'].includes(branchEdges.find(edge => edge.id === id)!.kind)) xs.push(route.label.x-branchCardWidth/2,route.label.x+branchCardWidth/2);
+        }
+        branches.push({ ...body,layout,entry,center,radius: Math.max(branchCardWidth/2,...xs.map(x => Math.abs(x-center))), nested: candidates.some(candidate => body.members.has(candidate.fork.id)) });
       }
-      for (const edge of branch.internal) {
-        const route = positions.edges.get(edge.id)!;
-        routes.set(edge.id, {
-          points: route.points.map(point => ({ x: point.x + dx, y: point.y + dy })),
-          label: { x: route.label.x + dx, y: route.label.y + dy },
+      const laneWidth = Math.max(branchCardWidth,...branches.map(branch => branch.radius*2));
+      const width = branches.length*(laneWidth+laneGap)-laneGap;
+      const layout: WorkflowFlowPositions = { nodes: new Map(),edges: new Map() };
+      const forkWidth = region.fork.parallel ? width : fork.width;
+      layout.nodes.set(region.fork.id,centers({ ...fork,x:(width-forkWidth)/2,y:0,width:forkWidth }));
+      const firstY = fork.height+branchGap;
+      let mergeY = firstY+nodeGap/2;
+      for (const [index,branch] of branches.entries()) {
+        const x = laneWidth/2+index*(laneWidth+laneGap);
+        const dx=x-branch.center, dy=firstY-(branch.entry?.y || branch.layout.nodes.get(region.joinId)!.y);
+        for (const [id,node] of branch.layout.nodes) if (id !== region.joinId) layout.nodes.set(id,{...node,x:node.x+dx,y:node.y+dy});
+        for (const [id,route] of branch.layout.edges) layout.edges.set(id,translateRoute(route,dx,dy));
+        mergeY=Math.max(mergeY,branch.layout.nodes.get(region.joinId)!.y+dy-nodeGap/2);
+      }
+      const joinY=mergeY+nodeGap/2;
+      layout.nodes.set(region.joinId,centers({ ...join,x:(width-join.width)/2,y:joinY }));
+      for (const [index,branch] of branches.entries()) {
+        const x=laneWidth/2+index*(laneWidth+laneGap),start={x:width/2,y:fork.height},end={x:width/2,y:joinY};
+        layout.edges.set(branch.edge.id,{
+          points:[start,{x:start.x,y:start.y+turnGap},{x,y:start.y+turnGap},...(branch.entry ? [{x,y:firstY}] : [{x,y:mergeY},{x:end.x,y:mergeY},end])],
+          label:{x,y:firstY-68},
         });
+        for (const edge of edges.filter(edge => branch.members.has(edge.from) && edge.to === region.joinId)) {
+          const source=layout.nodes.get(edge.from)!,start={x:source.x+source.width/2,y:source.y+source.height};
+          const prior=layout.edges.get(edge.id)!;
+          // Preserve an inner fork's bus when its virtual merge is this join.
+          const points=branch.nested ? [...prior.points,{x:prior.points.at(-1)!.x,y:mergeY},{x:end.x,y:mergeY},end] : [start,{x:start.x,y:mergeY},{x:end.x,y:mergeY},end];
+          layout.edges.set(edge.id,{points,label:branch.nested ? prior.label : {x:start.x,y:(start.y+mergeY)/2}});
+        }
       }
+      for (const id of region.all) owner.set(id,region.fork.id);
+      blocks.set(region.fork.id,{width,height:joinY+join.height,layout});
     }
-    const joinY = bottom + nodeGap, mergeY = joinY - nodeGap / 2;
-    nodes.set(joinId, centered(joinPosition, joinY));
-    for (const [index, branch] of branches.entries()) {
-      const x = laneWidth / 2 + index * (laneWidth + laneGap);
-      const start = { x: width / 2, y: forkPosition.height };
-      const splitY = start.y + turnGap;
-      const end = { x: width / 2, y: joinY };
-      routes.set(branch.edge.id, {
-        points: [start, { x: start.x, y: splitY }, { x, y: splitY }, ...(branch.entry ? [{ x, y: firstY }] : [{ x, y: mergeY }, { x: end.x, y: mergeY }, end])],
-        label: { x, y: firstY - 68 },
-      });
-      for (const edge of edges.filter(edge => branch.members.has(edge.from) && edge.to === joinId)) {
-        const source = nodes.get(edge.from)!;
-        const start = { x: source.x + source.outputs.find(port => port.id === `out:${edge.id}`)!.x, y: source.y + source.height };
-        const points = [start, { x: start.x, y: mergeY }, { x: end.x, y: mergeY }, end];
-        // Place insertion in the vertical branch lane, away from the shared bus.
-        routes.set(edge.id, { points, label: { x: start.x, y: (start.y + mergeY) / 2 } });
-      }
+    const outerEdges=edges.filter(edge => !owner.has(edge.from) || owner.get(edge.from) !== owner.get(edge.to));
+    const outer=await engine.layout({id:'workflow-structured-blocks',layoutOptions,
+      children:[...ids].filter(id => !owner.has(id) || blocks.has(id)).map(id => {
+        const node=positions.nodes.get(id)!,block=blocks.get(id),width=block?.width || node.width,height=block?.height || node.height;
+        return {id,width,height,layoutOptions:{'elk.portConstraints':'FIXED_POS'},ports:[
+          {id:`in:${id}`,x:width/2,y:0,width:0,height:0,layoutOptions:{'elk.port.side':'NORTH'}},
+          ...outerEdges.filter(edge => (owner.get(edge.from) || edge.from) === id).map(edge => ({id:`out:${edge.id}`,x:width/2,y:height,width:0,height:0,layoutOptions:{'elk.port.side':'SOUTH'}})),
+        ]};
+      }),
+      edges:outerEdges.map(edge => ({id:edge.id,sources:[`out:${edge.id}`],targets:[`in:${owner.get(edge.to) || edge.to}`],
+        labels:['branch','default'].includes(edge.kind) ? [{id:`label:${edge.id}`,text:edge.label,width:branchCardWidth,height:64}] : [],
+      })),
+    });
+    const result: WorkflowFlowPositions={nodes:new Map(),edges:new Map()};
+    for (const node of outer.children || []) {
+      const block=blocks.get(node.id);
+      if (block) {
+        for (const [id,position] of block.layout.nodes) result.nodes.set(id,{...position,x:position.x+node.x!,y:position.y+node.y!});
+        for (const [id,route] of block.layout.edges) result.edges.set(id,translateRoute(route,node.x!,node.y!));
+      } else result.nodes.set(node.id,centers({...positions.nodes.get(node.id)!,x:node.x!,y:node.y!}));
     }
-    for (const id of nodes.keys()) owner.set(id, fork.id);
-    return { id: fork.id, joinId, width, height: joinY + joinPosition.height, nodes, routes };
-  });
-  const regionById = new Map(regions.map(region => [region.id, region]));
-  const outerEdges = edges.filter(edge => !owner.has(edge.from) || owner.get(edge.from) !== owner.get(edge.to));
-  const outer = await engine.layout({ id: 'workflow-parallel-blocks', layoutOptions,
-    children: graph.nodes.filter(node => positions.nodes.has(node.id) && (!owner.has(node.id) || regionById.has(node.id))).map(node => {
-      const position = positions.nodes.get(node.id)!, region = regionById.get(node.id);
-      const width = region?.width || position.width, height = region?.height || position.height;
-      return { id: node.id, width, height, layoutOptions: { 'elk.portConstraints': 'FIXED_POS' }, ports: [
-        { id: `in:${node.id}`, x: width / 2, y: 0, width: 0, height: 0, layoutOptions: { 'elk.port.side': 'NORTH' } },
-        ...outerEdges.filter(edge => (owner.get(edge.from) || edge.from) === node.id).map(edge => ({ id: `out:${edge.id}`, x: width / 2, y: height, width: 0, height: 0, layoutOptions: { 'elk.port.side': 'SOUTH' } })),
-      ] };
-    }),
-    edges: outerEdges.map(edge => ({ id: edge.id, sources: [`out:${edge.id}`], targets: [`in:${owner.get(edge.to) || edge.to}`],
-      labels: ['branch', 'default'].includes(edge.kind) ? [{ id: `label:${edge.id}`, text: edge.label, width: branchCardWidth, height: 64 }] : [],
-    })),
-  });
-  const result: WorkflowFlowPositions = { nodes: new Map(), edges: new Map() };
-  for (const node of outer.children || []) {
-    const region = regionById.get(node.id);
-    if (region) {
-      for (const [id, position] of region.nodes) result.nodes.set(id, { ...position, x: position.x + node.x!, y: position.y + node.y! });
-      for (const [id, route] of region.routes) result.edges.set(id, { points: route.points.map(point => ({ x: point.x + node.x!, y: point.y + node.y! })), label: { x: route.label.x + node.x!, y: route.label.y + node.y! } });
-    } else {
-      const position = positions.nodes.get(node.id)!;
-      result.nodes.set(node.id, { ...position, x: node.x!, y: node.y!, input: { ...position.input, x: node.width! / 2 }, outputs: position.outputs.map(port => ({ ...port, x: node.width! / 2 })) });
+    for (const edge of outer.edges || []) {
+      const section=edge.sections?.[0];if (!section) throw new Error('WORKFLOW_GRAPH_ROUTING_MISSING');
+      const points=[section.startPoint,...section.bendPoints || [],section.endPoint],label=edge.labels?.[0];
+      result.edges.set(edge.id,{points,label:label ? {x:label.x!+label.width!/2,y:label.y!+label.height!/2} : connectorMidpoint(points)});
     }
+    return result;
   }
-  for (const edge of outer.edges || []) {
-    const section = edge.sections?.[0];
-    if (!section) throw new Error('WORKFLOW_GRAPH_ROUTING_MISSING');
-    const points = [section.startPoint, ...section.bendPoints || [], section.endPoint];
-    const label = edge.labels?.[0];
-    result.edges.set(edge.id, { points, label: label ? { x: label.x! + label.width! / 2, y: label.y! + label.height! / 2 } : connectorMidpoint(points) });
-  }
-  return result;
+  return scope(new Set(positions.nodes.keys()),forward);
 }
