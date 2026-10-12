@@ -134,6 +134,10 @@ export interface AppRelationshipGrantSourceDeclaration {
 
 export type AppDataPolicyRuleDeclaration =
   | {
+      referenceRead: { resourceCode: string; referenceFieldCode: string; readFields: string[] };
+      roleCodes?: string[];
+    }
+  | {
       parentRead: { resourceCode: string; subtableFieldCode: string };
       roleCodes?: string[];
     }

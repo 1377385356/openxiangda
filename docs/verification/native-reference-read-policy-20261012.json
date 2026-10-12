@@ -1,0 +1,120 @@
+{
+  "schemaVersion": "openxiangda.native-reference-read-candidate-verification/v1",
+  "issueCode": "PLT-052",
+  "recordedDate": "2026-10-12",
+  "candidateOnly": true,
+  "sourceBaseCommit": "3a1afece91216ac445cf929868c306197eb18695",
+  "sdkVerification": {
+    "status": "passed",
+    "log": "/home/yuxing/.cache/zjnu-validator-pairing-20261012/reference-read-sdk-verify-affected-pinned-toolchain-cache-proxy.log",
+    "nodeVersion": "24.20.0",
+    "pnpmVersion": "10.15.1",
+    "processProxyOnly": true,
+    "priorFailureLogs": [
+      "reference-read-sdk-verify-affected.log",
+      "reference-read-sdk-verify-affected-synced.log",
+      "reference-read-sdk-verify-affected-node24.log",
+      "reference-read-sdk-verify-affected-node24-pnpm10151.log"
+    ],
+    "exitCode": 0,
+    "taskTotal": 24,
+    "cachedTasks": 23,
+    "elapsed": "6m17.208s",
+    "docsGenerateExitCode": 0,
+    "contractsReferenceAndParentTargetedTests": {
+      "passed": 58,
+      "skipped": 0,
+      "log": "/home/yuxing/.cache/zjnu-validator-pairing-20261012/reference-read-contract-tests.log"
+    },
+    "devkitReferenceAndParentTargetedTests": {
+      "passed": 4,
+      "skipped": 0,
+      "log": "/home/yuxing/.cache/zjnu-validator-pairing-20261012/reference-read-devkit-tests.log"
+    },
+    "devkitPackageSuite": {
+      "passed": 567,
+      "skipped": 2,
+      "failed": 0,
+      "tests": 569,
+      "skipsAreNotPasses": true
+    }
+  },
+  "serverSourceBaseCommit": "aafb80b36070e13b4d7bea1bd652908a8c224d6a",
+  "serverEvidence": "/home/yuxing/lowcode-main/platform-native-reference-read-wt/docs/verification/native-reference-read-policy-20261012.json",
+  "realPostgreSQLCheckCount": 51,
+  "serverJestPassCount": 44,
+  "schoolWrites": 0,
+  "packagePublished": false,
+  "sourceFiles": [
+    {
+      "file": "packages/contracts/src/native-compiler/reference-read-policy.ts",
+      "sha256": "46b7ea25f3647fa8b4600cc446cc27aeb0782473262494cf25a438c107039980"
+    },
+    {
+      "file": "packages/contracts/src/native-compiler/compiler.ts",
+      "sha256": "0470de3e2ab5efca2f5293bb4a587ecf792374086729177968b55853fd58d891"
+    },
+    {
+      "file": "packages/contracts/src/native-version.ts",
+      "sha256": "d1a5f5fb6328f81a0b3a022ad3a168e598d65c6ea67ed4f07de192d385d6bebd"
+    },
+    {
+      "file": "packages/contracts/src/native.ts",
+      "sha256": "d3bf3278af0ed485cb78c4cdcf87d456201d06c7b7ad63c8d22936e93469df1c"
+    },
+    {
+      "file": "packages/devkit-core/src/compiler/bundle.ts",
+      "sha256": "f3a5efea320502806d6d923332abc8a487b842c3b49ce0ccc710f66985333382"
+    },
+    {
+      "file": "packages/devkit-core/src/compiler/config.ts",
+      "sha256": "6ba6b61aa8fb51d60dd5c952d682ca0e6f7a1ad4706bda4e7e5e45cc6ab981c5"
+    },
+    {
+      "file": "packages/devkit-core/src/compiler/field-policy-path.ts",
+      "sha256": "014b80977d5e1d6345831f93114dcda67fd72f0720c2a3179ad5fb0de233e2dd"
+    },
+    {
+      "file": "packages/contracts/test/reference-read-policy.test.ts",
+      "sha256": "dec80f144432fe32cb49849a250bbbb98aef7e124b6003448da1b325c4059252"
+    },
+    {
+      "file": "packages/devkit-core/test/reference-read-policy.test.ts",
+      "sha256": "6fa38cbe58d30fdcabe52dd0333ef2a47dd613de74f7474f9345893618d37bb0"
+    },
+    {
+      "file": ".changeset/native-reference-read-policy.md",
+      "sha256": "f510ddd0d0be92807dccbf1b85af1fd39dfe7fe0314ffe0e2bd285708e6d6341"
+    }
+  ],
+  "evidenceFiles": [
+    {
+      "file": "/home/yuxing/.cache/zjnu-validator-pairing-20261012/reference-read-real-pg.json",
+      "sha256": "3f754d0eea797468e08775f2db1fc7b8a24931a5cd562435171fcfb1519032aa"
+    },
+    {
+      "file": "/home/yuxing/.cache/zjnu-validator-pairing-20261012/reference-read-server-targeted-jest-final.log",
+      "sha256": "537bc099df52400f016af888f6f2b6efa3055b1c1d6785afaa744ec6987bcb7e"
+    },
+    {
+      "file": "/home/yuxing/.cache/zjnu-validator-pairing-20261012/reference-read-server-types-final.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "/home/yuxing/.cache/zjnu-validator-pairing-20261012/reference-read-migration-rules.log",
+      "sha256": "e532f0a8573a69403e27decfa4f1ed96410aa457f097f8662d763233787f2412"
+    },
+    {
+      "file": "/home/yuxing/.cache/zjnu-validator-pairing-20261012/reference-read-server-lint-last.log",
+      "sha256": "6871f74504ad1ced8b315ba01216f4c88b7b07e2f81e8c0bc52e6c0c064ace3c"
+    },
+    {
+      "file": "/home/yuxing/.cache/zjnu-validator-pairing-20261012/reference-read-sdk-verify-affected-pinned-toolchain-cache-proxy.log",
+      "sha256": "2076cd8c073868dd3eda537107e347320593aee752eebde9871ca64b16d5f7b3"
+    },
+    {
+      "file": "/home/yuxing/.cache/zjnu-validator-pairing-20261012/reference-read-sdk-docs-generate.log",
+      "sha256": "679091e62a3cc511e506ff58a486520c2023023c9b32e20fbdd1413cf9455068"
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 import { normalizeDataMutationGrants } from 'openxiangda-contracts';
-import { parseNativeParentReadPolicy, validateNativeParentReadPolicies, NativeParentReadPolicyError, NativeDataPolicyExpressionV2Error } from 'openxiangda-contracts/native-compiler';
+import { parseNativeParentReadPolicy, validateNativeParentReadPolicies, NativeParentReadPolicyError, parseNativeReferenceReadPolicy, validateNativeReferenceReadPolicies, NativeReferenceReadPolicyError, NativeDataPolicyExpressionV2Error } from 'openxiangda-contracts/native-compiler';
 import { assertWorkflowNativeStagePolicy } from 'openxiangda-contracts';
 import { WORKFLOW_LAUNCH_MAX_INPUTS } from 'openxiangda-contracts';
 import { validateAuthenticatedPublicRead, AuthenticatedPublicReadContractError } from 'openxiangda-contracts/native-compiler';
@@ -2688,6 +2688,7 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
           key =>
             ![
               'parentRead',
+              'referenceRead',
               'subject',
               'dimensionCode',
               'relationCode',
@@ -2726,8 +2727,14 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
           relationCode,
           dbNow ? 'db_now' : '',
           rule.parentRead !== undefined ? 'parent_read' : '',
+          rule.referenceRead !== undefined ? 'reference_read' : '',
           constantPredicate || nullPredicate ? 'constant' : '',
         ].filter(Boolean);
+        let validReferenceRead = false;
+        if (rule.referenceRead !== undefined) {
+          try { parseNativeReferenceReadPolicy(rule.referenceRead, `${rulePath}.referenceRead`); validReferenceRead = true; }
+          catch { /* The shared cross-resource validator reports the exact failure. */ }
+        }
         let validParentRead = false;
         if (rule.parentRead !== undefined) {
           try { parseNativeParentReadPolicy(rule.parentRead, `${rulePath}.parentRead`); validParentRead = true; }
@@ -2761,7 +2768,7 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
           rule.value === undefined &&
           policyFields?.get(string(rule.field)) === 'datetime';
         if (
-          (!validParentRead && !/^[A-Za-z_][A-Za-z0-9_]{0,127}$/.test(string(rule.field))) ||
+          (!validParentRead && !validReferenceRead && !/^[A-Za-z_][A-Za-z0-9_]{0,127}$/.test(string(rule.field))) ||
           modes.length !== 1 ||
           (!validCurrentUser &&
             !validDimension &&
@@ -2769,12 +2776,12 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
             !validConstant &&
             !validNull &&
             !validDbNow &&
-            !validParentRead)
+            !validParentRead && !validReferenceRead)
         ) {
           diagnostics.push(
             diagnostic(
               'APP_CONFIG_AUTHZ_POLICY_RULE_INVALID',
-              '策略规则必须且只能声明 current_user、dimension、relationship、constant/null、datetime db_now 或只读 parentRead 中的一种',
+              '策略规则必须且只能声明 current_user、dimension、relationship、constant/null、datetime db_now 或只读 parentRead/referenceRead 中的一种',
               rulePath
             )
           );
@@ -2825,9 +2832,10 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
     });
     try {
       validateNativeParentReadPolicies(dataResources.map(object), policies.map(object), 'authz.dataPolicies');
+      validateNativeReferenceReadPolicies(dataResources.map(object), policies.map(object), 'authz.dataPolicies');
     } catch (error) {
-      if (error instanceof NativeParentReadPolicyError) {
-        diagnostics.push(diagnostic(error.code, 'parentRead 必须绑定唯一的真实父子表关系且只用于读取', error.pointer));
+      if (error instanceof NativeParentReadPolicyError || error instanceof NativeReferenceReadPolicyError) {
+        diagnostics.push(diagnostic(error.code, '继承读取必须绑定真实 Native 关系、同成员父字段投影及有界无环依赖，且只用于读取', error.pointer));
       } else if (!(error instanceof NativeDataPolicyExpressionV2Error)) throw error;
       // Malformed expressions were already reported by policyRuleNodes.
     }
@@ -6969,6 +6977,10 @@ export function currentUserDataPolicy(input: {
 }
 
 export const dataPolicyExpression = {
+  referenceRead: (input: { resourceCode: string; referenceFieldCode: string; readFields: string[]; roleCodes?: string[] }): AppDataPolicyRuleDeclaration => ({
+    referenceRead: { resourceCode: input.resourceCode, referenceFieldCode: input.referenceFieldCode, readFields: [...input.readFields] },
+    ...(input.roleCodes ? { roleCodes: [...input.roleCodes] } : {}),
+  }),
   parentRead: (input: { resourceCode: string; subtableFieldCode: string; roleCodes?: string[] }): AppDataPolicyRuleDeclaration => ({
     parentRead: { resourceCode: input.resourceCode, subtableFieldCode: input.subtableFieldCode },
     ...(input.roleCodes ? { roleCodes: [...input.roleCodes] } : {}),

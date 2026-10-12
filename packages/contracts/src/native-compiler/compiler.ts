@@ -6,6 +6,7 @@ import { validateWorkflowReturnPolicies, workflowReturnTargets } from './workflo
 import { validateWorkflowHandlingNodes } from './workflow-handle.js';
 import { normalizeDataMutationGrants } from './service-mutations.js';
 import { hasNativeParentReadPolicy, resolveNativeParentReadBinding, validateNativeParentReadPolicies, NativeParentReadPolicyError } from './parent-read-policy.js';
+import { hasNativeReferenceReadPolicy, resolveNativeReferenceReadBinding, validateNativeReferenceReadPolicies, NativeReferenceReadPolicyError } from './reference-read-policy.js';
 import { requiresExtendedFieldCapacity, WORKFLOW_LAUNCH_MAX_INPUTS } from './data-capacity.js';
 import { assertWorkflowNativeStagePolicy } from './workflow-native-stage.js';
 import { validateAuthenticatedPublicRead, AuthenticatedPublicReadContractError } from './authenticated-public-read.js';
@@ -545,6 +546,9 @@ export function compileRequiredPlatformCapabilitiesV3(
     ...(operations.some(operation => operation.platformAccess?.dataCommands)
       ? [{ code: 'data.business-commands' as const, declaration: operations.filter(operation => operation.platformAccess?.dataCommands) }]
       : []),
+    ...(config.authz.dataPolicies.some(hasNativeReferenceReadPolicy)
+      ? [{ code: 'data.reference-read-policy' as const,
+          declaration: config.authz.dataPolicies.filter(hasNativeReferenceReadPolicy) }] : []),
     ...(config.authz.dataPolicies.some(hasNativeParentReadPolicy)
       ? [{ code: 'data.parent-read-policy' as const,
           declaration: config.authz.dataPolicies.filter(hasNativeParentReadPolicy) }] : []),
@@ -998,7 +1002,9 @@ export function compileNativeEventCapturePlansV2(input: {
       }
       const authorizationFields = new Set<string>();
       for (const rule of policy?.rules || []) {
-        authorizationFields.add(rule.parentRead
+        authorizationFields.add(rule.referenceRead
+          ? resolveNativeReferenceReadBinding(input.resources, code, rule.referenceRead, `${pointer}/referenceRead`).referenceFieldCode
+          : rule.parentRead
           ? resolveNativeParentReadBinding(input.resources, code, rule.parentRead, `${pointer}/parentRead`).foreignKey
           : String(rule.field));
       }
@@ -1007,7 +1013,9 @@ export function compileNativeEventCapturePlansV2(input: {
           policy.readExpression,
           `${pointer}/readExpression`
         )) {
-          authorizationFields.add(entry.rule.parentRead
+          authorizationFields.add(entry.rule.referenceRead
+            ? resolveNativeReferenceReadBinding(input.resources, code, entry.rule.referenceRead, `${pointer}/referenceRead`).referenceFieldCode
+            : entry.rule.parentRead
             ? resolveNativeParentReadBinding(input.resources, code, entry.rule.parentRead, `${pointer}/parentRead`).foreignKey
             : String(entry.rule.field));
         }
@@ -6323,6 +6331,7 @@ function validateDataPolicyReferences(config: JsonObject) {
         rule,
         [
           'parentRead',
+          'referenceRead',
           'subject',
           'dimensionCode',
           'relationCode',
@@ -6339,7 +6348,7 @@ function validateDataPolicyReferences(config: JsonObject) {
         rulePointer,
         true
       );
-      if (rule.parentRead !== undefined) {
+      if (rule.parentRead !== undefined || rule.referenceRead !== undefined) {
         for (const roleCode of uniqueStrings(rule.roleCodes || [], `${rulePointer}/roleCodes`, 100)) {
           if (!roleCodes.has(roleCode)) fail('NATIVE_ROLE_REFERENCE_MISSING', `${rulePointer}/roleCodes`);
         }
@@ -6458,8 +6467,9 @@ function validateDataPolicyReferences(config: JsonObject) {
   }
   try {
     validateNativeParentReadPolicies(config.data.resources, config.authz.dataPolicies);
+    validateNativeReferenceReadPolicies(config.data.resources, config.authz.dataPolicies);
   } catch (error) {
-    if (error instanceof NativeParentReadPolicyError) fail(error.code, error.pointer);
+    if (error instanceof NativeParentReadPolicyError || error instanceof NativeReferenceReadPolicyError) fail(error.code, error.pointer);
     throw error;
   }
   for (const [index, raw] of config.data.resources.entries()) {

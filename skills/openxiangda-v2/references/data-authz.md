@@ -245,3 +245,9 @@ SDK复用现有应用CSRF与512条命令绑定缓存，预览到期不会自动�
 打印先筛选同一成员同时具备资料read及所有打印能力的资格，再沿原RLS、Perspective、字段读取与脱敏；不能把ALL-read职责和own-print职责合并成ALL-print。普通app-admin与平台超管分别验收。SDK `loadNativeRecordPrint(resourceCode, recordId, { viewCode? })` 只读当前单记录投影；公开 `ResourceRecordPrintPreview` 与生成Native详情中的“打印”入口共用它。字段权限仍使用页面/模型规则，不增加流程节点字段权限配置。
 
 预览显示读取时间、当前详情可见字段和分组。打印前重新读取当前授权数据，失败清除旧预览，身份/授权/Perspective变化和关闭淘汰过期请求。附件/图片只列名称及大小、富文本转安全文本，没有自动外部下载；系统打印取消不写业务资料。当前版本只支持主记录，详情包含可读子表返回409，超2MiB返回413，不静默漏项；专用PDF模板、签章与子表完整打印另行提供。独立权限保护平台的打印接口和标准入口，已读资料的截图/浏览器自行打印不属于可撤销许可。
+
+## Native 单引用随当前父范围读取
+
+独立订单或日志需要跟随当前父记录权限时，可在只读表达式中使用 `dataPolicyExpression.referenceRead({ resourceCode: 'instruments', referenceFieldCode: 'instrument_ref', readFields: ['id', 'owner'], roleCodes: ['manager'] })`。`instrument_ref` 必须是指向同应用 instruments 的真实 `resource-ref.single`；文本编号、标签和 snapshot 不作关联身份。父资源自身绑定当前读取策略，`readFields` 显式包含父授权所需字段。平台在同一个当前有效成员下核验子资源、引用字段、父资源及投影字段读取能力、当前父行范围和 Perspective。
+
+该能力只用于读取，不能补足 create/update/delete。需要成本子表跟随订单、订单跟随仪器时，可混合现有 `parentRead` 和 `referenceRead`，总计最多两条边；同一资源只能继承一个父资源，环、第三层和多个父资源拒绝。纯 `parentRead` 原有一层限制继续保留。普通用户的公开目录读取不能因此获得私有子行；目标平台缺少 `data.reference-read-policy@1.0.0` 时发布预检拒绝。
