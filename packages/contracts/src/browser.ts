@@ -71,3 +71,5 @@ export * from "./native-compiler/workflow-authoring.js";
 export * from "./native-compiler/workflow-expression.js";
 
 export * from "./native-compiler/workflow-return-eligibility.js";
+
+export * from "./native-compiler/workflow-conditional-assignment.js";

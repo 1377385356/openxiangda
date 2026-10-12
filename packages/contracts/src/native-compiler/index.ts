@@ -95,3 +95,5 @@ export * from "./workflow-return-eligibility.js";
 
 // Platform CommonJS consumers use the same strict workflow document schemas.
 export { workflowDefinitionSchema, workflowBindingSchema } from "./workflow-schema.js";
+
+export * from "./workflow-conditional-assignment.js";

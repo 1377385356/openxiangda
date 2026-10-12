@@ -7,7 +7,7 @@ const nonEmptyString = { type: 'string', minLength: 1 } as const;
 const dataFieldCode = { type: 'string', pattern: '^[A-Za-z][A-Za-z0-9_]{0,62}$' } as const;
 
 /** Workflow document shape is pure; protocol and platform consumers share this one owner. */
-const workflowExpressionSchema = {
+export const workflowExpressionSchema = {
   type: "object",
   required: ["op"],
   properties: {
