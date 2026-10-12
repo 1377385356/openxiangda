@@ -236,3 +236,43 @@ test('consecutive paired regions keep one spine without overlaps', async () => {
   const centers = ['start', 'fork', 'join', 'after', 'join2', 'done'].map(id => { const p = positions.nodes.get(id)!; return p.x + p.width / 2; });
   assert.ok(Math.max(...centers) - Math.min(...centers) < .01, 'consecutive regions have different spines');
 });
+
+for (const lengths of [[1,0],[0,2],[3,1],[1,0,2],[0,0]]) {
+  test(`designer condition cards sit on symmetric lanes, including empty defaults: ${lengths}`, async () => {
+    const source=parallelFixture(lengths);
+    const fork=source.nodes.find(node => node.id==='fork')!;fork.kind='condition';delete fork.parallel;
+    source.edges=source.edges.map(route => route.from==='fork' ? {...route,parallelBranch:undefined,kind:route.id===`branch-${lengths.length-1}` ? 'default' : 'branch'} : route);
+    const before=structuredClone(source),positions=await workflowFlowLayout(source,{designer:true});
+    const center=(id:string) => {const p=positions.nodes.get(id)!;return p.x+p.width/2;};
+    const axis=center('fork');
+    for (const id of ['start','join','after','done']) assert.ok(Math.abs(center(id)-axis)<.01,`${id} must remain on the spine`);
+    const labels=lengths.map((_,index)=>positions.edges.get(`branch-${index}`)!.label);
+    for (const [index,label] of labels.entries()) {
+      assert.ok(Math.abs(label.x+labels.at(-1-index)!.x-2*axis)<.01);
+      assert.equal(label.y,labels[0]!.y);
+      if (index) assert.ok(label.x-labels[index-1]!.x>=344);
+      for (let n=0;n<lengths[index]!;n++) assert.equal(center(`b${index}-${n}`),label.x,'body cards must share the label/wire axis');
+      const points=positions.edges.get(`branch-${index}`)!.points;
+      assert.ok(points.some((point,i)=>i && Math.abs(point.x-label.x)<.01 && Math.abs(points[i-1]!.x-label.x)<.01 && point.y>=label.y+50 && points[i-1]!.y<=label.y),'label and insertion must lie on their branch vertical wire');
+      if (!lengths[index] && lengths.length===2) assert.notEqual(label.x,axis,'empty branch is not the central spine');
+    }
+    assertRoutedWithoutOverlap(source,positions);assert.deepEqual(source,before);
+  });
+}
+
+test('nested condition sharing the outer merge reserves its own symmetric lanes',async()=>{
+  const source=graph([{id:'outer',kind:'condition',title:'Outer'},{id:'inner',kind:'condition',title:'Inner'},...['a','b','c'].map(id=>({id,kind:'approval',title:id})),{id:'done',kind:'end',title:'Done'}],
+    [edge('outer','inner','branch'),edge('outer','c','default'),edge('inner','a','branch'),edge('inner','b','default'),...['a','b','c'].map(id=>edge(id,'done'))]);
+  const positions=await workflowFlowLayout(source,{designer:true});assertRoutedWithoutOverlap(source,positions);
+  for (const fork of ['outer','inner']) {
+    const p=positions.nodes.get(fork)!,axis=p.x+p.width/2,labels=source.edges.filter(e=>e.from===fork).map(e=>positions.edges.get(e.id)!.label);
+    assert.ok(Math.abs(labels[0]!.x+labels[1]!.x-2*axis)<.01);
+    for (const route of source.edges.filter(e=>e.from===fork)) {const target=positions.nodes.get(route.to)!;assert.equal(positions.edges.get(route.id)!.label.x,target.x+target.width/2);}
+  }
+});
+
+test('non-convergent conditions keep every routed edge without inventing a merge',async()=>{
+  const source=graph([{id:'fork',kind:'condition',title:'Fork'},{id:'a',kind:'end',title:'A'},{id:'b',kind:'end',title:'B'}],[edge('fork','a','branch'),edge('fork','b','default')]);
+  const before=structuredClone(source),positions=await workflowFlowLayout(source,{designer:true});
+  assertRoutedWithoutOverlap(source,positions);assert.equal(positions.nodes.size,3);assert.deepEqual(source,before);
+});
