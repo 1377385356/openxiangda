@@ -3,12 +3,10 @@ import { createReadStream, existsSync, lstatSync, mkdirSync, readFileSync, readd
   readlinkSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
-import { createRequire } from 'node:module';
-import type { Ignore } from '@balena/dockerignore';
 import { lock } from 'proper-lockfile';
 import { inspectBackendOciLayout } from './backend-image-upload.js';
 import { backendImageUploadFailure } from './backend-image-upload-failure.js';
-import { backendImageInputPaths } from './backend-image-inputs.js';
+import { backendImageInputBoundary } from './backend-image-inputs.js';
 import { skippedOperationStage } from './operation-progress.js';
 
 const SCHEMA = 'openxiangda.backend-image-candidate/v1';
@@ -20,7 +18,6 @@ const MAX_BYTES = 8 * 1024 ** 3;
 const CANDIDATE_BYTES = MAX_BYTES;
 // inspectBackendOciLayout caps both OCI metadata files at 256 KiB; candidate.json at 4 KiB.
 export const BACKEND_IMAGE_CACHE_METADATA_BYTES = 2 * 256 * 1024 + 4096;
-const dockerignore = createRequire(import.meta.url)('@balena/dockerignore') as (options: { ignorecase: boolean }) => Ignore;
 
 export interface BackendImageRecoveryScope {
   platform: string;
@@ -119,19 +116,8 @@ export async function backendImageContextDigest(root: string, dockerfile: string
     const real = realpathSync(path);
     if (!stat.isFile() || stat.isSymbolicLink() || !(real === root || real.startsWith(`${root}/`))) fail('CONTEXT_INVALID', 'Dockerfile 和 ignore 文件必须是工作区内的普通文件');
   }
-  const rules = readFileSync(ignorePath, 'utf8');
-  if (Buffer.byteLength(rules) > 256 * 1024) fail('CONTEXT_LIMIT', 'Docker ignore 文件超过 256 KiB');
-  const matcher = dockerignore({ ignorecase: false }).add(rules);
-  const inputs = backendImageInputPaths(root, dockerfile);
-  const relevant = (path: string) => !inputs || inputs.some(input =>
-    path === input || path.startsWith(`${input}/`) || input.startsWith(`${path}/`));
-  const exceptions = rules.split(/\r?\n/).map(line => line.trim()).filter(line => line.startsWith('!')).map(line => line.slice(1).replace(/^\/+|\/+$/g, ''));
-  // When an exclusion can re-include descendants we must walk the excluded parent.
-  const mayInclude = (path: string) => exceptions.some(pattern => {
-    if (pattern.includes('\\') || pattern.includes('..') || pattern.startsWith('./')) return true;
-    const prefix = pattern.split(/[?*\[]/, 1)[0]!;
-    return !prefix || prefix.startsWith(`${path}/`) || `${path}/`.startsWith(prefix);
-  });
+  const boundary = backendImageInputBoundary(root, dockerfile);
+  const rules = boundary.rules;
   const hash = createHash('sha256');
   hash.update(JSON.stringify([relative(root, dockerfile), relative(root, ignorePath), rules]));
   let entries = 0;
@@ -144,10 +130,10 @@ export async function backendImageContextDigest(root: string, dockerfile: string
       const relativePath = relative(root, path).replaceAll('\\', '/');
       const stat = lstatSync(path);
       const required = path === dockerfile || path === ignorePath;
-      const included = required || (relevant(relativePath) && !matcher.ignores(relativePath));
+      const included = required || boundary.includes(relativePath);
       if (stat.isDirectory()) {
         if (included) hash.update(JSON.stringify(['d', relativePath, stat.mode & 0o777]));
-        if (included || (relevant(relativePath) && mayInclude(relativePath)) || dockerfile.startsWith(`${path}/`) || ignorePath.startsWith(`${path}/`)) await walk(path);
+        if (included || boundary.mayIncludeDescendants(relativePath) || dockerfile.startsWith(`${path}/`) || ignorePath.startsWith(`${path}/`)) await walk(path);
       } else if (included && stat.isSymbolicLink()) {
         hash.update(JSON.stringify(['l', relativePath, readlinkSync(path)]));
       } else if (included && stat.isFile()) {
