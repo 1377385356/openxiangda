@@ -227,3 +227,11 @@ test('multi-dimension scope fields remain on the card but are not offered as mod
   app.authz!.dataPolicies![0] = { ...app.authz!.dataPolicies![0]!, rules: [], readExpression: { anyOf: [{ field: 'site', dimensionCode: 'site' }, { field: 'site', dimensionCode: 'campus' }] } } as any;
   assert.equal((shared(app).capabilities.find(capability => capability.operation === 'query')!.agent!.nativeTask!.hintSchema.properties as any).filters.properties.site, undefined);
 });
+
+test('native read output schema covers bounded rows and ambiguous human-label choices, never raw identity fields', () => {
+  const cap = shared().capabilities.find(capability => capability.operation === 'query')!, validate = ajv.compile(cap.outputSchema);
+  assert.ok(validate({ filter_ambiguous: true, field: 'area', labels: [{ label: '东区' }, { label: '东区', description: '校区一' }] }));
+  assert.ok(validate({ columns: Array.from({ length: 500 }, (_, i) => ({ code: `f${i}`, label: `字段${i}` })), items: [], more: false }));
+  assert.equal(validate({ items: [{ handle: 'receipt:0', recordId: 'private', fields: [] }], more: false }), false);
+  assert.equal(validate({ filter_ambiguous: true, field: 'area', labels: [{ label: '东区', value: 'private' }] }), false);
+});
