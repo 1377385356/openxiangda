@@ -10,7 +10,7 @@ import type { OpenXiangdaModuleOptions } from './types.js';
 export class OpenXiangdaEventWorkerEffectService {
   constructor(@Inject(OPENXIANGDA_MODULE_OPTIONS) private readonly options: OpenXiangdaModuleOptions,
     @Inject(OpenXiangdaEventContext) private readonly context: OpenXiangdaEventContext) {}
-  query<T extends Record<string, unknown>>(resourceCode: string, query: DataQuery): Promise<DataPage<T>> {
+  query<T extends Record<string, unknown>>(resourceCode: string, query: DataQuery): Promise<DataPage<T> & { appVersionId: string; headRevision: number }> {
     return this.execute({action:'query',resourceCode,query});
   }
   prepare(intentKey: string, plan: EventWorkerMutationPlan): Promise<EventWorkerEffectReceipt> {
