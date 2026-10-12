@@ -276,3 +276,11 @@ test('non-convergent conditions keep every routed edge without inventing a merge
   const before=structuredClone(source),positions=await workflowFlowLayout(source,{designer:true});
   assertRoutedWithoutOverlap(source,positions);assert.equal(positions.nodes.size,3);assert.deepEqual(source,before);
 });
+
+
+test('default stays after ordered conditions even without its own priority',async()=>{
+  const source=graph([{id:'fork',kind:'condition',title:'Fork'},{id:'a',kind:'approval',title:'A'},{id:'done',kind:'end',title:'Done'}],
+    [{...edge('fork','a','branch'),priority:1},edge('fork','done','default'),edge('a','done')]);
+  const positions=await workflowFlowLayout(source,{designer:true});
+  assert.ok(positions.edges.get('fork:branch:a')!.label.x<positions.edges.get('fork:default:done')!.label.x,'default must be visually last, not priority zero');
+});

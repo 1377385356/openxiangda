@@ -68,7 +68,7 @@ export async function layoutDesignerRegions(
       return members;
     }
     const candidates = graph.nodes.filter(node => ids.has(node.id)).flatMap(fork => {
-      const branches = [...(outgoing.get(fork.id) || [])].sort((a,b) => (a.priority || 0) - (b.priority || 0));
+      const branches = [...(outgoing.get(fork.id) || [])].sort((a,b) => Number(a.kind === 'default') - Number(b.kind === 'default') || (a.priority || 0) - (b.priority || 0));
       if (!(fork.parallel || fork.kind === 'condition') || branches.length < 2) return [];
       if (branches.some(edge => !['branch','default'].includes(edge.kind))) return [];
       const common = [...postdom(branches[0]!.to)].filter(id => id !== fork.id && branches.every(edge => postdom(edge.to).has(id)));
