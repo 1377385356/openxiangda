@@ -72,7 +72,7 @@ test('notification defaults, health, lookup and recovery keep their original ser
   const replay = applicationOperationTransport('app', { operation: 'notifications.replay', environment: 'test', input: { deadLetterId: id } });
   assert.deepEqual(JSON.parse(replay.init.body!), { environmentKey: 'preproduction' });
   const catalog = applicationOperationCatalog();
-  assert.equal(catalog.operations.length, 21);
+  assert.equal(new Set(catalog.operations.map(item => item.operation)).size, catalog.operations.length);
   assert.equal(catalog.operations.find(item => item.operation === 'notifications.replay')!.effect, 'recover');
   assert.equal(catalog.operations.some(item => /delete|clear|bulk/.test(item.operation)), false);
 });

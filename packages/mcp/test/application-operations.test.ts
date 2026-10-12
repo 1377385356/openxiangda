@@ -21,11 +21,14 @@ test('real MCP discovers the authoritative operation schemas and rejects invalid
     assert.deepEqual(mcpToolReference().find(item => item.name === 'application_operation')!.inputSchema, execute.inputSchema);
     assert.equal(execute.annotations?.readOnlyHint, false);
     const catalog = await client.callTool({ name: 'application_operations', arguments: {} });
-    assert.equal((catalog.structuredContent as any).data.operations.length, 20);
+    const health = (catalog.structuredContent as any).data.operations.find(item => item.operation === 'diagnostics.execution-health');
+    assert.equal(health.effect, 'read');
+    assert.match(health.permission, /应用管理/);
     for (const args of [
       { operation: 'events.status', input: {} },
       { operation: 'events.status', environment: 'production', input: { actor: 'forged' } },
       { operation: 'events.status', environment: 'test', input: {}, appCode: 'other' },
+      { operation: 'diagnostics.execution-health', environment: 'test', input: { kind: 'event-delivery', id: 'invalid', tenantId: 'forged' } },
       { operation: 'secrets.copy', environment: 'production', input: { sourceEnvironment: 'test', reason: '已验证', idempotencyKey: 'key', secrets: [{ name: 'secret', value: 'never-pass', sourceRevision: 1, expectedRevision: 0 }] } },
     ]) {
       const result = await client.callTool({ name: 'application_operation', arguments: args });
@@ -37,6 +40,9 @@ test('real MCP discovers the authoritative operation schemas and rejects invalid
     assert.notEqual(result.isError, true);
     assert.deepEqual(calls, [{ root: '/tmp/application', input: args }]);
     assert.equal((result.structuredContent as any).data.result.admission.blocked, false);
+    const original = { operation: 'diagnostics.execution-health', environment: 'test', input: { kind: 'event-delivery', id: '11111111-1111-4111-8111-111111111111' } };
+    assert.notEqual((await client.callTool({ name: 'application_operation', arguments: original })).isError, true);
+    assert.deepEqual(calls[1], { root: '/tmp/application', input: original });
   } finally { await client.close(); await server.close(); }
 });
 
