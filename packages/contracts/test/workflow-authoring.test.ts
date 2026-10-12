@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createWorkflowHumanNode, workflowAuthoringCatalog, workflowCanvasBindingKey, validateWorkflowCanvasHuman } from '../src/native-compiler/workflow-authoring.js';
+import { createWorkflowHumanNode, workflowAuthoringCatalog, workflowCanvasBindingKey, validateWorkflowCanvasHuman, pruneWorkflowCanvasBindings } from '../src/native-compiler/workflow-authoring.js';
 import { validateWorkflowDesignerCapabilities } from '../src/native-compiler/workflow-designer.js';
 import { validateWorkflowBusinessSteps, compileWorkflowBusinessStepHandlers } from '../src/native-compiler/workflow-business-step.js';
 import { evaluateWorkflowExpression } from '../src/native-compiler/workflow-expression.js';
@@ -37,4 +37,9 @@ test('condition evaluation preserves runtime comparisons, missing facts, priorit
 test('return eligibility explains downstream and cross-branch exclusions',()=>{
  const d=fixture();d.startAt='a';d.nodes.a={id:'a',kind:'approval',title:'A',binding:'people',mode:'single',onApprove:'b',onReject:'done'};d.nodes.b={...d.nodes.a,id:'b',title:'B',onApprove:'done'};
  assert.equal(workflowReturnEligibility(d,'b','a').allowed,true);assert.equal(workflowReturnEligibility(d,'a','b').allowed,false);
+});
+
+test('removing a fresh node prunes its binding without deleting released source entries',()=>{
+ const def=fixture(),published=binding();published.bindings.canvas_published={provider:'initiator'};const current=structuredClone(published);current.bindings.canvas_deleted={provider:'fixed_users',users:[]};current.bindings.source_unused={provider:'initiator'};
+ const pruned=pruneWorkflowCanvasBindings(def,current,published);assert.equal(pruned.bindings.canvas_deleted,undefined);assert.ok(pruned.bindings.canvas_published);assert.ok(pruned.bindings.source_unused);assert.ok(current.bindings.canvas_deleted);
 });
