@@ -198,11 +198,20 @@ test('caller cancellation aborts a pending long read without starting another fe
   });
 });
 
-test('a caller-provided read budget interrupts a pending fetch and propagates its abort signal', async () => {
+test('a caller-provided read budget interrupts a pending fetch and propagates its abort signal', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  let elapsed = 0;
+  t.mock.method(performance, 'now', () => elapsed);
   await withClient(async (api, configure) => {
     let calls = 0, signal: AbortSignal | null | undefined;
     configure(async (_path, init) => { calls++; signal = init.signal; return new Promise(() => {}); });
-    await assert.rejects(() => api.result({ operationId: 'original' }, undefined, { budgetMs: 10 }), { code: 'CONCURRENCY_READ_RECOVERY_EXHAUSTED' });
+    const rejected = assert.rejects(() => api.result({ operationId: 'original' }, undefined, { budgetMs: 10 }), { code: 'CONCURRENCY_READ_RECOVERY_EXHAUSTED' });
+    await settle();
+    assert.equal(calls, 1);
+    assert.equal(signal?.aborted, false);
+    elapsed = 9; t.mock.timers.tick(9); await settle();
+    assert.equal(signal?.aborted, false, 'a pending read remains active before its deadline');
+    elapsed = 10; t.mock.timers.tick(1); await rejected;
     assert.equal(calls, 1); assert.equal(signal?.aborted, true);
   });
 });
