@@ -109,3 +109,12 @@ test('canvas conditional insertion remains unavailable even when a matching sour
   for (const impl of [esm, cjs]) assert.deepEqual(impl.validateWorkflowCanvasBinding(current(value),
     impl.workflowAuthoringCatalog(definition(value), value.workflows.bindings[0].binding)), ['WORKFLOW_DESIGNER_CONDITIONAL_ASSIGNMENT_UNAVAILABLE']);
 });
+
+test('nested routing roles enter source references without changing existing flat reference identity', () => {
+  const value = config(), routing = { policyCode: 'routing', title: 'Routing', strategy: 'replace_only', dimensions: {},
+    sources: { finance: { title: 'Finance', provider: 'app_role', roleCode: 'finance' } } };
+  current(value).otherwise = { provider: 'app_role', roleCode: 'reviewer', routing };
+  assert.deepEqual(workflowSourceReferences(definition(value), value.workflows.bindings[0].binding, sha256Digest).roles, ['finance', 'reviewer']);
+  value.workflows.bindings[0].binding.bindings.reviewer = current(value).otherwise;
+  assert.deepEqual(workflowSourceReferences(definition(value), value.workflows.bindings[0].binding, sha256Digest).roles, ['reviewer']);
+});
