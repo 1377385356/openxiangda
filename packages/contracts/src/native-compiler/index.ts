@@ -78,3 +78,6 @@ export { workflowProducedEventTypes } from './workflow-events.js';
 export * from './workflow-reminders.js';
 
 export * from './workflow-supervisor-chain.js';
+
+/** Standard lists and agent view tasks share one pure query constructor. */
+export * from './resource-query.js';
