@@ -143,7 +143,7 @@ export function validateWorkflowNodeConfigurationPatch(node: WorkflowAdministrat
           // The contextual published node, not a caller's presentation copy,
           // owns editable providers, mode/operation ceilings and empty policy.
           if ('emptyPolicy' in actualNode && actualNode.emptyPolicy === 'skip') errors.push('WORKFLOW_APPROVAL_EMPTY_PROVIDER_UNSUPPORTED');
-          errors.push(...validateWorkflowNodeConfigurationPatch(actualNode, undefined, { ...patch, assignee: undefined }, taskPages));
+          errors.push(...validateWorkflowNodeConfigurationPatch(actualNode, undefined, { ...patch, assignee: undefined }, conditionalContext.definition.taskPages));
           const contextualProviders = 'administration' in actualNode ? actualNode.administration?.assigneeProviders : undefined;
           errors.push(...validateWorkflowConditionalAssignment(value, {
             ...conditionalContext,
