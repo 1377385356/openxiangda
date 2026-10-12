@@ -293,6 +293,70 @@ MCP 使用项目锁定的根包；在客户端配置下列 stdio 启动参数，
       "additionalProperties": false,
       "properties": {
         "operation": {
+          "const": "diagnostics.semantic-audit",
+          "description": "绑定当前TEST版本和Head的文件值语义审计；仅观察，不修复或授予激活许可"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "test"
+          ]
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "requirementId": {
+              "const": "native.file-value.v2-envelope"
+            },
+            "resourceCode": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+            },
+            "expectedAppVersionId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 36,
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            },
+            "expectedHeadRevision": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "afterRecordId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 36,
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          "required": [
+            "requirementId",
+            "resourceCode",
+            "expectedAppVersionId",
+            "expectedHeadRevision"
+          ]
+        }
+      },
+      "required": [
+        "operation",
+        "environment",
+        "input"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
           "const": "diagnostics.execution-health",
           "description": "按原ID核对未来计划、暂停、claim和租约；不恢复或重放"
         },
