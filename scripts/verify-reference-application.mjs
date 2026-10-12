@@ -103,7 +103,8 @@ try {
   writeFileSync(
     registryConfig,
     referenceRegistryConfiguration(
-      publishedCandidates.map(item => item.manifest.name)
+      publishedCandidates.map(item => item.manifest.name),
+      { uplinkProxy: process.env.OPENXIANGDA_REFERENCE_UPLINK_PROXY }
     ),
     "utf8"
   );

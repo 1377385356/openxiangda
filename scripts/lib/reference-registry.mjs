@@ -1,6 +1,14 @@
 const PACKAGE_NAME_PATTERN = /^(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/;
 
-export function referenceRegistryConfiguration(candidatePackageNames = []) {
+export function referenceRegistryConfiguration(candidatePackageNames = [], { uplinkProxy } = {}) {
+  let proxyConfiguration = "";
+  if (uplinkProxy) {
+    const proxy = new URL(uplinkProxy);
+    if (!['http:', 'https:'].includes(proxy.protocol) || proxy.username || proxy.password || proxy.pathname !== '/' || proxy.search || proxy.hash) {
+      throw new Error('INVALID_REFERENCE_UPLINK_PROXY');
+    }
+    proxyConfiguration = `    http_proxy: ${JSON.stringify(proxy.origin)}\n    https_proxy: ${JSON.stringify(proxy.origin)}\n`;
+  }
   const candidates = [...new Set(candidatePackageNames)].sort();
   for (const name of candidates) {
     if (!PACKAGE_NAME_PATTERN.test(name)) {
@@ -26,7 +34,7 @@ auth:
 uplinks:
   npmjs:
     url: https://registry.npmjs.org/
-packages:
+${proxyConfiguration}packages:
 ${candidateRules ? `${candidateRules}\n` : ""}  # Exact candidate rules are local-only; every other package may use npmjs.
   '**':
     access: $all
