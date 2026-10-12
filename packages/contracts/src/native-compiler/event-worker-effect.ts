@@ -83,7 +83,7 @@ export function compileEventWorkerEffect(raw: unknown, resources: readonly Recor
     const readFields = strings(grant.readFields, 64, `${p}/readFields`), writeFields = strings(grant.writeFields, 64, `${p}/writeFields`);
     const writeOperations = strings(grant.writeOperations, 2, `${p}/writeOperations`);
     if (writeOperations.some(operation => !['create','update'].includes(operation)) || Boolean(writeOperations.length) !== Boolean(writeFields.length)) fail(p);
-    if (!readFields.length || readFields.some(field => !['id','revision'].includes(field) && !fields.has(field))) fail(`${p}/readFields`, 'EVENT_WORKER_EFFECT_FIELD_INVALID');
+    if (!readFields.length || readFields.some(field => !['id','revision','created_at'].includes(field) && !fields.has(field))) fail(`${p}/readFields`, 'EVENT_WORKER_EFFECT_FIELD_INVALID');
     if (writeFields.some(field => !fields.has(field) || fields.get(field).type === 'serial-number' || ['id','revision','tenant_id','app_code','environment_key','created_at','created_by','updated_at','updated_by'].includes(field))) fail(`${p}/writeFields`, 'EVENT_WORKER_EFFECT_FIELD_INVALID');
     if (writeOperations.length && workflowResources.includes(grant.resourceCode)) fail(p, 'EVENT_WORKER_EFFECT_WORKFLOW_RESOURCE_FORBIDDEN');
     resourceDigests[grant.resourceCode] = sha256Digest(resource!);
