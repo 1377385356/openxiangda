@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "openxiangda.npm-metadata-evidence/v1",
+  "dateLocal": "2026-10-13",
+  "registry": "https://registry.npmjs.org",
+  "observedAt": "2026-10-12T18:43:31.917Z",
+  "sameObservedMetadata": true,
+  "sequence": "concurrency 1 followed by concurrency 3",
+  "cases": [
+    {
+      "concurrency": 1,
+      "queries": 7,
+      "elapsedMs": 5386,
+      "peakActive": 1
+    },
+    {
+      "concurrency": 3,
+      "queries": 7,
+      "elapsedMs": 1619,
+      "peakActive": 3
+    }
+  ],
+  "limitations": [
+    "read-only metadata, no npm or dist-tag writes",
+    "DNS/client-cache coldness was not controlled",
+    "tarball packing, verification and publication times not measured"
+  ]
+}

@@ -1,3 +1,5 @@
+import { readReleaseMetadataSnapshot } from "./lib/release-metadata-snapshot.mjs";
+import { orderReleaseCandidates, releaseDistTagPlan, pendingReleaseDistTags } from "./lib/release-write-plan.mjs";
 import { acquireReleaseProcessLock } from './lib/release-process-lock.mjs';
 import { spawnSync } from "node:child_process";
 import {
@@ -21,6 +23,7 @@ import {
 } from "./lib/release-artifacts.mjs";
 import {
   isReleaseVersionPublished,
+  publicPackages,
   resolveReleaseRegistry,
 } from "./lib/release-package-state.mjs";
 import { ensureReleaseArtifacts } from "./lib/release-artifact-preparation.mjs";
@@ -134,6 +137,8 @@ if (!receipt) {
     referenceEvidenceAtStart = inspectReferenceReleaseEvidence(referenceApplicationRoot);
     assertReferencePackageVersions(referenceApplicationRoot, expectedPublicPackageVersions(repositoryRoot));
   }
+  const channelMetadata = readReleaseMetadataSnapshot(repositoryRoot, registry, candidates.map(candidate => candidate.name));
+  const channelMetadataByName = new Map(channelMetadata.entries.map(item => [item.name, item]));
   receipt = {
     schema: "openxiangda.release-receipt/v2",
     head,
@@ -147,12 +152,7 @@ if (!receipt) {
     prereleaseTag: configuredPrereleaseTag(),
     candidates: candidates.map(candidate => {
       const artifact = artifactsByName.get(candidate.name);
-      const priorTags =
-        npmJson(
-          ["view", candidate.name, "dist-tags", "--json"],
-          {},
-          registry
-        ) || {};
+      const priorTags = channelMetadataByName.get(candidate.name).distTags;
       return {
         name: candidate.name,
         version: candidate.version,
@@ -170,6 +170,8 @@ if (!receipt) {
       };
     }),
   };
+  for (const candidate of receipt.candidates) candidate.channelPlan = releaseDistTagPlan(candidate);
+  receipt.registryMetadata = {observedAt: new Date().toISOString(), elapsedMs: channelMetadata.elapsedMs, peakActive:channelMetadata.peakActive};
   receipt.githubRelease = planGithubRelease(repositoryRoot, receipt);
   saveReceipt(receipt);
 }
@@ -287,7 +289,7 @@ if (validateOnly) {
   if (receipt.phase === "packages-published") {
     assertAuthoritativeMainline({ allowContained: true });
     assertRecoverableDistTags(receipt);
-    for (const candidate of receipt.candidates) applyDistTags(candidate, receipt);
+    for (const candidate of orderedWriteCandidates(receipt)) applyDistTags(candidate, receipt);
     waitForDistTags(receipt);
     receipt.phase = "dist-tags-synchronized";
     saveReceipt(receipt);
@@ -463,10 +465,14 @@ function assertReceiptArtifacts(value) {
   return manifest;
 }
 
+function orderedWriteCandidates(value) {
+  return orderReleaseCandidates(value.candidates, publicPackages(repositoryRoot).map(item => item.manifest));
+}
+
 function publishCandidateTarballs(value) {
   const manifest = assertReceiptArtifacts(value);
   const byName = new Map(manifest.packages.map(item => [item.name, item]));
-  for (const candidate of value.candidates) {
+  for (const candidate of orderedWriteCandidates(value)) {
     const spec = `${candidate.name}@${candidate.version}`;
     if (isReleaseVersionPublished(repositoryRoot, value.registry, spec)) {
       const integrity = npmJson(
@@ -554,13 +560,15 @@ function applyDistTags(candidate, value) {
   if (JSON.stringify(candidate.channelPolicy) !== JSON.stringify(expectedPolicy)) {
     fail(`${candidate.name} release channel policy no longer matches its receipt`);
   }
-  const policy = candidate.channelPolicy;
-  const spec = `${candidate.name}@${candidate.version}`;
-  if (policy.prerelease) {
-    npm(["dist-tag", "add", spec, policy.prerelease.tag]);
+  // Freshly recheck this package before each controlled channel write. The
+  // root package comes last; channels already observed at target are no-ops.
+  for (const entry of releaseDistTagPlan(candidate)) {
+    const actualTags = npmJson(['view', candidate.name, 'dist-tags', '--json'], {}, value.registry) || {};
+    if (!releaseDistTagsAreRecoverable({candidateVersion:candidate.version, prereleaseTag:value.prereleaseTag, priorTags:candidate.priorTags, actualTags, candidatePublished:true})) fail(`RELEASE_CHANNEL_DRIFT:${candidate.name}`);
+    const pending = pendingReleaseDistTags(candidate, actualTags);
+    if (!pending.some(item => item.tag === entry.tag)) continue;
+    npm(['dist-tag', 'add', `${candidate.name}@${entry.targetVersion}`, entry.tag]);
   }
-  if (policy.stable) npm(['dist-tag', 'add', spec, policy.stable.tag]);
-  npm(["dist-tag", "add", `${candidate.name}@${policy.latest}`, "latest"]);
 }
 
 function waitForDistTags(value) {

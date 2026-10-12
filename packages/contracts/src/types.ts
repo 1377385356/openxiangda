@@ -2740,6 +2740,7 @@ export interface WorkflowNodeConfigurationPatch {
   mode?: WorkflowApprovalMode;
   operations?: Partial<Record<WorkflowConfigurableOperation, Omit<WorkflowNodeOperationPolicy, 'minimumOpinion'> & { enabled?: boolean }>>;
   assignee?:
+    | import('./native-compiler/workflow-conditional-assignment.js').WorkflowConditionalAssignment
     | { provider: "fixed_users"; users: string[] }
     | { provider: "app_role" | "app_role_in_scope"; roleCode: string; roleCodes?: never }
     | { provider: "app_role" | "app_role_in_scope"; roleCodes: string[]; roleCode?: never };

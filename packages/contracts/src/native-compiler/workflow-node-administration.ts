@@ -1,5 +1,7 @@
 import type { WorkflowApprovalAdministration, WorkflowConfigurableOperation, WorkflowNodeConfigurationPatch, WorkflowNodeOperationPolicy } from '../types.js';
 import { validateWorkflowInitiatorApprovalPolicy, type WorkflowInitiatorApprovalPages } from './workflow-initiator-approval.js';
+import { validateWorkflowConditionalAssignment, type WorkflowConditionalAssignmentContext } from './workflow-conditional-assignment.js';
+import type { WorkflowBindingEntry } from '../types.js';
 import { validateWorkflowRoleUnion } from './workflow-role-union.js';
 import { WORKFLOW_AUTOMATIC_CC_DEFAULT_RECIPIENTS, WORKFLOW_AUTOMATIC_CC_MAX_RECIPIENTS } from './workflow-automatic-cc.js';
 
@@ -114,7 +116,10 @@ export function validateWorkflowAdministration(definition: { nodes?: Record<stri
   return errors;
 }
 
-export function validateWorkflowNodeConfigurationPatch(node: WorkflowAdministrationNodeSource | undefined, binding: BindingSource | undefined, input: unknown, taskPages?: WorkflowInitiatorApprovalPages): string[] {
+/** Context comes from the published version owner; browser data cannot grant authority. */
+export type WorkflowConditionalNodeConfigurationContext = Omit<WorkflowConditionalAssignmentContext, 'frozenDefault' | 'standardProviders'>;
+
+export function validateWorkflowNodeConfigurationPatch(node: WorkflowAdministrationNodeSource | undefined, binding: BindingSource | undefined, input: unknown, taskPages?: WorkflowInitiatorApprovalPages, conditionalContext?: WorkflowConditionalNodeConfigurationContext): string[] {
   const errors: string[] = [];
   if (!node || !record(input) || !Object.keys(input).length || !keys(input, ['title', 'description', 'assignee', 'mode', 'operations'])) return ['WORKFLOW_V2_NODE_CONFIGURATION_PATCH_INVALID'];
   const patch = input as WorkflowNodeConfigurationPatch;
@@ -127,15 +132,41 @@ export function validateWorkflowNodeConfigurationPatch(node: WorkflowAdministrat
   if (patch.assignee !== undefined) {
     const value = patch.assignee;
     const allowed = admin?.assigneeProviders || ((node.kind === 'approval' || node.kind === 'handle') && binding && WORKFLOW_CONFIGURABLE_PROVIDERS.includes(binding.provider as any) ? [binding.provider] : []);
-    if (binding?.selectedInputPath && !['app_role', 'app_role_in_scope'].includes(value?.provider || '')) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_PROVIDER_READONLY');
-    if (!record(value) || !['approval', 'handle', 'cc'].includes(node.kind) || !allowed.includes(value.provider) || (value.provider === 'app_role_in_scope' && !binding?.scope)) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_PROVIDER_READONLY');
-    else if (value.provider === 'fixed_users') {
-      const minimum = node.kind === 'cc' ? binding?.min ?? 1 : node.emptyPolicy === 'skip' ? 0 : 1;
-      const maximum = node.kind === 'cc' ? Math.min(binding?.max ?? WORKFLOW_AUTOMATIC_CC_DEFAULT_RECIPIENTS, WORKFLOW_AUTOMATIC_CC_MAX_RECIPIENTS) : 200;
-      if (!keys(value, ['provider', 'users']) || !Array.isArray(value.users) || value.users.length < minimum || value.users.length > maximum || new Set(value.users).size !== value.users.length || value.users.some(id => typeof id !== 'string' || !id.trim() || id.length > 255)) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_USERS_INVALID');
-    } else if (value.roleCodes !== undefined) {
-      if (!keys(value, ['provider', 'roleCodes']) || validateWorkflowRoleUnion({ ...value, ...(value.provider === 'app_role_in_scope' ? { scope: binding?.scope } : {}) }).length) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_ROLE_INVALID');
-    } else if (!keys(value, ['provider', 'roleCode']) || typeof value.roleCode !== 'string' || !/^[a-z][a-z0-9_-]{0,127}$/.test(value.roleCode)) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_ROLE_INVALID');
+    if (value?.provider === 'conditional') {
+      if (node.emptyPolicy === 'skip') errors.push('WORKFLOW_APPROVAL_EMPTY_PROVIDER_UNSUPPORTED');
+      if (!conditionalContext || !binding) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_CONDITIONAL_CONTEXT_REQUIRED');
+      else {
+        const actualNode = conditionalContext.definition.nodes[conditionalContext.nodeId];
+        if (!actualNode || !('binding' in actualNode) || actualNode.kind !== node.kind || actualNode.binding !== node.binding)
+          errors.push('WORKFLOW_V2_NODE_CONFIGURATION_CONDITIONAL_CONTEXT_INVALID');
+        else {
+          // The contextual published node, not a caller's presentation copy,
+          // owns editable providers, mode/operation ceilings and empty policy.
+          if ('emptyPolicy' in actualNode && actualNode.emptyPolicy === 'skip') errors.push('WORKFLOW_APPROVAL_EMPTY_PROVIDER_UNSUPPORTED');
+          errors.push(...validateWorkflowNodeConfigurationPatch(actualNode, undefined, { ...patch, assignee: undefined }, conditionalContext.definition.taskPages));
+          const contextualProviders = 'administration' in actualNode ? actualNode.administration?.assigneeProviders : undefined;
+          errors.push(...validateWorkflowConditionalAssignment(value, {
+            ...conditionalContext,
+            definition: { ...conditionalContext.definition, nodes: {
+              ...conditionalContext.definition.nodes,
+              [conditionalContext.nodeId]: { ...actualNode, ...('mode' in actualNode ? { mode: patch.mode || actualNode.mode } : {}) },
+            } },
+            frozenDefault: binding as WorkflowBindingEntry,
+            standardProviders: contextualProviders || ((actualNode.kind === 'approval' || actualNode.kind === 'handle') && WORKFLOW_CONFIGURABLE_PROVIDERS.includes(binding.provider as any) ? [binding.provider] : []) as WorkflowConditionalAssignmentContext['standardProviders'],
+          }));
+        }
+      }
+    } else {
+      if (binding?.selectedInputPath && !['app_role', 'app_role_in_scope'].includes(value?.provider || '')) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_PROVIDER_READONLY');
+      if (!record(value) || !['approval', 'handle', 'cc'].includes(node.kind) || !allowed.includes(value.provider) || (value.provider === 'app_role_in_scope' && !binding?.scope)) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_PROVIDER_READONLY');
+      else if (value.provider === 'fixed_users') {
+        const minimum = node.kind === 'cc' ? binding?.min ?? 1 : node.emptyPolicy === 'skip' ? 0 : 1;
+        const maximum = node.kind === 'cc' ? Math.min(binding?.max ?? WORKFLOW_AUTOMATIC_CC_DEFAULT_RECIPIENTS, WORKFLOW_AUTOMATIC_CC_MAX_RECIPIENTS) : 200;
+        if (!keys(value, ['provider', 'users']) || !Array.isArray(value.users) || value.users.length < minimum || value.users.length > maximum || new Set(value.users).size !== value.users.length || value.users.some(id => typeof id !== 'string' || !id.trim() || id.length > 255)) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_USERS_INVALID');
+      } else if (value.roleCodes !== undefined) {
+        if (!keys(value, ['provider', 'roleCodes']) || validateWorkflowRoleUnion({ ...value, ...(value.provider === 'app_role_in_scope' ? { scope: binding?.scope } : {}) }).length) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_ROLE_INVALID');
+      } else if (!keys(value, ['provider', 'roleCode']) || typeof value.roleCode !== 'string' || !/^[a-z][a-z0-9_-]{0,127}$/.test(value.roleCode)) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_ROLE_INVALID');
+    }
   }
   errors.push(...validateWorkflowInitiatorApprovalPolicy({ nodes: { node: { ...node, operationPolicy: projectWorkflowNodePolicy(node, patch).operationPolicy } }, ...(taskPages ? { taskPages } : {}) }));
   if (node.completionDeadline && projectWorkflowNodePolicy(node, patch).operationPolicy.approve?.commentRequired === true) errors.push('WORKFLOW_COMPLETION_DEADLINE_INPUT_REQUIRED:node');
