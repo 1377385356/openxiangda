@@ -255,13 +255,15 @@ export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onS
     }
     let next: WorkflowNode;
     let nextBinding = binding!;
+    let insertionDefinition = definition;
     if (chosenTemplate === 'condition') next = { id: nodeId,kind: 'condition',title: chosenTitle.trim(),branches: [{ label: '条件 1',when: defaultWorkflowCondition(variables),target: edge.to }],otherwise: edge.to };
     else if (chosenTemplate === 'platform_notify') next = { id: nodeId, kind: 'action', title: chosenTitle.trim(), next: edge.to,
       handler: { code: WORKFLOW_PLATFORM_NOTIFY_HANDLER, version: 1, mode: 'reconciled-effect' },
       inputSchema: structuredClone(WORKFLOW_PLATFORM_NOTIFY_INPUT_SCHEMA), outputSchema: structuredClone(WORKFLOW_PLATFORM_NOTIFY_OUTPUT_SCHEMA),
       inputs: { text: { source: 'literal', value: '请关注此申请的最新进展。' } }, notification: { template: 'workflow_message', recipients: { provider: 'initiator' } } };
     else if (['approval','handle','cc'].includes(chosenTemplate)) {
-      const reject = Object.values(definition.nodes).find(node => node.kind==='end' && node.outcome!=='approved')?.id || edge.to;
+      let reject = Object.values(definition.nodes).find(node => node.kind==='end' && node.outcome==='rejected')?.id;
+      if (chosenTemplate==='approval' && !reject) { reject=id();insertionDefinition={...definition,nodes:{...definition.nodes,[reject]:{id:reject,kind:'end',title:'申请已拒绝',outcome:'rejected'}}}; }
       next=createWorkflowHumanNode(nodeId,chosenTemplate as 'approval'|'handle'|'cc',chosenTitle.trim(),edge.to,undefined,catalog?.taskPages,reject);
       nextBinding={...binding!,bindings:{...binding!.bindings,[workflowCanvasBindingKey(nodeId)]:{provider:'fixed_users',users:[]}}};
     } else if (chosenTemplate==='action') {
@@ -279,7 +281,7 @@ export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onS
       else return;
     }
     try {
-      mutate(edge.from === workflowDesignerStartId ? { ...definition, startAt: next.id, nodes: { ...definition.nodes, [next.id]: next } } : editWorkflowDesignerDefinition(definition,{ type: 'insert',from: edge.from,target: edge.to,node: next,edge: edge.kind === 'branch' ? (edge.priority || 1) - 1 : edge.kind === 'default' ? 'default' : edge.kind as 'approve'|'reject'|'next' }),nextBinding);
+      mutate(edge.from === workflowDesignerStartId ? { ...insertionDefinition, startAt: next.id, nodes: { ...insertionDefinition.nodes, [next.id]: next } } : editWorkflowDesignerDefinition(insertionDefinition,{ type: 'insert',from: edge.from,target: edge.to,node: next,edge: edge.kind === 'branch' ? (edge.priority || 1) - 1 : edge.kind === 'default' ? 'default' : edge.kind as 'approve'|'reject'|'next' }),nextBinding);
       setSelected(nodeId);setInspector(true);setStructureKeys([]);setInsert(undefined);
     } catch (error) { setError(String((error as Error).message)); }
   };
