@@ -43,11 +43,11 @@ pnpm skills:manifest
 pnpm verify:affected
 ```
 
-仓库内调试 CLI 使用 `pnpm cli:local <command>`，避免全局命令混入。中文专题是文档正文来源，CLI/MCP 从注册表生成参考，Skill 引用由相同专题生成；不要手改生成副本。`pnpm verify:local` 执行不发布的完整验证，包含实际 tarball、新建应用、浏览器、参考应用、Skill 和文档。
+仓库内调试 CLI 使用 `pnpm cli:local <command>`，避免全局命令混入。中文专题是文档正文来源，CLI/MCP 从注册表生成参考，Skill 引用由相同专题生成；不要手改生成副本。日常运行 `pnpm verify:affected`；`pnpm verify:local` 是明确需要时才运行的不发布完整审计，不作为增量发布前置。
 
 ## 工具链发包
 
-发包默认由可信本地发布机执行，GitHub Actions 作为可选的独立验证/发布入口；GitLab/镜像 CI 只验证源码。修改可发布内容时提交 Changeset，并评审 `docs/releases/<产品版本>.json` 中的更新说明。审核后在干净、最新的 master 执行 `pnpm release:version`，物化版本、随包说明和公开版本目录。该命令不提交、不发包。审核版本差异并提交推送后，`pnpm release:plan` 会一次性生成并冻结候选 tarball，后续 verify/publish 复用同一份制品：
+当前操作规则以 [npm 工具链发布](docs/maintainers/npm-release.md) 为准。发包默认由可信本地发布机执行，GitHub Actions 为可选执行入口；GitLab/镜像 CI 只验证源码。修改可发布内容提交 Changeset，在干净、同步的 master 执行 `pnpm release:version`，评审并推送版本差异，再一次性冻结候选 tarball：
 
 ```bash
 pnpm release:plan

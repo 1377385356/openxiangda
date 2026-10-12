@@ -180,7 +180,8 @@ pnpm openxiangda source push -m "完成本轮应用开发"
 | 换电脑或初始化中断 | 在应用目录执行 `pnpm openxiangda source setup`；已有提交及未提交修改会保留 |
 | 从个人远端迁入 | 明确迁入后运行 `source setup --import`，原远端保留为 `external-source` |
 | 本轮修改完成 | 检查差异后运行 `source push -m "AppSpec: <本轮变更ID> 变更说明"`；多个任务共享目录时先精确提交本轮文件，再不带 `-m` 推送 |
-| 准备部署 | 先把本轮提交合入并推送远端默认分支，再从干净且同步的主分支执行 `deploy` |
+| 测试部署 | 当前工作区直接执行 `deploy`，允许分支及未提交修改；提交推送不作为 TEST 前置 |
+| 生产晋级 | 按 `docs delivery` 复用成功测试运行；核对原源码主线包含和绑定原版本的实际验收 |
 
 新仓库默认使用 `main`；导入时，尚无默认分支的空仓库会采用当前分支（例如 `master`）。
 已有远端默认分支不会因在任务分支运行 setup 而改变。源码操作使用 CLI/终端；
@@ -194,7 +195,7 @@ MCP 的 `docs_read` 可以读取本说明，当前没有独立的源码操作 MC
 | 403 / 应用管理权限不足 | 核对当前平台账号及应用管理员资格；由已有应用管理员添加权限 |
 | `APPLICATION_SOURCE_PROVIDER_UNAVAILABLE` / `APPLICATION_SOURCE_PROVIDER_FAILED` | 保留原应用和目录，待 Git 服务恢复后重试同一操作 |
 | 推送被拒绝或主线已前进 | 先 fetch 并查看差异，按项目规则合并解决冲突后重试，不强推覆盖 |
-| `APPLICATION_SOURCE_COMMIT_NOT_PUSHED` | 在绑定仓库推送原提交，核对 source status 和远端 SHA 后重试部署 |
+| `APPLICATION_SOURCE_COMMIT_NOT_PUSHED` | 核对操作和平台版本；当前 TEST 发布不要求先推送。生产晋级核对绑定原测试版本的源码主线事实，保留原版本并按交付说明处理 |
 
 应用创建人和新增应用管理员拥有对应仓库管理权限，不需要另行维护 Git 角色。
 本期不自动同步权限撤销或删除。不要向应用开发者索要 Forgejo 平台管理员 Token；

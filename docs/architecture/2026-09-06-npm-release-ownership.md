@@ -1,5 +1,7 @@
 # npm 发布与 Git 托管分离
 
+> 历史架构决定与实施证据；当前操作步骤以 [npm 发布规则](../maintainers/npm-release.md) 为准。
+
 > 2026-09-16 更新：本机发布重新作为正式默认通道；阶段制品复用和失败重试规则见 `2026-09-16-local-release-fast-path.md`。GitHub workflow 保留为可选验证/发布环境，不构成本机发布前置。
 
 用户在 2026-09-06 明确纠正：“发布 npm 和 gitlab 没关系”。此前把正式发包限定为 GitLab CI 是错误的实施前提。本决定取代 2026-09-05-ci-publication-boundary 与 gitlab-12-release-executor 中关于 CI 独占发布的要求。

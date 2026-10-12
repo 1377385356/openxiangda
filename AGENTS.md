@@ -34,7 +34,7 @@
 
 ## 发布
 
-2026-09-16 起可信本机是正式 npm 发布通道；GitHub/GitLab/镜像 CI 可做独立验证，也可按仓库权限手动运行发布 workflow，但不得把 CI 作为本机发布的前置条件。详见 `docs/architecture/2026-09-16-local-release-fast-path.md`。
+当前 npm 操作规则以 `docs/maintainers/npm-release.md` 为准；历史 ADR/发行记录仅保留当时决策和证据。可信本机是正式默认通道，GitHub workflow 可执行同一状态机，GitLab/镜像 CI 只验证源码，CI 不作为本机发布前置。
 
 1. 评审 Changeset，在干净且同步的 master 执行 release:version。
 2. 评审生成版本差异，提交并推送；执行 `release:plan` 时会一次性生成并持久化候选 tarball。只有计划要求 reference 时，运行 `pnpm build`、`pnpm reference:install:from-build` 准备候选锁文件，评审并提交推送参考仓库 master。
@@ -44,4 +44,4 @@
 
 源码检查、包发布、站点部署和业务验收分别报告。生产晋级复用成功测试版本，不重复构建。生成 dist、模板副本、构建文档与工具缓存不提交。
 
-发布时间遵循 `docs/architecture/2026-09-11-incremental-release-verification.md`。默认资料/局部验证预算 300 秒，含浏览器矩阵 900 秒，full 1800 秒；`OPENXIANGDA_RELEASE_VERIFY_TIMEOUT_SECONDS` 可显式配置。超时终止并报告阶段，不自动减测；普通发布不复演历史全量清单。
+发布验证范围、预算和重试遵循 `docs/maintainers/npm-release.md`；普通发布不复演历史全量清单。应用 TEST 内循环允许分支/未提交源码，不套工具维护者主线守卫；生产晋级遵循 `docs/delivery.md` 的原测试版本和验收规则。
