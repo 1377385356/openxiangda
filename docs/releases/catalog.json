@@ -3,6 +3,35 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.66.0",
+      "status": "reviewed",
+      "title": "受限事件后台事务能力",
+      "summary": "复用平台事件投递租约及持久回执，支持定时消费者以显式资源与字段授权执行 Native 事务。",
+      "newFeatures": [
+        "事件消费者支持受限查询、冻结事务、原键提交与回执恢复；平台统一执行并验证事件租约。"
+      ],
+      "fixes": [
+        "迟到消费者只能释放自身租约，不能覆盖新消费者处理权。"
+      ],
+      "affectedUsers": [
+        "需要定时业务事务的 OpenXiangda V2 应用开发者与平台维护者。"
+      ],
+      "upgradeSteps": [
+        "配对升级 SDK、CLI、共享契约和平台服务；为事件订阅显式声明 worker-effect 资源、字段及容量。"
+      ],
+      "knownLimitations": [
+        "投递至少一次，业务事务依赖原幂等意图去重；不允许工作流拥有的资源写入或任意业务身份冒用。"
+      ],
+      "compatibility": {
+        "node": ">=24",
+        "pnpm": "10.15.1"
+      },
+      "issues": [],
+      "sha256": "48c557ed1f5420f31b352721b05fc769d2f728c84102da0705eca9553844532a",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.66.0"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.65.1",
       "status": "reviewed",
       "title": "条件审批人共享基础正式配对",
