@@ -1,5 +1,6 @@
 ---
 "openxiangda": patch
+"openxiangda-cli": patch
 "openxiangda-nest": patch
 ---
 
