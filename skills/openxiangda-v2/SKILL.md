@@ -73,6 +73,7 @@ pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ skill install --force
 | 自定义事务、校验或外部集成 | [按需后端](references/backend.md) |
 | 向平台业务 Agent 开放任务、辅助查询和字段绑定 | [Agent 任务接入](references/backend.md#面向普通用户的-agent-任务)；先完成业务操作、权限和规则，再声明 `ai.agent` |
 | 为业务 Agent 提供自定义填写/结果卡片 | [Agent 卡片](references/agent-cards.md)；声明同版本资源、使用隔离 SDK，保留平台标准卡片降级 |
+| 应用内置助手、会话、断线恢复与未知结果核对 | [应用助手](references/application-agents.md)；复用当前用户身份，写入不自动重放，客户端验证与真实业务验收分开 |
 | 主子额度、审批占用释放、撤回修订重提 | [精确金额占用](references/decimal-reservations.md) |
 | 热点读取、抢票、排队、名额预占与原结果恢复 | [缓存、排队与配额](references/managed-concurrency.md) |
 | 报名按钮、表单排队、短确认页、预占倒计时与前端恢复 | [并发前端接入](references/managed-concurrency-frontend.md)：按六种形式选择；仅使用已导出的 API，区分待实现封装 |

@@ -38,6 +38,10 @@
       "types": "./dist/agent-card.d.ts",
       "import": "./dist/agent-card.js"
     },
+    "./agent": {
+      "types": "./dist/agent.d.ts",
+      "import": "./dist/agent.js"
+    },
     "./react/styles.css": "./dist/browser/styles.css",
     "./mobile": {
       "types": "./dist/mobile.d.ts",

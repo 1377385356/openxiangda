@@ -1,4 +1,5 @@
 import { createBrowserUuid } from './uuid';
+import type { ApplicationAgentTransport } from './agent-protocol';
 import { parseBusinessProcessResolution, parseBusinessProcessCommitResult } from 'openxiangda-contracts/browser';
 import type { WorkflowDelegationAdministration, WorkflowDelegationCatalog, WorkflowDelegationCandidatePage, WorkflowDelegationCandidateQuery,
   WorkflowDelegationListQuery, WorkflowDelegationPage, WorkflowDelegationMutationPreview, WorkflowDelegationMutationReceipt, WorkflowDelegationMutationRequest } from 'openxiangda-contracts/browser';
@@ -1000,6 +1001,80 @@ function currentEnvironmentKey() {
   const key = activeIdentity?.environment.key || runtimeMount()?.environmentKey;
   if (!key) throw new Error('OPENXIANGDA_CURRENT_ENVIRONMENT_REQUIRED');
   return key;
+}
+
+/** Internal transport for the app facade; identity and login remain platform-owned. */
+export function createApplicationAgentTransport(): ApplicationAgentTransport {
+  if (!activeIdentity?.userId) throw new Error('OPENXIANGDA_CURRENT_USER_REQUIRED');
+  const appCode = applicationCode(), environmentKey = currentEnvironmentKey();
+  const fingerprint = () => JSON.stringify([applicationCode(), activeIdentity?.environment.id,
+    currentEnvironmentKey(), activeIdentity?.userId, activeIdentity?.identityScope, currentPerspectiveCode()]);
+  const scope = fingerprint();
+  const lifetime = new AbortController();
+  const disposeListeners = new Set<() => void>();
+  const assertScope = () => {
+    if (lifetime.signal.aborted || !activeIdentity || fingerprint() !== scope) {
+      dispose();
+      throw new OpenXiangdaPlatformRequestError({ code: 'AGENT_IDENTITY_CHANGED', status: 401,
+        message: '用户或应用环境已变化，请重新打开助手' });
+    }
+  };
+  const unsubscribe = subscribePlatformSessionInvalidation(() => dispose());
+  function dispose() {
+    if (lifetime.signal.aborted) return;
+    lifetime.abort(); unsubscribe(); disposeListeners.forEach(listener => listener()); disposeListeners.clear();
+  }
+  const endpoint = (path: string) => {
+    // No arbitrary URL, app/environment override or path traversal can enter this transport.
+    const [pathname, query = ''] = path.split('?');
+    const uuid = '[0-9a-fA-F-]{36}';
+    const routes = new RegExp(`^/(?:agents|conversations|conversations/${uuid}(?:/(?:runs|events))?|runs/${uuid}/cancel|interactions/${uuid}/(?:submit|confirm|cancel|options)|tools/${uuid}/(?:reconcile|resolve-manually))$`);
+    if (!pathname || !routes.test(pathname) || path.split('?').length > 2 || path.includes('#'))
+      throw new Error('AGENT_ENDPOINT_INVALID');
+    const params = new URLSearchParams(query);
+    for (const key of params.keys()) if (!['agentCode', 'cursor', 'limit', 'search', 'requestId', 'after', 'field', 'keyword'].includes(key))
+      throw new Error('AGENT_ENDPOINT_INVALID');
+    params.set('environmentKey', environmentKey);
+    return `/service/openxiangda-api/v2/applications/${appCode}/agent${pathname}?${params}`;
+  };
+  const failed = (error: unknown): never => {
+    if (error instanceof OpenXiangdaPlatformRequestError && error.status === 401 && !lifetime.signal.aborted)
+      invalidatePlatformSession();
+    throw error;
+  };
+  return {
+    scope,
+    onDispose(listener) { disposeListeners.add(listener); return () => { disposeListeners.delete(listener); }; },
+    async json<T>(path: string, init: RequestInit = {}): Promise<T> {
+      assertScope();
+      const headers = new Headers(init.headers);
+      if (init.method === 'POST') headers.set('x-openxiangda-csrf-token', await workflowCsrfToken());
+      assertScope();
+      try {
+        const value = await request<T>(endpoint(path), { ...init, headers,
+          signal: init.signal ? AbortSignal.any([lifetime.signal, init.signal]) : lifetime.signal });
+        assertScope(); return value;
+      } catch (error) { return failed(error); }
+    },
+    async stream(path: string, signal: AbortSignal): Promise<Response> {
+      assertScope();
+      const headers = new Headers({ accept: 'text/event-stream', 'x-openxiangda-csrf-token': await workflowCsrfToken() });
+      const perspective = currentPerspectiveCode();
+      if (perspective) headers.set('x-openxiangda-perspective', perspective);
+      assertScope();
+      try {
+        const url = endpoint(path);
+        const response = await fetchWithDiagnostics(url, { headers, signal: AbortSignal.any([lifetime.signal, signal]) });
+        assertScope();
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null) as Partial<PlatformEnvelope<unknown>> | null;
+          throw responseRequestError(url, {}, response, payload, '助手连接失败');
+        }
+        return response;
+      } catch (error) { return failed(error); }
+    },
+    dispose,
+  };
 }
 
 /** Uses the same authenticated transport and identity owner as ordinary Native data. */
