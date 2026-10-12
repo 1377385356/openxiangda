@@ -122,11 +122,13 @@ function formBindings(resource: DataResource, field: DataFieldDefinition): strin
 const handleSchema = { type: 'object', additionalProperties: false, required: ['handle'],
   properties: { handle: { type: 'string', minLength: 1, maxLength: 80 } } };
 const resultSchema = { type: 'object', additionalProperties: false, properties: {
-  columns: { type: 'array', maxItems: 200, items: objectSchema({ code: { type: 'string' }, label: { type: 'string' } }, ['code', 'label']) },
+  columns: { type: 'array', maxItems: 500, items: objectSchema({ code: { type: 'string' }, label: { type: 'string' } }, ['code', 'label']) },
   items: { type: 'array', maxItems: 100, items: objectSchema({ handle: { type: 'string' }, title: { type: 'string' },
-    fields: { type: 'array', maxItems: 200, items: objectSchema({ code: { type: 'string' }, label: { type: 'string' }, value: { type: 'string' } }, ['code', 'label', 'value']) } }, ['handle', 'fields']) },
+    fields: { type: 'array', maxItems: 500, items: objectSchema({ code: { type: 'string' }, label: { type: 'string' }, value: { type: 'string' } }, ['code', 'label', 'value']) } }, ['handle', 'fields']) },
   more: { type: 'boolean' }, total: { type: 'integer', minimum: 0 },
   continuation: { type: 'string', maxLength: 80 }, summary: { type: 'string' },
+  filter_ambiguous: { type: 'boolean' }, field: { type: 'string', maxLength: 100 },
+  labels: { type: 'array', maxItems: 20, items: objectSchema({ label: { type: 'string' }, description: { type: 'string' } }, ['label']) },
 } };
 
 function compileTask(appCode: string, agentCode: string, task: ApplicationAgentTaskDeclarationV2,
