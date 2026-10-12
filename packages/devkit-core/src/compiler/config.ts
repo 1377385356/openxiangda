@@ -7934,7 +7934,8 @@ export function defineOpenXiangdaApp(
       surfaces.mobile.defaultRouteCode = `user.${homeResourceCode}.records`;
     }
   }
-  const declarationDiagnostics = validateAppDeclaration(normalizedDeclaration);
+  const declarationDiagnostics = validateAppDeclaration(normalizedDeclaration)
+    .filter(item => item.severity === 'error');
   if (declarationDiagnostics.length > 0) {
     throw new AppConfigValidationError(declarationDiagnostics);
   }
