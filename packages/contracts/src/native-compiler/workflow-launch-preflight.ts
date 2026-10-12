@@ -1,3 +1,5 @@
+import { workflowAssignmentLeaves, validateWorkflowConditionalAssignmentShape } from './workflow-conditional-assignment.js';
+import type { WorkflowBindingEntry } from '../types.js';
 /** Admission only: actual node entry always resolves participants again. */
 export interface WorkflowLaunchPreflight {
   requiredApprovalNodes: string[];
@@ -27,7 +29,10 @@ export function validateWorkflowLaunchPreflight(definition: Definition, binding?
     if (!node || node.kind !== 'approval') { errors.push(`WORKFLOW_LAUNCH_PREFLIGHT_NODE_INVALID:${id}`); continue; }
     if (!binding) continue;
     const entry = binding.bindings?.[node.binding || ''];
-    if (!entry || !WORKFLOW_LAUNCH_PREFLIGHT_PROVIDERS.includes(entry.provider as any) || entry.candidateField !== undefined) {
+    if (!entry || entry.provider === 'conditional' && validateWorkflowConditionalAssignmentShape(entry).length) {
+      errors.push(`WORKFLOW_LAUNCH_PREFLIGHT_PROVIDER_UNSUPPORTED:${id}`); continue;
+    }
+    if (workflowAssignmentLeaves(entry as WorkflowBindingEntry).some(leaf => !WORKFLOW_LAUNCH_PREFLIGHT_PROVIDERS.includes(leaf.provider as any) || leaf.candidateField !== undefined)) {
       errors.push(`WORKFLOW_LAUNCH_PREFLIGHT_PROVIDER_UNSUPPORTED:${id}`);
     }
   }

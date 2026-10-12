@@ -66,6 +66,7 @@ export function validateWorkflowCanvasHuman(node: WorkflowNode, catalog: Workflo
 }
 /** New bindings can select principals or reuse a released source, never invent a provider implementation. */
 export function validateWorkflowCanvasBinding(entry: WorkflowBindingEntry, catalog: WorkflowDesignerCatalog, incomplete = false): string[] {
+  if (entry.provider === 'conditional') return ['WORKFLOW_DESIGNER_CONDITIONAL_ASSIGNMENT_UNAVAILABLE'];
   if (Object.values(catalog.peopleSources).some(source => same(source, entry))) return [];
   const keys = Object.keys(entry);
   if (entry.provider === 'fixed_users' && keys.every(key => ['provider', 'users'].includes(key)) && Array.isArray(entry.users) && entry.users.length <= 200 && (incomplete || entry.users.length > 0) && new Set(entry.users).size === entry.users.length && entry.users.every(id => typeof id === 'string' && !!id.trim() && id.length <= 255)) return [];

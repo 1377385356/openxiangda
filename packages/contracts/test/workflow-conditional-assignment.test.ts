@@ -258,12 +258,12 @@ test('rule labels, order, conditions and otherwise participate in canonical iden
     const copy = structuredClone(entry); mutate(copy); assert.notEqual(sha256Digest(copy), hash);
   }
 });
-test('standalone schema is additive; canonical registration continues refusing conditional until integration closes', () => {
+test('canonical schema accepts conditional declarations while rejecting nested and mixed entries', () => {
   const Ajv = createRequire(new URL('../../devkit-core/package.json', import.meta.url))('ajv/dist/2020.js').default;
   const ajv = new Ajv({ strict: false, allErrors: true, validateFormats: false });
   const standalone = ajv.compile(workflowConditionalAssignmentSchema), canonical = ajv.compile(workflowBindingSchema);
   assert.equal(standalone(binding()), true, JSON.stringify(standalone.errors));
   for (const patch of [{ cases: [] }, { otherwise: { provider: 'conditional' } }, { shell: true }, { otherwise: { provider: 'application_provider', providerCode: 'x' } }]) assert.equal(standalone({ ...binding(), ...patch }), false);
-  assert.equal(canonical({ schemaVersion: 'openxiangda.workflow-binding/v2', workflowCode: 'purchase', bindings: { people: binding() } }), false);
+  assert.equal(canonical({ schemaVersion: 'openxiangda.workflow-binding/v2', workflowCode: 'purchase', bindings: { people: binding() } }), true);
   assert.equal(canonical({ schemaVersion: 'openxiangda.workflow-binding/v2', workflowCode: 'purchase', bindings: { people: role('manager') } }), true);
 });

@@ -1,3 +1,5 @@
+import { workflowAssignmentLeafBinding } from './workflow-conditional-assignment.js';
+import type { WorkflowBinding } from '../types.js';
 /** Code-owned membership constraint, separate from resource display sources. */
 export interface DataFieldUserCandidates {
   kind: 'app-role';
@@ -261,7 +263,7 @@ export function validateWorkflowUserCandidateBindings(
   pointer: string,
   resourceFields: ReadonlyMap<string, ReadonlyMap<string, Field>> = new Map()
 ): void {
-  for (const [code, entry] of Object.entries(binding.bindings))
+  for (const [code, entry] of Object.entries(workflowAssignmentLeafBinding(binding as WorkflowBinding).bindings))
     resolveWorkflowUserCandidates(
       definition,
       entry,
