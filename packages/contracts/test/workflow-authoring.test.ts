@@ -4,6 +4,7 @@ import { createWorkflowHumanNode, workflowAuthoringCatalog, workflowCanvasBindin
 import { validateWorkflowDesignerCapabilities } from '../src/native-compiler/workflow-designer.js';
 import { validateWorkflowBusinessSteps, compileWorkflowBusinessStepHandlers } from '../src/native-compiler/workflow-business-step.js';
 import { evaluateWorkflowExpression } from '../src/native-compiler/workflow-expression.js';
+import { validateWorkflowAdministration } from '../src/native-compiler/workflow-node-administration.js';
 import { workflowReturnEligibility } from '../src/native-compiler/workflow-return-eligibility.js';
 import { createRequire } from 'node:module';
 const Ajv2020 = createRequire(new URL('../../devkit-core/package.json', import.meta.url))('ajv/dist/2020.js').default;
@@ -19,6 +20,7 @@ test('all blank human kinds pass the canonical strict document schemas', () => {
   bindings.bindings.canvas_fresh={provider:'fixed_users',users:[]};
   assert.equal(validateDefinition(definition),true,JSON.stringify(validateDefinition.errors));
   assert.equal(validateBinding(bindings),true,JSON.stringify(validateBinding.errors));
+  assert.deepEqual(validateWorkflowAdministration(definition,bindings),[], 'blank nodes must not require a nonexistent role scope');
   definition.nodes.fresh.administration.unknownRuntimeCapability=true;
   assert.equal(validateDefinition(definition),false,'unknown administration properties must remain forbidden');
  }

@@ -30,11 +30,11 @@ export function workflowAuthoringCatalog(definition: WorkflowDefinition, binding
 /** Standard blank nodes do not borrow authority from a previous human node. */
 export function createWorkflowHumanNode(id: string, kind: 'approval' | 'handle' | 'cc', title: string, next: string, pageCode?: string, pages: WorkflowDesignerCatalog['taskPages'] = {}, rejectTarget = next): WorkflowNode {
   const binding = workflowCanvasBindingKey(id);
-  if (kind === 'cc') return { id, kind, title, next, binding, emptyPolicy: 'block', notify: true, administration: { assigneeProviders: ['fixed_users', 'app_role', 'app_role_in_scope'] } };
+  if (kind === 'cc') return { id, kind, title, next, binding, emptyPolicy: 'block', notify: true, administration: { assigneeProviders: ['fixed_users', 'app_role'] } };
   const page = pageCode ? pages[pageCode] : undefined;
   const operations = workflowHumanOperations(kind, !!page);
   const human = { id, title, binding, mode: 'single' as const, allowedOperations: operations, requiredOperations: [kind === 'approval' ? 'approve' as const : 'complete' as const],
-    administration: { modes: ['single', 'any', 'all', 'sequence'] as WorkflowApprovalMode[], assigneeProviders: ['fixed_users', 'app_role', 'app_role_in_scope'] as WorkflowConfigurableAssigneeProvider[], operations },
+    administration: { modes: ['single', 'any', 'all', 'sequence'] as WorkflowApprovalMode[], assigneeProviders: ['fixed_users', 'app_role'] as WorkflowConfigurableAssigneeProvider[], operations },
     fieldPolicy: { default: 'readonly' as const, fields: Object.fromEntries((page?.fields || []).map(field => [field.code, field.readonly ? 'readonly' : field.required ? 'edit_required' : 'edit'])) as Record<string,WorkflowFieldPolicy> },
     operationPolicy: { ...(kind === 'approval' ? { approve: { opinion: 'optional' as const, minimumOpinion: 'optional' as const }, reject: { opinion: 'required' as const, minimumOpinion: 'required' as const } } : { complete: { opinion: 'optional' as const, minimumOpinion: 'optional' as const } }),
       return: { opinion: 'required' as const, minimumOpinion: 'required' as const }, transfer: { opinion: 'required' as const, minimumOpinion: 'required' as const }, delegate: { opinion: 'required' as const, minimumOpinion: 'required' as const }, ...(kind === 'approval' ? { add_assignee: { opinion: 'required' as const, minimumOpinion: 'required' as const } } : {}) },
@@ -47,7 +47,7 @@ const same = (a: unknown, b: unknown): boolean => {
 };
 export function validateWorkflowCanvasHuman(node: WorkflowNode, catalog: WorkflowDesignerCatalog): string[] {
   if (!['approval', 'handle', 'cc'].includes(node.kind) || !('binding' in node) || node.binding !== workflowCanvasBindingKey(node.id)) return ['WORKFLOW_DESIGNER_CANVAS_BINDING_REQUIRED'];
-  if (node.kind === 'cc') return same(node.administration, { assigneeProviders: ['fixed_users', 'app_role', 'app_role_in_scope'] }) ? [] : ['WORKFLOW_DESIGNER_CODE_OWNED:administration'];
+  if (node.kind === 'cc') return same(node.administration, { assigneeProviders: ['fixed_users', 'app_role'] }) ? [] : ['WORKFLOW_DESIGNER_CODE_OWNED:administration'];
   if (node.kind !== 'approval' && node.kind !== 'handle') return [];
   const standard = createWorkflowHumanNode(node.id, node.kind, node.title, '', node.taskPageCode, catalog.taskPages) as WorkflowHumanNode;
   const errors: string[] = [];
