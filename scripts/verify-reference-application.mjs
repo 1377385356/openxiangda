@@ -123,7 +123,7 @@ try {
       `${registryConfig}:/verdaccio/conf/config.yaml:ro`,
       "--volume",
       `${volumeName}:/verdaccio/storage`,
-      "verdaccio/verdaccio@sha256:5a13d03808135726efde69a5a16fce1e1f724a961d6d647177c22da83c0af5cd",
+      "docker.xuanyuan.run/verdaccio/verdaccio@sha256:5a13d03808135726efde69a5a16fce1e1f724a961d6d647177c22da83c0af5cd",
     ],
     repositoryRoot
   );
