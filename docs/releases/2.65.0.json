@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.65.0",
+  "status": "reviewed",
+  "title": "原生助手命令与工作流布局更新",
+  "summary": "发布已审阅的原生助手部分更新命令契约和工作流条件分支布局修复。",
+  "newFeatures": [
+    "原生助手更新使用有界 id、expectedRevision 和 data 命令结构。",
+    "保留字段声明必填属性并支持部分更新。"
+  ],
+  "fixes": [
+    "修复 PC 工作流条件分支、默认分支和汇聚节点的对称布局。"
+  ],
+  "affectedUsers": ["使用 OpenXiangda V2 原生助手或工作流画布的应用开发者"],
+  "upgradeSteps": ["按同一候选版本更新 openxiangda、openxiangda-cli 与共享 contracts 包。"],
+  "knownLimitations": ["不改变既有业务数据、报销审批或财务提交副作用策略。"],
+  "compatibility": {"node": ">=24", "pnpm": "10.15.1"},
+  "issues": []
+}
