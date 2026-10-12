@@ -4,4 +4,6 @@
 
 能力所有者是 Devkit 声明校验，不是应用业务操作。修复仅统一声明阶段与后续门禁的 severity 语义：warning 不阻断构造，仍保留在 validateAppConfig/check 输出；真实 error 仍阻断，混合 error/warning 的异常只携带阻断项。外部结果未知仍需原状态核对或人工核实，不新增核对端点、不宣称外部操作可安全重放。
 
+实际应用复核又发现 createWorkspaceContext 也按 diagnostics.length 抛出同一错误；修复覆盖这个构造点。回归必须经过 loadWorkspace，不能只用 loadAppConfig 替代完整工作区加载。原失败保留，应用不增加虚构核对操作。
+
 影响限 V2 声明，不修改 V1、平台授权、业务数据、包摘要或已发布的 npm 字节。无并发写入、新状态库或外部请求；资源与失败边界不变。回滚为独立提交；修复源代码不等于已发行。回归应通过构造、loadAppConfig、compileApplicationSources 确认警告保留，并证明真实 schema/声明错误继续失败；受影响门禁在隔离 WSL 运行。

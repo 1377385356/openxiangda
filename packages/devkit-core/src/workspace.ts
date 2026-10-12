@@ -31,7 +31,7 @@ export function createWorkspaceContext(
   config: OpenXiangdaAppConfig,
   options: CreateWorkspaceContextOptions
 ): WorkspaceContext {
-  const diagnostics = validateAppConfig(config);
+  const diagnostics = validateAppConfig(config).filter(item => item.severity === 'error');
   if (diagnostics.length > 0) throw new AppConfigValidationError(diagnostics);
   const root = resolve(options.root);
   return {

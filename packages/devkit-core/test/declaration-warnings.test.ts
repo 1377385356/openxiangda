@@ -5,7 +5,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { defineOpenXiangdaApp, validateAppConfig, type OpenXiangdaAppDeclaration } from '../src/compiler/config.js';
 import { compileApplicationSources } from '../src/compiler/bundle.js';
-import { loadAppConfig } from '../src/workspace-loader.js';
+import { loadAppConfig, loadWorkspace } from '../src/workspace-loader.js';
+import { createWorkspaceContext } from '../src/workspace.js';
 
 function declaration(): OpenXiangdaAppDeclaration {
   const capability = 'app:canvas-warning:action:probe-model';
@@ -54,5 +55,21 @@ test('workspace loading also accepts warnings without weakening the later checks
     const config = await loadAppConfig(join(root, 'openxiangda.config.ts'));
     assert.equal(config.app.code, 'canvas-warning');
     assert.ok(validateAppConfig(config).some(item => item.code === 'AI_EXTERNAL_RECONCILIATION_MISSING' && item.severity === 'warning'));
+    const workspace = await loadWorkspace(root);
+    assert.equal(workspace.context.workspace.appCode, 'canvas-warning');
+    assert.ok(validateAppConfig(workspace.config).some(item => item.code === 'AI_EXTERNAL_RECONCILIATION_MISSING' && item.severity === 'warning'));
   } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('workspace construction still rejects real errors, not warnings', () => {
+  const config = structuredClone(defineOpenXiangdaApp(declaration()));
+  config.backend.operations[0].path = 'not-an-absolute-path';
+  assert.throws(() => createWorkspaceContext(config, {
+    root: process.cwd(), toolchainVersion: 'test', nodeVersion: process.version, packageManager: 'pnpm',
+  }), (error: unknown) => {
+    const diagnostics = (error as { diagnostics: Array<{ severity: string }> }).diagnostics;
+    assert.ok(diagnostics.length > 0);
+    assert.ok(diagnostics.every(item => item.severity === 'error'));
+    return true;
+  });
 });
