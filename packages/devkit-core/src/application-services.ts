@@ -1,3 +1,4 @@
+import { importWorkflowSource,readWorkflowSourceBundle,readWorkflowSourceLock,workflowSourceDeclaration,writeWorkflowRegistrationPlan,writeWorkflowSourceBundle } from './workflow-source-sync.js';
 import { assertDeploymentPrerequisites } from './deployment-prerequisites.js';
 import { collectTargetReadiness } from './target-readiness.js';
 import type { DeploymentStrategy } from 'openxiangda-contracts';
@@ -523,6 +524,37 @@ export class OpenXiangdaApplicationServices {
     const client = await this.client(workspace.root);
     return this.ok("admin.context", workspace.context.workspace,
       await client.applicationAdministrationContext(workspace.config.app.code, environment));
+  }
+
+  async workflowExport(root: string | undefined,workflowCode: string,environmentKey: string,out: string) {
+    const workspace=await this.workspace(root),environment=this.deploymentEnvironment(environmentKey);
+    const bundle=await (await this.client(workspace.root)).workflowSourceExport(workspace.config.app.code,workflowCode,environment);
+    return this.ok('workflow.export',workspace.context.workspace,writeWorkflowSourceBundle(workspace.root,resolve(workspace.root,out),bundle));
+  }
+  async workflowImport(root: string | undefined,path: string,adoptHandlingDefaults = false) {
+    const workspace=await this.workspace(root),bundle=readWorkflowSourceBundle(resolve(workspace.root,path));
+    return this.ok('workflow.import',workspace.context.workspace,importWorkflowSource(workspace.root,workspace.configPath,workspace.config,bundle,adoptHandlingDefaults));
+  }
+  async workflowPlanRegistration(root: string | undefined,environmentKey: string,write = false) {
+    const workspace=await this.workspace(root),environment=this.deploymentEnvironment(environmentKey);
+    const workflows=(workspace.config.workflows?.activations || []).map(activation => { const item=workflowSourceDeclaration(workspace.config,activation.workflowCode);return { workflowCode: activation.workflowCode,definitionDigest: item.definitionDigest,bindingDigest: item.bindingDigest,definitionVersion: item.definition.version,bindingVersion: item.binding.version }; });
+    if (!workflows.length) throw new Error('WORKFLOW_SOURCE_DECLARATION_REQUIRED');
+    const plans=await (await this.client(workspace.root)).workflowSourcePlan(workspace.config.app.code,environment,workflows);
+    return this.ok('workflow.plan-registration',workspace.context.workspace,{ plans,...(write ? { source: writeWorkflowRegistrationPlan(workspace.root,workspace.configPath,workspace.config,plans) } : {}) });
+  }
+  async workflowSync(root: string | undefined,workflowCode: string,input: { fromEnvironment: string; toEnvironment: string; expectedSourceHeadRevision: number; expectedTargetHeadRevision: number; operationId: string; reason: string; scope?: 'running_and_new' | 'new_only'; acknowledgeExceptions?: boolean; copyHandlingDefaults?: boolean }) {
+    const workspace=await this.workspace(root),client=await this.client(workspace.root);
+    const fromEnvironment=this.deploymentEnvironment(input.fromEnvironment),toEnvironment=this.deploymentEnvironment(input.toEnvironment);
+    const result=await client.workflowSourceSync(workspace.config.app.code,workflowCode,{ ...input,fromEnvironment,toEnvironment });
+    return this.ok('workflow.sync',workspace.context.workspace,result);
+  }
+  async workflowStatus(root: string | undefined,environmentKey: string,workflowCode?: string) {
+    const workspace=await this.workspace(root),environment=this.deploymentEnvironment(environmentKey),client=await this.client(workspace.root);
+    const codes=(workspace.config.workflows?.activations || []).map(item => item.workflowCode).filter(code => !workflowCode || workflowCode === code);
+    if (workflowCode && !codes.length) throw new Error('WORKFLOW_SOURCE_DECLARATION_REQUIRED');
+    const items=[];
+    for (const code of codes) { const item=workflowSourceDeclaration(workspace.config,code),lock=readWorkflowSourceLock(workspace.root,code);items.push(await client.workflowSourceStatus(workspace.config.app.code,code,environment,{ declared: { definitionDigest: item.definitionDigest,bindingDigest: item.bindingDigest },...(lock ? { base: lock.base } : {}) })); }
+    return this.ok('workflow.status',workspace.context.workspace,{ environmentKey: environment,items });
   }
 
   async workflowNodeConfigurations(root: string | undefined, workflowCode: string, environmentKey = "preproduction") {
