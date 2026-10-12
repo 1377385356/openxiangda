@@ -8,7 +8,7 @@ import { workflowReturnEligibility } from '../src/native-compiler/workflow-retur
 import { createRequire } from 'node:module';
 const Ajv2020 = createRequire(new URL('../../devkit-core/package.json', import.meta.url))('ajv/dist/2020.js').default;
 import { workflowDefinitionSchema, workflowBindingSchema } from '../src/native-compiler/workflow-schema.js';
-function fixture(): any { return {schemaVersion:'openxiangda.workflow-definition/v2',code:'purchase',title:'采购',acceptedCommandDeactivationPolicy:'finish-pinned',subject:{resourceCode:'purchase',factProjection:{}},startAt:'done',inputSchema:{type:'object',additionalProperties:false,properties:{amount:{type:'number'}}},taskPages:{review:{title:'审批表单',fields:[{code:'note'},{code:'amount',readonly:true}]}},nodes:{done:{id:'done',kind:'end',title:'完成',outcome:'approved'}}}; }
+function fixture(): any { return {schemaVersion:'openxiangda.workflow-definition/v2',code:'purchase',title:'采购',acceptedCommandDeactivationPolicy:'finish-pinned',subject:{resourceCode:'purchase',factProjection:{amount:'amount'},summaryFields:['amount']},startAt:'done',inputSchema:{type:'object',additionalProperties:false,properties:{amount:{type:'number'}}},taskPages:{review:{title:'审批表单',fields:[{code:'note'},{code:'amount',readonly:true}]}},nodes:{done:{id:'done',kind:'end',title:'完成',outcome:'approved'}}}; }
 const binding = () => ({schemaVersion:'openxiangda.workflow-binding/v2',workflowCode:'purchase',bindings:{}} as any);
 test('all blank human kinds pass the canonical strict document schemas', () => {
  const ajv = new Ajv2020({strict:false,allErrors:true});
