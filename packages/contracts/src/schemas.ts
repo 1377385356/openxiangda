@@ -188,6 +188,7 @@ export const workspaceContextSchema = {
       ],
       properties: {
         packageName: { const: "openxiangda-devkit-core" },
+        installed: { type: "object", additionalProperties: true },
         version: nonEmptyString,
         contractVersion: { const: OPENXIANGDA_CONTRACT_VERSION },
         nodeVersion: nonEmptyString,
