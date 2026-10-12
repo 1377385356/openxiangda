@@ -97,3 +97,29 @@ test('execution health is a bounded GET on the current workspace and never autho
   assert.equal(definition.effect, 'read'); assert.match(definition.permission, /应用管理/);
   assert.match(definition.recovery, /不证明/); assert.equal(calls.length, 1);
 });
+
+test('semantic observations use the original TEST GET and reject production or owner overrides', async () => {
+  const request = { operation: 'diagnostics.semantic-audit' as const, environment: 'test' as const,
+    input: { requirementId: 'native.file-value.v2-envelope' as const, resourceCode: 'records', expectedAppVersionId: id,
+      expectedHeadRevision: 7, afterRecordId: id, limit: 50 } };
+  const calls: string[] = [];
+  const client = new OpenXiangdaControlPlaneClient({ baseUrl: 'https://platform.example', fetch: async (url, init) => {
+    calls.push(String(url)); assert.equal(init?.body, undefined);
+    return new Response(JSON.stringify({ code: 200, data: { outcome: 'incomplete', complete: false, admission: 'observe-only' } }));
+  } });
+  assert.deepEqual(await client.applicationOperation('app', request), { outcome: 'incomplete', complete: false, admission: 'observe-only' });
+  const url = new URL(calls[0]!);
+  assert.equal(url.pathname, '/openxiangda-api/v2/applications/app/diagnostics/semantic-audit');
+  assert.equal(url.searchParams.get('environmentKey'), 'preproduction');
+  assert.equal(url.searchParams.get('expectedAppVersionId'), id);
+  assert.equal(url.searchParams.get('expectedHeadRevision'), '7');
+  assert.equal(url.searchParams.get('afterRecordId'), id);
+  assert.equal(url.searchParams.get('limit'), '50');
+  for (const input of [{ ...request.input, limit: 101 }, { ...request.input, expectedHeadRevision: [7] },
+    { ...request.input, requirementId: 'unknown' }, { ...request.input, tenantId: 'foreign' }, { ...request.input, environmentKey: 'production' }])
+    assert.throws(() => parseApplicationOperation({ ...request, input }), /INPUT_INVALID/);
+  assert.throws(() => parseApplicationOperation({ ...request, environment: 'production' }), /INPUT_INVALID/);
+  const definition = applicationOperationCatalog().operations.find(row => row.operation === request.operation)!;
+  assert.equal(definition.effect, 'read'); assert.match(definition.permission, /平台管理员/);
+  assert.match(definition.recovery, /激活许可/);
+});

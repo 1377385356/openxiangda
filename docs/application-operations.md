@@ -45,6 +45,26 @@ kind 为 timer、date-trigger、event-delivery 或 legacy-schedule；legacy-sche
 
 目标平台需要提供此受管诊断路由；404先核对平台版本，不创建业务shim或替代执行。原requestId/commandId/DeploymentRun/fileId诊断继续用于原操作读回；健康投影不替代业务验收。
 
+## TEST 文件语义观察 {#semantic-audit}
+
+原平台管理员从目录发现 `diagnostics.semantic-audit`；只接受test。以下input的版本、Head修订、resourceCode均取自当前应用的实际TEST目标：
+
+```json
+{
+  "requirementId":"native.file-value.v2-envelope",
+  "resourceCode":"records",
+  "expectedAppVersionId":"11111111-1111-4111-8111-111111111111",
+  "expectedHeadRevision":1,
+  "limit":50
+}
+```
+
+把input交给 `admin execute diagnostics.semantic-audit --environment test --input <文件> --json`，或通过原MCP `application_operation`。版本/Head变化先刷新目标；不递增修订猜测当前状态。最多100行、32个file/image字段、单行文件值投影16KiB、20个原因样本。分页用原nextCursor传afterRecordId；后续页不冒充同一完整资源快照，工具不自动无限扫描。
+
+`satisfied`、`violations`、`incomplete`、`unknown`分别描述本次快照；报告始终 `admission: observe-only`。即使complete且satisfied也不是激活许可；dataLogicalRevisionId是定义版本，dataRevision明确为空。报告没有文件名、正文或原错误正文。signature.file遵循自身Omit协议，不误当file/image数组。
+
+此观察不证明文件存在/下载授权或历史权限/流程兼容，不自动转换或删除。需修复时交原repair owner评审精确before-image和目标；生产不在此入口范围。404仍先核对实际平台能力；旧SDK版本不能仅凭本文认定已安装该新操作。
+
 ## 事件高水位与指定恢复 {#events}
 
 遇到 `EVENT_V2_BACKPRESSURE_HIGH_WATER` 先读 `events.status` 的admission：采样新鲜度、
