@@ -8,6 +8,7 @@ type Auth = { mode: 'HMAC_SHA256'; keyId: string; secretRef: string }
   | { mode: 'OAUTH2_CLIENT_CREDENTIALS'; tokenUrl: string; clientIdSecretRef: string; clientSecretSecretRef: string; scope?: string; audience?: string }
   | { mode: 'MTLS'; certSecretRef: string; keySecretRef: string; caSecretRef?: string };
 export interface ApplicationOperationInputs {
+  'diagnostics.execution-health': { kind: 'legacy-schedule' | 'timer' | 'date-trigger' | 'event-delivery'; id: string };
   'events.status': Record<string, never>;
   'events.subscriptions': Record<string, never>;
   'events.deliveries': EventPage;
@@ -70,11 +71,12 @@ interface Definition {
 }
 const operation = (name: ApplicationOperationName, summary: string, effect: Definition['effect'], inputSchema: Definition['inputSchema'], path: string, recovery: string): Definition => ({
   operation: name, summary, effect, inputSchema, path, method: effect === 'read' ? 'GET' : 'POST',
-  permission: name.startsWith('events.') ? '现有应用事件管理权限' : name.startsWith('secrets.') ? '两侧环境的现有应用管理权限' : '现有通知管理权限；设置默认同时要求规则和渠道管理权限', recovery,
+  permission: name.startsWith('diagnostics.') ? '当前用户的现有应用管理权限；tenant仅来自原登录身份' : name.startsWith('events.') ? '现有应用事件管理权限' : name.startsWith('secrets.') ? '两侧环境的现有应用管理权限' : '现有通知管理权限；设置默认同时要求规则和渠道管理权限', recovery,
 });
 const readRecovery = '以平台返回的当前状态、修订、错误及分页游标为准；未观测到不表示原操作未执行。';
 const casRecovery = '修订冲突先读当前基准并核对；结果未知先读原状态，不自动覆盖或重试。';
 export const APPLICATION_OPERATIONS: readonly Definition[] = [
+  operation('diagnostics.execution-health', '按原ID核对未来计划、暂停、claim和租约；不恢复或重放', 'read', object({ kind: enumeration('legacy-schedule', 'timer', 'date-trigger', 'event-delivery'), id: uuid }), '/diagnostics/execution-health', '保留原ID、周期和效果键；缺记录、lease过期和HTTP200不证明未执行或可重放。核对原owner回执与退出证明。'),
   operation('events.status', '读取队列积压、消费者健康、写入保护阈值和恢复条件', 'read', object(), '/events/operations/status', readRecovery),
   operation('events.subscriptions', '读取当前环境订阅及配置修订', 'read', object(), '/events/subscriptions', readRecovery),
   operation('events.deliveries', '分页读取投递、失败重试和死信', 'read', object(eventPage, []), '/events/deliveries', readRecovery),
@@ -113,6 +115,9 @@ export function parseApplicationOperation(value: unknown): ApplicationOperationR
     data: { violations: (validate?.errors || []).slice(0, 8).map(error => ({ pointer: error.instancePath, keyword: error.keyword, message: error.message })) },
   });
   const request = value as ApplicationOperationRequest;
+  if (request.operation === 'diagnostics.execution-health' && request.input.kind === 'legacy-schedule' && request.environment !== 'production') {
+    throw new Error('APPLICATION_OPERATION_INPUT_INVALID: legacy-schedule只能读取原production，不存在Native TEST投影');
+  }
   if (request.operation === 'secrets.copy') {
     if (request.environment === request.input.sourceEnvironment) throw new Error('APPLICATION_V2_SECRET_COPY_ENVIRONMENT_INVALID: 来源与目标必须不同');
     if (new Set(request.input.secrets.map(item => item.name)).size !== request.input.secrets.length) throw new Error('APPLICATION_V2_SECRET_COPY_SELECTION_INVALID: 名称不能重复');

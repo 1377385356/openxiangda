@@ -30,6 +30,21 @@ CLI与MCP共用输入Schema、服务和平台错误。成功结果在 `data.resu
 配置与恢复在已授权范围内直接执行；health访问外部健康接口并保存元信息。
 操作目录不证明远端接口已部署或当前用户有权，执行结果由平台决定。
 
+## 原执行健康 {#execution-health}
+
+从 `admin operations` 发现 `diagnostics.execution-health`，输入只提供原 kind 和 UUID：
+
+```bash
+printf '%s' '{"kind":"event-delivery","id":"<原投递UUID>"}' | \
+  pnpm openxiangda admin execute diagnostics.execution-health --environment test --input - --json
+```
+
+kind 为 timer、date-trigger、event-delivery 或 legacy-schedule；legacy-schedule只接受production，V1工作区仍由原V1引擎维护。按当前工作区 appCode 和原登录身份的应用管理权限只读查询，不传tenant、任意URL或恢复动作。
+
+`admission`、`due`、`claim` 分别表示当前准入、原周期和claim；暂停可能仍有有效旧claim，未来/夜间周期不是卡住。lease过期或 `needs_review` 先核对原owner、退出证明与效果回执，不重放旧周期。timer当前按原事务行锁调度，预留lease字段不会被解释为executor空闲。缺记录/超时/schema缺失明确为未知，HTTP200只是诊断响应。
+
+目标平台需要提供此受管诊断路由；404先核对平台版本，不创建业务shim或替代执行。原requestId/commandId/DeploymentRun/fileId诊断继续用于原操作读回；健康投影不替代业务验收。
+
 ## 事件高水位与指定恢复 {#events}
 
 遇到 `EVENT_V2_BACKPRESSURE_HIGH_WATER` 先读 `events.status` 的admission：采样新鲜度、

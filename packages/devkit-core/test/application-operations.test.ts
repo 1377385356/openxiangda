@@ -72,7 +72,28 @@ test('notification defaults, health, lookup and recovery keep their original ser
   const replay = applicationOperationTransport('app', { operation: 'notifications.replay', environment: 'test', input: { deadLetterId: id } });
   assert.deepEqual(JSON.parse(replay.init.body!), { environmentKey: 'preproduction' });
   const catalog = applicationOperationCatalog();
-  assert.equal(catalog.operations.length, 20);
+  assert.equal(catalog.operations.length, 21);
   assert.equal(catalog.operations.find(item => item.operation === 'notifications.replay')!.effect, 'recover');
   assert.equal(catalog.operations.some(item => /delete|clear|bulk/.test(item.operation)), false);
+});
+
+test('execution health is a bounded GET on the current workspace and never authorizes recovery', async () => {
+  const request = { operation: 'diagnostics.execution-health' as const, environment: 'test' as const,
+    input: { kind: 'event-delivery' as const, id } };
+  const calls: string[] = [];
+  const client = new OpenXiangdaControlPlaneClient({ baseUrl: 'https://platform.example', fetch: async (url, init) => {
+    calls.push(String(url)); assert.equal(init?.body, undefined);
+    return new Response(JSON.stringify({ code: 200, data: { state: 'unavailable', reason: 'DIAGNOSTIC_TIMEOUT', fact: null } }));
+  } });
+  const result = await client.applicationOperation('app', request);
+  const url = new URL(calls[0]!);
+  assert.equal(url.pathname, '/openxiangda-api/v2/applications/app/diagnostics/execution-health');
+  assert.equal(url.searchParams.get('environmentKey'), 'preproduction');
+  assert.equal(url.searchParams.get('id'), id);
+  assert.deepEqual(result, { state: 'unavailable', reason: 'DIAGNOSTIC_TIMEOUT', fact: null });
+  for (const input of [{ ...request.input, id: [id] }, { ...request.input, tenantId: 'other' }, { ...request.input, kind: 'rawSql' }, { kind: 'legacy-schedule', id }])
+    assert.throws(() => parseApplicationOperation({ ...request, input }), /INPUT_INVALID/);
+  const definition = applicationOperationCatalog().operations.find(row => row.operation === request.operation)!;
+  assert.equal(definition.effect, 'read'); assert.match(definition.permission, /应用管理/);
+  assert.match(definition.recovery, /不证明/); assert.equal(calls.length, 1);
 });
