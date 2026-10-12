@@ -10,11 +10,13 @@ import {
   readdirSync,
   readlinkSync,
   rmSync,
+  writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join, relative } from "node:path";
 import { assertPublicPackagePolicy } from "./public-package-policy.mjs";
 import { releaseNpmEnvironment } from "./release-network-policy.mjs";
+import { readReleaseMetadataSnapshot } from "./release-metadata-snapshot.mjs";
 
 export const RELEASE_PACKAGE_STATE_SCHEMA =
   "openxiangda.release-package-state/v1";
@@ -28,6 +30,13 @@ export function inspectReleasePackages(repositoryRoot, options = {}) {
   if (options.prepare !== false) {
     prepareReleaseOutputs(repositoryRoot, options.quiet === true, releasePackages);
   }
+  const metadata = readReleaseMetadataSnapshot(repositoryRoot, registry, releasePackages.map(item => item.manifest.name));
+  const metadataByName = new Map(metadata.entries.map(item => [item.name, item]));
+  if (options.artifactRoot) {
+    mkdirSync(options.artifactRoot, {recursive: true});
+    writeFileSync(join(options.artifactRoot, 'metadata-observation.json'), JSON.stringify(metadata, null, 2)+'\n', {mode:0o600});
+  }
+  if (!options.quiet) process.stdout.write(`Registry read-only metadata: ${metadata.entries.length} queries, concurrency ${metadata.peakActive}, ${Math.round(metadata.elapsedMs)}ms\n`);
   const scratchRoot = mkdtempSync(join(tmpdir(), "openxiangda-release-state-"));
   const packages = [];
   try {
@@ -55,7 +64,7 @@ export function inspectReleasePackages(repositoryRoot, options = {}) {
       );
       assertPortablePackageFiles(currentFiles);
 
-      if (isReleaseVersionPublished(repositoryRoot, registry, spec)) {
+      if (metadataByName.get(item.manifest.name).versions.includes(item.manifest.version)) {
         const publishedTarballs = join(packageRoot, "published-tarballs");
         mkdirSync(publishedTarballs, { recursive: true });
         const publishedTarball = packPublished(
@@ -95,7 +104,8 @@ export function inspectReleasePackages(repositoryRoot, options = {}) {
         repositoryRoot,
         registry,
         item.manifest.name,
-        item.manifest.version
+        item.manifest.version,
+        metadataByName.get(item.manifest.name).versions
       );
       let changedFiles = ["*"];
       if (previousVersion) {
@@ -242,38 +252,7 @@ export function isReleaseVersionPublished(repositoryRoot, registry, spec) {
   fail(`Cannot inspect ${spec} in ${registry}: ${redact(output).trim()}`);
 }
 
-function latestPublishedVersion(repositoryRoot, registry, name, currentVersion) {
-  const result = spawnSync(
-    "npm",
-    ["view", name, "versions", "--json", "--prefer-online", "--registry", registry],
-    {
-      cwd: repositoryRoot,
-      encoding: "utf8",
-      env: releaseNpmEnvironment(),
-    }
-  );
-  if (result.error) throw result.error;
-  const diagnostic = `${result.stdout || ""}\n${result.stderr || ""}`;
-  if (result.status !== 0) {
-    if (isNpmPackageNotFound(diagnostic)) return null;
-    fail(
-      `Cannot inspect version history for ${name} in ${registry}: ${redact(
-        diagnostic
-      ).trim()}`
-    );
-  }
-  const output = String(result.stdout || "").trim();
-  let versions;
-  try {
-    versions = JSON.parse(output);
-  } catch {
-    fail(`npm view returned invalid version history for ${name}`);
-  }
-  const values = Array.isArray(versions)
-    ? versions
-    : typeof versions === "string"
-      ? [versions]
-      : [];
+function latestPublishedVersion(repositoryRoot, registry, name, currentVersion, values) {
   const current = parseReleaseVersion(currentVersion);
   return (
     values

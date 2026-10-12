@@ -35,6 +35,8 @@
 
 七包及各 dist-tag 的写入不是原子事务。以逐包内容和渠道读回判断完成，不能以其中一个包的 latest 可见宣告整个发行完成。GitHub 同步失败继续原回执，不重复 npm 写入；已有不同内容的 GitHub Release 不自动覆盖。
 
+版本历史/渠道查询采用新鲜只读批量快照，默认三并发、最多四；每查询60秒/1MiB、整批200秒。观察计时保存到候选目录的 `metadata-observation.json`，不作为成功发布事实或跨进程缓存。原publish/dist-tag写入保持串行，按公开包实际依赖拓扑执行，根包最后。receipt的 `channelPlan` 显示各标签原值/目标值；已到目标值时不重复写，第三种值停止。旧receipt从原 `priorTags`/`channelPolicy` 确定性派生，不改其制品。
+
 成功回执及校验摘要归档在 Git 公共目录 `openxiangda-release-history/<HEAD>/`，发布命令输出真实路径。此目录不随 Git push 传播，维护者须按既有发行证据保留规则备份；归档失败保留活动回执和制品供原操作恢复，不清理未知结果。
 
 ## 资料更新与交接
