@@ -46,6 +46,7 @@ export {
   diagnoseDataTransaction,
   DataTransactionBuildError,
   bindOpenXiangdaResources,
+  OpenXiangdaEventWorkerEffectService,
 } from 'openxiangda-nest';
 
 export type {
