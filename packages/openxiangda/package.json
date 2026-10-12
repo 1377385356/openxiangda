@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.67.0",
+  "version": "2.67.1",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -102,13 +102,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.10.3",
+    "openxiangda-cli": "2.10.4",
     "openxiangda-contracts": "2.85.0",
-    "openxiangda-devkit-core": "2.63.2",
+    "openxiangda-devkit-core": "2.63.3",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.2.7",
+    "openxiangda-mcp": "2.2.8",
     "openxiangda-nest": "2.19.2",
-    "openxiangda-skill-kit": "2.3.109",
+    "openxiangda-skill-kit": "2.3.110",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -174,9 +174,9 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.67.0",
+    "version": "2.67.1",
     "status": "reviewed",
-    "title": "应用Agent接口与事件worker声明修复",
+    "title": "应用Agent及worker声明与发行恢复修复",
     "summary": "新增作用域内应用Agent客户端，并补齐事件worker编译上下文及节点条件配置契约。",
     "newFeatures": [
       "公开openxiangda/agent客户端与hooks，沿用平台当前身份和持久游标，未知写入不自动重放。"
@@ -184,7 +184,9 @@
     "fixes": [
       "worker-effect编译传入显式emitEventTypes与实际工作流subject，避免合法声明被误拒绝。",
       "配置类型公开worker-effect执行声明，避免应用使用类型绕过。",
-      "共享节点人员配置支持完整条件规则与权威来源边界。"
+      "共享节点人员配置支持完整条件规则与权威来源边界。",
+      "声明warning保持警告，真正错误仍阻断，避免正确应用被误拒绝。",
+      "Git worktree发行计划、验证与发布共用冻结制品、回执和进程锁；发现旧私有回执时先恢复原状态。"
     ],
     "affectedUsers": [
       "OpenXiangda V2应用开发者和平台维护者"
@@ -202,7 +204,7 @@
       "pnpm": "10.15.1"
     },
     "issues": [],
-    "sha256": "535f00f729995cc1f8ce0925c3ddbd5976e1ed6283ef60d2888955ae95393d02",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.67.0"
+    "sha256": "cab78d0c354ccfe6373966f884c475e4e50e0096a5cbe9763fce2a761ba99e99",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.67.1"
   }
 }
