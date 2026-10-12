@@ -79,7 +79,7 @@ test('designer starts and outline follow execution order without altering the im
   }
   const start=positioned.nodes.get(displayed.startAt)!,first=positioned.nodes.get('a')!;
   const startEdge=positioned.edges.get(displayed.edges[0]!.id)!;
-  assert.ok(first.y-start.y-start.height<=40,'ordinary connectors do not reserve invisible edge-label layers');
+  assert.ok(first.y-start.y-start.height>=48&&first.y-start.y-start.height<=64,'ordinary connectors leave room for insertion without reserving an invisible label layer');
   assert.ok(startEdge.label.y>start.y+start.height&&startEdge.label.y<first.y,'insertion control remains in the connector gap');
   const spine=[...positioned.nodes.values()].map(node=>node.x+node.width/2);
   assert.ok(Math.max(...spine)-Math.min(...spine)<1,'the start/end pills align to the same spine as tasks');
@@ -135,4 +135,104 @@ test('an empty paired parallel region keeps two separate branch cards for insert
   const positions=await workflowFlowLayout(source,{ designer: true });
   const first=positions.edges.get('branch-one')!.label,second=positions.edges.get('branch-two')!.label;
   assert.ok(second.x-first.x >= 296);assert.equal(first.y,second.y);
+});
+
+
+function parallelFixture(lengths: number[]): WorkflowGraphProjection {
+  const bodies = lengths.flatMap((length, branch) => Array.from({ length }, (_, index) => ({ id: `b${branch}-${index}`, kind: 'approval', title: `Branch ${branch} step ${index}` })));
+  const source = graph([
+    { id: 'start', kind: 'start', title: 'Start' },
+    { id: 'fork', kind: 'parallel', title: 'Parallel', parallel: { joinNodeId: 'join', branchNodeIds: bodies.map(node => node.id), branchCount: lengths.length } },
+    ...bodies, { id: 'join', kind: 'join', title: 'Together' }, { id: 'after', kind: 'approval', title: 'After' }, { id: 'done', kind: 'end', title: 'Done' },
+  ], [edge('start', 'fork'), ...lengths.flatMap((length, branch) => [
+    { ...edge('fork', length ? `b${branch}-0` : 'join', 'branch'), id: `branch-${branch}`, parallelBranch: true, priority: branch + 1 },
+    ...Array.from({ length }, (_, index) => edge(`b${branch}-${index}`, index + 1 < length ? `b${branch}-${index + 1}` : 'join')),
+  ]), edge('join', 'after'), edge('after', 'done')]);
+  return source;
+}
+
+function assertRoutedWithoutOverlap(source: WorkflowGraphProjection, positions: Awaited<ReturnType<typeof workflowFlowLayout>>) {
+  for (const edge of source.edges) {
+    const route = positions.edges.get(edge.id)!;
+    const from = positions.nodes.get(edge.from)!, to = positions.nodes.get(edge.to)!;
+    assert.deepEqual(route.points[0], { x: from.x + from.outputs.find(port => port.id === `out:${edge.id}`)!.x, y: from.y + from.height }, edge.id);
+    assert.deepEqual(route.points.at(-1), { x: to.x + to.input.x, y: to.y }, edge.id);
+    for (let index = 1; index < route.points.length; index++) {
+      const a = route.points[index - 1]!, b = route.points[index]!;
+      assert.ok(Math.abs(a.x - b.x) < .01 || Math.abs(a.y - b.y) < .01, edge.id);
+      // Every non-endpoint segment stays outside all card interiors.
+      for (const node of positions.nodes.values()) {
+        const vertical = Math.abs(a.x - b.x) < .01;
+        const crosses = vertical
+          ? a.x > node.x + .01 && a.x < node.x + node.width - .01 && Math.max(a.y, b.y) > node.y + .01 && Math.min(a.y, b.y) < node.y + node.height - .01
+          : a.y > node.y + .01 && a.y < node.y + node.height - .01 && Math.max(a.x, b.x) > node.x + .01 && Math.min(a.x, b.x) < node.x + node.width - .01;
+        assert.ok(!crosses, `${edge.id} crosses a card`);
+      }
+    }
+  }
+  const nodes = [...positions.nodes.values()];
+  for (const [index, a] of nodes.entries()) for (const b of nodes.slice(index + 1)) {
+    assert.ok(a.x + a.width <= b.x || b.x + b.width <= a.x || a.y + a.height <= b.y || b.y + b.height <= a.y, 'nodes overlap');
+  }
+}
+
+for (const lengths of [[1, 1], [3, 1], [1, 1, 1], Array(8).fill(1), [0, 0], [0, 2, 1]]) {
+  test(`designer parallel block shares a spine, symmetric lanes and clear connectors: ${lengths.join('/')}`, async () => {
+    const source = parallelFixture(lengths), before = structuredClone(source);
+    const positions = await workflowFlowLayout(source, { designer: true });
+    const center = (id: string) => { const node = positions.nodes.get(id)!; return node.x + node.width / 2; };
+    const axis = center('start');
+    for (const id of ['fork', 'join', 'after', 'done']) assert.ok(Math.abs(center(id) - axis) < .01, `${id} left the common spine`);
+    const labels = lengths.map((_, index) => positions.edges.get(`branch-${index}`)!.label);
+    for (const [index, label] of labels.entries()) {
+      assert.ok(Math.abs(label.x + labels.at(-1 - index)!.x - 2 * axis) < .01, 'branches are not symmetric');
+      assert.equal(label.y, labels[0]!.y, 'branch headers are not level');
+      if (index) assert.ok(label.x - labels[index - 1]!.x - 296 >= 48, 'branch cards need breathing room');
+      if (lengths[index]) assert.equal(label.x, center(`b${index}-0`));
+      const points = positions.edges.get(`branch-${index}`)!.points;
+      assert.ok(Math.abs(label.x - axis) < .01 || points.some((point, pointIndex) => pointIndex && Math.abs(point.x - points[pointIndex - 1]!.x) > 1 && point.y > positions.nodes.get('fork')!.y + positions.nodes.get('fork')!.height), 'split bus must be below the fork card');
+    }
+    const bodyBottom = Math.max(...source.nodes.filter(node => node.kind === 'approval' && node.id !== 'after').map(node => { const p = positions.nodes.get(node.id)!; return p.y + p.height; }));
+    for (const route of source.edges.filter(edge => edge.to === 'join' && edge.from !== 'fork')) {
+      const points = positions.edges.get(route.id)!.points;
+      assert.ok(points.slice(1, -1).every(point => point.y > bodyBottom && point.y < positions.nodes.get('join')!.y), 'join bus must leave the card boundaries clear');
+      const insertion = positions.edges.get(route.id)!.label, from = positions.nodes.get(route.from)!;
+      assert.ok(insertion.y > from.y + from.height && insertion.y < positions.nodes.get('join')!.y, 'insert button is outside the branch lane');
+    }
+    assertRoutedWithoutOverlap(source, positions);
+    assert.deepEqual(source, before, 'layout changed the canonical graph');
+  });
+}
+
+test('parallel lanes reserve the full condition body and its labels', async () => {
+  const source = parallelFixture([1, 1]);
+  source.nodes.find(node => node.id === 'b0-0')!.kind = 'condition';
+  source.nodes.push({ id: 'conditional-a', kind: 'approval', title: 'Conditional A' }, { id: 'conditional-b', kind: 'approval', title: 'Conditional B' });
+  source.nodes.find(node => node.id === 'fork')!.parallel!.branchNodeIds.push('conditional-a', 'conditional-b');
+  source.edges = source.edges.filter(edge => edge.from !== 'b0-0');
+  source.edges.push(edge('b0-0', 'conditional-a', 'branch'), edge('b0-0', 'conditional-b', 'default'), edge('conditional-a', 'join'), edge('conditional-b', 'join'));
+  const positions = await workflowFlowLayout(source, { designer: true });
+  assertRoutedWithoutOverlap(source, positions);
+  const right = positions.nodes.get('b1-0')!;
+  for (const id of ['b0-0', 'conditional-a', 'conditional-b']) {
+    const left = positions.nodes.get(id)!;
+    assert.ok(left.x + left.width + 48 <= right.x, 'condition body spills into its neighbour');
+  }
+  for (const edge of source.edges.filter(edge => edge.from === 'b0-0')) {
+    const label = positions.edges.get(edge.id)!.label;
+    assert.ok(label.x + 148 + 48 <= right.x, 'condition label spills into its neighbour');
+  }
+});
+
+test('consecutive paired regions keep one spine without overlaps', async () => {
+  const source = parallelFixture([1, 2]);
+  source.nodes.find(node => node.id === 'after')!.kind = 'parallel';
+  source.nodes.find(node => node.id === 'after')!.parallel = { joinNodeId: 'join2', branchNodeIds: ['next-a', 'next-b'], branchCount: 2 };
+  source.nodes.push({ id: 'next-a', kind: 'approval', title: 'Next A' }, { id: 'next-b', kind: 'approval', title: 'Next B' }, { id: 'join2', kind: 'join', title: 'Together again' });
+  source.edges = source.edges.filter(edge => edge.from !== 'after');
+  source.edges.push({ ...edge('after', 'next-a', 'branch'), parallelBranch: true }, { ...edge('after', 'next-b', 'branch'), parallelBranch: true }, edge('next-a', 'join2'), edge('next-b', 'join2'), edge('join2', 'done'));
+  const positions = await workflowFlowLayout(source, { designer: true });
+  assertRoutedWithoutOverlap(source, positions);
+  const centers = ['start', 'fork', 'join', 'after', 'join2', 'done'].map(id => { const p = positions.nodes.get(id)!; return p.x + p.width / 2; });
+  assert.ok(Math.max(...centers) - Math.min(...centers) < .01, 'consecutive regions have different spines');
 });
