@@ -7,7 +7,7 @@ import { createBrowserUuid } from '../../uuid';
 import { WorkflowDiagram } from './WorkflowDiagram';
 const fieldLabels: Record<string,string> = { title: '节点名称',branches: '条件分支',otherwise: '其他情况',onApprove: '同意后的路径',onReject: '拒绝后的路径',returnTargets: '退回目标',next: '后续节点',mode: '处理方式',binding: '人员规则',allowedOperations: '操作按钮',operationPolicy: '操作要求',taskPageCode: '节点页面' };
 const states: Record<string,string> = { pending: '正在生成方案',queued: '等待处理',running: '正在生成方案',ready: '方案已生成',stale: '草稿已改变，请重新生成方案',applied: '方案已应用到共享草稿',cancelled: '生成已停止',dismissed: '方案已放弃',failed: '方案生成失败',cancel_requested: '正在停止生成' };
-export function WorkflowDesignerAssistant({ workflowCode,draft,open,canApply,onClose,onApplied,onStateChange,presentation = 'drawer' }: { presentation?: 'drawer' | 'panel'; workflowCode: string;draft: WorkflowDesignerDraft;open: boolean;canApply: boolean;onClose: () => void;onApplied: (draft: WorkflowDesignerDraft) => void;onStateChange: (state: { busy: boolean;unknown: boolean }) => void }) {
+export function WorkflowDesignerAssistant({ workflowCode,draft,context,open,canApply,onClose,onApplied,onStateChange,presentation = 'drawer' }: { context?: string; presentation?: 'drawer' | 'panel'; workflowCode: string;draft: WorkflowDesignerDraft;open: boolean;canApply: boolean;onClose: () => void;onApplied: (draft: WorkflowDesignerDraft) => void;onStateChange: (state: { busy: boolean;unknown: boolean }) => void }) {
   const [prompt,setPrompt] = useState('');
   const [proposal,setProposal] = useState<WorkflowDesignerAiProposal>();
   const [busy,setBusy] = useState(false);
@@ -32,7 +32,7 @@ export function WorkflowDesignerAssistant({ workflowCode,draft,open,canApply,onC
   };
   const generate = async () => {
     if (busy || frozen.current || !prompt.trim()) return;
-    const input = { expectedRevision: draft.revision,operationId: createBrowserUuid(),prompt: prompt.trim() };
+    const input = { expectedRevision: draft.revision,operationId: createBrowserUuid(),prompt: `${context ? `${context}\n` : ''}${prompt.trim()}`.slice(0,2000) };
     frozen.current = async () => { setProposal(await requestWorkflowDesignerProposal(workflowCode,input)); };await execute();
   };
   const apply = async () => {
@@ -46,6 +46,7 @@ export function WorkflowDesignerAssistant({ workflowCode,draft,open,canApply,onC
     frozen.current = async () => { await cancelWorkflowDesignerProposal(workflowCode,proposalId);setProposal(current => current ? { ...current,status: 'dismissed' } : current); };await execute();
   };
   const content = <>
+    {context && <Alert type="info" showIcon title="当前节点上下文" description={context} />}
     <p>描述需要怎样修改流程。助手会提出方案，确认后应用到共享草稿。</p>
     <div className="oxa-designer-ai-composer"><Input.TextArea aria-label="流程修改需求" value={prompt} maxLength={2000} rows={4} disabled={busy || !!frozen.current} placeholder="例如：申请金额超过 5 万元时，在财务审查后增加总经理审批；其他情况直接继续。" onChange={event => setPrompt(event.target.value)} />
     <Space style={{ margin: '12px 0' }}><Button type="primary" onClick={() => void generate()} disabled={busy || !!frozen.current || !prompt.trim() || !!proposal && ['pending','queued','running','cancel_requested'].includes(proposal.status)}>生成修改方案</Button>{proposal && !['applied','dismissed','cancelled'].includes(proposal.status) && <Button onClick={() => void cancel()} disabled={busy || !!frozen.current}>放弃方案</Button>}</Space></div>

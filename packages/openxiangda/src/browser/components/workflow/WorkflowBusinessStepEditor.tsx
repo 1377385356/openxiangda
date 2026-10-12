@@ -30,7 +30,7 @@ export function WorkflowBusinessStepEditor({ node, catalog, variables, disabled,
     {!Object.keys(properties).length && <p>此步骤无需输入。</p>}
     <h3>输出（只读）</h3><table className="oxa-workflow-operation-table"><thead><tr><th>输出项</th><th>类型</th><th>后续变量</th></tr></thead><tbody>{Object.entries(outputs).map(([key,schema])=><tr key={key}><td>{schema.title||key}</td><td>{schema.type}</td><td><code>steps.{node.id}.{key}</code></td></tr>)}</tbody></table>
     <Alert type="info" showIcon title="后续节点的条件可使用这些结果；必须保证执行路径上此步骤已完成。" />
-    <Button type="link" onClick={onAssistant}>没有合适的步骤？让 AI 助手准备新业务步骤</Button>
+    <Button type="link" onClick={onAssistant}>没有合适的步骤？让 AI 助手提出新增能力方案</Button>
   </section>;
 }
 function JsonLiteral({value,disabled,onChange}:{value:unknown;disabled:boolean;onChange:(value:unknown)=>void}) {

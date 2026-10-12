@@ -1,3 +1,4 @@
+import { workflowReturnTargets } from './workflow-return-policy.js';
 import { inspectWorkflowParallel, workflowForwardTargets } from './workflow-parallel.js';
 import type { WorkflowDefinition } from '../types.js';
 /** Configuration eligibility, not proof that a specific instance visited the target. */
@@ -13,4 +14,8 @@ export function workflowReturnEligibility(definition: Pick<WorkflowDefinition,'n
   const pending=[targetId],visited=new Set<string>();
   while(pending.length){const id=pending.shift()!;if(id===sourceId)return {allowed:true};if(visited.has(id))continue;visited.add(id);const node=nodes[id];if(node)pending.push(...workflowForwardTargets(node).filter(next=>!visited.has(next)));}
   return {allowed:false,reason:'该节点不在本节点之前的可达流转路径上'};
+}
+
+export function validateWorkflowReturnEligibility(definition: Pick<WorkflowDefinition,'nodes'|'startAt'>): string[] {
+  return Object.values(definition.nodes||{}).flatMap(node=>node.kind==='approval'||node.kind==='handle' ? workflowReturnTargets(node).filter(target=>!workflowReturnEligibility(definition,node.id,target).allowed).map(target=>`WORKFLOW_RETURN_TARGET_UNREACHABLE:${node.id}:${target}`) : []);
 }

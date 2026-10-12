@@ -1,3 +1,4 @@
+import { validateWorkflowReturnEligibility } from './workflow-return-eligibility.js';
 import { workflowAuthoringCatalog, workflowCanvasBindingKey, validateWorkflowCanvasHuman, validateWorkflowCanvasBinding, type WorkflowDesignerCatalog } from "./workflow-authoring.js";
 import { inspectWorkflowParallel, validateWorkflowParallel } from './workflow-parallel.js';
 import { validateWorkflowSupervisorChains } from './workflow-supervisor-chain.js';
@@ -119,7 +120,7 @@ export function validateWorkflowDesignerCapabilities(base: WorkflowDefinition, n
     else if (!original && !Object.values(baseBinding.bindings).some(value => same(value, entry))) errors.push(`WORKFLOW_DESIGNER_BINDING_UNRELEASED:${key}`);
     if (original && !same(original, entry)) errors.push(`WORKFLOW_DESIGNER_BINDING_CODE_OWNED:${key}`);
   }
-  if (!options.allowIncomplete) errors.push(...validateWorkflowDesignerDocument(next));
+  errors.push(...validateWorkflowDesignerDocument(next));
   return [...new Set(errors)];
 }
 
@@ -264,7 +265,7 @@ export function classifyWorkflowAdoption(source: WorkflowDefinition, target: Wor
 export function validateWorkflowDesignerDocument(definition: WorkflowDefinition): string[] {
   if (!record(definition?.nodes)) return ['WORKFLOW_DESIGNER_DOCUMENT_INVALID'];
   const errors: string[] = [];
-  errors.push(...validateWorkflowParallel(definition), ...validateWorkflowHandlingNodes(definition), ...validateWorkflowReturnPolicies(definition), ...validateWorkflowPlatformNotify(definition));
+  errors.push(...validateWorkflowParallel(definition), ...validateWorkflowHandlingNodes(definition), ...validateWorkflowReturnPolicies(definition), ...validateWorkflowReturnEligibility(definition), ...validateWorkflowPlatformNotify(definition));
   const nodes = Object.values(definition.nodes);
   if (nodes.length > 200 || !nodes.length) return ['WORKFLOW_DESIGNER_NODE_LIMIT'];
   for (const node of nodes) {
