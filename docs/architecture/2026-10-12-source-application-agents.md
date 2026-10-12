@@ -50,4 +50,18 @@ update 是真实 partial patch：未触碰缺席、设置为普通值、清空�
 
 ## 可证伪验证
 
+### 3C / 3D 决策门（Claude 14，2026-10-12）
+
+证据：现有人员候选 Native 入口在原事务中授权字段、保存记录及 revision；通用目录不能证明角色候选资格。范围字段是普通 scalar，直接格式化会泄露范围 ID。Claude 14 据此修订路由，Codex 已读 owner；scope.resolveExact 使用 owner SQL 等值比较且 limit=2。
+
+能力 owner：编译器从字段声明与 data-policy 的 dimension/valueSource 派生选择器路由（directory/user-candidates/field-source/options/scope），owner 在运行时重新授权。指令与 coverage 固定在版本制品中，不接受客户端路由。普通 command/card 值形状不变。record-scoped candidate 的 native create 明确编译拒绝；update 保留 saved record/revision；修改 scope 时依赖 candidate 必须在卡片上清空。多维 scope 字段保留卡片，不向模型开放提示或原值。
+
+契约：增加 descriptor.selector 与只读 task coverage，hint 按 route；共享 compiler、SDK 调用方及平台重现同一份 authz 输入。scope 输出按当前读取权威批量取标签，不能解析时显示不可见。人员 exact 入口只内部使用，复用 Native 授权分支，不新增 HTTP exact 参数或流程/动作伪上下文。
+
+阶段边界：3D 先完成 source read 任务真实 worker 路由、describe 提示投影、存储 result/presentation 分离以及 Head 变化的 superseded。native form 在完整 interaction v2 与规范化后命令承认完成前保持不可执行、不宣告 capability。默认 report readiness 不扩大任何写权限。
+
+失败/并发/资源：每步重读定义及 Head；变更终止新工具调用并保留已有业务回执。仍由既有 run lease/fence 和 receipt owner 排他；不增加身份/数据/路由 owner。exact 两条、分页十页、scope resolve 每批50值、每页最多100行及48000字节 presentation，禁止无限查找。回滚为撤回新增路由/能力，旧 profile 哨兵仍不可运行；stable 1.x、无 source agents 的制品与旧 v1 卡片不变。
+
+可证伪检查：非角色用户不可通过 candidate 写提示；former member 可用于 read filter；record-scoped create 拒绝；scope scalar hint 不接受 ID；多维 scope 无模型提示；descriptor 篡改无效；即时 result/存储 result/下一轮 transcript 均不含业务 ID/revision/cursor；read 任务仅当前权限字段，Head 变化停止；旧路径回归。源码验证与 npm、部署、真实模型/角色/业务验收分别记录。
+
 分别验证编译、源码运行、模型固定工具协议、真实模型、浏览器、真实角色及业务读回。Unit 3 首先在固定工具调用下证明：合法/非法声明；双环境独立与回滚；Settings 不改 source；只读任务/阻断写 readiness；unique/ambiguous 与错误值无命令；句柄拒绝外部会话/用户；无记录身份进入 model/history；部分更新/no-op/隐藏值；并发唯一承认；未承认中断与已承认 unknown 的区别；Head 变化 superseded；旧 v1 路径不变。Unit 4 再实现 facade、headless SDK、Field Kit 卡片及访客助手，完成真实模型与业务验证。

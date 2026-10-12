@@ -1187,7 +1187,7 @@ function validateConfigurationEnvelope(config: JsonObject, appCode: string) {
     '/config',
     ['agents']
   );
-  compileApplicationAgentsV2(appCode, config.agents, config.data?.resources || []);
+  compileApplicationAgentsV2(appCode, config.agents, config.data?.resources || [], { authz: config.authz });
   equal(config.schemaVersion, CONFIG_SCHEMA, '/config/schemaVersion');
   equal(
     config.compilerContractVersion,

@@ -1391,7 +1391,7 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
   const diagnostics: Diagnostic[] = [];
   const config = object(value);
   if (config.agents !== undefined) {
-    try { compileApplicationAgentsV2(String(object(config.app).code || ''), config.agents, (Array.isArray(object(config.data).resources) ? object(config.data).resources : []) as DataResource[], { allowInstructionFiles: true }); }
+    try { compileApplicationAgentsV2(String(object(config.app).code || ''), config.agents, (Array.isArray(object(config.data).resources) ? object(config.data).resources : []) as DataResource[], { allowInstructionFiles: true, authz: object(config.authz) as any }); }
     catch (error) {
       if (!(error instanceof NativeApplicationAgentContractError)) throw error;
       diagnostics.push(diagnostic(error.code, error.message, error.pointer));
