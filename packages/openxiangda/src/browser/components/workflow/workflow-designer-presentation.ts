@@ -31,3 +31,28 @@ export function workflowDesignerOutlineNodes(graph: WorkflowGraphProjection): Wo
   }
   return [...ordered, ...graph.nodes.filter(node => !ids.has(node.id))];
 }
+
+export type WorkflowDesignerOutlineRow = WorkflowGraphProjection['nodes'][number] & { nodeId: string; depth: number; edgeId?: string };
+/** Keep parallel children under their own branch; joining nodes remain outside the branch rows. */
+export function workflowDesignerOutlineRows(graph: WorkflowGraphProjection): WorkflowDesignerOutlineRow[] {
+  const ordered=workflowDesignerOutlineNodes(graph),rows: WorkflowDesignerOutlineRow[]=[],emitted=new Set<string>();
+  const edges=graph.edges.filter(edge => !['return','resubmit','reject'].includes(edge.kind));
+  for (const node of ordered) {
+    if (emitted.has(node.id)) continue;
+    emitted.add(node.id);rows.push({ ...node,nodeId: node.id,depth: 0 });
+    if (!node.parallel) continue;
+    for (const edge of edges.filter(edge => edge.from === node.id && edge.parallelBranch).sort((a,b) => (a.priority || 0)-(b.priority || 0))) {
+      rows.push({ id: `outline:${edge.id}`,nodeId: node.id,edgeId: edge.id,kind: 'parallel',title: edge.label,depth: 1 });
+      const body=new Set<string>(),pending=[edge.to];
+      while (pending.length) {
+        const id=pending.pop()!;
+        if (id === node.parallel.joinNodeId || body.has(id) || !node.parallel.branchNodeIds.includes(id)) continue;
+        body.add(id);pending.push(...edges.filter(edge => edge.from === id).map(edge => edge.to));
+      }
+      for (const child of ordered.filter(child => body.has(child.id))) if (!emitted.has(child.id)) {
+        emitted.add(child.id);rows.push({ ...child,nodeId: child.id,depth: 2 });
+      }
+    }
+  }
+  return rows;
+}
