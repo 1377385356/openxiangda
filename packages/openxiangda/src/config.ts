@@ -48,3 +48,5 @@ export type {
   IntegerQuotaDeclaration, AdmissionPolicy, ConcurrencyBinding, ConcurrencyParameter,
 } from 'openxiangda-contracts';
 export { workflowBusinessCommandInvocationSchema } from 'openxiangda-contracts';
+
+export type { ApplicationAgentDeclarationV2, ApplicationAgentTaskDeclarationV2 } from 'openxiangda-contracts';

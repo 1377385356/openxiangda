@@ -7,7 +7,7 @@ import { NATIVE_CONTRACT_CAPACITY_V2 } from "./native-compiler/declaration-capac
 
 export type AiJsonSchema = Record<string, unknown>;
 
-export type AiCapabilityKind = "generatedCrud" | "customAction";
+export type AiCapabilityKind = "generatedCrud" | "customAction" | "nativeTask";
 
 export type AiCapabilityOperation =
   | "query"
@@ -55,6 +55,7 @@ export interface AiCapability {
   reconcile?: { kind: "platform-transaction" } | { kind: "status-operation"; operation: string };
   agent?: {
     visibility: "task" | "support";
+    nativeTask?: NativeAgentTaskMetadataV2;
     examples?: string[];
     aliases?: string[];
     supportCapabilities?: string[];
@@ -76,7 +77,7 @@ export interface AiCapability {
     operationCode: string;
     method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
     path: string;
-  };
+  } | NativeAgentTaskBindingV2;
 }
 
 export interface AiCapabilityCatalog {
@@ -86,6 +87,9 @@ export interface AiCapabilityCatalog {
   sourceConfigDigest?: string;
   capabilities: AiCapability[];
 }
+
+import { validNativeAgentCapabilityV2, nativeAgentTaskBindingSchemaV2, nativeAgentTaskMetadataSchemaV2 } from './application-agent.js';
+import type { NativeAgentTaskBindingV2, NativeAgentTaskMetadataV2 } from './application-agent.js';
 
 const DIAGNOSTIC_SCHEMA = SCHEMA_VERSIONS.diagnostic;
 
@@ -214,7 +218,7 @@ export function validateAiCapabilityCatalog(value: unknown): Diagnostic[] {
         )
       );
     }
-    if (!["generatedCrud", "customAction"].includes(String(raw.kind))) {
+    if (!["generatedCrud", "customAction", "nativeTask"].includes(String(raw.kind))) {
       diagnostics.push(
         diagnostic("AI_CAPABILITY_KIND_INVALID", `${path}.kind 不受支持`, `${path}.kind`)
       );
@@ -405,7 +409,12 @@ export function validateAiCapabilityCatalog(value: unknown): Diagnostic[] {
         diagnostics.push(diagnostic("AI_CAPABILITY_RECONCILE_INVALID", `${path}.reconcile 必须声明只读业务回执所有者`, `${path}.reconcile`));
       }
     }
-    if (raw.agent !== undefined) {
+    if (raw.kind === 'nativeTask') {
+      if (!validNativeAgentCapabilityV2(raw)) diagnostics.push(diagnostic('AI_CAPABILITY_NATIVE_TASK_INVALID', `${path} 原生任务绑定或字段描述符无效`, path));
+    } else if ((isRecord(raw.agent) && raw.agent.nativeTask !== undefined)) {
+      diagnostics.push(diagnostic('AI_CAPABILITY_NATIVE_TASK_INVALID', `${path} 不能把原生任务元数据附在其他能力上`, path));
+    }
+    if (raw.agent !== undefined && raw.kind !== 'nativeTask') {
       const agent = isRecord(raw.agent) ? raw.agent : {};
       const strings = (value: unknown, max: number, length: number) =>
         value === undefined ||
@@ -601,7 +610,7 @@ export const aiCapabilityCatalogSchema = {
           appCode: { type: "string" },
           name: { type: "string", minLength: 1 },
           description: { type: "string", minLength: 1 },
-          kind: { enum: ["generatedCrud", "customAction"] },
+          kind: { enum: ["generatedCrud", "customAction", "nativeTask"] },
           operation: {
             enum: ["query", "get", "create", "update", "delete", "custom"],
           },
@@ -651,6 +660,7 @@ export const aiCapabilityCatalogSchema = {
             required: ["visibility"],
             properties: {
               visibility: { enum: ["task", "support"] },
+              nativeTask: nativeAgentTaskMetadataSchemaV2,
               examples: { type: "array", maxItems: 12, uniqueItems: true, items: { type: "string" } },
               aliases: { type: "array", maxItems: 20, uniqueItems: true, items: { type: "string" } },
               supportCapabilities: { type: "array", maxItems: 12, uniqueItems: true, items: { type: "string" } },
@@ -695,7 +705,7 @@ export const aiCapabilityCatalogSchema = {
               },
             },
           },
-          binding: {
+          binding: { oneOf: [nativeAgentTaskBindingSchemaV2, {
             type: "object",
             additionalProperties: false,
             required: ["kind", "operationCode", "method", "path"],
@@ -705,7 +715,7 @@ export const aiCapabilityCatalogSchema = {
               method: { enum: ["GET", "POST", "PUT", "PATCH", "DELETE"] },
               path: { type: "string", pattern: "^/[A-Za-z0-9/_-]+$" },
             },
-          },
+          }] },
         },
       },
     },

@@ -83,3 +83,6 @@ export * from './workflow-supervisor-chain.js';
 export * from './resource-query.js';
 export * from './workflow-parallel.js';
 export * from './workflow-source-sync.js';
+
+export * from './application-agent.js';
+export * from './field-value-schemas.js';

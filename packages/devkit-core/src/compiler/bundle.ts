@@ -82,7 +82,11 @@ export interface CompiledSourceBundle<T> {
   artifact: AppArtifact;
 }
 
+import { compileApplicationAgentsV2 } from 'openxiangda-contracts/native-compiler';
+import type { ApplicationAgentDefinitionsV2 } from 'openxiangda-contracts';
+
 export interface CompiledApplicationSources {
+  agentDefinitions?: { value: ApplicationAgentDefinitionsV2; content: string; digest: string; mediaType: 'application/vnd.openxiangda.application-agent-definitions.v2+json' };
   config: CompiledSourceBundle<ConfigurationBundleV3>;
   contracts: CompiledSourceBundle<ContractBundleV3> & {
     typescript: string;
@@ -180,6 +184,11 @@ export function compileApplicationSources(
   const contractContent = canonicalJson(contract);
   const contractDigest = sha256Bytes(contractContent);
   return {
+    ...(config.agents?.length ? (() => {
+      const value = compileApplicationAgentsV2(config.app.code, config.agents, configuration.data.resources).definitions;
+      const content = canonicalJson(value);
+      return { agentDefinitions: { value, content, digest: sha256Bytes(content), mediaType: 'application/vnd.openxiangda.application-agent-definitions.v2+json' as const } };
+    })() : {}),
     config: {
       value: configuration,
       content: configContent,
@@ -228,6 +237,7 @@ export function normalizeConfiguration(
     schemaVersion: CONFIG_BUNDLE_SCHEMA,
     compilerContractVersion: COMPILER_CONTRACT_VERSION,
     appCode: config.app.code,
+    ...(config.agents?.length ? { agents: JSON.parse(canonicalJson(config.agents)) } : {}),
     perspectives: compilePerspectives(config),
     authz: {
       ...(config.authz?.authenticatedUserRoleCode

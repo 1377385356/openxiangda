@@ -1092,6 +1092,8 @@ export interface NativeRuntimeRequirements {
 }
 
 export interface ConfigurationBundleV3 {
+  /** Inlined source declarations; absent for applications without agents. */
+  agents?: import('./application-agent.js').ApplicationAgentDeclarationV2[];
   schemaVersion: typeof SCHEMA_VERSIONS.configurationBundle;
   compilerContractVersion: typeof OPENXIANGDA_COMPILER_CONTRACT_VERSION;
   appCode: string;

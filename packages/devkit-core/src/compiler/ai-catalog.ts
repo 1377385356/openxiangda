@@ -1,3 +1,4 @@
+import { compileApplicationAgentsV2 } from 'openxiangda-contracts/native-compiler';
 import { generatedCrudCapabilityOperations } from 'openxiangda-contracts/native-compiler';
 import {
   SCHEMA_VERSIONS,
@@ -415,6 +416,7 @@ export function compileAiCapabilityCatalog(
       generatedCrudCapabilityOperations(resource)
         .map(operation => generatedCapability(resource, operation))
     )
+    .concat(compileApplicationAgentsV2(config.app.code, config.agents, resources).capabilities)
     .concat(
       (config.backend.operations || [])
         .filter(
@@ -433,10 +435,10 @@ export function compileAiCapabilityCatalog(
   for (const capability of capabilities) {
     if (capability.reconcile?.kind === "status-operation") {
       const code = capability.reconcile.operation;
-      const resolver = capabilities.find(item => item.binding?.operationCode === code);
+      const resolver = capabilities.find(item => item.binding?.kind === "app-api" && item.binding.operationCode === code);
       const schema = resolver?.inputSchema as { type?: string; additionalProperties?: boolean; required?: string[]; properties?: Record<string,{type?:string}> } | undefined;
       const keys = ["invocationKey", "capabilityCode", "intentDigest", "inputHash", "initiatingUserId"];
-      if (!resolver || resolver.kind !== "customAction" || resolver.risk !== "read" || resolver.binding?.method !== "GET" ||
+      if (!resolver || resolver.kind !== "customAction" || resolver.risk !== "read" || (resolver.binding?.kind !== "app-api" || resolver.binding.method !== "GET") ||
           schema?.type !== "object" || schema.additionalProperties !== false ||
           Object.keys(schema.properties || {}).length !== keys.length || schema.required?.length !== keys.length ||
           keys.some(key => schema.properties?.[key]?.type !== "string" || !schema.required?.includes(key)))

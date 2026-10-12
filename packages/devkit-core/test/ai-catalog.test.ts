@@ -435,7 +435,7 @@ test("reconciliation binds a declared GET read operation with fixed server query
     ai:{name:"外部预约",description:"发起外部系统预约",risk:"external" as const,resources:["reservations"],sideEffects:["创建外部预约"],reconcile:{kind:"status-operation" as const,operation:status.code}},
   };
   const selected={...config,backend:{...config.backend,operations:[task,status]}};
-  assert.deepEqual(compileAiCapabilityCatalog(selected).capabilities.find(item=>item.binding?.operationCode===task.code)?.reconcile,task.ai.reconcile);
+  assert.deepEqual(compileAiCapabilityCatalog(selected).capabilities.find(item=>item.binding?.kind==="app-api" && item.binding.operationCode===task.code)?.reconcile,task.ai.reconcile);
   assert.throws(()=>compileAiCapabilityCatalog({...selected,backend:{...selected.backend,operations:[task]}}),/AI_AGENT_RECONCILE_OPERATION_INVALID/);
   assert.throws(()=>compileAiCapabilityCatalog({...selected,backend:{...selected.backend,operations:[task,{...status,method:"POST",ai:{...status.ai,risk:"write",sideEffects:["修改预约"]}}]}}),/AI_AGENT_RECONCILE_OPERATION_INVALID/);
   const {reconcile: _,...unresolved}=task.ai;

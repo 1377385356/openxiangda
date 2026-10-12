@@ -8878,6 +8878,8 @@ const subjectReadSurfaceDeclarationSchema = {
   },
 } as const;
 
+import { applicationAgentDeclarationSchemaV2 } from './application-agent.js';
+
 export const configurationBundleSchema = {
   $id: SCHEMA_VERSIONS.configurationBundle,
   $defs: { appDataPolicyExpression: appDataPolicyExpressionSchema },
@@ -8898,6 +8900,7 @@ export const configurationBundleSchema = {
   ],
   properties: {
     schemaVersion: { const: SCHEMA_VERSIONS.configurationBundle },
+    agents: { type: "array", maxItems: 20, items: applicationAgentDeclarationSchemaV2 },
     compilerContractVersion: {
       const: OPENXIANGDA_COMPILER_CONTRACT_VERSION,
     },

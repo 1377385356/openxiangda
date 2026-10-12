@@ -1935,6 +1935,7 @@ export class OpenXiangdaApplicationServices {
           : { present: false },
         aiCatalogDigest: sources.aiCatalog.digest,
         aiCatalog: sources.aiCatalog.value,
+        ...(sources.agentDefinitions ? { agentDefinitionsDigest: sources.agentDefinitions.digest, agentDefinitions: sources.agentDefinitions.value } : {}),
       },
     });
     const artifactContent = {

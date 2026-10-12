@@ -19,6 +19,7 @@ export function generatedCrudCapabilityOperations(resource: CatalogResource) {
   });
 }
 type Declaration = {
+  agents?: readonly { tasks?: readonly unknown[] }[];
   data?: { resources?: readonly CatalogResource[] };
   backend?: { operations?: readonly { ai?: unknown }[] };
   authz?: { roles?: readonly unknown[]; dataPolicies?: readonly unknown[]; capabilities?: readonly unknown[] };
@@ -31,7 +32,7 @@ export function requiresExtendedRoleCapacity(config: Declaration): boolean {
 }
 /** Derived from the sealed declaration; applications cannot assert support. */
 export function requiresExtendedDeclarationCapacity(config: Declaration): boolean {
-  const catalogSlots = (config.data?.resources || []).filter(resource => resource.status !== 'retired')
+  const catalogSlots = (Array.isArray(config.agents) ? config.agents : []).reduce((count, agent) => count + (Array.isArray(agent?.tasks) ? agent.tasks.length : 0), 0) + (config.data?.resources || []).filter(resource => resource.status !== 'retired')
     .reduce((count, resource) => count + generatedCrudCapabilityOperations(resource).length, 0) +
     (config.backend?.operations || []).filter(operation => operation.ai).length;
   return (config.data?.resources?.length || 0) > 100 || (config.authz?.dataPolicies?.length || 0) > 100 ||

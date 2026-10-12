@@ -1,3 +1,5 @@
+import { compileApplicationAgentsV2, NativeApplicationAgentContractError } from 'openxiangda-contracts/native-compiler';
+import type { ApplicationAgentDeclarationV2 } from 'openxiangda-contracts';
 import { normalizeDataMutationGrants } from 'openxiangda-contracts';
 import { parseNativeParentReadPolicy, validateNativeParentReadPolicies, NativeParentReadPolicyError, NativeDataPolicyExpressionV2Error } from 'openxiangda-contracts/native-compiler';
 import { assertWorkflowNativeStagePolicy } from 'openxiangda-contracts';
@@ -291,6 +293,7 @@ export interface AppConfiguredDataResource extends DataResource {
 }
 
 export interface OpenXiangdaAppDeclaration {
+  agents?: ApplicationAgentDeclarationV2[];
   schemaVersion?: 3;
   app: OpenXiangdaAppConfig['app'];
   frontend: Omit<OpenXiangdaAppConfig['frontend'], 'root'> & { root?: string };
@@ -309,6 +312,7 @@ export interface OpenXiangdaAppDeclaration {
 }
 
 export interface OpenXiangdaAppConfig {
+  agents?: ApplicationAgentDeclarationV2[];
   schemaVersion: 3;
   app: {
     code: string;
@@ -1386,6 +1390,13 @@ function validateEventFilterCondition(
 export function validateAppConfig(value: unknown): Diagnostic[] {
   const diagnostics: Diagnostic[] = [];
   const config = object(value);
+  if (config.agents !== undefined) {
+    try { compileApplicationAgentsV2(String(object(config.app).code || ''), config.agents, (Array.isArray(object(config.data).resources) ? object(config.data).resources : []) as DataResource[], { allowInstructionFiles: true }); }
+    catch (error) {
+      if (!(error instanceof NativeApplicationAgentContractError)) throw error;
+      diagnostics.push(diagnostic(error.code, error.message, error.pointer));
+    }
+  }
   rejectNativeEnvironmentFields(config, diagnostics);
   if (config.schemaVersion !== 3) {
     diagnostics.push(

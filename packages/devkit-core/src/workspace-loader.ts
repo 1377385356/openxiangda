@@ -10,6 +10,7 @@ import {
 } from './compiler/config.js';
 import { OPENXIANGDA_TOOLCHAIN_VERSION } from './version.js';
 import { createWorkspaceContext } from './workspace.js';
+import { inlineApplicationAgentInstructionsV2 } from './application-agent-source.js';
 import { validateWorkflowSourceReferences } from './workflow-source-validation.js';
 
 const CONFIG_NAMES = ['openxiangda.config.ts', 'openxiangda-app.config.ts'];
@@ -144,7 +145,7 @@ export async function loadAppConfig(configPath: string) {
     `data:text/javascript;base64,${Buffer.from(source).toString('base64')}`
   )) as { default?: OpenXiangdaAppDeclaration };
   if (!module.default) throw new Error('OPENXIANGDA_V2_CONFIG_DEFAULT_REQUIRED');
-  const config = defineOpenXiangdaApp(module.default);
+  const config = defineOpenXiangdaApp(inlineApplicationAgentInstructionsV2(dirname(configPath), module.default));
   validateWorkflowSourceReferences(dirname(configPath), config);
   return config;
 }

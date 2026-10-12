@@ -1,3 +1,4 @@
+import { compileApplicationAgentsV2 } from './application-agent.js';
 import { validateWorkflowSupervisorChains, validateWorkflowSupervisorChainBinding } from './workflow-supervisor-chain.js';
 import { validateWorkflowReminders } from './workflow-reminders.js';
 import { isWorkflowPlatformNotify } from './workflow-platform-notify.js';
@@ -524,6 +525,7 @@ export function compileRequiredPlatformCapabilitiesV3(
     ...(requiresHighDensityArtifactCapacity(config)
       ? [{ code: 'application.high-density-artifact-capacity' as const,
           declaration: NATIVE_HIGH_DENSITY_ARTIFACT_CAPACITY_V2 }] : []),
+    ...(config.agents?.length ? [{ code: 'application.source-agents' as const, declaration: config.agents }] : []),
     ...(requiresExtendedDeclarationCapacity(config)
       ? [{ code: 'application.extended-declaration-capacity' as const, declaration: {
           resources: config.data.resources.length, policies: config.authz.dataPolicies.length,
@@ -1182,8 +1184,10 @@ function validateConfigurationEnvelope(config: JsonObject, appCode: string) {
       'frontend',
       'runtime',
     ],
-    '/config'
+    '/config',
+    ['agents']
   );
+  compileApplicationAgentsV2(appCode, config.agents, config.data?.resources || []);
   equal(config.schemaVersion, CONFIG_SCHEMA, '/config/schemaVersion');
   equal(
     config.compilerContractVersion,

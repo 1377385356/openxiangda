@@ -76,3 +76,5 @@ export * from './native-compiler/cascade-value.js';
 export * from './native-compiler/address-value.js';
 export * from './native-compiler/workflow-parallel.js';
 export * from './native-compiler/workflow-source-sync.js';
+
+export * from './application-agent.js';
