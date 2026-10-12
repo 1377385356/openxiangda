@@ -29,6 +29,7 @@ export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onS
   const { message } = App.useApp();
   const [draft,setDraft] = useState<WorkflowDesignerDraft>();
   const [definition,setDefinition] = useState<WorkflowDefinition>();
+  const [stepInputInvalid,setStepInputInvalid] = useState(false);
   const [binding,setBinding] = useState<WorkflowBinding>();
   const [nativeHeadRevision,setNativeHeadRevision] = useState<number>();
   const [configurations,setConfigurations] = useState<WorkflowNodeConfigurations>();
@@ -89,7 +90,7 @@ export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onS
     if (context.headRevision == null) throw new Error('当前应用没有可用的办理配置版本');
     setConfigurations(configuration);setNativeHeadRevision(context.headRevision);
   };
-  const dirty = !!draft && !!definition && (!same(draft.definition,definition) || !same(draft.binding,binding));
+  const dirty = !!draft && !!definition && (!same(draft.definition,definition) || !same(draft.binding,binding) || stepInputInvalid);
   useEffect(() => { const unknown = !!frozenSave.current || !!frozenPublish.current || !!frozenAux.current || assistantState.unknown || liveState.unknown;onDirtyChange?.(dirty || liveState.dirty || unknown);onStateChange?.({ dirty: dirty || liveState.dirty,busy: busy || assistantState.busy || liveState.busy,unknown }); },[dirty,busy,assistantState,liveState,onDirtyChange,onStateChange]);
   useEffect(() => { const guard = (event: BeforeUnloadEvent) => { if (dirty || frozenSave.current || frozenPublish.current || frozenAux.current || assistantState.unknown) { event.preventDefault(); event.returnValue = ''; } }; addEventListener('beforeunload',guard);return () => removeEventListener('beforeunload',guard); },[dirty,assistantState.unknown]);
   useEffect(() => {
@@ -127,6 +128,7 @@ export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onS
   const patch = (patch: Record<string,unknown>) => { if (definition && node) mutate(editWorkflowDesignerDefinition(definition,{ type: 'node',nodeId: node.id,patch })); };
   const save = async (quiet = false) => {
     if (!draft || !definition) return undefined;
+    if (stepInputInvalid && !frozenSave.current) { setError('业务步骤固定值不是有效 JSON，请修正后再保存。');return undefined; }
     setBusy(true);
     try {
       frozenSave.current ||= { expectedRevision: draft.revision,expectedHeadRevision: draft.baseHeadRevision,operationId: createBrowserUuid(),definition,binding: binding! };
@@ -137,10 +139,10 @@ export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onS
   };
   const autosave = useRef(save); autosave.current = save;
   useEffect(() => {
-    if (!dirty || !definition || busy || publishedView || frozenSave.current || frozenPublish.current || frozenAux.current || attemptedAutosave.current === JSON.stringify({definition,binding})) return;
+    if (!dirty || !definition || stepInputInvalid || busy || publishedView || frozenSave.current || frozenPublish.current || frozenAux.current || attemptedAutosave.current === JSON.stringify({definition,binding})) return;
     const timer = setTimeout(() => { attemptedAutosave.current = JSON.stringify({definition,binding}); void autosave.current(true); }, 900);
     return () => clearTimeout(timer);
-  }, [dirty, definition, binding, busy, publishedView]);
+  }, [dirty, definition, binding, busy, publishedView, stepInputInvalid]);
   const selectNode = (value: string,edgeId?: string) => {
     const next = () => { setSelected(value);setSelectedEdge(edgeId); if (value !== selected) setStructureKeys([]); setInspector(value !== workflowDesignerStartId); };
     if (value !== selected && leaveHandling.current) leaveHandling.current(next); else next();
@@ -303,7 +305,7 @@ export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onS
         onSaved={() => { void refreshHandling().catch(failure => setError(`办理设置已保存，重新读取失败：${String(failure.message)}`)); }} /> : draft.publishedDefinition.nodes[node.id] && ['approval','handle','cc'].includes(node.kind) ? <Alert type="warning" showIcon title="已发布节点的办理设置未能载入" description="此节点不是新增草稿节点，请重新读取配置后修改。" action={<Button onClick={() => void refreshHandling().catch(failure=>setError(String(failure.message)))}>重新读取办理设置</Button>} /> : ['approval','handle','cc'].includes(node.kind) && <WorkflowDraftHandlingEditor node={node as any} baseline={node as any} bindingOptions={Object.keys(draft.publishedBinding.bindings).map(value=>({value,label:value}))}
           binding={binding?.bindings['binding' in node ? node.binding : '']} sources={catalog!.peopleSources} principals={configurations?.principals || {users:[],roles:[]}} disabled={disabled}
           onBindingChange={entry => { if (!('binding' in node) || !binding) return;mutate({...definition,nodes:{...definition.nodes,[node.id]:{...node,...(entry.provider==='supervisor_chain'&&entry.continuous!==false?{mode:'sequence'}:{})} as WorkflowNode}}, {...binding,bindings:{...binding.bindings,[node.binding]:entry}}); }} onChange={patch} /> }</div>
-      {node.kind==='action' && !isWorkflowPlatformNotify(node) && catalog && <WorkflowBusinessStepEditor key={`${node.id}:${node.handler.code}`} node={node} catalog={catalog} variables={variables} disabled={disabled} onChange={patch} onAssistant={() => { setAssistantContext(`当前步骤：${node.title}（${node.handler.code} v${node.handler.version}）。需要新增业务能力时，请提出源代码与发布契约的改造方案，不要假设新能力已经发布。`);setAssistantOpen(true);setInspector(true); }} />}
+      {node.kind==='action' && !isWorkflowPlatformNotify(node) && catalog && <WorkflowBusinessStepEditor key={`${node.id}:${node.handler.code}`} node={node} catalog={catalog} variables={variables} disabled={disabled} onValidityChange={setStepInputInvalid} onChange={patch} onAssistant={() => { setAssistantContext(`当前步骤：${node.title}（${node.handler.code} v${node.handler.version}）。需要新增业务能力时，请提出源代码与发布契约的改造方案，不要假设新能力已经发布。`);setAssistantOpen(true);setInspector(true); }} />}
       {node.kind === 'parallel' && <WorkflowParallelConfigurationEditor key={node.id} node={node} selectedBranch={node.branches[(graph.edges.find(edge => edge.id === selectedEdge && edge.from === node.id)?.priority || 0)-1]?.id} variables={variables} disabled={disabled} onChange={value => patch({ branches: value.branches })} onRemove={branchId => mutate(editWorkflowDesignerDefinition(definition,{ type: 'remove_parallel_branch',nodeId: node.id,branchId }))} />}
       {node.kind === 'join' && <Alert type="info" showIcon title="本次进入的全部分支完成后继续" description="汇合点与并行分支成对维护。若要删除整个并行区域，请在并行节点设置中操作。" />}
       {node.kind === 'condition' && <WorkflowConditionConfigurationEditor key={node.id} node={node} variables={variables} targets={targets} selectedBranch={graph.edges.find(edge => edge.id === selectedEdge && edge.from === node.id && edge.kind === 'branch')?.priority ? graph.edges.find(edge => edge.id === selectedEdge)!.priority! - 1 : undefined} disabled={disabled} onChange={value => patch({ branches: value.branches, otherwise: value.otherwise })} />}
@@ -340,7 +342,7 @@ export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onS
       </div>
       <Space size={8} className="oxa-designer-toolbar-actions"><Tooltip title="撤销"><Button icon={<UndoOutlined />} aria-label="撤销" disabled={disabled || !history.length} onClick={() => { const previous = history.at(-1); if (previous) { setFuture(current => [...current,{definition,binding:binding!}]);setHistory(current => current.slice(0,-1));setDefinition(previous.definition);setBinding(previous.binding); } }}>撤销</Button></Tooltip>
         <Tooltip title="重做"><Button icon={<RedoOutlined />} aria-label="重做" disabled={disabled || !future.length} onClick={() => { const next = future.at(-1); if (next) { setHistory(current => [...current,{definition,binding:binding!}]);setFuture(current => current.slice(0,-1));setDefinition(next.definition);setBinding(next.binding); } }}>重做</Button></Tooltip>
-        <Button icon={<SafetyOutlined />} onClick={() => setChecksOpen(true)}>结构检查</Button><Button icon={<HistoryOutlined />} onClick={() => void showVersions()}>版本记录</Button><Button icon={<RobotOutlined />} disabled={disabled || liveState.busy || liveState.unknown} onClick={() => { const open = () => void openAssistant(); if (leaveHandling.current) leaveHandling.current(open); else open(); }}>AI 助手</Button><Button type="primary" disabled={disabled || errors.length > 0 || liveState.dirty || liveState.busy || liveState.unknown} onClick={() => void openPublication()}>发布并启用</Button>
+        <Button icon={<SafetyOutlined />} onClick={() => setChecksOpen(true)}>结构检查</Button><Button icon={<HistoryOutlined />} onClick={() => void showVersions()}>版本记录</Button><Button icon={<RobotOutlined />} disabled={disabled || liveState.busy || liveState.unknown} onClick={() => { const open = () => void openAssistant(); if (leaveHandling.current) leaveHandling.current(open); else open(); }}>AI 助手</Button><Button type="primary" disabled={disabled || stepInputInvalid || errors.length > 0 || liveState.dirty || liveState.busy || liveState.unknown} onClick={() => void openPublication()}>发布并启用</Button>
       </Space>
     </header>
     {error && <Alert type="error" title={error} action={frozenSave.current ? <Button onClick={() => void save()}>重试保存</Button> : frozenAux.current ? <Button onClick={() => void retryAux()}>重试原操作</Button> : undefined} />}

@@ -3658,7 +3658,7 @@
 .oxa-workflow-people-sources { display: grid; gap: 12px; }
 .oxa-workflow-people-sources > label { display: grid; gap: 8px; }
 .oxa-designer-business-step h3 { font-size: 14px; margin: 24px 0 12px; }
-.oxa-designer-business-step > p { color: var(--oxa-color-text-secondary); font-size: 13px; line-height: 1.7; }
+.oxa-designer-business-step > p { color: var(--ant-color-text-secondary); font-size: 13px; line-height: 1.7; }
 .oxa-designer-step-catalog { display: grid; gap: 8px; margin-top: 12px; max-height: 260px; overflow-y: auto; }
 .oxa-designer-step-catalog button { display: flex; align-items: center; gap: 12px; min-height: 48px; background: #fff; border: 1px solid #dce4ee; border-radius: 6px; padding: 10px 12px; text-align: left; cursor: pointer; }
 .oxa-designer-step-catalog button[aria-pressed=true] { border-color: #1677ff; background: #eff6ff; }
@@ -3667,7 +3667,7 @@
 .oxa-designer-business-step .oxa-workflow-operation-table td:last-child { min-width: 220px; }
 .oxa-designer-business-step .oxa-workflow-operation-table .ant-select { width: 100%; margin-bottom: 6px; }
 .oxa-designer-required { color: #d4380d; }
-.oxa-designer-condition-examples > p { color: var(--oxa-color-text-secondary); font-size: 12px; line-height: 1.6; }
+.oxa-designer-condition-examples > p { color: var(--ant-color-text-secondary); font-size: 12px; line-height: 1.6; }
 .oxa-designer-condition-examples article { margin: 12px 0; padding: 12px; background: #f7f9fc; border: 1px solid #e4eaf2; border-radius: 6px; }
 .oxa-designer-condition-examples article > header { display: flex; gap: 8px; margin-bottom: 12px; }
 .oxa-designer-example-fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
