@@ -504,7 +504,7 @@ test('publishes bounded authoritative directory and scope selector contracts', (
   );
   assert.deepEqual(
     contractSchemas.nativeScopeValuePage.properties.operation.enum,
-    ['create', 'update']
+    ['create', 'update', 'filter']
   );
   assert.deepEqual(
     contractSchemas.nativeScopeValuePage.properties.environment.properties.key,
