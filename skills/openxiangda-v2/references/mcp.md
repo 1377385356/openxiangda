@@ -98,7 +98,7 @@ MCP 使用项目锁定的根包；在客户端配置下列 stdio 启动参数，
 
 ## contract_describe
 
-查看应用契约。默认返回有界索引；用 selector 读取模型、流程、能力，或 navigation/permissions。菜单建议只复制一次，运行时不自动应用。
+查看应用契约。默认返回有界索引；用 selector 读取模型、流程、能力，或 navigation/permissions/prerequisites。任务前提来自原编译器，不代表目标或角色可用。菜单建议只复制一次，运行时不自动应用。
 
 - 只读：是
 - 可替换文件或改变远端状态：否
@@ -112,7 +112,7 @@ MCP 使用项目锁定的根包；在客户端配置下列 stdio 启动参数，
   "type": "object",
   "properties": {
     "selector": {
-      "description": "index、navigation、permissions、all 或索引给出的选择器",
+      "description": "index、navigation、permissions、prerequisites、all 或索引给出的选择器",
       "type": "string",
       "maxLength": 200
     },
