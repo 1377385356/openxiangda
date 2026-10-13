@@ -37,7 +37,9 @@ function decode(value: unknown, placeholders: boolean): WorkflowBindingEntry | u
   if (!record(value)) invalid();
   if (value.kind === 'roles') {
     if (!exact(value, ['kind', 'roleCodes']) || !Array.isArray(value.roleCodes)) invalid();
-    const entry: WorkflowConditionalAssignmentLeaf = { provider: 'app_role', roleCodes: value.roleCodes };
+    const entry: WorkflowConditionalAssignmentLeaf = value.roleCodes.length === 1
+      ? { provider: 'app_role', roleCode: value.roleCodes[0] }
+      : { provider: 'app_role', roleCodes: value.roleCodes };
     if (validateWorkflowConditionalAssignmentShape({ provider: 'conditional', cases: [{ when: { op: 'literal', value: true }, assignee: entry }], otherwise: entry }).length) invalid();
     return clone(entry);
   }

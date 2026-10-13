@@ -109,3 +109,23 @@ test('metadata integrity and raw rule resource bounds are enforced', () => {
   const bad: any = project(rules()); bad.cases[0].when = { op: 'literal', value: 'x'.repeat(20000) };
   assert.ok(validate(bad, definition(), 'a').length);
 });
+
+
+test('legacy single-role handling coexists with conditional handling and ordinary CC nodes', () => {
+  const b = bundle();
+  b.definition.nodes.cc = { id: 'cc', kind: 'cc', title: 'Copy', binding: 'copy', next: 'done' };
+  (b.definition.nodes.a as any).onApprove = 'cc';
+  b.binding.bindings.copy = { provider: 'app_role', roleCode: 'observer' };
+  b.handling.cc = { assignee: { kind: 'roles', roleCodes: ['observer'] } };
+  refresh(b);
+  assert.deepEqual(validateWorkflowSourceBundle(b, digest), []);
+  assert.deepEqual(restore(b.handling.cc.assignee!), { provider: 'app_role', roleCode: 'observer' });
+  b.handling.a!.assignee = { kind: 'roles', roleCodes: ['finance'] };
+  refresh(b);
+  assert.deepEqual(validateWorkflowSourceBundle(b, digest), []);
+  assert.deepEqual(restore(b.handling.a!.assignee), { provider: 'app_role', roleCode: 'finance' });
+  assert.deepEqual(restore({ kind: 'roles', roleCodes: ['finance', 'legal'] }), { provider: 'app_role', roleCodes: ['finance', 'legal'] });
+  for (const roleCodes of [[], ['bad role'], ['finance', 'finance'], Array.from({ length: 9 }, (_, i) => `role${i}`)]) {
+    assert.throws(() => restore({ kind: 'roles', roleCodes }));
+  }
+});
