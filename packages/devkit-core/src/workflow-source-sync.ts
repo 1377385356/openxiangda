@@ -4,9 +4,9 @@ import { dirname,relative,resolve,sep } from 'node:path';
 import ts from 'typescript';
 import { normalizeWorkflowDefinition } from './internal/workflow.js';
 import { canonicalJson,validateWorkflowSourceBundle,workflowSourceImportDrift,WORKFLOW_SOURCE_BUNDLE_MAX_BYTES,
-  workflowSourceReferences,workflowNodeAllowedOperations,validateWorkflowNodeConfigurationPatch,workflowAuthoringCatalog,workflowAssignmentLeaves,
+  workflowSourceReferences,workflowNodeAllowedOperations,validateWorkflowNodeConfigurationPatch,workflowAssignmentLeaves,
   restoreWorkflowSourceAssignment,workflowSourceNamedAssignmentSummary,WORKFLOW_SOURCE_BUNDLE_V2_SCHEMA,type WorkflowBinding,type WorkflowSourceBundle,type WorkflowSourceLock,type WorkflowRegistrationPlan,type WorkflowDefinition } from 'openxiangda-contracts';
-import { NATIVE_CONTRACT_CAPACITY_V2 } from 'openxiangda-contracts/native-compiler';
+import { NATIVE_CONTRACT_CAPACITY_V2,workflowAuthoringCatalog } from 'openxiangda-contracts/native-compiler';
 import type { OpenXiangdaAppConfig } from './compiler/config.js';
 function fail(code: string,detail = ''): never { throw Object.assign(new Error(`${code}${detail ? `: ${detail}` : ''}`),{ code }); }
 const digest = (value: unknown) => createHash('sha256').update(canonicalJson(value)).digest('hex');
