@@ -183,3 +183,26 @@ Native记录事件才能使用 `ordering:record`。订阅错误先修正应用�
 重启MCP。应用AI不需要本地平台、数据库、Docker或学校服务器账号。
 先做只读诊断、无实际收件人的健康测试及CAS拒绝验证，再验收单笔回执/落库/实际投递。
 不要用批量导入或历史群发测试恢复。首次会话授权、权限委托和外部身份owner边界沿用原合同。
+
+
+## TEST 验收数据收尾 {#acceptance-data}
+
+需要回收的验收先从目录选择 `acceptance-data.prepare`，显式提供原 requestKey、当前 TEST AppVersion/Head、actors；默认 100 条累计创建和 240 分钟，最高 1000 条/一天。目录的 actor schema 与原身份规则一致。普通验收身份未 opt-in，不自动归入可回收批次。平台仅接受简单 Native CRUD；workflow、文件、事件、通知、外部效果或压测批次继续使用各自 owner。
+
+创建结果中的 runId 和一次性登录链接用于本批真实身份操作。文件中仅存下列 input，当前 workspace 提供应用、站点和身份：
+
+```json
+{"runId":"<原批次UUID>"}
+```
+
+先执行 `admin execute acceptance-data.stop --environment test --input <文件> --json`；超时先用 `acceptance-data.status` 核对原 run，stopped 表示后续批次写入被拒绝。用户/成员仍保留；会话撤销 pending 不改变已经提交的 stop 栅栏。再执行 `acceptance-data.preview-cleanup`，核对 actionCount、remainingRecordCount、manifestSha256 和原 repairReference。
+
+真正执行只传原 preview digest：
+
+```json
+{"runId":"<原批次UUID>","manifestSha256":"<预览SHA256>","mode":"canary"}
+```
+
+在已经授权清理的范围运行 `acceptance-data.execute-cleanup`，核对金丝雀原回执，再把 mode 改为 remaining。丢响应先 preview/status，不换 run 或 digest；pending 清单复用原 repair。每份计划最多100条/1MiB，终结后重新 preview 下一批。外部修改、坏凭证、变化 Head、未知/预算结果及部分失败不会返回 purged。只有完整读回 `cleanupState: purged` 和剩余0表示此批 owned Native 数据验空；registry、参与者、凭证、审计和原修复回执保留。
+
+MCP仍通过 `application_operations/application_operation` 使用同一目录，不提供任意URL或重建来源。生产、旧数据、其他run不接受此入口。目录可用不代表目标平台已升级；404核对版本，不用直接SQL旁路。

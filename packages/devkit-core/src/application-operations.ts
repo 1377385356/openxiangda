@@ -8,6 +8,11 @@ type Auth = { mode: 'HMAC_SHA256'; keyId: string; secretRef: string }
   | { mode: 'OAUTH2_CLIENT_CREDENTIALS'; tokenUrl: string; clientIdSecretRef: string; clientSecretSecretRef: string; scope?: string; audience?: string }
   | { mode: 'MTLS'; certSecretRef: string; keySecretRef: string; caSecretRef?: string };
 export interface ApplicationOperationInputs {
+  'acceptance-data.prepare': { requestKey: string; expectedAppVersionId: string; expectedHeadRevision: number; expiresInMinutes?: number; recordLimit?: number; redirectUri?: string; actors: Array<{ key: string; name?: string; roleCodes: string[]; departmentIds?: string[] }> };
+  'acceptance-data.status': { runId: string };
+  'acceptance-data.stop': { runId: string };
+  'acceptance-data.preview-cleanup': { runId: string };
+  'acceptance-data.execute-cleanup': { runId: string; manifestSha256: string; mode: 'canary' | 'remaining' };
   'diagnostics.semantic-audit': { requirementId: 'native.file-value.v2-envelope'; resourceCode: string; expectedAppVersionId: string; expectedHeadRevision: number; afterRecordId?: string; limit?: number };
   'diagnostics.execution-health': { kind: 'legacy-schedule' | 'timer' | 'date-trigger' | 'event-delivery'; id: string };
   'events.status': Record<string, never>;
@@ -72,11 +77,17 @@ interface Definition {
 }
 const operation = (name: ApplicationOperationName, summary: string, effect: Definition['effect'], inputSchema: Definition['inputSchema'], path: string, recovery: string): Definition => ({
   operation: name, summary, effect, inputSchema, path, method: effect === 'read' ? 'GET' : 'POST',
-  permission: name === 'diagnostics.semantic-audit' ? '原平台管理员权限，仅当前tenant的TEST文件值观察' : name.startsWith('diagnostics.') ? '当前用户的现有应用管理权限；tenant仅来自原登录身份' : name.startsWith('events.') ? '现有应用事件管理权限' : name.startsWith('secrets.') ? '两侧环境的现有应用管理权限' : '现有通知管理权限；设置默认同时要求规则和渠道管理权限', recovery,
+  permission: name.startsWith('acceptance-data.') ? '原平台管理员权限，仅当前tenant和应用的TEST native data-only批次' : name === 'diagnostics.semantic-audit' ? '原平台管理员权限，仅当前tenant的TEST文件值观察' : name.startsWith('diagnostics.') ? '当前用户的现有应用管理权限；tenant仅来自原登录身份' : name.startsWith('events.') ? '现有应用事件管理权限' : name.startsWith('secrets.') ? '两侧环境的现有应用管理权限' : '现有通知管理权限；设置默认同时要求规则和渠道管理权限', recovery,
 });
 const readRecovery = '以平台返回的当前状态、修订、错误及分页游标为准；未观测到不表示原操作未执行。';
 const casRecovery = '修订冲突先读当前基准并核对；结果未知先读原状态，不自动覆盖或重试。';
+const cleanupRecovery = '停止后读 preview；保留原run和digest，未知结果读原repairReference。仅完整readback的purged表示本批数据验空，用户/成员/凭证/审计保留；不清历史或其他run数据。';
 export const APPLICATION_OPERATIONS: readonly Definition[] = [
+  operation('acceptance-data.prepare', '准备可回收的TEST原生数据批次及原验收身份', 'configure', object({ requestKey: uuid, expectedAppVersionId: uuid, expectedHeadRevision: integer(1), expiresInMinutes: integer(15, 1440), recordLimit: integer(1, 1000), redirectUri: text(2048), actors: { type: 'array', minItems: 1, maxItems: 12, items: object({ key: text(80), name: text(255), roleCodes: { type: 'array', minItems: 1, maxItems: 32, uniqueItems: true, items: text(128) }, departmentIds: { type: 'array', maxItems: 128, uniqueItems: true, items: text(128) } }, ['key', 'roleCodes']) } }, ['requestKey', 'expectedAppVersionId', 'expectedHeadRevision', 'actors']), '/acceptance/data-runs/prepare', '结果未知按原requestKey和原输入重新准备；不换key扩展TTL。参与者归原身份owner，只有此批来源会话的eligible Native CRUD可回收。'),
+  operation('acceptance-data.status', '读回原TEST验收批次状态和修复引用', 'read', object({ runId: uuid }), '/acceptance/data-runs/:runId', cleanupRecovery),
+  operation('acceptance-data.stop', '停止此TEST批次写入并撤销来源会话', 'configure', object({ runId: uuid }), '/acceptance/data-runs/:runId/stop', '有界等待原在途事务；超时先status，stopped才证明后续run写入被拒绝。会话撤销pending与数据库stop分别读回。'),
+  operation('acceptance-data.preview-cleanup', '只读精确归属、原repair清单和剩余对象；不执行删除', 'read', object({ runId: uuid }), '/acceptance/data-runs/:runId/cleanup-preview', cleanupRecovery),
+  operation('acceptance-data.execute-cleanup', '按预览digest通过原repair执行金丝雀或剩余删除', 'recover', object({ runId: uuid, manifestSha256: { ...text(64), pattern: '^[a-f0-9]{64}$' }, mode: enumeration('canary', 'remaining') }), '/acceptance/data-runs/:runId/cleanup-execute', cleanupRecovery),
   operation('diagnostics.semantic-audit', '绑定当前TEST版本和Head的文件值语义审计；仅观察，不修复或授予激活许可', 'read', object({ requirementId: { const: 'native.file-value.v2-envelope' }, resourceCode: { ...text(128), pattern: '^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$' }, expectedAppVersionId: uuid, expectedHeadRevision: integer(1), afterRecordId: uuid, limit: integer(1, 100) }, ['requirementId', 'resourceCode', 'expectedAppVersionId', 'expectedHeadRevision']), '/diagnostics/semantic-audit', '分页、预算超限、unknown和violations不能作为激活许可；即使完整且satisfied也只证明本次资源快照。文件存在/下载授权、历史修复继续由原owner负责。'),
   operation('diagnostics.execution-health', '按原ID核对未来计划、暂停、claim和租约；不恢复或重放', 'read', object({ kind: enumeration('legacy-schedule', 'timer', 'date-trigger', 'event-delivery'), id: uuid }), '/diagnostics/execution-health', '保留原ID、周期和效果键；缺记录、lease过期和HTTP200不证明未执行或可重放。核对原owner回执与退出证明。'),
   operation('events.status', '读取队列积压、消费者健康、写入保护阈值和恢复条件', 'read', object(), '/events/operations/status', readRecovery),
@@ -104,7 +115,7 @@ export const APPLICATION_OPERATIONS: readonly Definition[] = [
 /** 目录、CLI 验证和 MCP 输入来自同一组有界 Schema。 */
 export const APPLICATION_OPERATION_SCHEMA = {
   type: 'object', oneOf: APPLICATION_OPERATIONS.map(def => object({
-    operation: { const: def.operation, description: def.summary }, environment: def.operation === 'diagnostics.semantic-audit' ? enumeration('test') : enumeration('test', 'production'), input: def.inputSchema,
+    operation: { const: def.operation, description: def.summary }, environment: def.operation.startsWith('acceptance-data.') || def.operation === 'diagnostics.semantic-audit' ? enumeration('test') : enumeration('test', 'production'), input: def.inputSchema,
   })),
 };
 const ajv = new Ajv({ strict: false, allErrors: true });
@@ -158,7 +169,7 @@ export function applicationOperationTransport(appCode: string, value: unknown) {
     if (['events.deliveries', 'events.journal', 'events.audit', 'notifications.messages', 'notifications.dead-letters'].includes(request.operation) && !query.has('limit')) query.set('limit', '20');
     return { path: `${url}?${query}`, init: {} };
   }
-  return { path: url, init: { method: 'POST', body: JSON.stringify(request.operation === 'secrets.copy' ? input : { ...input, environmentKey }) } };
+  return { path: url, init: { method: 'POST', body: JSON.stringify(request.operation === 'secrets.copy' || request.operation.startsWith('acceptance-data.') && request.operation !== 'acceptance-data.prepare' ? input : { ...input, environmentKey }) } };
 }
 
 /** 凭据输出显式投影，服务端新增字段不会意外泄露到 AI。 */
