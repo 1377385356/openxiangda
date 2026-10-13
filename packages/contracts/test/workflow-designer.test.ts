@@ -83,3 +83,15 @@ test('new human node can edit handling defaults within its released template aut
     assert.ok(validateWorkflowDesignerCapabilities(base, refused, binding, binding).length > 0);
   }
 });
+
+
+test('published node cannot replace its code-owned binding with a canvas-owned key', () => {
+  const base = definition();
+  const original: any = { workflowCode: 'test', schemaVersion: 'openxiangda.workflow-binding/v2', bindings: { people: { provider: 'initiator' } } };
+  const next = structuredClone(base);
+  (next.nodes.review as any).binding = 'canvas_review';
+  const changed = { ...original, bindings: { ...original.bindings, canvas_review: { provider: 'fixed_users', users: ['replacement'] } } };
+  const errors = validateWorkflowDesignerCapabilities(base, next, original, changed);
+  assert.ok(errors.includes('WORKFLOW_DESIGNER_BINDING_CODE_OWNED:review'));
+  assert.ok(errors.includes('WORKFLOW_DESIGNER_BINDING_UNRELEASED:canvas_review'));
+});

@@ -88,6 +88,8 @@ export function validateWorkflowDesignerCapabilities(base: WorkflowDefinition, n
   const steps = catalog.steps;
   for (const [id, node] of Object.entries(next.nodes)) {
     if (!record(node) || node.id !== id || !['approval', 'handle', 'condition', 'cc', 'action', 'correction', 'end', 'parallel', 'join'].includes(node.kind)) { errors.push(`WORKFLOW_DESIGNER_NODE_INVALID:${id}`); continue; }
+    const publishedNode = base.nodes[id];
+    if (publishedNode && 'binding' in publishedNode && 'binding' in node && publishedNode.binding !== node.binding) errors.push(`WORKFLOW_DESIGNER_BINDING_CODE_OWNED:${id}`);
     if ('taskPageCode' in node && node.taskPageCode && !catalog.taskPages[node.taskPageCode]) errors.push(`WORKFLOW_DESIGNER_PAGE_UNRELEASED:${id}`);
     if (node.kind === 'action' && !isWorkflowPlatformNotify(node) && !steps.some(step => same(step.handler, node.handler) && same(step.inputSchema, node.inputSchema) && same(step.outputSchema, node.outputSchema))) errors.push(`WORKFLOW_DESIGNER_STEP_UNRELEASED:${id}`);
     if (['approval','handle'].includes(node.kind) && 'allowedOperations' in node && node.allowedOperations && (!Array.isArray(node.allowedOperations) || !node.allowedOperations.includes(node.kind === 'handle' ? 'complete' : 'approve'))) errors.push(`WORKFLOW_DESIGNER_REQUIRED_ACTION:${id}.approve`);
@@ -118,7 +120,7 @@ export function validateWorkflowDesignerCapabilities(base: WorkflowDefinition, n
   for (const [key, entry] of Object.entries(nextBinding.bindings)) {
     const original = baseBinding.bindings[key];
     const owner = Object.values(next.nodes).find(node => 'binding' in node && node.binding === key && key === workflowCanvasBindingKey(node.id));
-    if (!original && owner) errors.push(...validateWorkflowCanvasBinding(entry, catalog, options.allowIncomplete, { definition: next, nodeId: owner.id }).map(error => `${error}:${key}`));
+    if (!original && owner && !base.nodes[owner.id]) errors.push(...validateWorkflowCanvasBinding(entry, catalog, options.allowIncomplete, { definition: next, nodeId: owner.id }).map(error => `${error}:${key}`));
     else if (!original && !Object.values(baseBinding.bindings).some(value => same(value, entry))) errors.push(`WORKFLOW_DESIGNER_BINDING_UNRELEASED:${key}`);
     if (original && !same(original, entry)) errors.push(`WORKFLOW_DESIGNER_BINDING_CODE_OWNED:${key}`);
   }
