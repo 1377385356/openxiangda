@@ -123,6 +123,10 @@ export function validateWorkflowNodeConfigurationPatch(node: WorkflowAdministrat
   const errors: string[] = [];
   if (!node || !record(input) || !Object.keys(input).length || !keys(input, ['title', 'description', 'assignee', 'mode', 'operations'])) return ['WORKFLOW_V2_NODE_CONFIGURATION_PATCH_INVALID'];
   const patch = input as WorkflowNodeConfigurationPatch;
+  if (patch.assignee === undefined && patch.mode !== undefined && binding?.provider === 'conditional') {
+    // Mode-only edits still constrain all frozen leaves, including currently unmatched supervisor chains.
+    return validateWorkflowNodeConfigurationPatch(node, binding, { ...patch, assignee: binding }, taskPages, conditionalContext);
+  }
   if (!patch.assignee && binding?.provider === 'supervisor_chain' && binding.continuous !== false && (patch.mode || node.mode) !== 'sequence') errors.push('WORKFLOW_SUPERVISOR_CHAIN_SEQUENCE_REQUIRED');
   if (Object.entries(patch.operations || {}).some(([operation, policy]) => policy?.enabled === false && node.requiredOperations?.includes(operation as WorkflowConfigurableOperation))) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_REQUIRED_OPERATION');
   for (const key of ['title', 'description'] as const) if (patch[key] !== undefined && (typeof patch[key] !== 'string' || patch[key]!.length > (key === 'title' ? 255 : 1000) || (key === 'title' && !patch[key]!.trim()))) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_PATCH_INVALID');

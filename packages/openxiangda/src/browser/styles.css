@@ -3674,3 +3674,14 @@
 .oxa-designer-example-fields label { display: grid; gap: 6px; font-size: 12px; }
 .oxa-designer-example-fields .ant-input-number { width: 100%; }
 .oxa-designer-condition-examples article > p { margin: 12px 0 0; color: #1677ff; }
+
+/* PC inspector: ordered assignment cards share the canvas' configuration surface. */
+.oxa-workflow-conditional-assignment { display: grid; gap: 12px; min-width: 0; }
+.oxa-workflow-conditional-assignment > .oxa-workflow-config-section { display: grid; gap: 12px; padding: 16px; margin: 0; border: 1px solid var(--ant-color-border-secondary, #e3e8ef); border-radius: 8px; background: var(--ant-color-bg-container, #fff); }
+.oxa-workflow-conditional-assignment .oxa-condition-row { grid-template-columns: minmax(0, 1fr) 100px; }
+.oxa-workflow-conditional-assignment .oxa-condition-row > :nth-child(3),
+.oxa-workflow-conditional-assignment .oxa-condition-row > .ant-btn { grid-column: 1 / -1; }
+.oxa-workflow-conditional-assignment .oxa-condition-row > .ant-btn { justify-self: start; }
+.oxa-workflow-conditional-assignment .ant-select { min-width: 0; }
+.oxa-workflow-conditional-assignment .oxa-workflow-people-sources { display: grid; gap: 10px; }
+.oxa-workflow-conditional-assignment h4 { margin: 0; }

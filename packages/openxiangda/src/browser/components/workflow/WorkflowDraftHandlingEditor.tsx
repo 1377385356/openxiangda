@@ -1,3 +1,5 @@
+import { WorkflowConditionalAssignmentEditor, createWorkflowConditionalAssignment } from './WorkflowConditionalAssignmentEditor';
+import { type WorkflowConditionalAssignmentContext } from 'openxiangda-contracts/browser';
 import { WorkflowPeopleSourceEditor } from './WorkflowPeopleSourceEditor';
 import { Input, Radio, Select, Switch } from 'antd';
 import { workflowOperationMinimumOpinion, workflowOperationOpinion, type WorkflowConfigurableOperation, type WorkflowHumanNode, type WorkflowNode, type WorkflowBindingEntry, type WorkflowNodeConfigurations } from 'openxiangda-contracts/browser';
@@ -6,7 +8,8 @@ const labels: Record<WorkflowConfigurableOperation, string> = { complete: '办�
 const opinions = ['none', 'optional', 'required'] as const;
 
 /** New-node handling is part of the canonical draft until its first publication. */
-export function WorkflowDraftHandlingEditor({ node, baseline, bindingOptions, binding, sources, principals, disabled, onChange, onBindingChange }: {
+export function WorkflowDraftHandlingEditor({ node, baseline, bindingOptions, binding, sources, principals, disabled, onChange, onBindingChange, conditionalContext }: {
+  conditionalContext?: WorkflowConditionalAssignmentContext;
   node: WorkflowHumanNode | Extract<WorkflowNode,{kind:'cc'}>; baseline: WorkflowHumanNode;
   binding?: WorkflowBindingEntry; sources?: Record<string,WorkflowBindingEntry>; principals?: WorkflowNodeConfigurations['principals']; onBindingChange?: (entry: WorkflowBindingEntry) => void; bindingOptions: Array<{ value: string; label: string }>;
   disabled: boolean; onChange: (patch: Record<string, unknown>) => void;
@@ -17,7 +20,8 @@ export function WorkflowDraftHandlingEditor({ node, baseline, bindingOptions, bi
   return <section className="oxa-workflow-config oxa-workflow-config-inline" aria-label="新增节点办理设置">
     <div className="oxa-designer-defaults-notice">办理设置（默认值） · 首次发布后生效</div>
     <section className="oxa-workflow-config-section"><h3>{node.kind === 'handle' ? '办理人' : node.kind === 'cc' ? '抄送人' : '审批人'}</h3>
-      {binding && sources && principals && onBindingChange ? <WorkflowPeopleSourceEditor entry={binding} sources={sources} principals={principals} disabled={disabled} onChange={onBindingChange} /> : <Select aria-label="新增节点人员规则" value={node.binding} disabled={disabled} options={bindingOptions} style={{width:'100%'}} onChange={binding => onChange({binding})} />}
+      {human && conditionalContext && binding && onBindingChange && <Radio.Group aria-label="新增节点人员分派方式" disabled={disabled} value={binding.provider === 'conditional' ? 'conditional' : 'standard'} options={[{ value: 'standard', label: '普通人员来源' }, { value: 'conditional', label: '按条件选择' }]} onChange={event => onBindingChange(event.target.value === 'conditional' ? createWorkflowConditionalAssignment(binding) : { provider: 'fixed_users', users: [] })} />}
+      {binding?.provider === 'conditional' ? conditionalContext && principals && onBindingChange ? <WorkflowConditionalAssignmentEditor value={binding} context={conditionalContext} principals={principals} disabled={disabled} onChange={onBindingChange} /> : <p>平台尚未开放条件人员编辑，原规则保持不变。</p> : binding && sources && principals && onBindingChange ? <WorkflowPeopleSourceEditor entry={binding} sources={sources} principals={principals} disabled={disabled} onChange={onBindingChange} /> : <Select aria-label="新增节点人员规则" value={node.binding} disabled={disabled} options={bindingOptions} style={{width:'100%'}} onChange={binding => onChange({binding})} />}
       {human && <><h3>{node.kind === 'handle' ? '多人办理方式' : '多人审批方式'}</h3><Radio.Group className="oxa-workflow-mode-options" disabled={disabled} value={node.mode} onChange={event => onChange({ mode: event.target.value })} options={(node.administration?.modes || [node.mode]).map(value=>({value,label:({single:'单人',any:'或签',all:'会签',sequence:'依次审批'} as Record<string,string>)[value]}))} /></>}
     </section>
     {human && !!operations.length && <section className="oxa-workflow-config-section"><h3>{node.kind === 'handle' ? '办理操作' : '审批操作'}</h3>

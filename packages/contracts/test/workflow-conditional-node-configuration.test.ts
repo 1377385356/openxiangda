@@ -77,3 +77,12 @@ test('a presentation copy cannot widen the contextual published node permissions
   (h.definition.nodes.review as any).administration.modes = ['single'];
   assert.ok(validateWorkflowNodeConfigurationPatch(presentation, h.binding, h.patch, undefined, h.context).includes('WORKFLOW_V2_NODE_CONFIGURATION_MODE_READONLY'));
 });
+
+test('mode-only change validates all canonical conditional leaves without requiring an assignee edit', () => {
+  const h = fixture(); const chain = { provider: 'supervisor_chain' as const, from: 'initiator' as const, until: { level: 2 } };
+  h.definition.organizationContext = { department: { source: 'user_primary_department' } };
+  (h.definition.nodes.review as any).mode = 'sequence';
+  const binding: any = h.patch.assignee; binding.otherwise = chain;
+  assert.ok(validateWorkflowNodeConfigurationPatch(h.definition.nodes.review, binding, { mode: 'single' }, undefined, h.context).some(error => error.includes('SEQUENCE_REQUIRED')));
+  assert.deepEqual(validateWorkflowNodeConfigurationPatch(h.definition.nodes.review, binding, { mode: 'sequence' }, undefined, h.context), []);
+});

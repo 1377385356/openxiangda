@@ -1,5 +1,6 @@
 import type { WorkflowBinding, WorkflowBindingEntry, WorkflowDefinition, WorkflowHumanNode, WorkflowNode, WorkflowConfigurableOperation, WorkflowApprovalMode, WorkflowConfigurableAssigneeProvider, WorkflowFieldPolicy } from '../types.js';
 import type { WorkflowBusinessStepNode } from './workflow-business-step.js';
+import { validateWorkflowConditionalAssignment, workflowAssignmentLeaves } from './workflow-conditional-assignment.js';
 import { isWorkflowPlatformNotify } from './workflow-platform-notify.js';
 import { workflowOperationMinimumOpinion, workflowOperationOpinion } from './workflow-node-administration.js';
 
@@ -8,6 +9,8 @@ export interface WorkflowAuthoring {
   businessSteps?: Array<Omit<WorkflowBusinessStepNode, 'id' | 'kind' | 'next' | 'inputs' | 'notification'>>;
 }
 export interface WorkflowDesignerCatalog {
+  /** Explicit server capability; absence must fail closed. */
+  conditionalAssignments?: true;
   appVersionId: string;
   digest: string;
   taskPages: NonNullable<WorkflowDefinition['taskPages']>;
@@ -65,8 +68,19 @@ export function validateWorkflowCanvasHuman(node: WorkflowNode, catalog: Workflo
   return errors;
 }
 /** New bindings can select principals or reuse a released source, never invent a provider implementation. */
-export function validateWorkflowCanvasBinding(entry: WorkflowBindingEntry, catalog: WorkflowDesignerCatalog, incomplete = false): string[] {
-  if (entry.provider === 'conditional') return ['WORKFLOW_DESIGNER_CONDITIONAL_ASSIGNMENT_UNAVAILABLE'];
+export function validateWorkflowCanvasBinding(entry: WorkflowBindingEntry, catalog: WorkflowDesignerCatalog, incomplete = false, context?: { definition: WorkflowDefinition; nodeId: string }): string[] {
+  if (entry.provider === 'conditional') {
+    if (!catalog.conditionalAssignments || !context) return ['WORKFLOW_DESIGNER_CONDITIONAL_ASSIGNMENT_UNAVAILABLE'];
+    const node = context.definition.nodes[context.nodeId];
+    if (!node || !['approval', 'handle'].includes(node.kind)) return ['WORKFLOW_CONDITIONAL_HUMAN_REQUIRED'];
+    if ('emptyPolicy' in node && node.emptyPolicy === 'skip') return ['WORKFLOW_APPROVAL_EMPTY_PROVIDER_UNSUPPORTED'];
+    let releasedSources: Record<string, import('../types.js').WorkflowStandardBindingEntry>;
+    try { releasedSources = Object.fromEntries(Object.entries(catalog.peopleSources).flatMap(([key, source]) => workflowAssignmentLeaves(source).map((leaf, index) => [`${key}/${index}`, leaf]))); }
+    catch { return ['WORKFLOW_CONDITIONAL_BINDING_INVALID']; }
+    return validateWorkflowConditionalAssignment(entry, {
+      ...context, releasedSources, standardProviders: ['fixed_users', 'app_role'],
+    }, { allowIncomplete: incomplete });
+  }
   if (Object.values(catalog.peopleSources).some(source => same(source, entry))) return [];
   const keys = Object.keys(entry);
   if (entry.provider === 'fixed_users' && keys.every(key => ['provider', 'users'].includes(key)) && Array.isArray(entry.users) && entry.users.length <= 200 && (incomplete || entry.users.length > 0) && new Set(entry.users).size === entry.users.length && entry.users.every(id => typeof id === 'string' && !!id.trim() && id.length <= 255)) return [];

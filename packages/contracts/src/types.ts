@@ -2753,7 +2753,15 @@ export interface WorkflowNodeConfigurationState {
   updatedAt: IsoDateTime | null;
 }
 
+/** Presentation/prevalidation only; the platform rereads its own published authority on writes. */
+export interface WorkflowConditionalAuthoringContext {
+  definition: WorkflowDefinition;
+  releasedSources: Record<string, WorkflowStandardBindingEntry>;
+  scopeDimensionsByNode: Record<string, string[]>;
+}
+
 export interface WorkflowNodeConfigurations {
+  conditionalAssignment?: WorkflowConditionalAuthoringContext;
   schemaVersion: "openxiangda.workflow-node-configurations/v2";
   workflowCode: string;
   definitionVersion: number;

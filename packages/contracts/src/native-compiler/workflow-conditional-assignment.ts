@@ -55,7 +55,7 @@ const semantic = (value: unknown): string => {
   return JSON.stringify(sort(value));
 };
 
-function leafErrors(entry: unknown): string[] {
+function leafErrors(entry: unknown, allowIncomplete = false): string[] {
   if (!record(entry) || !WORKFLOW_CONDITIONAL_ASSIGNMENT_LEAF_PROVIDERS.includes(entry.provider) ||
       !keys(entry, Object.keys(leafSchema.properties))) return ['WORKFLOW_CONDITIONAL_LEAF_INVALID'];
   const errors = [...validateWorkflowSupervisorChainBinding(entry), ...validateWorkflowRoleUnion(entry), ...validateWorkflowRoleInputSelection(entry)];
@@ -70,9 +70,9 @@ function leafErrors(entry: unknown): string[] {
   if (entry.routing !== undefined) errors.push(...validateWorkflowAssignmentRoutingPolicy(entry.routing));
   if (['min', 'max'].some(key => entry[key] !== undefined && (!Number.isInteger(entry[key]) || entry[key] < 1 || entry[key] > 200)) ||
       (entry.min ?? 1) > (entry.max ?? 200) || entry.delegatable !== undefined && typeof entry.delegatable !== 'boolean') errors.push('WORKFLOW_CONDITIONAL_LEAF_BOUNDS_INVALID');
-  if (entry.provider === 'fixed_users' && (!Array.isArray(entry.users) || !entry.users.length || entry.users.length > 200 ||
+  if (entry.provider === 'fixed_users' && (!Array.isArray(entry.users) || (!allowIncomplete && !entry.users.length) || entry.users.length > 200 ||
       new Set(entry.users).size !== entry.users.length || entry.users.some((id: unknown) => !text(id, 255)))) errors.push('WORKFLOW_CONDITIONAL_USERS_INVALID');
-  if (['app_role', 'app_role_in_scope'].includes(entry.provider) && entry.roleCodes === undefined && !role(entry.roleCode)) errors.push('WORKFLOW_CONDITIONAL_ROLE_INVALID');
+  if (['app_role', 'app_role_in_scope'].includes(entry.provider) && entry.roleCodes === undefined && !(allowIncomplete && entry.roleCode === undefined) && !role(entry.roleCode)) errors.push('WORKFLOW_CONDITIONAL_ROLE_INVALID');
   if (entry.provider === 'app_role_in_scope' && (!record(entry.scope) || !keys(entry.scope, ['dimension', 'value', 'valueFrom']) || !role(entry.scope.dimension) ||
       !(text(entry.scope.value, 255) && entry.scope.valueFrom === undefined || path(entry.scope.valueFrom) && entry.scope.value === undefined))) errors.push('WORKFLOW_CONDITIONAL_SCOPE_INVALID');
   if (['input_users', 'form_field_users'].includes(entry.provider) && !path(entry.inputPath)) errors.push('WORKFLOW_CONDITIONAL_INPUT_PATH_INVALID');
@@ -126,16 +126,16 @@ function expressionErrors(value: unknown, depth = 0, budget = { remaining: 1024 
 }
 
 /** Shape only. Authority, graph/schema and current principals are additional gates. */
-export function validateWorkflowConditionalAssignmentShape(value: unknown): string[] {
+export function validateWorkflowConditionalAssignmentShape(value: unknown, options: { allowIncomplete?: boolean } = {}): string[] {
   if (!boundedJson(value)) return ['WORKFLOW_CONDITIONAL_BINDING_LIMIT'];
   if (!record(value) || value.provider !== 'conditional' || !keys(value, ['provider', 'cases', 'otherwise']) ||
       !Array.isArray(value.cases) || value.cases.length < 1 || value.cases.length > WORKFLOW_CONDITIONAL_ASSIGNMENT_MAX_CASES) return ['WORKFLOW_CONDITIONAL_BINDING_INVALID'];
   const errors: string[] = [];
   for (const [index, rule] of value.cases.entries()) {
     if (!record(rule) || !keys(rule, ['label', 'when', 'assignee']) || rule.label !== undefined && !text(rule.label, 160)) { errors.push(`WORKFLOW_CONDITIONAL_CASE_INVALID:${index}`); continue; }
-    errors.push(...expressionErrors(rule.when).map(error => `${error}:${index}`), ...leafErrors(rule.assignee).map(error => `${error}:${index}`));
+    errors.push(...expressionErrors(rule.when).map(error => `${error}:${index}`), ...leafErrors(rule.assignee, options.allowIncomplete).map(error => `${error}:${index}`));
   }
-  errors.push(...leafErrors(value.otherwise).map(error => `${error}:otherwise`));
+  errors.push(...leafErrors(value.otherwise, options.allowIncomplete).map(error => `${error}:otherwise`));
   return [...new Set(errors)];
 }
 
@@ -224,15 +224,15 @@ function authorable(entry: WorkflowStandardBindingEntry, context: WorkflowCondit
 }
 
 /** Pure ceiling/fact gate. Platform still owns live principals, scope grants and all pinned-version checks. */
-export function validateWorkflowConditionalAssignment(value: unknown, context: WorkflowConditionalAssignmentContext): string[] {
-  const shape = validateWorkflowConditionalAssignmentShape(value);
+export function validateWorkflowConditionalAssignment(value: unknown, context: WorkflowConditionalAssignmentContext, options: { allowIncomplete?: boolean } = {}): string[] {
+  const shape = validateWorkflowConditionalAssignmentShape(value, options);
   if (shape.length) return shape;
   const entry = value as WorkflowConditionalAssignment, node = context.definition.nodes[context.nodeId];
   if (!node || node.kind !== 'approval' && node.kind !== 'handle') return ['WORKFLOW_CONDITIONAL_HUMAN_REQUIRED'];
   const errors: string[] = [];
   const frozen = context.frozenDefault ? workflowAssignmentLeaves(context.frozenDefault) : [];
   const released = Object.values(context.releasedSources);
-  for (const [index, leaf] of workflowAssignmentLeaves(entry).entries()) {
+  for (const [index, leaf] of [...entry.cases.map(rule => rule.assignee), entry.otherwise].entries()) {
     if (!authorable(leaf, context) && ![...frozen, ...released].some(source => semantic(source) === semantic(leaf))) errors.push(`WORKFLOW_CONDITIONAL_LEAF_UNRELEASED:${index}`);
     if (leaf.provider === 'supervisor_chain') errors.push(...validateWorkflowSupervisorChains(context.definition, { bindings: { [node.binding!]: leaf } }));
     const leafPaths = [leaf.inputPath, leaf.selectedInputPath, leaf.resourceIdFrom, leaf.scope?.valueFrom,

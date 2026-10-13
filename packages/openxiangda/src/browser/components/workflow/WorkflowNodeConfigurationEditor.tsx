@@ -5,6 +5,7 @@ import { useUnsavedChangesGuard } from '../../navigation-guard';
 import { Alert, App, Button, Drawer, Empty, Form, Input, Radio, Select, Space, Switch, Tag, Typography } from 'antd';
 import type { WorkflowNodeConfigurations, WorkflowNodeConfigurationPatch, WorkflowNodeConfigurationMutation, WorkflowNodeConfigurationReceipt, WorkflowConfigurableOperation } from 'openxiangda-contracts/browser';
 import { formatWorkflowCompletionDeadline, validateWorkflowNodeConfigurationPatch, workflowOperationOpinion, workflowOperationMinimumOpinion, WORKFLOW_AUTOMATIC_CC_DEFAULT_RECIPIENTS, WORKFLOW_AUTOMATIC_CC_MAX_RECIPIENTS } from 'openxiangda-contracts/browser';
+import { WorkflowConditionalAssignmentEditor, createWorkflowConditionalAssignment } from './WorkflowConditionalAssignmentEditor';
 import { RightOutlined } from '@ant-design/icons';
 import { PlatformDirectoryPicker } from '../platform-fields/PlatformDirectoryPicker';
 import { loadApplicationAdministrationContext, loadWorkflowDesignerOriginalOutcome, loadWorkflowNodeConfigurations, saveWorkflowNodeConfiguration } from '../../platform-client';
@@ -13,7 +14,8 @@ export interface RetainedWorkflowNodeInput { nodeId: string; values: Record<stri
 
 type Node = WorkflowNodeConfigurations['nodes'][number];
 type Values = {
-  title: string; description?: string; provider?: 'fixed_users' | 'app_role' | 'app_role_in_scope';
+  title: string; description?: string; provider?: 'fixed_users' | 'app_role' | 'app_role_in_scope' | 'conditional';
+  conditionalAssignee?: import('openxiangda-contracts/browser').WorkflowConditionalAssignment;
   users?: Array<{ value: string; label?: string }>; roleCodes?: string[]; mode?: Node['effective']['mode']; reason: string;
   operations?: WorkflowNodeConfigurationPatch['operations'];
 };
@@ -25,6 +27,7 @@ const effect = '保存后，后续进入此节点的任务使用新配置。当�
 
 function initialValues(node: Node, principals: WorkflowNodeConfigurations['principals']): Partial<Values> {
   return {
+    conditionalAssignee: node.effective.binding?.provider === 'conditional' ? structuredClone(node.effective.binding) : undefined,
     title: node.effective.title, description: node.effective.description || '', mode: node.effective.mode || node.defaults.mode,
     provider: node.effective.binding?.provider as Values['provider'], roleCodes: node.effective.binding?.roleCodes || (node.effective.binding?.roleCode ? [node.effective.binding.roleCode] : []),
     users: (node.effective.binding?.users || []).map(value => ({ value, label: principals.users.find(person => person.value === value)?.label || '人员信息不可用' })),
@@ -43,7 +46,8 @@ function comparableValues(values: Partial<Values>): string {
 }
 
 /** Shared editor: platform console and application pages use the same bounded SDK write. */
-export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNode, principals: initialPrincipals, expectedHeadRevision, onClose, onSaved, presentation = 'drawer', readOnly = false, onStateChange, onLeaveGuardChange, returnSummary, compact = false, onExpand, onAuthorityLoss }: {
+export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNode, principals: initialPrincipals, expectedHeadRevision, onClose, onSaved, presentation = 'drawer', readOnly = false, onStateChange, onLeaveGuardChange, returnSummary, compact = false, onExpand, onAuthorityLoss, conditionalAssignment: initialConditionalContext }: {
+  conditionalAssignment?: WorkflowNodeConfigurations['conditionalAssignment'];
   onAuthorityLoss?: (failure: unknown, operationId?: string, prompt?: string, nodeInput?: RetainedWorkflowNodeInput) => Promise<boolean>;
   workflowCode: string; node: Node; principals: WorkflowNodeConfigurations['principals']; expectedHeadRevision: number;
   onClose: () => void; onSaved: (receipt: WorkflowNodeConfigurationReceipt) => void;
@@ -54,6 +58,7 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
   const { modal } = App.useApp();
   const [node, setNode] = useState(initialNode);
   const [principals, setPrincipals] = useState(initialPrincipals);
+  const [conditionalAssignment, setConditionalAssignment] = useState(initialConditionalContext);
   const [form] = Form.useForm<Values>();
   const basis = useRef({ expectedHeadRevision, expectedRevision: initialNode.configuration.revision });
   const frozen = useRef<WorkflowNodeConfigurationMutation | null>(null);
@@ -74,6 +79,8 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
   const selectedProvider = Form.useWatch('provider', form) || node.effective.binding?.provider;
   const selectedMode = Form.useWatch('mode', form) || node.effective.mode || 'single';
   const binding = node.defaults.binding;
+  const conditionalContext = conditionalAssignment ? { definition: conditionalAssignment.definition, nodeId: node.nodeId,
+    releasedSources: conditionalAssignment.releasedSources, scopeDimensions: conditionalAssignment.scopeDimensionsByNode[node.nodeId] || [] } : undefined;
   const recipientMinimum = isCc ? binding?.min ?? 1 : node.effective.emptyPolicy === 'skip' ? 0 : 1;
   const recipientMaximum = isCc ? Math.min(binding?.max ?? WORKFLOW_AUTOMATIC_CC_DEFAULT_RECIPIENTS, WORKFLOW_AUTOMATIC_CC_MAX_RECIPIENTS) : 200;
   const allowedProviders = node.administration?.assigneeProviders || (!isCc && binding && providers[binding.provider] ? [binding.provider] : []);
@@ -88,8 +95,9 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
     if (form.isFieldTouched('title')) patch.title = values.title;
     if (form.isFieldTouched('description')) patch.description = values.description || '';
     if (form.isFieldTouched('mode')) patch.mode = values.mode;
-    if ((['provider', 'users', 'roleCodes'] as const).some(name => form.isFieldTouched(name)) && allowedProviders.length) {
-      patch.assignee = values.provider === 'fixed_users' ? { provider: 'fixed_users', users: (values.users || []).map(person => person.value) } : { provider: values.provider as 'app_role' | 'app_role_in_scope', ...(values.roleCodes?.length === 1 ? { roleCode: values.roleCodes[0]! } : { roleCodes: values.roleCodes || [] }) };
+    if ((['provider', 'users', 'roleCodes', 'conditionalAssignee'] as const).some(name => form.isFieldTouched(name))) {
+      if (values.provider === 'conditional') patch.assignee = structuredClone(values.conditionalAssignee);
+      else if (allowedProviders.length) patch.assignee = values.provider === 'fixed_users' ? { provider: 'fixed_users', users: (values.users || []).map(person => person.value) } : { provider: values.provider as 'app_role' | 'app_role_in_scope', ...(values.roleCodes?.length === 1 ? { roleCode: values.roleCodes[0]! } : { roleCodes: values.roleCodes || [] }) };
     }
     for (const operation of node.administration?.operations || []) {
       const changed: Record<string, unknown> = {};
@@ -112,12 +120,12 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
         return;
       }
       const patch = buildPatch(values);
-      const errors = validateWorkflowNodeConfigurationPatch({
-        kind: node.kind, mode: node.defaults.mode, administration: node.administration,
+      const errors = validateWorkflowNodeConfigurationPatch(conditionalContext?.definition.nodes[node.nodeId] || {
+        kind: node.kind, mode: node.defaults.mode, emptyPolicy: node.defaults.emptyPolicy, administration: node.administration,
         allowedOperations: node.defaults.allowedOperations, requiredOperations: node.defaults.requiredOperations, taskPageCode: node.defaults.taskPageCode, operationPolicy: node.defaults.operationPolicy,
         fieldPolicy: node.defaults.fieldPolicy,
         completionDeadline: node.defaults.completionDeadline,
-      }, binding, patch);
+      }, binding, patch, conditionalContext?.definition.taskPages, conditionalContext);
       if (errors.length) { setError(errors.join('；')); return; }
       frozen.current = { ...basis.current, patch, reason: values.reason, operationId: createBrowserUuid() };
     }
@@ -163,10 +171,13 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
       const latest = configuration.nodes.find(item => item.nodeId === node.nodeId);
       if (!latest || context.headRevision == null) throw new Error('当前定义已移除此节点或没有激活版本，请关闭后重新查看流程。');
       const values = initialValues(latest, configuration.principals);
-      for (const key of ['title', 'description', 'mode', 'provider', 'users', 'roleCodes'] as const) if (!form.isFieldTouched(key)) form.setFieldValue(key, values[key]);
+      for (const key of ['title', 'description', 'mode'] as const) if (!form.isFieldTouched(key)) form.setFieldValue(key, values[key]);
+      const assignmentFields = ['provider', 'users', 'roleCodes', 'conditionalAssignee'] as const;
+      // CAS conflict recovery must retain the whole assignment, never merge its individual rules or mode selector.
+      if (!assignmentFields.some(key => form.isFieldTouched(key))) for (const key of assignmentFields) form.setFieldValue(key, values[key]);
       for (const operation of latest.administration?.operations || []) for (const key of ['enabled', 'label', 'opinion'] as const) if (!form.isFieldTouched(['operations', operation, key])) form.setFieldValue(['operations', operation, key], values.operations?.[operation]?.[key]);
       basis.current = { expectedHeadRevision: context.headRevision, expectedRevision: latest.configuration.revision };
-      setNode(latest); setPrincipals(configuration.principals); setConflict(false); frozen.current = null;
+      setNode(latest); setPrincipals(configuration.principals); setConditionalAssignment(configuration.conditionalAssignment); setConflict(false); frozen.current = null;
     } catch (failure) { setError((failure as Error).message); } finally { setBusy(false); }
   };
   const inline = presentation === 'inline';
@@ -193,6 +204,7 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
     </Space>
   </div>;
   const isHuman = node.kind === 'approval' || node.kind === 'handle';
+  const canCondition = isHuman && !!conditionalContext && node.defaults.emptyPolicy !== 'skip';
   const operationNames = node.administration?.operations || [];
   const operationRows = [...new Set<WorkflowConfigurableOperation>([...(node.kind === 'handle' ? ['complete' as const] : ['approve' as const]), ...operationNames])]
     .filter(operation => operationNames.includes(operation));
@@ -212,8 +224,14 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
       </section>}
       {(isHuman || isCc) && <section className="oxa-workflow-config-section" aria-label={isCc ? '抄送人' : node.kind === 'handle' ? '办理人' : '审批人'}>
         <h3>{isCc ? '抄送人' : node.kind === 'handle' ? '办理人' : '审批人'}</h3>
-        {allowedProviders.length > 0 ? <>
-          <Form.Item name="provider" className="oxa-workflow-provider-field" rules={[{ required: true }]}><Radio.Group optionType="button" buttonStyle="outline" className="oxa-workflow-provider-options" options={allowedProviders.map(value => ({ value, label: providers[value] }))} /></Form.Item>
+        {allowedProviders.length > 0 || canCondition ? <>
+          <Form.Item name="provider" className="oxa-workflow-provider-field" rules={[{ required: true }]}><Radio.Group optionType="button" buttonStyle="outline" className="oxa-workflow-provider-options" onChange={event => {
+            if (event.target.value === 'conditional' && !form.getFieldValue('conditionalAssignee')) {
+              form.setFields([{ name: 'conditionalAssignee', value: createWorkflowConditionalAssignment(node.effective.binding || { provider: 'fixed_users', users: [] }), touched: true }]);
+              setDirty(true);
+            }
+          }} options={[...allowedProviders.map(value => ({ value, label: providers[value] })), ...(canCondition ? [{ value: 'conditional', label: '按条件选择' }] : [])]} /></Form.Item>
+          {selectedProvider === 'conditional' && (conditionalContext ? <Form.Item name="conditionalAssignee" rules={[{ required: true }]}><WorkflowConditionalAssignmentEditor context={{ ...conditionalContext, frozenDefault: binding, standardProviders: allowedProviders as Array<'fixed_users' | 'app_role' | 'app_role_in_scope'> }} principals={principals} disabled={readOnly || authorityStopped.current || busy || !!frozen.current} value={form.getFieldValue('conditionalAssignee')} onChange={() => {}} /></Form.Item> : <Alert type="warning" title="当前平台未提供条件编辑上下文，原规则保持不变" />)}
           {selectedProvider === 'fixed_users' && <Form.Item name="users" rules={[{ required: isCc || node.effective.emptyPolicy !== 'skip', type: 'array', min: recipientMinimum, max: recipientMaximum }]}><PlatformDirectoryPicker kind="user" multiple placeholder="从通讯录选择人员" /></Form.Item>}
           {['app_role', 'app_role_in_scope'].includes(selectedProvider || '') && <Form.Item name="roleCodes" rules={[{ required: true, type: 'array', min: 1, max: 8 }]}><Select aria-label={isCc ? '抄送角色' : '审批角色'} mode="multiple" maxCount={8} showSearch={{ optionFilterProp: 'label' }} options={principals.roles.map(role => ({ value: role.code, label: role.name }))} placeholder="选择应用角色" /></Form.Item>}
         </> : <p className="oxa-workflow-config-help">当前人员规则由应用维护。</p>}

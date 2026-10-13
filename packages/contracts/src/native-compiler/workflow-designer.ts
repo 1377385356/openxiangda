@@ -118,7 +118,7 @@ export function validateWorkflowDesignerCapabilities(base: WorkflowDefinition, n
   for (const [key, entry] of Object.entries(nextBinding.bindings)) {
     const original = baseBinding.bindings[key];
     const owner = Object.values(next.nodes).find(node => 'binding' in node && node.binding === key && key === workflowCanvasBindingKey(node.id));
-    if (!original && owner) errors.push(...validateWorkflowCanvasBinding(entry, catalog, options.allowIncomplete).map(error => `${error}:${key}`));
+    if (!original && owner) errors.push(...validateWorkflowCanvasBinding(entry, catalog, options.allowIncomplete, { definition: next, nodeId: owner.id }).map(error => `${error}:${key}`));
     else if (!original && !Object.values(baseBinding.bindings).some(value => same(value, entry))) errors.push(`WORKFLOW_DESIGNER_BINDING_UNRELEASED:${key}`);
     if (original && !same(original, entry)) errors.push(`WORKFLOW_DESIGNER_BINDING_CODE_OWNED:${key}`);
   }
