@@ -2833,7 +2833,8 @@ export interface ApplicationAdministrationContext {
   appVersionId: string | null;
   headRevision: number | null;
   userId: string;
-  authorization: "application_super_admin" | "delegated_role_manager" | "application_management";
+  authorization: "application_super_admin" | "delegated_role_manager" | "workflow_manager" | "application_management";
+  workflowManagement?: import('./native-compiler/workflow-management.js').NativeWorkflowManagementAuthority;
   authorizedPages: ApplicationAdministrationPage[];
   unpublished?: boolean;
   capabilities: Record<string, boolean>;

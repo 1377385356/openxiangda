@@ -13,6 +13,7 @@ import { projectWorkflowGraph, workflowExpressionPaths, type WorkflowGraphProjec
 export type WorkflowPublicationScope = 'running_and_new' | 'new_only';
 export type WorkflowAdoptionOutcome = 'eligible' | 'migrated' | 'deferred' | 'excepted' | 'held' | 'failed' | 'superseded' | 'completed';
 export interface WorkflowDesignerDraft {
+  admittedBy?: import('./workflow-management.js').WorkflowManagementAdmission;
   workflowCode: string;
   environmentKey: string;
   revision: number;
@@ -54,6 +55,7 @@ export interface WorkflowPublicationPreview {
   truncated: boolean;
 }
 export interface WorkflowPublicationReceipt {
+  admittedBy?: import('./workflow-management.js').WorkflowManagementAdmission;
   publicationId: string;
   workflowCode: string;
   definitionVersion: number;

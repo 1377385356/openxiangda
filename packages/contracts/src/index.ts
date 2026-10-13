@@ -59,6 +59,7 @@ export * from './event-worker-effect.js';
 export * from './native-compiler/service-mutations.js';
 
 export * from './native-compiler/workflow-designer.js';
+export * from './native-compiler/workflow-management.js';
 
 export * from './native-compiler/workflow-return-policy.js';
 

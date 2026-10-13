@@ -98,3 +98,4 @@ export * from "./workflow-return-eligibility.js";
 export { workflowDefinitionSchema, workflowBindingSchema } from "./workflow-schema.js";
 
 export * from "./workflow-conditional-assignment.js";
+export * from './workflow-management.js';
