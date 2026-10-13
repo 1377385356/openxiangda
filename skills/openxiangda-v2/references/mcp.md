@@ -293,6 +293,276 @@ MCP 使用项目锁定的根包；在客户端配置下列 stdio 启动参数，
       "additionalProperties": false,
       "properties": {
         "operation": {
+          "const": "acceptance-data.prepare",
+          "description": "准备可回收的TEST原生数据批次及原验收身份"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "test"
+          ]
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "requestKey": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 36,
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            },
+            "expectedAppVersionId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 36,
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            },
+            "expectedHeadRevision": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "expiresInMinutes": {
+              "type": "integer",
+              "minimum": 15,
+              "maximum": 1440
+            },
+            "recordLimit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            },
+            "redirectUri": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "actors": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 12,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "key": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  },
+                  "roleCodes": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 32,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    }
+                  },
+                  "departmentIds": {
+                    "type": "array",
+                    "maxItems": 128,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    }
+                  }
+                },
+                "required": [
+                  "key",
+                  "roleCodes"
+                ]
+              }
+            }
+          },
+          "required": [
+            "requestKey",
+            "expectedAppVersionId",
+            "expectedHeadRevision",
+            "actors"
+          ]
+        }
+      },
+      "required": [
+        "operation",
+        "environment",
+        "input"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "acceptance-data.status",
+          "description": "读回原TEST验收批次状态和修复引用"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "test"
+          ]
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "runId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 36,
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            }
+          },
+          "required": [
+            "runId"
+          ]
+        }
+      },
+      "required": [
+        "operation",
+        "environment",
+        "input"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "acceptance-data.stop",
+          "description": "停止此TEST批次写入并撤销来源会话"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "test"
+          ]
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "runId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 36,
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            }
+          },
+          "required": [
+            "runId"
+          ]
+        }
+      },
+      "required": [
+        "operation",
+        "environment",
+        "input"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "acceptance-data.preview-cleanup",
+          "description": "只读精确归属、原repair清单和剩余对象；不执行删除"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "test"
+          ]
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "runId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 36,
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            }
+          },
+          "required": [
+            "runId"
+          ]
+        }
+      },
+      "required": [
+        "operation",
+        "environment",
+        "input"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "acceptance-data.execute-cleanup",
+          "description": "按预览digest通过原repair执行金丝雀或剩余删除"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "test"
+          ]
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "runId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 36,
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            },
+            "manifestSha256": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "canary",
+                "remaining"
+              ]
+            }
+          },
+          "required": [
+            "runId",
+            "manifestSha256",
+            "mode"
+          ]
+        }
+      },
+      "required": [
+        "operation",
+        "environment",
+        "input"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
           "const": "diagnostics.semantic-audit",
           "description": "绑定当前TEST版本和Head的文件值语义审计；仅观察，不修复或授予激活许可"
         },
