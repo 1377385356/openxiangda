@@ -1,3 +1,6 @@
+export * from './workflow-source-handling.js';
+import { validateWorkflowSourceAssignment, type WorkflowSourceAssignment } from './workflow-source-handling.js';
+import { validateWorkflowConditionalBindingDefinition } from './workflow-conditional-assignment.js';
 import { workflowAssignmentLeaves } from './workflow-conditional-assignment.js';
 import type { WorkflowApprovalMode, WorkflowBinding, WorkflowDefinition, WorkflowNodeOperationPolicy, WorkflowConfigurableOperation } from '../types.js';
 import { validateWorkflowDesignerCapabilities,validateWorkflowDesignerDocument } from './workflow-designer.js';
@@ -5,6 +8,7 @@ import { workflowAuthoringCatalog } from './workflow-authoring.js';
 import { workflowBindingRoleCodes } from './workflow-role-union.js';
 
 export const WORKFLOW_SOURCE_BUNDLE_SCHEMA = 'openxiangda.workflow-source-bundle/v1';
+export const WORKFLOW_SOURCE_BUNDLE_V2_SCHEMA = 'openxiangda.workflow-source-bundle/v2';
 export const WORKFLOW_SOURCE_BUNDLE_MAX_BYTES = 3 * 1024 * 1024;
 export interface WorkflowSourceDigests { definitionDigest: string; bindingDigest: string }
 export interface WorkflowSourceReferences {
@@ -16,10 +20,10 @@ export interface WorkflowSourceReferences {
 export interface WorkflowSourceHandling {
   mode?: WorkflowApprovalMode;
   operations?: Partial<Record<WorkflowConfigurableOperation, Omit<WorkflowNodeOperationPolicy,'minimumOpinion'> & { enabled?: boolean }>>;
-  assignee?: { kind: 'roles'; roleCodes: string[] } | { kind: 'named_people'; count: number };
+  assignee?: WorkflowSourceAssignment;
 }
 export interface WorkflowSourceBundle {
-  schemaVersion: typeof WORKFLOW_SOURCE_BUNDLE_SCHEMA;
+  schemaVersion: typeof WORKFLOW_SOURCE_BUNDLE_SCHEMA | typeof WORKFLOW_SOURCE_BUNDLE_V2_SCHEMA;
   appCode: string;
   workflowCode: string;
   origin: WorkflowSourceDigests & { environmentKey: string; headRevision: number; definitionVersion: number; bindingVersion: number; handlingDigest: string; catalogDigest: string };
@@ -73,14 +77,18 @@ export function validateWorkflowSourceBundle(value: unknown,digest: (value: unkn
 }
 function validateSourceBundle(value: unknown,digest: (value: unknown) => string): string[] {
   const errors: string[] = [];
-  if (!exact(value,['schemaVersion','appCode','workflowCode','origin','definition','binding','references','handling']) || value.schemaVersion !== WORKFLOW_SOURCE_BUNDLE_SCHEMA || !code(value.appCode) || !code(value.workflowCode)) return ['WORKFLOW_BUNDLE_CORRUPT'];
+  if (!exact(value,['schemaVersion','appCode','workflowCode','origin','definition','binding','references','handling']) || ![WORKFLOW_SOURCE_BUNDLE_SCHEMA, WORKFLOW_SOURCE_BUNDLE_V2_SCHEMA].includes(value.schemaVersion) || !code(value.appCode) || !code(value.workflowCode)) return ['WORKFLOW_BUNDLE_CORRUPT'];
   if (new TextEncoder().encode(JSON.stringify(value)).length > WORKFLOW_SOURCE_BUNDLE_MAX_BYTES) return ['WORKFLOW_BUNDLE_TOO_LARGE'];
   const bundle = value as unknown as WorkflowSourceBundle,origin = bundle.origin;
   if (!exact(origin,['environmentKey','headRevision','definitionVersion','bindingVersion','definitionDigest','bindingDigest','handlingDigest','catalogDigest']) || !['preproduction','production'].includes(origin.environmentKey) ||
     ![origin.headRevision,origin.definitionVersion,origin.bindingVersion].every(number => Number.isSafeInteger(number) && number >= 1) || ![origin.definitionDigest,origin.bindingDigest,origin.handlingDigest,origin.catalogDigest].every(digestValue)) return ['WORKFLOW_BUNDLE_CORRUPT'];
   if (!record(bundle.definition?.nodes) || !record(bundle.binding?.bindings) || bundle.definition.code !== bundle.workflowCode || bundle.binding.workflowCode !== bundle.workflowCode) return ['WORKFLOW_BUNDLE_CORRUPT'];
   // v1 handling cannot represent conditional defaults without losing privacy/intent.
-  if (Object.values(bundle.binding.bindings).some(entry => entry.provider === 'conditional')) return ['WORKFLOW_SOURCE_CONDITIONAL_EXPORT_UNAVAILABLE'];
+  if (bundle.schemaVersion === WORKFLOW_SOURCE_BUNDLE_SCHEMA && Object.values(bundle.binding.bindings).some(entry => entry.provider === 'conditional')) return ['WORKFLOW_SOURCE_CONDITIONAL_EXPORT_UNAVAILABLE'];
+  if (bundle.schemaVersion === WORKFLOW_SOURCE_BUNDLE_V2_SCHEMA) {
+    errors.push(...validateWorkflowConditionalBindingDefinition(bundle.definition, bundle.binding));
+    for (const node of Object.values(bundle.definition.nodes)) if ('binding' in node && bundle.binding.bindings[node.binding]?.provider === 'conditional' && 'emptyPolicy' in node && node.emptyPolicy === 'skip') errors.push('WORKFLOW_APPROVAL_EMPTY_PROVIDER_UNSUPPORTED');
+  }
   if (validateWorkflowDesignerDocument(bundle.definition).length) errors.push('WORKFLOW_BUNDLE_DEFINITION_INVALID');
   if (!workflowSourceDigestEqual(digest(bundle.definition),origin.definitionDigest) || !workflowSourceDigestEqual(digest(bundle.binding),origin.bindingDigest) || !workflowSourceDigestEqual(digest(bundle.handling),origin.handlingDigest) || !workflowSourceDigestEqual(digest(bundle.references),origin.catalogDigest)) errors.push('WORKFLOW_BUNDLE_CORRUPT');
   if (!workflowSourceDigestEqual(digest(workflowSourceReferences(bundle.definition,bundle.binding,digest)),digest(bundle.references))) errors.push('WORKFLOW_BUNDLE_CATALOG_CORRUPT');
@@ -101,7 +109,12 @@ function validateSourceBundle(value: unknown,digest: (value: unknown) => string)
       }
     }
     const assignee = handling.assignee;
-    if (assignee && (assignee.kind === 'named_people' ? !exact(assignee,['kind','count']) || !Number.isSafeInteger(assignee.count) || assignee.count < 0 || assignee.count > 200 :
+    if (assignee && bundle.schemaVersion === WORKFLOW_SOURCE_BUNDLE_V2_SCHEMA) {
+      const node = bundle.definition.nodes[id]!;
+      const contextual = { ...bundle.definition, nodes: { ...bundle.definition.nodes, [id]: { ...node, ...('mode' in node && handling.mode ? { mode: handling.mode } : {}) } } } as WorkflowDefinition;
+      const assignmentErrors = validateWorkflowSourceAssignment(assignee, contextual, id);
+      if (assignmentErrors.length) errors.push('WORKFLOW_BUNDLE_HANDLING_INVALID', ...assignmentErrors);
+    } else if (assignee && (assignee.kind === 'named_people' ? !exact(assignee,['kind','count']) || !Number.isSafeInteger(assignee.count) || assignee.count < 0 || assignee.count > 200 :
       assignee.kind === 'roles' ? !exact(assignee,['kind','roleCodes']) || !Array.isArray(assignee.roleCodes) || assignee.roleCodes.length > 200 || !assignee.roleCodes.every(code) : true)) errors.push('WORKFLOW_BUNDLE_HANDLING_INVALID');
   }
   return [...new Set(errors)];

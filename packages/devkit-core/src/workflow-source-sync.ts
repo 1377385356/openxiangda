@@ -4,7 +4,8 @@ import { dirname,relative,resolve,sep } from 'node:path';
 import ts from 'typescript';
 import { normalizeWorkflowDefinition } from './internal/workflow.js';
 import { canonicalJson,validateWorkflowSourceBundle,workflowSourceImportDrift,WORKFLOW_SOURCE_BUNDLE_MAX_BYTES,
-  workflowNodeAllowedOperations,type WorkflowSourceBundle,type WorkflowSourceLock,type WorkflowRegistrationPlan,type WorkflowDefinition } from 'openxiangda-contracts';
+  workflowSourceReferences,workflowNodeAllowedOperations,validateWorkflowNodeConfigurationPatch,workflowAuthoringCatalog,workflowAssignmentLeaves,
+  restoreWorkflowSourceAssignment,workflowSourceNamedAssignmentSummary,WORKFLOW_SOURCE_BUNDLE_V2_SCHEMA,type WorkflowBinding,type WorkflowSourceBundle,type WorkflowSourceLock,type WorkflowRegistrationPlan,type WorkflowDefinition } from 'openxiangda-contracts';
 import { NATIVE_CONTRACT_CAPACITY_V2 } from 'openxiangda-contracts/native-compiler';
 import type { OpenXiangdaAppConfig } from './compiler/config.js';
 function fail(code: string,detail = ''): never { throw Object.assign(new Error(`${code}${detail ? `: ${detail}` : ''}`),{ code }); }
@@ -62,6 +63,35 @@ function handlingDefaults(source: WorkflowDefinition,bundle: WorkflowSourceBundl
   }
   return next;
 }
+/** This is an explicit source edit, never a new environment overlay store. */
+function adoptAssignments(localDefinition: WorkflowDefinition, localBinding: WorkflowBinding, definition: WorkflowDefinition,
+  binding: WorkflowBinding, bundle: WorkflowSourceBundle): void {
+  const catalog = workflowAuthoringCatalog(localDefinition, localBinding);
+  const releasedSources = Object.fromEntries(Object.entries(catalog.peopleSources).flatMap(([key, entry]) =>
+    workflowAssignmentLeaves(entry).map((leaf, index) => [`${key}/leaves/${index}`, leaf])));
+  for (const [id, handling] of Object.entries(bundle.handling)) {
+    if (!handling.assignee) continue;
+    const assignment = restoreWorkflowSourceAssignment(handling.assignee);
+    if (!assignment) continue; // A named leaf protects the whole rule, not just that leaf.
+    const node = definition.nodes[id];
+    const original = localDefinition.nodes[id];
+    if (!node || !('binding' in node)) fail('WORKFLOW_BUNDLE_HANDLING_INVALID');
+    const frozen = original && 'binding' in original ? localBinding.bindings[original.binding] : bundle.binding.bindings[node.binding];
+    const leaves = [...Object.values(releasedSources), ...(frozen ? workflowAssignmentLeaves(frozen) : [])];
+    const errors = validateWorkflowNodeConfigurationPatch(node, frozen, { assignee: assignment }, definition.taskPages, {
+      definition, nodeId: id, releasedSources, scopeDimensions: [...new Set(leaves.flatMap(leaf => leaf.scope ? [leaf.scope.dimension] : []))],
+    });
+    if (errors.length) fail(errors[0]!);
+    // Preserve every other consumer of a shared code-owned default binding.
+    const key = `canvas_${id}`;
+    if (Object.entries(definition.nodes).some(([otherId, other]) => otherId !== id && 'binding' in other && other.binding === key))
+      fail('WORKFLOW_IMPORT_HANDLING_BINDING_CONFLICT', id);
+    // Do not replace an unrelated code declaration merely because it uses this key.
+    if (key !== node.binding && Object.hasOwn(binding.bindings, key)) fail('WORKFLOW_IMPORT_HANDLING_BINDING_CONFLICT', id);
+    node.binding = key;
+    binding.bindings[key] = assignment;
+  }
+}
 export function prepareWorkflowSourceImport(config: OpenXiangdaAppConfig,bundle: WorkflowSourceBundle,adoptHandlingDefaults = false) {
   if (config.app.code !== bundle.appCode) fail('WORKFLOW_IMPORT_APP_MISMATCH');
   const current = workflowSourceDeclaration(config,bundle.workflowCode);
@@ -69,19 +99,28 @@ export function prepareWorkflowSourceImport(config: OpenXiangdaAppConfig,bundle:
   if (errors.length) fail(errors[0]!);
   const workflows = structuredClone(config.workflows!);
   const definition = adoptHandlingDefaults ? handlingDefaults(bundle.definition,bundle) : structuredClone(bundle.definition);
-  const amended = { ...bundle,definition,origin: { ...bundle.origin,definitionDigest: digest(definition) } };
-  // Handling can change defaults only inside the same released code authority.
+  const binding = structuredClone(bundle.binding);
+  // The raw bundle already passed code-owned drift. Assignment adoption below
+  // is a separate, explicit, ceiling-validated source edit, never DTO authority.
+  if (adoptHandlingDefaults && bundle.schemaVersion === WORKFLOW_SOURCE_BUNDLE_V2_SCHEMA)
+    adoptAssignments(current.definition.definition,current.binding.binding,definition,binding,bundle);
   if (adoptHandlingDefaults) {
-    const amendedErrors = workflowSourceImportDrift(current.definition.definition,current.binding.binding,amended,digest);
+    const references = workflowSourceReferences(definition,binding,digest);
+    const amended = { ...bundle,definition,binding,references,origin: { ...bundle.origin,
+      definitionDigest: digest(definition),bindingDigest: digest(binding),catalogDigest: digest(references) } };
+    // Only validated assignment changes can enter this baseline. All definition,
+    // page, step, field and operation ceilings still come from the original source.
+    const amendedErrors = workflowSourceImportDrift(current.definition.definition,
+      bundle.schemaVersion === WORKFLOW_SOURCE_BUNDLE_V2_SCHEMA ? binding : current.binding.binding,amended,digest);
     if (amendedErrors.length) fail(amendedErrors[0]!);
   }
   const sourceDefinition = workflows.definitions.find(item => item.definition.code === bundle.workflowCode && item.version === current.definition.version)!;
   const sourceBinding = workflows.bindings.find(item => item.binding.workflowCode === bundle.workflowCode && item.version === current.binding.version)!;
   const definitionCollision = workflows.definitions.find(item => item !== sourceDefinition && item.definition.code === bundle.workflowCode && item.version === bundle.origin.definitionVersion);
   const bindingCollision = workflows.bindings.find(item => item !== sourceBinding && item.binding.workflowCode === bundle.workflowCode && item.version === bundle.origin.bindingVersion);
-  if (definitionCollision && digest(normalizeWorkflowDefinition(definitionCollision.definition)) !== digest(definition) || bindingCollision && digest(bindingCollision.binding) !== digest(bundle.binding)) fail('WORKFLOW_IMPORT_LOCAL_VERSION_CONFLICT');
+  if (definitionCollision && digest(normalizeWorkflowDefinition(definitionCollision.definition)) !== digest(definition) || bindingCollision && digest(bindingCollision.binding) !== digest(binding)) fail('WORKFLOW_IMPORT_LOCAL_VERSION_CONFLICT');
   sourceDefinition.definition=definition;sourceDefinition.version=bundle.origin.definitionVersion;
-  sourceBinding.binding=structuredClone(bundle.binding);sourceBinding.version=bundle.origin.bindingVersion;
+  sourceBinding.binding=binding;sourceBinding.version=bundle.origin.bindingVersion;
   if (definitionCollision) workflows.definitions=workflows.definitions.filter(item => item !== definitionCollision);
   if (bindingCollision) workflows.bindings=workflows.bindings.filter(item => item !== bindingCollision);
   const activation=workflows.activations.find(item => item.workflowCode === bundle.workflowCode)!;
@@ -90,7 +129,10 @@ export function prepareWorkflowSourceImport(config: OpenXiangdaAppConfig,bundle:
   const lock: WorkflowSourceLock={ schemaVersion: 'openxiangda.workflow-source-lock/v1',workflowCode: bundle.workflowCode,
     base: { definitionVersion: bundle.origin.definitionVersion,bindingVersion: bundle.origin.bindingVersion,definitionDigest: bundle.origin.definitionDigest,bindingDigest: bundle.origin.bindingDigest },
     origin: { environmentKey: bundle.origin.environmentKey,headRevision: bundle.origin.headRevision } };
-  return { workflows,lock,handlingNotImported: Object.entries(bundle.handling).filter(([,handling]) => handling.assignee?.kind === 'named_people').map(([nodeId,handling]) => ({ nodeId,count: handling.assignee?.kind === 'named_people' ? handling.assignee.count : 0 })) };
+  return { workflows,lock,handlingNotImported: Object.entries(bundle.handling).flatMap(([nodeId,handling]) => {
+    const summary = bundle.schemaVersion === WORKFLOW_SOURCE_BUNDLE_V2_SCHEMA ? workflowSourceNamedAssignmentSummary(handling.assignee) : { present: handling.assignee?.kind === 'named_people', count: handling.assignee?.kind === 'named_people' ? handling.assignee.count : 0 };
+    return summary.present ? [{ nodeId,count: summary.count }] : [];
+  }) };
 }
 /** The config remains authoritative. Only its explicit workflows initializer is replaced; no hidden overlay is installed. */
 export function rewriteWorkflowSourceConfig(source: string,path: string,workflows: NonNullable<OpenXiangdaAppConfig['workflows']>): string {

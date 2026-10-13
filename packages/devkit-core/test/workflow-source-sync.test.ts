@@ -106,3 +106,112 @@ test('source import only rewrites workflows owned by the exported application co
     assert.ok(rewriteWorkflowSourceConfig(linked,f.path,f.config.workflows).includes('"definitions"'));
   } finally { rmSync(f.root,{ recursive: true,force: true }); }
 });
+
+function conditionalFixture() {
+  const f = fixture();
+  const local = f.config.workflows.definitions[0].definition;
+  local.inputSchema = { type: 'object', additionalProperties: false, required: ['amount'], properties: { amount: { type: 'number' } } };
+  local.nodes.a.administration = { assigneeProviders: ['fixed_users', 'app_role'], modes: ['single', 'all', 'sequence'] };
+  local.nodes.b = { ...structuredClone(local.nodes.a), id: 'b', title: 'B', onApprove: 'done' };
+  local.nodes.a.onApprove = 'b';
+  f.bundle.definition = structuredClone(local); f.bundle.definition.title = 'Published title';
+  f.bundle.schemaVersion = 'openxiangda.workflow-source-bundle/v2';
+  f.bundle.handling = { a: { assignee: { kind: 'conditional', cases: [{ label: 'Large', when: { op: 'gte', left: { op: 'path', path: 'amount' }, right: { op: 'literal', value: 1000 } }, assignee: { kind: 'binding', binding: { provider: 'app_role', roleCode: 'finance' } } }], otherwise: { kind: 'binding', binding: { provider: 'app_role', roleCode: 'manager' } } } } };
+  f.original = `const outside = { untouched: true };\nexport default { app: { code: 'app' }, workflows: ${JSON.stringify(f.config.workflows)} };\n`;
+  writeFileSync(f.path, f.original);
+  refreshConditional(f.bundle);
+  return f;
+}
+function refreshConditional(bundle: WorkflowSourceBundle) {
+  bundle.references = workflowSourceReferences(bundle.definition,bundle.binding,digest);
+  bundle.origin = { ...bundle.origin,definitionDigest: digest(bundle.definition),bindingDigest: digest(bundle.binding),catalogDigest: digest(bundle.references),handlingDigest: digest(bundle.handling) };
+}
+
+test('v2 conditional metadata is readable without adopting it or changing canonical source digests', () => {
+  const f = conditionalFixture();
+  try {
+    const prepared = prepareWorkflowSourceImport(f.config,f.bundle);
+    assert.deepEqual(prepared.workflows.bindings[0]!.binding,f.bundle.binding);
+    assert.equal(digest(prepared.workflows.definitions[0]!.definition),f.bundle.origin.definitionDigest);
+    assert.equal(digest(prepared.workflows.bindings[0]!.binding),f.bundle.origin.bindingDigest);
+    assert.deepEqual(prepared.handlingNotImported,[]);
+  } finally { rmSync(f.root,{ recursive: true,force: true }); }
+});
+
+test('explicit v2 adoption restores all role rules without changing another shared-binding node', () => {
+  const f = conditionalFixture();
+  try {
+    const before = structuredClone(f.config);
+    const prepared = prepareWorkflowSourceImport(f.config,f.bundle,true), d = prepared.workflows.definitions[0]!.definition;
+    const b = prepared.workflows.bindings[0]!.binding;
+    assert.equal((d.nodes.a as any).binding,'canvas_a');
+    assert.equal((d.nodes.b as any).binding,'people');
+    assert.deepEqual(b.bindings.people,f.bundle.binding.bindings.people);
+    assert.equal(b.bindings.canvas_a!.provider,'conditional');
+    assert.deepEqual((b.bindings.canvas_a as any).cases.map((rule: any) => rule.label),['Large']);
+    assert.equal((b.bindings.canvas_a as any).otherwise.roleCode,'manager');
+    assert.deepEqual(prepared.workflows.activations[0]!.sourceBase,{ definitionDigest: f.bundle.origin.definitionDigest,bindingDigest: f.bundle.origin.bindingDigest });
+    assert.notEqual(digest(b),f.bundle.origin.bindingDigest);
+    assert.deepEqual(f.config,before);
+    const result = importWorkflowSource(f.root,f.path,f.config,f.bundle,true);
+    assert.deepEqual(result.handlingNotImported,[]);
+    assert.ok(readFileSync(f.path,'utf8').includes('"provider": "conditional"'));
+    assert.ok(readFileSync(f.path,'utf8').startsWith('const outside ='));
+  } finally { rmSync(f.root,{ recursive: true,force: true }); }
+});
+
+for (const count of [0,2]) test(`a private otherwise count=${count} protects the entire assignment and reports its node`, () => {
+  const f = conditionalFixture();
+  try {
+    (f.bundle.handling.a!.assignee as any).otherwise = { kind: 'named_people',count };
+    refreshConditional(f.bundle);
+    const prepared = prepareWorkflowSourceImport(f.config,f.bundle,true);
+    assert.deepEqual(prepared.handlingNotImported,[{ nodeId: 'a',count }]);
+    assert.deepEqual(prepared.workflows.bindings[0]!.binding,f.bundle.binding);
+    assert.equal((prepared.workflows.definitions[0]!.definition.nodes.a as any).binding,'people');
+    assert.equal(JSON.stringify(prepared.workflows).includes('source-private-leaf'),false);
+    assert.equal(JSON.stringify(prepared.workflows).includes('finance'),false);
+  } finally { rmSync(f.root,{ recursive: true,force: true }); }
+});
+
+for (const variant of ['unreleased','provider-ceiling','scope','fact','tamper','binding-conflict','private-leak'] as const) test(`v2 ${variant} refuses before writing either config or lock`, () => {
+  const f = conditionalFixture();
+  try {
+    const projection = f.bundle.handling.a!.assignee as any;
+    if (variant === 'unreleased') projection.otherwise = { kind: 'binding', binding: { provider: 'initiator' } };
+    if (variant === 'provider-ceiling') {
+      f.config.workflows.definitions[0].definition.nodes.a.administration.assigneeProviders = ['fixed_users'];
+      (f.bundle.definition.nodes.a as any).administration.assigneeProviders = ['fixed_users'];
+    }
+    if (variant === 'scope') projection.otherwise = { kind: 'binding', binding: { provider: 'app_role_in_scope', roleCode: 'manager', scope: { dimension: 'unreleased', value: 'x' } } };
+    if (variant === 'fact') projection.cases[0].when.left.path = 'missing';
+    if (variant === 'binding-conflict') {
+      f.bundle.binding.bindings.canvas_a = { provider: 'app_role',roleCode: 'other' };
+      f.config.workflows.bindings[0].binding.bindings.canvas_a = f.bundle.binding.bindings.canvas_a;
+    }
+    if (variant === 'private-leak') projection.otherwise = { kind: 'named_people',count: 1,userIds: ['private-person'] };
+    refreshConditional(f.bundle);
+    if (variant === 'tamper') projection.cases[0].label = 'Modified';
+    assert.throws(() => importWorkflowSource(f.root,f.path,f.config,f.bundle,true));
+    assert.equal(readFileSync(f.path,'utf8'),f.original);
+    assert.equal(existsSync(join(f.root,'platform')),false);
+  } finally { rmSync(f.root,{ recursive: true,force: true }); }
+});
+
+test('a complex released leaf is adopted exactly; the DTO cannot alter its parameters', () => {
+  const f = conditionalFixture();
+  try {
+    const source: any = { provider: 'input_users', inputPath: 'members', min: 1, max: 5, delegatable: false };
+    const local = f.config.workflows.definitions[0].definition;
+    local.inputSchema.properties.members = { type: 'array',items: { type: 'string' } }; local.inputSchema.required.push('members');
+    f.bundle.definition = structuredClone(local); f.bundle.definition.title = 'Published';
+    f.bundle.binding.bindings.member_source = source;
+    f.config.workflows.bindings[0].binding.bindings.member_source = structuredClone(source);
+    (f.bundle.handling.a!.assignee as any).otherwise = { kind: 'binding',binding: structuredClone(source) };
+    refreshConditional(f.bundle);
+    const prepared = prepareWorkflowSourceImport(f.config,f.bundle,true);
+    assert.deepEqual((prepared.workflows.bindings[0]!.binding.bindings.canvas_a as any).otherwise,source);
+    (f.bundle.handling.a!.assignee as any).otherwise.binding.max = 10; refreshConditional(f.bundle);
+    assert.throws(() => prepareWorkflowSourceImport(f.config,f.bundle,true),/LEAF_UNRELEASED/);
+  } finally { rmSync(f.root,{ recursive: true,force: true }); }
+});
