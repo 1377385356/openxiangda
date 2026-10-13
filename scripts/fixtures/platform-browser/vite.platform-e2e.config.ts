@@ -18,6 +18,7 @@ export default mergeConfig(applicationConfig, {
       'workflow-experience.e2e.html',
       'workflow-delegation.e2e.html',
       'workflow-entry.e2e.html',
+      'workflow-conditional.e2e.html',
       'login-return.e2e.html',
       'session-switch.e2e.html',
       'managed-read-recovery.e2e.html',
