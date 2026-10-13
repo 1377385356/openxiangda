@@ -85,3 +85,13 @@ and resolve a held operation once on authority loss. TEST acceptance with real
 reader/editor/publisher accounts uses `new_only` and synthetic contracts only;
 original instances and unchanged-source heads must remain unchanged. Source,
 package release, deployment and business readback are distinct evidence.
+
+## Device scope — user decision, 2026-10-13
+
+The user explicitly excluded mobile work for this workflow-administration UI.
+R1 canvas editing and grant administration target PC only. Do not spend this
+increment adapting or accepting a mobile designer. Existing shared SDK mobile
+fallbacks are not removed as an unrelated breaking change. Business end-user
+mobile templates and mobile approval tasks are outside this exclusion.
+Earlier mobile source-fixture screenshots are historical diagnostics, not an
+R1 deliverable or mobile acceptance requirement.

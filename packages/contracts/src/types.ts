@@ -2816,6 +2816,7 @@ export interface WorkflowNodeConfigurationMutation {
   patch: WorkflowNodeConfigurationPatch | null;
 }
 export interface WorkflowNodeConfigurationReceipt extends WorkflowNodeConfigurationState {
+  admittedBy?: import("./native-compiler/workflow-management.js").WorkflowManagementAdmission;
   workflowCode: string;
   nodeId: string;
   effect: 'future_node_entries_keep_existing_tasks';

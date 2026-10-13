@@ -150,7 +150,9 @@ test('browser acceptance serializes the prewarmed Vite HTML entrypoints', () => 
   );
   assert.ok(htmlEntries.includes(dedicatedFixture), 'dedicated field-source fixture must exist');
   for (const entry of htmlEntries) {
-    const ownerConfig = entry === dedicatedFixture ? dedicatedConfig : viteConfig;
+    const ownerConfig = entry === 'workflow-management.e2e.html'
+      ? readFileSync(new URL('vite.workflow-management-source.config.ts', browserFixtureRoot), 'utf8')
+      : entry === dedicatedFixture ? dedicatedConfig : viteConfig;
     assert.ok(ownerConfig.includes(`'${entry}'`), `missing optimizeDeps entry ${entry} in its Vite owner`);
   }
   assert.match(playwrightConfig, /workers:\s*1/);
@@ -169,6 +171,13 @@ test('field-source contexts acceptance binds its dedicated prewarm configuration
   assert.match(executor, /configFile:\s*resolve\(root, 'scripts\/fixtures\/platform-browser\/vite\.field-source-contexts\.config\.ts'\)/);
   assert.match(executor, /await page\.goto\(`\$\{baseURL\}\/field-source-contexts\.e2e\.html/);
   assert.match(executor, /for \(const width of \[1440, 390\]\)/);
+});
+
+test('PC workflow management uses its dedicated source fixture and serial browser executor', () => {
+  const executor = readFileSync(new URL('../../verify-workflow-management-source.mjs', browserFixtureRoot), 'utf8');
+  assert.ok(executor.includes('vite.workflow-management-source.config.ts'));
+  assert.ok(executor.includes('/workflow-management.e2e.html'));
+  assert.match(executor, /for \(const width of \[1440\]\)/);
 });
 
 test('the platform package owns Web build verification policy', () => {

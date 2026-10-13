@@ -47,6 +47,7 @@ export * from './native-compiler/workflow-completion-deadline.js';
 
 export * from './native-compiler/rich-text-policy.js';
 export * from './native-compiler/workflow-designer.js';
+export * from './native-compiler/workflow-management.js';
 
 export * from './native-compiler/workflow-return-policy.js';
 

@@ -26,6 +26,7 @@ export interface NativeWorkflowManagementGrant {
 }
 export interface NativeWorkflowManagementGrantPage {
   items: NativeWorkflowManagementGrant[];
+  workflows: Array<{ code: string; title: string }>;
   total: number;
   limit: number;
   offset: number;
@@ -67,7 +68,7 @@ export interface WorkflowDesignerDraftView extends WorkflowDesignerDraft {
 }
 export type WorkflowDesignerRead = WorkflowDesignerPublishedView | WorkflowDesignerDraftView;
 export type WorkflowDesignerOriginalOutcome =
-  | { state: 'committed'; operationKind: string; committedAt: IsoDateTime; draftRevision?: number; publicationId?: string }
+  | { state: 'committed'; operationKind: string; committedAt: IsoDateTime; draftRevision?: number; configurationRevision?: number; publicationId?: string }
   | { state: 'not_committed' }
   | { state: 'undetermined' };
 

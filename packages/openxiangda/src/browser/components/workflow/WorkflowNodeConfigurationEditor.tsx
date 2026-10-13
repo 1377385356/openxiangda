@@ -1,3 +1,4 @@
+import { isWorkflowDesignerAuthorityLoss, isWorkflowDesignerAuthorityBusy } from './workflow-designer-authority';
 import { createBrowserUuid } from '../../uuid';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useUnsavedChangesGuard } from '../../navigation-guard';
@@ -6,7 +7,9 @@ import type { WorkflowNodeConfigurations, WorkflowNodeConfigurationPatch, Workfl
 import { formatWorkflowCompletionDeadline, validateWorkflowNodeConfigurationPatch, workflowOperationOpinion, workflowOperationMinimumOpinion, WORKFLOW_AUTOMATIC_CC_DEFAULT_RECIPIENTS, WORKFLOW_AUTOMATIC_CC_MAX_RECIPIENTS } from 'openxiangda-contracts/browser';
 import { RightOutlined } from '@ant-design/icons';
 import { PlatformDirectoryPicker } from '../platform-fields/PlatformDirectoryPicker';
-import { loadApplicationAdministrationContext, loadWorkflowNodeConfigurations, saveWorkflowNodeConfiguration } from '../../platform-client';
+import { loadApplicationAdministrationContext, loadWorkflowDesignerOriginalOutcome, loadWorkflowNodeConfigurations, saveWorkflowNodeConfiguration } from '../../platform-client';
+
+export interface RetainedWorkflowNodeInput { nodeId: string; values: Record<string, unknown> }
 
 type Node = WorkflowNodeConfigurations['nodes'][number];
 type Values = {
@@ -40,7 +43,8 @@ function comparableValues(values: Partial<Values>): string {
 }
 
 /** Shared editor: platform console and application pages use the same bounded SDK write. */
-export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNode, principals: initialPrincipals, expectedHeadRevision, onClose, onSaved, presentation = 'drawer', readOnly = false, onStateChange, onLeaveGuardChange, returnSummary, compact = false, onExpand }: {
+export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNode, principals: initialPrincipals, expectedHeadRevision, onClose, onSaved, presentation = 'drawer', readOnly = false, onStateChange, onLeaveGuardChange, returnSummary, compact = false, onExpand, onAuthorityLoss }: {
+  onAuthorityLoss?: (failure: unknown, operationId?: string, prompt?: string, nodeInput?: RetainedWorkflowNodeInput) => Promise<boolean>;
   workflowCode: string; node: Node; principals: WorkflowNodeConfigurations['principals']; expectedHeadRevision: number;
   onClose: () => void; onSaved: (receipt: WorkflowNodeConfigurationReceipt) => void;
   presentation?: 'drawer' | 'panel' | 'inline'; readOnly?: boolean; returnSummary?: ReactNode; compact?: boolean; onExpand?: () => void;
@@ -55,6 +59,7 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
   const frozen = useRef<WorkflowNodeConfigurationMutation | null>(null);
   const [busy, setBusy] = useState(false), [uncertain, setUncertain] = useState(false), [conflict, setConflict] = useState(false), [error, setError] = useState('');
   const [dirty, setDirty] = useState(false);
+  const authorityStopped = useRef(false);
   const guard = useUnsavedChangesGuard({ when: dirty || busy || uncertain, preventNavigation: busy || uncertain, optionalProvider: true,
     message: uncertain ? '节点配置操作尚未确认，请先使用原请求核对结果。' : '节点配置尚未保存，离开将丢失草稿。' });
   useEffect(() => {
@@ -98,6 +103,7 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
     return patch;
   };
   const save = async () => {
+    if (readOnly || authorityStopped.current || busy) return;
     if (!frozen.current) {
       let values: Values;
       try { values = await form.validateFields(); } catch (failure) {
@@ -125,7 +131,25 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
     } catch (failure) {
       const detail = failure as Error & { code?: string; status?: number };
       setError(detail.message);
-      if (['WORKFLOW_V2_NODE_CONFIGURATION_REVISION_CONFLICT', 'WORKFLOW_V2_NODE_CONFIGURATION_HEAD_CHANGED'].includes(detail.code || '')) {
+      if (isWorkflowDesignerAuthorityLoss(failure)) {
+        authorityStopped.current = true;
+        const operation = frozen.current?.operationId;
+        if (onAuthorityLoss) {
+          // Transfer the input and held operation before a parent read can unmount this editor.
+          await onAuthorityLoss(failure, operation, undefined, { nodeId: node.nodeId, values: structuredClone(form.getFieldsValue(true)) });
+          frozen.current = null; setUncertain(false);
+        } else {
+          setError('办理配置权限已改变，输入已保留；不会继续提交。');
+          if (operation) try {
+            const outcome = await loadWorkflowDesignerOriginalOutcome(workflowCode, operation);
+            if (outcome.state !== 'undetermined') { frozen.current = null; setUncertain(false); }
+            else setUncertain(true);
+            setError(outcome.state === 'committed' ? '原操作已提交，输入保留供核对。' : outcome.state === 'not_committed' ? '原操作未提交，输入已保留。' : '原操作结果无法确认，请联系应用管理员。');
+          } catch { setUncertain(true); setError('原操作结果无法确认，请联系应用管理员；输入已保留。'); }
+        }
+      } else if (isWorkflowDesignerAuthorityBusy(failure)) {
+        setUncertain(false); setError('权限正在变更，本次未写入；请稍后重试原保存请求。');
+      } else if (['WORKFLOW_V2_NODE_CONFIGURATION_REVISION_CONFLICT', 'WORKFLOW_V2_NODE_CONFIGURATION_HEAD_CHANGED'].includes(detail.code || '')) {
         setConflict(true); frozen.current = null; setUncertain(false);
       } else if (detail.status && detail.status >= 400 && detail.status < 500) {
         frozen.current = null; setUncertain(false);
@@ -151,7 +175,7 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
     if (!dirty) { next(); return; }
     const dialog = modal.confirm({
       title: '办理设置有未保存的修改', content: '保存后，后续进入此节点的任务使用新设置。',
-      okText: '保存并继续', cancelText: '继续编辑',
+      okText: '保存并继续', cancelText: '继续编辑', okButtonProps: { disabled: readOnly || authorityStopped.current },
       onOk: async () => { if (await save()) next(); else throw new Error('请修正办理设置后再保存'); },
       footer: (_, { OkBtn, CancelBtn }) => <Space><Button onClick={() => { dialog.destroy();form.resetFields();setDirty(false); guard.release(); next(); }}>放弃修改</Button><CancelBtn /><OkBtn /></Space>,
     });
@@ -165,7 +189,7 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
   const footer = <div className="oxa-workflow-config-footer">
     <span>{dirty ? '有未保存的修改' : '当前办理中的任务保持原设置'}</span>
     <Space>{!inline && <Button disabled={busy || uncertain} onClick={close}>取消</Button>}
-      <Button aria-label="保存办理设置" type={dirty || !inline ? 'primary' : 'default'} loading={busy} disabled={readOnly || conflict || !dirty && !uncertain} onClick={() => void save()}>{uncertain ? '重试原保存请求' : '保存办理设置'}</Button>
+      <Button aria-label="保存办理设置" type={dirty || !inline ? 'primary' : 'default'} loading={busy} disabled={readOnly || authorityStopped.current || conflict || !dirty && !frozen.current} onClick={() => void save()}>{frozen.current ? '重试原保存请求' : '保存办理设置'}</Button>
     </Space>
   </div>;
   const isHuman = node.kind === 'approval' || node.kind === 'handle';
@@ -181,7 +205,7 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
       <button type="button" onClick={onExpand}><strong>{isCc ? '抄送人' : node.kind === 'handle' ? '办理人' : '审批人'}</strong><span>{selectedProvider === 'fixed_users' ? (form.getFieldValue('users') || []).map((person: {value:string;label?:string}) => principals.users.find(user => user.value===person.value)?.label || person.label || '成员').join('、') : (form.getFieldValue('roleCodes') || []).map((code: string) => principals.roles.find(role => role.code===code)?.name || '已配置角色').join('、') || '按已配置的人员规则'}</span><span aria-hidden="true"><RightOutlined /></span></button>
       {isHuman && <button type="button" onClick={onExpand}><strong>{node.kind === 'handle' ? '办理操作' : '审批操作'}</strong><span>{operationRows.map(operation => form.getFieldValue(['operations',operation,'label']) || labels[operation]).join('、')}</span><span aria-hidden="true"><RightOutlined /></span></button>}
     </div>}
-    <Form form={form} layout="vertical" disabled={readOnly || busy || uncertain} onValuesChange={() => setDirty(valuesChanged())} scrollToFirstError={{ focus: true }} initialValues={initialValues(initialNode, initialPrincipals)}>
+    <Form form={form} layout="vertical" disabled={readOnly || authorityStopped.current || busy || !!frozen.current} onValuesChange={() => setDirty(valuesChanged())} scrollToFirstError={{ focus: true }} initialValues={initialValues(initialNode, initialPrincipals)}>
       {!inline && <section className="oxa-workflow-config-section">
         <Form.Item name="title" label="节点名称" rules={[{ required: true, whitespace: true }]}><Input maxLength={255} /></Form.Item>
         <Form.Item name="description" label="节点说明"><Input.TextArea rows={2} maxLength={1000} /></Form.Item>
@@ -220,7 +244,7 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
         </table></div> : <p className="oxa-workflow-config-help">按钮按应用规则提供。</p>}
         <p className="oxa-workflow-config-help">保存显示在审批页的「更多」中，只写入申请数据，不完成任务。</p>
       </section>}
-      {(!inline || dirty) && <div className="oxa-workflow-config-reason"><Form.Item name="reason" label="修改说明" rules={[{ required: true, whitespace: true }]}><Input maxLength={1000} placeholder="说明本次办理设置的调整" /></Form.Item></div>}
+      {(!inline || dirty) && <div className="oxa-workflow-config-reason"><Form.Item name="reason" label="修改说明" rules={[{ required: true, whitespace: true }]}><Input aria-label="修改说明" maxLength={1000} placeholder="说明本次办理设置的调整" /></Form.Item></div>}
     </Form>
   </>;
   return inline ? <section className={`oxa-workflow-config oxa-workflow-config-inline ${compact ? 'compact' : ''}`} aria-label="办理设置">{content}{!readOnly && footer}</section> : presentation === 'panel' ? <section className="oxa-workflow-config oxa-workflow-config-panel" aria-label="调整节点配置">

@@ -10,6 +10,7 @@ test('designer management preserves platform session, exact write identity and r
   globalThis.fetch=async(url,init)=>{
     const path=String(url);assert.ok(!path.includes('/auth/'),'management writes never bootstrap an application login');
     assert.equal(init?.credentials,'include');assert.equal(init?.method,'POST');
+    assert.equal(new Headers(init?.headers).get('x-openxiangda-workflow-designer-contract'),'2');
     const body=JSON.parse(String(init?.body));writes.push({path,body});
     assert.equal(body.environmentKey,'preproduction');
     if(loseReply){loseReply=false;throw new TypeError('response lost');}

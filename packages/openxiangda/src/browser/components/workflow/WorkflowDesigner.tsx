@@ -1,3 +1,5 @@
+import { workflowDesignerAllowedActions, isWorkflowDesignerAuthorityLoss, isWorkflowDesignerAuthorityBusy } from './workflow-designer-authority';
+import type { WorkflowDesignerPublishedView, NativeWorkflowManagementAction } from 'openxiangda-contracts/browser';
 import { workflowAuthoringCatalog, workflowCanvasBindingKey, createWorkflowHumanNode, pruneWorkflowCanvasBindings, validateWorkflowBusinessSteps, type WorkflowBinding } from 'openxiangda-contracts/browser';
 import { WorkflowBusinessStepEditor } from './WorkflowBusinessStepEditor';
 import { WorkflowParallelConfigurationEditor } from './WorkflowParallelConfigurationEditor.js';
@@ -8,12 +10,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, App, Button, Checkbox, Collapse, Drawer, Empty, Input, Modal, Popconfirm, Radio, Segmented, Select, Skeleton, Space, Spin, Table, Tag, Tooltip } from 'antd';
 import { ArrowLeftOutlined, CheckCircleOutlined, CloseOutlined, HistoryOutlined, MenuFoldOutlined, MenuUnfoldOutlined, RedoOutlined, RobotOutlined, SafetyOutlined, UndoOutlined, UserOutlined, FormOutlined, CodeOutlined, CopyOutlined, BranchesOutlined, BellOutlined, PlayCircleOutlined } from '@ant-design/icons';
 import { workflowReturnTargets, formatWorkflowSupervisorChain, type WorkflowSupervisorChainParameters, isWorkflowPlatformNotify, WORKFLOW_PLATFORM_NOTIFY_HANDLER, WORKFLOW_PLATFORM_NOTIFY_INPUT_SCHEMA, WORKFLOW_PLATFORM_NOTIFY_OUTPUT_SCHEMA, editWorkflowDesignerDefinition, projectWorkflowGraph, validateWorkflowDesignerDocument, workflowDesignerVariables, type WorkflowDefinition, type WorkflowDesignerDraft, type WorkflowDesignerSave, type WorkflowDesignerPublish, type WorkflowNode, type WorkflowNodeConfigurations, type WorkflowPublicationPreview, type WorkflowPublicationReceipt } from 'openxiangda-contracts/browser';
-import { OpenXiangdaPlatformRequestError, loadWorkflowDesignerDraft, loadWorkflowNodeConfigurations, loadApplicationAdministrationContext, saveWorkflowDesignerDraft, previewWorkflowDesignerPublication, publishWorkflowDesigner, loadWorkflowDesignerPublication, listWorkflowDesignerPublications, restoreWorkflowDesignerVersion, controlWorkflowDesignerPublication, searchWorkflowDesignerHoldCandidates } from '../../platform-client';
+import { OpenXiangdaPlatformRequestError, loadWorkflowDesignerRead, loadWorkflowDesignerOriginalOutcome, loadWorkflowNodeConfigurations, loadApplicationAdministrationContext, saveWorkflowDesignerDraft, previewWorkflowDesignerPublication, publishWorkflowDesigner, loadWorkflowDesignerPublication, listWorkflowDesignerPublications, restoreWorkflowDesignerVersion, controlWorkflowDesignerPublication, searchWorkflowDesignerHoldCandidates } from '../../platform-client';
 import { createBrowserUuid } from '../../uuid';
 import { WorkflowDiagram } from './WorkflowDiagram';
 import { workflowDesignerDisplayGraph, workflowDesignerOutlineRows, workflowDesignerStartId } from './workflow-designer-presentation';
 import { WorkflowDraftHandlingEditor } from './WorkflowDraftHandlingEditor';
-import { WorkflowNodeConfigurationEditor } from './WorkflowNodeConfigurationEditor';
+import { WorkflowNodeConfigurationEditor, type RetainedWorkflowNodeInput } from './WorkflowNodeConfigurationEditor';
 import { WorkflowDesignerAssistant } from './WorkflowDesignerAssistant';
 import { defaultWorkflowCondition } from './WorkflowConditionEditor';
 import { WorkflowConditionConfigurationEditor } from './WorkflowConditionConfigurationEditor';
@@ -27,6 +29,18 @@ const same = (left: unknown,right: unknown) => JSON.stringify(canonical(left)) =
 /** Canonical authoring. The graph is a projection; coordinates never become executable state. */
 export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onStateChange, onBack }: { workflowCode: string; onBack?: () => void; onPublished?: (receipt: WorkflowPublicationReceipt) => void; onDirtyChange?: (dirty: boolean) => void; onStateChange?: (state: { dirty: boolean; busy: boolean; unknown: boolean }) => void }) {
   const { message } = App.useApp();
+  const [authorityActions,setAuthorityActions] = useState<NativeWorkflowManagementAction[]>([]);
+  const [publishedOnly,setPublishedOnly] = useState<WorkflowDesignerPublishedView>();
+  const [authorityNotice,setAuthorityNotice] = useState('');
+  const [retainedPrompt,setRetainedPrompt] = useState('');
+  const [retainedInput,setRetainedInput] = useState<{definition: WorkflowDefinition; binding: WorkflowBinding}>();
+  const [retainedNodeInput,setRetainedNodeInput] = useState<RetainedWorkflowNodeInput>();
+  const definiteBusy = useRef(new Set<string>());
+  const checkedOutcomes = useRef(new Set<string>());
+  const authorityStopped = useRef(false);
+  const canEdit = authorityActions.includes('draft.edit');
+  const canPublish = authorityActions.includes('publication.publish');
+  const canHandle = authorityActions.includes('handling.configure');
   const [draft,setDraft] = useState<WorkflowDesignerDraft>();
   const [definition,setDefinition] = useState<WorkflowDefinition>();
   const [stepInputInvalid,setStepInputInvalid] = useState(false);
@@ -75,15 +89,31 @@ export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onS
   const [holdReason,setHoldReason] = useState('');
   const [acknowledge,setAcknowledge] = useState(false);
   const [receipt,setReceipt] = useState<WorkflowPublicationReceipt & { items?: Array<{ instanceId: string; outcome: string; reason?: string; business_key: string }> }>();
+  const heldExternalOperation = useRef<string | undefined>(undefined);
   const frozenSave = useRef<WorkflowDesignerSave | undefined>(undefined);
   const frozenPublish = useRef<WorkflowDesignerPublish | undefined>(undefined);
+  const frozenAuxOperation = useRef<string | undefined>(undefined);
   const frozenAux = useRef<(() => Promise<void>) | undefined>(undefined);
   const alive = useRef(true);
+  const acceptRead = (value: Awaited<ReturnType<typeof loadWorkflowDesignerRead>>, nativeSuperAdmin: boolean) => {
+    const allowed = workflowDesignerAllowedActions(value,nativeSuperAdmin);
+    setAuthorityActions(allowed.actions);
+    setAuthorityNotice(allowed.legacy && !nativeSuperAdmin ? '当前平台版本尚不支持细粒度流程管理，已切换为只读。' : '');
+    if (!allowed.actions.length) throw new Error('当前账号没有可用的流程查看权限');
+    if ('view' in value && value.view === 'published') {
+      setPublishedOnly(value);setDraft(undefined);setDefinition(value.definition);setBinding(value.binding);setPublishedView(false);
+    } else {
+      const next = value as WorkflowDesignerDraft;
+      setPublishedOnly(undefined);setDraft(next);setDefinition(next.definition);setBinding(next.binding);
+    }
+    setSelected(value.definition.startAt);setHistory([]);setFuture([]);
+  };
   const load = useCallback(async () => {
-    const [value,configuration,context] = await Promise.all([loadWorkflowDesignerDraft(workflowCode),loadWorkflowNodeConfigurations(workflowCode),loadApplicationAdministrationContext()]);
+    const [value,configuration,context] = await Promise.all([loadWorkflowDesignerRead(workflowCode),loadWorkflowNodeConfigurations(workflowCode),loadApplicationAdministrationContext()]);
     if (context.headRevision == null) throw new Error('当前应用没有可用的办理配置版本');
     if (!alive.current) return;
-    setDraft(value);setDefinition(value.definition);setBinding(value.binding);setConfigurations(configuration);setNativeHeadRevision(context.headRevision);setSelected(value.definition.startAt);setHistory([]);setFuture([]);setError(undefined);
+    acceptRead(value,context.authorization === 'application_super_admin');
+    authorityStopped.current = false;setConfigurations(configuration);setNativeHeadRevision(context.headRevision);setError(undefined);
   },[workflowCode]);
   useEffect(() => { alive.current = true; void load().catch(error => setError(String(error.message))); return () => { alive.current = false; }; },[load]);
   const refreshHandling = async () => {
@@ -91,9 +121,10 @@ export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onS
     if (context.headRevision == null) throw new Error('当前应用没有可用的办理配置版本');
     setConfigurations(configuration);setNativeHeadRevision(context.headRevision);
   };
-  const dirty = !!draft && !!definition && (!same(draft.definition,definition) || !same(draft.binding,binding) || stepInputInvalid || reminderDirty);
-  useEffect(() => { const unknown = !!frozenSave.current || !!frozenPublish.current || !!frozenAux.current || assistantState.unknown || liveState.unknown;onDirtyChange?.(dirty || liveState.dirty || unknown);onStateChange?.({ dirty: dirty || liveState.dirty,busy: busy || assistantState.busy || liveState.busy,unknown }); },[dirty,busy,assistantState,liveState,onDirtyChange,onStateChange]);
-  useEffect(() => { const guard = (event: BeforeUnloadEvent) => { if (dirty || frozenSave.current || frozenPublish.current || frozenAux.current || assistantState.unknown) { event.preventDefault(); event.returnValue = ''; } }; addEventListener('beforeunload',guard);return () => removeEventListener('beforeunload',guard); },[dirty,assistantState.unknown]);
+  const dirty = !!retainedInput || !!retainedNodeInput || !!retainedPrompt || !!draft && !!definition && (!same(draft.definition,definition) || !same(draft.binding,binding) || stepInputInvalid || reminderDirty);
+  const unknown = !!heldExternalOperation.current || [frozenSave.current?.operationId,frozenPublish.current?.operationId,frozenAuxOperation.current].some(operation => !!operation && !definiteBusy.current.has(operation)) || assistantState.unknown || liveState.unknown;
+  useEffect(() => {onDirtyChange?.(dirty || liveState.dirty || unknown);onStateChange?.({ dirty: dirty || liveState.dirty,busy: busy || assistantState.busy || liveState.busy,unknown }); },[dirty,busy,unknown,assistantState,liveState,onDirtyChange,onStateChange]);
+  useEffect(() => { const guard = (event: BeforeUnloadEvent) => { if (dirty || unknown || busy) { event.preventDefault(); event.returnValue = ''; } }; addEventListener('beforeunload',guard);return () => removeEventListener('beforeunload',guard); },[dirty,unknown,busy]);
   useEffect(() => {
     if (!receipt || receipt.status !== 'running' || publication) return;
     let active = true;
@@ -108,7 +139,7 @@ export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onS
   }, [graph, structureKeys, selected, shown]);
   const outlineNodes = useMemo(() => displayGraph ? workflowDesignerOutlineRows(displayGraph) : [], [displayGraph]);
   useEffect(() => { if (shown && selected !== workflowDesignerStartId && !shown.nodes[selected]) setSelected(shown.startAt); }, [shown, selected]);
-  const catalog = useMemo(() => draft?.capabilities || (draft ? workflowAuthoringCatalog(draft.publishedDefinition,draft.publishedBinding) : undefined),[draft]);
+  const catalog = useMemo(() => canEdit ? draft?.capabilities || (draft ? workflowAuthoringCatalog(draft.publishedDefinition,draft.publishedBinding) : undefined) : { appVersionId: '',digest: '',taskPages: {},steps: [],peopleSources: {} },[draft,canEdit]);
   const variables = useMemo(() => definition ? workflowDesignerVariables(definition) : [],[definition]);
   const errors = useMemo(() => definition ? [...validateWorkflowDesignerDocument(definition),...validateWorkflowBusinessSteps(definition),...Object.values(definition.nodes).flatMap(node => {
     if (!('binding' in node)) return [];
@@ -117,7 +148,7 @@ export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onS
   })] : [],[definition,binding]);
   const node = shown?.nodes[selected];
   const liveNode = configurations?.nodes.find(item => item.nodeId === selected);
-  const disabled = busy || assistantState.busy || assistantState.unknown || publishedView || !!frozenSave.current || !!frozenPublish.current || !!frozenAux.current;
+  const disabled = !canEdit || authorityStopped.current || busy || assistantState.busy || assistantState.unknown || publishedView || !!frozenSave.current || !!frozenPublish.current || !!frozenAux.current;
   const mutate = (next: WorkflowDefinition, nextBinding = binding) => {
     if (!definition || !binding || !nextBinding || disabled) return;
     setHistory(current => {
@@ -127,21 +158,45 @@ export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onS
     });setFuture([]);setDefinition(next);setBinding(pruneWorkflowCanvasBindings(next,nextBinding,draft!.publishedBinding));setError(undefined);
   };
   const patch = (patch: Record<string,unknown>) => { if (definition && node) mutate(editWorkflowDesignerDefinition(definition,{ type: 'node',nodeId: node.id,patch })); };
+  const loseAuthority = async (failure: unknown, assistantOperation?: string, assistantPrompt?: string, nodeInput?: RetainedWorkflowNodeInput) => {
+    if (!isWorkflowDesignerAuthorityLoss(failure)) return false;
+    if (nodeInput) setRetainedNodeInput(nodeInput);
+    if (assistantPrompt) setRetainedPrompt(assistantPrompt);
+    if (assistantOperation) heldExternalOperation.current = assistantOperation;
+    authorityStopped.current = true;setAuthorityActions([]);
+    if (definition && binding && draft && (!same(draft.definition,definition) || !same(draft.binding,binding))) setRetainedInput(structuredClone({definition,binding}));setAssistantOpen(false);setPublication(false);
+    const operation = assistantOperation || frozenSave.current?.operationId || frozenPublish.current?.operationId || frozenAuxOperation.current;
+    let notice = '流程管理权限已改变，当前输入已保留且尚未保存。';
+    if (operation && !checkedOutcomes.current.has(operation)) {
+      checkedOutcomes.current.add(operation);
+      try {
+        const result = await loadWorkflowDesignerOriginalOutcome(workflowCode,operation);
+        notice = result.state === 'committed' ? '原操作已提交；权限已改变，当前输入保留供核对。' : result.state === 'not_committed' ? '原操作未提交，当前输入已保留且尚未保存。' : '原操作结果仍待确认，请联系应用管理员核对。';
+        if (result.state !== 'undetermined') { heldExternalOperation.current = undefined;frozenSave.current = undefined;frozenPublish.current = undefined;frozenAux.current = undefined;frozenAuxOperation.current = undefined; }
+      } catch { notice = '原操作结果暂时无法确认，请联系应用管理员核对。当前输入已保留。'; }
+    }
+    try {
+      const value = await loadWorkflowDesignerRead(workflowCode);
+      acceptRead(value,false);
+    } catch { setDraft(undefined);setPublishedOnly(undefined); }
+    setAssistantState({busy:false,unknown:false});setAuthorityNotice(notice);setError(notice);return true;
+  };
   const save = async (quiet = false) => {
-    if (!draft || !definition) return undefined;
+    if (!canEdit || authorityStopped.current || !draft || !definition) return undefined;
     if (reminderDirty && !frozenSave.current) { message.warning('请先确定或取消办理提醒的修改。');return undefined; }
     if (stepInputInvalid && !frozenSave.current) { setError('业务步骤固定值不是有效 JSON，请修正后再保存。');return undefined; }
     setBusy(true);
     try {
       frozenSave.current ||= { expectedRevision: draft.revision,expectedHeadRevision: draft.baseHeadRevision,operationId: createBrowserUuid(),definition,binding: binding! };
+      definiteBusy.current.delete(frozenSave.current.operationId);
       const saved = await saveWorkflowDesignerDraft(workflowCode,frozenSave.current);
       frozenSave.current = undefined;setDraft(saved);setDefinition(saved.definition);setBinding(saved.binding);setError(undefined);if (!quiet) message.success('流程草稿已保存');return saved;
-    } catch (error) { if (refused(error)) frozenSave.current = undefined;setError(`${String((error as Error).message)}${refused(error) ? '。修改已保留，可修正后再次保存。' : '。结果待确认，请重试原保存请求。'}`);return undefined; }
+    } catch (error) { if (await loseAuthority(error)) return undefined; if (isWorkflowDesignerAuthorityBusy(error)) { if (frozenSave.current) definiteBusy.current.add(frozenSave.current.operationId);setError('权限正在变更，本次未写入；请稍后重试原保存请求。');return undefined; } if (refused(error)) frozenSave.current = undefined;setError(`${String((error as Error).message)}${refused(error) ? '。修改已保留，可修正后再次保存。' : '。结果待确认，请重试原保存请求。'}`);return undefined; }
     finally { setBusy(false); }
   };
   const autosave = useRef(save); autosave.current = save;
   useEffect(() => {
-    if (!dirty || !definition || stepInputInvalid || reminderDirty || busy || publishedView || frozenSave.current || frozenPublish.current || frozenAux.current || attemptedAutosave.current === JSON.stringify({definition,binding})) return;
+    if (!canEdit || authorityStopped.current || !dirty || !definition || stepInputInvalid || reminderDirty || busy || publishedView || frozenSave.current || frozenPublish.current || frozenAux.current || attemptedAutosave.current === JSON.stringify({definition,binding})) return;
     let timer: ReturnType<typeof setTimeout>;
     const persist = () => {
       if (inspectorElement.current?.querySelector('[role="combobox"][aria-expanded="true"]')) {
@@ -151,7 +206,7 @@ export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onS
     };
     timer = setTimeout(persist,900);
     return () => clearTimeout(timer);
-  }, [dirty, definition, binding, busy, publishedView, stepInputInvalid, reminderDirty]);
+  }, [dirty, definition, binding, busy, publishedView, stepInputInvalid, reminderDirty, canEdit]);
   const inspectorReady = () => {
     if (stepInputInvalid) { message.warning('业务步骤固定值不是有效 JSON，请先修正，或切换此输入来源以放弃该值。');return false; }
     if (reminderDirty) { message.warning('请先确定或取消办理提醒的修改。');return false; }
@@ -192,30 +247,32 @@ export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onS
     if (leaveHandling.current) leaveHandling.current(next); else next();
   };
   const goBack = () => {
-    if (!inspectorReady()) return;
-    const next = () => { if (dirty) { void save(true).then(saved => { if (saved) { if (onBack) onBack(); else { const url = new URL(location.href);url.searchParams.delete('design');location.assign(url.href); } } });return; } if (onBack) onBack(); else { const url = new URL(location.href); url.searchParams.delete('design'); location.assign(url.href); } };
+    if (unknown || busy || assistantState.busy || liveState.busy || !inspectorReady()) return;
+    const next = () => { if (dirty && canEdit && !authorityStopped.current) { void save(true).then(saved => { if (saved) { if (onBack) onBack(); else { const url = new URL(location.href);url.searchParams.delete('design');location.assign(url.href); } } });return; } if (onBack) onBack(); else { const url = new URL(location.href); url.searchParams.delete('design'); location.assign(url.href); } };
     if (leaveHandling.current) leaveHandling.current(next); else next();
   };
   const holds = () => holdIds.length || holdNodeIds.length ? [{ instanceIds: holdIds,nodeIds: holdNodeIds,reason: holdReason.trim() }] : [];
   const check = async (value: WorkflowDesignerDraft = draft!, selectedHolds = holds()) => {
-    if (!value) return;
+    if (!canPublish || authorityStopped.current || !value) return;
     setBusy(true);setPreview(undefined);
     try { const result = await previewWorkflowDesignerPublication(workflowCode,{ expectedRevision: value.revision,holds: selectedHolds });setPreview(result);setHoldCandidates(result.items);setError(undefined); }
     catch (error) { setError(String((error as Error).message)); } finally { setBusy(false); }
   };
   const openPublication = async () => {
+    if (!canPublish || authorityStopped.current) return;
     const saved = dirty || frozenSave.current ? await save() : draft;
     if (!saved) return;setScope('running_and_new');setHoldIds([]);setHoldNodeIds([]);setHoldReason('');setReason('');setAcknowledge(false);setPublication(true);setPreview(undefined);
     await check(saved,[]);
   };
   const publish = async () => {
-    if (!draft || !reason.trim() || scope === 'running_and_new' && (holdIds.length || holdNodeIds.length) && !holdReason.trim()) return;
+    if (!canPublish || authorityStopped.current || !draft || !reason.trim() || scope === 'running_and_new' && (holdIds.length || holdNodeIds.length) && !holdReason.trim()) return;
     setBusy(true);
     try {
       frozenPublish.current ||= { expectedRevision: draft.revision,expectedHeadRevision: draft.baseHeadRevision,operationId: createBrowserUuid(),reason: reason.trim(),scope,holds: scope === 'running_and_new' ? holds() : [],acknowledgeExceptions: acknowledge };
+      definiteBusy.current.delete(frozenPublish.current.operationId);
       const result = await publishWorkflowDesigner(workflowCode,frozenPublish.current);
       frozenPublish.current = undefined;setReceipt(result);setPublication(false);await load();onPublished?.(result);message.success('流程版本已发布并启用');
-    } catch (error) { if (refused(error)) frozenPublish.current = undefined;setError(`${String((error as Error).message)}${refused(error) ? '。草稿已保留。' : '。结果待确认，重试将使用原发布请求。'}`); } finally { setBusy(false); }
+    } catch (error) { if (await loseAuthority(error)) return; if (isWorkflowDesignerAuthorityBusy(error)) { if (frozenPublish.current) definiteBusy.current.add(frozenPublish.current.operationId);setError('权限正在变更，本次未写入；请稍后重试原发布请求。');return; } if (refused(error)) frozenPublish.current = undefined;setError(`${String((error as Error).message)}${refused(error) ? '。草稿已保留。' : '。结果待确认，重试将使用原发布请求。'}`); } finally { setBusy(false); }
   };
   const openAssistant = async () => {
     if (disabled || !inspectorReady()) return;
@@ -227,23 +284,25 @@ export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onS
     try { setVersions(await listWorkflowDesignerPublications(workflowCode)); } catch (error) { setError(String((error as Error).message)); } finally { setBusy(false); }
   };
   const retryAux = async () => {
-    if (!frozenAux.current) return;setBusy(true);
-    try { await frozenAux.current();frozenAux.current = undefined;setError(undefined); }
-    catch (error) { if (refused(error)) frozenAux.current = undefined;setError(`${String((error as Error).message)}${refused(error) ? '。输入已保留。' : '。结果待确认，请重试原操作。'}`); }
+    if (authorityStopped.current || !frozenAux.current) return;setBusy(true);
+    try { if (frozenAuxOperation.current) definiteBusy.current.delete(frozenAuxOperation.current);await frozenAux.current();frozenAux.current = undefined;frozenAuxOperation.current = undefined;setError(undefined); }
+    catch (error) { if (await loseAuthority(error)) return; if (isWorkflowDesignerAuthorityBusy(error)) { if (frozenAuxOperation.current) definiteBusy.current.add(frozenAuxOperation.current);setError('权限正在变更，本次未写入；请稍后重试原操作。');return; } if (refused(error)) { frozenAux.current = undefined;frozenAuxOperation.current = undefined; }setError(`${String((error as Error).message)}${refused(error) ? '。输入已保留。' : '。结果待确认，请重试原操作。'}`); }
     finally { setBusy(false); }
   };
   const restore = async (version: number) => {
-    if (!draft || frozenAux.current) return;
+    if (!canEdit || authorityStopped.current || !draft || frozenAux.current) return;
     const input = { version,expectedRevision: draft.revision,expectedHeadRevision: draft.baseHeadRevision,operationId: createBrowserUuid() };
+    frozenAuxOperation.current = input.operationId;
     frozenAux.current = async () => {
       const restored = await restoreWorkflowDesignerVersion(workflowCode,input);
       setDraft(restored);setDefinition(restored.definition);setBinding(restored.binding);setHistory([]);setFuture([]);setVersionsOpen(false);message.success('历史版本已恢复到草稿，检查后可发布');
     };await retryAux();
   };
   const control = async (action: 'pause'|'resume'|'retry_failed') => {
-    if (!receipt || !draft || frozenAux.current) return;
+    if (!canPublish || authorityStopped.current || !receipt || !draft || frozenAux.current) return;
     const publicationId = receipt.publicationId;
     const input = { expectedHeadRevision: draft.baseHeadRevision,operationId: createBrowserUuid(),action,reason: action === 'pause' ? '管理员暂停更新' : action === 'retry_failed' ? '管理员重试更新失败的申请' : '管理员继续更新' };
+    frozenAuxOperation.current = input.operationId;
     frozenAux.current = async () => { setReceipt(await controlWorkflowDesignerPublication(workflowCode,publicationId,input)); };await retryAux();
   };
   const searchHolds = async (keyword: string) => {
@@ -251,9 +310,10 @@ export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onS
     catch (error) { setError(String((error as Error).message)); }
   };
   const releaseHolds = async () => {
-    if (!receipt || !draft || !releaseIds.length || !releaseReason.trim() || frozenAux.current) return;
+    if (!canPublish || authorityStopped.current || !receipt || !draft || !releaseIds.length || !releaseReason.trim() || frozenAux.current) return;
     const publicationId = receipt.publicationId;
     const input = { expectedHeadRevision: draft.baseHeadRevision,operationId: createBrowserUuid(),action: 'release_holds' as const,instanceIds: releaseIds,reason: releaseReason.trim() };
+    frozenAuxOperation.current = input.operationId;
     frozenAux.current = async () => { setReceipt(await controlWorkflowDesignerPublication(workflowCode,publicationId,input));setReleaseIds([]);setReleaseReason(''); };await retryAux();
   };
   const insertNode = (chosenTemplate = template, chosenTitle = nodeTitle, edgeId = insert) => {
@@ -303,6 +363,25 @@ export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onS
       setSelected(nodeId);setInspector(true);setStructureKeys([]);setInsert(undefined);
     } catch (error) { setError(String((error as Error).message)); }
   };
+  const retained = <>
+    {retainedPrompt && <Alert type="warning" title="保留的助手输入" description={retainedPrompt} action={<Button onClick={() => setRetainedPrompt('')}>放弃助手输入</Button>} />}
+    {retainedInput && <details open><summary>查看保留的未保存输入</summary>
+      <WorkflowDiagram graph={projectWorkflowGraph(retainedInput.definition,'draft')} selectedNodeId={retainedInput.definition.startAt} onSelectNode={() => {}} />
+      <Input.TextArea aria-label="保留的流程与人员规则" readOnly rows={8} value={JSON.stringify(retainedInput,null,2)} />
+      <Button onClick={() => setRetainedInput(undefined)}>放弃保留输入</Button></details>}
+    {retainedNodeInput && <Alert type="warning" title={`保留的办理设置：${retainedNodeInput.nodeId}`} description={<Input.TextArea aria-label="保留的办理设置输入" readOnly rows={8} value={JSON.stringify(retainedNodeInput.values,null,2)} />} action={<Button onClick={() => setRetainedNodeInput(undefined)}>放弃办理设置输入</Button>} />}
+  </>;
+  if (publishedOnly && configurations && nativeHeadRevision != null) return <section className="oxa-workflow-designer">
+    <Space wrap><Button onClick={goBack}>返回</Button><h2>{publishedOnly.definition.title}</h2><Tag>已发布 v{publishedOnly.definitionVersion}</Tag><Button onClick={() => void showVersions()}>版本记录</Button></Space>
+    {authorityNotice && <Alert type="warning" title={authorityNotice} />}{retained}
+    <WorkflowDiagram graph={projectWorkflowGraph(publishedOnly.definition,'draft')} selectedNodeId={selected} onSelectNode={selectNode} />
+    {liveNode && <WorkflowNodeConfigurationEditor key={liveNode.nodeId} workflowCode={workflowCode} node={liveNode} principals={configurations.principals}
+      expectedHeadRevision={nativeHeadRevision} presentation="inline" readOnly={!canHandle || authorityStopped.current} onClose={() => setSelected('')}
+      onStateChange={handlingStateChanged} onLeaveGuardChange={handlingGuardChanged} onAuthorityLoss={loseAuthority} onSaved={() => void refreshHandling().catch(failure=>setError(String(failure.message)))} />}
+    <Drawer open={versionsOpen} title="流程版本记录" onClose={()=>setVersionsOpen(false)}><Table rowKey="publicationId" dataSource={versions} pagination={{pageSize:10}} columns={[{title:'版本',dataIndex:'definitionVersion'},{title:'说明',dataIndex:'reason'}]} /></Drawer>
+    {error && <Alert type="error" title={error} />}
+  </section>;
+  if (authorityStopped.current && !draft && !publishedOnly) return <section><Alert type="warning" title={authorityNotice || error} />{retained}<Button onClick={goBack}>返回</Button></section>;
   if (!draft || !definition || !graph || nativeHeadRevision == null) return error ? <Alert type="error" title="流程设计未能载入" description={error} action={<Button onClick={() => void load().catch(error => setError(String(error.message)))}>重新载入</Button>} /> : <Skeleton active />;
   const targets = Object.values(definition.nodes).filter(item => item.id !== selected).map(item => ({ value: item.id,label: item.title || item.id }));
   const typeIcons = { approval: UserOutlined, handle: FormOutlined, condition: BranchesOutlined, parallel: BranchesOutlined, join: CheckCircleOutlined, action: CodeOutlined, cc: CopyOutlined, correction: FormOutlined, end: CheckCircleOutlined, start: PlayCircleOutlined };
@@ -319,8 +398,8 @@ export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onS
     {node ? <>
       <div hidden={human && structureKeys.includes('return')}>{liveNode && configurations && ['approval','handle','cc'].includes(node.kind) ? <WorkflowNodeConfigurationEditor
         key={`${liveNode.nodeId}:${liveNode.configuration.revision}`} workflowCode={workflowCode} node={liveNode} principals={configurations.principals}
-        expectedHeadRevision={nativeHeadRevision} presentation="inline" readOnly={publishedView} compact={!detailInspector && !narrow} onExpand={() => { setDetailInspector(true);setOutline(false); }}
-        onClose={closeInspector} onStateChange={handlingStateChanged} onLeaveGuardChange={handlingGuardChanged}
+        expectedHeadRevision={nativeHeadRevision} presentation="inline" readOnly={!canHandle || authorityStopped.current} compact={!detailInspector && !narrow} onExpand={() => { setDetailInspector(true);setOutline(false); }}
+        onClose={closeInspector} onStateChange={handlingStateChanged} onLeaveGuardChange={handlingGuardChanged} onAuthorityLoss={loseAuthority}
         returnSummary={human && (node.returnPolicy?.targets || node.returnTargets || []).length ? <div><Tag color="gold">随草稿发布</Tag><div>{(node.returnPolicy?.targets || (node.returnTargets || []).map(nodeId => ({ nodeId, defaultRoute: 'replay' }))).map(target => <p key={target.nodeId}>{definition.nodes[target.nodeId]?.title || '退回目标'} · {target.defaultRoute === 'resume' ? '重新提交后直接回到本节点' : '重新提交后重新按流程流转'}</p>)}</div><Button type="link" size="small" onClick={() => setStructureKeys(['return'])}>编辑退回设置</Button></div> : undefined}
         onSaved={() => { void refreshHandling().catch(failure => setError(`办理设置已保存，重新读取失败：${String(failure.message)}`)); }} /> : draft.publishedDefinition.nodes[node.id] && ['approval','handle','cc'].includes(node.kind) ? <Alert type="warning" showIcon title="已发布节点的办理设置未能载入" description="此节点不是新增草稿节点，请重新读取配置后修改。" action={<Button onClick={() => void refreshHandling().catch(failure=>setError(String(failure.message)))}>重新读取办理设置</Button>} /> : ['approval','handle','cc'].includes(node.kind) && <WorkflowDraftHandlingEditor node={node as any} baseline={node as any} bindingOptions={Object.keys(draft.publishedBinding.bindings).map(value=>({value,label:value}))}
           binding={binding?.bindings['binding' in node ? node.binding : '']} sources={catalog!.peopleSources} principals={configurations?.principals || {users:[],roles:[]}} disabled={disabled}
@@ -355,17 +434,18 @@ export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onS
     return `${title}：${messages[code || ''] || '配置需要调整'}`;
   };
   return <section className="oxa-workflow-designer" aria-label="流程设计器"><header className="oxa-designer-toolbar">
-      <div className="oxa-designer-toolbar-identity"><Tooltip title="返回流程图"><Button icon={<ArrowLeftOutlined />} aria-label="返回流程图" disabled={busy || assistantState.unknown || liveState.busy || liveState.unknown} onClick={goBack} /></Tooltip><span className="oxa-designer-toolbar-label">流程设计</span><strong>{definition.title}</strong><Tag color="blue">{draft.environmentKey === 'production' ? '正式环境' : '测试环境'}</Tag>
+      <div className="oxa-designer-toolbar-identity"><Tooltip title="返回流程图"><Button icon={<ArrowLeftOutlined />} aria-label="返回流程图" disabled={busy || unknown || assistantState.busy || liveState.busy} onClick={goBack} /></Tooltip><span className="oxa-designer-toolbar-label">流程设计</span><strong>{definition.title}</strong><Tag color="blue">{draft.environmentKey === 'production' ? '正式环境' : '测试环境'}</Tag>
         <Segmented aria-label="流程设计查看版本" value={publishedView ? 'published' : 'draft'} onChange={switchVersion} options={[{ value: 'published',label: `已发布 v${draft.definitionVersion}` },{ value: 'draft',label: '草稿' }]} />
         <span className="oxa-designer-save-state">{busy && frozenSave.current ? '正在保存…' : dirty ? errors.length ? '修改待检查' : '草稿未保存' : `${draft.updatedAt ? '草稿已自动保存' : '草稿与已发布版本一致'}${draft.updatedAt ? ` ${new Date(draft.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}`}</span>
-        {(frozenSave.current || dirty && error) && <Button type="link" disabled={busy} onClick={() => void save()}>{frozenSave.current ? '重试原保存请求' : '重试保存'}</Button>}
+        {(frozenSave.current || dirty && error) && <Button type="link" disabled={!canEdit || authorityStopped.current || busy} onClick={() => void save()}>{frozenSave.current ? '重试原保存请求' : '重试保存'}</Button>}
       </div>
       <Space size={8} className="oxa-designer-toolbar-actions"><Tooltip title="撤销"><Button icon={<UndoOutlined />} aria-label="撤销" disabled={disabled || stepInputInvalid || reminderDirty || !history.length} onClick={() => { const previous = history.at(-1); if (previous) { setFuture(current => [...current,{definition,binding:binding!}]);setHistory(current => current.slice(0,-1));setDefinition(previous.definition);setBinding(previous.binding); } }}>撤销</Button></Tooltip>
         <Tooltip title="重做"><Button icon={<RedoOutlined />} aria-label="重做" disabled={disabled || stepInputInvalid || reminderDirty || !future.length} onClick={() => { const next = future.at(-1); if (next) { setHistory(current => [...current,{definition,binding:binding!}]);setFuture(current => current.slice(0,-1));setDefinition(next.definition);setBinding(next.binding); } }}>重做</Button></Tooltip>
-        <Button icon={<SafetyOutlined />} onClick={() => setChecksOpen(true)}>结构检查</Button><Button icon={<HistoryOutlined />} onClick={() => void showVersions()}>版本记录</Button><Button icon={<RobotOutlined />} disabled={disabled || liveState.busy || liveState.unknown} onClick={() => { const open = () => void openAssistant(); if (leaveHandling.current) leaveHandling.current(open); else open(); }}>AI 助手</Button><Button type="primary" disabled={disabled || stepInputInvalid || reminderDirty || errors.length > 0 || liveState.dirty || liveState.busy || liveState.unknown} onClick={() => void openPublication()}>发布并启用</Button>
+        <Button icon={<SafetyOutlined />} onClick={() => setChecksOpen(true)}>结构检查</Button><Button icon={<HistoryOutlined />} onClick={() => void showVersions()}>版本记录</Button><Button icon={<RobotOutlined />} disabled={disabled || liveState.busy || liveState.unknown} onClick={() => { const open = () => void openAssistant(); if (leaveHandling.current) leaveHandling.current(open); else open(); }}>AI 助手</Button><Button type="primary" disabled={!canPublish || authorityStopped.current || busy || publishedView || !!frozenSave.current || !!frozenPublish.current || !!frozenAux.current || stepInputInvalid || reminderDirty || errors.length > 0 || liveState.dirty || liveState.busy || liveState.unknown} onClick={() => void openPublication()}>发布并启用</Button>
       </Space>
     </header>
     {error && <Alert type="error" title={error} action={frozenSave.current ? <Button onClick={() => void save()}>重试保存</Button> : frozenAux.current ? <Button onClick={() => void retryAux()}>重试原操作</Button> : undefined} />}
+    {authorityNotice && <Alert type="warning" title={authorityNotice} />}{retained}
     {receipt && <><Alert type={receipt.counts.failed || receipt.counts.excepted ? 'warning' : 'success'} title={`已发布 v${receipt.definitionVersion} · ${receipt.status === 'running' ? '正在更新进行中的申请' : '更新处理结束'}`} description={Object.entries(receipt.counts).map(([key,count]) => `${outcomeLabels[key] || key} ${count}`).join(' · ')} action={<Space>{receipt.status === 'running' && <Button disabled={busy} onClick={() => void control('pause')}>暂停更新</Button>}{receipt.status === 'paused' && <Button disabled={busy} onClick={() => void control('resume')}>继续更新</Button>}{!!receipt.counts.failed && <Button disabled={busy} onClick={() => void control('retry_failed')}>重试失败的申请</Button>}</Space>} />{receipt.items?.length ? <details><summary>查看申请更新记录</summary><Table size="small" rowKey="instanceId" dataSource={receipt.items} pagination={{ pageSize: 5 }} columns={[{ title: '申请',dataIndex: 'business_key' },{ title: '结果',render: (_,item) => outcomeLabels[item.outcome] || item.outcome },{ title: '原因',dataIndex: 'reason' }]} />{receipt.items.some(item => item.outcome === 'held') && <div style={{ padding: 12 }}><label>解除原版本保留<Select mode="multiple" style={{ width: '100%' }} value={releaseIds} disabled={busy || !!frozenAux.current} options={receipt.items.filter(item => item.outcome === 'held').map(item => ({ value: item.instanceId,label: item.business_key }))} onChange={setReleaseIds} /></label><Input aria-label="解除保留说明" maxLength={1000} value={releaseReason} disabled={busy || !!frozenAux.current} onChange={event => setReleaseReason(event.target.value)} placeholder="说明为什么将这些申请更新到当前版本" /><Button disabled={busy || !!frozenAux.current || !releaseIds.length || !releaseReason.trim()} onClick={() => void releaseHolds()}>解除保留并更新</Button></div>}</details> : null}</>}
     <div className={`oxa-designer-workspace ${outline ? '' : 'without-outline'} ${inspector ? '' : 'without-inspector'} ${detailInspector ? 'detail-inspector' : ''}`}>
       <aside className="oxa-designer-outline" aria-label="流程大纲"><div className="oxa-designer-outline-heading">{outline && <strong>流程大纲</strong>}<Button type="text" icon={outline ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />} aria-label={outline ? '收起流程大纲' : '展开流程大纲'} onClick={() => { const toggle = () => { if (!outline) setDetailInspector(false);setOutline(value => !value); };if (!outline && leaveHandling.current) leaveHandling.current(toggle); else toggle(); }} /></div>
@@ -376,7 +456,7 @@ export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onS
         })}</nav>
         {outline && <footer><strong>检查结果</strong><button type="button" onClick={() => setChecksOpen(true)}><CheckCircleOutlined /> {errors.length ? `发现 ${errors.length} 项问题` : '未发现问题'}</button></footer>}
       </aside>
-      <main><div className="oxa-designer-banner">{publishedView ? `正在查看已发布 v${draft.definitionVersion}` : '正在编辑草稿'} · 发布并启用时可更新进行中的申请</div>
+      <main><div className="oxa-designer-banner">{publishedView ? `正在查看已发布 v${draft.definitionVersion}` : canEdit ? '正在编辑草稿' : '正在审阅草稿'} · 发布并启用时可更新进行中的申请</div>
         <WorkflowDiagram graph={displayGraph!} summaries={summaries} selectedNodeId={selected} selectedEdgeId={selectedEdge} onSelectEdge={selectEdge} onSelectNode={selectNode} presentation="designer"
           insertionOptions={[{value:'approval',label:'审批',kind:'approval'},{value:'handle',label:'办理',kind:'handle'},{value:'cc',label:'抄送',kind:'cc'},...(variables.length?[{value:'condition',label:'条件分支',kind:'condition'}]:[]),{value:'parallel',label:'并行分支',kind:'parallel'},{value:'action',label:'业务步骤',kind:'action'},{value:'platform_notify',label:'发送通知',kind:'notification'}] }
           onInsertEdge={disabled || stepInputInvalid || reminderDirty ? undefined : (value, chosenTemplate) => { const open = () => { if (chosenTemplate) { const title = chosenTemplate === 'parallel' ? '并行分支' : chosenTemplate === 'condition' ? '条件分支' : chosenTemplate === 'platform_notify' ? '发送通知' : kinds[chosenTemplate] || draft.publishedDefinition.nodes[chosenTemplate]?.title || '新增节点';insertNode(chosenTemplate,title,value); } else { setInsert(value);setNodeTitle('');setTemplate('approval'); } };if (leaveHandling.current) leaveHandling.current(open); else open(); }} />
@@ -384,15 +464,15 @@ export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onS
         <Button className="oxa-designer-mobile-inspector" onClick={() => setInspector(true)}>编辑 {node?.title || '节点'}</Button>
       </main>
       {inspector && narrow && <button type="button" className="oxa-designer-inspector-backdrop" aria-label="关闭节点设置" onClick={closeInspector} />}
-      <aside style={{ display: inspector ? undefined : 'none' }} ref={inspectorElement} className="oxa-designer-desktop-inspector" role={narrow ? 'dialog' : undefined} aria-modal={narrow ? true : undefined} aria-label={assistantOpen ? 'AI 助手' : '节点设置'}><div hidden={assistantOpen}>{panel}</div><WorkflowDesignerAssistant presentation="panel" workflowCode={workflowCode} draft={draft} context={assistantContext} open={assistantOpen} canApply={!dirty && !busy && !liveState.dirty && !liveState.busy && !liveState.unknown && !frozenSave.current && !frozenPublish.current && !frozenAux.current} onClose={() => setAssistantOpen(false)} onApplied={value => { setPublishedView(false);setDraft(value);setDefinition(value.definition);setBinding(value.binding);setHistory(current => { const snapshots = [...current,{definition,binding:binding!}].slice(-25);while (snapshots.length > 1 && snapshots.reduce((bytes,item) => bytes + JSON.stringify(item).length,0) > 4 * 1024 * 1024) snapshots.shift();return snapshots; });setFuture([]);setError(undefined); }} onStateChange={setAssistantState} /></aside>
+      <aside style={{ display: inspector ? undefined : 'none' }} ref={inspectorElement} className="oxa-designer-desktop-inspector" role={narrow ? 'dialog' : undefined} aria-modal={narrow ? true : undefined} aria-label={assistantOpen ? 'AI 助手' : '节点设置'}><div hidden={assistantOpen}>{panel}</div><WorkflowDesignerAssistant presentation="panel" workflowCode={workflowCode} draft={draft} context={assistantContext} open={assistantOpen && canEdit} canApply={canEdit && !authorityStopped.current && !dirty && !busy && !liveState.dirty && !liveState.busy && !liveState.unknown && !frozenSave.current && !frozenPublish.current && !frozenAux.current} onClose={() => setAssistantOpen(false)} onApplied={value => { setPublishedView(false);setDraft(value);setDefinition(value.definition);setBinding(value.binding);setHistory(current => { const snapshots = [...current,{definition,binding:binding!}].slice(-25);while (snapshots.length > 1 && snapshots.reduce((bytes,item) => bytes + JSON.stringify(item).length,0) > 4 * 1024 * 1024) snapshots.shift();return snapshots; });setFuture([]);setError(undefined); }} onStateChange={setAssistantState} onAuthorityLoss={loseAuthority} /></aside>
     </div>
     <Drawer open={checksOpen} title="流程结构检查" width={440} onClose={() => setChecksOpen(false)}><Alert showIcon type={errors.length ? 'warning' : 'success'} title={errors.length ? `发现 ${errors.length} 项待修正的问题` : '未发现结构问题'} description={errors.length ? errors.map(diagnostic).join('；') : '节点与流转路径已通过结构校验。发布时还会检查当前应用的人员规则、页面和业务步骤。'} /></Drawer>
     <Modal open={!!insert} title="新增节点" onCancel={() => setInsert(undefined)} onOk={() => insertNode()} okText="添加" okButtonProps={{ disabled: !nodeTitle.trim() || !template }}><p>新增空白节点后自行配置人员、按钮和提醒。业务步骤使用应用已发布的能力。</p><label>节点类型<Select style={{ width: '100%' }} value={template} onChange={setTemplate} options={[{value:'approval',label:'审批（空白）'},{value:'handle',label:'办理（空白）'},{value:'cc',label:'抄送（空白）'},{value:'action',label:'已发布业务步骤'},{ value: 'parallel',label: '并行分支' },{ value: 'platform_notify', label: '发送通知' },...(variables.length ? [{ value: 'condition',label: '条件分支' }] : []),...Object.values(draft.publishedDefinition.nodes).filter(node => ['approval','handle','cc','action'].includes(node.kind)).map(node => ({ value: node.id,label: `复制已有配置 · ${node.title}` }))]} /></label><label>节点名称<Input value={nodeTitle} onChange={event => setNodeTitle(event.target.value)} /></label></Modal>
-    <Drawer open={versionsOpen} title="流程版本记录" width={620} onClose={() => setVersionsOpen(false)}><Table loading={busy} rowKey="publicationId" dataSource={versions} pagination={{ pageSize: 10 }} columns={[{ title: '版本',render: (_,item) => `v${item.definitionVersion}` },{ title: '说明',dataIndex: 'reason' },{ title: '发布时间',dataIndex: 'createdAt',render: value => new Date(value).toLocaleString() },{ title: '操作',render: (_,item) => <Popconfirm title="将该版本恢复到共享草稿？" description="当前草稿将被替换；发布后才会生效。" onConfirm={() => void restore(item.definitionVersion)}><Button disabled={busy || dirty || liveState.dirty || liveState.busy || liveState.unknown || !!frozenSave.current || !!frozenPublish.current || !!frozenAux.current}>恢复到草稿</Button></Popconfirm> }]} /></Drawer>
+    <Drawer open={versionsOpen} title="流程版本记录" width={620} onClose={() => setVersionsOpen(false)}><Table loading={busy} rowKey="publicationId" dataSource={versions} pagination={{ pageSize: 10 }} columns={[{ title: '版本',render: (_,item) => `v${item.definitionVersion}` },{ title: '说明',dataIndex: 'reason' },{ title: '发布时间',dataIndex: 'createdAt',render: value => new Date(value).toLocaleString() },{ title: '操作',render: (_,item) => <Popconfirm title="将该版本恢复到共享草稿？" description="当前草稿将被替换；发布后才会生效。" onConfirm={() => void restore(item.definitionVersion)}><Button disabled={!canEdit || authorityStopped.current || busy || dirty || liveState.dirty || liveState.busy || liveState.unknown || !!frozenSave.current || !!frozenPublish.current || !!frozenAux.current}>恢复到草稿</Button></Popconfirm> }]} /></Drawer>
     <Modal open={publication} title="发布并启用" width={648} className="oxa-designer-publish-modal" cancelText="继续编辑"
       onCancel={() => { if (!frozenPublish.current) setPublication(false); }} onOk={() => void publish()} confirmLoading={busy}
       okText={frozenPublish.current ? '重试原发布请求' : '发布并启用'}
-      okButtonProps={{ disabled: !reason.trim() || scope === 'running_and_new' && (holdIds.length > 0 || holdNodeIds.length > 0) && !holdReason.trim() || !preview || preview.truncated || scope === 'running_and_new' && !!preview.counts.excepted && !acknowledge }}>
+      okButtonProps={{ disabled: !canPublish || authorityStopped.current || !reason.trim() || scope === 'running_and_new' && (holdIds.length > 0 || holdNodeIds.length > 0) && !holdReason.trim() || !preview || preview.truncated || scope === 'running_and_new' && !!preview.counts.excepted && !acknowledge }}>
       <p>将当前草稿发布到{draft.environmentKey === 'production' ? '正式环境' : '测试环境'}。检查通过后立即生效。</p>
       <Spin spinning={busy}>
         <div className="oxa-designer-publish-checks"><CheckCircleOutlined /><span>{preview ? '流程与应用能力检查已完成' : '正在检查流程与应用能力'}</span></div>
