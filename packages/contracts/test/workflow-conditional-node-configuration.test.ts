@@ -91,7 +91,7 @@ test('mode-only change validates all canonical conditional leaves without requir
 test('conditional defaults retain released scoped-role administration without relaxing malformed leaves', async () => {
   const { validateWorkflowAdministration } = await import('../src/native-compiler/workflow-node-administration.js');
   const definition: any = { nodes: { review: { id: 'review', kind: 'approval', binding: 'people', mode: 'any', administration: { assigneeProviders: ['app_role_in_scope'] } } } };
-  const entry: any = { provider: 'conditional', cases: [{ when: { op: 'literal', value: true }, assignee: { provider: 'app_role_in_scope', roleCode: 'reviewer', scope: { department: { source: 'field', field: 'department' } } } }], otherwise: { provider: 'fixed_users', users: ['actor'] } };
+  const entry: any = { provider: 'conditional', cases: [{ when: { op: 'literal', value: true }, assignee: { provider: 'app_role_in_scope', roleCode: 'reviewer', scope: { dimension: 'department', valueFrom: 'department' } } }], otherwise: { provider: 'fixed_users', users: ['actor'] } };
   const bindings: any = { bindings: { people: entry } };
   assert.ok(!validateWorkflowAdministration(definition, bindings).some(value => value.includes('SCOPE_REQUIRED')));
   entry.cases[0].assignee = { provider: 'app_role', roleCode: 'reviewer' };
