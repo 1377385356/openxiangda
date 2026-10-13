@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.67.3",
+  "status": "reviewed",
+  "title": "条件规则安全源码往返与 TEST 操作指引",
+  "summary": "增加 Source v2 条件人员覆盖的安全读取与显式源码采用，同时包含已合入主线的 TEST 原生数据回收操作和多组织中文指引。平台条件审批与画布能力仍遵循独立启用门禁，不包含生产部署。",
+  "newFeatures": [
+    "Source v2 保留条件顺序、标签、otherwise 和非指定人员来源；环境指定人员叶子只投影数量。",
+    "显式采用 handling 时，整个人员规则受本地冻结默认、已发布来源和事实校验约束；任一指定人员叶子使整项规则保持不导入并返回提示。",
+    "共享 CLI/MCP 目录提供 TEST 原生数据批次回收的 prepare/status/stop/preview/execute，复用原 repair 所有者和 digest 恢复契约，不自动执行清理。",
+    "增加多组织、成员、会话与家校目录中文资料的同源发现和技能指引。"
+  ],
+  "fixes": [
+    "条件 handling 导入使用节点独立绑定，避免改变其他共享默认绑定节点。"
+  ],
+  "affectedUsers": [
+    "维护条件审批源码、读取平台流程导出文件或显式采用节点办理默认值的 V2 开发者。",
+    "使用 TEST 原生数据回收或多组织目录操作的 CLI/MCP 用户。"
+  ],
+  "upgradeSteps": [
+    "按工作区锁定工具链升级并核对当前引擎；稳定 V1 不自动迁移。",
+    "平台须先接入已发布的对应 contracts 制品；旧服务器不支持的能力继续明确拒绝。",
+    "导入前检查来源摘要和权限边界；只有明确需要时才使用 --adopt-handling-defaults。"
+  ],
+  "knownLimitations": [
+    "Source v2/离线导入不是条件审批端到端启用证明；平台注册、capability、PC 编辑和业务验收仍须完整闭环。",
+    "含指定人员的条件规则整体不导入，不会复制私人名单，也不会合并角色分支作为替代。",
+    "本次包发布不包括平台服务部署、数据库数据修改或实际生产/用户业务验收。",
+    "多组织应用 SDK 与组织数据权限的未接通部分在资料中明确标注，不能按设计意图推断权限已生效。"
+  ],
+  "compatibility": {
+    "node": "Node.js 24 or newer for the maintained toolchain",
+    "generation": "OpenXiangda V2; no automatic V1 migration",
+    "sourceBundle": "v1 remains supported; v2 requires a matching consumer"
+  },
+  "issues": []
+}
