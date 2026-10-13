@@ -108,6 +108,32 @@ pnpm openxiangda status <deployment-id> --workflow-exceptions --json
 明确表示预览没有授予激活许可。旧平台能力缺失时保留原运行并报告缺口。
 当前没有通过此命令确认例外或转换旧实例事实的能力；不要给 retry 塞未支持的确认字段。
 
+若应用仍锁定旧 SDK，统一 launcher 可能继续选择旧引擎。不要为诊断改应用依赖或冻结候选。
+可在应用目录之外建立独立诊断目录，安装发行回执指定的精确 `openxiangda-devkit-core` 版本
+（该版本须包含 `deploymentWorkflowPreview`），使用以下公开服务接口；不使用 `latest`。
+把脚本保存为该诊断目录下的 `preview.mjs`，运行 `node preview.mjs <原工作区绝对路径> <原Run ID>`：
+
+```js
+import { readFile } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
+import { OpenXiangdaDeveloperSession, workspaceSessionPath, OpenXiangdaControlPlaneClient } from 'openxiangda-devkit-core';
+const [rootInput, runId] = process.argv.slice(2);
+if (!rootInput || !runId) throw new Error('需要原工作区和原 Run ID');
+const root = resolve(rootInput);
+const link = JSON.parse(await readFile(join(root, '.openxiangda/link.json'), 'utf8'));
+if (typeof link.appCode !== 'string' || typeof link.baseUrl !== 'string') throw new Error('工作区绑定无效');
+const session = await OpenXiangdaDeveloperSession.load({ sessionPath: workspaceSessionPath(root) });
+if (!session) throw new Error('需要原工作区的平台登录会话');
+session.assertPlatform(link.baseUrl);
+const client = new OpenXiangdaControlPlaneClient({ baseUrl: session.baseUrl, tokenProvider: session });
+console.log(JSON.stringify(await client.deploymentWorkflowPreview(link.appCode, runId), null, 2));
+```
+
+此路径不加载应用 CLI 或源码配置、不重建候选，也不改应用 package/lock/seal。
+认证沿用官方工作区会话及平台绑定检查；如 token 到期，会话组件仍按原规则刷新凭据。
+它只做原身份核验、能力检查及原 Run GET；平台尚未支持时明确失败，不回退为重新部署。
+
+
 
 网络响应不确定时先查询原运行，不凭本地输出创建重复部署。平台部署成功后，仍需执行真实角色的业务验收。
 
