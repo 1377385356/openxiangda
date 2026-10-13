@@ -4926,13 +4926,24 @@ test('dev result retains the original configuration refusal and never offers an 
     writeFileSync(join(root,'openxiangda.config.ts'),`export default ${JSON.stringify(configDeclaration())};\n`);
     writeFileSync(join(root,'.openxiangda/link.json'),JSON.stringify({schemaVersion:2,appCode:'reference-app',baseUrl:'https://platform.example/service'}));
     await saveSession({baseUrl:'https://platform.example/service',accessToken:'developer-token'},join(root,'.openxiangda/session.json'));
-    let requests=0;
-    globalThis.fetch=async()=>{requests++;return new Response(JSON.stringify({code:'OPENXIANGDA_CONNECTED_DEV_CONFIGURATION_PREPARE_FAILED',status:503,message:'original preparation failed',requestId:'request-1',path:'/configuration/resources',retryable:false,data:{pointer:'/configuration/resources',configurationRunId:'run-1',causeCode:'ORIGINAL_CAUSE',developmentFeedback:{schemaVersion:'openxiangda.connected-development-feedback/v1',category:'inspect-original-run',nextAction:'inspect-original-configuration-run',canRetryUnchanged:false}}}),{status:503,headers:{'content-type':'application/json'}});};
+    const requests: Array<{path:string;method:string}> = [];
+    globalThis.fetch=async(input,init)=>{
+      const path=new URL(String(input)).pathname;
+      requests.push({path,method:init?.method||'GET'});
+      const ok=(data:unknown)=>new Response(JSON.stringify({code:200,message:'success',data}),{status:200,headers:{'content-type':'application/json'}});
+      if(path.endsWith('/auth/whoami'))return ok({user:{id:'developer'},tenant:{id:'tenant'},isPlatformAdmin:true,manageableAppTypes:['reference-app']});
+      if(path.endsWith('/environments'))return ok({items:[{id:'environment-test',environmentKey:'preproduction',status:'active',activeHead:{activeAppVersionId:'published-version',revision:1}}]});
+      if(path.endsWith('/capabilities'))return ok({contractVersion:OPENXIANGDA_CONTRACT_VERSION,features:{'application.development-configuration':{status:'available',contractVersion:'2.0.0'}}});
+      assert.ok(path.endsWith('/dev-sessions/configuration'),`unexpected request: ${path}`);
+      return new Response(JSON.stringify({code:'OPENXIANGDA_CONNECTED_DEV_CONFIGURATION_PREPARE_FAILED',errorCode:'OPENXIANGDA_CONNECTED_DEV_CONFIGURATION_PREPARE_FAILED',status:503,message:'original preparation failed',requestId:'request-1',path:'/configuration/resources',retryable:false,data:{pointer:'/configuration/resources',configurationRunId:'run-1',causeCode:'ORIGINAL_CAUSE',developmentFeedback:{schemaVersion:'openxiangda.connected-development-feedback/v1',category:'inspect-original-run',nextAction:'inspect-original-configuration-run',canRetryUnchanged:false}}}),{status:503,headers:{'content-type':'application/json'}});
+    };
     const result=await new OpenXiangdaApplicationServices().dev(root,{noOpen:true});
     assert.equal(result.ok,false);assert.equal(result.diagnostics[0]?.retryable,false);
     assert.equal(result.diagnostics[0]?.details?.configurationRunId,'run-1');
     assert.equal(result.diagnostics[0]?.path,'/configuration/resources');
-    assert.equal(result.nextActions[0]?.code,'dev.inspect-original-run');assert.equal(requests,1);
+    assert.equal(result.nextActions[0]?.code,'dev.inspect-original-run');
+    assert.equal(requests.filter(request=>request.method==='POST').length,1);
+    assert.equal(requests.filter(request=>request.path.endsWith('/dev-sessions/configuration')).length,1);
   } finally {globalThis.fetch=originalFetch;rmSync(root,{recursive:true,force:true});}
 });
 
