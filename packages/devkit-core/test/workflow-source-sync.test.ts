@@ -215,3 +215,23 @@ test('a complex released leaf is adopted exactly; the DTO cannot alter its param
     assert.throws(() => prepareWorkflowSourceImport(f.config,f.bundle,true),/LEAF_UNRELEASED/);
   } finally { rmSync(f.root,{ recursive: true,force: true }); }
 });
+
+test('adopted role-only replacement validates its effective mode, not a removed default chain', () => {
+  const f = conditionalFixture();
+  try {
+    const local = f.config.workflows.definitions[0].definition;
+    local.nodes.a.mode = 'sequence'; local.nodes.b.mode = 'sequence';
+    local.organizationContext = { department: { source: 'user_primary_department' } };
+    const source: any = { provider: 'conditional', cases: [{ when: { op: 'literal',value: true },assignee: { provider: 'app_role',roleCode: 'manager' } }],otherwise: { provider: 'supervisor_chain',from: 'initiator',until: 'top' } };
+    f.config.workflows.bindings[0].binding.bindings.people = structuredClone(source);
+    f.bundle.binding.bindings.people = structuredClone(source);
+    f.bundle.definition = structuredClone(local);
+    f.bundle.handling.a!.mode = 'all'; refreshConditional(f.bundle);
+    const prepared = prepareWorkflowSourceImport(f.config,f.bundle,true);
+    const d = prepared.workflows.definitions[0]!.definition;
+    assert.equal((d.nodes.a as any).mode,'all');
+    assert.equal((d.nodes.b as any).mode,'sequence');
+    assert.deepEqual(prepared.workflows.bindings[0]!.binding.bindings.people,source);
+    assert.equal((prepared.workflows.bindings[0]!.binding.bindings.canvas_a as any).otherwise.roleCode,'manager');
+  } finally { rmSync(f.root,{ recursive: true,force: true }); }
+});
