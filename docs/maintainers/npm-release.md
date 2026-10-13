@@ -25,7 +25,7 @@
 
 计划按真实运行字节与消费闭包决定检查。未知差异扩大验证；候选安装、入口、内容与防篡改检查仍按计划执行。成功阶段按源码/manifest/计划、锁、runner 和环境输入复用最多 24 小时；失败、过期、输入改变、full/live 或可变外部目标不能当作旧通过。浏览器复用只证明对应执行输入，没有线上业务含义。
 
-默认验证总预算：资料/局部 300 秒，含浏览器 900 秒，full 1800 秒；可显式设置 `OPENXIANGDA_RELEASE_VERIFY_TIMEOUT_SECONDS`。超时终止子进程并报告阶段，不自动减测。registry 收敛独立预算默认 300 秒，`OPENXIANGDA_PUBLISH_CONVERGENCE_SECONDS` 限制在 30–1800 秒；不能把元数据尚未可见当作 npm 未写入。
+默认验证总预算与 `scripts/release-validate.mjs` 一致：普通计划 1200 秒，新应用端到端计划 1500 秒，full 1800 秒；需要新应用或参考应用的计划不接受低于 600 秒的预算。这是超时上限，不是目标耗时；可显式设置 `OPENXIANGDA_RELEASE_VERIFY_TIMEOUT_SECONDS`。超时终止子进程并报告阶段，不自动减测。registry 收敛独立预算默认 300 秒，`OPENXIANGDA_PUBLISH_CONVERGENCE_SECONDS` 限制在 30–1800 秒；不能把元数据尚未可见当作 npm 未写入。
 
 ## 中断与渠道恢复
 
