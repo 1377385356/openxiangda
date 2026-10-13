@@ -7,6 +7,7 @@
 
 - 模型、页面、导航和权限由应用声明一次；编译器生成契约。业务代码不改生成结果、不创建 platform/data、不复制平台 Router、字段组件、客户端或权限状态。
 - 当前用户、角色并集、数据授权和部署状态归平台；应用不保存凭据或授权快照。普通 CRUD 走 Data API，真实业务动作才按需启用 Nest。想写后端接口时先按 docs development 的"判定是否真的需要 Nest 后端"逐行核对：列表/表单/详情/删除用 `createNativeResourceClient`，幂等、时间窗、状态前置用平台事务与守卫，聚合用服务端聚合；check 会拒绝未绑定已声明 operation 的应用 controller 路由。
+- 教育局与独立学校企业、多校家长、多组织教师、家校角色或班级范围需求先读 `docs multi-organization`（MCP `docs_read` 同一 topic）。平台维护组织、安装、成员与来源身份；应用不另建企业树或钉钉身份库。核对当前 HTTP/SDK 可用入口、待接通的组织数据权限和实际站点状态，不能把 `corpId` 或组织树当授权证明。
 - 标准业务字段使用 `openxiangda/field-kit`；PC 补充控件使用 antd，移动使用有作用域的 `openxiangda/mobile` 和 MobileSurface，不引入上游全局重置。
 - 界面开发默认按 docs design-workflow 由当前 Agent 完成视觉、真实页面实现和浏览器修正；需要新视觉方向时可用 Image 2.5 等当前图片能力生成少量参考。图片不定义交互、权限或验收。设备由真实任务决定；复用 Shell 导航事实、标准字段行为，通过 ui 和局部样式应用设计，不复制权限或导航状态。采用的参考图、tokens 和必要原型以 AppSpec assets 固定。模板 /home 不替代页面选型。
 - 有管理任务时选择可编辑后台源码模板，通过 ui.admin.shell 挂载唯一外壳；PC、移动与登录外观分别选择模板。应用可自行重构页面；resourcePages 和 openxiangda/resource 提供获准扩展边界。平台拥有路由、身份、授权、数据及登录行为。既有页面保留 SDK fallback，模板初始化不自动覆盖应用；没有管理任务时不强行加后台。选模板前读 docs application-templates 或 template list / MCP template_list，已有授权无需额外确认。

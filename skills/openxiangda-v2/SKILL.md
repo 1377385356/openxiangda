@@ -68,6 +68,7 @@ pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ skill install --force
 | 图片压缩、缩略图、附件和缓存 | [图片与附件读取](references/field-components.md#图片缩略图和附件读取)：卡片优先缩略图，原图按需，使用平台权限与缓存规则 |
 | 页面、标准组件与扩展 | [前端](references/frontend.md) |
 | 角色、行和字段权限 | [数据与权限](references/data-authz.md) |
+| 教育局/独立学校、企业三方应用、多校家长、多组织教师、家校角色与班级范围 | 先读[多组织与家校目录](references/multi-organization.md)，复用平台组织、成员与身份事实，核对已实现 HTTP 契约和待接通 SDK/组织数据权限 |
 | 外部无账号表单、续填、上传、本人记录 | [匿名公开访问](references/public-access.md) |
 | 审批、待办、消息或事件 | [工作流与通知](references/workflow-events.md) |
 | 自定义事务、校验或外部集成 | [按需后端](references/backend.md) |
@@ -106,6 +107,8 @@ pnpm exec openxiangda --mcp-stdio --cwd <workspace>
 先读取 workspace_context，再按需调用 docs_read、contract_describe、administration_context 或 workflow_node_configurations。docs_read 不传 topic 时返回目录，使用其中的 id 读取正文；主题 ID 与本 Skill 参考文件名一致，例如命令专题为 cli。`openxiangda://workspace/contracts` 提供契约索引；按 selector 读取正文，aiCatalogDigest 随当前声明生成。字段、角色、管理员运行参数和部署状态都取自当前结果，不把示例值当成平台默认值。
 
 平台拥有身份、授权、业务数据、环境和部署状态。应用只声明自己的模型、页面和规则；普通 CRUD 走 Data API，标准审批和通知按需声明，真实业务动作才启用 Nest。编译器生成契约，应用不改生成输出、不维护第二份权限或能力目录。菜单建议只供初次复制到应用声明，不是运行时自动发现。
+
+多组织与家校场景先按 `multi-organization` 专题识别平台已提供的事实与应用职责。`corpId` 是入口线索，真实 unionId 和平台成员关系由平台验证；不再建立应用自己的钉钉身份库或企业组织树。源码基础、SDK 可用入口、组织数据授权及目标站点启用状态分别核实，不能把组织树存在或原始响应中的字段当成自动隔离已经完成。
 
 匿名访问使用 frontend.publicAccess、createAnonymousPublicClient 与平台浏览器凭证，不建立 guest 角色或公开普通 Data API。提交策略的 `create` 必须配套 `draft`；只读外部数据使用 `public.list`/`public.read` 和显式 `publicRecordFields`，附件/图片/清洗后的富文本走平台代理 URL，子表用 `publicSubtableFields` 显式投影，不需要 draft，且不接受任意筛选、排序或投影。角色并集来自当前用户，Perspective 只收窄读取。
 

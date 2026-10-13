@@ -27,6 +27,8 @@ flowchart LR
 
 ## 数据边界
 
+教育局与独立学校企业、多校家长、多组织教师等场景复用平台组织注册、安装、成员和工作组织上下文。应用不另建身份或企业组织树；已实现 HTTP 契约、家校角色/班级事实与尚未接通的 SDK/组织数据权限见[多组织与家校目录](multi-organization.md)。组织树存在不代表 Data API 已自动执行跨组织授权。
+
 首期不为应用创建独立数据库。业务后端通过统一 Data API 访问平台数据；Data API 提供资源化查询、字段策略、行级授权、并发修订和受限事务批处理。这样保留统一治理，又不限制应用后端表达业务逻辑。
 
 应用后端声明具名 Operation 时，不应重新手写用户、部门、资源引用和文件字段协议。`openxiangda/config` 提供 `resourceRecordSchema`、`schemaRef`、`composeJsonSchema` 和 `composeAppOperationSchemas`：它们从同一 Resource declaration 和公共 `FIELD_VALUE_SCHEMAS` 投影请求/响应 JSON Schema，只允许有界的本地 `$defs`/`$ref`，不会改变 Data API、权限或业务事务 owner。

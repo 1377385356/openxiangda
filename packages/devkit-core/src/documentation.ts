@@ -17,6 +17,7 @@ export const DOCUMENTATION_TOPICS = [
   { id: 'frontend', title: '页面与标准组件扩展', file: 'frontend.md' },
   { id: 'field-components', title: '字段、表单与移动控件', file: 'field-components.md' },
   { id: 'data-authz', title: '数据查询与权限', file: 'data-authz.md' },
+  { id: 'multi-organization', title: '多组织、局校管理与家校目录', file: 'multi-organization.md' },
   { id: 'public-access', title: '无账号的匿名公开访问', file: 'public-access.md' },
   { id: 'workflow-events', title: '审批、事件与通知', file: 'workflow-events.md' },
   { id: 'backend', title: '按需后端与业务动作', file: 'backend.md' },

@@ -39,6 +39,7 @@ export default defineConfig({
         { text: '页面与组件扩展', link: '/frontend' },
         { text: '字段与移动控件', link: '/field-components' },
         { text: '数据与权限', link: '/data-authz' },
+        { text: '多组织与家校目录', link: '/multi-organization' },
         { text: '匿名公开访问', link: '/public-access' },
         { text: '审批、事件与通知', link: '/workflow-events' },
         { text: '按需后端', link: '/backend' },

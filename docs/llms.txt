@@ -15,6 +15,7 @@
 - [页面与标准组件扩展](./frontend.md)：主题 ID `frontend`
 - [字段、表单与移动控件](./field-components.md)：主题 ID `field-components`
 - [数据查询与权限](./data-authz.md)：主题 ID `data-authz`
+- [多组织、局校管理与家校目录](./multi-organization.md)：主题 ID `multi-organization`
 - [无账号的匿名公开访问](./public-access.md)：主题 ID `public-access`
 - [审批、事件与通知](./workflow-events.md)：主题 ID `workflow-events`
 - [按需后端与业务动作](./backend.md)：主题 ID `backend`

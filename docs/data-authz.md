@@ -2,6 +2,8 @@
 
 授权由四层组成：页面/操作 capability、行谓词、字段 read，以及字段 create/update。前端只消费平台返回的最终访问结果来隐藏按钮、只读输入和剔除 payload；平台每次请求重新执行权威校验。
 
+涉及独立企业的上下级组织、跨学校身份或家校班级范围时，先读[多组织与家校目录](./multi-organization.md)。平台已有组织/成员/会话基础；V2 角色 reach、目录事实应用映射和组织行边界尚未完整接通，不能将当前普通角色并集、unrestricted 规则或前端 `corpId` 当成自动跨组织授权。
+
 以下仅以仪器管理应用举例，不是平台默认模型或角色。该示例的行规则是：学校管理员不受行谓词限制；学院管理员按记录 `collegeId` 匹配；仪器管理员按 `instrumentAdminIds` 包含当前用户匹配。不要增加影子范围字段。
 
 `collegeId` 是应用 `colleges` Native Resource 的记录 UUID。学院 scope dimension 通过
