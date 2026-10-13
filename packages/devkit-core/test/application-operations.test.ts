@@ -123,3 +123,30 @@ test('semantic observations use the original TEST GET and reject production or o
   assert.equal(definition.effect, 'read'); assert.match(definition.permission, /平台管理员/);
   assert.match(definition.recovery, /激活许可/);
 });
+
+test('managed cleanup accepts only TEST and the original run/digest on fixed routes', async () => {
+  const prepare = { operation: 'acceptance-data.prepare' as const, environment: 'test' as const,
+    input: { requestKey: id, expectedAppVersionId: id, expectedHeadRevision: 1, actors: [{ key: 'member', roleCodes: ['member'] }] } };
+  const start = applicationOperationTransport('workspace-app', prepare);
+  assert.equal(start.path, '/openxiangda-api/v2/applications/workspace-app/acceptance/data-runs/prepare');
+  assert.deepEqual(JSON.parse(start.init.body!), { ...prepare.input, environmentKey: 'preproduction' });
+  const execute = { operation: 'acceptance-data.execute-cleanup' as const, environment: 'test' as const,
+    input: { runId: id, manifestSha256: 'a'.repeat(64), mode: 'canary' as const } };
+  const calls: Array<{ path: string; body: unknown }> = [];
+  const client = new OpenXiangdaControlPlaneClient({ baseUrl: 'https://platform.example', fetch: async (url, init) => {
+    calls.push({ path: new URL(String(url)).pathname, body: JSON.parse(String(init?.body)) });
+    return new Response(JSON.stringify({ code: 200, data: { runId: id, readback: { cleanupState: 'repair-pending', remainingRecordCount: 1 } } }));
+  } });
+  assert.deepEqual(await client.applicationOperation('workspace-app', execute), { runId: id, readback: { cleanupState: 'repair-pending', remainingRecordCount: 1 } });
+  assert.deepEqual(calls, [{ path: `/openxiangda-api/v2/applications/workspace-app/acceptance/data-runs/${id}/cleanup-execute`, body: { manifestSha256: 'a'.repeat(64), mode: 'canary' } }]);
+  for (const operation of ['acceptance-data.status', 'acceptance-data.preview-cleanup'] as const) {
+    const transport = applicationOperationTransport('workspace-app', { operation, environment: 'test', input: { runId: id } });
+    assert.equal(transport.init.body, undefined); assert.match(transport.path, /environmentKey=preproduction/);
+  }
+  for (const invalid of [{ ...prepare, environment: 'production' }, { ...prepare, input: { ...prepare.input, appType: 'other' } },
+    { ...prepare, input: { ...prepare.input, actors: Array.from({ length: 13 }, () => prepare.input.actors[0]) } },
+    { ...execute, environment: 'production' }, { ...execute, input: { ...execute.input, plan: {} } },
+    { ...execute, input: { ...execute.input, tenantId: 'other' } }, { ...execute, input: { ...execute.input, mode: 'all' } }])
+    assert.throws(() => parseApplicationOperation(invalid), /INPUT_INVALID/);
+  assert.match(applicationOperationCatalog().operations.find(item => item.operation === execute.operation)!.permission, /平台管理员/);
+});
