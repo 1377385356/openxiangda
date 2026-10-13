@@ -4935,3 +4935,25 @@ test('dev result retains the original configuration refusal and never offers an 
     assert.equal(result.nextActions[0]?.code,'dev.inspect-original-run');assert.equal(requests,1);
   } finally {globalThis.fetch=originalFetch;rmSync(root,{recursive:true,force:true});}
 });
+
+test('task prerequisites use the sealed compiler, paginate and never claim target authorization', async () => {
+  const root=mkdtempSync(join(tmpdir(),'openxiangda-prerequisites-'));
+  const originalFetch=globalThis.fetch;
+  try {
+    for(const dir of ['packages/contracts/src','apps/web','apps/server','platform'])mkdirSync(join(root,dir),{recursive:true});
+    writeFileSync(join(root,'package.json'),JSON.stringify({name:'reference-app',private:true,packageManager:'pnpm@10.15.1'}));
+    writeFileSync(join(root,'openxiangda.config.ts'),`export default ${JSON.stringify(configDeclaration())};\n`);
+    globalThis.fetch=async()=>{throw new Error('LOCAL_PROJECTION_MUST_NOT_USE_NETWORK');};
+    const services=new OpenXiangdaApplicationServices();
+    const result=await services.contractContext(root,{selector:'prerequisites',limit:1});
+    const selection=(result.data as any).selection;
+    assert.equal(selection.validationOwner,'sealed-native-compiler');
+    assert.equal(selection.targetAvailability,'not-observed');assert.equal(selection.actorAuthorization,'not-observed');
+    assert.equal(selection.entries.length,1);assert.equal(selection.nextOffset,1);
+    const single=await services.contractContext(root,{selector:selection.entries[0].selector});
+    assert.deepEqual((single.data as any).selection.entries[0],selection.entries[0]);
+    assert.equal((single.data as any).selection.compilerAggregateDigest,selection.compilerAggregateDigest);
+    await assert.rejects(()=>services.contractContext(root,{selector:'prerequisites:operation:absent'}),/CONTRACT_SELECTION_NOT_FOUND/);
+    await assert.rejects(()=>services.contractContext(root,{selector:'prerequisites',limit:101}),/CONTRACT_SELECTION_INVALID/);
+  } finally {globalThis.fetch=originalFetch;rmSync(root,{recursive:true,force:true});}
+});

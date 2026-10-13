@@ -1,0 +1,11 @@
+# 编译器任务前提投影
+
+证据：contract context已有模型/流程/操作索引，但平台能力需求与后台operation的platformAccess、事件consumer前提分散，AI容易边调用边补声明。
+
+owner：复用compileLocalConfiguration执行原sealed compiler，将requiredPlatformCapabilities和正式contracts中的任务声明投影到原contract context的prerequisites选择器。原编译器仍决定合法性与完整性；不维护第二份授权/事件/目录/文件规则，不声称本地声明验证已经证明目标可用或实际用户有权限。
+
+范围：分页列出原平台能力、operation、workflow、event consumer和资源声明；同一原selector可查询具体任务。来源摘要和compiler aggregateDigest绑定投影。未知selector拒绝，不从名称猜任务关系；每页100项/256KiB沿原context预算。原编译器错误直接保留原pointer，不能把首个失败之后未检查的部分写成完整通过。
+
+失败/并发/安全：本地只读编译，不读取用户凭据或发送平台请求；在线能力与权限由原check/deploy预检和实际角色验收确定。只有声明事实，无自动授予权限、发布或补数据库。V1独立。回退移除新增selector，原编译/运行不变。
+
+验证计划：最终统一检查真实编译器输出一致、原错误传播、任务selector定位、分页及目标未观测标记，更新MCP发现正文与单源Skill。

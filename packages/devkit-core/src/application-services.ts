@@ -1,3 +1,4 @@
+import { taskPrerequisiteContext } from './task-prerequisites.js';
 import { connectedDevelopmentFeedback, connectedDevelopmentDetail } from './connected-development-feedback.js';
 import { importWorkflowSource,readWorkflowSourceBundle,readWorkflowSourceLock,workflowSourceDeclaration,writeWorkflowRegistrationPlan,writeWorkflowSourceBundle } from './workflow-source-sync.js';
 import { assertDeploymentPrerequisites } from './deployment-prerequisites.js';
@@ -452,6 +453,17 @@ export class OpenXiangdaApplicationServices {
   }
 
   async contractContext(root?: string, input: { selector?: string; offset?: number; limit?: number } = {}) {
+    if (input.selector === 'prerequisites' || input.selector?.startsWith('prerequisites:')) {
+      const offset = input.offset ?? 0, limit = input.limit ?? 30;
+      if (!Number.isSafeInteger(offset) || offset < 0 || !Number.isSafeInteger(limit) || limit < 1 || limit > 100)
+        throw new Error('CONTRACT_SELECTION_INVALID: offset 必须为非负整数，limit 必须在1到100之间');
+      const workspace = await this.workspace(root);
+      const { compiled } = compileLocalConfiguration(workspace.config, this.toolchainVersion);
+      return this.ok('contract.describe', workspace.context.workspace, {
+        configDigest: compiled.source.configDigest, contractDigest: compiled.source.contractDigest,
+        selector: input.selector, selection: taskPrerequisiteContext(compiled, input.selector, offset, limit),
+      });
+    }
     const result = await this.contractDescribe(root);
     const data = result.data!;
     const groups = {
@@ -478,7 +490,7 @@ export class OpenXiangdaApplicationServices {
     let selection: unknown;
     if (selector === 'index') selection = {
       total: entries.length, offset, limit, nextOffset: offset + limit < entries.length ? offset + limit : null,
-      sections: ['navigation', 'permissions', 'all'],
+      sections: ['navigation', 'permissions', 'prerequisites', 'all'],
       entries: entries.slice(offset, offset + limit).map(({ value: _, ...entry }) => entry),
     };
     else if (selector === 'navigation') selection = { adminNavigationAuthoring: data.adminNavigationAuthoring };
