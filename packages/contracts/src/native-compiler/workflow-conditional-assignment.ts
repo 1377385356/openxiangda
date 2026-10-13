@@ -81,34 +81,34 @@ function leafErrors(entry: unknown, allowIncomplete = false): string[] {
 }
 
 /** One bounded iterator for future role, capability, principal and source-sync consumers. No recursion. */
-export function workflowAssignmentLeaves(entry: WorkflowBindingEntry | WorkflowConditionalAssignment): WorkflowStandardBindingEntry[] {
+export function workflowAssignmentLeaves(entry: WorkflowBindingEntry | WorkflowConditionalAssignment, options: { allowIncomplete?: boolean } | number = {}): WorkflowStandardBindingEntry[] {
   if (entry.provider !== 'conditional') return [entry];
-  if (validateWorkflowConditionalAssignmentShape(entry).length) throw new Error('WORKFLOW_CONDITIONAL_BINDING_INVALID');
+  if (validateWorkflowConditionalAssignmentShape(entry, typeof options === 'number' ? {} : options).length) throw new Error('WORKFLOW_CONDITIONAL_BINDING_INVALID');
   return [...entry.cases.map(rule => rule.assignee), entry.otherwise];
 }
 
 /** Code-owned defaults establish their own ceiling; administrator edits do not. */
-export function validateWorkflowConditionalBindingDefinition(definition: WorkflowDefinition, binding: WorkflowBinding): string[] {
+export function validateWorkflowConditionalBindingDefinition(definition: WorkflowDefinition, binding: WorkflowBinding, options: { allowIncomplete?: boolean } = {}): string[] {
   const errors: string[] = [];
   for (const [key, entry] of Object.entries(binding.bindings)) {
     if (entry.provider !== 'conditional') continue;
-    const shape = validateWorkflowConditionalAssignmentShape(entry);
+    const shape = validateWorkflowConditionalAssignmentShape(entry, options);
     if (shape.length) { errors.push(...shape.map(error => `${error}:${key}`)); continue; }
     for (const node of Object.values(definition.nodes)) {
       if (!('binding' in node) || node.binding !== key) continue;
       errors.push(...validateWorkflowConditionalAssignment(entry, {
         definition, nodeId: node.id, frozenDefault: entry, releasedSources: {}, standardProviders: [],
-      }).map(error => `${error}:${key}:${node.id}`));
+      }, options).map(error => `${error}:${key}:${node.id}`));
     }
   }
   return [...new Set(errors)];
 }
 
 /** For flat-only validators with no graph semantics (routing, roles and field candidates). */
-export function workflowAssignmentLeafBinding(binding: WorkflowBinding): { bindings: Record<string, WorkflowStandardBindingEntry> } {
+export function workflowAssignmentLeafBinding(binding: WorkflowBinding, options: { allowIncomplete?: boolean } = {}): { bindings: Record<string, WorkflowStandardBindingEntry> } {
   return { bindings: Object.fromEntries(Object.entries(binding.bindings).flatMap(([key, entry]) =>
     entry.provider === 'conditional'
-      ? workflowAssignmentLeaves(entry).map((leaf, index) => [`${key}/leaves/${index}`, leaf] as const)
+      ? workflowAssignmentLeaves(entry, options).map((leaf, index) => [`${key}/leaves/${index}`, leaf] as const)
       : [[key, entry] as const])) };
 }
 
@@ -230,7 +230,7 @@ export function validateWorkflowConditionalAssignment(value: unknown, context: W
   const entry = value as WorkflowConditionalAssignment, node = context.definition.nodes[context.nodeId];
   if (!node || node.kind !== 'approval' && node.kind !== 'handle') return ['WORKFLOW_CONDITIONAL_HUMAN_REQUIRED'];
   const errors: string[] = [];
-  const frozen = context.frozenDefault ? workflowAssignmentLeaves(context.frozenDefault) : [];
+  const frozen = context.frozenDefault ? workflowAssignmentLeaves(context.frozenDefault, options) : [];
   const released = Object.values(context.releasedSources);
   for (const [index, leaf] of [...entry.cases.map(rule => rule.assignee), entry.otherwise].entries()) {
     if (!authorable(leaf, context) && ![...frozen, ...released].some(source => semantic(source) === semantic(leaf))) errors.push(`WORKFLOW_CONDITIONAL_LEAF_UNRELEASED:${index}`);

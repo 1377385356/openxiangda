@@ -60,3 +60,12 @@ test('every conditional leaf enforces supervisor sequence even when its case nev
   assert.ok(h.run().some(error => error.includes('SEQUENCE_REQUIRED')));
   (h.definition.nodes.fresh as any).mode = 'sequence'; assert.deepEqual(h.run(), []);
 });
+
+test('draft leaf iteration is explicit and strict Array.flatMap consumers cannot accidentally enable it', async () => {
+  const { workflowAssignmentLeaves, validateWorkflowConditionalBindingDefinition } = await import('../src/native-compiler/workflow-conditional-assignment.js');
+  const h = fixture(); h.entry.otherwise = { provider: 'fixed_users', users: [] };
+  assert.throws(() => [h.entry].flatMap(workflowAssignmentLeaves));
+  assert.equal(workflowAssignmentLeaves(h.entry, { allowIncomplete: true }).length, 2);
+  assert.deepEqual(validateWorkflowConditionalBindingDefinition(h.definition, h.binding, { allowIncomplete: true }), []);
+  assert.ok(validateWorkflowConditionalBindingDefinition(h.definition, h.binding).length);
+});
