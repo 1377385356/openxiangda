@@ -84,6 +84,7 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
   const recipientMinimum = isCc ? binding?.min ?? 1 : node.effective.emptyPolicy === 'skip' ? 0 : 1;
   const recipientMaximum = isCc ? Math.min(binding?.max ?? WORKFLOW_AUTOMATIC_CC_DEFAULT_RECIPIENTS, WORKFLOW_AUTOMATIC_CC_MAX_RECIPIENTS) : 200;
   const allowedProviders = node.administration?.assigneeProviders || (!isCc && binding && providers[binding.provider] ? [binding.provider] : []);
+  const flatProviders = allowedProviders.filter(provider => provider !== 'app_role_in_scope' || !!binding?.scope);
   const close = () => {
     if (busy || uncertain) return;
     const finish = () => { guard.release(); onClose(); };
@@ -230,7 +231,7 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
               form.setFields([{ name: 'conditionalAssignee', value: createWorkflowConditionalAssignment(node.effective.binding || { provider: 'fixed_users', users: [] }), touched: true }]);
               setDirty(true);
             }
-          }} options={[...allowedProviders.map(value => ({ value, label: providers[value] })), ...(canCondition ? [{ value: 'conditional', label: '按条件选择' }] : [])]} /></Form.Item>
+          }} options={[...flatProviders.map(value => ({ value, label: providers[value] })), ...(canCondition ? [{ value: 'conditional', label: '按条件选择' }] : [])]} /></Form.Item>
           {selectedProvider === 'conditional' && (conditionalContext ? <Form.Item name="conditionalAssignee" rules={[{ required: true }]}><WorkflowConditionalAssignmentEditor context={{ ...conditionalContext, frozenDefault: binding, standardProviders: allowedProviders as Array<'fixed_users' | 'app_role' | 'app_role_in_scope'> }} principals={principals} disabled={readOnly || authorityStopped.current || busy || !!frozen.current} value={form.getFieldValue('conditionalAssignee')} onChange={() => {}} /></Form.Item> : <Alert type="warning" title="当前平台未提供条件编辑上下文，原规则保持不变" />)}
           {selectedProvider === 'fixed_users' && <Form.Item name="users" rules={[{ required: isCc || node.effective.emptyPolicy !== 'skip', type: 'array', min: recipientMinimum, max: recipientMaximum }]}><PlatformDirectoryPicker kind="user" multiple placeholder="从通讯录选择人员" /></Form.Item>}
           {['app_role', 'app_role_in_scope'].includes(selectedProvider || '') && <Form.Item name="roleCodes" rules={[{ required: true, type: 'array', min: 1, max: 8 }]}><Select aria-label={isCc ? '抄送角色' : '审批角色'} mode="multiple" maxCount={8} showSearch={{ optionFilterProp: 'label' }} options={principals.roles.map(role => ({ value: role.code, label: role.name }))} placeholder="选择应用角色" /></Form.Item>}

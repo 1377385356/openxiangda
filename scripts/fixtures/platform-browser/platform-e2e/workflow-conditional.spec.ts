@@ -59,3 +59,26 @@ test('older platform context does not offer a conditional authoring control', as
   await expect(page.getByText('当前平台未提供条件编辑上下文，原规则保持不变')).toBeVisible();
   await expect(page.getByLabel('配置状态')).toContainText('"dirty":false');
 });
+
+
+test('scoped conditional leaves stay editable without an invalid flat scoped choice', async ({ page }) => {
+  const bodies: any[] = [];
+  await page.route('**/node-configurations/review', route => {
+    bodies.push(route.request().postDataJSON());
+    return route.fulfill({ json: { code: 200, data: { revision: 1 } } });
+  });
+  await page.goto('/workflow-conditional.e2e.html?scoped');
+  const flatOptions = page.locator('.oxa-workflow-provider-options');
+  await expect(flatOptions.getByRole('radio', { name: '范围内角色' })).toHaveCount(0);
+  const firstRule = page.getByRole('region', { name: '人员规则 1', exact: true });
+  await expect(firstRule.getByRole('radio', { name: '范围内角色' })).toBeChecked();
+  await expect(page.getByLabel('配置状态')).toContainText('"dirty":false');
+  await firstRule.getByLabel('人员范围值').fill('operations');
+  await page.getByLabel('修改说明').fill('调整条件分支范围');
+  await page.getByRole('button', { name: '保存办理设置' }).click();
+  await expect(page.getByLabel('保存回执')).toContainText('"revision":1');
+  expect(bodies[0].patch.assignee.cases[0].assignee.scope).toEqual({ dimension: 'department', value: 'operations' });
+  await page.goto('/workflow-conditional.e2e.html?flat-scoped');
+  await expect(flatOptions.getByRole('radio', { name: '范围内角色' })).toBeChecked();
+  await expect(page.getByLabel('配置状态')).toContainText('"dirty":false');
+});
