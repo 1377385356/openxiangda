@@ -4328,7 +4328,7 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
         }
       }
     });
-    for (const error of validateWorkflowAssignmentRoutingBindings(activeRoutingBindings.map(workflowAssignmentLeafBinding))) diagnostics.push(diagnostic('APP_CONFIG_WORKFLOW_ROUTING_INVALID', error, 'workflows.activations'));
+    for (const error of validateWorkflowAssignmentRoutingBindings(activeRoutingBindings.map(binding => workflowAssignmentLeafBinding(binding)))) diagnostics.push(diagnostic('APP_CONFIG_WORKFLOW_ROUTING_INVALID', error, 'workflows.activations'));
     editableParameters.forEach((item, index) => {
       const parameter = object(item);
       const workflowCode = string(parameter.workflowCode);
