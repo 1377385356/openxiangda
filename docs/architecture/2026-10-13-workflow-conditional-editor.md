@@ -27,3 +27,5 @@
 冻结前范围选项修复：默认 conditional binding 的范围属于各叶子，不存在唯一顶层 scope。平铺 radio 只有默认 binding 自带 scope 才显示范围内角色；条件编辑器仍接收完整 administration providers 和各节点范围维度。平台严格校验仍是权威，不推断或复制任一叶子范围。只影响 PC 选项投影，不改权限、保存协议或既有任务；回滚限于此界面改动。浏览器须证明无顶层范围时不展示平铺范围选项、条件叶子仍可编辑范围并保存完整值，以及默认平铺有 scope 时保留选项。
 
 真实浏览器发现 Form.Item 向多分支 Radio.Group 注入同一字段名称，浏览器跨分支取消选中。每个人员来源组件用 React useId 生成稳定且独立的原生 radio name；React assignment 值仍是唯一编辑状态，不新增持久化字段。验证打开时各分支选中态及编辑后的完整保存值。
+
+源码采纳边界：raw Source Bundle 必须先通过未放宽的 code-owned drift gate。仅显式 adoptHandlingDefaults=true 时，devkit 在逐项 ceiling 校验后产生本地新 binding。二次 drift 校验的基线只加入这些已验证采纳的 binding 引用（与已有采纳 binding 值基线配套）；定义、页面、步骤、字段、操作上限仍来自原源码。原始 bundle 换绑、未采纳节点换绑、采纳目录外来源仍在任何文件写入前拒绝。此修复仅在本地源码导入 owner，不给平台 canvas gate 新开关、不放宽其权限。验证既有完整 Source v2 导入测试以及显式采纳也不能接收 raw 换绑和上限漂移。

@@ -235,3 +235,19 @@ test('adopted role-only replacement validates its effective mode, not a removed 
     assert.equal((prepared.workflows.bindings[0]!.binding.bindings.canvas_a as any).otherwise.roleCode,'manager');
   } finally { rmSync(f.root,{ recursive: true,force: true }); }
 });
+
+for (const variant of ['raw-rebinding', 'operation-ceiling'] as const) test(`explicit adoption still rejects ${variant} before source writes`, () => {
+  const f = conditionalFixture();
+  try {
+    if (variant === 'raw-rebinding') {
+      (f.bundle.definition.nodes.b as any).binding = 'canvas_b';
+      f.bundle.binding.bindings.canvas_b = { provider: 'app_role', roleCode: 'manager' };
+    } else {
+      (f.bundle.definition.nodes.a as any).administration.operations = ['approve', 'reject', 'delegate'];
+    }
+    refreshConditional(f.bundle);
+    assert.throws(() => importWorkflowSource(f.root, f.path, f.config, f.bundle, true));
+    assert.equal(readFileSync(f.path, 'utf8'), f.original);
+    assert.equal(existsSync(join(f.root, 'platform')), false);
+  } finally { rmSync(f.root, { recursive: true, force: true }); }
+});

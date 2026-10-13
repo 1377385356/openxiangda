@@ -65,7 +65,8 @@ function handlingDefaults(source: WorkflowDefinition,bundle: WorkflowSourceBundl
 }
 /** This is an explicit source edit, never a new environment overlay store. */
 function adoptAssignments(localDefinition: WorkflowDefinition, localBinding: WorkflowBinding, definition: WorkflowDefinition,
-  binding: WorkflowBinding, bundle: WorkflowSourceBundle): void {
+  binding: WorkflowBinding, bundle: WorkflowSourceBundle): Map<string, string> {
+  const adopted = new Map<string, string>();
   const catalog = workflowAuthoringCatalog(localDefinition, localBinding);
   const releasedSources = Object.fromEntries(Object.entries(catalog.peopleSources).flatMap(([key, entry]) =>
     workflowAssignmentLeaves(entry).map((leaf, index) => [`${key}/leaves/${index}`, leaf])));
@@ -90,7 +91,9 @@ function adoptAssignments(localDefinition: WorkflowDefinition, localBinding: Wor
     if (key !== node.binding && Object.hasOwn(binding.bindings, key)) fail('WORKFLOW_IMPORT_HANDLING_BINDING_CONFLICT', id);
     node.binding = key;
     binding.bindings[key] = assignment;
+    adopted.set(id, key);
   }
+  return adopted;
 }
 export function prepareWorkflowSourceImport(config: OpenXiangdaAppConfig,bundle: WorkflowSourceBundle,adoptHandlingDefaults = false) {
   if (config.app.code !== bundle.appCode) fail('WORKFLOW_IMPORT_APP_MISMATCH');
@@ -102,15 +105,21 @@ export function prepareWorkflowSourceImport(config: OpenXiangdaAppConfig,bundle:
   const binding = structuredClone(bundle.binding);
   // The raw bundle already passed code-owned drift. Assignment adoption below
   // is a separate, explicit, ceiling-validated source edit, never DTO authority.
-  if (adoptHandlingDefaults && bundle.schemaVersion === WORKFLOW_SOURCE_BUNDLE_V2_SCHEMA)
-    adoptAssignments(current.definition.definition,current.binding.binding,definition,binding,bundle);
+  const adopted = adoptHandlingDefaults && bundle.schemaVersion === WORKFLOW_SOURCE_BUNDLE_V2_SCHEMA
+    ? adoptAssignments(current.definition.definition,current.binding.binding,definition,binding,bundle)
+    : new Map<string, string>();
   if (adoptHandlingDefaults) {
     const references = workflowSourceReferences(definition,binding,digest);
     const amended = { ...bundle,definition,binding,references,origin: { ...bundle.origin,
       definitionDigest: digest(definition),bindingDigest: digest(binding),catalogDigest: digest(references) } };
     // Only validated assignment changes can enter this baseline. All definition,
     // page, step, field and operation ceilings still come from the original source.
-    const amendedErrors = workflowSourceImportDrift(current.definition.definition,
+    const adoptionBaseline = structuredClone(current.definition.definition);
+    for (const [id, key] of adopted) {
+      const original = adoptionBaseline.nodes[id];
+      if (original && 'binding' in original) original.binding = key;
+    }
+    const amendedErrors = workflowSourceImportDrift(adoptionBaseline,
       bundle.schemaVersion === WORKFLOW_SOURCE_BUNDLE_V2_SCHEMA ? binding : current.binding.binding,amended,digest);
     if (amendedErrors.length) fail(amendedErrors[0]!);
   }
