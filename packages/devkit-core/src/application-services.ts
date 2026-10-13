@@ -1,3 +1,4 @@
+import { connectedDevelopmentFeedback, connectedDevelopmentDetail } from './connected-development-feedback.js';
 import { importWorkflowSource,readWorkflowSourceBundle,readWorkflowSourceLock,workflowSourceDeclaration,writeWorkflowRegistrationPlan,writeWorkflowSourceBundle } from './workflow-source-sync.js';
 import { assertDeploymentPrerequisites } from './deployment-prerequisites.js';
 import { collectTargetReadiness } from './target-readiness.js';
@@ -2763,7 +2764,9 @@ export class OpenXiangdaApplicationServices {
       } } : {}),
     };
     input.onStatus?.(
-      "connected dev 使用会话独立配置，Web/Nest保持本地源码联调，线上test版本不切换"
+      selectedEnvironment.environmentKey === 'preproduction'
+        ? "connected dev 使用会话独立配置，Web/Nest保持本地源码联调，线上test版本不切换"
+        : "connected dev 连接正式环境的已发布配置与真实生产数据；本地配置不投影，Web/Nest继续本地源码联调"
     );
     const connected = await runConnectedDevelopment({
       root: workspace.root,
@@ -3362,7 +3365,18 @@ export class OpenXiangdaApplicationServices {
     ).trim();
     const method = String(transportData.method || "").trim();
     const causeCode = String(transportData.causeCode || "").trim();
+    const pointer = connectedDevelopmentDetail(transportData.pointer, 2048);
+    const configurationRunId = connectedDevelopmentDetail(transportData.configurationRunId, 128);
+    const resourceCode = connectedDevelopmentDetail(transportData.resourceCode);
+    const fieldCode = connectedDevelopmentDetail(transportData.fieldCode);
+    const feedback = rawCode.startsWith('OPENXIANGDA_CONNECTED_DEV_')
+      ? connectedDevelopmentFeedback(transportData.developmentFeedback) : undefined;
     const details = {
+      ...(pointer ? { pointer } : {}),
+      ...(configurationRunId ? { configurationRunId } : {}),
+      ...(resourceCode ? { resourceCode } : {}),
+      ...(fieldCode ? { fieldCode } : {}),
+      ...(feedback ? { developmentFeedback: feedback.developmentFeedback } : {}),
       ...(requestId ? { requestId } : {}),
       ...(method ? { method } : {}),
       ...(transportPath ? { path: transportPath } : {}),
@@ -3371,16 +3385,19 @@ export class OpenXiangdaApplicationServices {
         ? { requestIdOwner: "client" }
         : {}),
     };
-    const selected = known[rawCode] || {
+    const selected = known[rawCode] || (feedback ? {
+      ...feedback, message: "连接式开发需要处理配置或基线变化",
+      remediation: remoteRemediation || feedback.remediation,
+    } : {
       message: "连接式开发预检失败",
       remediation:
         remoteRemediation || (error instanceof Error && error.message
           ? error.message.replace(/Bearer\s+\S+/gi, "Bearer [redacted]")
           : "检查平台登录、应用权限和 Dev Session 状态后重试"),
-      actionCode: "dev.retry",
-      actionLabel: "重试 connected dev",
-      command: "openxiangda dev",
-    };
+      actionCode: "dev.inspect",
+      actionLabel: "查看开发排错指引",
+      command: "openxiangda docs development",
+    });
     return {
       code: rawCode,
       message: selected.message,
@@ -3388,9 +3405,9 @@ export class OpenXiangdaApplicationServices {
       actionCode: selected.actionCode,
       actionLabel: selected.actionLabel,
       command: selected.command,
-      path: selected.path || transportPath || workspaceRoot,
+      path: ('path' in selected ? selected.path : undefined) || pointer || transportPath || workspaceRoot,
       retryable:
-        error instanceof ControlPlaneError
+        feedback ? false : error instanceof ControlPlaneError
           ? error.remote?.retryable === true || error.status >= 500
           : error instanceof DeveloperSessionError
             ? Number(error.status || 0) >= 500

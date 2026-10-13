@@ -4916,3 +4916,22 @@ test('successful target readiness preserves the exact closed platform response f
   assert.doesNotThrow(() => assertConfigurationValidationResult(capabilities, required, view.result, source, requiredCapabilities));
   assert.equal(view.target.site, 'https://site.example');
 });
+
+test('dev result retains the original configuration refusal and never offers an automatic redeploy', async () => {
+  const root=mkdtempSync(join(tmpdir(),'openxiangda-dev-feedback-'));
+  const originalFetch=globalThis.fetch;
+  try {
+    for(const dir of ['packages/contracts/src','apps/web','apps/server','platform','.openxiangda'])mkdirSync(join(root,dir),{recursive:true});
+    writeFileSync(join(root,'package.json'),JSON.stringify({name:'reference-app',private:true,packageManager:'pnpm@10.15.1'}));
+    writeFileSync(join(root,'openxiangda.config.ts'),`export default ${JSON.stringify(configDeclaration())};\n`);
+    writeFileSync(join(root,'.openxiangda/link.json'),JSON.stringify({schemaVersion:2,appCode:'reference-app',baseUrl:'https://platform.example/service'}));
+    await saveSession({baseUrl:'https://platform.example/service',accessToken:'developer-token'},join(root,'.openxiangda/session.json'));
+    let requests=0;
+    globalThis.fetch=async()=>{requests++;return new Response(JSON.stringify({code:'OPENXIANGDA_CONNECTED_DEV_CONFIGURATION_PREPARE_FAILED',status:503,message:'original preparation failed',requestId:'request-1',path:'/configuration/resources',retryable:false,data:{pointer:'/configuration/resources',configurationRunId:'run-1',causeCode:'ORIGINAL_CAUSE',developmentFeedback:{schemaVersion:'openxiangda.connected-development-feedback/v1',category:'inspect-original-run',nextAction:'inspect-original-configuration-run',canRetryUnchanged:false}}}),{status:503,headers:{'content-type':'application/json'}});};
+    const result=await new OpenXiangdaApplicationServices().dev(root,{noOpen:true});
+    assert.equal(result.ok,false);assert.equal(result.diagnostics[0]?.retryable,false);
+    assert.equal(result.diagnostics[0]?.details?.configurationRunId,'run-1');
+    assert.equal(result.diagnostics[0]?.path,'/configuration/resources');
+    assert.equal(result.nextActions[0]?.code,'dev.inspect-original-run');assert.equal(requests,1);
+  } finally {globalThis.fetch=originalFetch;rmSync(root,{recursive:true,force:true});}
+});
