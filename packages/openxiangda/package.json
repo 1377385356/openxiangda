@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.68.0",
+  "version": "2.68.1",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -102,13 +102,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.10.8",
+    "openxiangda-cli": "2.11.0",
     "openxiangda-contracts": "2.88.0",
-    "openxiangda-devkit-core": "2.66.0",
+    "openxiangda-devkit-core": "2.67.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.2.12",
+    "openxiangda-mcp": "2.2.13",
     "openxiangda-nest": "2.19.5",
-    "openxiangda-skill-kit": "2.3.114",
+    "openxiangda-skill-kit": "2.3.115",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -174,42 +174,35 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.68.0",
+    "version": "2.68.1",
     "status": "reviewed",
-    "title": "PC流程管理、条件人员编辑与开发反馈整合",
-    "summary": "统一交付按动作授权的PC流程管理、条件人员规则编辑、Connected Dev原运行诊断与编译器任务前提投影，并同步业务迁移和发布指导。平台能力需配套服务端及管理前端后按明确环境启用。",
+    "title": "原部署运行的流程例外只读预览",
+    "summary": "按平台能力读取失败 DeploymentRun 的冻结候选、当前 Head 和真实流程例外，支持在独立诊断目录使用公开 SDK 读取旧工作区会话。",
     "newFeatures": [
-      "PC流程设计器按查看、编辑、发布和办理配置四种动作呈现已发布/草稿读面，失权或结果未知时保留输入和原操作查询。",
-      "条件人员规则支持有序条件与否则、完整assignment保留和发布上下文校验；新节点允许保存受限不完整草稿，正式发布仍严格。",
-      "MCP契约上下文增加分页prerequisites选择器，直接投影sealed compiler的能力与任务声明，不代替目标或角色验收。"
+      "status <deployment-id> --workflow-exceptions 只读展示原运行的例外及完整集合摘要，不确认或重试。",
+      "独立精确版本 devkit 客户端可读取旧工作区 link/session，无需更改应用 package、lock 或冻结包。"
     ],
-    "fixes": [
-      "Connected Dev保留字段位置、原configurationRunId/causeCode与拒绝分类，避免对需要修配置、查原运行或TEST部署的问题一律建议重跑。",
-      "生产回退明确使用已发布配置和真实数据；补齐V1到V2业务迁移、PC流程授权及原结果恢复的单源资料。",
-      "条件规则排序按钮提供稳定可访问名称，同批更新CLI模板精确BOM。"
-    ],
+    "fixes": [],
     "affectedUsers": [
-      "维护V2应用和PC流程设计/办理配置的开发者与管理员。",
-      "使用CLI/MCP开展连接开发、声明检查和业务迁移的团队。"
+      "发布包含工作流的 V2 应用的开发者和管理员。"
     ],
     "upgradeSteps": [
-      "按工作区锁定版本安装完整根包组合并刷新同版本Skill；不自动迁移V1项目。",
-      "平台先消费正式contracts2.88.0、同批浏览器SDK与sealed管理前端，并完成服务端与实际角色验收，再为明确TEST环境UUID启用委托流程管理。",
-      "已有未知操作继续查询原operationId/run；生产只晋级已经验收的原TEST版本。"
+      "平台需先提供 deployment.workflow-adoption-preview 1.0.0 能力；无能力时明确停止。",
+      "使用本版根包或独立 openxiangda-devkit-core 2.67.0 诊断目录；旧应用不必为了查看例外升级依赖。",
+      "保留原 DeploymentRun ID，先核对完整例外；生产仍只晋级已验收 TEST 原版本。"
     ],
     "knownLimitations": [
-      "SDK发行不等于平台部署或业务验收，环境开关默认空；仅安装npm包不会启用角色管理授权。",
-      "流程设计和授权管理本批仅针对PC，不扩大移动管理画布范围。",
-      "条件抄送、嵌套条件、发起自选和应用provider不在本次条件编辑范围；旧平台缺少上下文或能力时保持关闭。",
-      "测试数据回收仍仅native-data-only，复杂域与历史数据不能自动清理；语义扫描仍observe-only，不授予强制激活许可。"
+      "本批仅提供预览，不提供例外确认、事实转换或原 Run 恢复通道。",
+      "truncated=true 不代表已观察完整明细；预览不授予激活许可。",
+      "包发行不等于平台部署或真实业务验收；source/status 的独立500故障不在此修复中。"
     ],
     "compatibility": {
       "node": "Node.js 24 or newer for maintained toolchain",
-      "generation": "OpenXiangda V2; no automatic V1 migration",
-      "platform": "Paired contracts2.88.0 backend and sealed admin SDK required for new workflow features"
+      "generation": "OpenXiangda V2; no V1 migration",
+      "platform": "New read-only preview requires deployment.workflow-adoption-preview 1.0.0; contracts remains 2.88.0"
     },
     "issues": [],
-    "sha256": "ddfe1d0c13e0ab47aca67b35872af4563253a6f6c768f2945e2e9d60a374db1a",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.68.0"
+    "sha256": "7d25ccd308e43da75c8d2c6b8363dbbe40d7eaef04532f960464889f6d27a09d",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.68.1"
   }
 }

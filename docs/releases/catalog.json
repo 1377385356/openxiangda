@@ -3,6 +3,39 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.68.1",
+      "status": "reviewed",
+      "title": "原部署运行的流程例外只读预览",
+      "summary": "按平台能力读取失败 DeploymentRun 的冻结候选、当前 Head 和真实流程例外，支持在独立诊断目录使用公开 SDK 读取旧工作区会话。",
+      "newFeatures": [
+        "status <deployment-id> --workflow-exceptions 只读展示原运行的例外及完整集合摘要，不确认或重试。",
+        "独立精确版本 devkit 客户端可读取旧工作区 link/session，无需更改应用 package、lock 或冻结包。"
+      ],
+      "fixes": [],
+      "affectedUsers": [
+        "发布包含工作流的 V2 应用的开发者和管理员。"
+      ],
+      "upgradeSteps": [
+        "平台需先提供 deployment.workflow-adoption-preview 1.0.0 能力；无能力时明确停止。",
+        "使用本版根包或独立 openxiangda-devkit-core 2.67.0 诊断目录；旧应用不必为了查看例外升级依赖。",
+        "保留原 DeploymentRun ID，先核对完整例外；生产仍只晋级已验收 TEST 原版本。"
+      ],
+      "knownLimitations": [
+        "本批仅提供预览，不提供例外确认、事实转换或原 Run 恢复通道。",
+        "truncated=true 不代表已观察完整明细；预览不授予激活许可。",
+        "包发行不等于平台部署或真实业务验收；source/status 的独立500故障不在此修复中。"
+      ],
+      "compatibility": {
+        "node": "Node.js 24 or newer for maintained toolchain",
+        "generation": "OpenXiangda V2; no V1 migration",
+        "platform": "New read-only preview requires deployment.workflow-adoption-preview 1.0.0; contracts remains 2.88.0"
+      },
+      "issues": [],
+      "sha256": "7d25ccd308e43da75c8d2c6b8363dbbe40d7eaef04532f960464889f6d27a09d",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.68.1"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.68.0",
       "status": "reviewed",
       "title": "PC流程管理、条件人员编辑与开发反馈整合",
