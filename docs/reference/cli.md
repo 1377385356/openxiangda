@@ -16,7 +16,7 @@
 | `pnpm openxiangda check` | 本地写入 | 生成契约并在目标平台预检后执行检查、测试和构建 |
 | `pnpm openxiangda accept` | 远端变更 | 按计划准备可选的真实预发验收身份 |
 | `pnpm openxiangda deploy` | 远端变更 | 部署测试环境或显式复用测试版本部署生产 |
-| `pnpm openxiangda status` | 只读 | 查询最近或指定部署状态 |
+| `pnpm openxiangda status` | 只读 | 查询最近或指定部署状态，可只读预览原运行流程例外 |
 | `pnpm openxiangda logs` | 只读 | 查询部署日志或应用原操作事实 |
 | `pnpm openxiangda cancel` | 远端变更 | 幂等取消尚未提交激活的部署 |
 | `pnpm openxiangda retry` | 远端变更 | 显式重试可恢复的失败部署 |

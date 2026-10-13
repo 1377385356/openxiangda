@@ -21,7 +21,7 @@ export const DEVKIT_COMMANDS = [
   { id: "check", operation: "check", summary: "生成契约并在目标平台预检后执行检查、测试和构建", risk: "write-local", jsonEvents: true },
   { id: "accept", operation: "accept", summary: "按计划准备可选的真实预发验收身份", risk: "deploy" },
   { id: "deploy", operation: "deploy", summary: "部署测试环境或显式复用测试版本部署生产", risk: "deploy", jsonEvents: true },
-  { id: "status", operation: "status", summary: "查询最近或指定部署状态", risk: "read" },
+  { id: "status", operation: "status", summary: "查询最近或指定部署状态，可只读预览原运行流程例外", risk: "read" },
   { id: "logs", operation: "logs", summary: "查询部署日志或应用原操作事实", risk: "read", jsonEvents: true },
   { id: "cancel", operation: "cancel", summary: "幂等取消尚未提交激活的部署", risk: "deploy" },
   { id: "retry", operation: "retry", summary: "显式重试可恢复的失败部署", risk: "deploy" },

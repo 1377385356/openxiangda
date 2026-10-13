@@ -1,3 +1,4 @@
+import { parseDeploymentWorkflowPreview } from './deployment-workflow-preview.js';
 import type { WorkflowSourceBundle,WorkflowRegistrationPlan,WorkflowSourceDigests } from 'openxiangda-contracts';
 import { createHash } from 'node:crypto';
 import { gunzipSync } from 'node:zlib';
@@ -1268,6 +1269,16 @@ export class OpenXiangdaControlPlaneClient {
       "stop",
       input
     );
+  }
+
+  async deploymentWorkflowPreview(appCode: string, deploymentId: string) {
+    if (!/^[a-f0-9-]{36}$/i.test(deploymentId)) throw new Error('DEPLOYMENT_ID_REQUIRED');
+    const signal = AbortSignal.timeout(15_000);
+    const capability = (await this.capabilities(signal)).features?.['deployment.workflow-adoption-preview'];
+    if (capability?.status !== 'available' || capability.contractVersion !== '1.0.0')
+      throw new ControlPlaneError(409, 'DEPLOYMENT_WORKFLOW_PREVIEW_UNAVAILABLE', '平台尚未提供原运行流程例外预览；保留原 Run，勿盲目重试或重新部署');
+    const result = await this.json<unknown>(`/openxiangda-api/v2/applications/${encodeURIComponent(appCode)}/deployments/${encodeURIComponent(deploymentId)}/workflow-adoption-preview`, { method: 'GET', signal });
+    return parseDeploymentWorkflowPreview(result, appCode, deploymentId);
   }
 
   async retryDeployment(appCode: string, deploymentId: string) {

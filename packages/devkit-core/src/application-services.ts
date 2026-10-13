@@ -2200,6 +2200,13 @@ export class OpenXiangdaApplicationServices {
     }
   }
 
+  async deploymentWorkflowPreview(root: string | undefined, deploymentId: string) {
+    if (!deploymentId) throw new Error('DEPLOYMENT_ID_REQUIRED');
+    const workspace = await this.workspace(root);
+    const data = await (await this.client(workspace.root)).deploymentWorkflowPreview(workspace.config.app.code, deploymentId);
+    return this.ok('status.workflow-exceptions', workspace.context.workspace, data);
+  }
+
   async deploymentStatus(root: string | undefined, deploymentId?: string) {
     const workspace = await this.workspace(root);
     const client = await this.client(workspace.root);

@@ -95,6 +95,20 @@ OPENXIANGDA_BACKEND_IMAGE_CACHE=false pnpm openxiangda deploy
 pnpm openxiangda status <deployment-id> --watch
 ```
 
+原运行因 `WORKFLOW_DESIGNER_EXCEPTIONS_ACKNOWLEDGEMENT_REQUIRED` 失败时，支持
+`deployment.workflow-adoption-preview` 的平台可只读检查冻结候选的真实例外：
+
+```bash
+pnpm openxiangda status <deployment-id> --workflow-exceptions --json
+```
+
+必须指定原 Run ID，不能与 `--watch` 合用。结果绑定原包、AppVersion、attempt、当前 Head
+和候选流程版本；例外列表有上限，`truncated=true` 不代表已看完。
+该命令不会写画布草稿、确认例外、重试或另建部署。`activationPermission=not-granted`
+明确表示预览没有授予激活许可。旧平台能力缺失时保留原运行并报告缺口。
+当前没有通过此命令确认例外或转换旧实例事实的能力；不要给 retry 塞未支持的确认字段。
+
+
 网络响应不确定时先查询原运行，不凭本地输出创建重复部署。平台部署成功后，仍需执行真实角色的业务验收。
 
 新的发布使用当前源码准备前端与配置，后端按实际输入复用或构建；同输入镜像可复用上述短期原制品缓存。
