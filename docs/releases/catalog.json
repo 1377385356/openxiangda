@@ -8,7 +8,7 @@
       "title": "原部署运行的流程例外只读预览",
       "summary": "按平台能力读取失败 DeploymentRun 的冻结候选、当前 Head 和真实流程例外，支持在独立诊断目录使用公开 SDK 读取旧工作区会话。",
       "newFeatures": [
-        "status <deployment-id> --workflow-exceptions 只读展示原运行的例外及完整集合摘要，不确认或重试。",
+        "`status <deployment-id> --workflow-exceptions` 只读展示原运行的例外及完整集合摘要，不确认或重试。",
         "独立精确版本 devkit 客户端可读取旧工作区 link/session，无需更改应用 package、lock 或冻结包。"
       ],
       "fixes": [],
@@ -31,7 +31,7 @@
         "platform": "New read-only preview requires deployment.workflow-adoption-preview 1.0.0; contracts remains 2.88.0"
       },
       "issues": [],
-      "sha256": "7d25ccd308e43da75c8d2c6b8363dbbe40d7eaef04532f960464889f6d27a09d",
+      "sha256": "859687bd04474e031528a651304916e7535919419aa697ec1892ff5b17cdf666",
       "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.68.1"
     },
     {

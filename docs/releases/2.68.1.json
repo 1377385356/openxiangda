@@ -5,7 +5,7 @@
   "title": "原部署运行的流程例外只读预览",
   "summary": "按平台能力读取失败 DeploymentRun 的冻结候选、当前 Head 和真实流程例外，支持在独立诊断目录使用公开 SDK 读取旧工作区会话。",
   "newFeatures": [
-    "status <deployment-id> --workflow-exceptions 只读展示原运行的例外及完整集合摘要，不确认或重试。",
+    "`status <deployment-id> --workflow-exceptions` 只读展示原运行的例外及完整集合摘要，不确认或重试。",
     "独立精确版本 devkit 客户端可读取旧工作区 link/session，无需更改应用 package、lock 或冻结包。"
   ],
   "fixes": [],
