@@ -1,6 +1,6 @@
 import type { WorkflowApprovalAdministration, WorkflowConfigurableOperation, WorkflowNodeConfigurationPatch, WorkflowNodeOperationPolicy } from '../types.js';
 import { validateWorkflowInitiatorApprovalPolicy, type WorkflowInitiatorApprovalPages } from './workflow-initiator-approval.js';
-import { validateWorkflowConditionalAssignment, type WorkflowConditionalAssignmentContext } from './workflow-conditional-assignment.js';
+import { validateWorkflowConditionalAssignment, workflowAssignmentLeaves, type WorkflowConditionalAssignmentContext } from './workflow-conditional-assignment.js';
 import type { WorkflowBindingEntry } from '../types.js';
 import { validateWorkflowRoleUnion } from './workflow-role-union.js';
 import { WORKFLOW_AUTOMATIC_CC_DEFAULT_RECIPIENTS, WORKFLOW_AUTOMATIC_CC_MAX_RECIPIENTS } from './workflow-automatic-cc.js';
@@ -78,6 +78,12 @@ function policyValid(value: unknown, operation: string, defaults: WorkflowNodeOp
   return true;
 }
 
+function hasReleasedRoleScope(binding: BindingSource): boolean {
+  if (binding.provider !== 'conditional') return Boolean(binding.scope);
+  try { return workflowAssignmentLeaves(binding as WorkflowBindingEntry).some(leaf => 'scope' in leaf && Boolean(leaf.scope)); }
+  catch { return false; }
+}
+
 /** Pure shared rule used before compilation, activation and configuration writes. */
 export function validateWorkflowAdministration(definition: { nodes?: Record<string, WorkflowAdministrationNodeSource> }, bindings?: { bindings: Record<string, BindingSource> }): string[] {
   const errors: string[] = [];
@@ -110,7 +116,7 @@ export function validateWorkflowAdministration(definition: { nodes?: Record<stri
     if (admin.modes !== undefined && (!boundedList(admin.modes, modes, 4) || !admin.modes.includes(node.mode as any))) errors.push(`WORKFLOW_NODE_ADMINISTRATION_MODES_INVALID:${id}`);
     if (admin.assigneeProviders !== undefined && !boundedList(admin.assigneeProviders, WORKFLOW_CONFIGURABLE_PROVIDERS, 3)) errors.push(`WORKFLOW_NODE_ADMINISTRATION_PROVIDERS_INVALID:${id}`);
     const binding = bindings?.bindings[node.binding || ''];
-    if (binding && Array.isArray(admin.assigneeProviders) && admin.assigneeProviders.includes('app_role_in_scope') && !binding.scope) errors.push(`WORKFLOW_NODE_ADMINISTRATION_SCOPE_REQUIRED:${id}`);
+    if (binding && Array.isArray(admin.assigneeProviders) && admin.assigneeProviders.includes('app_role_in_scope') && !hasReleasedRoleScope(binding)) errors.push(`WORKFLOW_NODE_ADMINISTRATION_SCOPE_REQUIRED:${id}`);
     if (admin.operations !== undefined && (!boundedList(admin.operations, WORKFLOW_CONFIGURABLE_OPERATIONS, 8) || admin.operations.some(operation => !workflowNodeAllowedOperations(node).includes(operation)))) errors.push(`WORKFLOW_NODE_ADMINISTRATION_OPERATIONS_INVALID:${id}`);
   }
   return errors;

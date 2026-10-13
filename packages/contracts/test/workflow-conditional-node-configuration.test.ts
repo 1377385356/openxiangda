@@ -86,3 +86,16 @@ test('mode-only change validates all canonical conditional leaves without requir
   assert.ok(validateWorkflowNodeConfigurationPatch(h.definition.nodes.review, binding, { mode: 'single' }, undefined, h.context).some(error => error.includes('SEQUENCE_REQUIRED')));
   assert.deepEqual(validateWorkflowNodeConfigurationPatch(h.definition.nodes.review, binding, { mode: 'sequence' }, undefined, h.context), []);
 });
+
+
+test('conditional defaults retain released scoped-role administration without relaxing malformed leaves', async () => {
+  const { validateWorkflowAdministration } = await import('../src/native-compiler/workflow-node-administration.js');
+  const definition: any = { nodes: { review: { id: 'review', kind: 'approval', binding: 'people', mode: 'any', administration: { assigneeProviders: ['app_role_in_scope'] } } } };
+  const entry: any = { provider: 'conditional', cases: [{ when: { op: 'literal', value: true }, assignee: { provider: 'app_role_in_scope', roleCode: 'reviewer', scope: { department: { source: 'field', field: 'department' } } } }], otherwise: { provider: 'fixed_users', users: ['actor'] } };
+  const bindings: any = { bindings: { people: entry } };
+  assert.ok(!validateWorkflowAdministration(definition, bindings).some(value => value.includes('SCOPE_REQUIRED')));
+  entry.cases[0].assignee = { provider: 'app_role', roleCode: 'reviewer' };
+  assert.ok(validateWorkflowAdministration(definition, bindings).some(value => value.includes('SCOPE_REQUIRED')));
+  entry.cases = 'malformed';
+  assert.ok(validateWorkflowAdministration(definition, bindings).some(value => value.includes('SCOPE_REQUIRED')));
+});
