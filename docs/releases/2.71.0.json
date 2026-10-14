@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.71.0",
+  "status": "reviewed",
+  "title": "本人班级目录与数据库事务时间",
+  "summary": "具名动作和浏览器复用平台本人工作组织的家校班级投影，并由Native锁后的数据库时刻派生申请及冷却时间。",
+  "newFeatures": [
+    "loadCurrentDirectoryClasses读取当前用户/工作组织的班级、学校规范名称、校区、学段、年级和本人来源角色，组织切换丢弃迟到响应。",
+    "具名Nest动作显式声明directoryClasses.maxIds并精确解析1至20个来源班级，任一不可见时整体拒绝。",
+    "显式transactionTime动作使用databaseAcceptedTime写入datetime和最多366天整数偏移，原事务回执恢复不重新取时间。",
+    "可选recordSetAssertions对单组最多500个锁定且可读的记录执行公共字段或数据库时间条件，保留20总守卫预算。"
+  ],
+  "fixes": [
+    "CLI模板及随包中文资料与根包同批升级，七包组合由Changesets确定。"
+  ],
+  "affectedUsers": [
+    "使用家校来源班级、多组织身份或精确申请/冷却时刻的V2应用。"
+  ],
+  "upgradeSteps": [
+    "安装同一正式发行七包；平台维护者固定精确源码、contracts纯校验器和管理台seal后通过官方发行部署。",
+    "为需要的新动作显式声明目录/时间能力；所有已有写目标保留同ID的锁守卫及CAS。",
+    "通过目标预检后接入；真实组织同步、实际用户权限和PC/手机业务验收分别执行。"
+  ],
+  "knownLimitations": [
+    "本地及隔离PostgreSQL验证不代表站点已更新或真实用户业务通过。",
+    "目录读取不授予应用写权限，不将校区当作独立企业，不提供其他用户、unionId或安装秘密。",
+    "事务时间值仅供具名交互动作的秒精度datetime字段；普通CRUD、事件worker及队列不取得该能力。"
+  ],
+  "compatibility": {
+    "node": "Node.js 24 or newer for maintained toolchain",
+    "generation": "OpenXiangda V2; V1 unchanged",
+    "platform": "directory.current-classes 1.0.0; data.transaction-time-values 1.0.0; opted-in data.record-set-assertions 1.0.0; exact paired contracts"
+  },
+  "issues": []
+}
