@@ -44,3 +44,9 @@ V2 role union、唯一 membership 键和 RLS 仍以 environment/user/role 组成
 现有 Native 业务动作把已经验证的当前用户转换为 application principal，用原 platformAccess 和业务动作 proof 约束副作用。组织资源不能让转换抹掉用户边界。转换时只从可信当前 principal 派生内部 organizationActor（用户、工作组织、授权版本、绑定 ID），不接受 body/header。保留原签名与声明验证，再由 SQL 对同一条仍有效且有该动作能力的 membership 结合组织 reach 和数据行策略；同一绑定同时覆盖变更前后。字段写入继续由原动作声明及服务端实现约束，不创建新的身份或后台全区身份。普通 application/定时/服务令牌没有该证明时，组织资源拒绝。RLS、记录所属组织触发器与 Native 事务预检都执行该边界。Connected Dev 的短期 proof 和 source invocation proof 绑定组织字段；错误、源撤销、组织不匹配、缺少事实和权限版本变化失败关闭。
 
 组织资源的 `organization_id` 是有界查询/聚合可用的只读平台元数据；普通资源不增加不存在的列。应用按该字段做区/校统计，无需创建第二个学校归属字段或读取原始数据库。服务端字段写入检查和数据库触发器都拒绝修改，记录读回仍经过同一 RLS。
+
+## 发布前配套记录
+
+首个2.70.0候选在公开包、打包应用与参考应用门禁全部完成后，因另一个已完成的2.69.1发行推进registry渠道而停止于原渠道守卫，未开始任何本候选npm写入。保留原候选和验证记录；修正data-authz专题中仍描述旧缺口的概览后，从同步master按原入口冻结新候选、取得当前渠道观察、验证原字节并正式发布。匹配的浏览器运行输入可按既有规则复用，不修改旧manifest、receipt或绕过渠道并发校验。
+
+客户PostgreSQL15.14的迁移前authorize_native_row定义，与独立PostgreSQL16空库执行前序正式SQL所得定义逐字一致（初始摘要e638adfc9b98f9a1981b6c061f685068）。后续摘要7c66aafd9ec76f29aec967138866fcc8属于本迁移先加入准入检查之后的定义；不能拿后续摘要预检原现网，也不需要修改正式SQL。
