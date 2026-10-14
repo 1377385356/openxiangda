@@ -5255,3 +5255,29 @@ test('compiles immutable anonymous public queries with bounded parameters', () =
     ]
   );
 });
+
+
+test('public named-query canonicalization preserves sort priority and binds it into the target digest', () => {
+  const compile = (sort: Array<{field:string;direction:'asc'|'desc'}>) => compileApplicationSources(defineOpenXiangdaApp({
+    ...sourceDeclaration,
+    frontend:{...sourceDeclaration.frontend,
+      routes:[{code:'public-priority',path:'/public/priority',label:'公开排序',surface:'user'}],
+      publicAccess:{policies:[{code:'public-priority',routeCode:'public-priority',mode:'anonymous',resourceCode:'instruments',
+        operations:['public.query'],fields:['name','college_id'],publicRecordFields:['name','college_id'],
+        publicQueries:[{code:'ordered',kind:'records',resourceCode:'instruments',fields:['name','college_id'],sort,defaultLimit:10,maxLimit:10}],
+      }]},
+    },
+  }));
+  const priority=[{field:'name',direction:'desc' as const},{field:'college_id',direction:'asc' as const}];
+  const first=compile(priority),second=compile([...priority].reverse()),repeat=compile(priority);
+  assert.deepEqual(first.config.value.frontend.publicAccess!.policies[0]!.publicQueries![0]!.sort,priority);
+  assert.deepEqual(second.config.value.frontend.publicAccess!.policies[0]!.publicQueries![0]!.sort,[...priority].reverse());
+  assert.notEqual(first.config.digest,second.config.digest);
+  assert.equal(first.config.digest,repeat.config.digest);
+  for(const source of [first,second]) {
+    const target=compileNativeApplicationConfiguration({appCode:sourceDeclaration.app.code,configBytes:source.config.content,
+      contractBytes:source.contracts.content,expectedConfigDigest:source.config.digest,expectedContractDigest:source.contracts.digest});
+    assert.equal(target.source.configDigest,source.config.digest);
+    assert.deepEqual(target.projections.runtime.value.frontend.publicAccess.policies[0].publicQueries[0].sort,source.config.value.frontend.publicAccess!.policies[0]!.publicQueries![0]!.sort);
+  }
+});

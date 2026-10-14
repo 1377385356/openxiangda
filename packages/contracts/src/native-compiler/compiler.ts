@@ -4229,14 +4229,11 @@ function compileAnonymousPublicAccess(config: JsonObject) {
                   maxLimit: Number(query.maxLimit),
                   ...(query.sort
                     ? {
-                        sort: query.sort
-                          .map((item: JsonObject) => ({
-                            field: item.field,
-                            direction: item.direction,
-                          }))
-                          .sort((left: JsonObject, right: JsonObject) =>
-                            compareText(left.field, right.field)
-                          ),
+                        // ORDER BY is a priority sequence, not a field set.
+                        sort: query.sort.map((item: JsonObject) => ({
+                          field: item.field,
+                          direction: item.direction,
+                        })),
                       }
                     : {}),
                   ...(query.parameters

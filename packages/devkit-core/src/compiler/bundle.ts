@@ -1166,12 +1166,11 @@ function compileAnonymousPublicAccess(config: OpenXiangdaAppConfig) {
                   maxLimit: Number(query.maxLimit),
                   ...(query.sort
                     ? {
-                        sort: query.sort
-                          .map(item => ({
-                            field: item.field,
-                            direction: item.direction,
-                          }))
-                          .sort((left, right) => left.field.localeCompare(right.field)),
+                        // Sort entries are ordered priorities, not a field set.
+                        sort: query.sort.map(item => ({
+                          field: item.field,
+                          direction: item.direction,
+                        })),
                       }
                     : {}),
                   ...(query.parameters
