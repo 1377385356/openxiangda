@@ -1,10 +1,12 @@
+import { type WorkflowConditionVariable } from './workflow-variable-presentation';
+import { WorkflowChoiceValue } from './WorkflowConditionEditor';
 import { useState } from 'react';
 import { Button, Input, InputNumber, Select } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-import { evaluateWorkflowExpression, workflowExpressionPaths, type WorkflowGraphVariable, type WorkflowNode } from 'openxiangda-contracts/browser';
+import { evaluateWorkflowExpression, workflowExpressionPaths, type WorkflowNode } from 'openxiangda-contracts/browser';
 type ConditionNode=Extract<WorkflowNode,{kind:'condition'}>;
 /** Ephemeral hypothetical facts, never written into the executable draft or a business record. */
-export function WorkflowConditionExamples({ node,variables }: {node:ConditionNode;variables:readonly WorkflowGraphVariable[]}) {
+export function WorkflowConditionExamples({ node,variables }: {node:ConditionNode;variables:readonly WorkflowConditionVariable[]}) {
   const [examples,setExamples]=useState<Array<{id:number;name:string;values:Record<string,unknown>}>>([{id:0,name:'示例 1',values:{}}]);
   const [serial,setSerial]=useState(1);
   const paths=[...new Set(node.branches.flatMap(branch=>workflowExpressionPaths(branch.when).paths))].slice(0,32);
@@ -17,7 +19,7 @@ export function WorkflowConditionExamples({ node,variables }: {node:ConditionNod
   return <section className="oxa-designer-condition-examples" aria-label="条件示例结果"><h3>示例结果</h3><p>仅用于检查条件，使用与运行内核相同的判断规则；不修改申请数据，不保存为流程版本。</p>
     {examples.map(example=>{let result='';try{const branch=node.branches.find(branch=>Boolean(evaluateWorkflowExpression(branch.when,facts(example.values))));result=branch?.label|| (branch ? `条件 ${node.branches.indexOf(branch)+1}` : '其他情况');}catch{result='示例数据或条件暂不可计算';}
       return <article key={example.id}><header><Input aria-label="示例名称" maxLength={80} value={example.name} onChange={event=>setExamples(current=>current.map(value=>value.id===example.id?{...value,name:event.target.value}:value))} /><Button aria-label={`删除${example.name}`} icon={<DeleteOutlined />} onClick={()=>setExamples(current=>current.filter(value=>value.id!==example.id))} /></header>
-        <div className="oxa-designer-example-fields">{paths.map(path=>{const variable=variables.find(variable=>variable.path===path),type=variable?.type;return <label key={path}>{variable?.label||path}{type==='number'||type==='integer'?<InputNumber aria-label={`${example.name}${path}`} value={example.values[path] as number|undefined} precision={type==='integer'?0:undefined} onChange={value=>update(example.id,path,value??undefined)} />:type==='boolean'?<Select aria-label={`${example.name}${path}`} allowClear value={example.values[path]} options={[{value:true,label:'是'},{value:false,label:'否'}]} onChange={value=>update(example.id,path,value)} />:<ExampleTextValue key={`${example.id}:${path}`} label={`${example.name}${path}`} json={type==='array'||type==='object'} onChange={value=>update(example.id,path,value)} />}</label>;})}</div>
+        <div className="oxa-designer-example-fields">{paths.map(path=>{const variable=variables.find(variable=>variable.path===path),type=variable?.type;return <label key={path}>{variable?.label||path}{variable?.choices?.length ? <WorkflowChoiceValue choices={variable.choices} current={example.values[path]} multiple={false} disabled={false} label={`${example.name}${variable.label}`} onChange={value=>update(example.id,path,value)} /> : type==='number'||type==='integer'?<InputNumber aria-label={`${example.name}${path}`} value={example.values[path] as number|undefined} precision={type==='integer'?0:undefined} onChange={value=>update(example.id,path,value??undefined)} />:type==='boolean'?<Select aria-label={`${example.name}${path}`} allowClear value={example.values[path]} options={[{value:true,label:'是'},{value:false,label:'否'}]} onChange={value=>update(example.id,path,value)} />:<ExampleTextValue key={`${example.id}:${path}`} label={`${example.name}${path}`} json={type==='array'||type==='object'} onChange={value=>update(example.id,path,value)} />}</label>;})}</div>
         <p aria-live="polite"><strong>进入分支：</strong><span>{result}</span></p>
       </article>;
     })}<Button icon={<PlusOutlined />} disabled={examples.length>=20} onClick={()=>{setExamples(current=>[...current,{id:serial,name:`示例 ${serial+1}`,values:{}}]);setSerial(value=>value+1);}}>添加示例</Button>

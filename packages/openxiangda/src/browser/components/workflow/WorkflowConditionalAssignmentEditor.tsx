@@ -1,3 +1,4 @@
+import { workflowVariablesWithChoices, type WorkflowVariableChoices } from './workflow-variable-presentation';
 import { Alert, Button, Input, Space } from 'antd';
 import {
   WORKFLOW_CONDITIONAL_ASSIGNMENT_MAX_CASES, WORKFLOW_CONDITIONAL_ASSIGNMENT_LEAF_PROVIDERS,
@@ -16,12 +17,12 @@ export function createWorkflowConditionalAssignment(entry: WorkflowBindingEntry)
 }
 
 /** Controlled whole value; opening/rendering never normalizes or mutates the assignment. */
-export function WorkflowConditionalAssignmentEditor({ value = createWorkflowConditionalAssignment({ provider: 'fixed_users', users: [] }), context, principals, disabled = false, onChange }: {
-  value: WorkflowConditionalAssignment; context: WorkflowConditionalAssignmentContext;
+export function WorkflowConditionalAssignmentEditor({ value = createWorkflowConditionalAssignment({ provider: 'fixed_users', users: [] }), context, principals, disabled = false, onChange, variableChoices }: {
+  variableChoices?: WorkflowVariableChoices; value: WorkflowConditionalAssignment; context: WorkflowConditionalAssignmentContext;
   principals: WorkflowNodeConfigurations['principals']; disabled?: boolean;
   onChange: (value: WorkflowConditionalAssignment) => void;
 }) {
-  const allVariables = workflowDesignerVariables(context.definition);
+  const allVariables = workflowVariablesWithChoices(workflowDesignerVariables(context.definition), variableChoices);
   const variables = allVariables.flatMap(variable => {
     const fact = workflowConditionalAssignmentFact(context.definition, context.nodeId, variable.path);
     return fact ? [{ ...variable, required: fact.required }] : [];

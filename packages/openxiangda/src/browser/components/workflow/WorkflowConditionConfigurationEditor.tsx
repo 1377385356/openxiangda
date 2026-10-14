@@ -1,15 +1,16 @@
+import { formatWorkflowCondition, type WorkflowConditionVariable } from './workflow-variable-presentation';
 import { WorkflowConditionExamples } from './WorkflowConditionExamples';
 import { useEffect, useState } from 'react';
 import { Alert, Button, Input, Select, Tag } from 'antd';
 import { ArrowRightOutlined, ArrowLeftOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-import { formatWorkflowExpression, type WorkflowGraphVariable, type WorkflowNode } from 'openxiangda-contracts/browser';
+import { type WorkflowNode } from 'openxiangda-contracts/browser';
 import { WorkflowConditionEditor, defaultWorkflowCondition } from './WorkflowConditionEditor';
 
 type ConditionNode = Extract<WorkflowNode, { kind: 'condition' }>;
 
 /** Edits the selected branch of the same canonical draft as the canvas. */
 export function WorkflowConditionConfigurationEditor({ node, variables, targets, selectedBranch, disabled, onChange }: {
-  node: ConditionNode; variables: readonly WorkflowGraphVariable[]; targets: Array<{ value: string; label: string }>;
+  node: ConditionNode; variables: readonly WorkflowConditionVariable[]; targets: Array<{ value: string; label: string }>;
   selectedBranch?: number; disabled: boolean; onChange: (value: ConditionNode) => void;
 }) {
   const [index, setIndex] = useState(selectedBranch || 0);
@@ -43,7 +44,7 @@ export function WorkflowConditionConfigurationEditor({ node, variables, targets,
     <h3>进入条件</h3>
     <fieldset disabled={disabled} className="oxa-designer-condition-surface"><WorkflowConditionEditor value={branch.when} variables={variables} onChange={when => patchBranch({ when })} /></fieldset>
     <h3>条件说明</h3>
-    <p className="oxa-designer-condition-description">{formatWorkflowExpression(branch.when, variables)}</p>
+    <p className="oxa-designer-condition-description">{formatWorkflowCondition(branch.when, variables)}</p>
     <label>满足条件后进入<Select aria-label={`分支 ${active + 1} 目标`} disabled={disabled} value={branch.target} options={targets} onChange={target => patchBranch({ target })} /></label>
     <label>其他情况<Select aria-label="其他情况目标" disabled={disabled} value={node.otherwise} options={targets} onChange={otherwise => onChange({ ...node, otherwise })} /></label>
     <WorkflowConditionExamples node={node} variables={variables} />

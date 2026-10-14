@@ -1,3 +1,6 @@
+import { workflowVariablesWithChoices, formatWorkflowCondition, type WorkflowVariableChoices } from './workflow-variable-presentation';
+import { formatWorkflowExpression } from 'openxiangda-contracts/browser';
+export type { WorkflowVariableChoices } from './workflow-variable-presentation';
 import { workflowDesignerAllowedActions, isWorkflowDesignerAuthorityLoss, isWorkflowDesignerAuthorityBusy } from './workflow-designer-authority';
 import type { WorkflowDesignerPublishedView, NativeWorkflowManagementAction } from 'openxiangda-contracts/browser';
 import { workflowAssignmentLeaves, workflowAuthoringCatalog, workflowCanvasBindingKey, createWorkflowHumanNode, pruneWorkflowCanvasBindings, validateWorkflowBusinessSteps, type WorkflowBinding } from 'openxiangda-contracts/browser';
@@ -27,7 +30,7 @@ const canonical = (value: any): any => Array.isArray(value) ? value.map(canonica
 const same = (left: unknown,right: unknown) => JSON.stringify(canonical(left)) === JSON.stringify(canonical(right));
 
 /** Canonical authoring. The graph is a projection; coordinates never become executable state. */
-export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onStateChange, onBack }: { workflowCode: string; onBack?: () => void; onPublished?: (receipt: WorkflowPublicationReceipt) => void; onDirtyChange?: (dirty: boolean) => void; onStateChange?: (state: { dirty: boolean; busy: boolean; unknown: boolean }) => void }) {
+export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onStateChange, onBack, variableChoices }: { variableChoices?: WorkflowVariableChoices; workflowCode: string; onBack?: () => void; onPublished?: (receipt: WorkflowPublicationReceipt) => void; onDirtyChange?: (dirty: boolean) => void; onStateChange?: (state: { dirty: boolean; busy: boolean; unknown: boolean }) => void }) {
   const { message } = App.useApp();
   const [authorityActions,setAuthorityActions] = useState<NativeWorkflowManagementAction[]>([]);
   const [publishedOnly,setPublishedOnly] = useState<WorkflowDesignerPublishedView>();
@@ -132,7 +135,12 @@ export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onS
     return () => { active = false;clearInterval(poll); };
   },[workflowCode,receipt?.publicationId,receipt?.status,publication]);
   const shown = publishedView ? draft?.publishedDefinition : definition;
-  const graph = useMemo(() => shown ? projectWorkflowGraph(shown,'draft') : undefined,[shown]);
+  const graph = useMemo(() => {
+    if (!shown) return undefined;
+    const projection = projectWorkflowGraph(shown, 'draft');
+    const variables = workflowVariablesWithChoices(projection.variables, variableChoices);
+    return { ...projection, variables, edges: projection.edges.map(edge => edge.expression && edge.label === formatWorkflowExpression(edge.expression, projection.variables) ? { ...edge, label: formatWorkflowCondition(edge.expression, variables) } : edge) };
+  }, [shown, variableChoices]);
   const displayGraph = useMemo(() => {
     const activeReturn = structureKeys.includes('return') ? shown?.nodes[selected] : undefined;
     return graph ? workflowDesignerDisplayGraph(graph, activeReturn?.id, activeReturn && ['approval','handle'].includes(activeReturn.kind) ? workflowReturnTargets(activeReturn as Extract<WorkflowNode,{kind:'approval'|'handle'}>) : []) : undefined;
@@ -140,7 +148,7 @@ export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onS
   const outlineNodes = useMemo(() => displayGraph ? workflowDesignerOutlineRows(displayGraph) : [], [displayGraph]);
   useEffect(() => { if (shown && selected !== workflowDesignerStartId && !shown.nodes[selected]) setSelected(shown.startAt); }, [shown, selected]);
   const catalog = useMemo(() => canEdit ? draft?.capabilities || (draft ? workflowAuthoringCatalog(draft.publishedDefinition,draft.publishedBinding) : undefined) : { appVersionId: '',digest: '',taskPages: {},steps: [],peopleSources: {} },[draft,canEdit]);
-  const variables = useMemo(() => definition ? workflowDesignerVariables(definition) : [],[definition]);
+  const variables = useMemo(() => definition ? workflowVariablesWithChoices(workflowDesignerVariables(definition), variableChoices) : [],[definition, variableChoices]);
   const errors = useMemo(() => definition ? [...validateWorkflowDesignerDocument(definition),...validateWorkflowBusinessSteps(definition),...Object.values(definition.nodes).flatMap(node => {
     if (!('binding' in node)) return [];
     const entry=binding?.bindings[node.binding];
@@ -374,7 +382,7 @@ export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onS
     {authorityNotice && <Alert type="warning" title={authorityNotice} />}{retained}
     <WorkflowDiagram graph={projectWorkflowGraph(publishedOnly.definition,'draft')} selectedNodeId={selected} onSelectNode={selectNode} />
     <Drawer open={inspector && !!liveNode} title="节点设置" width={640} onClose={closeInspector}>
-    {liveNode && <WorkflowNodeConfigurationEditor key={liveNode.nodeId} workflowCode={workflowCode} node={liveNode} principals={configurations.principals} conditionalAssignment={configurations.conditionalAssignment}
+    {liveNode && <WorkflowNodeConfigurationEditor key={liveNode.nodeId} workflowCode={workflowCode} node={liveNode} principals={configurations.principals} variableChoices={variableChoices} conditionalAssignment={configurations.conditionalAssignment}
       expectedHeadRevision={nativeHeadRevision} presentation="inline" readOnly={!canHandle || authorityStopped.current} onClose={() => setSelected('')}
       onStateChange={handlingStateChanged} onLeaveGuardChange={handlingGuardChanged} onAuthorityLoss={loseAuthority} onSaved={() => void refreshHandling().catch(failure=>setError(String(failure.message)))} />}
     </Drawer>
@@ -397,11 +405,11 @@ export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onS
     <header><span className={`oxa-designer-inspector-icon kind-${node?.kind || 'start'}`}><NodeIcon /></span><h2>{node?.title || '流程发起'}</h2><Tag>{isWorkflowPlatformNotify(node) ? '通知节点' : kinds[node?.kind || ''] || '发起'}</Tag><Button type="text" icon={<CloseOutlined />} aria-label="关闭节点设置" onClick={closeInspector} /></header>
     {node ? <>
       <div hidden={human && structureKeys.includes('return')}>{liveNode && configurations && ['approval','handle','cc'].includes(node.kind) ? <WorkflowNodeConfigurationEditor
-        key={`${liveNode.nodeId}:${liveNode.configuration.revision}`} workflowCode={workflowCode} node={liveNode} principals={configurations.principals} conditionalAssignment={configurations.conditionalAssignment}
+        key={`${liveNode.nodeId}:${liveNode.configuration.revision}`} workflowCode={workflowCode} node={liveNode} principals={configurations.principals} variableChoices={variableChoices} conditionalAssignment={configurations.conditionalAssignment}
         expectedHeadRevision={nativeHeadRevision} presentation="inline" readOnly={!canHandle || authorityStopped.current} compact={!detailInspector && !narrow} onExpand={() => { setDetailInspector(true);setOutline(false); }}
         onClose={closeInspector} onStateChange={handlingStateChanged} onLeaveGuardChange={handlingGuardChanged} onAuthorityLoss={loseAuthority}
         returnSummary={human && (node.returnPolicy?.targets || node.returnTargets || []).length ? <div><Tag color="gold">随草稿发布</Tag><div>{(node.returnPolicy?.targets || (node.returnTargets || []).map(nodeId => ({ nodeId, defaultRoute: 'replay' }))).map(target => <p key={target.nodeId}>{definition.nodes[target.nodeId]?.title || '退回目标'} · {target.defaultRoute === 'resume' ? '重新提交后直接回到本节点' : '重新提交后重新按流程流转'}</p>)}</div><Button type="link" size="small" onClick={() => setStructureKeys(['return'])}>编辑退回设置</Button></div> : undefined}
-        onSaved={() => { void refreshHandling().catch(failure => setError(`办理设置已保存，重新读取失败：${String(failure.message)}`)); }} /> : draft.publishedDefinition.nodes[node.id] && ['approval','handle','cc'].includes(node.kind) ? <Alert type="warning" showIcon title="已发布节点的办理设置未能载入" description="此节点不是新增草稿节点，请重新读取配置后修改。" action={<Button onClick={() => void refreshHandling().catch(failure=>setError(String(failure.message)))}>重新读取办理设置</Button>} /> : ['approval','handle','cc'].includes(node.kind) && <WorkflowDraftHandlingEditor node={node as any} baseline={node as any} bindingOptions={Object.keys(draft.publishedBinding.bindings).map(value=>({value,label:value}))}
+        onSaved={() => { void refreshHandling().catch(failure => setError(`办理设置已保存，重新读取失败：${String(failure.message)}`)); }} /> : draft.publishedDefinition.nodes[node.id] && ['approval','handle','cc'].includes(node.kind) ? <Alert type="warning" showIcon title="已发布节点的办理设置未能载入" description="此节点不是新增草稿节点，请重新读取配置后修改。" action={<Button onClick={() => void refreshHandling().catch(failure=>setError(String(failure.message)))}>重新读取办理设置</Button>} /> : ['approval','handle','cc'].includes(node.kind) && <WorkflowDraftHandlingEditor variableChoices={variableChoices} node={node as any} baseline={node as any} bindingOptions={Object.keys(draft.publishedBinding.bindings).map(value=>({value,label:value}))}
           conditionalContext={catalog?.conditionalAssignments ? { definition, nodeId: node.id, standardProviders: ['fixed_users', 'app_role'], releasedSources: Object.fromEntries(Object.entries(catalog.peopleSources).flatMap(([key, source]) => workflowAssignmentLeaves(source).map((leaf, index) => [`${key}/${index}`, leaf]))) } : undefined}
           binding={binding?.bindings['binding' in node ? node.binding : '']} sources={catalog!.peopleSources} variables={variables} principals={configurations?.principals || {users:[],roles:[]}} disabled={disabled}
           onBindingChange={entry => { if (!('binding' in node) || !binding) return;mutate({...definition,nodes:{...definition.nodes,[node.id]:{...node,...((entry.provider==='conditional' ? [...entry.cases.map(rule=>rule.assignee),entry.otherwise] : [entry]).some(leaf=>leaf.provider==='supervisor_chain'&&leaf.continuous!==false)?{mode:'sequence'}:{})} as WorkflowNode}}, {...binding,bindings:{...binding.bindings,[node.binding]:entry}}); }} onChange={patch} /> }</div>
