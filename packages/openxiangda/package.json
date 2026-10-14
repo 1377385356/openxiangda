@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.70.2",
+  "version": "2.71.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -102,13 +102,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.11.6",
-    "openxiangda-contracts": "2.91.1",
-    "openxiangda-devkit-core": "2.69.1",
+    "openxiangda-cli": "2.11.7",
+    "openxiangda-contracts": "2.92.0",
+    "openxiangda-devkit-core": "2.69.2",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.2.19",
-    "openxiangda-nest": "2.21.1",
-    "openxiangda-skill-kit": "2.3.121",
+    "openxiangda-mcp": "2.2.20",
+    "openxiangda-nest": "2.22.0",
+    "openxiangda-skill-kit": "2.3.122",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -174,34 +174,39 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.70.2",
+    "version": "2.71.0",
     "status": "reviewed",
-    "title": "首部节点插入与补正回放修复",
-    "summary": "首部插入人工、条件、业务或并行节点时，原子更新流程入口和补正重提交入口，保留新首审批与严格校验。",
-    "newFeatures": [],
+    "title": "本人班级目录与数据库事务时间",
+    "summary": "具名动作和浏览器复用平台本人工作组织的家校班级投影，并由Native锁后的数据库时刻派生申请及冷却时间。",
+    "newFeatures": [
+      "loadCurrentDirectoryClasses读取当前用户/工作组织的班级、学校规范名称、校区、学段、年级和本人来源角色，组织切换丢弃迟到响应。",
+      "具名Nest动作显式声明directoryClasses.maxIds并精确解析1至20个来源班级，任一不可见时整体拒绝。",
+      "显式transactionTime动作使用databaseAcceptedTime写入datetime和最多366天整数偏移，原事务回执恢复不重新取时间。",
+      "可选recordSetAssertions对单组最多500个锁定且可读的记录执行公共字段或数据库时间条件，保留20总守卫预算。"
+    ],
     "fixes": [
-      "首部插入同步补正回放目标，多补正和连续插入删除保留完整路径。",
-      "补正可达性遍历并行和汇合后继，保留禁止正向进入补正与退回源必须可达的规则。"
+      "CLI模板及随包中文资料与根包同批升级，七包组合由Changesets确定。"
     ],
     "affectedUsers": [
-      "使用流程画布首部插入、补正重提交或并行结构的V2应用。"
+      "使用家校来源班级、多组织身份或精确申请/冷却时刻的V2应用。"
     ],
     "upgradeSteps": [
-      "安装同源完整七包并配套后端共享校验器，核对纯校验器摘要。",
-      "从合同现场2.69.1升级继承组织授权、业务待办与旧审批接续合同；两份正式SQL须通过完整门禁和目标预检。完整配套已获授权。",
-      "应用更新前通过官方源码导出和注册保护保留现场流程第13版；不以旧源码覆盖或重放未保存草稿。"
+      "安装同一正式发行七包；平台维护者固定精确源码、contracts纯校验器和管理台seal后通过官方发行部署。",
+      "为需要的新动作显式声明目录/时间能力；所有已有写目标保留同ID的锁守卫及CAS。",
+      "通过目标预检后接入；真实组织同步、实际用户权限和PC/手机业务验收分别执行。"
     ],
     "knownLimitations": [
-      "鼠标消失未复现，本地拖动及失焦恢复正常不代表现场问题已修复。",
-      "包发行不代表部署或真实角色验收；安装接续能力不授权调用旧审批接续、重放通知或晋级生产。"
+      "本地及隔离PostgreSQL验证不代表站点已更新或真实用户业务通过。",
+      "目录读取不授予应用写权限，不将校区当作独立企业，不提供其他用户、unionId或安装秘密。",
+      "事务时间值仅供具名交互动作的秒精度datetime字段；普通CRUD、事件worker及队列不取得该能力。"
     ],
     "compatibility": {
       "node": "Node.js 24 or newer for maintained toolchain",
       "generation": "OpenXiangda V2; V1 unchanged",
-      "platform": "同源contracts纯校验器；从171017升级包含AddNativeOrganizationAuthorizationV2和AddWorkflowLegacyAdoptionsV2 SQL，目标预检不可省略。"
+      "platform": "directory.current-classes 1.0.0; data.transaction-time-values 1.0.0; opted-in data.record-set-assertions 1.0.0; exact paired contracts"
     },
     "issues": [],
-    "sha256": "d4cd6182b5f50770489b6615a5207dc0590e6a88f1d3fb635a8cf0defc0e8dd8",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.70.2"
+    "sha256": "255b06bcc6d6784959781e789f4e96ba92f19865f0a27f3475e77b94543213a5",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.71.0"
   }
 }
