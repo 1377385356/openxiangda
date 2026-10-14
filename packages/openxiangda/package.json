@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.69.1",
+  "version": "2.70.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -102,13 +102,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.11.3",
-    "openxiangda-contracts": "2.89.1",
-    "openxiangda-devkit-core": "2.67.3",
+    "openxiangda-cli": "2.11.4",
+    "openxiangda-contracts": "2.90.0",
+    "openxiangda-devkit-core": "2.68.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.2.16",
-    "openxiangda-nest": "2.20.1",
-    "openxiangda-skill-kit": "2.3.118",
+    "openxiangda-mcp": "2.2.17",
+    "openxiangda-nest": "2.20.2",
+    "openxiangda-skill-kit": "2.3.119",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -174,34 +174,37 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.69.1",
+    "version": "2.70.0",
     "status": "reviewed",
-    "title": "流程画布按需面板与连续分支保存修复",
-    "summary": "修复流程设计器的常驻面板、连续条件路由断线及带可读名称的草稿无法保存。",
-    "newFeatures": [],
+    "title": "组织角色与业务记录归属边界",
+    "summary": "应用可声明平台目录角色映射、self/subtree 组织范围及 Native 记录组织归属，由配套平台统一执行身份与数据授权。",
+    "newFeatures": [
+      "角色显式声明 organizationReach；directoryRoleSources 将可信平台目录事实映射为当前组织内的应用角色和班级等字符串范围。",
+      "Native 资源声明 none、owned 或 inherited-down 组织策略；组织归属元数据可用于有界读取和统计，业务输入不能更改归属。",
+      "编译器共同校验组织角色、来源范围和资源策略，自动协商 authz.organizations、authz.directory-roles 与 data.organizations 能力。"
+    ],
     "fixes": [
-      "流程大纲默认隐藏，节点设置默认关闭；选择节点后按需打开配置，浮层不挤压编辑画布。",
-      "相邻条件区域只拥有各自分支，汇合目标保持单一位置；连续条件和嵌套并行的连线接回实际目标节点。",
-      "正式流程文档schema接受已有readability元数据，保留闭集字段、长度与数量上限及原业务权限校验。"
+      "隔离 CLI 候选构建保留固定 Corepack 缓存，嵌套源码构建并发上限为两个任务；保留真实依赖安装和端到端检查。"
     ],
     "affectedUsers": [
-      "使用V2流程设计器编辑或维护审批流程的应用。"
+      "使用多组织、教育局与独立学校或平台家校目录的 OpenXiangda V2 应用；已有未声明组织策略的应用保持原授权语义。"
     ],
     "upgradeSteps": [
-      "安装精确openxiangda 2.69.1官方组合并重新检查、构建应用。",
-      "平台后端同步正式contracts包及同源回执后，才具备草稿保存schema修复；应用自行维护流程列表和独立画布路由。"
+      "安装精确 openxiangda 2.70.0 官方组合并刷新项目资料，检查生成契约及能力要求。",
+      "平台配套正式 contracts、组织角色投影服务与新增 SQL 后再启用组织资源；在目标站点验证真实来源、活动成员、安装及角色正反路径。"
     ],
     "knownLimitations": [
-      "不修改历史实例、审批边界或业务拓扑；此版本不包含原DeploymentRun例外ack接口。",
-      "包发行不等于平台部署或现场草稿保存验收，已有未保存输入需保留。"
+      "npm 包发布不代表平台部署、真实组织同步或业务验收；源码和独立 PostgreSQL 测试不能代替现场登录与权限验证。",
+      "普通后台或应用凭据不自动取得组织权限；未声明明确系统动作边界的后台任务不能访问组织资源。",
+      "已有无组织记录不自动推断或回填归属，启用组织策略后不能降级移除边界。"
     ],
     "compatibility": {
       "node": "Node.js 24 or newer for maintained toolchain",
       "generation": "OpenXiangda V2; V1 unchanged",
-      "platform": "平台后端须消费本轮正式contracts及配套组合；原权限、revision和operationId守卫保持"
+      "platform": "须部署同源 contracts 及组织授权 SQL/后端；组织来源角色限定 self，subtree 授权由合法应用管理员显式管理"
     },
     "issues": [],
-    "sha256": "529eee3d6d426c149635e6143310ff6a4a01da6c7243e203ff959f9d3b34a4b5",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.69.1"
+    "sha256": "7291b56c3a9c02615075ea5bb9bcf22669b3d19540f5f95173f54589d31a24f8",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.70.0"
   }
 }
