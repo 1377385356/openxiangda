@@ -39,6 +39,9 @@ import {
   type DirectoryEntryPage,
   type DirectoryResolveRequest,
   type RuntimeAuthorizationContext,
+  type PlatformOrganizationMembership,
+  type PlatformOrganizationSwitchReceipt,
+  type DirectoryRoleFactPage,
   type RuntimeRoleSummary,
   type SubjectProfile,
   type ApplicationOperationReceiptV2,
@@ -345,7 +348,7 @@ async function fetchWithDiagnostics(path: string, init: RequestInit) {
 /** 仅用于明确只读的调用；写入和作业创建继续走 request，不自动重放。 */
 async function requestRead<T>(path: string, init: RequestInit = {}): Promise<T> {
   const readScope = () => JSON.stringify([applicationCode(), activeIdentity?.environment.key || runtimeMount()?.environmentKey || null,
-    currentPerspectiveCode(), activeIdentity?.identityScope || null]);
+    currentPerspectiveCode(), activeIdentity?.identityScope || null, platformSessionEpoch]);
   const scope = readScope();
   const controller = new AbortController();
   const abort = () => controller.abort(init.signal?.reason);
@@ -432,6 +435,8 @@ export async function requestApplicationApi<T>(
 }
 
 export interface RuntimeIdentity {
+  /** Platform-verified working organization; absent in traditional tenants. */
+  activeOrganizationId?: string;
   userId: string;
   roleCodes: string[];
   capabilityCodes: string[];
@@ -447,6 +452,7 @@ export interface RuntimeIdentity {
     authzRevisionId?: string;
     authzVersion?: number;
     scopeDataVersion?: string;
+    activeOrganizationId?: string;
   };
 }
 
@@ -454,7 +460,7 @@ interface ConnectedCurrent {
   environment: RuntimeIdentity['environment'];
   principal: Pick<
     RuntimeIdentity,
-    'userId' | 'roleCodes' | 'capabilityCodes' | 'isAppSuperAdmin'
+    'userId' | 'roleCodes' | 'capabilityCodes' | 'isAppSuperAdmin' | 'activeOrganizationId'
   > & {
     type: 'developer';
   };
@@ -468,6 +474,7 @@ export interface RuntimeAuthorization {
 }
 
 let activeIdentity: RuntimeIdentity | undefined;
+let platformSessionEpoch = 0;
 interface RuntimeAuthorizationLoad {
   promise: Promise<RuntimeAuthorization>;
   controller: AbortController;
@@ -520,10 +527,12 @@ async function commandBoundCsrf(commandToken?: string | null) {
 }
 
 const platformSessionListeners = new Set<() => void>();
+const platformOrganizationListeners = new Set<() => void>();
 let platformSessionChannel: BroadcastChannel | undefined;
 let platformSessionStorageListening = false;
 const PLATFORM_AUTH_CHANNEL = 'auth-session-v2';
 const PLATFORM_LOGOUT_STORAGE_KEY = 'auth_session_v2:logout';
+const PLATFORM_ORGANIZATION_STORAGE_KEY = 'auth_session_v2:organization';
 const platformAuthOwnerId =
   createBrowserUuid();
 
@@ -552,10 +561,46 @@ function isPlatformLogoutSignal(value: unknown): value is PlatformLogoutSignal {
 }
 
 function invalidatePlatformSession() {
+  platformSessionEpoch++;
   clearRuntimeAuthorization();
   applicationCsrfToken = '';
   workflowCommandCsrf.clear();
   platformSessionListeners.forEach(listener => listener());
+}
+
+interface PlatformOrganizationSignal {
+  type: 'organization-changed';
+  payload: { version: 2; ownerId: string; at: number };
+}
+
+function isPlatformOrganizationSignal(value: unknown): value is PlatformOrganizationSignal {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const signal = value as Partial<PlatformOrganizationSignal>;
+  return signal.type === 'organization-changed' && signal.payload?.version === 2 &&
+    typeof signal.payload.ownerId === 'string' && Number.isFinite(signal.payload.at);
+}
+
+function invalidatePlatformOrganization() {
+  platformSessionEpoch++;
+  clearRuntimeAuthorization();
+  applicationCsrfToken = '';
+  workflowCommandCsrf.clear();
+  platformOrganizationListeners.forEach(listener => listener());
+}
+
+function publishPlatformOrganizationInvalidation() {
+  invalidatePlatformOrganization();
+  const signal: PlatformOrganizationSignal = { type: 'organization-changed',
+    payload: { version: 2, ownerId: platformAuthOwnerId, at: Date.now() } };
+  ensurePlatformSessionChannel()?.postMessage(signal);
+  try { window.localStorage.setItem(PLATFORM_ORGANIZATION_STORAGE_KEY, JSON.stringify(signal.payload)); }
+  catch { /* Same-tab listeners still retire the previous context. */ }
+}
+
+export function subscribePlatformOrganizationInvalidation(listener: () => void) {
+  platformOrganizationListeners.add(listener);
+  ensurePlatformSessionChannel();
+  return () => { platformOrganizationListeners.delete(listener); };
 }
 
 function ensurePlatformSessionChannel() {
@@ -563,8 +608,12 @@ function ensurePlatformSessionChannel() {
   if (!platformSessionStorageListening) {
     platformSessionStorageListening = true;
     window.addEventListener('storage', event => {
-      if (event.key !== PLATFORM_LOGOUT_STORAGE_KEY || !event.newValue) return;
+      if (![PLATFORM_LOGOUT_STORAGE_KEY, PLATFORM_ORGANIZATION_STORAGE_KEY].includes(event.key || '') || !event.newValue) return;
       try {
+        if (event.key === PLATFORM_ORGANIZATION_STORAGE_KEY) {
+          if (isPlatformOrganizationSignal({ type: 'organization-changed', payload: JSON.parse(event.newValue) })) invalidatePlatformOrganization();
+          return;
+        }
         if (isPlatformLogoutSignal({
           type: 'logout',
           payload: JSON.parse(event.newValue),
@@ -581,8 +630,8 @@ function ensurePlatformSessionChannel() {
   }
   platformSessionChannel = new window.BroadcastChannel(PLATFORM_AUTH_CHANNEL);
   platformSessionChannel.addEventListener('message', event => {
-    if (!isPlatformLogoutSignal(event.data)) return;
-    invalidatePlatformSession();
+    if (isPlatformOrganizationSignal(event.data)) invalidatePlatformOrganization();
+    else if (isPlatformLogoutSignal(event.data)) invalidatePlatformSession();
   });
   return platformSessionChannel;
 }
@@ -782,7 +831,11 @@ function validateRuntimeAuthorization(
   if (!context.principal || context.principal.type !== 'user_union') {
     throw new Error('OPENXIANGDA_RUNTIME_AUTHORIZATION_ACTIVE_INVALID');
   }
+  if (context.principal.activeOrganizationId !== context.environment.activeOrganizationId) {
+    throw new Error('OPENXIANGDA_RUNTIME_ORGANIZATION_MISMATCH');
+  }
   activeIdentity = {
+    ...(context.principal.activeOrganizationId ? { activeOrganizationId: context.principal.activeOrganizationId } : {}),
     userId: context.principal.userId,
     roleCodes: context.principal.roleCodes,
     capabilityCodes: context.principal.capabilityCodes,
@@ -798,6 +851,7 @@ function validateRuntimeAuthorization(
       authzRevisionId: context.environment.authzRevisionId,
       authzVersion: context.environment.authzVersion,
       scopeDataVersion: context.environment.scopeDataVersion,
+      ...(context.environment.activeOrganizationId ? { activeOrganizationId: context.environment.activeOrganizationId } : {}),
     },
   };
   return { state: context.state, identity: activeIdentity };
@@ -840,11 +894,14 @@ async function requestRuntimeAuthorization(
     `${applicationServiceBase()}/dev-sessions/current`,
   );
   assertObservedCurrent();
+  if (current.principal.activeOrganizationId !== current.environment.activeOrganizationId) {
+    throw new Error('OPENXIANGDA_RUNTIME_ORGANIZATION_MISMATCH');
+  }
   activeIdentity = {
     ...current.principal,
     identityScope: `connected-dev:${applicationCode()}:${
       current.environment.key
-    }:${current.principal.userId}`,
+    }:${current.principal.userId}:${current.principal.activeOrganizationId || 'none'}`,
     subjectProfile: current.subjectProfile,
     roles: current.roles,
     environment: current.environment,
@@ -859,7 +916,8 @@ function runtimeAuthorizationScope() {
 
 export function isRuntimeAuthorizationIdentityRejection(error: unknown) {
   return error instanceof OpenXiangdaPlatformRequestError && [401, 403, 409].includes(error.status) ||
-    error instanceof Error && /^OPENXIANGDA_RUNTIME_AUTHORIZATION_(?:INVALID|INACTIVE_INVALID|ACTIVE_INVALID|SUPERSEDED)$/.test(error.message);
+    error instanceof Error && /^OPENXIANGDA_RUNTIME_AUTHORIZATION_(?:INVALID|INACTIVE_INVALID|ACTIVE_INVALID|SUPERSEDED)$/.test(error.message) ||
+    error instanceof Error && error.message === 'OPENXIANGDA_RUNTIME_ORGANIZATION_MISMATCH';
 }
 
 function clearRuntimeEntryWait() {
@@ -933,6 +991,65 @@ export async function loadRuntimeAuthorization(
     });
   }
   return await observeRuntimeAuthorization(owner, options.signal);
+}
+
+const platformOrganizationsBase = '/service/openxiangda-api/v2/platform/organizations';
+
+export async function loadCurrentOrganizationMemberships(options: { signal?: AbortSignal } = {}) {
+  return requestRead<PlatformOrganizationMembership[]>(`${platformOrganizationsBase}/me/memberships`, options);
+}
+
+export async function loadCurrentDirectoryRoleFacts(options: { limit?: number; after?: string; signal?: AbortSignal } = {}) {
+  const query = new URLSearchParams();
+  const limit = options.limit ?? 100;
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 200 ||
+    (options.after && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(options.after))) {
+    throw new Error('PLATFORM_DIRECTORY_PAGE_INVALID');
+  }
+  query.set('limit', String(limit));
+  if (options.after) query.set('after', options.after);
+  const page = await requestRead<DirectoryRoleFactPage>(`${platformOrganizationsBase}/me/directory-role-facts?${query}`, { signal: options.signal });
+  if (page.schemaVersion !== 'openxiangda.directory-role-facts/v1' || !Array.isArray(page.items) ||
+    page.items.length > limit || (activeIdentity && (page.organizationId !== activeIdentity.activeOrganizationId || page.userId !== activeIdentity.userId))) {
+    throw new Error('PLATFORM_DIRECTORY_CONTEXT_MISMATCH');
+  }
+  return page;
+}
+
+let organizationSwitchPending = false;
+/** Cookies remain owned by the platform; receipt excludes authentication tokens. */
+export async function switchCurrentOrganization(organizationId: string): Promise<PlatformOrganizationSwitchReceipt> {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(organizationId)) throw new Error('ORGANIZATION_CONTEXT_INVALID');
+  if (organizationSwitchPending) throw new Error('PLATFORM_ORGANIZATION_SWITCH_IN_PROGRESS');
+  organizationSwitchPending = true;
+  const previousEpoch = platformSessionEpoch;
+  try {
+    if (!applicationCsrfToken) {
+      const surface = await request<{ csrfToken: string }>(`${applicationAuthenticationBase()}/organization/switch-surface?environmentKey=${encodeURIComponent(runtimeEnvironmentKey())}`);
+      if (!surface.csrfToken) throw new Error('APPLICATION_AUTH_CSRF_INVALID');
+      applicationCsrfToken = surface.csrfToken;
+    }
+    if (previousEpoch !== platformSessionEpoch) throw new Error('PLATFORM_ORGANIZATION_SWITCH_SUPERSEDED');
+    let receipt: PlatformOrganizationSwitchReceipt;
+    try {
+      receipt = await request<PlatformOrganizationSwitchReceipt>(`${applicationAuthenticationBase()}/organization/switch`, {
+        method: 'POST', headers: { 'x-openxiangda-csrf-token': applicationCsrfToken },
+        body: JSON.stringify({ organizationId, environmentKey: runtimeEnvironmentKey() }),
+      });
+    } catch (error) {
+      if (error instanceof OpenXiangdaPlatformRequestError && (error.code === 'PLATFORM_TRANSPORT_UNAVAILABLE' || error.status >= 500)) publishPlatformOrganizationInvalidation();
+      throw error;
+    }
+    if (previousEpoch !== platformSessionEpoch) throw new Error('PLATFORM_ORGANIZATION_SWITCH_SUPERSEDED');
+    // Even an unexpected successful response may already have changed cookies.
+    publishPlatformOrganizationInvalidation();
+    if (receipt.activeOrganizationId !== organizationId || receipt.organization?.id !== organizationId || !Array.isArray(receipt.memberships)) {
+      throw new Error('PLATFORM_ORGANIZATION_SWITCH_RECEIPT_INVALID');
+    }
+    const { id, corpId, name, providerName, parentId, level, ancestorIds } = receipt.organization;
+    return { activeOrganizationId: receipt.activeOrganizationId,
+      organization: { id, corpId, name, providerName, parentId, level, ancestorIds }, memberships: receipt.memberships };
+  } finally { organizationSwitchPending = false; }
 }
 
 export async function logoutCurrentUser() {

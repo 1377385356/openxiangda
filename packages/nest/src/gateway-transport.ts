@@ -283,6 +283,7 @@ export class OpenXiangdaGatewayTransportGuard implements CanActivate {
       !Number.isSafeInteger(session.environment.headRevision) ||
       session.environment.headRevision < 1 ||
       session.principal.type !== "developer" ||
+      session.principal.activeOrganizationId !== session.environment.activeOrganizationId ||
       !session.principal.userId ||
       session.subjectProfile?.userId !== session.principal.userId ||
       !isHumanDisplayName(
@@ -306,6 +307,7 @@ export class OpenXiangdaGatewayTransportGuard implements CanActivate {
       principal: {
         principalType: "developer",
         userId: session.principal.userId,
+        ...(session.principal.activeOrganizationId ? { activeOrganizationId: session.principal.activeOrganizationId } : {}),
         displayName: session.subjectProfile.displayName.trim(),
         appCode: this.options.appCode,
         environmentId: session.environment.id,

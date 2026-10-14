@@ -152,6 +152,7 @@ export interface OpenXiangdaBusinessActionContext {
 }
 
 export interface OpenXiangdaConnectedDeveloperPrincipal {
+  activeOrganizationId?: string;
   principalType: "developer";
   userId: string;
   displayName: string;
@@ -182,10 +183,12 @@ export interface OpenXiangdaConnectedDevelopmentStatus {
     key: "preproduction" | "production";
     activeAppVersionId: string;
     headRevision: number;
+    activeOrganizationId?: string;
   };
   subjectProfile: SubjectProfile;
   principal: {
     type: "developer";
+    activeOrganizationId?: string;
     userId: string;
     roleCodes: string[];
     isAppSuperAdmin: boolean;
@@ -230,6 +233,8 @@ export interface OpenXiangdaHttpRequest {
 }
 
 export interface OpenXiangdaCurrentUser {
+  /** Only copied from the platform-verified principal. */
+  activeOrganizationId?: string;
   userId: string;
   displayName: string;
   appCode: string;

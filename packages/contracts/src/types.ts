@@ -329,6 +329,8 @@ export interface NativePrincipal {
   principalType: "user";
   subjectId: string;
   userId: string;
+  /** Active organization resolved by the authenticated platform session. */
+  activeOrganizationId?: string;
   /** Platform-resolved human-readable snapshot for the current user. */
   displayName: string;
   loginSessionId: string;
@@ -710,6 +712,8 @@ export interface NativeAuthorizationProjectionMutationResult {
 }
 
 export interface RuntimeAuthorizationIdentity {
+  /** Optional for traditional tenants without organization context. */
+  activeOrganizationId?: string;
   type: "user_union" | "developer";
   userId: string;
   roleCodes: string[];
@@ -740,6 +744,7 @@ export interface RuntimeAuthorizationContext {
     authzRevisionId?: string;
     authzVersion?: number;
     scopeDataVersion?: string;
+    activeOrganizationId?: string;
   };
   subjectProfile: SubjectProfile;
   roles: RuntimeRoleSummary[];

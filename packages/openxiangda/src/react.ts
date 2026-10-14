@@ -54,6 +54,9 @@ export {
   deleteNativeRecordWithPreview,
   recoverNativeRecordDeletion,
   logoutCurrentUser,
+  loadCurrentOrganizationMemberships,
+  loadCurrentDirectoryRoleFacts,
+  switchCurrentOrganization,
   type AnonymousPublicDraft,
   type AnonymousPublicRecord,
 } from './browser/platform-client';
@@ -105,3 +108,5 @@ export * from "./browser/components/workflow/WorkflowBusinessStepRecoveryPanel";
 
 export * from './browser/components/workflow/WorkflowRecordHistoryPanel';
 export * from './browser/components/workflow/WorkflowDesigner';
+
+export type { PlatformOrganizationMembership, PlatformOrganizationSwitchReceipt, DirectoryRoleFactPage } from 'openxiangda-contracts/browser';

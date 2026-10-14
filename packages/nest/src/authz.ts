@@ -79,6 +79,7 @@ export function currentUserFromVerifiedContext(
   if (principal.principalType === "developer") {
     return {
       userId: principal.userId,
+      ...(principal.activeOrganizationId ? { activeOrganizationId: principal.activeOrganizationId } : {}),
       displayName: principal.displayName,
       appCode: principal.appCode,
       environmentKey: principal.environmentKey,
@@ -102,6 +103,7 @@ export function currentUserFromPrincipal(
     principal.roleCodes || [];
   return {
     userId: principal.userId,
+    ...(principal.activeOrganizationId ? { activeOrganizationId: principal.activeOrganizationId } : {}),
     displayName: principal.displayName,
     appCode: principal.appCode,
     environmentKey: principal.environmentKey,

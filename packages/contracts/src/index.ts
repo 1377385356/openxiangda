@@ -82,3 +82,5 @@ export * from './native-compiler/workflow-source-sync.js';
 export * from './application-agent.js';
 
 export * from "./native-compiler/workflow-conditional-assignment.js";
+
+export * from './multi-organization.js';

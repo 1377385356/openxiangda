@@ -2,7 +2,7 @@
 
 教育局与多所学校各有独立钉钉企业、同一教师属于多个组织、家长的孩子在不同学校时，优先复用平台的组织与身份基础能力。应用不再建立第二份企业组织树、钉钉身份库或学校密钥配置。
 
-本专题描述 2026-10-13 的源码契约基线。组织基础能力已有服务器实现；应用 SDK、目录角色读取与跨组织数据权限尚有接入缺口。目标站点是否部署了这些接口，需现场核实；安装新工具或读到本专题不证明平台已经升级。
+本专题描述 2026-10-14 的源码契约基线。组织基础、本人目录角色事实读取和 SDK 组织上下文/切换生命周期已有配套实现；事实到应用角色、组织 reach 与跨组织数据权限仍有接入缺口。目标站点是否部署了这些接口，需现场核实；安装新工具或读到本专题不证明平台已经升级。
 
 ## AI 识别场景与选择能力 {#scenario}
 
@@ -23,11 +23,11 @@
 | 真实企业组织、单父树、最多三级 | 已实现平台注册与查询 | 复用平台 `organization.id`、`corpId`、父级和祖先路径，不以部门替代企业组织 |
 | 预开通与企业三方安装匹配 | 已实现显式 reconciliation；匹配后激活 | 由有权限的管理端预开通，核对真实企业名称；业务应用不保存各校 appSecret |
 | 普通/家校目录同步投影 | 已实现主体、成员和来源角色事实存储 | 以平台同步事实为身份来源，不自行抓取后再维护一套通讯录 |
-| 当前人的可切换组织 | 已有平台会话 HTTP 读取入口 | 读取本人活动成员列表，显示对应企业/学校选项 |
-| 当前工作组织、同会话切换 | 已有平台登录上下文、HTTP 切换和原始授权响应字段 | 在支持本契约的会话中读取/切换；不能从 URL 直接产生授权 |
+| 当前人的可切换组织 | 已有平台会话 HTTP 与 `loadCurrentOrganizationMemberships()` | 读取本人活动成员列表，显示对应企业/学校选项 |
+| 当前工作组织、同会话切换 | 已有平台登录上下文、SDK `activeOrganizationId` 和 `switchCurrentOrganization()` 生命周期 | 在支持本契约的会话中读取/切换；不能从 URL 直接产生授权 |
 | 组织管理授权 | 已实现平台管理员授予人/部门，祖先授权覆盖后代 | 管理操作由平台核验；不能把“教育局成员”当作“全区管理员” |
 | 应用角色 `self` / `subtree` | 传统平台角色 CRUD 能保存 `organizationReach`；V2 声明与执行尚未接通 | 在设计中明确每个角色的组织覆盖意图，不向 V2 config 填入未支持字段 |
-| 家校事实到应用角色、班级范围的消费 | 平台已存事实，完整应用读取/映射契约尚未接通 | 声明拟使用哪些事实及范围，将接入列为依赖；不能凭空调用 SDK |
+| 家校事实到应用角色、班级范围的消费 | 本人事实 HTTP/SDK 读取已实现；业务角色与班级范围映射尚未接通 | 声明拟使用哪些事实及范围，将接入列为依赖；不能凭空调用 SDK |
 | 组织数据归属、隔离、后代可见与公共内容下发 | Native Data API 的组织边界尚未接通 | 不能宣称已经自动隔离或继承，也不能用前端筛选代替服务端权限 |
 | 安装回调、每校自动定时同步、组织通知路由与链接生成 | 尚未完成整条自动接入 | 不假定安装完成后立即能登录，不假定消息自动选中正确安装 |
 
@@ -75,7 +75,7 @@ const organizations = result.data.map(item => ({
 }));
 ```
 
-这是现有 HTTP 响应的局部消费示例。不要将其中的字段或方法名写成 `openxiangda/react` 已导出的组织客户端。
+应用优先使用 `openxiangda/react` 的 `loadCurrentOrganizationMemberships({ signal })`，复用平台会话、读取取消和组织切换失效。上面的 HTTP 示例仅用于解释原始契约。
 
 ### 当前工作组织
 
@@ -83,15 +83,26 @@ const organizations = result.data.map(item => ({
 - `GET /openxiangda-api/v2/applications/{appCode}/native/authz/current?environmentKey={preproduction|production}` 的原始成功响应，在已有工作组织时包含 `data.environment.activeOrganizationId`；有活动应用授权时也包含 `data.principal.activeOrganizationId`。无组织时不包含这些可选字段；`state=unassigned` 时 principal 为 `null`。
 - `GET /openxiangda-api/v2/platform/organizations/context?corpId=...` 的 `data` 是活动组织 ID 字符串；尚未启用组织注册的传统租户返回 `null`。这个接口只解析租户内组织及安装状态，不证明调用人是成员，不会切换会话，也不授予权限。
 
-当前浏览器 SDK 的 `RuntimeIdentity` 投影和 `useOpenXiangdaRuntime().identity` 尚未保留上述组织字段。Nest 的 `@CurrentUser()`/`OpenXiangdaCurrentUser` 尚未提供可信工作组织，Native principal 也尚未完整传递。不要写 `identity.activeOrganizationId` 或 `user.activeOrganizationId` 并声称可用；不要把前端传入的组织 ID 填到 Nest 的可信用户上下文。
+配套 SDK 的 `RuntimeIdentity`、`useOpenXiangdaRuntime().identity`、Nest `@CurrentUser()`/`OpenXiangdaCurrentUser` 与 NativePrincipal 保留可选 `activeOrganizationId`。缺失表示没有工作组织，不产生默认学校。浏览器验证 principal 与 environment 的组织一致；Nest 只取已验证平台 principal，不从前端 body/header 产生可信用户上下文。Connected Dev 会话绑定组织，切换后旧会话拒绝沿用；本人事实读取不提供管理授权。
 
 ### 同一会话切换组织
 
-`POST /api/auth/organization/switch`，JSON body 为 `{ "organizationId": "平台组织ID" }`。
+平台会话原始接口仍为 `POST /api/auth/organization/switch`，JSON body `{ "organizationId": "平台组织ID" }`；成功更新同一会话的 cookies。原始响应含认证 token，只供平台自己的认证处理，不把它持久化到应用。
 
-服务端从已有会话确定用户和租户，再检查目标活动组织、安装及该用户活动成员；保持同一登录会话并重发认证 cookies。无需重新登录另一个钉钉企业。成功 `data` 包含 `activeOrganizationId`、目标 `organization`、`memberships` 及认证 token 字段；浏览器使用服务端 cookies，不记录或另行持久化这些 token。
+V2 应用使用 `openxiangda/react` 的 `switchCurrentOrganization(organizationId)`：
 
-组织切换不是选择一个应用角色，应用角色仍由平台授权结果提供。当前 V2 角色并集尚未按工作组织执行 reach 边界，不能把切换后的角色列表当作组织隔离证明。切换也不是 Perspective，后者只收窄读取。切换成功后废弃旧组织的页面数据、选择器、缓存和在途结果，再刷新/重读授权及数据；当前没有封装完整切换生命周期的应用 SDK，不能只改 localStorage 后继续使用旧授权。切换失败保留原会话，不能把目标名称当作已经切换成功。
+```ts
+import { loadCurrentOrganizationMemberships, switchCurrentOrganization } from 'openxiangda/react';
+const memberships = await loadCurrentOrganizationMemberships({ signal });
+// 选项来自 memberships，organizationId 是选择值，权限仍由服务器核验。
+await switchCurrentOrganization(memberships[0].organization.id);
+```
+
+SDK 通过应用 `/auth/organization/switch-surface` 取得真实浏览器会话的 CSRF，再调用 `/auth/organization/switch`。该面只接受当前租户的合法浏览器 cookie、同源请求与 CSRF；CLI 开发 bearer、body 的 userId 或伪造 ctx 不能替代浏览器用户。平台仍核验目标活动组织、安装和成员，并保持同一登录会话；返回给应用的 receipt 不含 token。开发预览需要正常浏览器登录；缺少浏览器 cookie 会被拒绝，不退回开发者身份执行切换。
+
+成功、运输结果未知或服务器 5xx 时，SDK 失效旧授权、命令缓存和在途读取，通过 Runtime identity epoch 重读并重建页面。旧学校晚到的响应不会覆盖新学校数据。跨页只发送失效信号，不传身份或凭据；明确 4xx 拒绝保留原授权。切换写入不自动重放；结果未知先读回当前授权，不能把目标名称当成成功。组织切换不选择应用角色，也不是只收窄读取的 Perspective。
+
+完整 V2 role reach 和组织数据策略仍未接通，不能把切换后的角色列表或字段传递当作组织隔离证明。
 
 ### 管理面接口
 
@@ -114,7 +125,11 @@ const organizations = result.data.map(item => ({
 
 平台使用真实钉钉 `unionId` 识别可关联的跨企业用户。`unionId` 受开放平台账号范围约束，应用不以姓名、手机号或用户自填字段合并身份，也不将它当所有平台的全局主键。缺少 unionId 的学生仍有平台目录主体 ID，不伪造 provider unionId；登录用户使用平台 `userId`。来源用户 ID、目录主体 ID、登录用户 ID 和组织成员 ID 不能混用。
 
-这些事实已由平台存储，但当前 `/me/memberships` 不返回完整家校角色/班级范围，也没有完整面向应用的角色事实 list/read SDK。应用希望使用时，在设计中明确映射哪些来源角色、消费哪些班级范围，等待对应读取/映射契约接通；不要调用管理 upsert 来“获取”事实，不新增一套应用通讯录做替代。
+本人角色事实接口为 `GET /openxiangda-api/v2/platform/organizations/me/directory-role-facts?limit=100&after=<cursor>`，`limit` 为 1..200，`after` 为上一页 `nextCursor`。只返回当前租户、工作组织、当前用户的活动事实；无工作组织返回 409 `PLATFORM_ORGANIZATION_CONTEXT_REQUIRED`。安装、成员、主体与事实状态由服务器重新校验；不返回 raw 或 unionId。
+
+SDK 使用 `loadCurrentDirectoryRoleFacts({ limit, after, signal })`，返回 `DirectoryRoleFactPage`，包含 organizationId、userId、items、nextCursor。每个 item 包含 id、subjectId、source、roleCode、scopeType、scopeValue。客户端拒绝与当前 identity 不同组织/用户的响应，并在组织变化时丢弃旧读取，不自动拉取全部页面。
+
+读取来源事实不授予应用能力。业务角色、班级范围的可执行声明仍是后续接入项；不能以管理 upsert 或复制应用通讯录替代。
 
 ## 应用角色与数据边界 {#authorization}
 

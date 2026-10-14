@@ -23,6 +23,7 @@ import {
   loadApplicationLoginSurface,
   OpenXiangdaPlatformRequestError,
   subscribePlatformSessionInvalidation,
+  subscribePlatformOrganizationInvalidation,
   type RuntimeAuthorization,
   type RuntimeIdentity,
 } from './platform-client';
@@ -253,6 +254,18 @@ export function RuntimeBoundary({
       }),
     [],
   );
+
+  useEffect(() => subscribePlatformOrganizationInvalidation(() => {
+    invalidationEpoch.current++;
+    recheckEpoch.current++;
+    setChangedAuthorization(undefined);
+    setSessionChecking(false);
+    setSessionCheckError(undefined);
+    setAuthorization(undefined);
+    setError(undefined);
+    setIdentityEpoch(epoch => epoch + 1);
+    setAttempt(value => value + 1);
+  }), []);
 
   const currentScope = authorization?.identity?.identityScope;
   const currentUserId = authorization?.identity?.userId;

@@ -3812,3 +3812,21 @@ test('ordinary source invocations bind the config selector to the signed session
       assert.equal(request.openxiangda.principal.userId,'user-1');}
   }
 });
+
+
+test("Gateway verified working organization reaches CurrentUser and ignores caller-selected organization", async () => {
+  const token = "organization-invocation-token";
+  const body = Buffer.alloc(0);
+  const moduleOptions = options(globalThis.fetch);
+  const platform = gatewayPlatform({ ...roleUnionGatewayInvocationFixture,
+    principal: { ...roleUnionPrincipal, activeOrganizationId: 'organization-a' } });
+  const request: any = { method: 'GET', url: '/api/instruments/context', rawBody: body,
+    body: { organizationId: 'organization-b' }, headers: { authorization: `Bearer ${token}`,
+      'x-organization-id': 'organization-b', 'x-openxiangda-gateway-assertion': gatewayAssertion({
+        method: 'GET', path: '/api/instruments/context', query: '', body, token }) } };
+  const transport = new OpenXiangdaGatewayTransportGuard(new OpenXiangdaGatewayAssertionVerifier(platform as any, moduleOptions), platform as any, moduleOptions);
+  await transport.canActivate(httpContext(request));
+  const authz = new OpenXiangdaAuthzGuard({ getAllAndOverride: () => 'app:reference-app:data:instruments:read' } as any);
+  await authz.canActivate(httpContext(request));
+  assert.equal(currentUserFromVerifiedContext(request.openxiangda).activeOrganizationId, 'organization-a');
+});

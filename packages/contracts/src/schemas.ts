@@ -462,6 +462,7 @@ export const nativePrincipalSchema = {
     subjectId: nonEmptyString,
     userId: nonEmptyString,
     displayName: nonEmptyString,
+    activeOrganizationId: nonEmptyString,
     loginSessionId: nonEmptyString,
     subjectKind: { enum: ["super_admin", "role_union"] },
     roleCodes: {
@@ -1526,6 +1527,7 @@ export const runtimeAuthorizationSchema = {
         authzRevisionId: nonEmptyString,
         authzVersion: { type: "integer", minimum: 1 },
         scopeDataVersion: nonEmptyString,
+        activeOrganizationId: nonEmptyString,
       },
     },
     subjectProfile: { $ref: SCHEMA_VERSIONS.subjectProfile },
@@ -1570,6 +1572,7 @@ export const runtimeAuthorizationSchema = {
             },
             isAppSuperAdmin: { type: "boolean" },
             identityScope: nonEmptyString,
+            activeOrganizationId: nonEmptyString,
           },
         },
         { type: "null" },
