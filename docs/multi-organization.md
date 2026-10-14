@@ -195,7 +195,7 @@ data: {
 
 ## 本人的家校班级投影 {#current-classes}
 
-使用支持 directory.current-classes 1.0.0 的正式平台/SDK组合，可从 openxiangda/react 调用 loadCurrentDirectoryClasses({ limit: 100, after, signal })，读取当前登录人、当前工作学校的来源班级名称、校区、学段、年级与本人来源角色。单页最多200项；继续页由nextCursor决定。组织切换废弃在途响应，不把旧学校表单选择器带到新学校。
+使用支持 directory.current-classes 1.0.0 的正式平台/SDK组合，可从 openxiangda/react 调用 loadCurrentDirectoryClasses({ limit: 100, after, signal })，读取当前登录人、当前工作学校的来源班级名称、当前组织规范名称organizationName、校区、学段、年级与本人来源角色。单页最多200项；继续页由nextCursor决定。组织切换废弃在途响应，不把旧学校表单选择器带到新学校。
 
 DirectoryClassSummary.directoryClassId 是平台目录 UUID，sourceClassId 是来源班级范围字符串；都不能当作 Native resource-ref。投影不包含人员、unionId、raw、安装秘密，也不代表应用写权限。管理员不会自动获得所有来源班级。
 

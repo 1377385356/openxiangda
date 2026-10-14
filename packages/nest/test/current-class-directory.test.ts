@@ -8,7 +8,7 @@ const org='11111111-1111-4111-8111-111111111111';
 function setup() {
   const calls:any[]=[];
   let result:any={ schemaVersion:'openxiangda.directory-class-page/v1', organizationId:org, userId:'actor', nextCursor:null,
-    items:[{directoryClassId:org,sourceClassId:'source',name:'合成班级',sourceCampusId:'c',sourcePeriodId:'p',sourceGradeId:'g',campusName:null,periodName:null,gradeName:null,roleCodes:['teacher']}]};
+    items:[{directoryClassId:org,organizationName:'合成学校',sourceClassId:'source',name:'合成班级',sourceCampusId:'c',sourcePeriodId:'p',sourceGradeId:'g',campusName:null,periodName:null,gradeName:null,roleCodes:['teacher']}]};
   const request:any={headers:{'x-request-id':'request'},openxiangda:{authorization:'Bearer assertion',
     connectedDevelopmentSessionToken:'dev-session',principal:{principalType:'developer',userId:'actor'},
     operation:{code:'submit',requiredCapability:'app:demo:submit',platformAccess:{directoryClasses:{maxIds:2}}}}};

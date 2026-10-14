@@ -84,7 +84,7 @@ test('class projections reject cross-context replies, oversized pages and former
   await withRuntime(async set => {
     await loadRuntimeAuthorization();
     const result={schemaVersion:'openxiangda.directory-class-page/v1',organizationId:A,userId:'user',nextCursor:null,
-      items:[{directoryClassId:B,sourceClassId:'same-source',name:'合成班级',sourceCampusId:'c',sourcePeriodId:'p',sourceGradeId:'g',campusName:null,periodName:null,gradeName:null,roleCodes:['guardian']}]};
+      items:[{directoryClassId:B,organizationName:'合成学校',sourceClassId:'same-source',name:'合成班级',sourceCampusId:'c',sourcePeriodId:'p',sourceGradeId:'g',campusName:null,periodName:null,gradeName:null,roleCodes:['guardian']}]};
     let requests=0;
     set(async()=>{requests++;return reply(result);});
     assert.equal((await loadCurrentDirectoryClasses({limit:1})).items[0]?.sourceClassId,'same-source');

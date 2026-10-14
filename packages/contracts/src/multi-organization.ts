@@ -56,6 +56,7 @@ export interface PlatformOrganizationSwitchReceipt {
 /** Only the current actor's source class facts; IDs are not Native resource references. */
 export interface DirectoryClassSummary {
   directoryClassId: string;
+  organizationName: string;
   sourceClassId: string;
   name: string;
   sourceCampusId: string;
@@ -93,10 +94,10 @@ export function parseDirectoryClassPage(value: unknown, expected: {
   const page = value as unknown as DirectoryClassPage;
   const ids = new Set<string>(), sources = new Set<string>();
   for (const item of page.items) {
-    if (!exactClassObject(item, ['directoryClassId','sourceClassId','name','sourceCampusId','sourcePeriodId','sourceGradeId','campusName','periodName','gradeName','roleCodes']) ||
+    if (!exactClassObject(item, ['directoryClassId','organizationName','sourceClassId','name','sourceCampusId','sourcePeriodId','sourceGradeId','campusName','periodName','gradeName','roleCodes']) ||
       !text(item.directoryClassId) || !classUuid.test(item.directoryClassId) || ids.has(item.directoryClassId.toLowerCase()) ||
       !text(item.sourceClassId) || sources.has(item.sourceClassId) ||
-      !['name','sourceCampusId','sourcePeriodId','sourceGradeId'].every(key => text(item[key])) ||
+      !['organizationName','name','sourceCampusId','sourcePeriodId','sourceGradeId'].every(key => text(item[key])) ||
       !['campusName','periodName','gradeName'].every(key => item[key] === null || text(item[key])) ||
       !Array.isArray(item.roleCodes) || !item.roleCodes.length || item.roleCodes.length > 4 ||
       new Set(item.roleCodes).size !== item.roleCodes.length ||
