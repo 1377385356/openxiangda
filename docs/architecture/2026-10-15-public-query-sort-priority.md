@@ -17,3 +17,7 @@ Regression compiles two reverse-priority declarations and proves both exact orde
 The earlier 2.75.0 candidate was frozen but no validation or npm writes were started; its original tarballs are retained. This new fix and the public-access Skill change require an additional contracts patch and Skill-kit patch, plus root/CLI patches. The formal planner chooses the next versions; do not overwrite predecessor package versions, publish altered 2.95.1/2.3.126 bytes, or race the other live 2.74.1 release.
 
 The first local regression still failed after correcting the shared compiler because the application source bundler independently reordered the array before shared compilation. Both canonicalization stages now preserve sequence, and the regression covers app/target agreement. The original failed log remains /tmp/zjnu-public-sort-compiler-tests.log; this is why source inspection or a mock page alone would not close the issue.
+
+## Verified local scope
+
+Five focused public-query compiler regressions passed, including exact order, digest distinction, determinism and target projection agreement. verify:affected passed all 24 selected tasks in 10m44.767s; devkit tests passed 650 with two explicit skips, and CLI login/create/dev/check/deploy/status/logs/rollback blackbox passed. These are SDK proof, not school ranking or full application acceptance. The originally planned 2.75.0 manifest/tarballs remain untouched and were never validated/published; the next formal version/candidate includes this fix and versions every changed Skill/contract package.
