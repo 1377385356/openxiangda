@@ -284,3 +284,19 @@ test('default stays after ordered conditions even without its own priority',asyn
   const positions=await workflowFlowLayout(source,{designer:true});
   assert.ok(positions.edges.get('fork:branch:a')!.label.x<positions.edges.get('fork:default:done')!.label.x,'default must be visually last, not priority zero');
 });
+
+for (const firstLength of [0, 1, 4]) test(`adjacent condition regions share one merge/fork without disconnecting its outgoing routes: ${firstLength}`, async () => {
+  const middle = Array.from({ length: firstLength }, (_, i) => ({ id: `first-${i}`, kind: 'approval', title: `First ${i}` }));
+  const source = graph([{ id: 'start', kind: 'start', title: 'Start' }, { id: 'first', kind: 'condition', title: 'First route' }, ...middle,
+    { id: 'second', kind: 'condition', title: 'Second route' }, { id: 'review', kind: 'approval', title: 'Review' }, { id: 'confirm', kind: 'approval', title: 'Confirm' },
+    { id: 'after', kind: 'approval', title: 'After both routes' }, { id: 'inserted', kind: 'approval', title: 'Inserted' }, { id: 'done', kind: 'end', title: 'Done' }],
+    [edge('start', 'first'), edge('first', middle[0]?.id || 'second', 'branch'), edge('first', 'second', 'default'),
+      ...middle.map((node, i) => edge(node.id, middle[i + 1]?.id || 'second')),
+      edge('second', 'review', 'branch'), edge('second', 'after', 'default'), edge('review', 'confirm'), edge('confirm', 'after'), edge('after', 'inserted'), edge('inserted', 'done')]);
+  const before = structuredClone(source), positions = await workflowFlowLayout(source, { designer: true });
+  assert.equal(positions.nodes.size, source.nodes.length);
+  assertRoutedWithoutOverlap(source, positions);
+  const center = (id: string) => { const n = positions.nodes.get(id)!; return n.x + n.width / 2; };
+  for (const id of ['first', 'second', 'after', 'inserted', 'done']) assert.ok(Math.abs(center(id) - center('start')) < .01, `${id} left the spine`);
+  assert.deepEqual(source, before);
+});

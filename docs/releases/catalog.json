@@ -3,6 +3,74 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.69.1",
+      "status": "reviewed",
+      "title": "流程画布按需面板与连续分支保存修复",
+      "summary": "修复流程设计器的常驻面板、连续条件路由断线及带可读名称的草稿无法保存。",
+      "newFeatures": [],
+      "fixes": [
+        "流程大纲默认隐藏，节点设置默认关闭；选择节点后按需打开配置，浮层不挤压编辑画布。",
+        "相邻条件区域只拥有各自分支，汇合目标保持单一位置；连续条件和嵌套并行的连线接回实际目标节点。",
+        "正式流程文档schema接受已有readability元数据，保留闭集字段、长度与数量上限及原业务权限校验。"
+      ],
+      "affectedUsers": [
+        "使用V2流程设计器编辑或维护审批流程的应用。"
+      ],
+      "upgradeSteps": [
+        "安装精确openxiangda 2.69.1官方组合并重新检查、构建应用。",
+        "平台后端同步正式contracts包及同源回执后，才具备草稿保存schema修复；应用自行维护流程列表和独立画布路由。"
+      ],
+      "knownLimitations": [
+        "不修改历史实例、审批边界或业务拓扑；此版本不包含原DeploymentRun例外ack接口。",
+        "包发行不等于平台部署或现场草稿保存验收，已有未保存输入需保留。"
+      ],
+      "compatibility": {
+        "node": "Node.js 24 or newer for maintained toolchain",
+        "generation": "OpenXiangda V2; V1 unchanged",
+        "platform": "平台后端须消费本轮正式contracts及配套组合；原权限、revision和operationId守卫保持"
+      },
+      "issues": [],
+      "sha256": "529eee3d6d426c149635e6143310ff6a4a01da6c7243e203ff959f9d3b34a4b5",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.69.1"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.69.0",
+      "status": "reviewed",
+      "title": "可信活动组织上下文与匿名记录事件身份配套",
+      "summary": "保留平台选择的可信组织上下文，并修复公开申请事件在Nest处理前被错误拒绝的问题。",
+      "newFeatures": [
+        "浏览器、NativePrincipal和Nest CurrentUser保留可信活动组织；提供当前组织成员、角色事实读取与受同源及CSRF保护的组织切换。"
+      ],
+      "fixes": [
+        "原生记录事件及审计历史接受anonymous_public行为事实；仍拒绝未知身份、空标识和匿名伪造application业务授权。",
+        "组织切换或结果未知时失效旧授权与晚到读取，不将认证token放入应用receipt。"
+      ],
+      "affectedUsers": [
+        "使用公开提交及记录事件订阅的V2应用。",
+        "使用平台可信组织上下文和组织切换的V2应用。"
+      ],
+      "upgradeSteps": [
+        "升级精确openxiangda 2.69.0官方配套，重新生成契约与检查后部署。",
+        "平台使用同一权威SDK提交，组织上下文相关运行能力须使用配套平台；匿名事件恢复使用原delivery而不是重新提交业务。"
+      ],
+      "knownLimitations": [
+        "多组织事实映射及数据权限需平台配套，不代表已有全部应用自动实现组织隔离。",
+        "正式发行不等于学校真实角色、页面、通知或迁移验收通过；不扩大匿名Data API权限。"
+      ],
+      "compatibility": {
+        "node": "Node.js 24 or newer for maintained toolchain",
+        "generation": "OpenXiangda V2; V1 unchanged",
+        "platform": "配套可信活动组织服务端上下文；保留既有签名、manifest、Native授权与公开策略"
+      },
+      "issues": [
+        "PLT-069"
+      ],
+      "sha256": "cbbfb507d34b8dfcbad3e31f4ef5f7e25b5f1b8b47d3aaaa9288ae54b0c973fb",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.69.0"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.68.2",
       "status": "reviewed",
       "title": "固定公开单选过滤的编译一致性修复",

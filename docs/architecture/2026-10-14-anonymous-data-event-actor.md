@@ -1,0 +1,7 @@
+# 匿名原生数据事件的身份事实
+
+公开提交已由平台产生匿名记录事件，但内置事件Schema遗漏anonymous_public，导致签名有效的原投递在Nest业务处理前400。实际学校原delivery为093aa25c-a7aa-44a2-b494-a747da5926da，event为3a002805-e130-42f2-b8b0-d83beb227baa，2026-10-14T04:40:11Z；匿名原申请已存在，不能重新提交来掩盖投递失败。
+
+所有者是contracts内置记录事件及审计历史的身份枚举，不由应用覆盖保留事件Schema。补充anonymous_public类型，保留非空subjectId、禁止未知身份和额外授权字段、application专属initiatedBy/businessAction/platformMaintenance约束。签名、manifest、订阅过滤、Native授权和公开策略完全保留；识别事件中的匿名行为事实不授予匿名调用worker或受保护Data API的能力。
+
+影响所有显式订阅公开提交记录事件的应用；V1和没有此订阅的应用行为不变。校验可在本地使用真实事件形状复现，无需每次学校发布才能发现。回归覆盖创建/更新/删除共享Schema、普通身份、未知类型、空subject、伪造业务授权及历史响应。回滚使用旧SDK制品，保留原申请/事件/死信回执；重新部署修复后仅按原delivery恢复并读回唯一审批申请，不重发历史通知。正式发行、平台组合和学校业务效果分别验收。

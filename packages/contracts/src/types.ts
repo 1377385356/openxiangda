@@ -2140,6 +2140,7 @@ export interface EventActor {
   principalType:
     | "user"
     | "user_union"
+    | "anonymous_public"
     | "application"
     | "developer"
     | "workflow"

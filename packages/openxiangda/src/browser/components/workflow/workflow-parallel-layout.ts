@@ -85,7 +85,7 @@ export async function layoutDesignerRegions(
       if (edges.some(edge => all.has(edge.to) && edge.to !== fork.id && !all.has(edge.from))) return [];
       return [{ fork,joinId,bodies,all }];
     });
-    const regions = candidates.filter(candidate => !candidates.some(parent => parent !== candidate && parent.all.size > candidate.all.size && parent.all.has(candidate.fork.id)));
+    const regions = candidates.filter(candidate => !candidates.some(parent => parent !== candidate && parent.all.size > candidate.all.size && parent.joinId !== candidate.fork.id && parent.all.has(candidate.fork.id)));
     const owner = new Map<string,string>();
     const blocks = new Map<string, { width: number; height: number; layout: WorkflowFlowPositions }>();
     for (const region of regions) {
@@ -134,8 +134,12 @@ export async function layoutDesignerRegions(
           layout.edges.set(edge.id,{points,label:branch.nested ? prior.label : {x:start.x,y:(start.y+mergeY)/2}});
         }
       }
-      for (const id of region.all) owner.set(id,region.fork.id);
-      blocks.set(region.fork.id,{width,height:joinY+join.height,layout});
+      // The merge belongs to the enclosing scope. It may itself be the next
+      // fork; owning it in both blocks overwrites its position but leaves the
+      // previous block's routes pointing at a now invisible copy.
+      layout.nodes.delete(region.joinId);
+      for (const id of region.all) if (id !== region.joinId) owner.set(id,region.fork.id);
+      blocks.set(region.fork.id,{width,height:joinY,layout});
     }
     const outerEdges=edges.filter(edge => !owner.has(edge.from) || owner.get(edge.from) !== owner.get(edge.to));
     const outer=await engine.layout({id:'workflow-structured-blocks',layoutOptions,
@@ -147,7 +151,7 @@ export async function layoutDesignerRegions(
         ]};
       }),
       edges:outerEdges.map(edge => ({id:edge.id,sources:[`out:${edge.id}`],targets:[`in:${owner.get(edge.to) || edge.to}`],
-        labels:['branch','default'].includes(edge.kind) ? [{id:`label:${edge.id}`,text:edge.label,width:branchCardWidth,height:64}] : [],
+        labels:!owner.has(edge.from) && ['branch','default'].includes(edge.kind) ? [{id:`label:${edge.id}`,text:edge.label,width:branchCardWidth,height:64}] : [],
       })),
     });
     const result: WorkflowFlowPositions={nodes:new Map(),edges:new Map()};
@@ -161,7 +165,11 @@ export async function layoutDesignerRegions(
     for (const edge of outer.edges || []) {
       const section=edge.sections?.[0];if (!section) throw new Error('WORKFLOW_GRAPH_ROUTING_MISSING');
       const points=[section.startPoint,...section.bendPoints || [],section.endPoint],label=edge.labels?.[0];
-      result.edges.set(edge.id,{points,label:label ? {x:label.x!+label.width!/2,y:label.y!+label.height!/2} : connectorMidpoint(points)});
+      const inner=result.edges.get(edge.id);
+      // A region's exit reaches its bottom port; continue the original edge
+      // through the outer layout to its one real merge node.
+      const routed=inner ? [...inner.points,...points.slice(1)] : points;
+      result.edges.set(edge.id,{points:routed,label:inner && ['branch','default'].includes(edges.find(item => item.id === edge.id)!.kind) ? inner.label : label ? {x:label.x!+label.width!/2,y:label.y!+label.height!/2} : connectorMidpoint(routed)});
     }
     return result;
   }

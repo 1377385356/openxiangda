@@ -1,0 +1,88 @@
+{
+  "schema": "openxiangda.workflow-management-source-verification/v1",
+  "verifiedAt": "2026-10-14T06:03:34.644Z",
+  "checks": [
+    {
+      "width": 1440,
+      "mode": "reader",
+      "writes": 0,
+      "passed": true
+    },
+    {
+      "width": 1440,
+      "mode": "handler",
+      "writes": 0,
+      "passed": true
+    },
+    {
+      "width": 1440,
+      "mode": "editor",
+      "writes": 0,
+      "passed": true
+    },
+    {
+      "width": 1440,
+      "mode": "publisher",
+      "writes": 0,
+      "passed": true
+    },
+    {
+      "width": 1440,
+      "mode": "legacy",
+      "writes": 0,
+      "passed": true
+    },
+    {
+      "width": 1440,
+      "mode": "super",
+      "writes": 0,
+      "passed": true
+    },
+    {
+      "width": 1440,
+      "mode": "revoked",
+      "writes": 1,
+      "passed": true
+    },
+    {
+      "width": 1440,
+      "mode": "handling-revoked",
+      "writes": 1,
+      "passed": true
+    },
+    {
+      "width": 1440,
+      "mode": "busy",
+      "writes": 2,
+      "passed": true
+    },
+    {
+      "width": 1440,
+      "mode": "unknown-revoked",
+      "writes": 2,
+      "passed": true
+    },
+    {
+      "width": 1440,
+      "mode": "outcome-undetermined",
+      "writes": 1,
+      "passed": true
+    },
+    {
+      "width": 1440,
+      "mode": "save",
+      "writes": 1,
+      "passed": true
+    }
+  ],
+  "errors": [],
+  "scope": "Real SDK React with intercepted HTTP; not deployed or real-role business acceptance",
+  "sourceCommit": "837832bc",
+  "runtimeCommit": "41abd854",
+  "focusedTests": {
+    "passed": 37,
+    "failed": 0,
+    "skipped": 0
+  },
+  "deploymentVerified": false
+}

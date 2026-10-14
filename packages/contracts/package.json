@@ -1,6 +1,6 @@
 {
   "name": "openxiangda-contracts",
-  "version": "2.88.1",
+  "version": "2.89.1",
   "description": "OpenXiangda 2.0 的共享类型、协议与 JSON Schema。",
   "type": "module",
   "main": "./dist/index.js",
@@ -49,6 +49,7 @@
   },
   "devDependencies": {
     "@types/node": "24.3.0",
+    "ajv": "8.20.0",
     "esbuild": "0.28.2"
   },
   "engines": {

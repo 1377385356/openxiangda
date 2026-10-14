@@ -10,6 +10,31 @@ import { workflowExpressionSchema } from './workflow-expression-schema.js';
 import { workflowStandardBindingEntrySchema } from './workflow-standard-binding-schema.js';
 import { workflowConditionalAssignmentSchema } from './workflow-conditional-assignment-schema.js';
 
+// Readability is already part of the canonical definition. Keep shape checks
+// closed here; validateWorkflowReadability owns referenced paths and node IDs.
+const readabilityText = (maxLength: number) => ({ type: 'string', minLength: 1, maxLength, pattern: '\\S' });
+const readabilityPaths = { type: 'array', maxItems: 32, uniqueItems: true, items: readabilityText(256) };
+const workflowReadabilitySchema = {
+  type: 'object', additionalProperties: false, minProperties: 1,
+  properties: {
+    variables: { type: 'object', maxProperties: 128, propertyNames: readabilityText(256), additionalProperties: {
+      type: 'object', additionalProperties: false, required: ['label'],
+      properties: { label: readabilityText(160), unit: readabilityText(32), description: readabilityText(2000) },
+    } },
+    logic: { type: 'array', maxItems: 32, items: {
+      type: 'object', additionalProperties: false, required: ['code', 'title', 'description', 'phase', 'inputPaths'],
+      properties: {
+        code: { type: 'string', pattern: '^[a-z][a-z0-9-]{2,63}$' }, title: readabilityText(160), description: readabilityText(4000),
+        phase: { enum: ['submission', 'node_input', 'completion'] }, nodeId: readabilityText(128),
+        inputPaths: readabilityPaths, outputPaths: readabilityPaths,
+        source: { type: 'object', additionalProperties: false, required: ['path', 'digest'], properties: {
+          path: readabilityText(256), symbol: readabilityText(160), digest: { type: 'string', pattern: '^sha256:[a-f0-9]{64}$' },
+        } },
+      },
+    } },
+  },
+};
+
 const workflowCcNodeSchema = {
   type: 'object', additionalProperties: false,
   required: ['id', 'kind', 'title', 'binding', 'next', 'emptyPolicy'],
@@ -375,6 +400,7 @@ export const workflowDefinitionSchema = {
         additionalProperties: { const: false },
       },
     },
+    readability: workflowReadabilitySchema,
     organizationContext: {
       type: "object",
       additionalProperties: false,
