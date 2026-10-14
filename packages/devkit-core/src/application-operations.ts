@@ -1,3 +1,4 @@
+import type { WorkflowLegacyAdoptionPrepareV2, WorkflowLegacyAdoptionApplyV2 } from 'openxiangda-contracts';
 import { Ajv } from 'ajv';
 import { createHash } from 'node:crypto';
 import { developerEnvironment, type DeveloperEnvironment } from './developer-operations.js';
@@ -8,6 +9,9 @@ type Auth = { mode: 'HMAC_SHA256'; keyId: string; secretRef: string }
   | { mode: 'OAUTH2_CLIENT_CREDENTIALS'; tokenUrl: string; clientIdSecretRef: string; clientSecretSecretRef: string; scope?: string; audience?: string }
   | { mode: 'MTLS'; certSecretRef: string; keySecretRef: string; caSecretRef?: string };
 export interface ApplicationOperationInputs {
+  'workflows.legacy-prepare': Omit<WorkflowLegacyAdoptionPrepareV2,'environmentKey'>;
+  'workflows.legacy-apply': Omit<WorkflowLegacyAdoptionApplyV2,'environmentKey'> & {planId: string};
+  'workflows.legacy-receipt': {planId: string};
   'acceptance-data.prepare': { requestKey: string; expectedAppVersionId: string; expectedHeadRevision: number; expiresInMinutes?: number; recordLimit?: number; redirectUri?: string; actors: Array<{ key: string; name?: string; roleCodes: string[]; departmentIds?: string[] }> };
   'acceptance-data.status': { runId: string };
   'acceptance-data.stop': { runId: string };
@@ -82,7 +86,21 @@ const operation = (name: ApplicationOperationName, summary: string, effect: Defi
 const readRecovery = '以平台返回的当前状态、修订、错误及分页游标为准；未观测到不表示原操作未执行。';
 const casRecovery = '修订冲突先读当前基准并核对；结果未知先读原状态，不自动覆盖或重试。';
 const cleanupRecovery = '停止后读 preview；保留原run和digest，未知结果读原repairReference。仅完整readback的purged表示本批数据验空，用户/成员/凭证/审计保留；不清历史或其他run数据。';
+const legacyField = {...text(63), pattern:'^[A-Za-z][A-Za-z0-9_]{0,62}$'};
+const legacyCode = {...text(128), pattern:'^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$'};
+const legacySha = {...text(64),pattern:'^[0-9a-f]{64}$'};
+const legacyPrepare = object({schemaVersion:{const:'openxiangda.workflow-legacy-adoption-prepare/v2'},requestKey:text(128),reason:text(1000),
+  expectedHeadRevision:integer(1),workflowCode:legacyCode,resourceCode:legacyCode,recordId:uuid,expectedRevision:integer(1),
+  source:object({system:legacyCode,recordKey:text(255),snapshotSha256:legacySha,recordSha256:legacySha}),
+  checkpoint:object({initiatorUserId:uuid,approvalRound:integer(1,2147483647),currentNodeId:legacyCode,
+    initiatorField:legacyField,initiatorIdentityField:legacyField,roundField:legacyField,stateField:legacyField,stateValue:text(255),
+    history:{type:'array',maxItems:64,items:object({nodeId:legacyCode,reviewerDisplay:text(255),reviewedAt:text(64),opinion:{type:'string',maxLength:8192},
+      reviewerField:legacyField,reviewedAtField:legacyField,opinionField:legacyField})}})});
+
 export const APPLICATION_OPERATIONS: readonly Definition[] = [
+  operation('workflows.legacy-prepare', '准备旧审批当前节点接续，冻结原申请人、轮次、历史和Native业务单', 'configure', legacyPrepare, '/admin/workflow-legacy-adoptions/prepare', '仅应用超级管理员；先通过原Native导入协议保留业务单UUID，再准备。历史事实不重放审批或旧通知。过期或原单/Head改变后重新准备。'),
+  operation('workflows.legacy-apply', '按原计划摘要原子接续当前节点，仅创建当前待办', 'configure', object({schemaVersion:{const:'openxiangda.workflow-legacy-adoption-apply/v2'},planId:uuid,expectedPlanDigest:legacySha}), '/admin/workflow-legacy-adoptions/:planId/apply', '保持原planId和planDigest。未知结果先查询原回执；同计划重试返回原实例，不重新创建业务单或重放历史。'),
+  operation('workflows.legacy-receipt', '读取旧审批接续准备或执行回执', 'read', object({planId:uuid}), '/admin/workflow-legacy-adoptions/:planId', readRecovery),
   operation('acceptance-data.prepare', '准备可回收的TEST原生数据批次及原验收身份', 'configure', object({ requestKey: uuid, expectedAppVersionId: uuid, expectedHeadRevision: integer(1), expiresInMinutes: integer(15, 1440), recordLimit: integer(1, 1000), redirectUri: text(2048), actors: { type: 'array', minItems: 1, maxItems: 12, items: object({ key: text(80), name: text(255), roleCodes: { type: 'array', minItems: 1, maxItems: 32, uniqueItems: true, items: text(128) }, departmentIds: { type: 'array', maxItems: 128, uniqueItems: true, items: text(128) } }, ['key', 'roleCodes']) } }, ['requestKey', 'expectedAppVersionId', 'expectedHeadRevision', 'actors']), '/acceptance/data-runs/prepare', '结果未知按原requestKey和原输入重新准备；不换key扩展TTL。参与者归原身份owner，只有此批来源会话的eligible Native CRUD可回收。'),
   operation('acceptance-data.status', '读回原TEST验收批次状态和修复引用', 'read', object({ runId: uuid }), '/acceptance/data-runs/:runId', cleanupRecovery),
   operation('acceptance-data.stop', '停止此TEST批次写入并撤销来源会话', 'configure', object({ runId: uuid }), '/acceptance/data-runs/:runId/stop', '有界等待原在途事务；超时先status，stopped才证明后续run写入被拒绝。会话撤销pending与数据库stop分别读回。'),

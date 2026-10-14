@@ -206,3 +206,17 @@ Native记录事件才能使用 `ordering:record`。订阅错误先修正应用�
 在已经授权清理的范围运行 `acceptance-data.execute-cleanup`，核对金丝雀原回执，再把 mode 改为 remaining。丢响应先 preview/status，不换 run 或 digest；pending 清单复用原 repair。每份计划最多100条/1MiB，终结后重新 preview 下一批。外部修改、坏凭证、变化 Head、未知/预算结果及部分失败不会返回 purged。只有完整读回 `cleanupState: purged` 和剩余0表示此批 owned Native 数据验空；registry、参与者、凭证、审计和原修复回执保留。
 
 MCP仍通过 `application_operations/application_operation` 使用同一目录，不提供任意URL或重建来源。生产、旧数据、其他run不接受此入口。目录可用不代表目标平台已升级；404核对版本，不用直接SQL旁路。
+
+
+## 旧审批当前节点接续
+
+`admin execute workflows.legacy-prepare --environment test --input <file> --json`
+使用应用超级管理员身份锁定现有 Native 业务单、版本、原申请人、审批轮次与历史事实。
+输入契约从 `admin operations --json` 查询。未导入的原单先通过正式 Native 导入协议
+保留 UUID，不能用新建流程替代。仅支持内部分派、手动审批和线性条件路径；姓名无法
+证明账号、历史不完整或分支不匹配时拒绝接续。
+
+准备成功后保留 planId、planDigest，通过 `workflows.legacy-apply` 原子创建当前节点
+及待办。`workflows.legacy-receipt` 查询原回执，结果未知时沿用原计划查询/重试。
+历史审批只作为来源事实保留，不伪造旧 V2 操作、发起人登录或历史通知。角色撤销、
+原单、Head 或有效配置变化会拒绝尚未执行的旧计划；已执行计划返回原实例。
