@@ -5890,7 +5890,8 @@ function validateAnonymousPublicAccess(
           Object.keys(filter).some(key => !['field', 'operator', 'value'].includes(key)) ||
           !resourceFields?.has(field) ||
           filter.operator !== 'eq' ||
-          !['boolean', 'text.short', 'text.long', 'number.integer', 'number.decimal', 'date', 'time'].includes(type || '') ||
+          !['boolean', 'text.short', 'text.long', 'number.integer', 'number.decimal', 'date', 'time', 'option.single'].includes(type || '')
+          || (['option.single'].includes(type || '') && value !== null && typeof value !== 'string') ||
           !(
             value === null ||
             typeof value === 'string' ||
@@ -6055,7 +6056,7 @@ function validateAnonymousPublicAccess(
     if (publicFilterInvalid) {
       anonymousPolicyProblems.push({
         code: 'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_FILTERS_INVALID',
-        message: 'publicFilters 每条只能用已声明字段的 eq 比较（boolean/text/number/date/time），最多 16 条且不重复',
+        message: 'publicFilters 每条只能用已声明字段的 eq 比较（boolean/text/number/date/time/单选），单选值须为字符串或 null，最多 16 条且不重复',
         pointer: `${path}.publicFilters`,
       });
     }

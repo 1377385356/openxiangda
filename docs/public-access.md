@@ -153,7 +153,7 @@ export default defineOpenXiangdaApp({
 
 需要隐藏停用、归档或租户标记记录时，使用固定 `publicFilters`，由服务端对每次 `public.list`/
 `public.read` 强制追加。当前只支持最多 16 个不同字段的 `eq` 等值条件，字段必须属于策略的
-`fields` 且仅允许布尔、文本、数值、日期和时间标量；调用方不能覆盖、追加或删除这些条件：
+`fields` 且仅允许布尔、文本、数值、日期、时间标量，以及 option.single（含 radio 外观） 单选字段（只接受字符串选项值或 null）；调用方不能覆盖、追加或删除这些条件：
 
 ```ts
 publicFilters: [{ field: 'enabled', operator: 'eq', value: true }]

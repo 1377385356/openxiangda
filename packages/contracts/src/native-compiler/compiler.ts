@@ -3779,6 +3779,7 @@ function validateAnonymousPublicAccess(
           'number.decimal',
           'date',
           'time',
+          'option.single',
         ].includes(declaredFields.get(field) || '')
       ) {
         fail('NATIVE_PUBLIC_FILTER_FIELD_INVALID', `${filterPointer}/field`);
@@ -3789,6 +3790,9 @@ function validateAnonymousPublicAccess(
         typeof filter.value !== 'number' &&
         typeof filter.value !== 'boolean'
       ) {
+        fail('NATIVE_PUBLIC_FILTER_VALUE_INVALID', `${filterPointer}/value`);
+      }
+      if (['option.single'].includes(declaredFields.get(field) || '') && filter.value !== null && typeof filter.value !== 'string') {
         fail('NATIVE_PUBLIC_FILTER_VALUE_INVALID', `${filterPointer}/value`);
       }
       filterFields.add(field);

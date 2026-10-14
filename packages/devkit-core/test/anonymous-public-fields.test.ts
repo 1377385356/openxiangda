@@ -204,3 +204,24 @@ test('公开过滤条件拒绝复杂值和不可过滤字段', () => {
     )
   );
 });
+
+
+test('单选固定公开条件保留编译字节，并拒绝复杂字段和非字符串值', () => {
+  for (const widget of ['select', 'radio'] as const) {
+    const type='option.single' as const;
+    const input = declaration();
+    input.data!.resources![0]!.fields!.push({ code: 'visibility', label: '公开状态', type, widget, options: [{value:'open',label:'开放'},{value:'closed',label:'关闭'}] });
+    input.frontend!.publicAccess!.policies = [{code:'catalog',routeCode:'apply',resourceCode:'requests',mode:'anonymous',operations:['public.list','public.read'],fields:['title','visibility'],publicRecordFields:['title'],publicFilters:[{field:'visibility',operator:'eq',value:'open'}]}];
+    const compiled = compileApplicationSources(defineOpenXiangdaApp(input));
+    assert.equal(nativeCompile(compiled).appCode, 'public-fields');
+    assert.deepEqual(compiled.config.value.frontend.publicAccess!.policies[0]!.publicFilters, [{field:'visibility',operator:'eq',value:'open'}]);
+    for (const value of [true, 1, {value:'open'}, ['open']]) {
+      const invalid=structuredClone(input);
+      invalid.frontend!.publicAccess!.policies[0]!.publicFilters![0]!.value=value as any;
+      assert.throws(()=>defineOpenXiangdaApp(invalid));
+    }
+    compiled.config.value.frontend.publicAccess!.policies[0]!.publicFilters![0]!.value=1;
+    compiled.contracts.value.publicAccess!.policies[0]!.publicFilters![0]!.value=1;
+    assert.throws(()=>nativeCompile(compiled),(error:any)=>error.code==='NATIVE_PUBLIC_FILTER_VALUE_INVALID');
+  }
+});
