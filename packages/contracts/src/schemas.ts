@@ -3349,6 +3349,7 @@ export const dataAuditPageSchema = {
               principalType: {
                 enum: [
                   "user",
+                  "anonymous_public",
                   "application",
                   "developer",
                   "workflow",

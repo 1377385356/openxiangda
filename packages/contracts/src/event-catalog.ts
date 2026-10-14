@@ -75,6 +75,7 @@ export const DATA_RECORD_EVENT_DATA_SCHEMA_V2 = {
           enum: [
             'user',
             'user_union',
+            'anonymous_public',
             'application',
             'developer',
             'workflow',
