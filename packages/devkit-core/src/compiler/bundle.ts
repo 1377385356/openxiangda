@@ -253,6 +253,7 @@ export function normalizeConfiguration(
           name: role.name,
           ...(role.description ? { description: role.description } : {}),
           capabilities: uniqueSorted(role.capabilities),
+          ...(role.organizationReach ? { organizationReach: role.organizationReach } : {}),
         })),
         item => item.code
       ),
@@ -322,6 +323,11 @@ export function normalizeConfiguration(
         })),
         item => item.code
       ),
+      ...(config.authz?.directoryRoleSources?.length ? { directoryRoleSources: sorted(
+        config.authz.directoryRoleSources.map(source => ({ ...source, scopes: sorted(source.scopes.map(scope => ({
+          ...scope, operations: uniqueSorted(scope.operations),
+        })), scope => scope.dimensionCode) })), source => source.code,
+      ) } : {}),
       roleMembershipSources: sorted(
         (config.authz?.roleMembershipSources || []).map(source => ({
           code: source.code,
@@ -2109,6 +2115,7 @@ function normalizeDataResource(resource: DataResource): DataResource {
     appCode: resource.appCode,
     code: resource.code,
     name: resource.name,
+    ...(resource.organization !== undefined ? { organization: { ...resource.organization } } : {}),
     schema: {
       ...(resource.schema.ownedRowLimit !== undefined ? { ownedRowLimit: resource.schema.ownedRowLimit } : {}),
       fields: resource.schema.fields.map(field => ({

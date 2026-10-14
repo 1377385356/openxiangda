@@ -1,3 +1,4 @@
+import { directoryRoleSourceSchema } from './native-compiler/organization-authorization.js';
 import { workflowDefinitionSchema, workflowBindingSchema } from './native-compiler/workflow-schema.js';
 export { workflowDefinitionSchema, workflowBindingSchema, workflowBusinessStepNodeSchema } from './native-compiler/workflow-schema.js';
 import { DATA_RESOURCE_MAX_FIELDS, WORKFLOW_LAUNCH_MAX_INPUTS } from './native-compiler/data-capacity.js';
@@ -2715,6 +2716,7 @@ export const dataResourceSchema = {
     appCode: nonEmptyString,
     code: dataResourceCode,
     name: nonEmptyString,
+    organization: { type: "object", additionalProperties: false, required: ["mode"], properties: { mode: { enum: ["none", "owned", "inherited-down"] } } },
     recordComments: {
       type: 'object', additionalProperties: false, required: ['read', 'create'],
       properties: {
@@ -7103,6 +7105,7 @@ const appRoleDeclarationSchema = {
     code: stableCode,
     name: nonEmptyString,
     description: { type: "string", maxLength: 2000 },
+    organizationReach: { enum: ["self", "subtree"] },
     capabilities: {
       type: "array",
       uniqueItems: true,
@@ -8477,6 +8480,7 @@ export const configurationBundleSchema = {
           maxItems: 100,
           items: appScopeSourceSchema,
         },
+        directoryRoleSources: { type: "array", maxItems: 32, items: directoryRoleSourceSchema },
         roleMembershipSources: {
           type: "array",
           maxItems: 100,

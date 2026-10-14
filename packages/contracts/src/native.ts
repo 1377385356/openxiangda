@@ -39,6 +39,8 @@ export interface AppCapabilityContract {
 }
 
 export interface AppRoleDeclaration {
+  /** Explicit organization coverage; omitted retains traditional authorization. */
+  organizationReach?: 'self' | 'subtree';
   code: string;
   name: string;
   description?: string;
@@ -100,6 +102,16 @@ export interface AppScopeSourceDeclaration {
   effectiveFromField?: string;
   effectiveToField?: string;
   failureMode: 'strict' | 'last_known_good';
+}
+
+export interface AppDirectoryRoleSourceDeclaration {
+  code: string;
+  name: string;
+  source: string;
+  roleFactCode: string;
+  roleCode: string;
+  scopes: Array<{ dimensionCode: string; scopeType: string; operations: string[] }>;
+  failureMode: 'strict';
 }
 
 export interface AppRoleMembershipSourceDeclaration {
@@ -1106,6 +1118,7 @@ export interface ConfigurationBundleV3 {
     scopeDimensions: AppScopeDimensionDeclaration[];
     scopeSources: AppScopeSourceDeclaration[];
     roleMembershipSources: AppRoleMembershipSourceDeclaration[];
+    directoryRoleSources?: AppDirectoryRoleSourceDeclaration[];
     relationshipGrantSources: AppRelationshipGrantSourceDeclaration[];
     dataPolicies: AppDataPolicyDeclaration[];
     authorizationTransitions: AppAuthorizationTransitionDeclaration[];

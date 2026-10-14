@@ -20,6 +20,7 @@ export interface AppDataModelDeclaration {
   name: string;
   fields: readonly AppModelFieldDeclaration[];
   audit?: AppDataResourceDeclaration['audit'];
+  organization?: AppDataResourceDeclaration['organization'];
   workflowHistory?: AppDataResourceDeclaration['workflowHistory'];
   recordPrint?: AppDataResourceDeclaration['recordPrint'];
   recordComments?: AppDataResourceDeclaration['recordComments'];
@@ -108,7 +109,7 @@ export function defineApplicationModule<const Module extends AppModuleDeclaratio
 
 /** One authoring projection into the platform's existing execution contract. */
 export const APP_MODEL_DECLARATION_KEYS = [
-  'code', 'name', 'fields', 'audit', 'workflowHistory', 'recordPrint', 'recordComments', 'recordDeletion', 'mutationOwner', 'invariants', 'decimalReservationLifecycle', 'uniqueKeys', 'dataPolicyCode', 'detailRouteCode', 'ownedRowLimit',
+  'code', 'name', 'fields', 'audit', 'organization', 'workflowHistory', 'recordPrint', 'recordComments', 'recordDeletion', 'mutationOwner', 'invariants', 'decimalReservationLifecycle', 'uniqueKeys', 'dataPolicyCode', 'detailRouteCode', 'ownedRowLimit',
 ] as const;
 
 export function materializeApplicationModules(modules: readonly AppModuleDeclaration[]) {
@@ -249,6 +250,7 @@ export function materializeApplicationModules(modules: readonly AppModuleDeclara
         ...(model.dataPolicyCode ? { dataPolicyCode: model.dataPolicyCode } : {}),
         ...(model.detailRouteCode ? { detailRouteCode: { ...model.detailRouteCode } } : {}),
         ...(model.audit !== undefined ? { audit: model.audit } : {}),
+        ...(model.organization !== undefined ? { organization: { ...model.organization } } : {}),
         ...(model.workflowHistory !== undefined ? { workflowHistory: model.workflowHistory } : {}),
         ...(model.recordPrint !== undefined ? { recordPrint: model.recordPrint } : {}),
         ...(model.recordComments !== undefined ? { recordComments: model.recordComments } : {}),

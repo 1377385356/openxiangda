@@ -2,7 +2,7 @@
 
 教育局与多所学校各有独立钉钉企业、同一教师属于多个组织、家长的孩子在不同学校时，优先复用平台的组织与身份基础能力。应用不再建立第二份企业组织树、钉钉身份库或学校密钥配置。
 
-本专题描述 2026-10-14 的源码契约基线。组织基础、本人目录角色事实读取和 SDK 组织上下文/切换生命周期已有配套实现；事实到应用角色、组织 reach 与跨组织数据权限仍有接入缺口。目标站点是否部署了这些接口，需现场核实；安装新工具或读到本专题不证明平台已经升级。
+本专题描述 2026-10-14 的源码契约基线。组织基础、本人目录角色事实读取、SDK 组织切换、目录事实到应用角色的投影及 Native 组织行边界已有配套实现。目标站点是否部署了这些接口，需现场核实；安装新工具或读到本专题不证明平台已经升级。
 
 ## AI 识别场景与选择能力 {#scenario}
 
@@ -26,9 +26,9 @@
 | 当前人的可切换组织 | 已有平台会话 HTTP 与 `loadCurrentOrganizationMemberships()` | 读取本人活动成员列表，显示对应企业/学校选项 |
 | 当前工作组织、同会话切换 | 已有平台登录上下文、SDK `activeOrganizationId` 和 `switchCurrentOrganization()` 生命周期 | 在支持本契约的会话中读取/切换；不能从 URL 直接产生授权 |
 | 组织管理授权 | 已实现平台管理员授予人/部门，祖先授权覆盖后代 | 管理操作由平台核验；不能把“教育局成员”当作“全区管理员” |
-| 应用角色 `self` / `subtree` | 传统平台角色 CRUD 能保存 `organizationReach`；V2 声明与执行尚未接通 | 在设计中明确每个角色的组织覆盖意图，不向 V2 config 填入未支持字段 |
-| 家校事实到应用角色、班级范围的消费 | 本人事实 HTTP/SDK 读取已实现；业务角色与班级范围映射尚未接通 | 声明拟使用哪些事实及范围，将接入列为依赖；不能凭空调用 SDK |
-| 组织数据归属、隔离、后代可见与公共内容下发 | Native Data API 的组织边界尚未接通 | 不能宣称已经自动隔离或继承，也不能用前端筛选代替服务端权限 |
+| 应用角色 `self` / `subtree` | V2 声明、组织维度角色绑定和实时 SQL 准入已接通 | 声明每个角色的覆盖意图；旧应用未声明继续沿用原行为 |
+| 家校事实到应用角色、班级范围的消费 | `authz.directoryRoleSources` 由平台投影到应用角色和字符串 scope | 使用真实来源角色事实，目录派生绑定不能手工覆盖；事实退休立即拒绝旧投影 |
+| 组织数据归属、隔离、后代可见与内容下发 | `organization.mode=owned/inherited-down`、不可改归属及 RLS 已实现 | 声明策略并核验目标站点的配套能力，按真实组织角色验收允许和拒绝 |
 | 安装回调、每校自动定时同步、组织通知路由与链接生成 | 尚未完成整条自动接入 | 不假定安装完成后立即能登录，不假定消息自动选中正确安装 |
 
 平台管理组织的授权与应用业务授权是两种事实。能开通学校或查询组织树，不会自动获得该学校的业务数据权限；看到一条成员关系，也不会自动成为应用管理员。
@@ -102,7 +102,7 @@ SDK 通过应用 `/auth/organization/switch-surface` 取得真实浏览器会话
 
 成功、运输结果未知或服务器 5xx 时，SDK 失效旧授权、命令缓存和在途读取，通过 Runtime identity epoch 重读并重建页面。旧学校晚到的响应不会覆盖新学校数据。跨页只发送失效信号，不传身份或凭据；明确 4xx 拒绝保留原授权。切换写入不自动重放；结果未知先读回当前授权，不能把目标名称当成成功。组织切换不选择应用角色，也不是只收窄读取的 Perspective。
 
-完整 V2 role reach 和组织数据策略仍未接通，不能把切换后的角色列表或字段传递当作组织隔离证明。
+角色与数据隔离通过下面的显式声明启用；切换后的角色列表或字段传递仍不能替代实际行权限验收。
 
 ### 管理面接口
 
@@ -129,24 +129,51 @@ SDK 通过应用 `/auth/organization/switch-surface` 取得真实浏览器会话
 
 SDK 使用 `loadCurrentDirectoryRoleFacts({ limit, after, signal })`，返回 `DirectoryRoleFactPage`，包含 organizationId、userId、items、nextCursor。每个 item 包含 id、subjectId、source、roleCode、scopeType、scopeValue。客户端拒绝与当前 identity 不同组织/用户的响应，并在组织变化时丢弃旧读取，不自动拉取全部页面。
 
-读取来源事实不授予应用能力。业务角色、班级范围的可执行声明仍是后续接入项；不能以管理 upsert 或复制应用通讯录替代。
+读取来源事实不授予应用能力。使用下面的 `directoryRoleSources` 声明由平台派生角色及班级范围；不能以管理 upsert 或复制应用通讯录替代。
 
 ## 应用角色与数据边界 {#authorization}
 
-每个应用角色在设计中显式声明组织 reach，具体可执行的 V2 声明仍需后续接通：
+应用通过显式声明启用组织能力；编译器自动生成 `authz.organizations`、`authz.directory-roles` 和 `data.organizations` 的最低能力要求。目标平台不支持时拒绝激活，不能手改生成契约绕过协商。
 
-| reach 意图 | 适用范围 | 例子 |
-| --- | --- | --- |
-| `self` | 授予组织自身 | 学校教师只能在任职学校的业务范围操作 |
-| `subtree` | 授予组织及全部后代 | 获授权的上级管理人员处理被授予组织子树内的业务 |
+```ts
+authz: {
+  roles: [
+    { code: 'teacher', name: '教师', organizationReach: 'self', capabilities: teacherCapabilities },
+    { code: 'bureau', name: '区管理人员', organizationReach: 'subtree', capabilities: bureauCapabilities },
+  ],
+  scopeDimensions: [{ code: 'class', name: '班级', valueType: 'string' }],
+  directoryRoleSources: [{
+    code: 'teachers', name: '家校教师事实', source: 'dingtalk_school_contact',
+    roleFactCode: 'teacher', roleCode: 'teacher', failureMode: 'strict',
+    scopes: [{ dimensionCode: 'class', scopeType: 'class', operations: ['read', 'create', 'update'] }],
+  }],
+},
+data: {
+  resources: [{ code: 'assignments', name: '作业', organization: { mode: 'owned' }, fields: assignmentFields }],
+},
+```
 
-这是组织覆盖维度，与某资源的 `read/create/update/delete` 能力、班级 scope、行/字段策略分别组合。`subtree` 不自动授予修改权限；`self` 不是 Data API 的“记录属于当前人”谓词。上级学校/教育局的普通成员不会因层级自动成为管理员；共享 unionId 也不会把一个人在几所学校的权限合并到当前组织。
+上例省略了应用自己的操作能力与班级行策略定义；`teacherCapabilities`、`bureauCapabilities` 和 `assignmentFields` 是应用变量，并非平台内置对象。班级字段保存真实来源字符串 ID，通过原 dataPolicy 的 `class` 维度核对。来源字符串不能绑定 Native UUID 维度、valueSource、resourceCode 或组织树层级。
 
-当前传统平台角色 CRUD 能保存 `organizationReach`，不等于 V2 `authz.roles` 已支持此字段。当前权限引擎也没有已接通的“当前工作组织”内置行条件，不存在可使用的 `currentOrganization()` helper。不要手改生成契约、追加虚构 requiredPlatformCapabilities 或把所有学校授予一个 unrestricted 角色来替代组织边界。
+| 声明 | 语义 |
+| --- | --- |
+| `role.organizationReach = self` | 绑定在授予组织，只在该工作组织生效 |
+| `role.organizationReach = subtree` | 绑定在授予组织，在该组织和活动后代生效；不自动授予操作能力 |
+| `resource.organization.mode = owned` | 创建时记录归属可信工作组织。self 只操作本组织；subtree 可在其获准树内结合行策略操作 |
+| `resource.organization.mode = inherited-down` | 同 owned，额外允许获准角色读取工作组织的祖先内容；下级不能修改祖先内容 |
+| 未声明或 `none` | 沿用原无组织行为，不产生组织隔离 |
 
-组织数据权限还需把工作组织送入可信 Native principal，并执行数据归属、reach 与服务端行边界。在该接入完成前，以下都不能作为已支持行为交付：学校互相隔离；教育局只看/代操作全部下级数据；上级公共内容自动向后代开放。现有 `publicRead` 是已认证用户的公共字段投影，不等于组织树下发；匿名公开访问也不是跨学校共享机制。
+角色的操作能力、字段能力、组织 reach 和班级行范围必须在同一条 membership 中成立。不能合并多个组织的班级范围，不能用 subtree 角色的组织范围借用另一角色的班级范围。上级普通成员没有 subtree，共享 unionId 也不合并各校授权。目录映射角色只能 self，不能与 Native roleMembershipSources 争用同一角色。
 
-应用可以先设计业务模型、页面及明确的业务操作；数据访问仍走已有 Data API 和受支持的 Nest operation。涉及尚未接通的组织授权闭环，记录平台依赖和所需验收，不用前端隐藏、浏览器字段或另一套成员表绕过。
+目录源最多 32 个，每个源最多 16 个 scope；每次当前人、工作组织最多 512 个不同事实。超限、源失效、手工 shadow 冲突和更新锁竞争失败关闭；无变化的投影不更新 membership 或权限版本，也不与当前事务自己的角色锁冲突。目录派生绑定稳定且分组织，原始目录仍只有平台一份。本人读取不返回 raw 或 unionId。没有工作组织时，启用了目录映射的当前授权请求返回 `OPENXIANGDA_CURRENT_USER_ORGANIZATION_REQUIRED`。
+
+手工给非目录角色授权使用现有 Native membership 管理面及 `createNativeRoleMembership`，新增可选 `organizationId`。组织角色必须明确目标，目标用户须是同租户活动安装的活动成员；平台管理员或应用管理员可管理。已有委托管理没有组织覆盖契约，不能扩大为跨校授权。更新不能换组织，目录派生角色的 create/update/revoke 均返回平台所有权拒绝。传统无组织角色不需要该字段。批量 create 也支持组织维度；重复目标以 user/role/organization 核对。
+
+组织归属是平台保留列 `organization_id`，不是业务字段。创建从可信当前用户派生，更新不可修改；历史 NULL 归属不会自动推断或回填，组织资源也不会放行。唯一键按组织分区；父子表需要同样的组织策略，复合外键防止跨组织关联。已启用资源不能通过下一版本移除组织策略来开放历史数据。
+
+列表、直接 ID、聚合、导出及关联通过同一 Native RLS。命名 Nest 业务动作保留经过验证的当前用户/组织，继续核验短期调用证明、动作能力与同一 membership 的变更前后行范围。业务输入不能填充可信组织；没有当前用户证明的普通 application、后台或定时身份不获得组织资源权限。声明策略不自动授予服务身份全区访问。
+
+组织上下文请求实时核对目录与成员，当前暂不使用授权快照缓存。fresh 和事务请求均不读取或保存未提交快照；Head 在准备期间变化要求刷新。安装、成员、账号、主体或事实撤销后，数据库下一条语句即拒绝。源码和独立 PostgreSQL 测试不证明目标站点已经部署，也不代表真实教师/家长验收。
 
 ## 入口、同步与通知的处理边界 {#entry-sync}
 
@@ -158,7 +185,7 @@ SDK 使用 `loadCurrentDirectoryRoleFacts({ limit, after, signal })`，返回 `D
 
 ## 开发前核对与验收 {#verification}
 
-1. 用项目锁定版本的 `context --json` / MCP `workspace_context` 确认平台绑定；用 `docs multi-organization` / `docs_read` 读取同版本正文。文档主题已注册，不代表 `platform_capabilities` 已有新的组织能力 code；当前不能仅凭缺少/出现某个虚构 feature 判断支持。
+1. 用项目锁定版本的 `context --json` / MCP `workspace_context` 确认平台绑定；用 `docs multi-organization` / `docs_read` 读取同版本正文。通过实际 `platform_capabilities` 核对配套声明的能力 code 和最低版本，不能把文档可读当成站点可用。
 2. 确认目标站点的源码/部署版本、正式 SQL 迁移与组织管理授权。资料版本、接口状态和实际启用分别记录；站点缺能力由平台维护者补齐，应用不自行执行迁移或发包。
 3. 在测试组织核实本人成员列表、真实企业名称、活动安装、profile/原始授权组织字段，验证同会话切换与非成员拒绝。不以单次 HTTP 200 代替响应 `code` 和业务事实。
 4. 使用家校角色前，确认平台已经提供可消费的事实读取及映射契约；使用 `self/subtree` 前，确认 V2 声明、可信上下文和服务端数据边界均已实现。未闭合就标记依赖，不能报告自动隔离通过。

@@ -222,3 +222,6 @@ image/signature/富文本图片字段在上传计划（initiate）里返回 `max
 省略/false关闭新入口；true绑定资源read，数组引用已有能力，不隐式生成能力。
 同一角色成员须同时满足资源read和全部历史能力，原行权限继续约束旧固定实例；该项独立于Native `audit.read`。
 标准Native详情和公开 `WorkflowRecordHistoryPanel` 可复用，参见[工作流历史](workflow-events.md#record-history-read)。
+
+
+多组织应用使用 `role.organizationReach`、`authz.directoryRoleSources` 与 `resource.organization` 显式声明；来源字符串范围、可信用户组织及数据库行边界共同执行。声明、配套平台版本与目标站点实际启用分别核验。完整字段、上级内容下发、目录派生角色所有权、手工组织授权和限制见[多组织与家校目录](multi-organization.md#authorization)。

@@ -1,3 +1,4 @@
+import { validateNativeOrganizationAuthorization, NativeOrganizationAuthorizationError } from './organization-authorization.js';
 import { workflowAssignmentLeaves, workflowAssignmentLeafBinding, validateWorkflowConditionalAssignmentShape, validateWorkflowConditionalBindingDefinition } from './workflow-conditional-assignment.js';
 import { workflowBindingRoleCodes } from './workflow-role-union.js';
 import { compileApplicationAgentsV2 } from './application-agent.js';
@@ -660,6 +661,12 @@ export function compileRequiredPlatformCapabilitiesV3(
           },
         ]
       : []),
+    ...(roles.some(role => role.organizationReach) ? [{ code: 'authz.organizations' as const,
+      declaration: roles.filter(role => role.organizationReach).map(role => ({ code: role.code, organizationReach: role.organizationReach })) }] : []),
+    ...(config.authz.directoryRoleSources?.length ? [{ code: 'authz.directory-roles' as const,
+      declaration: config.authz.directoryRoleSources }] : []),
+    ...(resources.some(resource => resource.organization && resource.organization.mode !== 'none') ? [{ code: 'data.organizations' as const,
+      declaration: resources.filter(resource => resource.organization && resource.organization.mode !== 'none').map(resource => ({ code: resource.code, organization: resource.organization })) }] : []),
     ...(operations.some(operation => operation.platformAccess?.selectedDepartments) ? [{ code: 'directory.selected-departments' as const, declaration: operations.filter(operation => operation.platformAccess?.selectedDepartments).map(operation => ({code:operation.code,selectedDepartments:operation.platformAccess.selectedDepartments})) }] : []),
     ...(operations.some(operation => operation.platformAccess?.directory?.mode === 'selected-user') ? [{ code: 'directory.selected-user' as const, declaration: operations.filter(operation => operation.platformAccess?.directory?.mode === 'selected-user').map(operation => ({code:operation.code,directory:operation.platformAccess.directory})) }] : []),
     ...(initiatorPhoneOperations.length || initiatorPhoneCommands.length ? [{
@@ -1203,6 +1210,8 @@ function validateConfigurationEnvelope(config: JsonObject, appCode: string) {
   equal(config.appCode, appCode, '/config/appCode');
   boundedArray(config.perspectives, '/config/perspectives', 100);
   const authz = object(config.authz, '/config/authz');
+  try { validateNativeOrganizationAuthorization(config); }
+  catch (error) { if (!(error instanceof NativeOrganizationAuthorizationError)) throw error; fail(error.code, error.pointer); }
   exactKeys(
     authz,
     [
@@ -1216,7 +1225,7 @@ function validateConfigurationEnvelope(config: JsonObject, appCode: string) {
       'authorizationTransitions',
     ],
     '/config/authz',
-    ['authenticatedUserRoleCode']
+    ['authenticatedUserRoleCode', 'directoryRoleSources']
   );
   boundedArray(authz.capabilities, '/config/authz/capabilities', NATIVE_CONTRACT_CAPACITY_V2.capabilities);
   boundedArray(authz.roles, '/config/authz/roles', NATIVE_CONTRACT_CAPACITY_V2.roles);
@@ -5737,7 +5746,7 @@ function validateAuthorizationReferences(
     const role = object(raw, pointer);
     exactKeys(
       role,
-      ['code', 'name', 'description', 'capabilities'],
+      ['code', 'name', 'description', 'capabilities', 'organizationReach'],
       pointer,
       true
     );
@@ -7745,6 +7754,7 @@ function validateResource(raw: any, pointer: string, appCode: string) {
       'recordDeletion',
       'capabilities',
       'dataPolicyCode',
+      'organization',
       'fieldPolicies',
     ],
     pointer,

@@ -201,6 +201,7 @@ export interface NativeAuthorizationPageInput {
 }
 
 export interface CreateNativeRoleMembershipInput {
+  organizationId?: string;
   environmentKey: DeploymentEnvironment;
   operationId: string;
   userId: string;

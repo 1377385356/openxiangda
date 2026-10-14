@@ -1,3 +1,4 @@
+import { validateNativeOrganizationAuthorization, NativeOrganizationAuthorizationError, directoryRoleSourceSchema } from 'openxiangda-contracts/native-compiler';
 import { workflowAssignmentLeafBinding, workflowAssignmentLeaves, workflowBindingRoleCodes, validateWorkflowConditionalAssignmentShape } from 'openxiangda-contracts';
 import { compileApplicationAgentsV2, NativeApplicationAgentContractError } from 'openxiangda-contracts/native-compiler';
 import type { ApplicationAgentDeclarationV2 } from 'openxiangda-contracts';
@@ -257,6 +258,7 @@ export interface AppDataResourceDeclaration {
   };
   /** Read access to provenance metadata and record history; omission preserves defaults. */
   audit?: { read: string[] | boolean };
+  organization?: DataResource['organization'];
   /** Business record viewers may read workflow history; omission disables this entry. */
   workflowHistory?: { read: string[] | boolean };
   recordPrint?: { read: string[] | boolean };
@@ -359,6 +361,7 @@ export interface OpenXiangdaAppConfig {
     scopeDimensions?: AuthzScopeDimensionDeclaration[];
     scopeSources?: AuthzScopeSourceDeclaration[];
     roleMembershipSources?: AuthzRoleMembershipSourceDeclaration[];
+    directoryRoleSources?: import('openxiangda-contracts').AppDirectoryRoleSourceDeclaration[];
     relationshipGrantSources?: AuthzRelationshipGrantSourceDeclaration[];
     dataPolicies?: AuthzDataPolicyDeclaration[];
     authorizationTransitions?: AppAuthorizationTransitionDeclaration[];
@@ -975,6 +978,7 @@ export const openXiangdaAppConfigSchema = {
           maxItems: 100,
           items: { type: 'object' },
         },
+        directoryRoleSources: { type: 'array', maxItems: 32, items: directoryRoleSourceSchema },
         roleMembershipSources: {
           type: 'array',
           maxItems: 100,
@@ -1391,6 +1395,8 @@ function validateEventFilterCondition(
 export function validateAppConfig(value: unknown): Diagnostic[] {
   const diagnostics: Diagnostic[] = [];
   const config = object(value);
+  try { validateNativeOrganizationAuthorization(config); }
+  catch (error) { if (!(error instanceof NativeOrganizationAuthorizationError)) throw error; diagnostics.push(diagnostic(error.code, '组织角色或目录来源声明无效', error.pointer)); }
   if (config.agents !== undefined) {
     try { compileApplicationAgentsV2(String(object(config.app).code || ''), config.agents, (Array.isArray(object(config.data).resources) ? object(config.data).resources : []) as DataResource[], { allowInstructionFiles: true, authz: object(config.authz) as any }); }
     catch (error) {
@@ -2071,6 +2077,7 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
       ['scopeDimensions', authz.scopeDimensions],
       ['scopeSources', authz.scopeSources],
       ['roleMembershipSources', authz.roleMembershipSources],
+      ['directoryRoleSources', authz.directoryRoleSources],
       ['relationshipGrantSources', authz.relationshipGrantSources],
       ['dataPolicies', authz.dataPolicies],
     ] as const) {
@@ -7265,6 +7272,7 @@ export function materializeDataResource(
       delete: declaration.recordDeletion.delete === false ? [] : declaration.recordDeletion.delete === true
         ? [capabilities.delete] : [...declaration.recordDeletion.delete],
     } }),
+    ...(declaration.organization !== undefined ? { organization: { ...declaration.organization } } : {}),
     ...(declaration.workflowHistory === undefined ? {} : { workflowHistory: {
       read: declaration.workflowHistory.read === false ? [] : declaration.workflowHistory.read === true
         ? [capabilities.read] : [...declaration.workflowHistory.read],
@@ -7310,6 +7318,7 @@ export function validateAppDeclaration(value: unknown): Diagnostic[] {
     'code',
     'name',
     'mutationOwner',
+    'organization',
     'generated',
     'fields',
     'invariants',

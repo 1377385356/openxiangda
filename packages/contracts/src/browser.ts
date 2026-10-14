@@ -76,3 +76,5 @@ export * from "./native-compiler/workflow-return-eligibility.js";
 export * from "./native-compiler/workflow-conditional-assignment.js";
 
 export * from './multi-organization.js';
+
+export * from './native-compiler/organization-authorization.js';

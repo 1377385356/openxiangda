@@ -549,7 +549,8 @@ export interface NativeRoleMembership {
   roleSource: "package" | "manual";
   sourceCode: string;
   maintainable: boolean;
-  immutableReason: "authenticated_user_role" | "authorization_projection" | null;
+  immutableReason: "authenticated_user_role" | "authorization_projection" | "directory_projection" | null;
+  organizationId?: string;
   scopeGrants: NativeScopeGrant[];
   status: "active" | "revoked" | "expired";
   revision: number;
@@ -1381,6 +1382,8 @@ export interface DataUniqueKey {
 }
 
 export interface DataResource {
+  /** Platform-owned organization binding; business data cannot override it. */
+  organization?: { mode: 'none' | 'owned' | 'inherited-down' };
   schemaVersion: typeof SCHEMA_VERSIONS.dataResource;
   id?: string;
   tenantId?: string;

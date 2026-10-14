@@ -6,7 +6,7 @@ export type NativeRoleMembershipBatchOperation = 'create' | 'update' | 'revoke';
 type Mutation = { operationId: string; reason: string };
 type Changes = { scopeGrants?: NativeScopeGrant[]; validFrom?: string | null; validTo?: string | null };
 export type NativeRoleMembershipBatchItem =
-  | (Mutation & Changes & { operation: 'create'; userId: string; roleCode: string })
+  | (Mutation & Changes & { operation: 'create'; userId: string; roleCode: string; organizationId?: string })
   | (Mutation & Changes & { operation: 'update'; membershipId: string; expectedRevision: number })
   | (Mutation & { operation: 'revoke'; membershipId: string; expectedRevision: number });
 export interface NativeRoleMembershipBatchInput {
@@ -15,7 +15,7 @@ export interface NativeRoleMembershipBatchInput {
   items: NativeRoleMembershipBatchItem[];
 }
 export type NativeRoleMembershipChange = Pick<NativeRoleMembership,
-  'userId' | 'roleCode' | 'roleSource' | 'sourceCode' | 'scopeGrants' | 'status' | 'validFrom' | 'validTo'>;
+  'userId' | 'roleCode' | 'roleSource' | 'sourceCode' | 'organizationId' | 'scopeGrants' | 'status' | 'validFrom' | 'validTo'>;
 type ItemIdentity = { index: number; operationId: string; operation: NativeRoleMembershipBatchOperation };
 export type NativeRoleMembershipBatchItemResult = ItemIdentity & (
   | { status: 'ready' | 'already_committed'; before: NativeRoleMembershipChange | null; after: NativeRoleMembershipChange }
@@ -73,7 +73,7 @@ export function assertNativeRoleMembershipBatchInput(input: unknown): asserts in
     if (!['create', 'update', 'revoke'].includes(String(item.operation))) fail(`${path}/operation`);
     operation ??= item.operation;
     if (operation !== item.operation) fail(`${path}/operation`);
-    keys(item, ['operation', 'operationId', 'reason', ...(operation === 'create' ? ['userId', 'roleCode'] : ['membershipId', 'expectedRevision']), ...(operation !== 'revoke' ? ['scopeGrants', 'validFrom', 'validTo'] : [])], path);
+    keys(item, ['operation', 'operationId', 'reason', ...(operation === 'create' ? ['userId', 'roleCode', 'organizationId'] : ['membershipId', 'expectedRevision']), ...(operation !== 'revoke' ? ['scopeGrants', 'validFrom', 'validTo'] : [])], path);
     const id = uuid(item.operationId, `${path}/operationId`);
     if (operationIds.has(id)) fail(`${path}/operationId`);
     operationIds.add(id);
@@ -82,7 +82,8 @@ export function assertNativeRoleMembershipBatchInput(input: unknown): asserts in
     if (operation === 'create') {
       const userId = text(item.userId, 255, `${path}/userId`), roleCode = text(item.roleCode, 128, `${path}/roleCode`);
       if (!/^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/.test(roleCode)) fail(`${path}/roleCode`);
-      target = JSON.stringify([userId, roleCode]);
+      const organizationId=item.organizationId===undefined ? null : uuid(item.organizationId,`${path}/organizationId`);
+      target = JSON.stringify([userId, roleCode,organizationId]);
     } else {
       target = uuid(item.membershipId, `${path}/membershipId`);
       if (!Number.isSafeInteger(item.expectedRevision) || Number(item.expectedRevision) < 1) fail(`${path}/expectedRevision`);
