@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.68.1",
+  "version": "2.68.2",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -102,13 +102,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.11.0",
-    "openxiangda-contracts": "2.88.0",
-    "openxiangda-devkit-core": "2.67.0",
+    "openxiangda-cli": "2.11.1",
+    "openxiangda-contracts": "2.88.1",
+    "openxiangda-devkit-core": "2.67.1",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.2.13",
-    "openxiangda-nest": "2.19.5",
-    "openxiangda-skill-kit": "2.3.115",
+    "openxiangda-mcp": "2.2.14",
+    "openxiangda-nest": "2.19.6",
+    "openxiangda-skill-kit": "2.3.116",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -174,35 +174,35 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.68.1",
+    "version": "2.68.2",
     "status": "reviewed",
-    "title": "原部署运行的流程例外只读预览",
-    "summary": "按平台能力读取失败 DeploymentRun 的冻结候选、当前 Head 和真实流程例外，支持在独立诊断目录使用公开 SDK 读取旧工作区会话。",
-    "newFeatures": [
-      "`status <deployment-id> --workflow-exceptions` 只读展示原运行的例外及完整集合摘要，不确认或重试。",
-      "独立精确版本 devkit 客户端可读取旧工作区 link/session，无需更改应用 package、lock 或冻结包。"
+    "title": "固定公开单选过滤的编译一致性修复",
+    "summary": "允许对 option.single 单选字段声明固定公开 eq 条件，保持平台强制过滤和字段白名单。",
+    "newFeatures": [],
+    "fixes": [
+      "修复是否开放、发布状态等单选字段被应用与 Native 编译器错误拒绝的问题。",
+      "单选值只接受字符串或 null，拒绝数组、对象、数值和布尔；多选、附件、人员及资源引用仍不接受。"
     ],
-    "fixes": [],
     "affectedUsers": [
-      "发布包含工作流的 V2 应用的开发者和管理员。"
+      "通过 frontend.publicAccess 发布带开放/发布状态条件的公开目录应用。"
     ],
     "upgradeSteps": [
-      "平台需先提供 deployment.workflow-adoption-preview 1.0.0 能力；无能力时明确停止。",
-      "使用本版根包或独立 openxiangda-devkit-core 2.67.0 诊断目录；旧应用不必为了查看例外升级依赖。",
-      "保留原 DeploymentRun ID，先核对完整例外；生产仍只晋级已验收 TEST 原版本。"
+      "应用升级精确 openxiangda 2.68.2 并重新 check；不修改已安装编译器或生成输出。",
+      "平台同步官方 openxiangda-contracts 2.88.1 编译器后再部署含此条件的应用；运行时过滤仍由平台负责。"
     ],
     "knownLimitations": [
-      "本批仅提供预览，不提供例外确认、事实转换或原 Run 恢复通道。",
-      "truncated=true 不代表已观察完整明细；预览不授予激活许可。",
-      "包发行不等于平台部署或真实业务验收；source/status 的独立500故障不在此修复中。"
+      "仍只允许固定 eq 条件；不开放匿名任意筛选、排序或普通 Native Data API。",
+      "包与平台发布不代表学校浏览器、真实角色或通知验收完成。"
     ],
     "compatibility": {
       "node": "Node.js 24 or newer for maintained toolchain",
-      "generation": "OpenXiangda V2; no V1 migration",
-      "platform": "New read-only preview requires deployment.workflow-adoption-preview 1.0.0; contracts remains 2.88.0"
+      "generation": "OpenXiangda V2; V1 unchanged",
+      "platform": "Native compiler openxiangda-contracts 2.88.1; server option JSON equality already implemented"
     },
-    "issues": [],
-    "sha256": "859687bd04474e031528a651304916e7535919419aa697ec1892ff5b17cdf666",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.68.1"
+    "issues": [
+      "PLT-068"
+    ],
+    "sha256": "122b83c8aa1540c4e97ba7b4700618a03ff86585848f3f9f5626475ad13b7a8d",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.68.2"
   }
 }
