@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.75.0",
+  "status": "reviewed",
+  "title": "匿名公开具名查询批量读取",
+  "summary": "为公开门户提供保留原平台权限的有界批量查询客户端，减少多个独立查询的网络往返，并修正聚合结果类型。",
+  "newFeatures": [
+    "createAnonymousPublicClient.queryBatch固定应用、环境和声明路由，按key/policy/query精确匹配逐项记录、聚合或错误回执。",
+    "每批最多10项、500条请求上限、64KiB输入，配套平台最多3项并发；不新增普通匿名Data API、权限缓存或Nest CRUD代理。"
+  ],
+  "fixes": [
+    "聚合items正确表示为直接含维度/指标的对象，不再声明成record.data；保留原value-only计数与单查询API。",
+    "缺失、重复、错位、超量或形状错误的批量回执明确拒绝，单项403/404/429/503不会变成空表或零。"
+  ],
+  "affectedUsers": [
+    "使用匿名公开目录、仪器卡片、首页统计或其他多个具名只读查询的OpenXiangda V2应用。"
+  ],
+  "upgradeSteps": [
+    "先部署支持POST anonymous-public/public/query-batch的正式平台版本，再升级官方SDK与CLI；旧平台404应报告并完成平台更新。",
+    "使用原bootstrap获取正式浏览器凭证；批次每项显式指定策略、查询与key，调用方逐项处理成功或错误，延续原固定过滤和字段白名单。",
+    "保持真实页面请求数、P95/LCP与多角色业务验收独立进行，批量HTTP成功不代表每项成功。"
+  ],
+  "knownLimitations": [
+    "批次由独立只读查询组成，不保证同一数据库快照；不支持写入、业务动作或通知。",
+    "本发行不代表任何客户站点已部署或页面性能已达标；普通列表服务端分页与应用接入另行验收。"
+  ],
+  "compatibility": {
+    "node": "Node.js 24 or newer for maintained toolchain",
+    "generation": "OpenXiangda V2; V1 unchanged",
+    "platform": "Requires anonymous-public/public/query-batch; each item reuses existing public policy and Native authorization"
+  },
+  "issues": []
+}
