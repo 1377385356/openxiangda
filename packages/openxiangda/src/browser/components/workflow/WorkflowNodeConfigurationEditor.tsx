@@ -1,3 +1,4 @@
+import type { WorkflowVariableChoices } from './workflow-variable-presentation';
 import { isWorkflowDesignerAuthorityLoss, isWorkflowDesignerAuthorityBusy } from './workflow-designer-authority';
 import { createBrowserUuid } from '../../uuid';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
@@ -46,8 +47,8 @@ function comparableValues(values: Partial<Values>): string {
 }
 
 /** Shared editor: platform console and application pages use the same bounded SDK write. */
-export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNode, principals: initialPrincipals, expectedHeadRevision, onClose, onSaved, presentation = 'drawer', readOnly = false, onStateChange, onLeaveGuardChange, returnSummary, compact = false, onExpand, onAuthorityLoss, conditionalAssignment: initialConditionalContext }: {
-  conditionalAssignment?: WorkflowNodeConfigurations['conditionalAssignment'];
+export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNode, principals: initialPrincipals, expectedHeadRevision, onClose, onSaved, presentation = 'drawer', readOnly = false, onStateChange, onLeaveGuardChange, returnSummary, compact = false, onExpand, onAuthorityLoss, conditionalAssignment: initialConditionalContext, variableChoices }: {
+  variableChoices?: WorkflowVariableChoices; conditionalAssignment?: WorkflowNodeConfigurations['conditionalAssignment'];
   onAuthorityLoss?: (failure: unknown, operationId?: string, prompt?: string, nodeInput?: RetainedWorkflowNodeInput) => Promise<boolean>;
   workflowCode: string; node: Node; principals: WorkflowNodeConfigurations['principals']; expectedHeadRevision: number;
   onClose: () => void; onSaved: (receipt: WorkflowNodeConfigurationReceipt) => void;
@@ -232,7 +233,7 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
               setDirty(true);
             }
           }} options={[...flatProviders.map(value => ({ value, label: providers[value] })), ...(canCondition ? [{ value: 'conditional', label: '按条件选择' }] : [])]} /></Form.Item>
-          {selectedProvider === 'conditional' && (conditionalContext ? <Form.Item name="conditionalAssignee" rules={[{ required: true }]}><WorkflowConditionalAssignmentEditor context={{ ...conditionalContext, frozenDefault: binding, standardProviders: allowedProviders as Array<'fixed_users' | 'app_role' | 'app_role_in_scope'> }} principals={principals} disabled={readOnly || authorityStopped.current || busy || !!frozen.current} value={form.getFieldValue('conditionalAssignee')} onChange={() => {}} /></Form.Item> : <Alert type="warning" title="当前平台未提供条件编辑上下文，原规则保持不变" />)}
+          {selectedProvider === 'conditional' && (conditionalContext ? <Form.Item name="conditionalAssignee" rules={[{ required: true }]}><WorkflowConditionalAssignmentEditor variableChoices={variableChoices} context={{ ...conditionalContext, frozenDefault: binding, standardProviders: allowedProviders as Array<'fixed_users' | 'app_role' | 'app_role_in_scope'> }} principals={principals} disabled={readOnly || authorityStopped.current || busy || !!frozen.current} value={form.getFieldValue('conditionalAssignee')} onChange={() => {}} /></Form.Item> : <Alert type="warning" title="当前平台未提供条件编辑上下文，原规则保持不变" />)}
           {selectedProvider === 'fixed_users' && <Form.Item name="users" rules={[{ required: isCc || node.effective.emptyPolicy !== 'skip', type: 'array', min: recipientMinimum, max: recipientMaximum }]}><PlatformDirectoryPicker kind="user" multiple placeholder="从通讯录选择人员" /></Form.Item>}
           {['app_role', 'app_role_in_scope'].includes(selectedProvider || '') && <Form.Item name="roleCodes" rules={[{ required: true, type: 'array', min: 1, max: 8 }]}><Select aria-label={isCc ? '抄送角色' : '审批角色'} mode="multiple" maxCount={8} showSearch={{ optionFilterProp: 'label' }} options={principals.roles.map(role => ({ value: role.code, label: role.name }))} placeholder="选择应用角色" /></Form.Item>}
         </> : <p className="oxa-workflow-config-help">当前人员规则由应用维护。</p>}

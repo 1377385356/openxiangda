@@ -1,12 +1,13 @@
+import { formatWorkflowCondition, type WorkflowConditionVariable } from './workflow-variable-presentation';
 import { createBrowserUuid } from '../../uuid';
 import { useEffect,useState } from 'react';
 import { Alert, Button, Checkbox, Input, Popconfirm, Tag } from 'antd';
 import { ArrowLeftOutlined, ArrowRightOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-import { WORKFLOW_PARALLEL_MAX_BRANCHES, type WorkflowGraphVariable, type WorkflowParallelNode } from 'openxiangda-contracts/browser';
+import { WORKFLOW_PARALLEL_MAX_BRANCHES, type WorkflowParallelNode } from 'openxiangda-contracts/browser';
 import { WorkflowConditionEditor, defaultWorkflowCondition } from './WorkflowConditionEditor';
 
 export function WorkflowParallelConfigurationEditor({ node,selectedBranch,variables,disabled,onChange,onRemove }: {
-  node: WorkflowParallelNode; selectedBranch?: string | undefined; variables: readonly WorkflowGraphVariable[]; disabled: boolean;
+  node: WorkflowParallelNode; selectedBranch?: string | undefined; variables: readonly WorkflowConditionVariable[]; disabled: boolean;
   onChange: (node: WorkflowParallelNode) => void; onRemove: (branchId: string) => void;
 }) {
   const [selected,setSelected] = useState(node.branches[0]?.id);
