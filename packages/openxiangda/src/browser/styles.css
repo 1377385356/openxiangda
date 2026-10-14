@@ -3348,10 +3348,7 @@
 .oxa-designer-toolbar .ant-tag { margin: 0; line-height: 23px; background: #fff; }
 .oxa-designer-toolbar .ant-segmented { border: 1px solid #d9e2ef; background: #fff; padding: 0; color: #617086; font-size: 13px; }
 .oxa-designer-toolbar .ant-segmented-item-selected { background: #eaf2ff; color: #0066ff; box-shadow: none; }
-.oxa-designer-workspace { flex: 1; min-height: 0; display: grid; grid-template-columns: 240px minmax(0,1fr) 560px; }
-.oxa-designer-workspace.without-outline { grid-template-columns: 48px minmax(0,1fr) 560px; }
-.oxa-designer-workspace.without-inspector { grid-template-columns: 240px minmax(0,1fr); }
-.oxa-designer-workspace.without-outline.without-inspector { grid-template-columns: 48px minmax(0,1fr); }
+.oxa-designer-workspace { flex: 1; min-height: 0; position: relative; display: grid; grid-template-columns: minmax(0,1fr); overflow: hidden; }
 .oxa-designer-outline { min-height: 0; overflow: auto; background: #fff; padding: 8px; border-right: 1px solid #e3e8ef; scrollbar-width: thin; }
 .oxa-designer-outline-heading { display: flex; justify-content: space-between; align-items: center; min-height: 40px; padding: 0 8px; margin-bottom: 4px; }
 .oxa-designer-outline-heading strong { font-size: 14px; }
@@ -3448,18 +3445,9 @@
 .oxa-designer-mobile-inspector { display: none; }
 .oxa-designer-show-inspector { position: absolute; top: 50px; right: 12px; z-index: 5; }
 @media(max-width: 1499px) {
-  .oxa-designer-workspace { grid-template-columns: 200px minmax(0,1fr) 480px; }
-  .oxa-designer-workspace.without-outline { grid-template-columns: 48px minmax(0,1fr) 480px; }
-  .oxa-designer-workspace.without-inspector { grid-template-columns: 200px minmax(0,1fr); }
   .oxa-designer-toolbar-label, .oxa-designer-save-state { display: none; }
 }
 @media(max-width: 1199px) {
-  .oxa-designer-workspace, .oxa-designer-workspace.without-outline { grid-template-columns: 48px minmax(0,1fr) 440px; }
-  .oxa-designer-workspace.without-inspector, .oxa-designer-workspace.without-outline.without-inspector { grid-template-columns: 48px minmax(0,1fr); }
-  .oxa-designer-outline-heading strong, .oxa-designer-outline .ant-input-search, .oxa-designer-outline nav button > span:last-child:not(.anticon), .oxa-designer-outline footer { display: none; }
-  .oxa-designer-outline { padding: 8px 4px; }
-  .oxa-designer-outline-heading { padding: 0; }
-  .oxa-designer-outline nav button { justify-content: center; padding: 10px 4px; }
   .oxa-designer-toolbar { padding: 0 8px; gap: 8px; }
   .oxa-designer-toolbar-identity { gap: 6px; }
   .oxa-designer-toolbar-actions .ant-btn { font-size: 0; width: 30px; padding: 0; }
@@ -3468,7 +3456,6 @@
 }
 @media(max-width: 899px) {
   .oxa-workflow-designer { min-height: 100dvh; height: auto; }
-  .oxa-designer-workspace, .oxa-designer-workspace.without-outline, .oxa-designer-workspace.without-inspector, .oxa-designer-workspace.without-outline.without-inspector { grid-template-columns: minmax(0,1fr); min-height: calc(100dvh - 96px); }
   .oxa-designer-outline, .oxa-designer-desktop-inspector { display: none; }
   .oxa-designer-mobile-inspector { display: block; position: absolute; bottom: 18px; left: 18px; z-index: 5; }
   .oxa-designer-toolbar { height: auto; flex: 0 0 auto; min-height: 56px; padding: 8px; flex-wrap: wrap; }
@@ -3497,10 +3484,6 @@
 .oxa-designer-return-summary .ant-tag { font-size: 10px; margin: 0; line-height: 18px; }
 .oxa-designer-return-summary .ant-btn { margin-left: auto; padding: 0; font-size: 11px; }
 
-.oxa-designer-workspace:not(.detail-inspector):not(.without-inspector) { grid-template-columns: 240px minmax(0,1fr) 496px; }
-.oxa-designer-workspace.without-outline:not(.detail-inspector):not(.without-inspector) { grid-template-columns: 48px minmax(0,1fr) 496px; }
-.oxa-designer-workspace.detail-inspector:not(.without-inspector) { grid-template-columns: 240px minmax(0,1fr) 640px; }
-.oxa-designer-workspace.without-outline.detail-inspector:not(.without-inspector) { grid-template-columns: 48px minmax(0,1fr) 640px; }
 .oxa-workflow-config-inline.compact { border: 1px solid #dcebdc; border-radius: 5px; overflow: hidden; }
 .oxa-workflow-config-inline.compact .oxa-designer-handling-notice { border-radius: 0; margin-bottom: 0; }
 .oxa-workflow-config-inline.compact form { display: none; }
@@ -3511,18 +3494,6 @@
 .oxa-designer-handling-summary span:last-child { color: #617086; }
 .oxa-workflow-config-inline.compact .oxa-workflow-config-footer { padding: 12px 14px; margin: 0; }
 .oxa-workflow-config-inline.compact .oxa-workflow-config-footer .ant-space, .oxa-workflow-config-inline.compact .oxa-workflow-config-footer .ant-btn { width: 100%; }
-@media(max-width:1499px) {
-  .oxa-designer-workspace:not(.detail-inspector):not(.without-inspector) { grid-template-columns: 200px minmax(0,1fr) 440px; }
-  .oxa-designer-workspace.without-outline:not(.detail-inspector):not(.without-inspector) { grid-template-columns: 48px minmax(0,1fr) 440px; }
-  .oxa-designer-workspace.detail-inspector:not(.without-inspector) { grid-template-columns: 200px minmax(0,1fr) 560px; }
-  .oxa-designer-workspace.without-outline.detail-inspector:not(.without-inspector) { grid-template-columns: 48px minmax(0,1fr) 560px; }
-}
-@media(max-width:1199px) {
-  .oxa-designer-workspace:not(.without-inspector), .oxa-designer-workspace.without-outline:not(.without-inspector) { grid-template-columns: 48px minmax(0,1fr) 440px; }
-}
-@media(max-width:899px) {
-  .oxa-designer-workspace:not(.without-inspector), .oxa-designer-workspace.without-outline:not(.without-inspector) { grid-template-columns: minmax(0,1fr); }
-}
 
 .oxa-designer-ai-panel { padding: 16px; }
 .oxa-designer-ai-panel > header { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
@@ -3685,3 +3656,8 @@
 .oxa-workflow-conditional-assignment .ant-select { min-width: 0; }
 .oxa-workflow-conditional-assignment .oxa-workflow-people-sources { display: grid; gap: 10px; }
 .oxa-workflow-conditional-assignment h4 { margin: 0; }
+
+/* Designer panels overlay the canvas only when requested; no collapsed rail. */
+.oxa-workflow-designer .oxa-designer-outline { position: absolute; inset: 0 auto 0 0; z-index: 6; width: min(280px, 80%); box-shadow: 6px 0 20px #182b4814; }
+.oxa-workflow-designer .oxa-designer-desktop-inspector { position: absolute; inset: 0 0 0 auto; z-index: 7; width: min(640px, 85%); height: 100%; box-shadow: -6px 0 20px #182b4814; }
+.oxa-designer-show-outline { position: absolute; left: 16px; top: 50px; z-index: 4; }

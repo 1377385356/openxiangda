@@ -61,3 +61,24 @@ test('removing a fresh node prunes its binding without deleting released source 
  const def=fixture(),published=binding();published.bindings.canvas_published={provider:'initiator'};const current=structuredClone(published);current.bindings.canvas_deleted={provider:'fixed_users',users:[]};current.bindings.source_unused={provider:'initiator'};
  const pruned=pruneWorkflowCanvasBindings(def,current,published);assert.equal(pruned.bindings.canvas_deleted,undefined);assert.ok(pruned.bindings.canvas_published);assert.ok(pruned.bindings.source_unused);assert.ok(current.bindings.canvas_deleted);
 });
+
+test('a published definition with readability remains saveable after inserting a human node', () => {
+ const base=fixture(), next=structuredClone(base), bindings=binding();
+ base.readability={variables:{amount:{label:'申请金额',unit:'元'}},logic:[{code:'amount-check',title:'金额检查',description:'检查申请金额',phase:'submission',inputPaths:['amount'],source:{path:'src/amount.ts',symbol:'checkAmount',digest:`sha256:${'a'.repeat(64)}`}}]};
+ next.readability=structuredClone(base.readability);
+ next.nodes.fresh=createWorkflowHumanNode('fresh','approval','新增审核','done');next.startAt='fresh';bindings.bindings.canvas_fresh={provider:'fixed_users',users:['test-reviewer']};
+ const validate=new Ajv2020({strict:false,allErrors:true}).compile(workflowDefinitionSchema);
+ assert.equal(validate(next),true,JSON.stringify(validate.errors));
+ assert.deepEqual(validateWorkflowDesignerCapabilities(base,next,binding(),bindings),[]);
+ const modified=structuredClone(next);modified.readability.logic[0].description='changed';
+ assert.ok(validateWorkflowDesignerCapabilities(base,modified,binding(),bindings).includes('WORKFLOW_DESIGNER_CODE_OWNED:readability.logic'));
+ for(const change of [
+  (d:any)=>{d.readability.unknown=true;},
+  (d:any)=>{d.readability.variables.amount.unknown=true;},
+  (d:any)=>{d.readability.variables.amount.label=' ';},
+  (d:any)=>{d.readability.variables.amount.label='x'.repeat(161);},
+  (d:any)=>{d.readability.logic[0].source.digest='untrusted';},
+  (d:any)=>{d.readability.logic[0].source.unknown=true;},
+  (d:any)=>{d.readability.logic=Array(33).fill(d.readability.logic[0]);},
+ ]) {const bad=structuredClone(next);change(bad);assert.equal(validate(bad),false);}
+});
