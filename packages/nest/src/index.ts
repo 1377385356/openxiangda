@@ -31,3 +31,6 @@ export { OpenXiangdaManagedCommandHandler } from './managed-command.js';
 export type { OpenXiangdaManagedCommandContext, OpenXiangdaManagedCommandPlanner } from './managed-command.js';
 
 export * from './event-worker-effect.js';
+
+export { databaseAcceptedTime } from 'openxiangda-contracts';
+export type { DataTransactionAcceptedTimeValue } from 'openxiangda-contracts';

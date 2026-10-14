@@ -642,3 +642,13 @@ platformAccess: { dataMutations: [
 
 可信 Scheduler/补偿 Worker：给可供后台执行的同一具名操作 `dataMutations` 条目加 `allowRuntimeWorker: true`，并使用
 `await applicationData.withWorkerAction('callback-operation-code', () => callbackService.handle(originalInput))`。此作用域中的 `.transaction()` 自动携带当前 RuntimeLeaseService 的持有者与租约证明；平台在原事务锁定当前运行凭据、部署/Head 和该后台租约，并逐资源拒绝没有该 opt-in 的条目。无需 HTTP 请求或用户身份；没有活动租约、普通 OAuth 或已过期/被替代的实例仍被拒绝。该作用域可调用现有 CallbackService、DueSweep 等服务，整批操作同事务，保持原业务幂等键。
+
+## 数据库接受时刻与批量前置条件 {#database-accepted-time}
+
+需要把申请时刻和冷却期限写入同一原子事务时，具名动作声明 platformAccess.transactionTime: { mode: 'database-accepted' }，并启用 dataCommands: { mode: 'recoverable-native' }。从 openxiangda/nest 导入 databaseAcceptedTime，写 requestedAt: databaseAcceptedTime()、nextAllowedAt: databaseAcceptedTime(30 * 60 * 1000)。这是事务值表达式；只有已声明、可写、秒精度的顶级datetime字段由Native解析，JSON或事件载荷里的同形内容保持普通值。普通CRUD、事件worker、队列及调用方时钟不取得这项能力。
+
+所有已有update/delete/increment目标必须在同一事务有record-match、record-assert或record-set-match锁守卫。平台在全部显式锁和前置条件准备完成后只取一次数据库clock_timestamp，动态守卫、生成字段与回执evaluatedAt使用同一时刻。偏移为整数，绝对值最多366天；不接受SQL、调用方时间或身份覆盖。原结果恢复返回原回执，不重新取当前时间。
+
+同一批记录需要共同字段/时间条件时，可再声明 transactionTime.recordSetAssertions: true；record-set-match.assertions 使用最多20项现有value/field/database-now条件，对所有已锁、可读且版本匹配的行执行。最多500行、20个总守卫、单资源一组的预算保持。失败整体回滚，不能将隐藏字段或actor-authority塞入assertions。该入口仅供具名交互动作，事件worker保留原守卫白名单。
+
+编译分别要求data.transaction-time-values 1.0.0及（显式使用时）data.record-set-assertions 1.0.0；需要正式匹配的SDK和目标平台，源码构建不等于现场可用。

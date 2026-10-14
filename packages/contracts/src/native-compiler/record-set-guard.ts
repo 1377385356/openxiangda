@@ -1,3 +1,4 @@
+import { isDataTransactionRecordAssertion } from './transaction-record-assertion.js';
 import type { DataTransactionRecordSetMatchGuard } from '../types.js';
 
 export const DATA_TRANSACTION_RECORD_SET_MAX_RECORDS = 500;
@@ -8,12 +9,13 @@ const object = (value: unknown): value is Record<string, unknown> =>
 /** Shape and identity bounds only; row/field authorization remains with Native. */
 export function isDataTransactionRecordSetMatchGuard(value: unknown): value is DataTransactionRecordSetMatchGuard {
   if (!object(value) || value.kind !== 'record-set-match' ||
-    Object.keys(value).some(key => !['kind', 'resourceCode', 'errorCode', 'records', 'where'].includes(key)) ||
+    Object.keys(value).some(key => !['kind', 'resourceCode', 'errorCode', 'records', 'where', 'assertions'].includes(key)) ||
     typeof value.resourceCode !== 'string' || value.resourceCode.length > 64 ||
     !/^[a-z][a-z0-9]*(?:[-_.][a-z0-9]+)*$/.test(value.resourceCode) ||
     typeof value.errorCode !== 'string' || !/^OPENXIANGDA_[A-Z0-9_]{1,96}$/.test(value.errorCode) ||
     !Array.isArray(value.records) || !value.records.length || value.records.length > DATA_TRANSACTION_RECORD_SET_MAX_RECORDS ||
-    (Object.hasOwn(value, 'where') && !object(value.where))) return false;
+    (Object.hasOwn(value, 'where') && !object(value.where)) ||
+    (Object.hasOwn(value, 'assertions') && (!Array.isArray(value.assertions) || !value.assertions.length || value.assertions.length > 20 || !value.assertions.every(isDataTransactionRecordAssertion)))) return false;
   const seen = new Set<string>();
   return value.records.every(record => {
     if (!object(record) || Object.keys(record).length !== 2 ||

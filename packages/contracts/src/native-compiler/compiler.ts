@@ -667,6 +667,8 @@ export function compileRequiredPlatformCapabilitiesV3(
       declaration: config.authz.directoryRoleSources }] : []),
     ...(resources.some(resource => resource.organization && resource.organization.mode !== 'none') ? [{ code: 'data.organizations' as const,
       declaration: resources.filter(resource => resource.organization && resource.organization.mode !== 'none').map(resource => ({ code: resource.code, organization: resource.organization })) }] : []),
+    ...(operations.some(operation => operation.platformAccess?.transactionTime) ? [{ code: 'data.transaction-time-values' as const, declaration: operations.filter(operation => operation.platformAccess?.transactionTime).map(operation => ({code:operation.code,transactionTime:operation.platformAccess.transactionTime})) }] : []),
+    ...(operations.some(operation => operation.platformAccess?.transactionTime?.recordSetAssertions) ? [{ code: 'data.record-set-assertions' as const, declaration: operations.filter(operation => operation.platformAccess?.transactionTime?.recordSetAssertions).map(operation => ({code:operation.code,transactionTime:operation.platformAccess.transactionTime})) }] : []),
     ...(operations.some(operation => operation.platformAccess?.directoryClasses) ? [{ code: 'directory.current-classes' as const, declaration: operations.filter(operation => operation.platformAccess?.directoryClasses).map(operation => ({ code: operation.code, directoryClasses: operation.platformAccess.directoryClasses })) }] : []),
     ...(operations.some(operation => operation.platformAccess?.selectedDepartments) ? [{ code: 'directory.selected-departments' as const, declaration: operations.filter(operation => operation.platformAccess?.selectedDepartments).map(operation => ({code:operation.code,selectedDepartments:operation.platformAccess.selectedDepartments})) }] : []),
     ...(operations.some(operation => operation.platformAccess?.directory?.mode === 'selected-user') ? [{ code: 'directory.selected-user' as const, declaration: operations.filter(operation => operation.platformAccess?.directory?.mode === 'selected-user').map(operation => ({code:operation.code,directory:operation.platformAccess.directory})) }] : []),
@@ -2845,7 +2847,7 @@ function validateOperationPlatformAccess(
   const access = object(value, pointer);
   exactKeys(
     access,
-    ['directory', 'directoryClasses', 'selectedDepartments', 'managedFiles', 'managedFileCopies', 'notification', 'workflow', 'roleAssertions', 'decimalReservation', 'dataCommands', 'recordEdit', 'ownedSubject', 'workflowStage', 'dataMutations'],
+    ['directory', 'directoryClasses', 'transactionTime', 'selectedDepartments', 'managedFiles', 'managedFileCopies', 'notification', 'workflow', 'roleAssertions', 'decimalReservation', 'dataCommands', 'recordEdit', 'ownedSubject', 'workflowStage', 'dataMutations'],
     pointer,
     true
   );
@@ -2932,6 +2934,16 @@ function validateOperationPlatformAccess(
     };
   }
 
+
+  if (access.transactionTime !== undefined) {
+    const p = `${pointer}/transactionTime`;
+    const entry = object(access.transactionTime, p);
+    exactKeys(entry, ['mode','recordSetAssertions'], p, true);
+    if (entry.mode !== 'database-accepted' || access.dataCommands?.mode !== 'recoverable-native' ||
+      (entry.recordSetAssertions !== undefined && entry.recordSetAssertions !== true))
+      fail('NATIVE_OPERATION_TRANSACTION_TIME_INVALID', p);
+    result.transactionTime = { mode: 'database-accepted', ...(entry.recordSetAssertions ? { recordSetAssertions: true } : {}) };
+  }
   if (access.directoryClasses !== undefined) {
     const entryPointer = `${pointer}/directoryClasses`;
     const entry = object(access.directoryClasses, entryPointer);

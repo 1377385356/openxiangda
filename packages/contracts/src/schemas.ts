@@ -3734,6 +3734,56 @@ const dataTransactionOperation = {
   ],
 } as const;
 
+const dataTransactionRecordAssertionSchema = {
+            oneOf: [
+              {
+                type: "object",
+                additionalProperties: false,
+                required: ["kind", "field", "operator"],
+                properties: {
+                  kind: { const: "value" },
+                  field: dataFieldCode,
+                  operator: {
+                    enum: [
+                      "eq", "neq", "gt", "gte", "lt", "lte", "contains",
+                      "startsWith", "endsWith", "in", "between", "has",
+                      "hasAny", "hasAll", "overlaps", "containedBy",
+                      "jsonContains", "isEmpty", "isNotEmpty",
+                    ],
+                  },
+                  value: {},
+                  path: { type: "string", minLength: 1, maxLength: 128 },
+                },
+              },
+              {
+                type: "object",
+                additionalProperties: false,
+                required: [
+                  "kind",
+                  "leftField",
+                  "operator",
+                  "rightField",
+                ],
+                properties: {
+                  kind: { const: "field" },
+                  leftField: dataFieldCode,
+                  operator: { enum: ["eq", "neq", "gt", "gte", "lt", "lte"] },
+                  rightField: dataFieldCode,
+                },
+              },
+              {
+                type: "object",
+                additionalProperties: false,
+                required: ["kind", "field", "operator"],
+                properties: {
+                  kind: { const: "database-now" },
+                  field: dataFieldCode,
+                  operator: { enum: ["eq", "neq", "gt", "gte", "lt", "lte"] },
+                },
+              },
+            ],
+          } as const;
+
 const dataTransactionGuard = {
   oneOf: [
     {
@@ -3753,6 +3803,7 @@ const dataTransactionGuard = {
             },
           },
         },
+        assertions: { type: 'array', minItems: 1, maxItems: 20, items: dataTransactionRecordAssertionSchema },
         where: { $ref: '#/$defs/dataWhere' },
       },
     },
@@ -3843,55 +3894,7 @@ const dataTransactionGuard = {
           type: "array",
           minItems: 1,
           maxItems: 20,
-          items: {
-            oneOf: [
-              {
-                type: "object",
-                additionalProperties: false,
-                required: ["kind", "field", "operator"],
-                properties: {
-                  kind: { const: "value" },
-                  field: dataFieldCode,
-                  operator: {
-                    enum: [
-                      "eq", "neq", "gt", "gte", "lt", "lte", "contains",
-                      "startsWith", "endsWith", "in", "between", "has",
-                      "hasAny", "hasAll", "overlaps", "containedBy",
-                      "jsonContains", "isEmpty", "isNotEmpty",
-                    ],
-                  },
-                  value: {},
-                  path: { type: "string", minLength: 1, maxLength: 128 },
-                },
-              },
-              {
-                type: "object",
-                additionalProperties: false,
-                required: [
-                  "kind",
-                  "leftField",
-                  "operator",
-                  "rightField",
-                ],
-                properties: {
-                  kind: { const: "field" },
-                  leftField: dataFieldCode,
-                  operator: { enum: ["eq", "neq", "gt", "gte", "lt", "lte"] },
-                  rightField: dataFieldCode,
-                },
-              },
-              {
-                type: "object",
-                additionalProperties: false,
-                required: ["kind", "field", "operator"],
-                properties: {
-                  kind: { const: "database-now" },
-                  field: dataFieldCode,
-                  operator: { enum: ["eq", "neq", "gt", "gte", "lt", "lte"] },
-                },
-              },
-            ],
-          },
+          items: dataTransactionRecordAssertionSchema,
         },
       },
     },
@@ -3934,55 +3937,7 @@ const dataTransactionGuard = {
           type: "array",
           minItems: 1,
           maxItems: 20,
-          items: {
-            oneOf: [
-              {
-                type: "object",
-                additionalProperties: false,
-                required: ["kind", "field", "operator"],
-                properties: {
-                  kind: { const: "value" },
-                  field: dataFieldCode,
-                  operator: {
-                    enum: [
-                      "eq", "neq", "gt", "gte", "lt", "lte", "contains",
-                      "startsWith", "endsWith", "in", "between", "has",
-                      "hasAny", "hasAll", "overlaps", "containedBy",
-                      "jsonContains", "isEmpty", "isNotEmpty",
-                    ],
-                  },
-                  value: {},
-                  path: { type: "string", minLength: 1, maxLength: 128 },
-                },
-              },
-              {
-                type: "object",
-                additionalProperties: false,
-                required: [
-                  "kind",
-                  "leftField",
-                  "operator",
-                  "rightField",
-                ],
-                properties: {
-                  kind: { const: "field" },
-                  leftField: dataFieldCode,
-                  operator: { enum: ["eq", "neq", "gt", "gte", "lt", "lte"] },
-                  rightField: dataFieldCode,
-                },
-              },
-              {
-                type: "object",
-                additionalProperties: false,
-                required: ["kind", "field", "operator"],
-                properties: {
-                  kind: { const: "database-now" },
-                  field: dataFieldCode,
-                  operator: { enum: ["eq", "neq", "gt", "gte", "lt", "lte"] },
-                },
-              },
-            ],
-          },
+          items: dataTransactionRecordAssertionSchema,
         },
       },
     },
@@ -7178,6 +7133,10 @@ const appOperationPlatformAccessSchema = {
   additionalProperties: false,
   minProperties: 1,
   properties: {
+    transactionTime: {
+      type: "object", additionalProperties: false, required: ["mode"],
+      properties: { mode: { const: "database-accepted" }, recordSetAssertions: { const: true } },
+    },
     directoryClasses: {
       type: "object", additionalProperties: false, required: ["maxIds"],
       properties: { maxIds: { type: "integer", minimum: 1, maximum: 20 } },

@@ -439,3 +439,26 @@ test('current actor classes require explicit bounded access in both native compi
     for (const implementation of [esm,cjs]) assert.throws(()=>compile(implementation));
   }
 });
+
+test('accepted time and set assertions negotiate separately and require recoverable explicit actions', () => {
+  const config=JSON.parse(corpus.configuration.canonical), contract=JSON.parse(corpus.contract.canonical);
+  const access=config.backend.operations[0].platformAccess, declared=contract.operations[0].platformAccess;
+  const compile=(impl:typeof esm)=>{
+    contract.configDigest=sha256Digest(config);return impl.compileNativeApplicationConfiguration({...input(config),contractBytes:canonicalJson(contract),expectedContractDigest:sha256Digest(contract)});
+  };
+  access.dataCommands=declared.dataCommands={mode:'recoverable-native'};
+  for(const time of [{mode:'database-accepted'},{mode:'database-accepted',recordSetAssertions:true}]){
+    access.transactionTime=declared.transactionTime=time;
+    for(const impl of [esm,cjs]){
+      const caps=compile(impl).requiredPlatformCapabilities;
+      assert.equal(caps.find(c=>c.code==='data.transaction-time-values')?.contractVersion,'1.0.0');
+      assert.equal(caps.some(c=>c.code==='data.record-set-assertions'),Object.hasOwn(time,'recordSetAssertions'));
+    }
+  }
+  for(const time of [{mode:'caller-now'},{mode:'database-accepted',recordSetAssertions:false},{mode:'database-accepted',offsetMilliseconds:0}]){
+    access.transactionTime=declared.transactionTime=time;for(const impl of [esm,cjs])assert.throws(()=>compile(impl));
+  }
+  access.transactionTime=declared.transactionTime={mode:'database-accepted'};
+  delete access.dataCommands;delete declared.dataCommands;
+  for(const impl of [esm,cjs])assert.throws(()=>compile(impl));
+});

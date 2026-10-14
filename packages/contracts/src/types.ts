@@ -1953,12 +1953,19 @@ export interface DataTransactionActorAuthorityGuard {
   errorCode: string;
 }
 
+export interface DataTransactionAcceptedTimeValue {
+  kind: 'database-accepted-time';
+  offsetMilliseconds: number;
+}
+
 export interface DataTransactionRecordSetMatchGuard {
   /** Verify every readable record and its explicit revision in one bounded set. */
   kind: 'record-set-match';
   resourceCode: string;
   errorCode: string;
   records: { id: string; expectedRevision: number }[];
+  /** Common bounded conditions checked against every locked readable record. */
+  assertions?: DataTransactionRecordAssertion[];
   where?: DataWhere;
 }
 

@@ -301,6 +301,8 @@ export interface AppOperationPlatformAccessDeclaration {
     mode: 'selected-user';
     fields: readonly Exclude<AppOperationDirectoryField, 'phone'>[];
   };
+  /** Post-lock Native time values, with optional bounded record-set assertions. */
+  transactionTime?: { mode: 'database-accepted'; recordSetAssertions?: true };
   /** Resolve only the verified actor's source classes, without directory management. */
   directoryClasses?: { maxIds: number };
   /** Selected live department facts; does not grant directory read or management. */
