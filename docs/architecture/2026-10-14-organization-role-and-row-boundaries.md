@@ -42,3 +42,5 @@ V2 role union、唯一 membership 键和 RLS 仍以 environment/user/role 组成
 ## 已有业务动作入口的组织边界
 
 现有 Native 业务动作把已经验证的当前用户转换为 application principal，用原 platformAccess 和业务动作 proof 约束副作用。组织资源不能让转换抹掉用户边界。转换时只从可信当前 principal 派生内部 organizationActor（用户、工作组织、授权版本、绑定 ID），不接受 body/header。保留原签名与声明验证，再由 SQL 对同一条仍有效且有该动作能力的 membership 结合组织 reach 和数据行策略；同一绑定同时覆盖变更前后。字段写入继续由原动作声明及服务端实现约束，不创建新的身份或后台全区身份。普通 application/定时/服务令牌没有该证明时，组织资源拒绝。RLS、记录所属组织触发器与 Native 事务预检都执行该边界。Connected Dev 的短期 proof 和 source invocation proof 绑定组织字段；错误、源撤销、组织不匹配、缺少事实和权限版本变化失败关闭。
+
+组织资源的 `organization_id` 是有界查询/聚合可用的只读平台元数据；普通资源不增加不存在的列。应用按该字段做区/校统计，无需创建第二个学校归属字段或读取原始数据库。服务端字段写入检查和数据库触发器都拒绝修改，记录读回仍经过同一 RLS。
