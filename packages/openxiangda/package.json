@@ -185,7 +185,8 @@
       "可选recordSetAssertions对单组最多500个锁定且可读的记录执行公共字段或数据库时间条件，保留20总守卫预算。"
     ],
     "fixes": [
-      "CLI模板及随包中文资料与根包同批升级，七包组合由Changesets确定。"
+      "CLI模板及随包中文资料与根包同批升级，七包组合由Changesets确定。",
+      "应用声明校验及双bundle保留班级目录与事务时间权限，统一openxiangda/nest入口导出数据库时间值及类型；真实应用消费与ESM/CJS编译贯通验证。"
     ],
     "affectedUsers": [
       "使用家校来源班级、多组织身份或精确申请/冷却时刻的V2应用。"
@@ -206,7 +207,7 @@
       "platform": "directory.current-classes 1.0.0; data.transaction-time-values 1.0.0; opted-in data.record-set-assertions 1.0.0; exact paired contracts"
     },
     "issues": [],
-    "sha256": "255b06bcc6d6784959781e789f4e96ba92f19865f0a27f3475e77b94543213a5",
+    "sha256": "b034b4579f6640556cf5592e8908acd2c05922b6692d24dfe2dc2b077c913995",
     "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.71.0"
   }
 }

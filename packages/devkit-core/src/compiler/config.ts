@@ -4773,6 +4773,8 @@ function validateBackendOperations(
       const allowedAccessKeys = new Set([
         'directory',
         'selectedDepartments',
+        'directoryClasses',
+        'transactionTime',
         'managedFiles',
         'managedFileCopies',
         'notification',
@@ -4844,6 +4846,21 @@ function validateBackendOperations(
           Object.keys(directory).some(
             key => !['mode', 'fields'].includes(key)
           );
+      }
+      if (access.directoryClasses !== undefined) {
+        const classes = object(access.directoryClasses);
+        invalid ||= !isRecord(access.directoryClasses) ||
+          !Number.isSafeInteger(classes.maxIds) ||
+          Number(classes.maxIds) < 1 || Number(classes.maxIds) > 20 ||
+          Object.keys(classes).some(key => key !== 'maxIds');
+      }
+      if (access.transactionTime !== undefined) {
+        const time = object(access.transactionTime);
+        invalid ||= !isRecord(access.transactionTime) ||
+          time.mode !== 'database-accepted' ||
+          object(access.dataCommands).mode !== 'recoverable-native' ||
+          (time.recordSetAssertions !== undefined && time.recordSetAssertions !== true) ||
+          Object.keys(time).some(key => !['mode', 'recordSetAssertions'].includes(key));
       }
       if (access.selectedDepartments !== undefined) {
         const departments = object(access.selectedDepartments);

@@ -436,6 +436,13 @@ export function normalizeConfiguration(
                         directory: normalizeOperationDirectory(operation.platformAccess.directory),
                       }
                     : {}),
+                  ...(operation.platformAccess.directoryClasses ? {
+                    directoryClasses: { maxIds: operation.platformAccess.directoryClasses.maxIds },
+                  } : {}),
+                  ...(operation.platformAccess.transactionTime ? {
+                    transactionTime: { mode: operation.platformAccess.transactionTime.mode,
+                      ...(operation.platformAccess.transactionTime.recordSetAssertions ? { recordSetAssertions: true as const } : {}) },
+                  } : {}),
                   ...(operation.platformAccess.selectedDepartments ? { selectedDepartments: {
                     fields: uniqueSorted(operation.platformAccess.selectedDepartments.fields), maxIds: operation.platformAccess.selectedDepartments.maxIds,
                   } } : {}),
@@ -1818,6 +1825,13 @@ function compileOperations(config: OpenXiangdaAppConfig) {
                     directory: normalizeOperationDirectory(operation.platformAccess.directory),
                   }
                 : {}),
+              ...(operation.platformAccess.directoryClasses ? {
+                directoryClasses: { maxIds: operation.platformAccess.directoryClasses.maxIds },
+              } : {}),
+              ...(operation.platformAccess.transactionTime ? {
+                transactionTime: { mode: operation.platformAccess.transactionTime.mode,
+                  ...(operation.platformAccess.transactionTime.recordSetAssertions ? { recordSetAssertions: true as const } : {}) },
+              } : {}),
               ...(operation.platformAccess.selectedDepartments ? { selectedDepartments: {
                 fields: uniqueSorted(operation.platformAccess.selectedDepartments.fields), maxIds: operation.platformAccess.selectedDepartments.maxIds,
               } } : {}),
@@ -2006,7 +2020,7 @@ function runtimeProtocolCapabilities(config: OpenXiangdaAppConfig) {
       resource.schema.fields.some(field =>
         field.type.startsWith('user.') || field.type.startsWith('department.')
       )
-    ) || operations.some(operation => operation.platformAccess?.directory || operation.platformAccess?.selectedDepartments);
+    ) || operations.some(operation => operation.platformAccess?.directory || operation.platformAccess?.selectedDepartments || operation.platformAccess?.directoryClasses);
   return uniqueSorted([
     'application-native-2',
     ...(requiresExtendedDeclarationCapacity(config) ? ['application.extended-declaration-capacity'] : []),
@@ -2028,6 +2042,9 @@ function runtimeProtocolCapabilities(config: OpenXiangdaAppConfig) {
     ...(requiresOwnedSubtableMinimumRows(config.data?.resources || []) ? ['data.subtable-minimum-rows'] : []),
     ...(usesDirectory ? ['directory-v2'] : []),
     ...(operations.some(operation => operation.platformAccess?.selectedDepartments) ? ['directory.selected-departments'] : []),
+    ...(operations.some(operation => operation.platformAccess?.directoryClasses) ? ['directory.current-classes'] : []),
+    ...(operations.some(operation => operation.platformAccess?.transactionTime) ? ['data.transaction-time-values'] : []),
+    ...(operations.some(operation => operation.platformAccess?.transactionTime?.recordSetAssertions) ? ['data.record-set-assertions'] : []),
     ...(operations.some(operation=>operation.platformAccess?.directory?.mode==='selected-user') ? ['directory.selected-user'] : []),
     ...(operations.some(operation => operation.platformAccess?.directory?.mode === 'current-initiator' && operation.platformAccess.directory.fields.includes('phone')) ||
     config.data?.concurrency?.commands.some(command => command.execution?.directory?.fields.includes('phone'))
