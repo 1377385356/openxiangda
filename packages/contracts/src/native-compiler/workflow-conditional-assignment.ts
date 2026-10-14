@@ -250,7 +250,15 @@ export function selectWorkflowConditionalAssignment(entry: WorkflowConditionalAs
 export function validateWorkflowAssignmentLeafFacts(leaf: WorkflowStandardBindingEntry, definition: WorkflowDefinition, nodeId: string): string[] {
   const node=definition.nodes[nodeId]; if(!node||!('binding' in node))return ['WORKFLOW_CONDITIONAL_HUMAN_REQUIRED'];
   const errors:string[]=[];
-  if(leaf.provider==='supervisor_chain') errors.push(...validateWorkflowSupervisorChains(definition,{bindings:{[node.binding]:leaf}}));
+  if(leaf.provider==='supervisor_chain') {
+    // This is a node-local assignment, not a rewrite of its shared source
+    // binding. Keep the complete graph for fact/dominance checks, but do not
+    // require unrelated nodes using the same source to adopt this node's mode.
+    const binding = `$people-validation:${nodeId}`;
+    errors.push(...validateWorkflowSupervisorChains({
+      ...definition, nodes: { ...definition.nodes, [nodeId]: { ...node, binding } },
+    }, { bindings: { [binding]: leaf } }));
+  }
   const paths=[leaf.inputPath,leaf.departmentIdFrom,leaf.selectedInputPath,leaf.resourceIdFrom,leaf.scope?.valueFrom,
     ...(typeof leaf.from==='object'?[leaf.from.field]:[]),...Object.values(leaf.routing?.dimensions||{}).map(d=>d.valueFrom),...Object.values(leaf.routing?.sources||{}).map(s=>s.scope?.valueFrom)].filter((v):v is string=>typeof v==='string');
   for(const path of paths) if(!workflowConditionalAssignmentFact(definition,nodeId,path))errors.push(`WORKFLOW_CONDITIONAL_LEAF_FACT_UNAVAILABLE:${path}`);
