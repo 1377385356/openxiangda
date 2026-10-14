@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.71.0",
+  "version": "2.72.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -102,13 +102,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.11.7",
-    "openxiangda-contracts": "2.92.0",
-    "openxiangda-devkit-core": "2.69.2",
+    "openxiangda-cli": "2.11.8",
+    "openxiangda-contracts": "2.93.0",
+    "openxiangda-devkit-core": "2.70.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.2.20",
-    "openxiangda-nest": "2.22.0",
-    "openxiangda-skill-kit": "2.3.122",
+    "openxiangda-mcp": "2.2.21",
+    "openxiangda-nest": "2.22.1",
+    "openxiangda-skill-kit": "2.3.123",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -174,40 +174,38 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.71.0",
+    "version": "2.72.0",
     "status": "reviewed",
-    "title": "本人班级目录与数据库事务时间",
-    "summary": "具名动作和浏览器复用平台本人工作组织的家校班级投影，并由Native锁后的数据库时刻派生申请及冷却时间。",
+    "title": "有界匿名具名查询",
+    "summary": "为匿名公开门户提供固定字段、排序、参数和签名游标的服务端具名查询，减少首页、搜索和排行的全量分页读取。",
     "newFeatures": [
-      "loadCurrentDirectoryClasses读取当前用户/工作组织的班级、学校规范名称、校区、学段、年级和本人来源角色，组织切换丢弃迟到响应。",
-      "具名Nest动作显式声明directoryClasses.maxIds并精确解析1至20个来源班级，任一不可见时整体拒绝。",
-      "显式transactionTime动作使用databaseAcceptedTime写入datetime和最多366天整数偏移，原事务回执恢复不重新取时间。",
-      "可选recordSetAssertions对单组最多500个锁定且可读的记录执行公共字段或数据库时间条件，保留20总守卫预算。"
+      "frontend.publicAccess 支持 publicQueries 与 public.query，固定资源、字段投影、排序、limit 和参数绑定。",
+      "匿名浏览器 SDK 提供具名查询客户端；平台服务端复用公开字段、固定 publicFilters、RLS 和托管文件投影。",
+      "记录查询游标绑定查询、参数、签名和有界偏移，未知字段、参数、游标和超限请求直接拒绝。"
     ],
     "fixes": [
-      "CLI模板及随包中文资料与根包同批升级，七包组合由Changesets确定。",
-      "应用声明校验及双bundle保留班级目录与事务时间权限，统一openxiangda/nest入口导出数据库时间值及类型；真实应用消费与ESM/CJS编译贯通验证。"
+      "公开目录页面可在具名查询声明存在时使用有界首屏查询，旧 public.list/public.read 策略保持兼容。",
+      "compiler、bundle、JSON Schema 和 server execution 统一校验 publicQueries，避免仅更新页面而绕过平台匿名访问合同。"
     ],
     "affectedUsers": [
-      "使用家校来源班级、多组织身份或精确申请/冷却时刻的V2应用。"
+      "需要匿名首页、公开目录、搜索、排行或统计的 OpenXiangda V2 应用。"
     ],
     "upgradeSteps": [
-      "安装同一正式发行七包；平台维护者固定精确源码、contracts纯校验器和管理台seal后通过官方发行部署。",
-      "为需要的新动作显式声明目录/时间能力；所有已有写目标保留同ID的锁守卫及CAS。",
-      "通过目标预检后接入；真实组织同步、实际用户权限和PC/手机业务验收分别执行。"
+      "升级同一正式发行的 openxiangda、contracts、devkit-core 和 CLI 组合。",
+      "在匿名策略中声明 public.query 与 publicQueries，并按本应用字段配置固定排序和参数。",
+      "先在 TEST/preproduction 完成请求量、权限、游标失效和真实浏览器 PC/mobile 验收，再发布生产。"
     ],
     "knownLimitations": [
-      "本地及隔离PostgreSQL验证不代表站点已更新或真实用户业务通过。",
-      "目录读取不授予应用写权限，不将校区当作独立企业，不提供其他用户、unionId或安装秘密。",
-      "事务时间值仅供具名交互动作的秒精度datetime字段；普通CRUD、事件worker及队列不取得该能力。"
+      "本地构建和单元测试不代表学校站点已安装该平台组合。",
+      "现版本服务端 aggregate 查询返回固定 count；复杂维度和度量仍需单独声明与验证。"
     ],
     "compatibility": {
       "node": "Node.js 24 or newer for maintained toolchain",
       "generation": "OpenXiangda V2; V1 unchanged",
-      "platform": "directory.current-classes 1.0.0; data.transaction-time-values 1.0.0; opted-in data.record-set-assertions 1.0.0; exact paired contracts"
+      "platform": "anonymous-public named queries 1.0.0; existing anonymous public list/read policies remain compatible"
     },
     "issues": [],
-    "sha256": "b034b4579f6640556cf5592e8908acd2c05922b6692d24dfe2dc2b077c913995",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.71.0"
+    "sha256": "cc2aaebd52707a5e6acf65319407411baa61aff689a2f5ea91294effd5f0ed31",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.72.0"
   }
 }
