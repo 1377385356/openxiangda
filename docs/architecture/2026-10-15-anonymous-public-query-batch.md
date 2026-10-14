@@ -11,3 +11,5 @@ Public package changes require a reviewed Changeset and frozen official release.
 ## Local verification and Changeset review
 
 The new transport/type/parser suite passed six tests and TypeScript passed after rebuilding the fast-forwarded contracts dist (initial stale dist failures were preserved in /tmp/zjnu-public-query-sdk-types.log). verify:affected passed all 12 selected tasks in 102.706 seconds, covering package tests/check/build and template checks/build/test. The Changeset is reviewed as a root SDK minor addition: only openxiangda publishable runtime/types/docs change; existing single-query bytes retain their endpoint. Exact version is selected later by the formal release planner. Another live SDK release validation has been identified on the same host; no competing npm writes were started.
+
+Formal release:version correctly rejected the initial root-only Changeset with ROOT_TEMPLATE_CLI_CHANGESET_REQUIRED before writing versions. The reviewed release unit now includes the required openxiangda-cli patch so its packaged template pins the same root SDK; no gate is bypassed. The exact root minor/CLI patch versions still come from the planner.
