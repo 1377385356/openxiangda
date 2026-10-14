@@ -293,6 +293,327 @@ MCP 使用项目锁定的根包；在客户端配置下列 stdio 启动参数，
       "additionalProperties": false,
       "properties": {
         "operation": {
+          "const": "workflows.legacy-prepare",
+          "description": "准备旧审批当前节点接续，冻结原申请人、轮次、历史和Native业务单"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "test",
+            "production"
+          ]
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "schemaVersion": {
+              "const": "openxiangda.workflow-legacy-adoption-prepare/v2"
+            },
+            "requestKey": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            "expectedHeadRevision": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "workflowCode": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+            },
+            "resourceCode": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+            },
+            "recordId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 36,
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            },
+            "expectedRevision": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "source": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "system": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+                },
+                "recordKey": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 255
+                },
+                "snapshotSha256": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "recordSha256": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              },
+              "required": [
+                "system",
+                "recordKey",
+                "snapshotSha256",
+                "recordSha256"
+              ]
+            },
+            "checkpoint": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "initiatorUserId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 36,
+                  "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+                },
+                "approvalRound": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2147483647
+                },
+                "currentNodeId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+                },
+                "initiatorField": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 63,
+                  "pattern": "^[A-Za-z][A-Za-z0-9_]{0,62}$"
+                },
+                "initiatorIdentityField": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 63,
+                  "pattern": "^[A-Za-z][A-Za-z0-9_]{0,62}$"
+                },
+                "roundField": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 63,
+                  "pattern": "^[A-Za-z][A-Za-z0-9_]{0,62}$"
+                },
+                "stateField": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 63,
+                  "pattern": "^[A-Za-z][A-Za-z0-9_]{0,62}$"
+                },
+                "stateValue": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 255
+                },
+                "history": {
+                  "type": "array",
+                  "maxItems": 64,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "nodeId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128,
+                        "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+                      },
+                      "reviewerDisplay": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 255
+                      },
+                      "reviewedAt": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      },
+                      "opinion": {
+                        "type": "string",
+                        "maxLength": 8192
+                      },
+                      "reviewerField": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 63,
+                        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,62}$"
+                      },
+                      "reviewedAtField": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 63,
+                        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,62}$"
+                      },
+                      "opinionField": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 63,
+                        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,62}$"
+                      }
+                    },
+                    "required": [
+                      "nodeId",
+                      "reviewerDisplay",
+                      "reviewedAt",
+                      "opinion",
+                      "reviewerField",
+                      "reviewedAtField",
+                      "opinionField"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "initiatorUserId",
+                "approvalRound",
+                "currentNodeId",
+                "initiatorField",
+                "initiatorIdentityField",
+                "roundField",
+                "stateField",
+                "stateValue",
+                "history"
+              ]
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "requestKey",
+            "reason",
+            "expectedHeadRevision",
+            "workflowCode",
+            "resourceCode",
+            "recordId",
+            "expectedRevision",
+            "source",
+            "checkpoint"
+          ]
+        }
+      },
+      "required": [
+        "operation",
+        "environment",
+        "input"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "workflows.legacy-apply",
+          "description": "按原计划摘要原子接续当前节点，仅创建当前待办"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "test",
+            "production"
+          ]
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "schemaVersion": {
+              "const": "openxiangda.workflow-legacy-adoption-apply/v2"
+            },
+            "planId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 36,
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            },
+            "expectedPlanDigest": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "planId",
+            "expectedPlanDigest"
+          ]
+        }
+      },
+      "required": [
+        "operation",
+        "environment",
+        "input"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "workflows.legacy-receipt",
+          "description": "读取旧审批接续准备或执行回执"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "test",
+            "production"
+          ]
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "planId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 36,
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            }
+          },
+          "required": [
+            "planId"
+          ]
+        }
+      },
+      "required": [
+        "operation",
+        "environment",
+        "input"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
           "const": "acceptance-data.prepare",
           "description": "准备可回收的TEST原生数据批次及原验收身份"
         },
