@@ -436,7 +436,7 @@ if (args[0] === "install") {
   };
   const sourceBuild = spawnSync(
     process.env.OPENXIANGDA_REAL_PNPM,
-    ["run", "build"],
+    ["run", "build", "--concurrency=2"],
     { cwd: sourceRoot, encoding: "utf8", env: sourceEnvironment }
   );
   if (sourceBuild.status !== 0) { reportInstallFailure("source-build", sourceBuild); process.exit(sourceBuild.status ?? 1); }
