@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.73.0",
+  "version": "2.74.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -102,13 +102,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.11.9",
-    "openxiangda-contracts": "2.94.0",
-    "openxiangda-devkit-core": "2.71.0",
+    "openxiangda-cli": "2.11.10",
+    "openxiangda-contracts": "2.95.0",
+    "openxiangda-devkit-core": "2.71.1",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.2.22",
-    "openxiangda-nest": "2.22.2",
-    "openxiangda-skill-kit": "2.3.124",
+    "openxiangda-mcp": "2.2.23",
+    "openxiangda-nest": "2.22.3",
+    "openxiangda-skill-kit": "2.3.125",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -174,33 +174,39 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.73.0",
+    "version": "2.74.0",
     "status": "reviewed",
-    "title": "匿名聚合查询与工作流作者体验",
-    "summary": "为匿名公开门户提供固定维度、度量和排序的有界聚合查询，并包含已评审的工作流作者体验改进。",
+    "title": "原生审批人来源与中文参数编辑",
+    "summary": "流程源码可以开放有界的部门主管、逐级主管和表单成员参数；配套平台支持在普通来源、条件规则与新节点中使用同一份已发布目录。",
     "newFeatures": [
-      "匿名 public.query 支持固定 aggregate dimensions、measures 和 order，并复用 publicFilters、Native RLS 与有界分页。",
-      "工作流作者体验改进随同一正式七包组合发布。"
+      "Workflow authoring.peopleSources 声明当前AppVersion拥有的来源模板、中文标题及参数枚举或整数范围，浏览器不能扩大源码授权上限。",
+      "部门主管成为标准条件人员来源；配套平台显式返回 nativePeopleAuthoring 后，已发布审批或办理节点也能编辑完整原生人员来源。",
+      "部门字段、主管级别、审批终点、连续办理和无人策略以中文说明呈现，保存仍使用原始类型值。"
     ],
     "fixes": [
-      "compiler、bundle、JSON Schema 和 server execution 对匿名聚合查询保持同一闭合合同。"
+      "完整人员来源投影保留主管及部门参数，不把另一旧角色来源的scope、routing或人数约束混入新来源；旧principal-only编辑保持原限制。",
+      "普通来源与条件规则切换时正确注册并观察表单人员类型，保留整份来源，避免空配置或丢失原生条件叶。",
+      "模板目录不使后续步骤事实提前可用；非法参数、缺少组织上下文、未知值和不安全JSON结构失败关闭，连续主管必须使用允许的依次审批模式。"
     ],
     "affectedUsers": [
-      "需要匿名首页统计、分类、学院分布或排行的 OpenXiangda V2 应用。"
+      "在PC流程画布配置部门主管、逐级主管、表单成员或条件审批人的OpenXiangda V2应用管理员和开发者。"
     ],
     "upgradeSteps": [
-      "升级同一正式发行组合；在 TEST/preproduction 验证匿名聚合、游标、权限和浏览器性能。"
+      "使用本次正式工具组合，并升级采用配套contracts与目录/投影服务的后端；核对真实 nativePeopleAuthoring 标志，不从SDK版本推断平台已支持。",
+      "应用在源码声明真实输入事实和明确的参数上限，再按正规流程版本规划、应用TEST部署和实际角色验证接入；保留原节点、默认人员、在途冻结快照及source-base。"
     ],
     "knownLimitations": [
-      "本地门禁不代表学校站点已安装该平台组合。"
+      "本地合成HTTP、门禁或npm发行不代表客户平台已部署，也不代表真实组织主管解析、AI模型或OCR验收已通过。",
+      "未开放的provider、routing、委托和范围维度仍由源码拥有；抄送、发起自选及应用provider不通过通用参数控件扩权。",
+      "旧平台没有显式原生作者能力时保留旧编辑路径；源码采用新authoring字段后，不能直接回退到不认识该声明的旧内核。"
     ],
     "compatibility": {
       "node": "Node.js 24 or newer for maintained toolchain",
       "generation": "OpenXiangda V2; V1 unchanged",
-      "platform": "anonymous-public named and aggregate queries 1.1.0; existing public list/read policies remain compatible"
+      "platform": "Paired workflow released-catalog/node-configuration services and contracts; nativePeopleAuthoring must be explicitly advertised"
     },
     "issues": [],
-    "sha256": "76468650e5afabd8c49c1b11655a8261044d2e6bc5e2916ae07225b073ee968c",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.73.0"
+    "sha256": "72e5e3e9b12305bf729a5ec117b7320389e66459478ac8656e2e1627a770c298",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.74.0"
   }
 }
