@@ -129,6 +129,8 @@ export function validateWorkflowDesignerCapabilities(base: WorkflowDefinition, n
 }
 
 export type WorkflowDesignerEdit =
+  | { type: 'insert_start'; target: string; node: WorkflowNode }
+  | { type: 'insert_start_parallel'; target: string; id: string; joinId: string; title: string; branches: Array<{ id: string; title: string; when?: WorkflowExpression }> }
   | { type: 'insert_parallel'; from: string; target: string; id: string; joinId: string; title: string; branches: Array<{ id: string; title: string; when?: WorkflowExpression }>; edge?: 'approve' | 'reject' | 'next' | 'default' | number }
   | { type: 'remove_parallel_branch'; nodeId: string; branchId: string }
   | { type: 'insert'; from: string; target: string; node: WorkflowNode; edge?: 'approve' | 'reject' | 'next' | 'default' | number }
@@ -138,13 +140,23 @@ export type WorkflowDesignerEdit =
 
 /** Semantic edits are independent of canvas coordinates and preserve stable existing ids. */
 export function editWorkflowDesignerDefinition(source: WorkflowDefinition, edit: WorkflowDesignerEdit): WorkflowDefinition {
-  if (edit.type === 'insert_parallel') {
+  if (edit.type === 'insert_parallel' || edit.type === 'insert_start_parallel') {
     if (source.nodes[edit.joinId] || edit.joinId === edit.id || edit.branches.length < 2 || edit.branches.length > 8) throw new Error('WORKFLOW_DESIGNER_PARALLEL_INSERT_INVALID');
-    const next = editWorkflowDesignerDefinition(source, { type: 'insert',from: edit.from,target: edit.target,node: { id: edit.id,kind: 'parallel',title: edit.title,join: edit.joinId,branches: edit.branches.map(branch => ({ ...branch,target: edit.joinId })) },...(edit.edge === undefined ? {} : { edge: edit.edge }) });
+    const node: WorkflowNode = { id: edit.id,kind: 'parallel',title: edit.title,join: edit.joinId,branches: edit.branches.map(branch => ({ ...branch,target: edit.joinId })) };
+    const next = editWorkflowDesignerDefinition(source, edit.type === 'insert_start_parallel'
+      ? { type: 'insert_start',target: edit.target,node }
+      : { type: 'insert',from: edit.from,target: edit.target,node,...(edit.edge === undefined ? {} : { edge: edit.edge }) });
     next.nodes[edit.joinId] = { id: edit.joinId,kind: 'join',title: '全部完成后继续',parallel: edit.id,next: edit.target };
     return next;
   }
   const definition = structuredClone(source);
+  if (edit.type === 'insert_start') {
+    if (source.startAt !== edit.target || !definition.nodes[edit.target] || definition.nodes[edit.node.id] || edit.node.kind === 'correction' || edit.node.kind === 'end' || edit.node.kind === 'join') throw new Error('WORKFLOW_DESIGNER_INSERT_INVALID');
+    definition.nodes[edit.node.id] = structuredClone(edit.node);
+    definition.startAt = edit.node.id;
+    for (const node of Object.values(definition.nodes)) if (node.kind === 'correction' && node.next === source.startAt) node.next = definition.startAt;
+    return definition;
+  }
   const rewrite = (from: WorkflowNode, target: string, replacement: string) => {
     if (from.kind === 'approval') { if (from.onApprove === target) from.onApprove = replacement; if (from.onReject === target) from.onReject = replacement; }
     else if (from.kind === 'condition') { for (const branch of from.branches) if (branch.target === target) branch.target = replacement; if (from.otherwise === target) from.otherwise = replacement; }

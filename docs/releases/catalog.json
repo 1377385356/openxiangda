@@ -3,6 +3,38 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.70.2",
+      "status": "reviewed",
+      "title": "首部节点插入与补正回放修复",
+      "summary": "首部插入人工、条件、业务或并行节点时，原子更新流程入口和补正重提交入口，保留新首审批与严格校验。",
+      "newFeatures": [],
+      "fixes": [
+        "首部插入同步补正回放目标，多补正和连续插入删除保留完整路径。",
+        "补正可达性遍历并行和汇合后继，保留禁止正向进入补正与退回源必须可达的规则。"
+      ],
+      "affectedUsers": [
+        "使用流程画布首部插入、补正重提交或并行结构的V2应用。"
+      ],
+      "upgradeSteps": [
+        "安装同源完整七包并配套后端共享校验器，核对纯校验器摘要。",
+        "从合同现场2.69.1升级继承组织授权、业务待办与旧审批接续合同；两份正式SQL须通过完整门禁和目标预检。完整配套已获授权。",
+        "应用更新前通过官方源码导出和注册保护保留现场流程第13版；不以旧源码覆盖或重放未保存草稿。"
+      ],
+      "knownLimitations": [
+        "鼠标消失未复现，本地拖动及失焦恢复正常不代表现场问题已修复。",
+        "包发行不代表部署或真实角色验收；安装接续能力不授权调用旧审批接续、重放通知或晋级生产。"
+      ],
+      "compatibility": {
+        "node": "Node.js 24 or newer for maintained toolchain",
+        "generation": "OpenXiangda V2; V1 unchanged",
+        "platform": "同源contracts纯校验器；从171017升级包含AddNativeOrganizationAuthorizationV2和AddWorkflowLegacyAdoptionsV2 SQL，目标预检不可省略。"
+      },
+      "issues": [],
+      "sha256": "d4cd6182b5f50770489b6615a5207dc0590e6a88f1d3fb635a8cf0defc0e8dd8",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.70.2"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.70.1",
       "status": "reviewed",
       "title": "业务待办通知与旧审批当前节点接续",
