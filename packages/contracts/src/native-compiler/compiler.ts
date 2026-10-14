@@ -3597,6 +3597,7 @@ const ANONYMOUS_PUBLIC_OPERATIONS = new Set([
   'own.read',
   'public.list',
   'public.read',
+  'public.query',
 ]);
 
 function validateAnonymousPublicAccess(
@@ -3636,6 +3637,7 @@ function validateAnonymousPublicAccess(
         'serverGeneratedFields',
         'schedule',
         'publicSubtableFields',
+        'publicQueries',
         'draft',
         'validations',
       ]
@@ -3890,18 +3892,23 @@ function validateAnonymousPublicAccess(
         }
       }
     }
+    const publicRecordFields = Object.prototype.hasOwnProperty.call(
+      policy,
+      'publicRecordFields'
+    )
+      ? uniqueStrings(
+          policy.publicRecordFields,
+          policyPointer + '/publicRecordFields',
+          64
+        )
+      : [];
     if (operations.some(operation => operation.startsWith('public.'))) {
       if (!Object.prototype.hasOwnProperty.call(policy, 'publicRecordFields')) {
         fail(
           'NATIVE_PUBLIC_RECORD_FIELDS_REQUIRED',
-          `${policyPointer}/publicRecordFields`
+          policyPointer + '/publicRecordFields'
         );
       }
-      const publicRecordFields = uniqueStrings(
-        policy.publicRecordFields,
-        `${policyPointer}/publicRecordFields`,
-        64
-      );
       if (
         publicRecordFields.length < 1 ||
         publicRecordFields.some(field => !fields.includes(field)) ||
@@ -3914,10 +3921,91 @@ function validateAnonymousPublicAccess(
       ) {
         fail(
           'NATIVE_PUBLIC_RECORD_FIELDS_INVALID',
-          `${policyPointer}/publicRecordFields`
+          policyPointer + '/publicRecordFields'
         );
       }
     }
+    const publicQueries = Object.prototype.hasOwnProperty.call(
+      policy,
+      'publicQueries'
+    )
+      ? boundedArray(policy.publicQueries, policyPointer + '/publicQueries', 16)
+      : [];
+    const queryCodes = new Set<string>();
+    publicQueries.forEach((rawQuery, queryIndex) => {
+      const queryPointer = policyPointer + '/publicQueries/' + queryIndex;
+      const query = object(rawQuery, queryPointer);
+      exactKeys(
+        query,
+        ['code', 'kind', 'resourceCode', 'fields', 'defaultLimit', 'maxLimit'],
+        queryPointer,
+        ['sort', 'parameters']
+      );
+      const queryCode = stableCode(query.code, queryPointer + '/code');
+      if (queryCodes.has(queryCode)) {
+        fail('NATIVE_PUBLIC_QUERY_DUPLICATE', queryPointer + '/code');
+      }
+      queryCodes.add(queryCode);
+      if (!['records', 'aggregate'].includes(String(query.kind))) {
+        fail('NATIVE_PUBLIC_QUERY_KIND_INVALID', queryPointer + '/kind');
+      }
+      if (String(query.resourceCode) !== declaredResourceCode) {
+        fail('NATIVE_PUBLIC_QUERY_RESOURCE_INVALID', queryPointer + '/resourceCode');
+      }
+      const queryFields = uniqueStrings(query.fields, queryPointer + '/fields', 64);
+      if (
+        queryFields.length < 1 ||
+        queryFields.some(field => !fields.includes(field)) ||
+        queryFields.some(field => !publicRecordFields?.includes(field))
+      ) {
+        fail('NATIVE_PUBLIC_QUERY_FIELDS_INVALID', queryPointer + '/fields');
+      }
+      const defaultLimit = Number(query.defaultLimit);
+      const maxLimit = Number(query.maxLimit);
+      if (
+        !Number.isSafeInteger(defaultLimit) ||
+        !Number.isSafeInteger(maxLimit) ||
+        defaultLimit < 1 ||
+        maxLimit < defaultLimit ||
+        maxLimit > 100
+      ) {
+        fail('NATIVE_PUBLIC_QUERY_LIMIT_INVALID', queryPointer + '/maxLimit');
+      }
+      if (Object.prototype.hasOwnProperty.call(query, 'sort')) {
+        const sort = boundedArray(query.sort, queryPointer + '/sort', 4);
+        const sortFields = new Set<string>();
+        sort.forEach((rawSort, sortIndex) => {
+          const sortPointer = queryPointer + '/sort/' + sortIndex;
+          const item = object(rawSort, sortPointer);
+          exactKeys(item, ['field', 'direction'], sortPointer);
+          const field = fieldCodeValue(item.field, sortPointer + '/field');
+          if (!queryFields.includes(field) || sortFields.has(field) || !['asc', 'desc'].includes(String(item.direction))) {
+            fail('NATIVE_PUBLIC_QUERY_SORT_INVALID', sortPointer);
+          }
+          sortFields.add(field);
+        });
+      }
+      if (Object.prototype.hasOwnProperty.call(query, 'parameters')) {
+        const parameters = boundedArray(query.parameters, queryPointer + '/parameters', 8);
+        const names = new Set<string>();
+        parameters.forEach((rawParameter, parameterIndex) => {
+          const parameterPointer = queryPointer + '/parameters/' + parameterIndex;
+          const parameter = object(rawParameter, parameterPointer);
+          exactKeys(parameter, ['name', 'field', 'operator', 'type'], parameterPointer);
+          const name = stableCode(parameter.name, parameterPointer + '/name');
+          const field = fieldCodeValue(parameter.field, parameterPointer + '/field');
+          if (
+            names.has(name) ||
+            !queryFields.includes(field) ||
+            !['eq', 'contains', 'in'].includes(String(parameter.operator)) ||
+            !['string', 'number', 'boolean', 'string[]'].includes(String(parameter.type))
+          ) {
+            fail('NATIVE_PUBLIC_QUERY_PARAMETER_INVALID', parameterPointer);
+          }
+          names.add(name);
+        });
+      }
+    });
     const requiredFields = Object.prototype.hasOwnProperty.call(
       policy,
       'requiredFields'
@@ -4068,6 +4156,47 @@ function compileAnonymousPublicAccess(config: JsonObject) {
                 .sort((left: JsonObject, right: JsonObject) =>
                   compareText(left.field, right.field)
                 ),
+            }
+          : {}),
+        ...(policy.publicQueries
+          ? {
+              publicQueries: sorted(
+                policy.publicQueries.map((query: JsonObject) => ({
+                  code: query.code,
+                  kind: query.kind,
+                  resourceCode: query.resourceCode,
+                  fields: uniqueSorted(query.fields),
+                  defaultLimit: Number(query.defaultLimit),
+                  maxLimit: Number(query.maxLimit),
+                  ...(query.sort
+                    ? {
+                        sort: query.sort
+                          .map((item: JsonObject) => ({
+                            field: item.field,
+                            direction: item.direction,
+                          }))
+                          .sort((left: JsonObject, right: JsonObject) =>
+                            compareText(left.field, right.field)
+                          ),
+                      }
+                    : {}),
+                  ...(query.parameters
+                    ? {
+                        parameters: query.parameters
+                          .map((parameter: JsonObject) => ({
+                            name: parameter.name,
+                            field: parameter.field,
+                            operator: parameter.operator,
+                            type: parameter.type,
+                          }))
+                          .sort((left: JsonObject, right: JsonObject) =>
+                            compareText(left.name, right.name)
+                          ),
+                      }
+                    : {}),
+                })),
+                (query: JsonObject) => String(query.code)
+              ),
             }
           : {}),
         ...(policy.publicSubtableFields

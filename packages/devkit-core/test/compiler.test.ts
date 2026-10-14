@@ -5181,3 +5181,77 @@ test('date source projection keeps the immutable source schema and negotiates id
   const spoofed = structuredClone(declaration); (spoofed.events.dateTriggers[0]!.payload as any).projection = { owner: { value: 'attacker' } };
   assert.throws(() => defineOpenXiangdaApp(spoofed), (error: any) => error.diagnostics.some((d: any) => d.code === 'APP_CONFIG_DATE_TRIGGER_INVALID'));
 });
+
+
+test('compiles immutable anonymous public queries with bounded parameters', () => {
+  const compiled = compileApplicationSources(
+    defineOpenXiangdaApp({
+      ...sourceDeclaration,
+      frontend: {
+        ...sourceDeclaration.frontend,
+        routes: [
+          {
+            code: 'instrument-catalog-query',
+            path: '/instrument/catalog-query',
+            label: 'Instrument catalog query',
+            surface: 'user',
+          },
+        ],
+        publicAccess: {
+          policies: [
+            {
+              code: 'instrument-catalog-query-public',
+              routeCode: 'instrument-catalog-query',
+              mode: 'anonymous',
+              resourceCode: 'instruments',
+              operations: ['public.query'],
+              fields: ['name', 'college_id'],
+              publicRecordFields: ['name', 'college_id'],
+              publicQueries: [
+                {
+                  code: 'catalog-page',
+                  kind: 'records',
+                  resourceCode: 'instruments',
+                  fields: ['name'],
+                  sort: [{ field: 'name', direction: 'asc' }],
+                  defaultLimit: 20,
+                  maxLimit: 100,
+                  parameters: [
+                    {
+                      name: 'keyword',
+                      field: 'name',
+                      operator: 'contains',
+                      type: 'string',
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    })
+  );
+  assert.deepEqual(
+    compiled.config.value.frontend.publicAccess?.policies[0]?.publicQueries,
+    [
+      {
+        code: 'catalog-page',
+        kind: 'records',
+        resourceCode: 'instruments',
+        fields: ['name'],
+        sort: [{ field: 'name', direction: 'asc' }],
+        defaultLimit: 20,
+        maxLimit: 100,
+        parameters: [
+          {
+            name: 'keyword',
+            field: 'name',
+            operator: 'contains',
+            type: 'string',
+          },
+        ],
+      },
+    ]
+  );
+});

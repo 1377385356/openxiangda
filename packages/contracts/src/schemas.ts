@@ -7765,6 +7765,7 @@ const anonymousPublicAccessSchema = {
                 "own.read",
                 "public.list",
                 "public.read",
+                "public.query",
               ],
             },
           },
@@ -7865,6 +7866,60 @@ const anonymousPublicAccessSchema = {
               maxItems: 64,
               uniqueItems: true,
               items: dataFieldCode,
+            },
+          },
+          publicQueries: {
+            type: "array",
+            maxItems: 16,
+            uniqueItems: true,
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: ["code", "kind", "resourceCode", "fields", "defaultLimit", "maxLimit"],
+              properties: {
+                code: stableCode,
+                kind: { enum: ["records", "aggregate"] },
+                resourceCode: stableCode,
+                fields: {
+                  type: "array",
+                  minItems: 1,
+                  maxItems: 64,
+                  uniqueItems: true,
+                  items: dataFieldCode,
+                },
+                sort: {
+                  type: "array",
+                  maxItems: 4,
+                  uniqueItems: true,
+                  items: {
+                    type: "object",
+                    additionalProperties: false,
+                    required: ["field", "direction"],
+                    properties: {
+                      field: dataFieldCode,
+                      direction: { enum: ["asc", "desc"] },
+                    },
+                  },
+                },
+                defaultLimit: { type: "integer", minimum: 1, maximum: 100 },
+                maxLimit: { type: "integer", minimum: 1, maximum: 100 },
+                parameters: {
+                  type: "array",
+                  maxItems: 8,
+                  uniqueItems: true,
+                  items: {
+                    type: "object",
+                    additionalProperties: false,
+                    required: ["name", "field", "operator", "type"],
+                    properties: {
+                      name: stableCode,
+                      field: dataFieldCode,
+                      operator: { enum: ["eq", "contains", "in"] },
+                      type: { enum: ["string", "number", "boolean", "string[]"] },
+                    },
+                  },
+                },
+              },
             },
           },
           draft: {

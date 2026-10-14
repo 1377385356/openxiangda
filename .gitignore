@@ -16,3 +16,5 @@ packages/openxiangda/releases/
 .cache/design-workbench/
 .cache/design-workbench-evidence/
 .cache/workflow-delegation-source/
+
+.codegraph/

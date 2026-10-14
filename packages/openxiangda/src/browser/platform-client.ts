@@ -1423,6 +1423,33 @@ export function createAnonymousPublicClient(input: {
         `${base}/public/records/${encodeURIComponent(recordId)}?${query}`,
       );
     },
+    async query(
+      queryCode: string,
+      options: {
+        parameters?: Record<string, unknown>;
+        cursor?: string;
+        limit?: number;
+      } = {},
+    ) {
+      return await request<{
+        schemaVersion: 'openxiangda.anonymous-public-query/v2';
+        queryCode: string;
+        kind: 'records' | 'aggregate';
+        items?: AnonymousPublicRecord[];
+        value?: Record<string, unknown>;
+        nextCursor?: string | null;
+      }>(base + '/public/query', {
+        method: 'POST',
+        body: JSON.stringify({
+          policyCode: policy(),
+          environmentKey: environmentKey(),
+          queryCode,
+          parameters: options.parameters || {},
+          ...(options.cursor ? { cursor: options.cursor } : {}),
+          ...(options.limit ? { limit: options.limit } : {}),
+        }),
+      });
+    },
     async upload(fieldCode: string, file: File) {
       // 匿名策略的上传字段以图片为主；非图片文件在预检内部自然跳过。
       return await uploadManagedWithPreflight({

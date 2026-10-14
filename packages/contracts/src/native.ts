@@ -550,7 +550,42 @@ export type AnonymousPublicOperationV2 =
   | 'own.list'
   | 'own.read'
   | 'public.list'
-  | 'public.read';
+  | 'public.read'
+  | 'public.query';
+
+export type AnonymousPublicQueryKindV2 = 'records' | 'aggregate';
+export type AnonymousPublicQueryParameterTypeV2 =
+  | 'string'
+  | 'number'
+  | 'boolean'
+  | 'string[]';
+export type AnonymousPublicQueryParameterOperatorV2 =
+  | 'eq'
+  | 'contains'
+  | 'in';
+
+export interface AnonymousPublicQueryParameterV2 {
+  name: string;
+  field: string;
+  operator: AnonymousPublicQueryParameterOperatorV2;
+  type: AnonymousPublicQueryParameterTypeV2;
+}
+
+export interface AnonymousPublicQuerySortV2 {
+  field: string;
+  direction: 'asc' | 'desc';
+}
+
+export interface AnonymousPublicQueryV2 {
+  code: string;
+  kind: AnonymousPublicQueryKindV2;
+  resourceCode: string;
+  fields: readonly string[];
+  sort?: readonly AnonymousPublicQuerySortV2[];
+  defaultLimit: number;
+  maxLimit: number;
+  parameters?: readonly AnonymousPublicQueryParameterV2[];
+}
 
 export interface AnonymousPublicDuplicateValidationV2 {
   code: string;
@@ -605,6 +640,8 @@ export interface AnonymousPublicAccessPolicyV2 {
   schedule?: AnonymousPublicScheduleValidationV2;
   /** Explicit child-field projection for public subtable values. */
   publicSubtableFields?: Readonly<Record<string, readonly string[]>>;
+  /** Immutable, server-executed bounded queries for anonymous catalogue pages. */
+  publicQueries?: readonly AnonymousPublicQueryV2[];
   draft?: {
     enabled: true;
     inactivityTtlSeconds?: number;

@@ -1154,6 +1154,43 @@ function compileAnonymousPublicAccess(config: OpenXiangdaAppConfig) {
               schedule: { ...policy.schedule },
             }
           : {}),
+        ...(policy.publicQueries
+          ? {
+              publicQueries: sorted(
+                policy.publicQueries.map(query => ({
+                  code: query.code,
+                  kind: query.kind,
+                  resourceCode: query.resourceCode,
+                  fields: uniqueSorted([...query.fields]),
+                  defaultLimit: Number(query.defaultLimit),
+                  maxLimit: Number(query.maxLimit),
+                  ...(query.sort
+                    ? {
+                        sort: query.sort
+                          .map(item => ({
+                            field: item.field,
+                            direction: item.direction,
+                          }))
+                          .sort((left, right) => left.field.localeCompare(right.field)),
+                      }
+                    : {}),
+                  ...(query.parameters
+                    ? {
+                        parameters: query.parameters
+                          .map(parameter => ({
+                            name: parameter.name,
+                            field: parameter.field,
+                            operator: parameter.operator,
+                            type: parameter.type,
+                          }))
+                          .sort((left, right) => left.name.localeCompare(right.name)),
+                      }
+                    : {}),
+                })),
+                item => item.code
+              ),
+            }
+          : {}),
         ...(policy.publicSubtableFields
           ? {
               publicSubtableFields: Object.fromEntries(

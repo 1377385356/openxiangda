@@ -5748,6 +5748,7 @@ const ANONYMOUS_PUBLIC_OPERATIONS = new Set([
   'own.read',
   'public.list',
   'public.read',
+  'public.query',
 ]);
 
 function validateAnonymousPublicAccess(
@@ -5951,6 +5952,55 @@ function validateAnonymousPublicAccess(
         );
       }
     );
+    const publicQueries = Array.isArray(policy.publicQueries)
+      ? policy.publicQueries
+      : [];
+    const publicQueryInvalid =
+      publicQueries.length > 16 ||
+      new Set(publicQueries.map(item => string(object(item).code))).size !== publicQueries.length ||
+      publicQueries.some(rawQuery => {
+        const query = object(rawQuery);
+        const queryFields = Array.isArray(query.fields)
+          ? query.fields.map(string)
+          : [];
+        const sort = Array.isArray(query.sort) ? query.sort : [];
+        const parameters = Array.isArray(query.parameters) ? query.parameters : [];
+        const sortFields = sort.map(item => string(object(item).field));
+        const parameterNames = parameters.map(item => string(object(item).name));
+        return (
+          Object.keys(query).some(key => !['code', 'kind', 'resourceCode', 'fields', 'defaultLimit', 'maxLimit', 'sort', 'parameters'].includes(key)) ||
+          !OPERATION_CODE_PATTERN.test(string(query.code)) ||
+          !['records', 'aggregate'].includes(string(query.kind)) ||
+          string(query.resourceCode) !== resourceCode ||
+          queryFields.length < 1 ||
+          queryFields.length > 64 ||
+          new Set(queryFields).size !== queryFields.length ||
+          queryFields.some(field => !fields.includes(field) || !Array.isArray(policy.publicRecordFields) || !policy.publicRecordFields.map(string).includes(field)) ||
+          !Number.isSafeInteger(query.defaultLimit) ||
+          !Number.isSafeInteger(query.maxLimit) ||
+          Number(query.defaultLimit) < 1 ||
+          Number(query.maxLimit) < Number(query.defaultLimit) ||
+          Number(query.maxLimit) > 100 ||
+          sort.length > 4 ||
+          new Set(sortFields).size !== sortFields.length ||
+          sort.some(item => {
+            const value = object(item);
+            return Object.keys(value).some(key => !['field', 'direction'].includes(key)) ||
+              !queryFields.includes(string(value.field)) ||
+              !['asc', 'desc'].includes(string(value.direction));
+          }) ||
+          parameters.length > 8 ||
+          new Set(parameterNames).size !== parameterNames.length ||
+          parameters.some(item => {
+            const value = object(item);
+            return Object.keys(value).some(key => !['name', 'field', 'operator', 'type'].includes(key)) ||
+              !OPERATION_CODE_PATTERN.test(string(value.name)) ||
+              !queryFields.includes(string(value.field)) ||
+              !['eq', 'contains', 'in'].includes(string(value.operator)) ||
+              !['string', 'number', 'boolean', 'string[]'].includes(string(value.type));
+          })
+        );
+      });
     const draft = object(policy.draft);
     const validations = Array.isArray(policy.validations)
       ? policy.validations
@@ -5969,6 +6019,7 @@ function validateAnonymousPublicAccess(
       'serverGeneratedFields',
       'schedule',
       'publicSubtableFields',
+      'publicQueries',
       'draft',
       'validations',
     ];
@@ -6079,6 +6130,13 @@ function validateAnonymousPublicAccess(
         code: 'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_SUBTABLE_INVALID',
         message: 'publicSubtableFields 必须引用 fields 内的子表字段，且子字段存在、不重复、不超过 64 个、不含 signature/subtable',
         pointer: `${path}.publicSubtableFields`,
+      });
+    }
+    if (publicQueryInvalid) {
+      anonymousPolicyProblems.push({
+        code: 'APP_CONFIG_ANONYMOUS_PUBLIC_POLICY_QUERIES_INVALID',
+        message: 'publicQueries 必须是同一资源的有界公开字段查询，limit 不超过 100，参数和排序只能引用查询字段',
+        pointer: path + '.publicQueries',
       });
     }
     if (publicFilterInvalid) {
