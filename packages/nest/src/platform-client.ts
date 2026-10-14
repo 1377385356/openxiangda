@@ -1,3 +1,4 @@
+import { parseDirectoryClassPage, type DirectoryClassPage } from 'openxiangda-contracts';
 import type { OpenXiangdaWorkerActionContext } from './types.js';
 import type { OpenXiangdaServiceActionContext } from './types.js';
 import type { WorkflowDelegationAdministration, WorkflowDelegationCatalog, WorkflowDelegationCandidatePage, WorkflowDelegationCandidateQuery, WorkflowDelegationListQuery, WorkflowDelegationPage, WorkflowDelegationMutationPreview, WorkflowDelegationMutationReceipt, WorkflowDelegationMutationRequest, WorkflowDelegationMutationIntent } from "openxiangda-contracts";
@@ -175,6 +176,25 @@ export class OpenXiangdaPlatformClient {
     return await this.request<GatewayAssertionJwks>(
       "/openxiangda-api/v2/gateway-assertion-keys"
     );
+  }
+
+
+  async resolveCurrentClasses(
+    authorization: string, businessAction: OpenXiangdaBusinessActionContext, sourceClassIds: readonly string[]
+  ): Promise<DirectoryClassPage> {
+    if (!Array.isArray(sourceClassIds) || !sourceClassIds.length || sourceClassIds.length > 20 ||
+      new Set(sourceClassIds).size !== sourceClassIds.length ||
+      sourceClassIds.some(id => typeof id !== 'string' || !id || id !== id.trim() || id.length > 255))
+      throw new OpenXiangdaPlatformError(400, 'OPENXIANGDA_DIRECTORY_CLASSES_IDS_INVALID', '请选择有效的来源班级');
+    const result = await this.request<unknown>(
+      `/openxiangda-api/v2/applications/${encodeURIComponent(this.options.appCode)}/directory/current-classes?environmentKey=${encodeURIComponent(this.options.environmentKey)}`,
+      { method: 'POST', headers: this.identityHeaders(authorization, null, businessAction),
+        body: JSON.stringify({ schemaVersion: 'openxiangda.current-classes-directory-request/v1', sourceClassIds }) }
+    );
+    const page = parseDirectoryClassPage(result, { limit: sourceClassIds.length });
+    if (page.nextCursor || page.items.length !== sourceClassIds.length || page.items.some(item => !sourceClassIds.includes(item.sourceClassId)))
+      throw new OpenXiangdaPlatformError(502, 'OPENXIANGDA_DIRECTORY_CLASSES_RESPONSE_INVALID', '平台班级解析返回无效');
+    return page;
   }
 
   async resolveCurrentInitiator(

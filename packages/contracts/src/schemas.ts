@@ -7178,6 +7178,10 @@ const appOperationPlatformAccessSchema = {
   additionalProperties: false,
   minProperties: 1,
   properties: {
+    directoryClasses: {
+      type: "object", additionalProperties: false, required: ["maxIds"],
+      properties: { maxIds: { type: "integer", minimum: 1, maximum: 20 } },
+    },
     ownedSubject: workflowOwnedSubjectCreateSchema,
     workflowStage: workflowNativeStagePolicySchema,
     recordEdit: {

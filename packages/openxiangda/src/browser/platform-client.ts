@@ -42,6 +42,8 @@ import {
   type PlatformOrganizationMembership,
   type PlatformOrganizationSwitchReceipt,
   type DirectoryRoleFactPage,
+  type DirectoryClassPage,
+  parseDirectoryClassPage,
   type RuntimeRoleSummary,
   type SubjectProfile,
   type ApplicationOperationReceiptV2,
@@ -1014,6 +1016,21 @@ export async function loadCurrentDirectoryRoleFacts(options: { limit?: number; a
     throw new Error('PLATFORM_DIRECTORY_CONTEXT_MISMATCH');
   }
   return page;
+}
+
+
+/** No directory writes or inferred roles; the live session supplies the actor and organization. */
+export async function loadCurrentDirectoryClasses(options: { limit?: number; after?: string; signal?: AbortSignal } = {}): Promise<DirectoryClassPage> {
+  const identity = activeIdentity;
+  if (!identity?.activeOrganizationId) throw new Error('PLATFORM_ORGANIZATION_CONTEXT_REQUIRED');
+  const limit = options.limit ?? 100;
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 200 ||
+    (options.after && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(options.after)))
+    throw new Error('PLATFORM_DIRECTORY_PAGE_INVALID');
+  const query = new URLSearchParams({ limit: String(limit) });
+  if (options.after) query.set('after', options.after);
+  const page = await requestRead<unknown>(`${platformOrganizationsBase}/me/directory-classes?${query}`, { signal: options.signal });
+  return parseDirectoryClassPage(page, { userId: identity.userId, organizationId: identity.activeOrganizationId, limit });
 }
 
 let organizationSwitchPending = false;

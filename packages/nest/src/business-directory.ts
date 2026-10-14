@@ -57,6 +57,16 @@ export class OpenXiangdaBusinessDirectoryService {
     );
   }
 
+
+  async currentClasses(sourceClassIds: readonly string[]): Promise<import('openxiangda-contracts').DirectoryClassPage> {
+    const context = requireOpenXiangdaBusinessActionContext(this.request);
+    const declared = this.request.openxiangda?.operation?.platformAccess?.directoryClasses;
+    if (!declared) throw new UnauthorizedException('OPENXIANGDA_DIRECTORY_CLASSES_ACCESS_REQUIRED');
+    if (!Array.isArray(sourceClassIds) || !sourceClassIds.length || sourceClassIds.length > declared.maxIds)
+      throw new UnauthorizedException('OPENXIANGDA_DIRECTORY_CLASSES_IDS_INVALID');
+    return this.platform.resolveCurrentClasses(context.authorization, context.action, sourceClassIds);
+  }
+
   async currentInitiator(): Promise<CurrentInitiatorDirectorySnapshot> {
     const context = requireOpenXiangdaBusinessActionContext(this.request);
     return await this.platform.resolveCurrentInitiator(

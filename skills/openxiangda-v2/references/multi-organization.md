@@ -192,3 +192,13 @@ data: {
 5. 最终组织业务验收覆盖同一人多组织、同一来源 ID 跨校、教师/家长来源区分、班主任多个班级、无 unionId 学生、同步未完成、错误 corpId、无权限上级成员和学校之间越权拒绝。只测统计页正常展示不能证明这些边界。
 
 专题可用章节为 `scenario`、`availability`、`http-contracts`、`directory-facts`、`authorization`、`entry-sync`、`verification`。MCP 可按 `docs_read({ topic: 'multi-organization', section: 'http-contracts' })` 只读相关部分，资料 URI 为 `openxiangda://docs/multi-organization`。资料升级与 Skill/MCP 刷新方式见[版本升级](upgrading.md)。
+
+## 本人的家校班级投影 {#current-classes}
+
+使用支持 directory.current-classes 1.0.0 的正式平台/SDK组合，可从 openxiangda/react 调用 loadCurrentDirectoryClasses({ limit: 100, after, signal })，读取当前登录人、当前工作学校的来源班级名称、校区、学段、年级与本人来源角色。单页最多200项；继续页由nextCursor决定。组织切换废弃在途响应，不把旧学校表单选择器带到新学校。
+
+DirectoryClassSummary.directoryClassId 是平台目录 UUID，sourceClassId 是来源班级范围字符串；都不能当作 Native resource-ref。投影不包含人员、unionId、raw、安装秘密，也不代表应用写权限。管理员不会自动获得所有来源班级。
+
+具名后端动作声明 platformAccess: { directoryClasses: { maxIds: 20 } }，调用 OpenXiangdaBusinessDirectoryService.currentClasses(sourceClassIds) 精确解析1..maxIds个来源班级。同一动作证明中的人和工作组织由平台决定，不能传入其他userId/corpId/organizationId。缺少来源事实、工作组织、活动成员或任一选择不可读时整体拒绝；事务还需 actor-authority 和业务行边界复核。该能力是只读目录，无目录同步/管理授权。
+
+HTTP GET /openxiangda-api/v2/platform/organizations/me/directory-classes 只接受limit/after；POST /openxiangda-api/v2/applications/:appCode/directory/current-classes 的 schemaVersion 为 openxiangda.current-classes-directory-request/v1、字段为sourceClassIds。返回 openxiangda.directory-class-page/v1，绑定userId和organizationId。未部署此能力的站点不能仅凭SDK方法存在就报告接入完成。

@@ -56,6 +56,7 @@ export {
   logoutCurrentUser,
   loadCurrentOrganizationMemberships,
   loadCurrentDirectoryRoleFacts,
+  loadCurrentDirectoryClasses,
   switchCurrentOrganization,
   type AnonymousPublicDraft,
   type AnonymousPublicRecord,
@@ -109,4 +110,4 @@ export * from "./browser/components/workflow/WorkflowBusinessStepRecoveryPanel";
 export * from './browser/components/workflow/WorkflowRecordHistoryPanel';
 export * from './browser/components/workflow/WorkflowDesigner';
 
-export type { PlatformOrganizationMembership, PlatformOrganizationSwitchReceipt, DirectoryRoleFactPage } from 'openxiangda-contracts/browser';
+export type { PlatformOrganizationMembership, PlatformOrganizationSwitchReceipt, DirectoryRoleFactPage, DirectoryClassPage, DirectoryClassSummary } from 'openxiangda-contracts/browser';

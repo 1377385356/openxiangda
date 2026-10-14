@@ -301,6 +301,8 @@ export interface AppOperationPlatformAccessDeclaration {
     mode: 'selected-user';
     fields: readonly Exclude<AppOperationDirectoryField, 'phone'>[];
   };
+  /** Resolve only the verified actor's source classes, without directory management. */
+  directoryClasses?: { maxIds: number };
   /** Selected live department facts; does not grant directory read or management. */
   selectedDepartments?: {
     fields: readonly ('name' | 'path' | 'parent' | 'fullPath')[];

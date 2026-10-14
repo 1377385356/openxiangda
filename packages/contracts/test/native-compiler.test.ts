@@ -418,3 +418,24 @@ test('source-base metadata is optional and is sealed identically in ESM and CJS'
     assert.throws(() => implementation.compileNativeApplicationConfiguration(compileInput()),/NATIVE_WORKFLOW_SOURCE_BASE_INVALID/);
   }
 });
+
+test('current actor classes require explicit bounded access in both native compiler formats', () => {
+  const config=JSON.parse(corpus.configuration.canonical), contract=JSON.parse(corpus.contract.canonical);
+  const compile = (implementation: typeof esm) => {
+    contract.configDigest=sha256Digest(config);
+    return implementation.compileNativeApplicationConfiguration({ ...input(config),
+      contractBytes:canonicalJson(contract), expectedContractDigest:sha256Digest(contract) });
+  };
+  for (const implementation of [esm,cjs]) assert.equal(compile(implementation).requiredPlatformCapabilities.some(c=>c.code==='directory.current-classes'),false);
+  for (const access of [{maxIds:1},{maxIds:20}]) {
+    config.backend.operations[0].platformAccess.directoryClasses=access;
+    contract.operations[0].platformAccess.directoryClasses=access;
+    for (const implementation of [esm,cjs])
+      assert.equal(compile(implementation).requiredPlatformCapabilities.find(c=>c.code==='directory.current-classes')?.contractVersion,'1.0.0');
+  }
+  for (const access of [{maxIds:0},{maxIds:21},{maxIds:1.5},{maxIds:'1'},{maxIds:1,userId:'other'}]) {
+    config.backend.operations[0].platformAccess.directoryClasses=access;
+    contract.operations[0].platformAccess.directoryClasses=access;
+    for (const implementation of [esm,cjs]) assert.throws(()=>compile(implementation));
+  }
+});

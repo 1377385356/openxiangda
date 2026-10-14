@@ -429,7 +429,7 @@ export function compileRequiredPlatformCapabilitiesV3(
         ].includes(field.type)
       )
     ) ||
-    operations.some(operation => operation.platformAccess?.directory || operation.platformAccess?.selectedDepartments);
+    operations.some(operation => operation.platformAccess?.directory || operation.platformAccess?.selectedDepartments || operation.platformAccess?.directoryClasses);
   const usesEvents = Boolean(
     config.events.subscriptions.length ||
       config.events.timers.length ||
@@ -667,6 +667,7 @@ export function compileRequiredPlatformCapabilitiesV3(
       declaration: config.authz.directoryRoleSources }] : []),
     ...(resources.some(resource => resource.organization && resource.organization.mode !== 'none') ? [{ code: 'data.organizations' as const,
       declaration: resources.filter(resource => resource.organization && resource.organization.mode !== 'none').map(resource => ({ code: resource.code, organization: resource.organization })) }] : []),
+    ...(operations.some(operation => operation.platformAccess?.directoryClasses) ? [{ code: 'directory.current-classes' as const, declaration: operations.filter(operation => operation.platformAccess?.directoryClasses).map(operation => ({ code: operation.code, directoryClasses: operation.platformAccess.directoryClasses })) }] : []),
     ...(operations.some(operation => operation.platformAccess?.selectedDepartments) ? [{ code: 'directory.selected-departments' as const, declaration: operations.filter(operation => operation.platformAccess?.selectedDepartments).map(operation => ({code:operation.code,selectedDepartments:operation.platformAccess.selectedDepartments})) }] : []),
     ...(operations.some(operation => operation.platformAccess?.directory?.mode === 'selected-user') ? [{ code: 'directory.selected-user' as const, declaration: operations.filter(operation => operation.platformAccess?.directory?.mode === 'selected-user').map(operation => ({code:operation.code,directory:operation.platformAccess.directory})) }] : []),
     ...(initiatorPhoneOperations.length || initiatorPhoneCommands.length ? [{
@@ -2844,7 +2845,7 @@ function validateOperationPlatformAccess(
   const access = object(value, pointer);
   exactKeys(
     access,
-    ['directory', 'selectedDepartments', 'managedFiles', 'managedFileCopies', 'notification', 'workflow', 'roleAssertions', 'decimalReservation', 'dataCommands', 'recordEdit', 'ownedSubject', 'workflowStage', 'dataMutations'],
+    ['directory', 'directoryClasses', 'selectedDepartments', 'managedFiles', 'managedFileCopies', 'notification', 'workflow', 'roleAssertions', 'decimalReservation', 'dataCommands', 'recordEdit', 'ownedSubject', 'workflowStage', 'dataMutations'],
     pointer,
     true
   );
@@ -2929,6 +2930,15 @@ function validateOperationPlatformAccess(
       mode: String(directory.mode),
       fields: uniqueSorted(fields),
     };
+  }
+
+  if (access.directoryClasses !== undefined) {
+    const entryPointer = `${pointer}/directoryClasses`;
+    const entry = object(access.directoryClasses, entryPointer);
+    exactKeys(entry, ['maxIds'], entryPointer);
+    if (!Number.isSafeInteger(entry.maxIds) || entry.maxIds < 1 || entry.maxIds > 20)
+      fail('NATIVE_OPERATION_DIRECTORY_CLASSES_INVALID', entryPointer);
+    result.directoryClasses = { maxIds: entry.maxIds };
   }
   if (access.selectedDepartments !== undefined) {
     const entryPointer = `${pointer}/selectedDepartments`;

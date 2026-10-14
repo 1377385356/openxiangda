@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { loadRuntimeAuthorization, loadCurrentDirectoryRoleFacts, loadCurrentOrganizationMemberships,
+import { loadRuntimeAuthorization, loadCurrentDirectoryClasses, loadCurrentDirectoryRoleFacts, loadCurrentOrganizationMemberships,
   switchCurrentOrganization, subscribePlatformOrganizationInvalidation, createManagedConcurrencyClient } from '../src/browser/platform-client';
 
 const A = '11111111-1111-4111-8111-111111111111', B = '22222222-2222-4222-8222-222222222222';
@@ -77,5 +77,23 @@ test('facts use bounded current-user pagination and reject cross-school response
     await assert.rejects(loadCurrentDirectoryRoleFacts({ limit: 201 }), /PLATFORM_DIRECTORY_PAGE_INVALID/); assert.equal(requests.length, 1);
     set(async () => reply({ ...facts, organizationId: B }));
     await assert.rejects(loadCurrentDirectoryRoleFacts(), /PLATFORM_DIRECTORY_CONTEXT_MISMATCH/);
+  });
+});
+
+test('class projections reject cross-context replies, oversized pages and former-school in-flight results', async () => {
+  await withRuntime(async set => {
+    await loadRuntimeAuthorization();
+    const result={schemaVersion:'openxiangda.directory-class-page/v1',organizationId:A,userId:'user',nextCursor:null,
+      items:[{directoryClassId:B,sourceClassId:'same-source',name:'合成班级',sourceCampusId:'c',sourcePeriodId:'p',sourceGradeId:'g',campusName:null,periodName:null,gradeName:null,roleCodes:['guardian']}]};
+    let requests=0;
+    set(async()=>{requests++;return reply(result);});
+    assert.equal((await loadCurrentDirectoryClasses({limit:1})).items[0]?.sourceClassId,'same-source');
+    await assert.rejects(loadCurrentDirectoryClasses({limit:201}),/PAGE_INVALID/);assert.equal(requests,1);
+    set(async()=>reply({...result,organizationId:B}));
+    await assert.rejects(loadCurrentDirectoryClasses(),/RESPONSE_INVALID/);
+    let finish!:(response:Response)=>void;
+    set(async url=>url.includes('directory-classes')?new Promise(resolve=>{finish=resolve;}):reply(receipt(B)));
+    const old=assert.rejects(loadCurrentDirectoryClasses(),/OPENXIANGDA_READ_SCOPE_CHANGED/);
+    await switchCurrentOrganization(B);finish(reply(result));await old;
   });
 });
