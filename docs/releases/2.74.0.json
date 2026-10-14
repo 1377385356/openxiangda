@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.74.0",
+  "status": "reviewed",
+  "title": "原生审批人来源与中文参数编辑",
+  "summary": "流程源码可以开放有界的部门主管、逐级主管和表单成员参数；配套平台支持在普通来源、条件规则与新节点中使用同一份已发布目录。",
+  "newFeatures": [
+    "Workflow authoring.peopleSources 声明当前AppVersion拥有的来源模板、中文标题及参数枚举或整数范围，浏览器不能扩大源码授权上限。",
+    "部门主管成为标准条件人员来源；配套平台显式返回 nativePeopleAuthoring 后，已发布审批或办理节点也能编辑完整原生人员来源。",
+    "部门字段、主管级别、审批终点、连续办理和无人策略以中文说明呈现，保存仍使用原始类型值。"
+  ],
+  "fixes": [
+    "完整人员来源投影保留主管及部门参数，不把另一旧角色来源的scope、routing或人数约束混入新来源；旧principal-only编辑保持原限制。",
+    "普通来源与条件规则切换时正确注册并观察表单人员类型，保留整份来源，避免空配置或丢失原生条件叶。",
+    "模板目录不使后续步骤事实提前可用；非法参数、缺少组织上下文、未知值和不安全JSON结构失败关闭，连续主管必须使用允许的依次审批模式。"
+  ],
+  "affectedUsers": [
+    "在PC流程画布配置部门主管、逐级主管、表单成员或条件审批人的OpenXiangda V2应用管理员和开发者。"
+  ],
+  "upgradeSteps": [
+    "使用本次正式工具组合，并升级采用配套contracts与目录/投影服务的后端；核对真实 nativePeopleAuthoring 标志，不从SDK版本推断平台已支持。",
+    "应用在源码声明真实输入事实和明确的参数上限，再按正规流程版本规划、应用TEST部署和实际角色验证接入；保留原节点、默认人员、在途冻结快照及source-base。"
+  ],
+  "knownLimitations": [
+    "本地合成HTTP、门禁或npm发行不代表客户平台已部署，也不代表真实组织主管解析、AI模型或OCR验收已通过。",
+    "未开放的provider、routing、委托和范围维度仍由源码拥有；抄送、发起自选及应用provider不通过通用参数控件扩权。",
+    "旧平台没有显式原生作者能力时保留旧编辑路径；源码采用新authoring字段后，不能直接回退到不认识该声明的旧内核。"
+  ],
+  "compatibility": {
+    "node": "Node.js 24 or newer for maintained toolchain",
+    "generation": "OpenXiangda V2; V1 unchanged",
+    "platform": "Paired workflow released-catalog/node-configuration services and contracts; nativePeopleAuthoring must be explicitly advertised"
+  },
+  "issues": []
+}
