@@ -27,17 +27,26 @@ const draft = {workflowCode:'approval',environmentKey:'preproduction',revision:1
 const published = {view:'published',workflowCode:'approval',environmentKey:'preproduction',headRevision:3,definitionVersion:1,bindingVersion:1,definition,binding};
 const actions = {reader:['definition.read'],handler:['definition.read','handling.configure'],editor:['definition.read','draft.edit'],publisher:['definition.read','publication.publish'],revoked:['definition.read','draft.edit'],'handling-revoked':['definition.read','handling.configure'],busy:['definition.read','handling.configure'],'unknown-revoked':['definition.read','draft.edit'],'outcome-undetermined':['definition.read','draft.edit']};
 actions.save=['definition.read','draft.edit'];
+actions['save-start']=actions.save;
 let browser;
 const checks=[],errors=[];
 try {
   await server.listen(); browser=await chromium.launch({headless:true});
   // Workflow administration is PC-only by the user's 2026-10-13 scope decision.
-  const modes=['reader','handler','editor','publisher','legacy','super','revoked','handling-revoked','busy','unknown-revoked','outcome-undetermined','save'];
+  const modes=['reader','handler','editor','publisher','legacy','super','revoked','handling-revoked','busy','unknown-revoked','outcome-undetermined','save','save-start'];
   const requested=process.env.WORKFLOW_MANAGEMENT_SOURCE_MODES?.split(',') || modes;
   assert.ok(requested.length && requested.every(mode=>modes.includes(mode)),'unknown workflow verification mode');
   for (const width of [1440]) for (const mode of requested) {
     const context=await browser.newContext({viewport:{width,height:900},reducedMotion:'reduce'});
     const page=await context.newPage(); page.on('pageerror',error=>errors.push(error.message));
+    const modeDraft=structuredClone(draft);
+    if(mode==='save-start') {
+      for(const value of [modeDraft.definition,modeDraft.publishedDefinition]) {
+        value.taskPages={correction:{title:'补正资料',fields:[{code:'amount'}]}};
+        value.nodes.review.returnTargets=['correct'];
+        value.nodes.correct={id:'correct',kind:'correction',title:'发起人补正',taskPageCode:'correction',next:'review'};
+      }
+    }
     const requests=[];let lost=false, writes=0;
     await page.route('**/*', async route => {
       const request=route.request(),url=new URL(request.url());
@@ -54,12 +63,12 @@ try {
         if(mode==='unknown-revoked'&&writes===1){status=500;errorCode='TEST_LOST_RESPONSE';}
         else if(mode==='busy'&&writes===1){status=503;errorCode='WORKFLOW_DESIGNER_AUTHORITY_BUSY';}
         else if(['revoked','handling-revoked','unknown-revoked','outcome-undetermined'].includes(mode)){lost=true;status=403;errorCode='WORKFLOW_DESIGNER_AUTHORITY_REQUIRED';}
-        else if(mode==='save'){assert.equal(definitionShape(body.definition),true,JSON.stringify(definitionShape.errors));assert.equal(bindingShape(body.binding),true,JSON.stringify(bindingShape.errors));data={...draft,...body,revision:body.expectedRevision+1,updatedAt:new Date().toISOString()};}
+        else if(['save','save-start'].includes(mode)){assert.equal(definitionShape(body.definition),true,JSON.stringify(definitionShape.errors));assert.equal(bindingShape(body.binding),true,JSON.stringify(bindingShape.errors));data={...modeDraft,...body,revision:body.expectedRevision+1,updatedAt:new Date().toISOString()};}
         else if(mode==='busy')data={...configuration.nodes[0].configuration,revision:1,workflowCode:'approval',nodeId:'review',effect:configuration.effect,replayed:false};
         else {errors.push(`unexpected write ${mode} ${url.pathname}`);return route.abort();}
       } else if(url.pathname.endsWith('/draft')) {
         const authority={actions:lost?['definition.read']:actions[mode],admittedBy:'grant',evaluatedAt:'2026-10-13T00:00:00Z'};
-        data=['legacy','super'].includes(mode)?draft:!lost&&['editor','publisher','revoked','unknown-revoked','outcome-undetermined','save'].includes(mode)?{...draft,view:'draft',authority}:{...published,authority};
+        data=['legacy','super'].includes(mode)?draft:!lost&&['editor','publisher','revoked','unknown-revoked','outcome-undetermined','save','save-start'].includes(mode)?{...modeDraft,view:'draft',authority}:{...published,authority};
       } else if(url.pathname.endsWith('/publications'))data=[];
       else {errors.push(`unexpected request ${url.pathname}`);return route.abort();}
       await route.fulfill({status,contentType:'application/json',body:JSON.stringify({code:status,data:status===200?data:null,errorCode,message:errorCode})});
@@ -67,10 +76,10 @@ try {
     try {
       await page.goto(`http://127.0.0.1:${port}/workflow-management.e2e.html`);
       await expect(page.getByText('合同审批',{exact:true}).first()).toBeVisible();
-      const draftMode=['editor','publisher','legacy','super','revoked','unknown-revoked','outcome-undetermined','save'].includes(mode);
+      const draftMode=['editor','publisher','legacy','super','revoked','unknown-revoked','outcome-undetermined','save','save-start'].includes(mode);
       if(draftMode){
         await expect(page.getByRole('button',{name:'发布并启用',exact:true}))[['publisher','super'].includes(mode)?'toBeEnabled':'toBeDisabled']();
-        await expect(page.getByRole('button',{name:/AI 助手$/}))[['editor','super','revoked','unknown-revoked','outcome-undetermined','save'].includes(mode)?'toBeEnabled':'toBeDisabled']();
+        await expect(page.getByRole('button',{name:/AI 助手$/}))[['editor','super','revoked','unknown-revoked','outcome-undetermined','save','save-start'].includes(mode)?'toBeEnabled':'toBeDisabled']();
       }else await expect(page.getByRole('button',{name:'发布并启用',exact:true})).toHaveCount(0);
       await expect(page.getByRole('region',{name:'办理设置',exact:true})).not.toBeVisible();
       if(draftMode) {
@@ -88,24 +97,41 @@ try {
       await expect(panel).toBeVisible();
       if(['handler','handling-revoked','busy'].includes(mode)) await expect(panel.getByRole('radio',{name:'或签',exact:true})).toBeEnabled();
       else if(mode!=='super') await expect(panel.getByRole('radio',{name:'或签',exact:true})).toBeDisabled();
-      if(mode==='save') {
+      if(['save','save-start'].includes(mode)) {
         const canvasBefore=await page.locator('.oxa-designer-workspace main').boundingBox();
         await page.getByRole('button',{name:'关闭节点设置',exact:true}).click();
         await expect(panel).not.toBeVisible();
         assert.deepEqual(await page.locator('.oxa-designer-workspace main').boundingBox(),canvasBefore);
-        await page.getByRole('button',{name:'在同意路径新增节点',exact:true}).click();
+        const pane=page.locator('.oxa-workflow-reactflow .react-flow__pane');
+        const paneBox=await pane.boundingBox();assert.ok(paneBox);
+        const point={x:paneBox.x+20,y:paneBox.y+160};
+        const cursor=()=>pane.evaluate(element=>getComputedStyle(element).cursor);
+        await page.mouse.move(point.x,point.y);assert.equal(await cursor(),'grab');
+        await page.mouse.down();await page.mouse.move(point.x+30,point.y+20,{steps:5});
+        assert.equal(await cursor(),'grabbing');
+        await page.mouse.up();await expect.poll(cursor).toBe('grab');
+        await page.evaluate(()=>window.dispatchEvent(new Event('blur')));
+        await page.mouse.move(point.x+50,point.y+30);assert.equal(await cursor(),'grab');
+        await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+        assert.equal(await cursor(),'grab');
+        await page.getByRole('button',{name:mode==='save-start'?'在发起后路径新增节点':'在同意路径新增节点',exact:true}).click();
         await page.getByRole('menuitem',{name:/审批节点/}).click();
         const fresh=page.getByRole('region',{name:'新增节点办理设置',exact:true});await expect(fresh).toBeVisible();
         await fresh.getByText('应用角色',{exact:true}).click();
         await fresh.getByRole('combobox',{name:'应用角色',exact:true}).click();
         await page.getByText('业务审核员',{exact:true}).last().click();
         await fresh.getByRole('combobox',{name:'应用角色',exact:true}).press('Escape');
-        await expect.poll(()=>requests.filter(row=>row.method==='POST').some(row=>Object.values(row.body.binding.bindings).some(value=>value.provider==='app_role'&&(value.roleCode==='reviewer'||value.roleCodes?.includes('reviewer'))) && Object.keys(row.body.definition.nodes).length===4)).toBe(true);
+        await expect.poll(()=>requests.filter(row=>row.method==='POST').some(row=>Object.values(row.body.binding.bindings).some(value=>value.provider==='app_role'&&(value.roleCode==='reviewer'||value.roleCodes?.includes('reviewer'))) && Object.keys(row.body.definition.nodes).length===(mode==='save-start'?5:4))).toBe(true);
         await expect.poll(async()=>JSON.parse(await page.getByLabel('宿主离开保护状态').innerText()).dirty).toBe(false);
         const saved=requests.filter(row=>row.method==='POST').at(-1).body;
         assert.deepEqual(saved.definition.readability,definition.readability);
         const created=Object.values(saved.definition.nodes).find(node=>node.id.startsWith('node_')&&node.kind==='approval');assert.ok(created);
-        assert.equal(saved.definition.nodes.review.onApprove,created.id);assert.equal(created.onApprove,'end');
+        if(mode==='save-start') {
+          assert.equal(saved.definition.startAt,created.id);assert.equal(saved.definition.nodes.correct.next,created.id);
+          assert.equal(saved.definition.nodes.review.onApprove,'end');assert.equal(created.onApprove,'review');
+          const {validateWorkflowCorrections}=await import(pathToFileURL(resolve(root,'packages/contracts/dist/native-compiler/workflow-correction.js')));
+          assert.deepEqual(validateWorkflowCorrections(saved.definition),[]);
+        }else {assert.equal(saved.definition.nodes.review.onApprove,created.id);assert.equal(created.onApprove,'end');}
         assert.equal(saved.binding.bindings[created.binding].provider,'app_role');
         await page.getByRole('button',{name:'关闭节点设置',exact:true}).click();
         await expect(fresh).not.toBeVisible();
@@ -143,7 +169,7 @@ try {
         await expect.poll(async()=>JSON.parse(await page.getByLabel('宿主离开保护状态').innerText())).toEqual({dirty:true,busy:false,unknown:mode==='outcome-undetermined'});
         await page.waitForTimeout(1200);assert.equal(writes,mode==='unknown-revoked'?2:1);assert.equal(requests.filter(row=>row.path.endsWith('/outcome')).length,1);
       }
-      if(!['revoked','handling-revoked','busy','unknown-revoked','outcome-undetermined','save'].includes(mode))assert.equal(writes,0);
+      if(!['revoked','handling-revoked','busy','unknown-revoked','outcome-undetermined','save','save-start'].includes(mode))assert.equal(writes,0);
       await page.screenshot({path:resolve(output,`${mode}-${width}.png`),fullPage:true,animations:'disabled'});
       checks.push({width,mode,writes,passed:true});
     } catch(error) {

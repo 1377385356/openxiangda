@@ -17,8 +17,9 @@ export function validateWorkflowCorrections(definition: Definition): string[] {
   if (!corrections.length) return [];
   const errors: string[] = [];
   const targets = (node: any): string[] => node?.kind === 'approval' ? [node.onApprove, node.onReject]
+    : node?.kind === 'parallel' ? (Array.isArray(node.branches) ? node.branches : []).map((branch: any) => branch.target)
     : node?.kind === 'condition' ? [...(Array.isArray(node.branches) ? node.branches : []).map((branch: any) => branch.target), node.otherwise]
-    : node?.kind === 'action' || node?.kind === 'cc' || node?.kind === 'handle' ? [node.next] : [];
+    : node?.kind === 'action' || node?.kind === 'cc' || node?.kind === 'handle' || node?.kind === 'join' ? [node.next] : [];
   const forward = new Set<string>();
   const pending = [definition.startAt];
   while (pending.length) {

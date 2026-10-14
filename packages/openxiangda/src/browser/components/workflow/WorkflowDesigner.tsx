@@ -323,9 +323,7 @@ export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onS
     if (chosenTemplate === 'parallel') {
       const joinId = id(), branches = [{ id: 'branch_1',title: '分支 1' },{ id: 'branch_2',title: '分支 2' }];
       try {
-        const next = edge.from === workflowDesignerStartId ? { ...definition,startAt: nodeId,nodes: { ...definition.nodes,
-          [nodeId]: { id: nodeId,kind: 'parallel' as const,title: chosenTitle.trim(),join: joinId,branches: branches.map(branch => ({ ...branch,target: joinId })) },
-          [joinId]: { id: joinId,kind: 'join' as const,title: '全部完成后继续',parallel: nodeId,next: edge.to } } } :
+        const next = edge.from === workflowDesignerStartId ? editWorkflowDesignerDefinition(definition,{ type: 'insert_start_parallel',target: edge.to,id: nodeId,joinId,title: chosenTitle.trim(),branches }) :
           editWorkflowDesignerDefinition(definition,{ type: 'insert_parallel',from: edge.from,target: edge.to,id: nodeId,joinId,title: chosenTitle.trim(),branches,edge: edge.kind === 'branch' ? (edge.priority || 1)-1 : edge.kind === 'default' ? 'default' : edge.kind as 'approve'|'reject'|'next' });
         mutate(next);setSelected(nodeId);setInspector(true);setStructureKeys([]);setInsert(undefined);
       } catch (failure) { message.error(failure instanceof Error ? failure.message : '并行分支添加失败'); }
@@ -359,7 +357,7 @@ export function WorkflowDesigner({ workflowCode, onPublished, onDirtyChange, onS
       else return;
     }
     try {
-      mutate(edge.from === workflowDesignerStartId ? { ...insertionDefinition, startAt: next.id, nodes: { ...insertionDefinition.nodes, [next.id]: next } } : editWorkflowDesignerDefinition(insertionDefinition,{ type: 'insert',from: edge.from,target: edge.to,node: next,edge: edge.kind === 'branch' ? (edge.priority || 1) - 1 : edge.kind === 'default' ? 'default' : edge.kind as 'approve'|'reject'|'next' }),nextBinding);
+      mutate(edge.from === workflowDesignerStartId ? editWorkflowDesignerDefinition(insertionDefinition,{ type: 'insert_start',target: edge.to,node: next }) : editWorkflowDesignerDefinition(insertionDefinition,{ type: 'insert',from: edge.from,target: edge.to,node: next,edge: edge.kind === 'branch' ? (edge.priority || 1) - 1 : edge.kind === 'default' ? 'default' : edge.kind as 'approve'|'reject'|'next' }),nextBinding);
       setSelected(nodeId);setInspector(true);setStructureKeys([]);setInsert(undefined);
     } catch (error) { setError(String((error as Error).message)); }
   };

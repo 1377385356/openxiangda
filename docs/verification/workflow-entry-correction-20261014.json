@@ -1,0 +1,36 @@
+{
+  "checks": [
+    {
+      "mode": "save",
+      "passed": true,
+      "writes": 1
+    },
+    {
+      "mode": "save-start",
+      "passed": true,
+      "writes": 1
+    }
+  ],
+  "sourceBase": "dc3d86a9",
+  "focusedTests": {
+    "passed": 26,
+    "failed": 0,
+    "skipped": 0
+  },
+  "cursor": {
+    "computedStates": [
+      "grab",
+      "grabbing",
+      "grab"
+    ],
+    "blurAndFocus": "grab",
+    "onsiteDisappearanceReproduced": false
+  },
+  "typecheckPassed": true,
+  "deployed": false,
+  "logsSha256": {
+    "workflow-entry-focused-20261014.log": "9dcb9bc0397bfb9d7be21e6534c378f94c0361a3185c14defae1a7cca044e107",
+    "workflow-entry-source-browser-cursor-20261014.log": "f0f1b463274236e542b97d9a01eabccdf98c0983e97c2da2dc2ec022b50bfda4",
+    "workflow-entry-sdk-tsc-retry-20261014.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}
