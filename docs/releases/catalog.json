@@ -3,6 +3,37 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.74.1",
+      "status": "reviewed",
+      "title": "隔离共用人员来源的节点级主管校验",
+      "summary": "修复给单个节点配置逐级主管时，错误要求其他共用同一源码绑定的节点也改变审批模式的问题。",
+      "newFeatures": [],
+      "fixes": [
+        "普通来源与条件规则的主管叶校验只检查当前被编辑节点，不将节点覆盖误当作共享源码绑定的全局修改。",
+        "保留完整原图、步骤输出及事实支配关系校验；全局源码绑定变更仍对全部真实引用执行严格主管规则。"
+      ],
+      "affectedUsers": [
+        "多个审批或办理节点共用角色来源，并为其中一个节点选择逐级主管的OpenXiangda V2应用。"
+      ],
+      "upgradeSteps": [
+        "消费同批正式工具组合与共享contracts，更新配套平台后在TEST验证普通及条件来源、节点模式和真实角色。",
+        "无需修改另一节点、复制业务绑定、改历史任务或重放审批来绕过旧误报。"
+      ],
+      "knownLimitations": [
+        "本修复不配置真实组织主管，也不代表AI模型、OCR、真实角色或客户部署已验收。",
+        "沿用原生人员来源的已发布参数上限、组织上下文、逐级连续办理必须sequence及在途冻结边界。"
+      ],
+      "compatibility": {
+        "node": "Node.js 24 or newer for maintained toolchain",
+        "generation": "OpenXiangda V2; V1 unchanged",
+        "platform": "Paired workflow source catalogue and node-configuration services; shared native validator must match this release"
+      },
+      "issues": [],
+      "sha256": "9a8e5febf8450b1fe748c1131fc9cdbaa8ad577f07879ff9f3de81e06ca94263",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.74.1"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.74.0",
       "status": "reviewed",
       "title": "原生审批人来源与中文参数编辑",
