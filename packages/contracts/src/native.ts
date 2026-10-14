@@ -1025,7 +1025,7 @@ export interface AppEventSubscriptionPlatformAccessDeclaration {
   /** Bounded Native transactions from a verified backend event or machine action. */
   dataMutations?: readonly import('./native-compiler/service-mutations.js').DataMutationGrant[];
   decimalReservation?: AppEventDecimalReservationDeclaration;
-  notification?: { mode: 'business-standard' };
+  notification?: { mode: 'business-standard' } | { mode: 'business-task'; taskCodes: readonly string[] };
   managedFileCopies?: ReadonlyArray<{
     mode: 'copy';
     sourceResourceCode: string;

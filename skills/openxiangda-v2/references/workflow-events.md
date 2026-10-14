@@ -1261,3 +1261,24 @@ pnpm openxiangda workflow sync request-review --from production --to test \
 新节点尚未填完标准成员/角色时可以保存草稿；正式发布与办理覆盖仍完整校验。服务端重新读取实际上下文，不信任浏览器自报目录或已校验标志。AI提案同样经过原binding/canvas门禁；不能把草稿可保存解释为可发布。
 
 冲突、失权或结果未知时保留整个assignment及原operationId，不自动合并分支、不静默丢失条件。已进入流程的任务仍使用原冻结快照，新的规则不回写历史任务。源码同步、配置与发布分别核对原Head/版本和操作回执。
+
+
+### 应用事务拥有的业务待办
+
+预约分配、结算确认等非 Workflow 的业务任务，可由同一 Native 事务写入业务状态并
+发送不可变自定义事件。订阅显式声明
+`platformAccess.notification: { mode: 'business-task', taskCodes: ['booking-review'] }`，
+验证签名的 Nest 事件消费者使用 `OpenXiangdaBusinessNotificationService.sendTaskFromEvent`。
+平台协商 `notification-hub-v2.event-tasks` 能力并检查当前运行 Head 和封存的任务代码清单。
+
+输入使用 `openxiangda.notification.event-task-send/v2`，通过 taskCodePath、recordKeyPath、
+generationPath、sequencePath、statePath、recipientPaths、titlePath 和可选 summaryPath
+投影原事件，状态只能是 action_required/completed/rejected/cancelled。不接收调用者
+自拟收件人或消息键。navigationTarget 使用同应用 AUTHENTICATED APP_ROUTE，原页面
+重新验证办理权限；不生成 Workflow 回调或审批令牌。
+
+同一业务键和轮次只产生一个待办；重新申请必须创建新的 generation。终态先到、
+乱序和重试不会重新打开旧待办。应用应冻结原任务收件人，在原业务事务中关闭旧轮次
+并创建下一轮，不因管理员变化覆盖旧任务。此能力复用平台任务中心、通知发件箱、
+供应方关闭和审计；普通 informational 通知仍不能创建待办。业务提交成功不等于
+供应方投递或用户收到，分别核对业务回执、事件投递和消息详情。

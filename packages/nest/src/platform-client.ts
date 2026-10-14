@@ -43,6 +43,7 @@ import type {
   ApplicationNotificationSendV2,
   BusinessNotificationSendV2,
   EventBusinessNotificationSendV2,
+  EventBusinessTaskNotificationSendV2,
   DingTalkWorkNoticeSendV2,
   NotificationMessageV2,
   NotificationMessageDetailV2,
@@ -1305,6 +1306,13 @@ export class OpenXiangdaPlatformClient {
         }),
       }
     );
+  }
+
+  async sendEventTaskNotification(authorization: string, input: Omit<EventBusinessTaskNotificationSendV2, 'environmentKey'>): Promise<NotificationMessageV2> {
+    return await this.request<NotificationMessageV2>(`${this.notificationPath()}/send/event-task-consumer`, {
+      method: 'POST', headers: this.identityHeaders(authorization),
+      body: JSON.stringify({...input, environmentKey: this.options.environmentKey}),
+    });
   }
 
   private authzPath() {

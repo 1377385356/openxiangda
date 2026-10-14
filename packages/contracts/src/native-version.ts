@@ -103,6 +103,7 @@ export const PLATFORM_CAPABILITY_CONTRACT_VERSIONS = {
   "business-process.durable-command": "1.1.0",
   "workflow.fresh-command-token": "1.0.0",
   "notification-hub-v2": "1.0.0",
+  "notification-hub-v2.event-tasks": "1.0.0",
   "authentication.application-login-surface": "1.0.0",
   "public-access.anonymous-owner-records": "1.0.0",
 } as const;

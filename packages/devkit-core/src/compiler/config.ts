@@ -3294,8 +3294,12 @@ export function validateAppConfig(value: unknown): Diagnostic[] {
             decimalInvalid ||
             Object.keys(access).some(key => !['notification', 'managedFileCopies', 'decimalReservation', 'dataMutations'].includes(key)) ||
             (access.notification !== undefined &&
-              (notification.mode !== 'business-standard' ||
-                Object.keys(notification).some(key => key !== 'mode'))) ||
+              (notification.mode === 'business-task'
+                ? (!Array.isArray(notification.taskCodes) || notification.taskCodes.length < 1 || notification.taskCodes.length > 16 ||
+                    new Set(notification.taskCodes).size !== notification.taskCodes.length ||
+                    notification.taskCodes.some(code => typeof code !== 'string' || code.length > 64 || !/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(code)) ||
+                    Object.keys(notification).some(key => !['mode','taskCodes'].includes(key)))
+                : (notification.mode !== 'business-standard' || Object.keys(notification).some(key => key !== 'mode')))) ||
             (access.notification === undefined && access.managedFileCopies === undefined && access.decimalReservation === undefined && access.dataMutations === undefined) ||
             copiesInvalid
           ) {

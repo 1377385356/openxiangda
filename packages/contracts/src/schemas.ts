@@ -5064,12 +5064,12 @@ const eventSubscriptionPlatformAccessSchema = {
         },
       },
     },
-    notification: {
-      type: "object",
-      additionalProperties: false,
-      required: ["mode"],
-      properties: { mode: { const: "business-standard" } },
-    },
+    notification: { oneOf: [
+      { type: "object", additionalProperties: false, required: ["mode"], properties: { mode: { const: "business-standard" } } },
+      { type: "object", additionalProperties: false, required: ["mode", "taskCodes"], properties: {
+        mode: { const: "business-task" }, taskCodes: { type: "array", minItems: 1, maxItems: 16, uniqueItems: true, items: { type: "string", pattern: "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$", maxLength: 128 } },
+      } },
+    ] },
     managedFileCopies: managedFileCopiesSchema,
   },
 } as const;

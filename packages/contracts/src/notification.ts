@@ -141,6 +141,20 @@ export interface EventBusinessNotificationSendV2 {
   idempotencyKey: string;
 }
 
+export interface EventBusinessTaskNotificationSendV2 {
+  schemaVersion: 'openxiangda.notification.event-task-send/v2';
+  environmentKey: 'preproduction' | 'production';
+  taskCodePath: string;
+  recordKeyPath: string;
+  generationPath: string;
+  sequencePath: string;
+  statePath: string;
+  recipientPaths: string[];
+  titlePath: string;
+  summaryPath?: string;
+  navigationTarget: NotificationNavigationTargetV2;
+}
+
 export interface NotificationMessageV2 {
   id: string;
   schemaVersion: typeof OPENXIANGDA_NOTIFICATION_MESSAGE_V2;

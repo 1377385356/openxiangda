@@ -3,6 +3,7 @@ import { REQUEST } from '@nestjs/core';
 import type {
   BusinessNotificationSendV2,
   EventBusinessNotificationSendV2,
+  EventBusinessTaskNotificationSendV2,
 } from 'openxiangda-contracts';
 import { OpenXiangdaApplicationCredentials } from './application-credentials.js';
 import { requireOpenXiangdaBusinessActionContext } from './business-action-context.js';
@@ -18,6 +19,8 @@ export type OpenXiangdaEventBusinessNotificationInput = Omit<
   EventBusinessNotificationSendV2,
   'environmentKey'
 >;
+
+export type OpenXiangdaEventBusinessTaskNotificationInput = Omit<EventBusinessTaskNotificationSendV2, 'environmentKey'>;
 
 /**
  * Channel-neutral Notification Hub facade for an authorized Named Action.
@@ -44,6 +47,11 @@ export class OpenXiangdaBusinessNotificationService {
       input,
       context.action
     );
+  }
+
+  async sendTaskFromEvent(input: OpenXiangdaEventBusinessTaskNotificationInput) {
+    if (!this.eventContext.current()) throw new UnauthorizedException('OPENXIANGDA_BUSINESS_NOTIFICATION_EVENT_CONTEXT_REQUIRED');
+    return await this.credentials.withAuthorization(async authorization => await this.platform.sendEventTaskNotification(authorization, input));
   }
 
   async sendFromEvent(input: OpenXiangdaEventBusinessNotificationInput) {

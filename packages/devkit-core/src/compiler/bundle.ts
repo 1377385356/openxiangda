@@ -111,7 +111,9 @@ const DEFAULT_EVENT_DELIVERY = {
 function normalizeEventPlatformAccess(access: AppEventSubscriptionPlatformAccessDeclaration) {
   return {
     ...(access.dataMutations ? {dataMutations:normalizeDataMutationGrants(access.dataMutations)} : {}),
-    ...(access.notification ? { notification: { mode: access.notification.mode } } : {}),
+    ...(access.notification ? { notification: access.notification.mode === 'business-task'
+      ? { mode: 'business-task' as const, taskCodes: uniqueSorted(access.notification.taskCodes) }
+      : { mode: 'business-standard' as const } } : {}),
     ...(access.managedFileCopies ? { managedFileCopies: sorted(
       access.managedFileCopies.map(item => ({ mode: item.mode,
         sourceResourceCode: item.sourceResourceCode, sourceFieldCodes: uniqueSorted(item.sourceFieldCodes),

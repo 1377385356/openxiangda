@@ -885,6 +885,8 @@ export function compileRequiredPlatformCapabilitiesV3(
       : []),
     ...(operations.some(op => op.platformAccess?.dataMutations) || config.events.subscriptions.some((sub: JsonObject) => sub.platformAccess?.dataMutations)
       ? [{ code: 'data.service-mutations' as const, declaration: { operations: operations.filter(op => op.platformAccess?.dataMutations).map(op => ({code: op.code, grants: op.platformAccess.dataMutations})), subscriptions: config.events.subscriptions.filter((sub: JsonObject) => sub.platformAccess?.dataMutations).map((sub: JsonObject) => ({code: sub.code, grants: sub.platformAccess.dataMutations})) } }] : []),
+    ...(config.events.subscriptions.some((subscription: JsonObject) => subscription.platformAccess?.notification?.mode === 'business-task')
+      ? [{ code: 'notification-hub-v2.event-tasks' as const, declaration: config.events.subscriptions.filter((subscription: JsonObject) => subscription.platformAccess?.notification?.mode === 'business-task') }] : []),
     ...(usesNotification
       ? [
           {
@@ -1763,9 +1765,16 @@ function validateEventSubscriptionPlatformAccess(
   }
   if (access.notification !== undefined) {
     const notification = object(access.notification, `${pointer}/notification`);
-    exactKeys(notification, ['mode'], `${pointer}/notification`);
-    equal(notification.mode, 'business-standard', `${pointer}/notification/mode`);
-    result.notification = { mode: 'business-standard' };
+    if (notification.mode === 'business-task') {
+      exactKeys(notification, ['mode', 'taskCodes'], `${pointer}/notification`);
+      const taskCodes = boundedArray(notification.taskCodes, `${pointer}/notification/taskCodes`, 16).map((value, index) => stableCode(value, `${pointer}/notification/taskCodes/${index}`));
+      if (!taskCodes.length || new Set(taskCodes).size !== taskCodes.length || taskCodes.some(value => !/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(value))) fail('NATIVE_EVENT_TASK_CODES_INVALID', `${pointer}/notification/taskCodes`);
+      result.notification = { mode: 'business-task', taskCodes };
+    } else {
+      exactKeys(notification, ['mode'], `${pointer}/notification`);
+      equal(notification.mode, 'business-standard', `${pointer}/notification/mode`);
+      result.notification = { mode: 'business-standard' };
+    }
   }
   if (access.managedFileCopies !== undefined) {
     const entries = boundedArray(
