@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.72.0",
+  "version": "2.73.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -102,13 +102,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.11.8",
-    "openxiangda-contracts": "2.93.0",
-    "openxiangda-devkit-core": "2.70.0",
+    "openxiangda-cli": "2.11.9",
+    "openxiangda-contracts": "2.94.0",
+    "openxiangda-devkit-core": "2.71.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.2.21",
-    "openxiangda-nest": "2.22.1",
-    "openxiangda-skill-kit": "2.3.123",
+    "openxiangda-mcp": "2.2.22",
+    "openxiangda-nest": "2.22.2",
+    "openxiangda-skill-kit": "2.3.124",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -174,38 +174,33 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.72.0",
+    "version": "2.73.0",
     "status": "reviewed",
-    "title": "有界匿名具名查询",
-    "summary": "为匿名公开门户提供固定字段、排序、参数和签名游标的服务端具名查询，减少首页、搜索和排行的全量分页读取。",
+    "title": "匿名聚合查询与工作流作者体验",
+    "summary": "为匿名公开门户提供固定维度、度量和排序的有界聚合查询，并包含已评审的工作流作者体验改进。",
     "newFeatures": [
-      "frontend.publicAccess 支持 publicQueries 与 public.query，固定资源、字段投影、排序、limit 和参数绑定。",
-      "匿名浏览器 SDK 提供具名查询客户端；平台服务端复用公开字段、固定 publicFilters、RLS 和托管文件投影。",
-      "记录查询游标绑定查询、参数、签名和有界偏移，未知字段、参数、游标和超限请求直接拒绝。"
+      "匿名 public.query 支持固定 aggregate dimensions、measures 和 order，并复用 publicFilters、Native RLS 与有界分页。",
+      "工作流作者体验改进随同一正式七包组合发布。"
     ],
     "fixes": [
-      "公开目录页面可在具名查询声明存在时使用有界首屏查询，旧 public.list/public.read 策略保持兼容。",
-      "compiler、bundle、JSON Schema 和 server execution 统一校验 publicQueries，避免仅更新页面而绕过平台匿名访问合同。"
+      "compiler、bundle、JSON Schema 和 server execution 对匿名聚合查询保持同一闭合合同。"
     ],
     "affectedUsers": [
-      "需要匿名首页、公开目录、搜索、排行或统计的 OpenXiangda V2 应用。"
+      "需要匿名首页统计、分类、学院分布或排行的 OpenXiangda V2 应用。"
     ],
     "upgradeSteps": [
-      "升级同一正式发行的 openxiangda、contracts、devkit-core 和 CLI 组合。",
-      "在匿名策略中声明 public.query 与 publicQueries，并按本应用字段配置固定排序和参数。",
-      "先在 TEST/preproduction 完成请求量、权限、游标失效和真实浏览器 PC/mobile 验收，再发布生产。"
+      "升级同一正式发行组合；在 TEST/preproduction 验证匿名聚合、游标、权限和浏览器性能。"
     ],
     "knownLimitations": [
-      "本地构建和单元测试不代表学校站点已安装该平台组合。",
-      "现版本服务端 aggregate 查询返回固定 count；复杂维度和度量仍需单独声明与验证。"
+      "本地门禁不代表学校站点已安装该平台组合。"
     ],
     "compatibility": {
       "node": "Node.js 24 or newer for maintained toolchain",
       "generation": "OpenXiangda V2; V1 unchanged",
-      "platform": "anonymous-public named queries 1.0.0; existing anonymous public list/read policies remain compatible"
+      "platform": "anonymous-public named and aggregate queries 1.1.0; existing public list/read policies remain compatible"
     },
     "issues": [],
-    "sha256": "cc2aaebd52707a5e6acf65319407411baa61aff689a2f5ea91294effd5f0ed31",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.72.0"
+    "sha256": "76468650e5afabd8c49c1b11655a8261044d2e6bc5e2916ae07225b073ee968c",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.73.0"
   }
 }
