@@ -1256,11 +1256,39 @@ pnpm openxiangda workflow sync request-review --from production --to test \
 
 配套平台返回已发布的条件人员上下文，且当前目录声明 `conditionalAssignments: true` 时，PC流程编辑器可维护审批/办理节点的有序条件规则与必选“否则”。缺少上下文或能力提示时保留只读/原范围，不把条件规则拆成平铺人员来源。共享草稿的读写权限遵循[流程管理委派](./administration.md#workflow-management)。
 
-标准人员/角色来源只能在原上限内修改，复杂来源使用精确发布或冻结引用；连续主管叶子要求sequence。抄送、嵌套条件、发起自选与应用provider不在该编辑范围。变量必须在进入节点的所有路径上可用；可选事实只用于存在性判断。条件数、表达式与输入字节预算沿原契约执行。
+标准人员/角色来源只能在原上限内修改，复杂来源使用精确发布、冻结引用或下文明确开放的参数；连续主管叶子要求sequence。抄送、嵌套条件、发起自选与应用provider不在该编辑范围。变量必须在进入节点的所有路径上可用；可选事实只用于存在性判断。条件数、表达式与输入字节预算沿原契约执行。
 
 新节点尚未填完标准成员/角色时可以保存草稿；正式发布与办理覆盖仍完整校验。服务端重新读取实际上下文，不信任浏览器自报目录或已校验标志。AI提案同样经过原binding/canvas门禁；不能把草稿可保存解释为可发布。
 
 冲突、失权或结果未知时保留整个assignment及原operationId，不自动合并分支、不静默丢失条件。已进入流程的任务仍使用原冻结快照，新的规则不回写历史任务。源码同步、配置与发布分别核对原Head/版本和操作回执。
+
+### 部门主管、逐级主管和人员来源参数
+
+配套平台额外返回 `nativePeopleAuthoring: true` 后，已发布审批/办理节点也可使用当前应用目录中的完整人员来源，不再只限指定人和角色。没有此标志时沿用旧编辑路径；安装新SDK本身不代表服务端已支持。条件中的部门主管与普通来源使用同一准入和实际组织解析。
+
+需要让老师调整主管级数或部门字段时，在流程源码中声明参数上限，例如（两个字段须已在本流程 `inputSchema` 中声明）：
+
+```ts
+authoring: {
+  peopleSources: [{
+    code: 'department-supervisor',
+    title: '承办或归口部门主管',
+    entry: {
+      provider: 'department_supervisor', departmentIdFrom: 'dept.value',
+      level: 1, fallbackToAncestorSupervisor: false, min: 1, max: 1,
+    },
+    parameters: {
+      departmentIdFrom: { values: ['dept.value', 'ownerDept.value'] },
+      level: { minimum: 1, maximum: 5 },
+      fallbackToAncestorSupervisor: { values: [false, true] },
+    },
+  }],
+},
+```
+
+每流程最多32项模板，每项最多8个参数；枚举最多32个选项。`supervisor_chain` 可开放 `from`、`until`、`continuous`、`missing`，表单成员来源可开放 `inputPath`。人数只能在源码默认上下限内收紧；provider、委托、routing及未开放字段不能修改，角色范围也不能换维度。逐级连续办理必须使用允许的依次审批模式，发起人主管链还需源码显式声明组织部门上下文。
+
+界面以字段中文标题、应用角色名和“第几级主管／最上级／无人时阻止”等说明呈现，保存仍使用原始类型值。未知旧值和超范围输入保留供修正，打开页面不会自动改写配置。正式平台从当前AppVersion重读模板、节点与可用事实；后续步骤的输出即便存在于模板目录，也不能在较早节点使用。修改只影响后续进入节点的任务，不重分派已冻结的待办。
 
 
 ### 应用事务拥有的业务待办

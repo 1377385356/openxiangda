@@ -166,6 +166,19 @@ export function validateWorkflowNodeConfigurationPatch(node: WorkflowAdministrat
           }));
         }
       }
+    } else if (record(value) && (!['fixed_users','app_role','app_role_in_scope'].includes(value.provider) || !keys(value,value.provider==='fixed_users'?['provider','users']:['provider','roleCode','roleCodes']))) {
+      if (!conditionalContext || !binding || !['approval','handle'].includes(node.kind)) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_CONDITIONAL_CONTEXT_REQUIRED');
+      else {
+        const actual=conditionalContext.definition.nodes[conditionalContext.nodeId];
+        if (!actual || !('binding' in actual) || actual.kind!==node.kind || actual.binding!==node.binding) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_CONDITIONAL_CONTEXT_INVALID');
+        else {
+          errors.push(...validateWorkflowNodeConfigurationPatch(actual,undefined,{...patch,assignee:undefined},conditionalContext.definition.taskPages));
+          errors.push(...validateWorkflowConditionalAssignment({provider:'conditional',cases:[{when:{op:'literal',value:false},assignee:value}],otherwise:value},{
+            ...conditionalContext,definition:{...conditionalContext.definition,nodes:{...conditionalContext.definition.nodes,[conditionalContext.nodeId]:{...actual,...('mode' in actual?{mode:patch.mode||actual.mode}:{})}}},frozenDefault:binding as WorkflowBindingEntry,
+            standardProviders:actual.kind==='approval'||actual.kind==='handle'?actual.administration?.assigneeProviders||[]:[],
+          }));
+        }
+      }
     } else {
       if (binding?.selectedInputPath && !['app_role', 'app_role_in_scope'].includes(value?.provider || '')) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_PROVIDER_READONLY');
       if (!record(value) || !['approval', 'handle', 'cc'].includes(node.kind) || !allowed.includes(value.provider) || (value.provider === 'app_role_in_scope' && !binding?.scope)) errors.push('WORKFLOW_V2_NODE_CONFIGURATION_PROVIDER_READONLY');
@@ -203,4 +216,20 @@ export function projectWorkflowNodePolicy(node: WorkflowAdministrationNodeSource
     operationPolicy: operations,
     fieldPolicy: { default: node.fieldPolicy?.default || 'readonly', fields: { ...node.fieldPolicy?.fields } },
   };
+}
+
+/** Full standard sources are distinct from legacy principal-only patches. */
+export function workflowNodeAssignmentUsesReleasedSource(value: WorkflowBindingEntry | undefined): boolean {
+  if (!value) return false;
+  if (value.provider === 'fixed_users') return !keys(value,['provider','users']);
+  if (value.provider === 'app_role' || value.provider === 'app_role_in_scope') return !keys(value,['provider','roleCode','roleCodes']);
+  return true;
+}
+/** Projection follows admission; never merge a different provider's scope/paths. */
+export function projectWorkflowConfiguredAssignment(original: WorkflowBindingEntry, configured: WorkflowBindingEntry): WorkflowBindingEntry {
+  if (workflowNodeAssignmentUsesReleasedSource(configured)) return structuredClone(configured);
+  return { ...structuredClone(configured), ...(original.selectedInputPath!==undefined?{selectedInputPath:original.selectedInputPath}:{}),
+    ...(original.min!==undefined?{min:original.min}:{}),...(original.max!==undefined?{max:original.max}:{}),
+    ...(original.delegatable!==undefined?{delegatable:original.delegatable}:{}),...(original.routing?{routing:structuredClone(original.routing)}:{}),
+    ...(configured.provider==='app_role_in_scope'&&original.scope?{scope:structuredClone(original.scope)}:{}) } as WorkflowBindingEntry;
 }

@@ -1,9 +1,8 @@
+import { validateWorkflowStandardAssignment as leafErrors } from './workflow-standard-assignment-validation.js';
+import { workflowPeopleSourceTemplateAllows, type WorkflowPeopleSourceTemplate } from './workflow-people-source-authoring.js';
 import type { WorkflowBinding, WorkflowBindingEntry, WorkflowStandardBindingEntry, WorkflowDefinition, WorkflowExpression } from '../types.js';
 import { evaluateWorkflowExpression } from './workflow-expression.js';
-import { validateWorkflowRoleInputSelection, validateWorkflowRoleUnion } from './workflow-role-union.js';
-import { validateWorkflowSupervisorChainBinding, validateWorkflowSupervisorChains } from './workflow-supervisor-chain.js';
-import { validateWorkflowAssignmentRoutingPolicy } from './workflow-assignment-routing.js';
-import { workflowStandardBindingEntrySchema } from './workflow-standard-binding-schema.js';
+import { validateWorkflowSupervisorChains } from './workflow-supervisor-chain.js';
 
 export { WORKFLOW_CONDITIONAL_ASSIGNMENT_MAX_CASES, WORKFLOW_CONDITIONAL_ASSIGNMENT_MAX_BYTES, WORKFLOW_CONDITIONAL_ASSIGNMENT_LEAF_PROVIDERS, workflowConditionalAssignmentSchema } from './workflow-conditional-assignment-schema.js';
 import { WORKFLOW_CONDITIONAL_ASSIGNMENT_MAX_CASES, WORKFLOW_CONDITIONAL_ASSIGNMENT_MAX_BYTES, WORKFLOW_CONDITIONAL_ASSIGNMENT_LEAF_PROVIDERS } from './workflow-conditional-assignment-schema.js';
@@ -25,15 +24,15 @@ export interface WorkflowConditionalAssignmentContext {
   frozenDefault?: WorkflowBindingEntry | WorkflowConditionalAssignment;
   standardProviders: readonly ('fixed_users' | 'app_role' | 'app_role_in_scope')[];
   scopeDimensions?: readonly string[];
+  /** Must come from the current AppVersion's code-owned catalogue. */
+  peopleSourceTemplates?: readonly WorkflowPeopleSourceTemplate[] | undefined;
 }
-const leafSchema = workflowStandardBindingEntrySchema;
 const record = (value: unknown): value is Record<string, any> => !!value && typeof value === 'object' &&
   !Array.isArray(value) && [Object.prototype, null].includes(Object.getPrototypeOf(value));
 const keys = (value: object, allowed: readonly string[]) => Object.keys(value).every(key => allowed.includes(key));
 const text = (value: unknown, max: number) => typeof value === 'string' && !!value.trim() && value.length <= max && !/[\u0000-\u001f\u007f]/.test(value);
 const path = (value: unknown): value is string => typeof value === 'string' && /^[A-Za-z][A-Za-z0-9_.]{0,254}$/.test(value) &&
   value.split('.').every(part => !!part && !['__proto__', 'prototype', 'constructor'].includes(part));
-const role = (value: unknown) => typeof value === 'string' && value.length <= 128 && /^[a-z][a-z0-9]*(?:[-_.][a-z0-9]+)*$/.test(value);
 
 /** Bound JSON before inspecting AST/leaves; cycles, accessors and non-JSON values are refused. */
 function boundedJson(value: unknown): boolean {
@@ -55,30 +54,6 @@ const semantic = (value: unknown): string => {
   return JSON.stringify(sort(value));
 };
 
-function leafErrors(entry: unknown, allowIncomplete = false): string[] {
-  if (!record(entry) || !WORKFLOW_CONDITIONAL_ASSIGNMENT_LEAF_PROVIDERS.includes(entry.provider) ||
-      !keys(entry, Object.keys(leafSchema.properties))) return ['WORKFLOW_CONDITIONAL_LEAF_INVALID'];
-  const errors = [...validateWorkflowSupervisorChainBinding(entry), ...validateWorkflowRoleUnion(entry), ...validateWorkflowRoleInputSelection(entry)];
-  const providerFields: Record<string, string[]> = {
-    fixed_users: ['users'], app_role: ['roleCode', 'roleCodes', 'selectedInputPath', 'routing'],
-    app_role_in_scope: ['roleCode', 'roleCodes', 'scope', 'selectedInputPath', 'routing'],
-    supervisor_chain: ['from', 'until', 'continuous', 'missing'],
-    form_field_users: ['inputPath', 'candidateField'], input_users: ['inputPath'],
-    initiator: [], previous_node_actor: [], business_relation: ['relationCode', 'resourceCode', 'resourceIdFrom'],
-  };
-  if (!keys(entry, ['provider', 'min', 'max', 'delegatable', ...providerFields[entry.provider]!])) errors.push('WORKFLOW_CONDITIONAL_LEAF_FIELDS_INVALID');
-  if (entry.routing !== undefined) errors.push(...validateWorkflowAssignmentRoutingPolicy(entry.routing));
-  if (['min', 'max'].some(key => entry[key] !== undefined && (!Number.isInteger(entry[key]) || entry[key] < 1 || entry[key] > 200)) ||
-      (entry.min ?? 1) > (entry.max ?? 200) || entry.delegatable !== undefined && typeof entry.delegatable !== 'boolean') errors.push('WORKFLOW_CONDITIONAL_LEAF_BOUNDS_INVALID');
-  if (entry.provider === 'fixed_users' && (!Array.isArray(entry.users) || (!allowIncomplete && !entry.users.length) || entry.users.length > 200 ||
-      new Set(entry.users).size !== entry.users.length || entry.users.some((id: unknown) => !text(id, 255)))) errors.push('WORKFLOW_CONDITIONAL_USERS_INVALID');
-  if (['app_role', 'app_role_in_scope'].includes(entry.provider) && entry.roleCodes === undefined && !(allowIncomplete && entry.roleCode === undefined) && !role(entry.roleCode)) errors.push('WORKFLOW_CONDITIONAL_ROLE_INVALID');
-  if (entry.provider === 'app_role_in_scope' && (!record(entry.scope) || !keys(entry.scope, ['dimension', 'value', 'valueFrom']) || !role(entry.scope.dimension) ||
-      !(text(entry.scope.value, 255) && entry.scope.valueFrom === undefined || path(entry.scope.valueFrom) && entry.scope.value === undefined))) errors.push('WORKFLOW_CONDITIONAL_SCOPE_INVALID');
-  if (['input_users', 'form_field_users'].includes(entry.provider) && !path(entry.inputPath)) errors.push('WORKFLOW_CONDITIONAL_INPUT_PATH_INVALID');
-  if (entry.provider === 'business_relation' && (!role(entry.relationCode) || !role(entry.resourceCode) || !path(entry.resourceIdFrom))) errors.push('WORKFLOW_CONDITIONAL_RELATION_INVALID');
-  return errors;
-}
 
 /** One bounded iterator for future role, capability, principal and source-sync consumers. No recursion. */
 export function workflowAssignmentLeaves(entry: WorkflowBindingEntry | WorkflowConditionalAssignment, options: { allowIncomplete?: boolean } | number = {}): WorkflowStandardBindingEntry[] {
@@ -233,14 +208,8 @@ export function validateWorkflowConditionalAssignment(value: unknown, context: W
   const frozen = context.frozenDefault ? workflowAssignmentLeaves(context.frozenDefault, options) : [];
   const released = Object.values(context.releasedSources);
   for (const [index, leaf] of [...entry.cases.map(rule => rule.assignee), entry.otherwise].entries()) {
-    if (!authorable(leaf, context) && ![...frozen, ...released].some(source => semantic(source) === semantic(leaf))) errors.push(`WORKFLOW_CONDITIONAL_LEAF_UNRELEASED:${index}`);
-    if (leaf.provider === 'supervisor_chain') errors.push(...validateWorkflowSupervisorChains(context.definition, { bindings: { [node.binding!]: leaf } }));
-    const leafPaths = [leaf.inputPath, leaf.selectedInputPath, leaf.resourceIdFrom, leaf.scope?.valueFrom,
-      ...(typeof leaf.from === 'object' ? [leaf.from.field] : []),
-      ...Object.values(leaf.routing?.dimensions || {}).map(dimension => dimension.valueFrom),
-      ...Object.values(leaf.routing?.sources || {}).map(source => source.scope?.valueFrom),
-    ].filter((value): value is string => typeof value === 'string');
-    for (const factPath of leafPaths) if (!workflowConditionalAssignmentFact(context.definition, context.nodeId, factPath)) errors.push(`WORKFLOW_CONDITIONAL_LEAF_FACT_UNAVAILABLE:${index}:${factPath}`);
+    if (!authorable(leaf, context) && ![...frozen, ...released].some(source => semantic(source) === semantic(leaf)) && !workflowPeopleSourceTemplateAllows(leaf, context.peopleSourceTemplates)) errors.push(`WORKFLOW_CONDITIONAL_LEAF_UNRELEASED:${index}`);
+    errors.push(...validateWorkflowAssignmentLeafFacts(leaf, context.definition, context.nodeId).map(error=>error.startsWith('WORKFLOW_CONDITIONAL_LEAF_FACT_UNAVAILABLE:') ? `WORKFLOW_CONDITIONAL_LEAF_FACT_UNAVAILABLE:${index}:${error.slice('WORKFLOW_CONDITIONAL_LEAF_FACT_UNAVAILABLE:'.length)}` : error));
   }
   for (const [index, rule] of entry.cases.entries()) {
     const local: string[] = [], result = validateFacts(rule.when, context.definition, context.nodeId, local);
@@ -275,4 +244,15 @@ export function selectWorkflowConditionalAssignment(entry: WorkflowConditionalAs
     if (matches) return { assignee: rule.assignee, matched: index, ...(rule.label !== undefined ? { label: rule.label } : {}), factReads };
   }
   return { assignee: entry.otherwise, matched: 'otherwise', factReads };
+}
+
+/** Uses the same dominance/typed-fact owner for ordinary and conditional sources. */
+export function validateWorkflowAssignmentLeafFacts(leaf: WorkflowStandardBindingEntry, definition: WorkflowDefinition, nodeId: string): string[] {
+  const node=definition.nodes[nodeId]; if(!node||!('binding' in node))return ['WORKFLOW_CONDITIONAL_HUMAN_REQUIRED'];
+  const errors:string[]=[];
+  if(leaf.provider==='supervisor_chain') errors.push(...validateWorkflowSupervisorChains(definition,{bindings:{[node.binding]:leaf}}));
+  const paths=[leaf.inputPath,leaf.departmentIdFrom,leaf.selectedInputPath,leaf.resourceIdFrom,leaf.scope?.valueFrom,
+    ...(typeof leaf.from==='object'?[leaf.from.field]:[]),...Object.values(leaf.routing?.dimensions||{}).map(d=>d.valueFrom),...Object.values(leaf.routing?.sources||{}).map(s=>s.scope?.valueFrom)].filter((v):v is string=>typeof v==='string');
+  for(const path of paths) if(!workflowConditionalAssignmentFact(definition,nodeId,path))errors.push(`WORKFLOW_CONDITIONAL_LEAF_FACT_UNAVAILABLE:${path}`);
+  return [...new Set(errors)];
 }

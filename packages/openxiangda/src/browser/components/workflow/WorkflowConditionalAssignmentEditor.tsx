@@ -34,7 +34,7 @@ export function WorkflowConditionalAssignmentEditor({ value = createWorkflowCond
   }
   const allowedSources = Object.fromEntries(Object.entries(sources).filter(([, source]) => WORKFLOW_CONDITIONAL_ASSIGNMENT_LEAF_PROVIDERS.includes(source.provider as any)));
   const change = (next: WorkflowConditionalAssignment) => { if (!disabled) onChange(next); };
-  const leafEditor = (entry: WorkflowConditionalAssignmentLeaf, update: (entry: WorkflowConditionalAssignmentLeaf) => void) => <WorkflowPeopleSourceEditor entry={entry} sources={allowedSources} principals={principals} variables={allVariables} disabled={disabled} allowedProviders={context.standardProviders} scopeDimensions={context.scopeDimensions} onChange={entry => update(entry as WorkflowConditionalAssignmentLeaf)} />;
+  const leafEditor = (entry: WorkflowConditionalAssignmentLeaf, update: (entry: WorkflowConditionalAssignmentLeaf) => void) => <WorkflowPeopleSourceEditor entry={entry} templates={context.peopleSourceTemplates} sources={allowedSources} principals={principals} variables={allVariables} disabled={disabled} allowedProviders={context.standardProviders} scopeDimensions={context.scopeDimensions} onChange={entry => update(entry as WorkflowConditionalAssignmentLeaf)} />;
   const move = (index: number, delta: number) => { const cases = [...value.cases]; [cases[index], cases[index + delta]] = [cases[index + delta]!, cases[index]!]; change({ ...value, cases }); };
   return <section className="oxa-workflow-conditional-assignment" aria-label="条件人员规则">
     <Alert type="info" showIcon title="按顺序判断，仅使用首条满足条件的人员来源" description="未命中时使用“否则”。命中但无人可办理时不会继续尝试下一条。可选变量仅可判断是否存在。" />

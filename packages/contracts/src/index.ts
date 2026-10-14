@@ -90,3 +90,6 @@ export * from './native-compiler/organization-authorization.js';
 export * from './workflow-legacy-adoption.js';
 
 export * from './native-compiler/transaction-time.js';
+
+export * from "./native-compiler/workflow-people-source-authoring.js";
+export * from "./native-compiler/workflow-standard-assignment-validation.js";

@@ -1,3 +1,7 @@
+import { workflowDesignerVariables as importWorkflowVariables } from 'openxiangda-contracts/browser';
+import { workflowAssignmentLeaves, WORKFLOW_CONDITIONAL_ASSIGNMENT_LEAF_PROVIDERS, type WorkflowBindingEntry } from 'openxiangda-contracts/browser';
+import { WorkflowPeopleSourceEditor } from './WorkflowPeopleSourceEditor';
+import { workflowPeopleSourceSummary } from './workflow-people-source-presentation';
 import type { WorkflowVariableChoices } from './workflow-variable-presentation';
 import { isWorkflowDesignerAuthorityLoss, isWorkflowDesignerAuthorityBusy } from './workflow-designer-authority';
 import { createBrowserUuid } from '../../uuid';
@@ -15,7 +19,7 @@ export interface RetainedWorkflowNodeInput { nodeId: string; values: Record<stri
 
 type Node = WorkflowNodeConfigurations['nodes'][number];
 type Values = {
-  title: string; description?: string; provider?: 'fixed_users' | 'app_role' | 'app_role_in_scope' | 'conditional';
+  title: string; description?: string; provider?: WorkflowBindingEntry['provider']; standardAssignee?: WorkflowBindingEntry;
   conditionalAssignee?: import('openxiangda-contracts/browser').WorkflowConditionalAssignment;
   users?: Array<{ value: string; label?: string }>; roleCodes?: string[]; mode?: Node['effective']['mode']; reason: string;
   operations?: WorkflowNodeConfigurationPatch['operations'];
@@ -28,6 +32,7 @@ const effect = '保存后，后续进入此节点的任务使用新配置。当�
 
 function initialValues(node: Node, principals: WorkflowNodeConfigurations['principals']): Partial<Values> {
   return {
+    standardAssignee: node.effective.binding?.provider !== 'conditional' && node.effective.binding ? structuredClone(node.effective.binding) : undefined,
     conditionalAssignee: node.effective.binding?.provider === 'conditional' ? structuredClone(node.effective.binding) : undefined,
     title: node.effective.title, description: node.effective.description || '', mode: node.effective.mode || node.defaults.mode,
     provider: node.effective.binding?.provider as Values['provider'], roleCodes: node.effective.binding?.roleCodes || (node.effective.binding?.roleCode ? [node.effective.binding.roleCode] : []),
@@ -77,11 +82,13 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
   const valuesChanged = () => comparableValues(form.getFieldsValue(true)) !== comparableValues(initialValues(node, principals));
   useEffect(() => { if (!frozen.current) setDirty(valuesChanged()); }, [node, principals, form]);
   const isCc = node.kind === 'cc';
-  const selectedProvider = Form.useWatch('provider', form) || node.effective.binding?.provider;
+  // The native source switch is a whole-value editor rather than a provider
+  // Form.Item. Keep observing its preserved field when conditional UI mounts.
+  const selectedProvider = Form.useWatch('provider', { form, preserve: true }) || node.effective.binding?.provider;
   const selectedMode = Form.useWatch('mode', form) || node.effective.mode || 'single';
   const binding = node.defaults.binding;
   const conditionalContext = conditionalAssignment ? { definition: conditionalAssignment.definition, nodeId: node.nodeId,
-    releasedSources: conditionalAssignment.releasedSources, scopeDimensions: conditionalAssignment.scopeDimensionsByNode[node.nodeId] || [] } : undefined;
+    peopleSourceTemplates: conditionalAssignment.nativePeopleAuthoring ? conditionalAssignment.peopleSourceTemplates : undefined, releasedSources: conditionalAssignment.releasedSources, scopeDimensions: conditionalAssignment.scopeDimensionsByNode[node.nodeId] || [] } : undefined;
   const recipientMinimum = isCc ? binding?.min ?? 1 : node.effective.emptyPolicy === 'skip' ? 0 : 1;
   const recipientMaximum = isCc ? Math.min(binding?.max ?? WORKFLOW_AUTOMATIC_CC_DEFAULT_RECIPIENTS, WORKFLOW_AUTOMATIC_CC_MAX_RECIPIENTS) : 200;
   const allowedProviders = node.administration?.assigneeProviders || (!isCc && binding && providers[binding.provider] ? [binding.provider] : []);
@@ -97,8 +104,9 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
     if (form.isFieldTouched('title')) patch.title = values.title;
     if (form.isFieldTouched('description')) patch.description = values.description || '';
     if (form.isFieldTouched('mode')) patch.mode = values.mode;
-    if ((['provider', 'users', 'roleCodes', 'conditionalAssignee'] as const).some(name => form.isFieldTouched(name))) {
+    if ((['provider', 'users', 'roleCodes', 'conditionalAssignee', 'standardAssignee'] as const).some(name => form.isFieldTouched(name))) {
       if (values.provider === 'conditional') patch.assignee = structuredClone(values.conditionalAssignee);
+      else if (conditionalAssignment?.nativePeopleAuthoring && values.standardAssignee) patch.assignee=structuredClone(values.standardAssignee);
       else if (allowedProviders.length) patch.assignee = values.provider === 'fixed_users' ? { provider: 'fixed_users', users: (values.users || []).map(person => person.value) } : { provider: values.provider as 'app_role' | 'app_role_in_scope', ...(values.roleCodes?.length === 1 ? { roleCode: values.roleCodes[0]! } : { roleCodes: values.roleCodes || [] }) };
     }
     for (const operation of node.administration?.operations || []) {
@@ -174,7 +182,7 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
       if (!latest || context.headRevision == null) throw new Error('当前定义已移除此节点或没有激活版本，请关闭后重新查看流程。');
       const values = initialValues(latest, configuration.principals);
       for (const key of ['title', 'description', 'mode'] as const) if (!form.isFieldTouched(key)) form.setFieldValue(key, values[key]);
-      const assignmentFields = ['provider', 'users', 'roleCodes', 'conditionalAssignee'] as const;
+      const assignmentFields = ['provider', 'users', 'roleCodes', 'conditionalAssignee', 'standardAssignee'] as const;
       // CAS conflict recovery must retain the whole assignment, never merge its individual rules or mode selector.
       if (!assignmentFields.some(key => form.isFieldTouched(key))) for (const key of assignmentFields) form.setFieldValue(key, values[key]);
       for (const operation of latest.administration?.operations || []) for (const key of ['enabled', 'label', 'opinion'] as const) if (!form.isFieldTouched(['operations', operation, key])) form.setFieldValue(['operations', operation, key], values.operations?.[operation]?.[key]);
@@ -206,6 +214,8 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
     </Space>
   </div>;
   const isHuman = node.kind === 'approval' || node.kind === 'handle';
+  const canNativeSources = isHuman && conditionalAssignment?.nativePeopleAuthoring === true && !!conditionalContext;
+  const sourceNames = conditionalContext ? importWorkflowVariables(conditionalContext.definition) : [];
   const canCondition = isHuman && !!conditionalContext && node.defaults.emptyPolicy !== 'skip';
   const operationNames = node.administration?.operations || [];
   const operationRows = [...new Set<WorkflowConfigurableOperation>([...(node.kind === 'handle' ? ['complete' as const] : ['approve' as const]), ...operationNames])]
@@ -216,7 +226,7 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
     {error && <Alert type="error" showIcon title={conflict ? '设置已被他人修改，你的输入已保留' : uncertain ? '操作结果待确认' : '办理设置未保存'} description={error} />}
     {conflict && <Button onClick={() => void refreshKeepingDraft()} disabled={busy}>载入最新设置并保留输入</Button>}
     {inline && compact && <div className="oxa-designer-handling-summary">
-      <button type="button" onClick={onExpand}><strong>{isCc ? '抄送人' : node.kind === 'handle' ? '办理人' : '审批人'}</strong><span>{selectedProvider === 'fixed_users' ? (form.getFieldValue('users') || []).map((person: {value:string;label?:string}) => principals.users.find(user => user.value===person.value)?.label || person.label || '成员').join('、') : (form.getFieldValue('roleCodes') || []).map((code: string) => principals.roles.find(role => role.code===code)?.name || '已配置角色').join('、') || '按已配置的人员规则'}</span><span aria-hidden="true"><RightOutlined /></span></button>
+      <button type="button" onClick={onExpand}><strong>{isCc ? '抄送人' : node.kind === 'handle' ? '办理人' : '审批人'}</strong><span>{canNativeSources && form.getFieldValue('standardAssignee') ? workflowPeopleSourceSummary(form.getFieldValue('standardAssignee'),sourceNames,principals) : selectedProvider === 'fixed_users' ? (form.getFieldValue('users') || []).map((person: {value:string;label?:string}) => principals.users.find(user => user.value===person.value)?.label || person.label || '成员').join('、') : (form.getFieldValue('roleCodes') || []).map((code: string) => principals.roles.find(role => role.code===code)?.name || '已配置角色').join('、') || '按已配置的人员规则'}</span><span aria-hidden="true"><RightOutlined /></span></button>
       {isHuman && <button type="button" onClick={onExpand}><strong>{node.kind === 'handle' ? '办理操作' : '审批操作'}</strong><span>{operationRows.map(operation => form.getFieldValue(['operations',operation,'label']) || labels[operation]).join('、')}</span><span aria-hidden="true"><RightOutlined /></span></button>}
     </div>}
     <Form form={form} layout="vertical" disabled={readOnly || authorityStopped.current || busy || !!frozen.current} onValuesChange={() => setDirty(valuesChanged())} scrollToFirstError={{ focus: true }} initialValues={initialValues(initialNode, initialPrincipals)}>
@@ -227,15 +237,26 @@ export function WorkflowNodeConfigurationEditor({ workflowCode, node: initialNod
       {(isHuman || isCc) && <section className="oxa-workflow-config-section" aria-label={isCc ? '抄送人' : node.kind === 'handle' ? '办理人' : '审批人'}>
         <h3>{isCc ? '抄送人' : node.kind === 'handle' ? '办理人' : '审批人'}</h3>
         {allowedProviders.length > 0 || canCondition ? <>
+          {canNativeSources ? <><Form.Item name="provider" hidden><Input /></Form.Item><Radio.Group aria-label="已发布节点人员分派方式" disabled={readOnly||authorityStopped.current||busy||!!frozen.current} value={selectedProvider==='conditional'?'conditional':'standard'} options={[{value:'standard',label:'普通人员来源'},...(canCondition?[{value:'conditional',label:'按条件选择'}]:[])]} onChange={event=>{
+            if(event.target.value==='conditional') form.setFields([{name:'provider',value:'conditional',touched:true},{name:'conditionalAssignee',value:form.getFieldValue('conditionalAssignee')||createWorkflowConditionalAssignment(form.getFieldValue('standardAssignee')||node.effective.binding||{provider:'fixed_users',users:[]}),touched:true}]);
+            else form.setFields([{name:'provider',value:form.getFieldValue('standardAssignee')?.provider||'fixed_users',touched:true},{name:'standardAssignee',value:form.getFieldValue('standardAssignee')||{provider:'fixed_users',users:[]},touched:true}]);
+            setDirty(valuesChanged());
+          }}/>{selectedProvider!=='conditional'&&<Form.Item name="standardAssignee" valuePropName="entry" rules={[{required:true}]}><WorkflowPeopleSourceEditor entry={form.getFieldValue('standardAssignee')||{provider:'fixed_users',users:[]}}
+              templates={conditionalContext?.peopleSourceTemplates} variables={sourceNames} sources={Object.fromEntries(Object.entries(conditionalContext?.releasedSources||{}).filter(([,source])=>WORKFLOW_CONDITIONAL_ASSIGNMENT_LEAF_PROVIDERS.includes(source.provider as any)))}
+              principals={principals} allowedProviders={allowedProviders as any} scopeDimensions={conditionalContext?.scopeDimensions} disabled={readOnly||authorityStopped.current||busy||!!frozen.current} onChange={entry=>{
+                form.setFieldValue('provider',entry.provider);
+                if(workflowAssignmentLeaves(entry).some(leaf=>leaf.provider==='supervisor_chain'&&leaf.continuous!==false)&&node.administration?.modes?.includes('sequence'))form.setFields([{name:'mode',value:'sequence',touched:true}]);
+              }}/></Form.Item>}</> : <>
           <Form.Item name="provider" className="oxa-workflow-provider-field" rules={[{ required: true }]}><Radio.Group optionType="button" buttonStyle="outline" className="oxa-workflow-provider-options" onChange={event => {
             if (event.target.value === 'conditional' && !form.getFieldValue('conditionalAssignee')) {
               form.setFields([{ name: 'conditionalAssignee', value: createWorkflowConditionalAssignment(node.effective.binding || { provider: 'fixed_users', users: [] }), touched: true }]);
               setDirty(true);
             }
           }} options={[...flatProviders.map(value => ({ value, label: providers[value] })), ...(canCondition ? [{ value: 'conditional', label: '按条件选择' }] : [])]} /></Form.Item>
+          </>}
           {selectedProvider === 'conditional' && (conditionalContext ? <Form.Item name="conditionalAssignee" rules={[{ required: true }]}><WorkflowConditionalAssignmentEditor variableChoices={variableChoices} context={{ ...conditionalContext, frozenDefault: binding, standardProviders: allowedProviders as Array<'fixed_users' | 'app_role' | 'app_role_in_scope'> }} principals={principals} disabled={readOnly || authorityStopped.current || busy || !!frozen.current} value={form.getFieldValue('conditionalAssignee')} onChange={() => {}} /></Form.Item> : <Alert type="warning" title="当前平台未提供条件编辑上下文，原规则保持不变" />)}
-          {selectedProvider === 'fixed_users' && <Form.Item name="users" rules={[{ required: isCc || node.effective.emptyPolicy !== 'skip', type: 'array', min: recipientMinimum, max: recipientMaximum }]}><PlatformDirectoryPicker kind="user" multiple placeholder="从通讯录选择人员" /></Form.Item>}
-          {['app_role', 'app_role_in_scope'].includes(selectedProvider || '') && <Form.Item name="roleCodes" rules={[{ required: true, type: 'array', min: 1, max: 8 }]}><Select aria-label={isCc ? '抄送角色' : '审批角色'} mode="multiple" maxCount={8} showSearch={{ optionFilterProp: 'label' }} options={principals.roles.map(role => ({ value: role.code, label: role.name }))} placeholder="选择应用角色" /></Form.Item>}
+          {!canNativeSources && selectedProvider === 'fixed_users' && <Form.Item name="users" rules={[{ required: isCc || node.effective.emptyPolicy !== 'skip', type: 'array', min: recipientMinimum, max: recipientMaximum }]}><PlatformDirectoryPicker kind="user" multiple placeholder="从通讯录选择人员" /></Form.Item>}
+          {!canNativeSources && ['app_role', 'app_role_in_scope'].includes(selectedProvider || '') && <Form.Item name="roleCodes" rules={[{ required: true, type: 'array', min: 1, max: 8 }]}><Select aria-label={isCc ? '抄送角色' : '审批角色'} mode="multiple" maxCount={8} showSearch={{ optionFilterProp: 'label' }} options={principals.roles.map(role => ({ value: role.code, label: role.name }))} placeholder="选择应用角色" /></Form.Item>}
         </> : <p className="oxa-workflow-config-help">当前人员规则由应用维护。</p>}
         {binding?.scope && <p className="oxa-workflow-config-help">人员范围由应用规则限定。</p>}
         {isHuman && (node.administration?.modes ? <>

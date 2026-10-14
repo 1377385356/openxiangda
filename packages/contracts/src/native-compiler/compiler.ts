@@ -1,3 +1,4 @@
+import { validateWorkflowPeopleSourceTemplates } from './workflow-people-source-authoring.js';
 import { validateNativeOrganizationAuthorization, NativeOrganizationAuthorizationError } from './organization-authorization.js';
 import { workflowAssignmentLeaves, workflowAssignmentLeafBinding, validateWorkflowConditionalAssignmentShape, validateWorkflowConditionalBindingDefinition } from './workflow-conditional-assignment.js';
 import { workflowBindingRoleCodes } from './workflow-role-union.js';
@@ -7561,6 +7562,8 @@ function validateWorkflowDefinition(definition: JsonObject, pointer: string) {
     fail('NATIVE_WORKFLOW_NODE_COUNT_INVALID', `${pointer}/nodes`);
   }
   const startAt = requiredString(definition.startAt, `${pointer}/startAt`, 128);
+  const peopleSourceErrors = validateWorkflowPeopleSourceTemplates(definition as any);
+  if (peopleSourceErrors.length) fail(peopleSourceErrors[0]!, `${pointer}/authoring/peopleSources`);
   const readabilityErrors = validateWorkflowReadability(definition as unknown as WorkflowGraphDefinitionSource);
   if (readabilityErrors.length) fail(readabilityErrors[0]!, `${pointer}/readability`);
   const administrationErrors = validateWorkflowAdministration(definition as unknown as { nodes: Record<string, WorkflowAdministrationNodeSource> });

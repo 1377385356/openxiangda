@@ -103,3 +103,6 @@ export * from './workflow-management.js';
 export * from './organization-authorization.js';
 
 export * from './transaction-time.js';
+
+export * from "./workflow-people-source-authoring.js";
+export * from "./workflow-standard-assignment-validation.js";

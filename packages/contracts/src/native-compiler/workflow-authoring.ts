@@ -1,16 +1,21 @@
+import { validateWorkflowPeopleSourceTemplates, workflowPeopleSourceTemplateAllows, type WorkflowPeopleSourceTemplate } from './workflow-people-source-authoring.js';
 import type { WorkflowBinding, WorkflowBindingEntry, WorkflowDefinition, WorkflowHumanNode, WorkflowNode, WorkflowConfigurableOperation, WorkflowApprovalMode, WorkflowConfigurableAssigneeProvider, WorkflowFieldPolicy } from '../types.js';
 import type { WorkflowBusinessStepNode } from './workflow-business-step.js';
-import { validateWorkflowConditionalAssignment, workflowAssignmentLeaves } from './workflow-conditional-assignment.js';
+import { validateWorkflowConditionalAssignment, validateWorkflowAssignmentLeafFacts, workflowAssignmentLeaves } from './workflow-conditional-assignment.js';
 import { isWorkflowPlatformNotify } from './workflow-platform-notify.js';
 import { workflowOperationMinimumOpinion, workflowOperationOpinion } from './workflow-node-administration.js';
 
 /** Released source declaration, including capabilities not yet used by the workflow. */
 export interface WorkflowAuthoring {
+  peopleSources?: WorkflowPeopleSourceTemplate[];
   businessSteps?: Array<Omit<WorkflowBusinessStepNode, 'id' | 'kind' | 'next' | 'inputs' | 'notification'>>;
 }
 export interface WorkflowDesignerCatalog {
   /** Explicit server capability; absence must fail closed. */
   conditionalAssignments?: true;
+  /** Explicit server feature, never inferred from the installed SDK. */
+  nativePeopleAuthoring?: true;
+  peopleSourceTemplates?: WorkflowPeopleSourceTemplate[];
   appVersionId: string;
   digest: string;
   taskPages: NonNullable<WorkflowDefinition['taskPages']>;
@@ -28,7 +33,7 @@ export function workflowAuthoringCatalog(definition: WorkflowDefinition, binding
     if (!('handler' in node) || isWorkflowPlatformNotify(node)) continue;
     steps.set(`${node.handler.code}@${node.handler.version}`, { title: node.title, handler: node.handler, inputSchema: node.inputSchema, outputSchema: node.outputSchema });
   }
-  return { appVersionId, digest, taskPages: definition.taskPages || {}, steps: [...steps.values()], peopleSources: binding.bindings };
+  return { appVersionId, digest, taskPages: definition.taskPages || {}, steps: [...steps.values()], peopleSources: { ...binding.bindings, ...Object.fromEntries((definition.authoring?.peopleSources || []).map(template=>[`authoring:${template.code}`,template.entry])) }, ...(definition.authoring?.peopleSources?.length ? {peopleSourceTemplates: JSON.parse(JSON.stringify(definition.authoring.peopleSources))} : {}) };
 }
 /** Standard blank nodes do not borrow authority from a previous human node. */
 export function createWorkflowHumanNode(id: string, kind: 'approval' | 'handle' | 'cc', title: string, next: string, pageCode?: string, pages: WorkflowDesignerCatalog['taskPages'] = {}, rejectTarget = next): WorkflowNode {
@@ -78,10 +83,10 @@ export function validateWorkflowCanvasBinding(entry: WorkflowBindingEntry, catal
     try { releasedSources = Object.fromEntries(Object.entries(catalog.peopleSources).flatMap(([key, source]) => workflowAssignmentLeaves(source).map((leaf, index) => [`${key}/${index}`, leaf]))); }
     catch { return ['WORKFLOW_CONDITIONAL_BINDING_INVALID']; }
     return validateWorkflowConditionalAssignment(entry, {
-      ...context, releasedSources, standardProviders: ['fixed_users', 'app_role'],
+      ...context, releasedSources, peopleSourceTemplates: catalog.peopleSourceTemplates, standardProviders: ['fixed_users', 'app_role'],
     }, { allowIncomplete: incomplete });
   }
-  if (Object.values(catalog.peopleSources).some(source => same(source, entry))) return [];
+  if (Object.values(catalog.peopleSources).some(source => same(source, entry)) || workflowPeopleSourceTemplateAllows(entry,catalog.peopleSourceTemplates)) return context ? validateWorkflowAssignmentLeafFacts(entry,context.definition,context.nodeId) : [];
   const keys = Object.keys(entry);
   if (entry.provider === 'fixed_users' && keys.every(key => ['provider', 'users'].includes(key)) && Array.isArray(entry.users) && entry.users.length <= 200 && (incomplete || entry.users.length > 0) && new Set(entry.users).size === entry.users.length && entry.users.every(id => typeof id === 'string' && !!id.trim() && id.length <= 255)) return [];
   if (entry.provider === 'app_role' && keys.every(key => ['provider', 'roleCode', 'roleCodes'].includes(key))) {

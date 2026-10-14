@@ -3,7 +3,7 @@ import { workflowExpressionSchema } from './workflow-expression-schema.js';
 export const WORKFLOW_CONDITIONAL_ASSIGNMENT_MAX_CASES = 20;
 export const WORKFLOW_CONDITIONAL_ASSIGNMENT_MAX_BYTES = 16_384;
 export const WORKFLOW_CONDITIONAL_ASSIGNMENT_LEAF_PROVIDERS = [
-  'fixed_users', 'app_role', 'app_role_in_scope', 'supervisor_chain',
+  'fixed_users', 'app_role', 'app_role_in_scope', 'supervisor_chain', 'department_supervisor',
   'form_field_users', 'input_users', 'initiator', 'previous_node_actor', 'business_relation',
 ] as const;
 const leafSchema = workflowStandardBindingEntrySchema;

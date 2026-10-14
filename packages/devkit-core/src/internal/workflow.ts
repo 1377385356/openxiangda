@@ -1,3 +1,4 @@
+import { validateWorkflowPeopleSourceTemplates } from 'openxiangda-contracts';
 import { validateWorkflowConditionalBindingDefinition, validateWorkflowConditionalAssignmentShape, workflowAssignmentLeafBinding } from 'openxiangda-contracts';
 import { validateWorkflowParallel, workflowForwardTargets } from 'openxiangda-contracts';
 import { validateWorkflowSupervisorChains } from 'openxiangda-contracts';
@@ -132,7 +133,7 @@ export function compileWorkflow(
 }
 
 export function validateWorkflowDefinition(definition: WorkflowDefinition) {
-  const diagnostics = [...validateWorkflowParallel(definition), ...validateWorkflowLaunchPreflight(definition), ...validateWorkflowCommandHandlers(definition), ...validateWorkflowInstanceCommandPolicies(definition), ...validateWorkflowReadability(definition), ...validateWorkflowAdministration(definition), ...validateWorkflowAutomaticCc(definition), ...validateWorkflowApprovalEmptyPolicy(definition), ...validateWorkflowRejectionNotification(definition), ...validateWorkflowTaskPages(definition), ...validateWorkflowBusinessSteps(definition)];
+  const diagnostics = [...validateWorkflowParallel(definition), ...validateWorkflowLaunchPreflight(definition), ...validateWorkflowCommandHandlers(definition), ...validateWorkflowInstanceCommandPolicies(definition), ...validateWorkflowReadability(definition), ...validateWorkflowAdministration(definition), ...validateWorkflowAutomaticCc(definition), ...validateWorkflowApprovalEmptyPolicy(definition), ...validateWorkflowRejectionNotification(definition), ...validateWorkflowTaskPages(definition), ...validateWorkflowBusinessSteps(definition),...validateWorkflowPeopleSourceTemplates(definition)];
   if (definition?.schemaVersion !== SCHEMA_VERSIONS.workflowDefinition) {
     diagnostics.push('WORKFLOW_DEFINITION_SCHEMA_INVALID');
   }

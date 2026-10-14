@@ -127,7 +127,7 @@ test('all leaves are bounded, closed and nonconditional, including the otherwise
   const entry = binding(); assert.equal(leaves(entry).length, 3);
   for (const invalid of [undefined, { provider: 'conditional', cases: [], otherwise: role('manager') },
     { provider: 'application_provider', providerCode: 'external' }, { provider: 'initiator_select', roleCode: 'manager' },
-    { provider: 'department_supervisor', departmentIdFrom: 'department', level: 1 },
+    { provider: 'department_supervisor', departmentIdFrom: 'department', level: 0 },
     { provider: 'fixed_users', users: [] }, { provider: 'fixed_users', users: ['a', 'a'] },
     { provider: 'initiator', users: ['admin'] }, { ...role('manager'), scope: { dimension: 'org', value: 'x' } },
     { ...role('manager'), min: 4, max: 2 }, { ...role('manager'), roleCodes: ['other', 'manager'] }]) {

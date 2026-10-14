@@ -2755,11 +2755,8 @@ export interface WorkflowNodeConfigurationPatch {
   description?: string;
   mode?: WorkflowApprovalMode;
   operations?: Partial<Record<WorkflowConfigurableOperation, Omit<WorkflowNodeOperationPolicy, 'minimumOpinion'> & { enabled?: boolean }>>;
-  assignee?:
-    | import('./native-compiler/workflow-conditional-assignment.js').WorkflowConditionalAssignment
-    | { provider: "fixed_users"; users: string[] }
-    | { provider: "app_role" | "app_role_in_scope"; roleCode: string; roleCodes?: never }
-    | { provider: "app_role" | "app_role_in_scope"; roleCodes: string[]; roleCode?: never };
+  /** Shape only; published context owns actual editable sources and limits. */
+  assignee?: WorkflowBindingEntry;
 }
 
 export interface WorkflowNodeConfigurationState {
@@ -2771,6 +2768,8 @@ export interface WorkflowNodeConfigurationState {
 
 /** Presentation/prevalidation only; the platform rereads its own published authority on writes. */
 export interface WorkflowConditionalAuthoringContext {
+  nativePeopleAuthoring?: true;
+  peopleSourceTemplates?: import('./native-compiler/workflow-people-source-authoring.js').WorkflowPeopleSourceTemplate[];
   definition: WorkflowDefinition;
   releasedSources: Record<string, WorkflowStandardBindingEntry>;
   scopeDimensionsByNode: Record<string, string[]>;

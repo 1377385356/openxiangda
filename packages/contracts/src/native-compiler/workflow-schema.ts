@@ -269,6 +269,15 @@ export const workflowDefinitionSchema = {
     schemaVersion: { const: WORKFLOW_DEFINITION_SCHEMA_VERSION },
     authoring: {
       type: 'object', additionalProperties: false, properties: {
+        peopleSources: { type: 'array', maxItems: 32, items: {
+          type: 'object', additionalProperties: false, required: ['code','title','entry','parameters'], properties: {
+            code: {type:'string',pattern:'^[a-z][a-z0-9-]{0,63}$'}, title: readabilityText(160), entry: workflowStandardBindingEntrySchema,
+            parameters: { type:'object',minProperties:1,maxProperties:8,additionalProperties: { oneOf: [
+              {type:'object',additionalProperties:false,required:['values'],properties:{values:{type:'array',minItems:1,maxItems:32}}},
+              {type:'object',additionalProperties:false,required:['minimum','maximum'],properties:{minimum:{type:'integer',minimum:1,maximum:200},maximum:{type:'integer',minimum:1,maximum:200}}},
+            ]} },
+          },
+        } },
         businessSteps: { type: 'array', maxItems: 100, items: {
           type: 'object', additionalProperties: false, required: ['title', 'handler', 'inputSchema', 'outputSchema'],
           properties: { title: {type:'string',minLength:1,maxLength:160},
