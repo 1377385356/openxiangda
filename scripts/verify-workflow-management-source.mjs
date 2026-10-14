@@ -32,7 +32,10 @@ const checks=[],errors=[];
 try {
   await server.listen(); browser=await chromium.launch({headless:true});
   // Workflow administration is PC-only by the user's 2026-10-13 scope decision.
-  for (const width of [1440]) for (const mode of ['reader','handler','editor','publisher','legacy','super','revoked','handling-revoked','busy','unknown-revoked','outcome-undetermined','save']) {
+  const modes=['reader','handler','editor','publisher','legacy','super','revoked','handling-revoked','busy','unknown-revoked','outcome-undetermined','save'];
+  const requested=process.env.WORKFLOW_MANAGEMENT_SOURCE_MODES?.split(',') || modes;
+  assert.ok(requested.length && requested.every(mode=>modes.includes(mode)),'unknown workflow verification mode');
+  for (const width of [1440]) for (const mode of requested) {
     const context=await browser.newContext({viewport:{width,height:900},reducedMotion:'reduce'});
     const page=await context.newPage(); page.on('pageerror',error=>errors.push(error.message));
     const requests=[];let lost=false, writes=0;
@@ -93,9 +96,10 @@ try {
         await page.getByRole('button',{name:'在同意路径新增节点',exact:true}).click();
         await page.getByRole('menuitem',{name:/审批节点/}).click();
         const fresh=page.getByRole('region',{name:'新增节点办理设置',exact:true});await expect(fresh).toBeVisible();
-        await fresh.getByRole('radio',{name:'应用角色',exact:true}).check();
+        await fresh.getByText('应用角色',{exact:true}).click();
         await fresh.getByRole('combobox',{name:'应用角色',exact:true}).click();
         await page.getByText('业务审核员',{exact:true}).last().click();
+        await fresh.getByRole('combobox',{name:'应用角色',exact:true}).press('Escape');
         await expect.poll(()=>requests.filter(row=>row.method==='POST').some(row=>Object.values(row.body.binding.bindings).some(value=>value.provider==='app_role'&&(value.roleCode==='reviewer'||value.roleCodes?.includes('reviewer'))) && Object.keys(row.body.definition.nodes).length===4)).toBe(true);
         await expect.poll(async()=>JSON.parse(await page.getByLabel('宿主离开保护状态').innerText()).dirty).toBe(false);
         const saved=requests.filter(row=>row.method==='POST').at(-1).body;
