@@ -152,6 +152,8 @@ test('browser acceptance serializes the prewarmed Vite HTML entrypoints', () => 
   for (const entry of htmlEntries) {
     const ownerConfig = entry === 'workflow-management.e2e.html'
       ? readFileSync(new URL('vite.workflow-management-source.config.ts', browserFixtureRoot), 'utf8')
+      : entry === 'workflow-authoring-controls.e2e.html'
+        ? readFileSync(new URL('vite.workflow-authoring-controls.config.ts', browserFixtureRoot), 'utf8')
       : entry === dedicatedFixture ? dedicatedConfig : viteConfig;
     assert.ok(ownerConfig.includes(`'${entry}'`), `missing optimizeDeps entry ${entry} in its Vite owner`);
   }
