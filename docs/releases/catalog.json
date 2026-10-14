@@ -3,6 +3,42 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.72.0",
+      "status": "reviewed",
+      "title": "有界匿名具名查询",
+      "summary": "为匿名公开门户提供固定字段、排序、参数和签名游标的服务端具名查询，减少首页、搜索和排行的全量分页读取。",
+      "newFeatures": [
+        "frontend.publicAccess 支持 publicQueries 与 public.query，固定资源、字段投影、排序、limit 和参数绑定。",
+        "匿名浏览器 SDK 提供具名查询客户端；平台服务端复用公开字段、固定 publicFilters、RLS 和托管文件投影。",
+        "记录查询游标绑定查询、参数、签名和有界偏移，未知字段、参数、游标和超限请求直接拒绝。"
+      ],
+      "fixes": [
+        "公开目录页面可在具名查询声明存在时使用有界首屏查询，旧 public.list/public.read 策略保持兼容。",
+        "compiler、bundle、JSON Schema 和 server execution 统一校验 publicQueries，避免仅更新页面而绕过平台匿名访问合同。"
+      ],
+      "affectedUsers": [
+        "需要匿名首页、公开目录、搜索、排行或统计的 OpenXiangda V2 应用。"
+      ],
+      "upgradeSteps": [
+        "升级同一正式发行的 openxiangda、contracts、devkit-core 和 CLI 组合。",
+        "在匿名策略中声明 public.query 与 publicQueries，并按本应用字段配置固定排序和参数。",
+        "先在 TEST/preproduction 完成请求量、权限、游标失效和真实浏览器 PC/mobile 验收，再发布生产。"
+      ],
+      "knownLimitations": [
+        "本地构建和单元测试不代表学校站点已安装该平台组合。",
+        "服务端 aggregate 查询支持固定维度、度量和排序；复杂业务仍需单独声明与验证。"
+      ],
+      "compatibility": {
+        "node": "Node.js 24 or newer for maintained toolchain",
+        "generation": "OpenXiangda V2; V1 unchanged",
+        "platform": "anonymous-public named queries 1.0.0; existing anonymous public list/read policies remain compatible"
+      },
+      "issues": [],
+      "sha256": "cc2aaebd52707a5e6acf65319407411baa61aff689a2f5ea91294effd5f0ed31",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.72.0"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.71.0",
       "status": "reviewed",
       "title": "本人班级目录与数据库事务时间",

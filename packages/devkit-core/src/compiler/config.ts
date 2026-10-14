@@ -5967,8 +5967,47 @@ function validateAnonymousPublicAccess(
         const parameters = Array.isArray(query.parameters) ? query.parameters : [];
         const sortFields = sort.map(item => string(object(item).field));
         const parameterNames = parameters.map(item => string(object(item).name));
+        const aggregate = query.aggregate === undefined ? undefined : object(query.aggregate);
+        const dimensions = aggregate && Array.isArray(aggregate.dimensions) ? aggregate.dimensions : [];
+        const measures = aggregate && Array.isArray(aggregate.measures) ? aggregate.measures : [];
+        const aggregateOrder = aggregate && Array.isArray(aggregate.order) ? aggregate.order : [];
+        const aggregateAliases = [
+          ...dimensions.map(item => string(object(item).as)),
+          ...measures.map(item => string(object(item).as)),
+        ];
+        const aggregateInvalid = query.aggregate !== undefined && (
+          string(query.kind) !== 'aggregate' ||
+          Object.keys(aggregate || {}).some(key => !['dimensions', 'measures', 'order'].includes(key)) ||
+          !Array.isArray(aggregate?.measures) ||
+          dimensions.length > 3 ||
+          measures.length < 1 || measures.length > 8 ||
+          new Set(aggregateAliases).size !== aggregateAliases.length ||
+          aggregateAliases.some(alias => !/^[A-Za-z][A-Za-z0-9_]{0,62}$/.test(alias)) ||
+          dimensions.some(item => {
+            const value = object(item);
+            return Object.keys(value).some(key => !['field', 'as', 'bucket'].includes(key)) ||
+              !queryFields.includes(string(value.field)) ||
+              !['day', 'week', 'month', 'quarter', 'year'].includes(string(value.bucket)) && value.bucket !== undefined;
+          }) ||
+          measures.some(item => {
+            const value = object(item);
+            const type = string(value.type);
+            return Object.keys(value).some(key => !['type', 'field', 'as'].includes(key)) ||
+              !['count', 'countDistinct', 'sum', 'avg', 'min', 'max'].includes(type) ||
+              (type === 'count' ? value.field !== undefined : !queryFields.includes(string(value.field)));
+          }) ||
+          aggregateOrder.length > 10 ||
+          new Set(aggregateOrder.map(item => string(object(item).field))).size !== aggregateOrder.length ||
+          aggregateOrder.some(item => {
+            const value = object(item);
+            return Object.keys(value).some(key => !['field', 'direction', 'nulls'].includes(key)) ||
+              !aggregateAliases.includes(string(value.field)) ||
+              value.direction !== undefined && !['asc', 'desc'].includes(string(value.direction)) ||
+              value.nulls !== undefined && !['first', 'last'].includes(string(value.nulls));
+          })
+        );
         return (
-          Object.keys(query).some(key => !['code', 'kind', 'resourceCode', 'fields', 'defaultLimit', 'maxLimit', 'sort', 'parameters'].includes(key)) ||
+          Object.keys(query).some(key => !['code', 'kind', 'resourceCode', 'fields', 'defaultLimit', 'maxLimit', 'sort', 'parameters', 'aggregate'].includes(key)) ||
           !OPERATION_CODE_PATTERN.test(string(query.code)) ||
           !['records', 'aggregate'].includes(string(query.kind)) ||
           string(query.resourceCode) !== resourceCode ||
@@ -5998,7 +6037,8 @@ function validateAnonymousPublicAccess(
               !queryFields.includes(string(value.field)) ||
               !['eq', 'contains', 'in'].includes(string(value.operator)) ||
               !['string', 'number', 'boolean', 'string[]'].includes(string(value.type));
-          })
+          }) ||
+          aggregateInvalid
         );
       });
     const draft = object(policy.draft);

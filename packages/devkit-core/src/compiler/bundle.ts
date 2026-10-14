@@ -1186,6 +1186,41 @@ function compileAnonymousPublicAccess(config: OpenXiangdaAppConfig) {
                           .sort((left, right) => left.name.localeCompare(right.name)),
                       }
                     : {}),
+                  ...(query.aggregate
+                    ? {
+                        aggregate: {
+                          ...(query.aggregate.dimensions
+                            ? {
+                                dimensions: query.aggregate.dimensions
+                                  .map(dimension => ({
+                                    field: dimension.field,
+                                    as: dimension.as,
+                                    ...(dimension.bucket ? { bucket: dimension.bucket } : {}),
+                                  }))
+                                  .sort((left, right) => left.as.localeCompare(right.as)),
+                              }
+                            : {}),
+                          measures: query.aggregate.measures
+                            .map(measure => ({
+                              type: measure.type,
+                              ...(measure.field ? { field: measure.field } : {}),
+                              as: measure.as,
+                            }))
+                            .sort((left, right) => left.as.localeCompare(right.as)),
+                          ...(query.aggregate.order
+                            ? {
+                                order: query.aggregate.order
+                                  .map(item => ({
+                                    field: item.field,
+                                    ...(item.direction ? { direction: item.direction } : {}),
+                                    ...(item.nulls ? { nulls: item.nulls } : {}),
+                                  }))
+                                  .sort((left, right) => left.field.localeCompare(right.field)),
+                              }
+                            : {}),
+                        },
+                      }
+                    : {}),
                 })),
                 item => item.code
               ),

@@ -576,6 +576,38 @@ export interface AnonymousPublicQuerySortV2 {
   direction: 'asc' | 'desc';
 }
 
+export type AnonymousPublicAggregateMeasureTypeV2 =
+  | 'count'
+  | 'countDistinct'
+  | 'sum'
+  | 'avg'
+  | 'min'
+  | 'max';
+
+export interface AnonymousPublicAggregateDimensionV2 {
+  field: string;
+  as: string;
+  bucket?: 'day' | 'week' | 'month' | 'quarter' | 'year';
+}
+
+export interface AnonymousPublicAggregateMeasureV2 {
+  type: AnonymousPublicAggregateMeasureTypeV2;
+  field?: string;
+  as: string;
+}
+
+export interface AnonymousPublicAggregateOrderV2 {
+  field: string;
+  direction?: 'asc' | 'desc';
+  nulls?: 'first' | 'last';
+}
+
+export interface AnonymousPublicQueryAggregateV2 {
+  dimensions?: readonly AnonymousPublicAggregateDimensionV2[];
+  measures: readonly AnonymousPublicAggregateMeasureV2[];
+  order?: readonly AnonymousPublicAggregateOrderV2[];
+}
+
 export interface AnonymousPublicQueryV2 {
   code: string;
   kind: AnonymousPublicQueryKindV2;
@@ -585,6 +617,7 @@ export interface AnonymousPublicQueryV2 {
   defaultLimit: number;
   maxLimit: number;
   parameters?: readonly AnonymousPublicQueryParameterV2[];
+  aggregate?: AnonymousPublicQueryAggregateV2;
 }
 
 export interface AnonymousPublicDuplicateValidationV2 {

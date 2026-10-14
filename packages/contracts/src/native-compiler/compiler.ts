@@ -3939,7 +3939,7 @@ function validateAnonymousPublicAccess(
         query,
         ['code', 'kind', 'resourceCode', 'fields', 'defaultLimit', 'maxLimit'],
         queryPointer,
-        ['sort', 'parameters']
+        ['sort', 'parameters', 'aggregate']
       );
       const queryCode = stableCode(query.code, queryPointer + '/code');
       if (queryCodes.has(queryCode)) {
@@ -4004,6 +4004,64 @@ function validateAnonymousPublicAccess(
           }
           names.add(name);
         });
+      }
+      if (Object.prototype.hasOwnProperty.call(query, 'aggregate')) {
+        if (String(query.kind) !== 'aggregate') {
+          fail('NATIVE_PUBLIC_QUERY_AGGREGATE_KIND_INVALID', queryPointer + '/aggregate');
+        }
+        const aggregatePointer = queryPointer + '/aggregate';
+        const aggregate = object(query.aggregate, aggregatePointer);
+        exactKeys(aggregate, ['measures'], aggregatePointer, ['dimensions', 'order']);
+        const aliases = new Set<string>();
+        const aggregateAlias = (value: unknown, pointer: string) => {
+          const normalized = String(value || '').trim();
+          if (!/^[A-Za-z][A-Za-z0-9_]{0,62}$/.test(normalized) || aliases.has(normalized)) {
+            fail('NATIVE_PUBLIC_QUERY_AGGREGATE_ALIAS_INVALID', pointer);
+          }
+          aliases.add(normalized);
+          return normalized;
+        };
+        const dimensions = Object.prototype.hasOwnProperty.call(aggregate, 'dimensions')
+          ? boundedArray(aggregate.dimensions, aggregatePointer + '/dimensions', 3)
+          : [];
+        dimensions.forEach((rawDimension, dimensionIndex) => {
+          const pointer = `${aggregatePointer}/dimensions/${dimensionIndex}`;
+          const dimension = object(rawDimension, pointer);
+          exactKeys(dimension, ['field', 'as'], pointer, ['bucket']);
+          const field = fieldCodeValue(dimension.field, pointer + '/field');
+          if (!queryFields.includes(field)) fail('NATIVE_PUBLIC_QUERY_AGGREGATE_FIELD_INVALID', pointer + '/field');
+          aggregateAlias(dimension.as, pointer + '/as');
+          if (dimension.bucket !== undefined && !['day', 'week', 'month', 'quarter', 'year'].includes(String(dimension.bucket))) {
+            fail('NATIVE_PUBLIC_QUERY_AGGREGATE_BUCKET_INVALID', pointer + '/bucket');
+          }
+        });
+        const measures = boundedArray(aggregate.measures, aggregatePointer + '/measures', 8);
+        if (measures.length < 1) fail('NATIVE_PUBLIC_QUERY_AGGREGATE_MEASURES_INVALID', aggregatePointer + '/measures');
+        measures.forEach((rawMeasure, measureIndex) => {
+          const pointer = `${aggregatePointer}/measures/${measureIndex}`;
+          const measure = object(rawMeasure, pointer);
+          exactKeys(measure, ['type', 'as'], pointer, ['field']);
+          const type = String(measure.type);
+          const field = measure.field === undefined ? undefined : fieldCodeValue(measure.field, pointer + '/field');
+          if (!['count', 'countDistinct', 'sum', 'avg', 'min', 'max'].includes(type) ||
+              (type === 'count' ? field !== undefined : !field || !queryFields.includes(field))) {
+            fail('NATIVE_PUBLIC_QUERY_AGGREGATE_MEASURE_INVALID', pointer);
+          }
+          aggregateAlias(measure.as, pointer + '/as');
+        });
+        if (Object.prototype.hasOwnProperty.call(aggregate, 'order')) {
+          const order = boundedArray(aggregate.order, aggregatePointer + '/order', 10);
+          order.forEach((rawOrder, orderIndex) => {
+            const pointer = `${aggregatePointer}/order/${orderIndex}`;
+            const item = object(rawOrder, pointer);
+            exactKeys(item, ['field'], pointer, ['direction', 'nulls']);
+            if (!aliases.has(String(item.field)) ||
+                (item.direction !== undefined && !['asc', 'desc'].includes(String(item.direction))) ||
+                (item.nulls !== undefined && !['first', 'last'].includes(String(item.nulls)))) {
+              fail('NATIVE_PUBLIC_QUERY_AGGREGATE_ORDER_INVALID', pointer);
+            }
+          });
+        }
       }
     });
     const requiredFields = Object.prototype.hasOwnProperty.call(
@@ -4192,6 +4250,41 @@ function compileAnonymousPublicAccess(config: JsonObject) {
                           .sort((left: JsonObject, right: JsonObject) =>
                             compareText(left.name, right.name)
                           ),
+                      }
+                    : {}),
+                  ...(query.aggregate
+                    ? {
+                        aggregate: {
+                          ...(query.aggregate.dimensions
+                            ? {
+                                dimensions: query.aggregate.dimensions
+                                  .map((dimension: JsonObject) => ({
+                                    field: dimension.field,
+                                    as: dimension.as,
+                                    ...(dimension.bucket ? { bucket: dimension.bucket } : {}),
+                                  }))
+                                  .sort((left: JsonObject, right: JsonObject) => left.as.localeCompare(right.as)),
+                              }
+                            : {}),
+                          measures: query.aggregate.measures
+                            .map((measure: JsonObject) => ({
+                              type: measure.type,
+                              ...(measure.field ? { field: measure.field } : {}),
+                              as: measure.as,
+                            }))
+                            .sort((left: JsonObject, right: JsonObject) => left.as.localeCompare(right.as)),
+                          ...(query.aggregate.order
+                            ? {
+                                order: query.aggregate.order
+                                  .map((item: JsonObject) => ({
+                                    field: item.field,
+                                    ...(item.direction ? { direction: item.direction } : {}),
+                                    ...(item.nulls ? { nulls: item.nulls } : {}),
+                                  }))
+                                  .sort((left: JsonObject, right: JsonObject) => left.field.localeCompare(right.field)),
+                              }
+                            : {}),
+                        },
                       }
                     : {}),
                 })),

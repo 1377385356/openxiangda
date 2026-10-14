@@ -7919,6 +7919,56 @@ const anonymousPublicAccessSchema = {
                     },
                   },
                 },
+                aggregate: {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["measures"],
+                  properties: {
+                    dimensions: {
+                      type: "array",
+                      maxItems: 3,
+                      items: {
+                        type: "object",
+                        additionalProperties: false,
+                        required: ["field", "as"],
+                        properties: {
+                          field: dataFieldCode,
+                          as: dataAggregateAlias,
+                          bucket: { enum: ["day", "week", "month", "quarter", "year"] },
+                        },
+                      },
+                    },
+                    measures: {
+                      type: "array",
+                      minItems: 1,
+                      maxItems: 8,
+                      items: {
+                        type: "object",
+                        additionalProperties: false,
+                        required: ["type", "as"],
+                        properties: {
+                          type: { enum: ["count", "countDistinct", "sum", "avg", "min", "max"] },
+                          field: dataFieldCode,
+                          as: dataAggregateAlias,
+                        },
+                      },
+                    },
+                    order: {
+                      type: "array",
+                      maxItems: 10,
+                      items: {
+                        type: "object",
+                        additionalProperties: false,
+                        required: ["field"],
+                        properties: {
+                          field: dataAggregateAlias,
+                          direction: { enum: ["asc", "desc"] },
+                          nulls: { enum: ["first", "last"] },
+                        },
+                      },
+                    },
+                  },
+                },
               },
             },
           },
