@@ -1,3 +1,5 @@
+import { parseAnonymousPublicQueryBatch, type AnonymousPublicRecord, type AnonymousPublicQueryResult, type AnonymousPublicQueryBatchOperation, type AnonymousPublicQueryBatchResult } from './anonymous-public-query';
+export type { AnonymousPublicRecord, AnonymousPublicQueryResult, AnonymousPublicQueryBatchOperation, AnonymousPublicQueryBatchResult, AnonymousPublicQueryBatchItem, AnonymousPublicQueryBatchError } from './anonymous-public-query';
 import { createBrowserUuid } from './uuid';
 import type { ApplicationAgentTransport } from './agent-protocol';
 import { parseBusinessProcessResolution, parseBusinessProcessCommitResult } from 'openxiangda-contracts/browser';
@@ -1271,12 +1273,6 @@ export interface AnonymousPublicDraft {
   expiresAt: string;
 }
 
-export interface AnonymousPublicRecord {
-  schemaVersion: 'openxiangda.anonymous-public-record/v2';
-  resourceCode: string;
-  data: Record<string, unknown>;
-}
-
 const anonymousPublicBootstrapLoads = new Map<string, Promise<any>>();
 
 export function createAnonymousPublicClient(input: {
@@ -1431,14 +1427,7 @@ export function createAnonymousPublicClient(input: {
         limit?: number;
       } = {},
     ) {
-      return await request<{
-        schemaVersion: 'openxiangda.anonymous-public-query/v2';
-        queryCode: string;
-        kind: 'records' | 'aggregate';
-        items?: AnonymousPublicRecord[];
-        value?: Record<string, unknown>;
-        nextCursor?: string | null;
-      }>(base + '/public/query', {
+      return await request<AnonymousPublicQueryResult>(base + '/public/query', {
         method: 'POST',
         body: JSON.stringify({
           policyCode: policy(),
@@ -1449,6 +1438,16 @@ export function createAnonymousPublicClient(input: {
           ...(options.limit ? { limit: options.limit } : {}),
         }),
       });
+    },
+    async queryBatch(operations: readonly AnonymousPublicQueryBatchOperation[]): Promise<AnonymousPublicQueryBatchResult> {
+      const result = await request<unknown>(base + '/public/query-batch', {
+        method:'POST',
+        body:JSON.stringify({
+          schemaVersion:'openxiangda.anonymous-public-query-batch-request/v2',
+          routeCode:input.routeCode,environmentKey:environmentKey(),operations,
+        }),
+      });
+      return parseAnonymousPublicQueryBatch(result,operations);
     },
     async upload(fieldCode: string, file: File) {
       // 匿名策略的上传字段以图片为主；非图片文件在预检内部自然跳过。

@@ -60,6 +60,11 @@ export {
   switchCurrentOrganization,
   type AnonymousPublicDraft,
   type AnonymousPublicRecord,
+  type AnonymousPublicQueryResult,
+  type AnonymousPublicQueryBatchOperation,
+  type AnonymousPublicQueryBatchResult,
+  type AnonymousPublicQueryBatchItem,
+  type AnonymousPublicQueryBatchError,
 } from './browser/platform-client';
 export type {
   ApplicationOperationReceiptV2,

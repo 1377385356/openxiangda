@@ -254,3 +254,28 @@ const publicDetail = await client.getPublic(publicPage.items[0].data.id as strin
 8. 生产入口为 HTTPS，没有新增公开存储桶或匿名上传白名单。
 
 开发与交付时按[检查与验收](testing.md)保留跨浏览器正反证据。
+
+
+## 匿名具名查询的有界批量读取
+
+需要多个独立公开查询时，使用官方 `createAnonymousPublicClient({ routeCode }).queryBatch(operations)`。先按正常公开入口完成 `bootstrap()`，使用同一浏览器匿名凭证；每项显式给出 `key`、`policyCode`、`queryCode`，可带原查询的 `parameters`、`limit`、`cursor`。批次固定当前应用、环境和一个已声明route，不接受浏览器传入SQL、字段、排序、角色或授权上下文。
+
+```ts
+const client = createAnonymousPublicClient({ routeCode: 'public-home', policyCode: 'catalogue' });
+await client.bootstrap();
+const batch = await client.queryBatch([
+  { key: 'summary', policyCode: 'catalogue', queryCode: 'summary', limit: 1 },
+  { key: 'cards', policyCode: 'catalogue', queryCode: 'cards', limit: 9 },
+]);
+for (const item of batch.items) {
+  if (!item.ok) throw new Error(`${item.error.code} (${item.error.status})`);
+  if (item.result.kind === 'records') {
+    // 记录行使用 record.data；聚合行是直接含指标/维度的对象。
+    console.log(item.result.items.map(record => record.data));
+  }
+}
+```
+
+服务端每批最多10项、合计最多500条请求上限、输入最多64KiB，最多3项并发；每项继续执行原不可变策略、固定条件、字段白名单、限流和真实RLS。批量结果按key/策略/查询精确对应，单项403/404/429/503保留为error；不能把整批HTTP成功当作每项成功，也不能把拒绝变成空表/零。SDK对缺失、重复、错位、超量及错误形状的回执明确拒绝，不自动改走普通Data API或逐项重放。
+
+此能力需要正式平台提供 `POST .../anonymous-public/public/query-batch`；旧平台的404应明确报告并先升级平台。批次是独立只读查询组合，不是同一数据库快照，不承载写入或通知。原单查询API继续可用，`AnonymousPublicQueryResult`、`AnonymousPublicQueryBatchOperation`、`AnonymousPublicQueryBatchResult`等类型从`openxiangda/react`导出。
