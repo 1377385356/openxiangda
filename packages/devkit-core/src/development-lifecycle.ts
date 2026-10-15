@@ -7,6 +7,8 @@ import { tmpdir } from 'node:os';
 import { SCHEMA_VERSIONS, type DeploymentRun, type Diagnostic } from 'openxiangda-contracts';
 import { appSpecDesignAssetReferences, inspectAppSpec, type AppSpecContractIndex, type AppSpecDocument } from './app-spec.js';
 
+export const APP_SPEC_SOURCE_FILE_LIMIT = 512;
+
 const APP_SECTIONS = ['业务目标', '角色', '架构与数据关系', '业务任务与页面', '权限矩阵与确认', '性能与容量预算'];
 const CHANGE_SECTIONS = ['为什么', '需求依据', '方案与影响', '任务与实现', '验收', '性能与容量预算'];
 
@@ -95,7 +97,7 @@ export function lifecycleAtCommit(root: string, commit: string, contract: AppSpe
     }).filter(({ path, asset }) => asset ||
       /^appspec\/(?:app\.md|capabilities\/[^/]+\.md|(?:decisions|product|experience|design|reviews)\/[^/]+\.md|changes\/active\/[^/]+\.md)$/.test(path)
       || (selected && new RegExp(`^appspec/changes/history/[^/]+/${selected}\\.md$`).test(path)));
-    if (entries.filter(item => !item.asset).length > 128) throw new Error('APPSPEC_SOURCE_FILE_LIMIT');
+    if (entries.filter(item => !item.asset).length > APP_SPEC_SOURCE_FILE_LIMIT) throw new Error('APPSPEC_SOURCE_FILE_LIMIT');
     let bytes = 0;
     let assetBytes = 0;
     let assetCount = 0;
