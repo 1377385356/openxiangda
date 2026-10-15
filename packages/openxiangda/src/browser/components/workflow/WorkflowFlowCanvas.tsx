@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Background, BaseEdge, EdgeLabelRenderer, Handle, MarkerType, MiniMap, Position, ReactFlow,
   type Edge, type EdgeProps, type Node, type NodeProps, type ReactFlowInstance } from '@xyflow/react';
-import { formatWorkflowExpression, type WorkflowGraphEdge, type WorkflowGraphProjection, type WorkflowGraphVisit } from 'openxiangda-contracts/browser';
+import { type WorkflowGraphEdge, type WorkflowGraphProjection, type WorkflowGraphVisit } from 'openxiangda-contracts/browser';
 import { WorkflowNodeCard } from './WorkflowNodeCard';
+import { formatWorkflowCondition } from './workflow-variable-presentation';
 import { workflowFlowLayout } from './workflow-flow-layout';
 import { workflowNodeIsReadable, workflowReadableZoom } from './workflow-graph-presentation';
 import '@xyflow/react/dist/style.css';
@@ -109,7 +110,7 @@ export default function WorkflowFlowCanvas(props: {
     const highlighted = props.selectedEdgeId ? selected : edge.from === props.selectedNodeId;
     return { id: edge.id, ariaLabel: `${renderedGraph.nodes.find(node=>node.id===edge.from)?.title || '当前节点'}至${renderedGraph.nodes.find(node=>node.id===edge.to)?.title || '后续节点'}`, source: edge.from, sourceHandle: `out:${edge.id}`, target: edge.to, targetHandle: `in:${edge.to}`, type: 'workflow', deletable: false, reconnectable: false,
       markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: actual ? '#389e0d' : highlighted ? '#1677ff' : '#aab4c1' },
-      data: { designer: props.designer, edge, expression: edge.expression ? formatWorkflowExpression(edge.expression, renderedGraph.variables) : '', points: position.points, label: position.label, actual, highlighted, selected, onSelect: () => latest.current.onSelectEdge(edge.id), ...(props.onInsertEdge && !['return','resubmit'].includes(edge.kind) ? { insertionOptions: props.insertionOptions?.filter(option => option.kind !== 'parallel' || !renderedGraph.nodes.some(node => node.parallel && (node.id === edge.from || node.parallel.branchNodeIds.includes(edge.from)))), onInsert: (template?: string) => latest.current.onInsertEdge?.(edge.id, template) } : {}) } };
+      data: { designer: props.designer, edge, expression: edge.expression ? formatWorkflowCondition(edge.expression, renderedGraph.variables) : '', points: position.points, label: position.label, actual, highlighted, selected, onSelect: () => latest.current.onSelectEdge(edge.id), ...(props.onInsertEdge && !['return','resubmit'].includes(edge.kind) ? { insertionOptions: props.insertionOptions?.filter(option => option.kind !== 'parallel' || !renderedGraph.nodes.some(node => node.parallel && (node.id === edge.from || node.parallel.branchNodeIds.includes(edge.from)))), onInsert: (template?: string) => latest.current.onInsertEdge?.(edge.id, template) } : {}) } };
   }) : [], [renderedGraph, props.executedEdges, props.selectedNodeId, props.selectedEdgeId, props.onInsertEdge, props.insertionOptions, positions, props.designer]);
   useEffect(() => {
     if (!instance || !positions) return;

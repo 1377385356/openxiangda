@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { workflowVariablesWithChoices, formatWorkflowCondition } from '../src/browser/components/workflow/workflow-variable-presentation.js';
+import { workflowGraphWithChoices, workflowVariablesWithChoices, formatWorkflowCondition } from '../src/browser/components/workflow/workflow-variable-presentation.js';
 
 const variable = (path: string, type = 'string'): any => ({ path, label: path === 'major.value' ? '是否重大合同' : '测试字段', type, required: true, source: { kind: 'input' }, usedBy: [] });
 const choices = { 'major.value': [{ value: 'yes', label: '重大' }, { value: 'no', label: '一般' }] };
@@ -44,4 +44,33 @@ test('overlarge dictionaries and inherited entries cannot advertise new metadata
   const supplied = Object.fromEntries(Array.from({length:129},(_,i)=>[String(i),choices['major.value']])); supplied['major.value']=choices['major.value'];
   assert.equal(workflowVariablesWithChoices([variable('major.value')], supplied)[0]?.choices, undefined);
   assert.equal(workflowVariablesWithChoices([variable('major.value')], Object.create(choices))[0]?.choices, undefined);
+});
+
+test('graph choices translate generated labels while preserving custom branch labels and canonical values', () => {
+  const expression: any = { op: 'eq', left: { op: 'path', path: 'major.value' }, right: { op: 'literal', value: 'yes' } };
+  const graph: any = { variables: [variable('major.value')], nodes: [{ id: 'route' }], definitionDigest: 'immutable', edges: [
+    { id: 'automatic', expression, label: '是否重大合同 = "yes"', from: 'route', to: 'end' },
+    { id: 'named', expression, label: '管理员自定义分支', from: 'route', to: 'end' },
+  ] };
+  const before = structuredClone(graph), sourceChoices = structuredClone(choices);
+  const result = workflowGraphWithChoices(graph, choices);
+  assert.equal(result.edges[0]?.label, '是否重大合同 等于 重大');
+  assert.equal(result.edges[1]?.label, '管理员自定义分支');
+  assert.equal(formatWorkflowCondition(result.edges[1]!.expression!, result.variables), '是否重大合同 等于 重大');
+  assert.equal(result.nodes, graph.nodes); assert.equal(result.definitionDigest, 'immutable');
+  assert.deepEqual(graph, before); assert.deepEqual(choices, sourceChoices);
+});
+test('a second diagram projection retains already validated choices from the parent editor', () => {
+  const graph: any = { variables: [variable('major.value')], nodes: [], edges: [] };
+  const parent = workflowGraphWithChoices(graph, choices), child = workflowGraphWithChoices(parent);
+  assert.deepEqual(child.variables[0]?.choices, choices['major.value']);
+  assert.equal(graph.variables[0].choices, undefined);
+});
+test('graph projection does not invent a translation for an unknown stored value', () => {
+  const expression: any = { op: 'eq', left: { op: 'path', path: 'major.value' }, right: { op: 'literal', value: 'legacy' } };
+  const graph: any = { variables: [variable('major.value')], nodes: [], edges: [{ expression, label: '未知历史条件' }] };
+  const result = workflowGraphWithChoices(graph, choices);
+  assert.equal(result.edges[0]?.label, '未知历史条件');
+  assert.equal(formatWorkflowCondition(result.edges[0]!.expression!, result.variables), '是否重大合同 等于 "legacy"');
+  assert.equal(graph.edges[0].expression.right.value, 'legacy');
 });

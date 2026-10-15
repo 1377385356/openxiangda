@@ -5,7 +5,8 @@ export function workflowDiagramProjection(graph: WorkflowGraphProjection): Workf
   const nodes = graph.nodes.filter(node => {
     if (node.kind === 'correction') return false;
     if (node.kind !== 'end') return true;
-    if (node.outcome === 'rejected') return false;
+    // A business condition may intentionally lead to rejection. Hide only
+    // terminals reached exclusively by common reject task operations.
     const incoming = graph.edges.filter(edge => edge.to === node.id);
     return !incoming.length || incoming.some(edge => edge.kind !== 'reject');
   });

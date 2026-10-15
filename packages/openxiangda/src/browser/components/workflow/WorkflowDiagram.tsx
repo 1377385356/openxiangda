@@ -1,8 +1,9 @@
 import { Component, lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { formatWorkflowExpression, workflowVariableLabel, type WorkflowGraphProjection, type WorkflowGraphVisit } from 'openxiangda-contracts/browser';
+import { workflowVariableLabel, type WorkflowGraphProjection, type WorkflowGraphVisit } from 'openxiangda-contracts/browser';
 import { Alert, Button, Empty, Input, Segmented, Select, Skeleton, Space, Switch, Tooltip } from 'antd';
 import { AimOutlined, BorderOutlined, LockOutlined, MinusOutlined, PlusOutlined } from '@ant-design/icons';
 import { WorkflowNodeCard } from './WorkflowNodeCard';
+import { workflowGraphWithChoices, formatWorkflowCondition, type WorkflowVariableChoices } from './workflow-variable-presentation';
 import type { WorkflowFlowCanvasController } from './WorkflowFlowCanvas';
 import { workflowDiagramProjection, workflowNodeSummaries } from './workflow-graph-presentation';
 export { workflowDiagramProjection } from './workflow-graph-presentation';
@@ -34,6 +35,8 @@ function displayNodeOrder(graph: WorkflowGraphProjection) {
 
 export interface WorkflowDiagramProps {
   graph: WorkflowGraphProjection;
+  /** Optional typed display names; never modifies the executable graph or its raw values. */
+  variableChoices?: WorkflowVariableChoices;
   selectedNodeId: string;
   onSelectNode: (nodeId: string) => void;
   /** Only overlay titles from the matching effective configuration or frozen visit. */
@@ -58,7 +61,8 @@ class CanvasBoundary extends Component<{ children: ReactNode; onList: () => void
 }
 
 /** Read-only graph and accessible list share the platform's immutable projection. */
-export function WorkflowDiagram({ graph, selectedNodeId, onSelectNode, titles = emptyTitles, summaries, visits = emptyVisits, selectedEdgeId, onSelectEdge, onInsertEdge, insertionOptions, presentation = 'embedded' }: WorkflowDiagramProps) {
+export function WorkflowDiagram({ graph: sourceGraph, variableChoices, selectedNodeId, onSelectNode, titles = emptyTitles, summaries, visits = emptyVisits, selectedEdgeId, onSelectEdge, onInsertEdge, insertionOptions, presentation = 'embedded' }: WorkflowDiagramProps) {
+  const graph = useMemo(() => workflowGraphWithChoices(sourceGraph, variableChoices), [sourceGraph, variableChoices]);
   const [canvas, setCanvas] = useState<{ graph: WorkflowGraphProjection; controller: WorkflowFlowCanvasController } | null>(null);
   const list = useRef<HTMLOListElement>(null);
   const listButtons = useRef(new Map<string, HTMLButtonElement>());
@@ -166,7 +170,7 @@ export function WorkflowDiagram({ graph, selectedNodeId, onSelectNode, titles = 
     </div> : <ol ref={list} className="oxa-workflow-node-list" aria-label="流程节点列表">
       {orderedNodes.map(node => <li key={node.id}><WorkflowNodeCard node={node} title={title(node.id)} summary={nodeSummaries[node.id]} selected={selectedNodeId === node.id} start={node.id === graph.startAt} visit={[...visits].reverse().find(visit => visit.nodeId === node.id)} onClick={() => onSelectNode(node.id)} onNavigate={navigate} buttonRef={element => { if (element) listButtons.current.set(node.id, element); else listButtons.current.delete(node.id); }} />
         <ul>{shownGraph.edges.filter(edge => edge.from === node.id).map(edge => <li key={edge.id}><button type="button" onClick={() => selectEdge(edge.id)}>
-          {edge.priority ? `顺序 ${edge.priority} · ` : ''}{edge.label}{edge.expression ? `：${formatWorkflowExpression(edge.expression, graph.variables)}` : ''} → {title(edge.to)}</button><Button size="small" type="text" onClick={() => locate(edge.to)} aria-label={`定位${title(edge.to)}`}>定位</Button></li>)}</ul></li>)}
+          {edge.priority ? `顺序 ${edge.priority} · ` : ''}{edge.label}{edge.expression ? `：${formatWorkflowCondition(edge.expression, graph.variables)}` : ''} → {title(edge.to)}</button><Button size="small" type="text" onClick={() => locate(edge.to)} aria-label={`定位${title(edge.to)}`}>定位</Button></li>)}</ul></li>)}
       {!shownGraph.nodes.length && <li><Empty description="尚无已执行节点" /></li>}
     </ol>}
   </section>;

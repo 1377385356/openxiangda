@@ -65,3 +65,13 @@ test('selection remains stable inside a readable viewport and locates clipped or
   assert.equal(workflowNodeIsReadable(node, { ...viewport, y: -1500 }, size), false);
   assert.equal(workflowNodeIsReadable(node, { x: -100, y: -200, zoom: .18 }, size), false);
 });
+
+
+test('explicit business conditions to rejection remain visible in the read-only diagram', () => {
+  const graph: any = { nodes: [{ id: 'route', kind: 'condition' }, { id: 'approved', kind: 'end', outcome: 'approved' }, { id: 'rejected', kind: 'end', outcome: 'rejected' }, { id: 'operation-only', kind: 'end', outcome: 'rejected' }],
+    edges: [{ id: 'positive', from: 'route', to: 'approved', kind: 'branch' }, { id: 'negative', from: 'route', to: 'rejected', kind: 'branch' }, { id: 'operation', from: 'route', to: 'operation-only', kind: 'reject' }], variables: [] };
+  const before = structuredClone(graph), result = workflowDiagramProjection(graph);
+  assert.deepEqual(result.nodes.map(node => node.id), ['route', 'approved', 'rejected']);
+  assert.deepEqual(result.edges.map(edge => edge.id), ['positive', 'negative']);
+  assert.deepEqual(graph, before);
+});

@@ -5,10 +5,11 @@ import { projectWorkflowGraph,type WorkflowDesignerDraft } from 'openxiangda-con
 import { OpenXiangdaPlatformRequestError,requestWorkflowDesignerProposal,loadWorkflowDesignerProposal,applyWorkflowDesignerProposal,cancelWorkflowDesignerProposal,type WorkflowDesignerAiProposal } from '../../platform-client';
 import { CloseOutlined, RobotOutlined } from '@ant-design/icons';
 import { createBrowserUuid } from '../../uuid';
+import type { WorkflowVariableChoices } from './workflow-variable-presentation';
 import { WorkflowDiagram } from './WorkflowDiagram';
 const fieldLabels: Record<string,string> = { title: '节点名称',branches: '条件分支',otherwise: '其他情况',onApprove: '同意后的路径',onReject: '拒绝后的路径',returnTargets: '退回目标',next: '后续节点',mode: '处理方式',binding: '人员规则',allowedOperations: '操作按钮',operationPolicy: '操作要求',taskPageCode: '节点页面' };
 const states: Record<string,string> = { pending: '正在生成方案',queued: '等待处理',running: '正在生成方案',ready: '方案已生成',stale: '草稿已改变，请重新生成方案',applied: '方案已应用到共享草稿',cancelled: '生成已停止',dismissed: '方案已放弃',failed: '方案生成失败',cancel_requested: '正在停止生成' };
-export function WorkflowDesignerAssistant({ workflowCode,draft,context,open,canApply,onClose,onApplied,onStateChange,onAuthorityLoss,presentation = 'drawer' }: { context?: string; presentation?: 'drawer' | 'panel'; workflowCode: string;draft: WorkflowDesignerDraft;open: boolean;canApply: boolean;onClose: () => void;onApplied: (draft: WorkflowDesignerDraft) => void;onStateChange: (state: { busy: boolean;unknown: boolean }) => void;onAuthorityLoss?: (failure: unknown, operationId?: string, prompt?: string) => Promise<boolean> }) {
+export function WorkflowDesignerAssistant({ workflowCode,draft,context,variableChoices,open,canApply,onClose,onApplied,onStateChange,onAuthorityLoss,presentation = 'drawer' }: { variableChoices?: WorkflowVariableChoices; context?: string; presentation?: 'drawer' | 'panel'; workflowCode: string;draft: WorkflowDesignerDraft;open: boolean;canApply: boolean;onClose: () => void;onApplied: (draft: WorkflowDesignerDraft) => void;onStateChange: (state: { busy: boolean;unknown: boolean }) => void;onAuthorityLoss?: (failure: unknown, operationId?: string, prompt?: string) => Promise<boolean> }) {
   const [prompt,setPrompt] = useState('');
   const [proposal,setProposal] = useState<WorkflowDesignerAiProposal>();
   const [definiteBusy,setDefiniteBusy] = useState(false);
@@ -70,7 +71,7 @@ export function WorkflowDesignerAssistant({ workflowCode,draft,context,open,canA
     {error && <Alert type="error" title={error} action={frozen.current ? <Button onClick={() => void execute()}>重试原请求</Button> : undefined} />}
     {proposal && <Alert style={{ marginBottom: 16 }} type={['stale','failed'].includes(proposal.status) ? 'warning' : 'info'} title={states[proposal.status] || '等待处理'} description={proposal.error} />}
     <Spin spinning={busy}>{proposal?.summary && <p>{proposal.summary}</p>}{proposal?.changes && <Table rowKey={item => `${item.kind}:${item.nodeTitle}`} size="small" pagination={false} dataSource={proposal.changes} columns={[{ title: '节点',dataIndex: 'nodeTitle' },{ title: '改动',render: (_,item) => `${{ added: '新增',removed: '删除',modified: '修改' }[item.kind] || '修改'}${item.fields.length ? `：${item.fields.map(field => fieldLabels[field] || '配置').join('、')}` : ''}` }]} />}
-      {graph && <WorkflowDiagram graph={graph} selectedNodeId={selected || graph.startAt} onSelectNode={setSelected} />}
+      {graph && <WorkflowDiagram graph={graph} variableChoices={variableChoices} selectedNodeId={selected || graph.startAt} onSelectNode={setSelected} />}
       {proposal?.status === 'ready' && <><p>应用后仍需按正常发布步骤检查并启用流程。需要新增代码能力时，由开发者先发布对应业务步骤。</p>{!canApply && <Alert type="warning" title="当前还有本地修改，请先保存或撤销，再应用此方案。" />}<Button block type="primary" disabled={!canApply || busy || !!frozen.current || !proposal.changes?.length} onClick={() => void apply()}>确认并应用到草稿</Button></>}
     </Spin>
   </>;

@@ -1,4 +1,4 @@
-import { formatWorkflowExpression, type WorkflowGraphVariable, type WorkflowExpression } from 'openxiangda-contracts/browser';
+import { formatWorkflowExpression, type WorkflowGraphVariable, type WorkflowExpression, type WorkflowGraphProjection } from 'openxiangda-contracts/browser';
 
 /** Display metadata only: values remain the application's original typed facts. */
 export type WorkflowVariableChoice = { label: string; value: string | number | boolean };
@@ -17,6 +17,13 @@ export function workflowVariablesWithChoices(variables: readonly WorkflowGraphVa
       choices.findIndex(other => other?.value === choice.value) === index);
     return valid ? { ...variable, choices: choices.map(choice => ({ label: choice.label, value: choice.value })) } : variable;
   });
+}
+
+/** Presentation-only projection shared by editor, read-only diagram and AI preview. */
+export function workflowGraphWithChoices(graph: WorkflowGraphProjection, supplied: WorkflowVariableChoices = {}): WorkflowGraphProjection {
+  const variables = workflowVariablesWithChoices(graph.variables, supplied);
+  return { ...graph, variables, edges: graph.edges.map(edge => edge.expression && edge.label === formatWorkflowExpression(edge.expression, graph.variables)
+    ? { ...edge, label: formatWorkflowCondition(edge.expression, variables) } : edge) };
 }
 
 export function workflowChoiceLabel(value: unknown, variable?: WorkflowConditionVariable): string | undefined {
