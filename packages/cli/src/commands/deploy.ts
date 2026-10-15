@@ -19,6 +19,7 @@ export default class Deploy extends OpenXiangdaCommand {
     "idempotency-key": Flags.string({ summary: '测试部署幂等键；省略时从不可变包摘要派生' }),
     "dry-run": Flags.boolean({ summary: '只读预览部署或生产晋级，不构建、不上传、不提交' }),
     wait: Flags.boolean({ default: true, allowNo: true, summary: '默认持续反馈并等待平台完成，最多 15 分钟；--no-wait 只提交' }),
+    "approval-link": Flags.boolean({ default: false, summary: "上传制品并生成标准及钉钉发布确认链接，不直接创建 DeploymentRun" }),
   };
   async run() {
     const { flags } = await this.parse(Deploy);
@@ -38,6 +39,7 @@ export default class Deploy extends OpenXiangdaCommand {
         ...(flags["idempotency-key"]
           ? { idempotencyKey: flags["idempotency-key"] }
           : {}),
+        ...(flags["approval-link"] ? { approvalLink: true } : {}),
       })
     );
   }

@@ -1220,6 +1220,24 @@ export class OpenXiangdaControlPlaneClient {
     );
   }
 
+  async createReleaseRequest(input: CreateDeploymentInput): Promise<Record<string, unknown>> {
+    return await this.json<Record<string, unknown>>(
+      "/openxiangda-api/v2/applications/" + encodeURIComponent(input.appCode) + "/release-requests",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          environmentId: input.environmentId,
+          environmentKind: input.environmentKind,
+          deploymentStrategy: input.deploymentStrategy,
+          packageDigest: input.packageDigest,
+          package: input.package,
+          idempotencyKey: input.idempotencyKey,
+          requestId: input.requestId,
+        }),
+      }
+    );
+  }
+
   async deployment(appCode: string, deploymentId: string) {
     return await this.json<DeploymentRun>(
       `/openxiangda-api/v2/applications/${encodeURIComponent(

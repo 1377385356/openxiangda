@@ -37,6 +37,7 @@ export interface DeveloperDeploymentInput {
   idempotencyKey?: string;
   dryRun?: boolean;
   wait?: boolean;
+  approvalLink?: boolean;
   onProgress?: OperationProgressListener;
 }
 
@@ -47,7 +48,7 @@ export function deployApplication(
   validateDeploymentInput(input);
   return withOperationProgress(input.dryRun ? 'deployment.plan' : 'deploy', input.onProgress, async () => {
     const result = await executeDeployment(services, input);
-    return input.dryRun || input.wait === false ? result : observeDeployment(services, result, input);
+    return input.dryRun || input.wait === false || input.approvalLink ? result : observeDeployment(services, result, input);
   });
 }
 
@@ -82,5 +83,6 @@ async function executeDeployment(services: OpenXiangdaApplicationServices, input
         ...(input.environmentId ? { environmentId: input.environmentId } : {}),
         ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
         ...(input.deploymentStrategy ? { deploymentStrategy: input.deploymentStrategy } : {}),
+        ...(input.approvalLink ? { approvalLink: true } : {}),
       }));
 }

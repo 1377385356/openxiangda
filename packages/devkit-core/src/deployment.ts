@@ -32,6 +32,7 @@ export interface DeploymentControlPlane {
     input: UploadArtifactInput
   ): Promise<Record<string, unknown>>;
   createDeployment(input: CreateDeploymentInput): Promise<DeploymentRun>;
+  createReleaseRequest?(input: CreateDeploymentInput): Promise<Record<string, unknown>>;
 }
 
 async function uploadOrReuse(client: DeploymentControlPlane, input: UploadArtifactInput, stage: string, label: string) {
@@ -62,11 +63,12 @@ export interface SubmitAppPackageInput {
   environmentKind?: DeploymentEnvironment;
   idempotencyKey: string;
   requestId?: string;
+  approvalLink?: boolean;
 }
 
 export async function submitAppPackage(
   input: SubmitAppPackageInput
-): Promise<DeploymentRun> {
+): Promise<DeploymentRun | Record<string, unknown>> {
   const capabilities = input.capabilities || (await input.client.capabilities());
   assertApplicationContractCompatible(
     capabilities,
@@ -113,18 +115,27 @@ export async function submitAppPackage(
     },
   }, 'upload-manifest', '上传版本清单');
 
-  return await operationStage('submit', '提交平台部署运行', () => input.client.createDeployment({
-    appCode: input.compiledPackage.manifest.appCode,
-    ...(input.environmentId ? { environmentId: input.environmentId } : {}),
-    ...(input.environmentKind
-      ? { environmentKind: input.environmentKind }
-      : {}),
-    ...(input.deploymentStrategy ? { deploymentStrategy: input.deploymentStrategy } : {}),
-    packageDigest: input.compiledPackage.digest,
-    package: input.compiledPackage.manifest,
-    idempotencyKey: input.idempotencyKey,
-    ...(input.requestId ? { requestId: input.requestId } : {}),
-  }));
+  return await operationStage(
+    'submit',
+    input.approvalLink ? '上传制品并生成发布确认链接' : '提交平台部署运行',
+    () => {
+      const deploymentInput = {
+        appCode: input.compiledPackage.manifest.appCode,
+        ...(input.environmentId ? { environmentId: input.environmentId } : {}),
+        ...(input.environmentKind ? { environmentKind: input.environmentKind } : {}),
+        ...(input.deploymentStrategy ? { deploymentStrategy: input.deploymentStrategy } : {}),
+        packageDigest: input.compiledPackage.digest,
+        package: input.compiledPackage.manifest,
+        idempotencyKey: input.idempotencyKey,
+        ...(input.requestId ? { requestId: input.requestId } : {}),
+      };
+      if (input.approvalLink) {
+        if (!input.client.createReleaseRequest) throw new ControlPlaneError(400, 'RELEASE_LINK_UNSUPPORTED', '目标平台不支持发布确认链接');
+        return input.client.createReleaseRequest(deploymentInput);
+      }
+      return input.client.createDeployment(deploymentInput) as unknown as Promise<Record<string, unknown>>;
+    }
+  );
 }
 
 const validatePlatformCapabilities = new Ajv2020({

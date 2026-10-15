@@ -170,6 +170,7 @@ export interface DeployOptions extends BuildOptions {
   environmentId?: string;
   idempotencyKey?: string;
   requestId?: string;
+  approvalLink?: boolean;
 }
 
 interface PreproductionAcceptancePlan {
@@ -2146,6 +2147,7 @@ export class OpenXiangdaApplicationServices {
         input.idempotencyKey ||
         `deploy:${built.data.package.digest}:${input.environment}${input.deploymentStrategy === 'maintenance-replace' ? ':maintenance-replace' : ''}`,
       ...(input.requestId ? { requestId: input.requestId } : {}),
+      ...(input.approvalLink ? { approvalLink: true } : {}),
     });
     return this.result("deploy", workspace.context.workspace, deployment, workflowActivation, [
       {
