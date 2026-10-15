@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.75.1",
+  "version": "2.75.2",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -102,13 +102,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.11.13",
+    "openxiangda-cli": "2.11.14",
     "openxiangda-contracts": "2.95.2",
     "openxiangda-devkit-core": "2.71.3",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
     "openxiangda-mcp": "2.2.25",
     "openxiangda-nest": "2.22.5",
-    "openxiangda-skill-kit": "2.3.127",
+    "openxiangda-skill-kit": "2.3.128",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -174,31 +174,28 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.75.1",
+    "version": "2.75.2",
     "status": "reviewed",
-    "title": "公开查询批量读取与排序优先级修复",
-    "summary": "提供保留原平台权限的有界批量公开查询，修复多字段排序被重排的问题，配套同步官方技能资料。",
-    "newFeatures": [
-      "createAnonymousPublicClient.queryBatch固定应用、环境和声明路由，按key/policy/query精确匹配逐项记录、聚合或错误回执。",
-      "每批最多10项、500条请求上限、64KiB输入，配套平台最多3项并发；不新增普通匿名Data API、权限缓存或Nest CRUD代理。"
-    ],
+    "title": "流程条件在画布、列表和AI预览中保持中文可读",
+    "summary": "统一使用已验证的中文选项展示条件，并保留显式通向拒绝结果的业务分支。原始值、表达式、审批人和授权不变。",
+    "newFeatures": [],
     "fixes": [
-      "应用打包器和共享目标编译器均保留publicQueries.sort声明顺序；修改排序优先级会正确改变配置摘要。",
-      "聚合items正确表示为直接含维度/指标的对象，不再声明成record.data；保留原value-only计数与单查询API。",
-      "缺失、重复、错位、超量或形状错误的批量回执明确拒绝，单项403/404/429/503不会变成空表或零。"
+      "画布连线、提示、可访问节点列表及AI方案预览共用已验证的选项标签，不再在已有中文选项时重复显示英文编码。",
+      "只读图按实际入边区分普通拒绝操作与显式业务条件，不再仅因结束结果为拒绝就隐藏业务分支。",
+      "保留管理员自定义分支名、未知历史原值、原始标量类型、定义摘要和可执行图；根包与CLI模板版本成对更新。",
+      "同步中文管理专题及Skill资料，说明WorkflowDiagram的可选展示选项与其不改变业务语义的边界。"
     ],
     "affectedUsers": [
-      "使用匿名公开目录、仪器卡片、首页统计或其他多个具名只读查询的OpenXiangda V2应用。"
+      "使用2.0流程设计器、只读流程图、节点列表和AI改图预览的应用。"
     ],
     "upgradeSteps": [
-      "先部署支持POST anonymous-public/public/query-batch的正式平台版本，再升级官方SDK与CLI；旧平台404应报告并完成平台更新。",
-      "升级后重新编译并发布TEST应用，以新不可变策略采用正确排序；不修改历史Head，不下载全表在前端弥补错误的前N选择。",
-      "使用原bootstrap获取正式浏览器凭证；批次每项显式指定策略、查询与key，调用方逐项处理成功或错误，延续原固定过滤和字段白名单。",
-      "保持真实页面请求数、P95/LCP与多角色业务验收独立进行，批量HTTP成功不代表每项成功。"
+      "应用使用本轮精确根包版本及其锁定依赖组合，不手工混装物理包；目标平台先消费同源正式SDK并通过兼容预检。",
+      "发布前保留未保存草稿，部署后核对原流程节点和绑定，再按真实管理员、审批人和发起人验收。"
     ],
     "knownLimitations": [
-      "批次由独立只读查询组成，不保证同一数据库快照；不支持写入、业务动作或通知。",
-      "本发行不代表任何客户站点已部署或页面性能已达标；普通列表服务端分页与应用接入另行验收。"
+      "没有合法中文标签或类型不兼容的历史值继续显示原始值，不会猜测或改写业务编码。",
+      "AI预览显示修复不代表模型可用；真实推理仍需单独配置平台执行服务、工作器及模型连接。",
+      "本地纯测试和受控浏览器图不替代实际站点、角色、物理鼠标或真实模型验收。"
     ],
     "compatibility": {
       "node": "Node.js 24 or newer for maintained toolchain",
@@ -206,7 +203,7 @@
       "platform": "Requires anonymous-public/public/query-batch; each item reuses existing public policy and Native authorization"
     },
     "issues": [],
-    "sha256": "3abc78c05afd7f71f1559f134f30a060c233e2a851adae71023c10e091ededb2",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.75.1"
+    "sha256": "57283ba53d110aac43c3084bac70b23f29fecdaa4c7cdfd670840c238e80ee38",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.75.2"
   }
 }
