@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.75.2",
+  "status": "reviewed",
+  "title": "流程条件在画布、列表和AI预览中保持中文可读",
+  "summary": "统一使用已验证的中文选项展示条件，并保留显式通向拒绝结果的业务分支。原始值、表达式、审批人和授权不变。",
+  "newFeatures": [],
+  "fixes": [
+    "画布连线、提示、可访问节点列表及AI方案预览共用已验证的选项标签，不再在已有中文选项时重复显示英文编码。",
+    "只读图按实际入边区分普通拒绝操作与显式业务条件，不再仅因结束结果为拒绝就隐藏业务分支。",
+    "保留管理员自定义分支名、未知历史原值、原始标量类型、定义摘要和可执行图；根包与CLI模板版本成对更新。",
+    "同步中文管理专题及Skill资料，说明WorkflowDiagram的可选展示选项与其不改变业务语义的边界。"
+  ],
+  "affectedUsers": [
+    "使用2.0流程设计器、只读流程图、节点列表和AI改图预览的应用。"
+  ],
+  "upgradeSteps": [
+    "应用使用本轮精确根包版本及其锁定依赖组合，不手工混装物理包；目标平台先消费同源正式SDK并通过兼容预检。",
+    "发布前保留未保存草稿，部署后核对原流程节点和绑定，再按真实管理员、审批人和发起人验收。"
+  ],
+  "knownLimitations": [
+    "没有合法中文标签或类型不兼容的历史值继续显示原始值，不会猜测或改写业务编码。",
+    "AI预览显示修复不代表模型可用；真实推理仍需单独配置平台执行服务、工作器及模型连接。",
+    "本地纯测试和受控浏览器图不替代实际站点、角色、物理鼠标或真实模型验收。"
+  ],
+  "compatibility": {
+    "node": "Node.js 24 or newer for maintained toolchain",
+    "generation": "OpenXiangda V2; V1 unchanged",
+    "platform": "Requires anonymous-public/public/query-batch; each item reuses existing public policy and Native authorization"
+  },
+  "issues": []
+}

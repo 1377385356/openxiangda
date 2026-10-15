@@ -165,15 +165,22 @@ Nest后端注入请求作用域的 `OpenXiangdaWorkflowService`，调用 `delega
 
 目录进入独立流程图地址，刷新及浏览器返回保留所查看流程/版本。共享组件按需加载 React Flow 与 ELK 正交布局：所有线段横平竖直、转角为直角；支持画布平移、滚轮缩放、适应全图、聚焦选中和缩略导航。分支标签可选中，详情保留完整条件、顺序和来源；窄屏采用同源节点列表，方向键/Home/End 定位节点。画布布局上限为 200 节点、1024 连线，不提供拖改、删除或连线编辑。
 
+`WorkflowDiagram`可传入可选`variableChoices`，格式与`WorkflowDesigner`一致：以真实事实路径为键，值为`{ label, value }`选项数组。
+从当前生成模型目录取得选项，再按实际`subject.factProjection`映射，不在页面维护第二套业务字典。
+它只提供显示名称，不能新增变量、改写条件或授予权限；每个变量最多64个选项、字典最多128项，并按原事实类型校验。
+画布分支、提示和可访问列表使用同一中文说明，自定义分支名保留；未知值或类型不兼容时保留原始值，不猜测含义。
+宿主传给设计器的同一元数据也用于AI建议预览，但预览显示正确不证明模型连接或实际调用可用。
+只读图保留显式业务条件通向拒绝结果的分支，普通审批拒绝操作的专用终点仍由办理设置/历史说明。
+
 应用自定义管理页面可复用当前用户客户端和共享图组件：
 
 ```tsx
 import { useEffect, useState } from 'react';
-import { WorkflowDiagram } from 'openxiangda/react';
+import { WorkflowDiagram, type WorkflowVariableChoices } from 'openxiangda/react';
 import { loadWorkflowDefinitionGraph, type WorkflowGraphReadResult } from 'openxiangda/core';
 
-export function ReadableWorkflow({ workflowCode, version }: {
-  workflowCode: string; version: number;
+export function ReadableWorkflow({ workflowCode, version, variableChoices }: {
+  workflowCode: string; version: number; variableChoices?: WorkflowVariableChoices;
 }) {
   const [result, setResult] = useState<WorkflowGraphReadResult>();
   const [selected, setSelected] = useState('');
@@ -188,7 +195,7 @@ export function ReadableWorkflow({ workflowCode, version }: {
   }, [workflowCode, version]);
   if (error) return <p role="alert">{error}</p>;
   if (!result) return <p>正在读取流程</p>;
-  return <WorkflowDiagram graph={result.graph} selectedNodeId={selected} onSelectNode={setSelected} />;
+  return <WorkflowDiagram graph={result.graph} variableChoices={variableChoices} selectedNodeId={selected} onSelectNode={setSelected} />;
 }
 ```
 
