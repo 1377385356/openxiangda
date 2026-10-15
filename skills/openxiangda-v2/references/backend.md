@@ -298,10 +298,30 @@ await businessData.transaction({
 ```
 
 引用约束：引用对象只含 `operationIndex`（0..99 的整数）与 `field: 'id'` 两个键；
-只能指向索引更小的 create 操作；引用不得嵌套在数组或对象里。违反形状报
+只能指向索引更小的 create 操作；普通字段引用不得嵌套在数组或对象里，关联资源字段的快照见下节。违反形状报
 `OPENXIANGDA_NATIVE_DATA_TRANSACTION_REFERENCE_INVALID`，嵌套报
 `..._NESTED`，目标不可解析报 `..._UNRESOLVED`。任一操作失败时整个事务回滚，
 不会留下无成员的 club。
+
+### 关联资源字段保留快照
+
+`resource-ref.single` 字段仍需要资源代码、显示标签和 `value`。用 Nest 的
+`resourceSnapshot` 将前序 create 引用放在唯一受支持的快照 `value` 位置；
+裸 UUID 引用不能代替资源字段快照：
+
+```ts
+import { resourceSnapshot } from 'openxiangda/nest';
+const operations = [
+  { operation: 'create' as const, resourceCode: 'orders', data: { name: '订单' } },
+  { operation: 'create' as const, resourceCode: 'order-lines', data: {
+    order: resourceSnapshot('orders', { operationIndex: 0, field: 'id' }, '订单'),
+  } },
+];
+```
+
+快照的 `resourceCode` 必须与前序 create 的资源一致。只允许既有快照元数据，
+`value` 之外的对象、数组和 `snapshot` 中仍不接受事务引用；平台继续验证目标字段、
+引用和实际授权。字符串 ID 的 `resourceSnapshot` 调用保持原行为，助手不提交或重试请求。
 
 ## 业务动作与普通查询 {#business-action}
 

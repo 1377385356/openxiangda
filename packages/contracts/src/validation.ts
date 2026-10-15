@@ -80,6 +80,29 @@ function containsNestedTransactionReference(value: unknown): boolean {
   return isRecord(value) && Object.values(value).some(containsNestedTransactionReference);
 }
 
+const TRANSACTION_RESOURCE_SNAPSHOT_KEYS = new Set([
+  'label', 'value', 'resourceCode', 'description', 'color', 'snapshot',
+]);
+
+function transactionResourceSnapshotReference(
+  value: unknown
+): Record<string, unknown> | undefined {
+  if (
+    !isRecord(value) ||
+    typeof value.label !== 'string' ||
+    typeof value.resourceCode !== 'string' ||
+    !isCanonicalResourceCode(value.resourceCode) ||
+    !hasTransactionReferenceShape(value.value)
+  ) return undefined;
+  if (
+    Object.keys(value).some(key => !TRANSACTION_RESOURCE_SNAPSHOT_KEYS.has(key)) ||
+    Object.entries(value).some(
+      ([key, item]) => key !== 'value' && containsNestedTransactionReference(item)
+    )
+  ) return undefined;
+  return value;
+}
+
 function validateTransactionOperationDataReferences(
   data: Record<string, unknown>,
   operationIndex: number,
@@ -88,8 +111,10 @@ function validateTransactionOperationDataReferences(
 ) {
   for (const [fieldCode, fieldValue] of Object.entries(data)) {
     const path = `operations[${operationIndex}].data.${fieldCode}`;
-    if (hasTransactionReferenceShape(fieldValue)) {
-      const reference = fieldValue as Record<string, unknown>;
+    const snapshotReference = transactionResourceSnapshotReference(fieldValue);
+    const referenceValue = snapshotReference ? snapshotReference.value : fieldValue;
+    if (hasTransactionReferenceShape(referenceValue)) {
+      const reference = referenceValue as Record<string, unknown>;
       const keys = Object.keys(reference).sort();
       const targetIndex = Number(reference.operationIndex);
       const target = operations[targetIndex];
@@ -102,7 +127,9 @@ function validateTransactionOperationDataReferences(
         targetIndex >= operationIndex ||
         reference.field !== 'id' ||
         !isRecord(target) ||
-        target.operation !== 'create'
+        target.operation !== 'create' ||
+        (snapshotReference !== undefined &&
+          snapshotReference.resourceCode !== target.resourceCode)
       ) {
         diagnostics.push(
           diagnostic(

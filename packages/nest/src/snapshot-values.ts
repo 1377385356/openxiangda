@@ -1,4 +1,6 @@
 import type {
+  DataTransactionOperationReference,
+  DataTransactionResourceReferenceValue,
   DepartmentReferenceValue,
   ResourceReferenceValue,
   UserReferenceValue,
@@ -32,7 +34,25 @@ export function resourceSnapshot(
   resourceCode: string,
   recordId: string,
   label: string
-): ResourceReferenceValue {
+): ResourceReferenceValue;
+export function resourceSnapshot(
+  resourceCode: string,
+  recordId: DataTransactionOperationReference,
+  label: string
+): DataTransactionResourceReferenceValue;
+export function resourceSnapshot(
+  resourceCode: string,
+  recordId: string | DataTransactionOperationReference,
+  label: string
+): ResourceReferenceValue | DataTransactionResourceReferenceValue;
+export function resourceSnapshot(
+  resourceCode: string,
+  recordId: string | DataTransactionOperationReference,
+  label: string
+): ResourceReferenceValue | DataTransactionResourceReferenceValue {
+  if (typeof recordId === 'string') {
+    return { label, value: recordId, resourceCode };
+  }
   return { label, value: recordId, resourceCode };
 }
 

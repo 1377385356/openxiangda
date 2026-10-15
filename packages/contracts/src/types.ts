@@ -1886,6 +1886,11 @@ export interface DataTransactionOperationReference {
   field: "id";
 }
 
+/** Resource fields retain their snapshot shape when using a preceding create id. */
+export type DataTransactionResourceReferenceValue = Omit<ResourceReferenceValue, "value"> & {
+  value: DataTransactionOperationReference;
+};
+
 export type DataTransactionOperation =
   | {
       operation: "create";
