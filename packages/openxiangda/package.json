@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.75.3",
+  "version": "2.75.4",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -102,13 +102,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.11.15",
-    "openxiangda-contracts": "2.95.3",
-    "openxiangda-devkit-core": "2.71.4",
+    "openxiangda-cli": "2.11.16",
+    "openxiangda-contracts": "2.95.4",
+    "openxiangda-devkit-core": "2.71.5",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.2.26",
-    "openxiangda-nest": "2.22.6",
-    "openxiangda-skill-kit": "2.3.129",
+    "openxiangda-mcp": "2.2.27",
+    "openxiangda-nest": "2.22.7",
+    "openxiangda-skill-kit": "2.3.130",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -174,34 +174,33 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.75.3",
+    "version": "2.75.4",
     "status": "reviewed",
-    "title": "修复事务内资源快照的前序创建引用",
-    "summary": "资源字段可通过正式资源快照引用同一事务之前创建的记录，公开预检与平台已有的主键解析行为保持一致，保留资源、显示标签和原子提交。",
+    "title": "对齐 AppSpec 正式发布资料预算",
+    "summary": "将正式发布生命周期的 AppSpec 当前资料文件上限与公开文档中的 512 文件预算对齐，支持完整记录的大型应用通过生产晋级预检。",
     "newFeatures": [],
     "fixes": [
-      "公开事务验证器允许严格资源快照的 value 引用前序 create 的 id，并校验目标资源一致。",
-      "resourceSnapshot 提供事务引用类型重载，原字符串主键调用保留原有返回类型。",
-      "继续拒绝其他嵌套位置、快照元数据中的引用、前向或非 create 引用及额外引用字段；同步中文后端资料。"
+      "生产生命周期校验使用 512 个当前 AppSpec 非资产文件上限，不再以过期的 128 文件硬编码阻断大型应用。",
+      "保留单文件、总字节、资产和上下文预算，继续拒绝超预算、非法类型和符号链接输入。"
     ],
     "affectedUsers": [
-      "使用按需 Nest 事务同时创建主记录与资源关联条目的 OpenXiangda V2 应用。"
+      "当前 AppSpec 资料超过旧 128 文件上限、但仍符合 512 文件和字节预算的 OpenXiangda V2 应用。"
     ],
     "upgradeSteps": [
-      "使用本轮精确根包及其锁定依赖组合；资源关联使用 resourceSnapshot(resourceCode, { operationIndex, field: 'id' }, label)，不要改成裸主键或拆分原子事务。",
-      "平台维持同源 contracts 配套及兼容预检；先在 TEST 核验新建、已有记录、拒绝与原键结果恢复，再按原包进行实际业务验收。"
+      "使用本轮七包精确版本组合，并先执行 openxiangda check 与生产 promotion preflight。",
+      "继续完整记录应用目标、变更、设计、评审和验收，不要通过删除或隐藏活动资料规避生命周期校验。"
     ],
     "knownLimitations": [
-      "本次修正只接通平台已经实现的严格资源快照引用，不改变字段授权、组织隔离、资源预算或失败回滚。",
-      "本地合同和服务测试不代表目标站点的真实身份、通知或业务验收已经通过。"
+      "本次修正只扩大与文档一致的当前资料文件预算，不放宽单文件、总字节、原型资产、上下文或真实验收门禁。",
+      "本地检查通过不代表目标站点的生产身份、通知、密钥和业务验收已经完成。"
     ],
     "compatibility": {
       "node": "Node.js 24 or newer for maintained toolchain",
       "generation": "OpenXiangda V2; V1 unchanged",
-      "platform": "Requires Native Data transactions with strict resource-snapshot preceding-create id resolution and the matched compiler validator digest"
+      "platform": "Requires the matching OpenXiangda V2 configuration compiler and compatibility preflight"
     },
     "issues": [],
-    "sha256": "a8bc97b610b1d7f628436497c31126ca48b94f02241f20c8c9460a307e58433a",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.75.3"
+    "sha256": "474b635fec9ee5f30910d587fc9d293b042d67adae4666c85e6770bb0b8155de",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.75.4"
   }
 }
