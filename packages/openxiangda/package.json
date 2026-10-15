@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.75.2",
+  "version": "2.75.3",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -102,13 +102,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.11.14",
-    "openxiangda-contracts": "2.95.2",
-    "openxiangda-devkit-core": "2.71.3",
+    "openxiangda-cli": "2.11.15",
+    "openxiangda-contracts": "2.95.3",
+    "openxiangda-devkit-core": "2.71.4",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.2.25",
-    "openxiangda-nest": "2.22.5",
-    "openxiangda-skill-kit": "2.3.128",
+    "openxiangda-mcp": "2.2.26",
+    "openxiangda-nest": "2.22.6",
+    "openxiangda-skill-kit": "2.3.129",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -174,36 +174,34 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.75.2",
+    "version": "2.75.3",
     "status": "reviewed",
-    "title": "流程条件在画布、列表和AI预览中保持中文可读",
-    "summary": "统一使用已验证的中文选项展示条件，并保留显式通向拒绝结果的业务分支。原始值、表达式、审批人和授权不变。",
+    "title": "修复事务内资源快照的前序创建引用",
+    "summary": "资源字段可通过正式资源快照引用同一事务之前创建的记录，公开预检与平台已有的主键解析行为保持一致，保留资源、显示标签和原子提交。",
     "newFeatures": [],
     "fixes": [
-      "画布连线、提示、可访问节点列表及AI方案预览共用已验证的选项标签，不再在已有中文选项时重复显示英文编码。",
-      "只读图按实际入边区分普通拒绝操作与显式业务条件，不再仅因结束结果为拒绝就隐藏业务分支。",
-      "保留管理员自定义分支名、未知历史原值、原始标量类型、定义摘要和可执行图；根包与CLI模板版本成对更新。",
-      "同步中文管理专题及Skill资料，说明WorkflowDiagram的可选展示选项与其不改变业务语义的边界。"
+      "公开事务验证器允许严格资源快照的 value 引用前序 create 的 id，并校验目标资源一致。",
+      "resourceSnapshot 提供事务引用类型重载，原字符串主键调用保留原有返回类型。",
+      "继续拒绝其他嵌套位置、快照元数据中的引用、前向或非 create 引用及额外引用字段；同步中文后端资料。"
     ],
     "affectedUsers": [
-      "使用2.0流程设计器、只读流程图、节点列表和AI改图预览的应用。"
+      "使用按需 Nest 事务同时创建主记录与资源关联条目的 OpenXiangda V2 应用。"
     ],
     "upgradeSteps": [
-      "应用使用本轮精确根包版本及其锁定依赖组合，不手工混装物理包；目标平台先消费同源正式SDK并通过兼容预检。",
-      "发布前保留未保存草稿，部署后核对原流程节点和绑定，再按真实管理员、审批人和发起人验收。"
+      "使用本轮精确根包及其锁定依赖组合；资源关联使用 resourceSnapshot(resourceCode, { operationIndex, field: 'id' }, label)，不要改成裸主键或拆分原子事务。",
+      "平台维持同源 contracts 配套及兼容预检；先在 TEST 核验新建、已有记录、拒绝与原键结果恢复，再按原包进行实际业务验收。"
     ],
     "knownLimitations": [
-      "没有合法中文标签或类型不兼容的历史值继续显示原始值，不会猜测或改写业务编码。",
-      "AI预览显示修复不代表模型可用；真实推理仍需单独配置平台执行服务、工作器及模型连接。",
-      "本地纯测试和受控浏览器图不替代实际站点、角色、物理鼠标或真实模型验收。"
+      "本次修正只接通平台已经实现的严格资源快照引用，不改变字段授权、组织隔离、资源预算或失败回滚。",
+      "本地合同和服务测试不代表目标站点的真实身份、通知或业务验收已经通过。"
     ],
     "compatibility": {
       "node": "Node.js 24 or newer for maintained toolchain",
       "generation": "OpenXiangda V2; V1 unchanged",
-      "platform": "Requires anonymous-public/public/query-batch; each item reuses existing public policy and Native authorization"
+      "platform": "Requires Native Data transactions with strict resource-snapshot preceding-create id resolution and the matched compiler validator digest"
     },
     "issues": [],
-    "sha256": "57283ba53d110aac43c3084bac70b23f29fecdaa4c7cdfd670840c238e80ee38",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.75.2"
+    "sha256": "a8bc97b610b1d7f628436497c31126ca48b94f02241f20c8c9460a307e58433a",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.75.3"
   }
 }

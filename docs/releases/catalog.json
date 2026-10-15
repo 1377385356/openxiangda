@@ -3,6 +3,38 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.75.3",
+      "status": "reviewed",
+      "title": "修复事务内资源快照的前序创建引用",
+      "summary": "资源字段可通过正式资源快照引用同一事务之前创建的记录，公开预检与平台已有的主键解析行为保持一致，保留资源、显示标签和原子提交。",
+      "newFeatures": [],
+      "fixes": [
+        "公开事务验证器允许严格资源快照的 value 引用前序 create 的 id，并校验目标资源一致。",
+        "resourceSnapshot 提供事务引用类型重载，原字符串主键调用保留原有返回类型。",
+        "继续拒绝其他嵌套位置、快照元数据中的引用、前向或非 create 引用及额外引用字段；同步中文后端资料。"
+      ],
+      "affectedUsers": [
+        "使用按需 Nest 事务同时创建主记录与资源关联条目的 OpenXiangda V2 应用。"
+      ],
+      "upgradeSteps": [
+        "使用本轮精确根包及其锁定依赖组合；资源关联使用 resourceSnapshot(resourceCode, { operationIndex, field: 'id' }, label)，不要改成裸主键或拆分原子事务。",
+        "平台维持同源 contracts 配套及兼容预检；先在 TEST 核验新建、已有记录、拒绝与原键结果恢复，再按原包进行实际业务验收。"
+      ],
+      "knownLimitations": [
+        "本次修正只接通平台已经实现的严格资源快照引用，不改变字段授权、组织隔离、资源预算或失败回滚。",
+        "本地合同和服务测试不代表目标站点的真实身份、通知或业务验收已经通过。"
+      ],
+      "compatibility": {
+        "node": "Node.js 24 or newer for maintained toolchain",
+        "generation": "OpenXiangda V2; V1 unchanged",
+        "platform": "Requires Native Data transactions with strict resource-snapshot preceding-create id resolution and the matched compiler validator digest"
+      },
+      "issues": [],
+      "sha256": "a8bc97b610b1d7f628436497c31126ca48b94f02241f20c8c9460a307e58433a",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.75.3"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.75.2",
       "status": "reviewed",
       "title": "流程条件在画布、列表和AI预览中保持中文可读",
