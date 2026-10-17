@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.75.4",
+  "version": "2.75.5",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -102,13 +102,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.11.16",
-    "openxiangda-contracts": "2.95.4",
-    "openxiangda-devkit-core": "2.71.5",
+    "openxiangda-cli": "2.11.17",
+    "openxiangda-contracts": "2.95.5",
+    "openxiangda-devkit-core": "2.71.6",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.2.27",
-    "openxiangda-nest": "2.22.7",
-    "openxiangda-skill-kit": "2.3.130",
+    "openxiangda-mcp": "2.2.28",
+    "openxiangda-nest": "2.22.8",
+    "openxiangda-skill-kit": "2.3.131",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -174,33 +174,39 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.75.4",
+    "version": "2.75.5",
     "status": "reviewed",
-    "title": "对齐 AppSpec 正式发布资料预算",
-    "summary": "将正式发布生命周期的 AppSpec 当前资料文件上限与公开文档中的 512 文件预算对齐，支持完整记录的大型应用通过生产晋级预检。",
-    "newFeatures": [],
+    "title": "OpenXiangda 2.75.5：告警优先的应用交付与同源 contracts",
+    "summary": "应用 TEST 交付对源码托管和 AppSpec 资料采用告警优先策略，并重新发布当前主线 contracts 制品，保证平台消费的编译器字节与源码提交可核验配对。",
+    "newFeatures": [
+      "TEST 部署计划和发布支持显式选择 AppSpec 变更；源码托管不可用、资料就绪度或来源观察项会进入警告与发布回执，而不再阻断可继续的 TEST 交付。",
+      "生产晋级保留安全、制品完整性、准确 TEST 运行和兼容性等硬门禁，同时将可修复的资料与源码来源观察项作为可见警告。"
+    ],
     "fixes": [
-      "生产生命周期校验使用 512 个当前 AppSpec 非资产文件上限，不再以过期的 128 文件硬编码阻断大型应用。",
-      "保留单文件、总字节、资产和上下文预算，继续拒绝超预算、非法类型和符号链接输入。"
+      "重新发布 openxiangda-contracts 2.95.5，使平台能够用官方 registry 制品验证当前 OpenXiangda 2.0 master 提交、纯编译器摘要和 tarball 完整性。",
+      "根包、CLI、MCP 与 devkit-core 的版本发布保持同一 Changesets 发布单元，避免 CLI 模板与根包版本脱节。"
     ],
     "affectedUsers": [
-      "当前 AppSpec 资料超过旧 128 文件上限、但仍符合 512 文件和字节预算的 OpenXiangda V2 应用。"
-    ],
-    "upgradeSteps": [
-      "使用本轮七包精确版本组合，并先执行 openxiangda check 与生产 promotion preflight。",
-      "继续完整记录应用目标、变更、设计、评审和验收，不要通过删除或隐藏活动资料规避生命周期校验。"
-    ],
-    "knownLimitations": [
-      "本次修正只扩大与文档一致的当前资料文件预算，不放宽单文件、总字节、原型资产、上下文或真实验收门禁。",
-      "本地检查通过不代表目标站点的生产身份、通知、密钥和业务验收已经完成。"
+      "需要在源码托管服务暂时不可用时继续进行 OpenXiangda V2 TEST 交付的应用开发者。",
+      "维护 OpenXiangda V2 平台配套、需要消费同源公开 contracts 制品的发布维护者。"
     ],
     "compatibility": {
       "node": "Node.js 24 or newer for maintained toolchain",
       "generation": "OpenXiangda V2; V1 unchanged",
-      "platform": "Requires the matching OpenXiangda V2 configuration compiler and compatibility preflight"
+      "platform": "平台服务端须消费 openxiangda-contracts 2.95.5 官方 archive，并通过来源提交、native compiler 摘要和锁文件完整性校验。",
+      "releaseChannels": "latest / stable-v2：V2 正式版；legacy-v1：V1 维护版；alpha：预发布。"
     },
+    "upgradeSteps": [
+      "先发布并读回同一主线提交生成的 openxiangda-contracts 2.95.5，再将平台 server 的 vendor archive、来源回执和 pnpm 锁文件同步到该版本。",
+      "应用 TEST 交付可以继续使用 warning-first 诊断；安全、制品完整性、精确运行和兼容性错误仍需修复后才能继续。",
+      "在目标测试环境分别验证 HTTP 运行健康、角色访问、发布回执和实际业务操作；包发布不代表平台部署或业务验收完成。"
+    ],
+    "knownLimitations": [
+      "告警优先只放宽源码托管和 AppSpec 资料类观察项，不放宽安全、完整性、身份、权限、运行时健康或错误目标等硬门禁。",
+      "contracts npm 发布、平台镜像部署、应用 TEST 发布和真实业务验收仍是独立证据；本版本不自动修改生产应用。"
+    ],
     "issues": [],
-    "sha256": "474b635fec9ee5f30910d587fc9d293b042d67adae4666c85e6770bb0b8155de",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.75.4"
+    "sha256": "b20e041f30d0c1fd7bd7aa9faaf68e9731daadb0a8d0902a0cc3859853972731",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.75.5"
   }
 }

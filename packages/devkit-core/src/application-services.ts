@@ -2025,7 +2025,7 @@ export class OpenXiangdaApplicationServices {
         diagnostics
       );
     }
-    const source = await operationStage('source', '记录源码来源（网络不可达时保留本地来源）', () => publishedDeliverySource(workspace.root));
+    const source = await operationStage('source', '核对远端主线与源码（网络不可达时保留本地来源）', () => publishedDeliverySource(workspace.root));
     const lifecycle = developmentLifecycle(
       workspace.root,
       this.appSpecContractIndex(workspace, true),
@@ -2044,6 +2044,7 @@ export class OpenXiangdaApplicationServices {
     return this.result("deployment.plan", workspace.context.workspace, {
       runtimeCapacity,
       workflowActivation,
+      lifecycle: summarizeLifecycle(lifecycle),
       environment: input.environment,
       appCode: workspace.config.app.code,
       sealed: false,
@@ -2054,7 +2055,7 @@ export class OpenXiangdaApplicationServices {
       backendRoot: workspace.config.backend.root,
       configDigest: sources.config.digest,
       contractDigest: sources.contracts.digest,
-    }, workflowActivation);
+    }, [...workflowActivation, ...lifecycle.diagnostics]);
   }
 
   async deploy(input: DeployOptions) {
@@ -2078,7 +2079,7 @@ export class OpenXiangdaApplicationServices {
         ),
       ]);
     }
-    const source = await operationStage('source', '记录源码来源（网络不可达时保留本地来源）', () => publishedDeliverySource(workspace.root));
+    const source = await operationStage('source', '核对远端主线与源码（网络不可达时保留本地来源）', () => publishedDeliverySource(workspace.root));
     const client = await this.client(workspace.root);
     const capabilities = await client.capabilities();
     let prerequisiteWarnings: Diagnostic[] = [];

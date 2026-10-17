@@ -238,9 +238,13 @@ try {
   assert.equal(localCheck.value.data.targetEnvironment, null);
   assert.equal(requests.length, beforeLocalCheck, '本地候选检查不能请求平台');
 
-  // 2026-09-12 交付简化后不再要求先提交 Git；发布首先核对 AppSpec 章节完整性。
-  const withoutAppSpec = await runCli(["deploy", "--cwd", appRoot, "--json"], appRoot, environment, 1);
-  assert.equal(withoutAppSpec.value.error.code, 'APPSPEC_APPLICATION_SECTION_INCOMPLETE');
+  // 2026-09-12 warning-first delivery keeps incomplete AppSpec visible in a
+  // read-only plan instead of blocking the user before any publish write.
+  const withoutAppSpec = await runCli(["deploy", "--dry-run", "--cwd", appRoot, "--json"], appRoot, environment);
+  assertEnvelope(withoutAppSpec, "deployment.plan");
+  assert.equal(withoutAppSpec.value.error, null);
+  assert.equal(withoutAppSpec.value.data.lifecycle.readyForTest, true);
+  assert.ok(withoutAppSpec.value.data.lifecycle.diagnostics.some(item => item.code === 'APPSPEC_APPLICATION_SECTION_INCOMPLETE' && item.severity === 'warning'));
   assert.equal(existsSync(dockerMarker), false);
   const gitRemote = join(scratchRoot, 'application.git');
   execFileSync('git', ['init', '--bare', '-b', 'main', gitRemote], { stdio: 'ignore' });
