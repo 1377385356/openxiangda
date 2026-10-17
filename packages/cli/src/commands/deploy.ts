@@ -15,6 +15,9 @@ export default class Deploy extends OpenXiangdaCommand {
       summary: "生产部署复用的成功测试 DeploymentRun ID",
       dependsOn: ["environment"],
     }),
+    change: Flags.string({
+      summary: "本次发布关联的 AppSpec 变更 ID；多个活动变更时必须显式指定",
+    }),
     "environment-id": Flags.string({ summary: '测试环境 ID；通常由绑定自动确定' }),
     "idempotency-key": Flags.string({ summary: '测试部署幂等键；省略时从不可变包摘要派生' }),
     "dry-run": Flags.boolean({ summary: '只读预览部署或生产晋级，不构建、不上传、不提交' }),
@@ -31,6 +34,7 @@ export default class Deploy extends OpenXiangdaCommand {
         environment: flags.environment,
         ...(flags.strategy ? { deploymentStrategy: flags.strategy as 'rolling' | 'maintenance-replace' } : {}),
         ...(flags.from ? { from: flags.from } : {}),
+        ...(flags.change ? { appSpecChangeId: flags.change } : {}),
         dryRun: flags['dry-run'],
         wait: flags.wait,
         ...(flags["environment-id"]

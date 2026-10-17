@@ -19,3 +19,19 @@ test('failed and contradictory or skipped required checks cannot be ready', () =
   failed.checks[2]!.state = 'skipped';
   assert.throws(() => assertDeploymentPrerequisites(failed, 'example', true));
 });
+
+test('源码托管不可达只产生警告，内核和镜像仓库仍保持硬阻断', () => {
+  const sourceUnavailable = report();
+  sourceUnavailable.checks[1]!.state = 'failed';
+  sourceUnavailable.checks[1]!.code = 'SOURCE_PROVIDER_UNAVAILABLE';
+  sourceUnavailable.ready = false;
+  const warnings = assertDeploymentPrerequisites(sourceUnavailable, 'example', true);
+  assert.equal(warnings.length, 1);
+  assert.equal(warnings[0]?.severity, 'warning');
+  assert.equal(warnings[0]?.code, 'SOURCE_PREREQUISITE_SOURCE_PROVIDER_UNAVAILABLE');
+
+  const kernelUnavailable = report();
+  kernelUnavailable.checks[0]!.state = 'failed';
+  kernelUnavailable.ready = false;
+  assert.throws(() => assertDeploymentPrerequisites(kernelUnavailable, 'example', true), (error: any) => error.code === 'APPLICATION_PREREQUISITES_FAILED');
+});

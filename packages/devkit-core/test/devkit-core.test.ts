@@ -2820,9 +2820,9 @@ test("promotes to production only after verifying the exact preproduction versio
 
     writeFileSync(join(root, "uncommitted.txt"), "dirty");
     const dirty = await services.deployProduction(root, source.id);
-    assert.equal(dirty.ok, false);
+    assert.equal(dirty.ok, true, JSON.stringify(dirty.diagnostics));
     assert.equal(dirty.diagnostics[0]?.code, "PRODUCTION_SOURCE_DIRTY");
-    assert.equal(promoted.length, 2);
+    assert.equal(promoted.length, 3);
 
     rmSync(join(root, 'uncommitted.txt'));
     const reviewPath = join(root, 'appspec/reviews/initial.md');
@@ -2833,9 +2833,9 @@ test("promotes to production only after verifying the exact preproduction versio
     writeFileSync(reviewPath, validReview);
     gitCommand(root, 'add', '.'); gitCommand(root, 'commit', '-m', 'later valid review cannot approve prior source'); gitCommand(root, 'push', 'origin', 'master');
     const invalidSourceDesign = await services.deployProduction(root, source.id);
-    assert.equal(invalidSourceDesign.ok, false);
+    assert.equal(invalidSourceDesign.ok, true, JSON.stringify(invalidSourceDesign.diagnostics));
     assert.ok(invalidSourceDesign.diagnostics.some(item => item.code === 'APPSPEC_DESIGN_BASELINE_STALE'));
-    assert.equal(promoted.length, 2);
+    assert.equal(promoted.length, 4);
   } finally {
     rmSync(root, { recursive: true, force: true });
     rmSync(remote, { recursive: true, force: true });

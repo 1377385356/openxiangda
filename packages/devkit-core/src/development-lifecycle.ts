@@ -12,6 +12,8 @@ export const APP_SPEC_SOURCE_FILE_LIMIT = 512;
 const APP_SECTIONS = ['业务目标', '角色', '架构与数据关系', '业务任务与页面', '权限矩阵与确认', '性能与容量预算'];
 const CHANGE_SECTIONS = ['为什么', '需求依据', '方案与影响', '任务与实现', '验收', '性能与容量预算'];
 
+export type DevelopmentLifecyclePolicy = 'strict' | 'warning-first';
+
 function issue(code: string, message: string, path: string): Diagnostic {
   return { schemaVersion: SCHEMA_VERSIONS.diagnostic, severity: 'error', retryable: false, code, message, path, remediation: '依据实际业务补齐对应记录；运行 openxiangda spec context --json 查看阶段缺口，不能填写虚假确认或通过结果' };
 }
@@ -34,7 +36,13 @@ function headMessage(root: string) {
 }
 
 /** 按发布阶段评估事实完整性；不推断用户确认，也不将章节存在当作业务验收。 */
-export function developmentLifecycle(root: string, contract: AppSpecContractIndex, message = headMessage(root), selector?: string) {
+export function developmentLifecycle(
+  root: string,
+  contract: AppSpecContractIndex,
+  message = headMessage(root),
+  selector?: string,
+  policy: DevelopmentLifecyclePolicy = 'strict',
+) {
   const index = inspectAppSpec(root, contract);
   const explicit = message.match(/^AppSpec:\s*([a-z0-9]+(?:-[a-z0-9]+)*)\s*$/m)?.[1];
   const changeId = selector || explicit || (index.index.activeChanges.length === 1 ? index.index.activeChanges[0]?.id : undefined);
@@ -64,14 +72,42 @@ export function developmentLifecycle(root: string, contract: AppSpecContractInde
   }
   const acceptanceIds = [...new Set([...(app?.acceptanceIds || []), ...(change?.acceptanceIds || []), ...context.capabilities.flatMap(item => item.acceptanceIds), ...context.designs.flatMap(item => item.acceptanceIds)])];
   if (change && !acceptanceIds.length) diagnostics.push(issue('APPSPEC_ACCEPTANCE_PLAN_REQUIRED', '至少定义一个 #### AC-* 可观察验收场景，供测试部署后逐项验证', `${change.path}#验收`));
+  const effectiveDiagnostics = policy === 'warning-first'
+    ? diagnostics.map(diagnostic => ({
+        ...diagnostic,
+        severity: diagnostic.severity === 'error' ? ('warning' as const) : diagnostic.severity,
+        retryable: true,
+        details: {
+          ...diagnostic.details,
+          gateClass: 'advisory',
+          affects: ['release-readiness'],
+        },
+      }))
+    : diagnostics;
+  const effectiveDesign = policy === 'warning-first'
+    ? {
+        ...design,
+        diagnostics: design.diagnostics.map(diagnostic => ({
+          ...diagnostic,
+          severity: diagnostic.severity === 'error' ? ('warning' as const) : diagnostic.severity,
+          retryable: true,
+          details: {
+            ...diagnostic.details,
+            gateClass: 'advisory',
+            affects: ['release-readiness'],
+          },
+        })),
+      }
+    : design;
+  const blockingDiagnostics = effectiveDiagnostics.some(item => item.severity === 'error');
   const readyForImplementation = design.readyForImplementation && !designDiagnostics.length;
   return {
     schemaVersion: 'openxiangda.development-lifecycle/v2' as const,
-    stage: !readyForImplementation ? 'design-incomplete' as const : diagnostics.length ? 'ready-for-implementation' as const : 'ready-for-test' as const,
-    readyForImplementation, design,
-    readyForTest: !diagnostics.length, changeId: change?.id || null, acceptanceIds,
+    stage: !blockingDiagnostics ? 'ready-for-test' as const : !readyForImplementation ? 'design-incomplete' as const : 'ready-for-implementation' as const,
+    readyForImplementation, design: effectiveDesign,
+    readyForTest: !blockingDiagnostics, changeId: change?.id || null, acceptanceIds,
     currentSpecDigest: context.selectionDigest,
-    diagnostics,
+    diagnostics: effectiveDiagnostics,
     nextCommand: changeId ? `openxiangda spec context ${changeId} --json` : 'openxiangda spec context --json',
     context,
   };

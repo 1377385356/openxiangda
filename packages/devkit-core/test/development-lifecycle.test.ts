@@ -26,6 +26,18 @@ test('空总纲和草稿不能正式发布；具体设计与计划允许首次�
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
 
+test('warning-first 策略保留 AppSpec 缺口但不阻断测试发布', () => {
+  const directory = root();
+  try {
+    initializeAppSpec({ root: directory, appCode: contract.appCode, appName: '预约应用' });
+    const lifecycle = developmentLifecycle(directory, contract, undefined, undefined, 'warning-first');
+    assert.equal(lifecycle.readyForTest, true);
+    assert.equal(lifecycle.diagnostics.every(item => item.severity === 'warning'), true);
+    assert.ok(lifecycle.diagnostics.length > 0);
+    assert.equal(lifecycle.diagnostics[0]?.details?.gateClass, 'advisory');
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
 test('生产报告绑定原测试源码与包；不能借后续修改覆盖原计划、缺失场景或伪造空通过标记', () => {
   const directory = root();
   const git = (...args: string[]) => execFileSync('git', ['-C', directory, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();

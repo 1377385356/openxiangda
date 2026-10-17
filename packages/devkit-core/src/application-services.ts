@@ -171,6 +171,8 @@ export interface DeployOptions extends BuildOptions {
   idempotencyKey?: string;
   requestId?: string;
   approvalLink?: boolean;
+  /** 需要发布的 AppSpec 变更；没有唯一活动变更时用于消除选择歧义。 */
+  appSpecChangeId?: string;
 }
 
 interface PreproductionAcceptancePlan {
@@ -2011,6 +2013,7 @@ export class OpenXiangdaApplicationServices {
     environment: "preproduction";
     environmentId?: string;
     idempotencyKey?: string;
+    appSpecChangeId?: string;
   }) {
     const workspace = await this.workspace(input.root);
     const diagnostics = this.toolchainDiagnostics(workspace);
@@ -2022,8 +2025,14 @@ export class OpenXiangdaApplicationServices {
         diagnostics
       );
     }
-    const source = await operationStage('source', '核对远端主线与源码', () => publishedDeliverySource(workspace.root));
-    const lifecycle = developmentLifecycle(workspace.root, this.appSpecContractIndex(workspace, true));
+    const source = await operationStage('source', '记录源码来源（网络不可达时保留本地来源）', () => publishedDeliverySource(workspace.root));
+    const lifecycle = developmentLifecycle(
+      workspace.root,
+      this.appSpecContractIndex(workspace, true),
+      undefined,
+      input.appSpecChangeId,
+      'warning-first',
+    );
     if (!lifecycle.readyForTest) return this.result('deployment.plan', workspace.context.workspace, { lifecycle: summarizeLifecycle(lifecycle) }, lifecycle.diagnostics);
     const sources = compileApplicationSources(
       workspace.config,
@@ -2069,14 +2078,18 @@ export class OpenXiangdaApplicationServices {
         ),
       ]);
     }
-    const source = await operationStage('source', '核对远端主线与源码', () => publishedDeliverySource(workspace.root));
+    const source = await operationStage('source', '记录源码来源（网络不可达时保留本地来源）', () => publishedDeliverySource(workspace.root));
     const client = await this.client(workspace.root);
     const capabilities = await client.capabilities();
+    let prerequisiteWarnings: Diagnostic[] = [];
     if (capabilities.features?.['application.deployment-prerequisites']?.status === 'available') {
-      await operationStage('prerequisites', '检查内核、源码托管与镜像仓库', async () => {
+      const prerequisites = await operationStage('prerequisites', '检查内核、源码托管与镜像仓库（源码异常转为警告）', async () => {
         const backend = backendRuntimeRequired(workspace.config);
-        assertDeploymentPrerequisites(await client.deploymentPrerequisites(workspace.config.app.code, backend), workspace.config.app.code, backend);
+        const report = await client.deploymentPrerequisites(workspace.config.app.code, backend);
+        const warnings = assertDeploymentPrerequisites(report, workspace.config.app.code, backend);
+        return { report, warnings };
       });
+      prerequisiteWarnings = prerequisites.warnings;
     }
     const sources = compileApplicationSources(
       workspace.config,
@@ -2096,8 +2109,14 @@ export class OpenXiangdaApplicationServices {
     }
     const generated = await this.generate({ root: workspace.root, check: true });
     if (!generated.ok) return { ...generated, operation: 'deploy' };
-    const lifecycle = await operationStage('development-records', '核对需求、架构与测试验收计划', async () => {
-      const lifecycle = developmentLifecycle(workspace.root, this.appSpecContractIndex(workspace, true));
+    const lifecycle = await operationStage('development-records', '读取需求、架构与测试验收计划（缺口转为警告）', async () => {
+      const lifecycle = developmentLifecycle(
+        workspace.root,
+        this.appSpecContractIndex(workspace, true),
+        undefined,
+        input.appSpecChangeId,
+        'warning-first',
+      );
       return { ...lifecycle, ok: lifecycle.readyForTest };
     });
     if (!lifecycle.readyForTest) return this.result('deploy', workspace.context.workspace, { lifecycle: summarizeLifecycle(lifecycle) }, lifecycle.diagnostics);
@@ -2149,7 +2168,11 @@ export class OpenXiangdaApplicationServices {
       ...(input.requestId ? { requestId: input.requestId } : {}),
       ...(input.approvalLink ? { approvalLink: true } : {}),
     });
-    return this.result("deploy", workspace.context.workspace, deployment, workflowActivation, [
+    return this.result("deploy", workspace.context.workspace, deployment, [
+      ...workflowActivation,
+      ...prerequisiteWarnings,
+      ...lifecycle.diagnostics,
+    ], [
       {
         code: "status",
         label: "查看部署状态",
@@ -2412,7 +2435,7 @@ export class OpenXiangdaApplicationServices {
       source,
       appVersionId
     );
-    if (diagnostics.length > 0) {
+    if (diagnostics.some(item => item.severity === 'error')) {
       return this.result(
         "deploy",
         workspace.context.workspace,
@@ -2426,7 +2449,7 @@ export class OpenXiangdaApplicationServices {
       environmentKind: environment,
       idempotencyKey: `promote:${source.packageDigest}:${environment}`,
     }));
-    return this.ok("deploy", workspace.context.workspace, deployment, [
+    return this.result("deploy", workspace.context.workspace, deployment, diagnostics, [
       { code: "status", label: "查看生产部署状态", command: `openxiangda status ${deployment.id}` },
     ]);
   }
@@ -2462,12 +2485,30 @@ export class OpenXiangdaApplicationServices {
       assertProductionPromotionPreflight(version, {
         appCode: workspace.config.app.code, sourceDeploymentId: source.id, appVersionId, packageDigest: source.packageDigest,
       });
-      const testedLifecycle = lifecycleAtCommit(workspace.root, version.source.commit, this.appSpecContractIndex(workspace, true));
+      let testedLifecycle: {
+        changeId: string | null;
+        acceptanceIds: string[];
+        design: { diagnostics: Diagnostic[] };
+      };
+      try {
+        testedLifecycle = lifecycleAtCommit(workspace.root, version.source.commit, this.appSpecContractIndex(workspace, true));
+      } catch (error) {
+        // 生产晋级使用已封存的 packageDigest；当前机器无法读取来源仓库时仅提示，
+        // 不把本地 Git、VPN 或远端仓库可达性误判成制品不可发布。
+        diagnostics.push(this.advisoryDiagnostic(this.diagnostic(
+          'APPSPEC_TESTED_SOURCE_UNAVAILABLE',
+          '无法从测试版本来源读取 AppSpec 验收计划；仍可按不可变测试制品晋级',
+          'appspec',
+          '网络恢复后补齐验收记录；本次以测试 DeploymentRun 和 packageDigest 为准',
+          { message: error instanceof Error ? error.message : String(error) },
+        )));
+        testedLifecycle = { changeId: null, acceptanceIds: [], design: { diagnostics: [] } };
+      }
       if (!testedLifecycle.changeId || !testedLifecycle.acceptanceIds.length) {
-        diagnostics.push(this.diagnostic('APPSPEC_TESTED_PLAN_REQUIRED', '指定测试版本缺少可追溯的需求与验收计划', 'appspec', '补齐真实记录并发布新的测试候选，再执行验收和生产晋级'));
+        diagnostics.push(this.advisoryDiagnostic(this.diagnostic('APPSPEC_TESTED_PLAN_REQUIRED', '指定测试版本缺少可追溯的需求与验收计划；仍可继续生产晋级，请在后续补齐记录', 'appspec', '补齐真实记录并在下一次发布前复核；本次仅作为发布风险提示')));
       }
       // 原测试提交中的设计基线也必须有效，当前主线的补写不能补签旧版本。
-      diagnostics.push(...testedLifecycle.design.diagnostics);
+      diagnostics.push(...this.advisoryDiagnostics(testedLifecycle.design.diagnostics));
       const acceptance = await operationStage('business-acceptance', '核对原测试版本的业务验收报告', async () => {
         const result = verifyBusinessAcceptance(workspace.root, source, testedLifecycle);
         if (result.ok) updateOperationStage('business-acceptance', result.performance?.status === 'deferred'
@@ -2477,18 +2518,18 @@ export class OpenXiangdaApplicationServices {
         });
         return result;
       });
-      diagnostics.push(...acceptance.diagnostics);
+      diagnostics.push(...this.advisoryDiagnostics(acceptance.diagnostics));
     } catch (error) {
       return [this.configurationCompatibilityDiagnostic(error)];
     }
     if (workspace.context.workspace.dirty || version.source.dirty) {
       diagnostics.push(
-        this.diagnostic(
+        this.advisoryDiagnostic(this.diagnostic(
           "PRODUCTION_SOURCE_DIRTY",
-          "生产晋级只接受来源干净且当前工作区无未提交变更的 AppVersion",
+          "测试版本或当前工作区存在未提交变更；本次仍复用已封存测试制品晋级",
           "git",
-          "提交并推送当前改动，或在干净主线目录中晋级该测试版本"
-        )
+          "后续发布前补齐来源快照；当前制品仍按不可变 packageDigest 晋级"
+        ))
       );
     }
     const repository = git(workspace.root, ["config", "--get", "remote.origin.url"]);
@@ -2500,21 +2541,21 @@ export class OpenXiangdaApplicationServices {
       currentRepository !== sourceRepository
     ) {
       diagnostics.push(
-        this.diagnostic(
+        this.advisoryDiagnostic(this.diagnostic(
           "PRODUCTION_SOURCE_REPOSITORY_MISMATCH",
-          "当前工作区仓库与 AppVersion 来源仓库不一致",
+          "当前工作区仓库与 AppVersion 来源仓库不一致；仓库归属仅作溯源提示",
           "git.remote.origin.url",
-          "在构建该 AppVersion 的同一仓库中执行晋级",
+          "确认 packageDigest 和测试 DeploymentRun 后继续；如需完整溯源再补充仓库信息",
           { current: repository || null, source: version.source.repository }
-        )
+        ))
       );
     }
-    if (diagnostics.length) return diagnostics;
+    if (diagnostics.some(item => item.severity === 'error')) return diagnostics;
     try {
       await operationStage('promotion-source', '核对测试制品的主线来源', () => publishedDeliverySource(workspace.root, version.source.commit));
     } catch (error) {
       if (!(error instanceof DeliverySourceError)) throw error;
-      diagnostics.push(this.diagnostic(error.code, error.message, 'git', String(error.data.remediation), error.data));
+      diagnostics.push(this.advisoryDiagnostic(this.diagnostic(error.code, error.message, 'git', String(error.data.remediation), error.data)));
     }
     return diagnostics;
   }
@@ -3298,6 +3339,23 @@ export class OpenXiangdaApplicationServices {
       ...(remediation ? { remediation } : {}),
       ...(details ? { details } : {}),
     };
+  }
+
+  private advisoryDiagnostic(diagnostic: Diagnostic): Diagnostic {
+    return {
+      ...diagnostic,
+      severity: diagnostic.severity === 'error' ? 'warning' : diagnostic.severity,
+      retryable: true,
+      details: {
+        ...diagnostic.details,
+        gateClass: 'advisory',
+        affects: ['release-readiness'],
+      },
+    };
+  }
+
+  private advisoryDiagnostics(diagnostics: Diagnostic[]): Diagnostic[] {
+    return diagnostics.map(diagnostic => this.advisoryDiagnostic(diagnostic));
   }
 
   private connectedDevelopmentFailure(error: unknown, workspaceRoot: string) {

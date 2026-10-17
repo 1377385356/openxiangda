@@ -33,6 +33,7 @@ export interface DeveloperDeploymentInput {
   root?: string;
   environment?: string;
   from?: string;
+  appSpecChangeId?: string;
   environmentId?: string;
   idempotencyKey?: string;
   dryRun?: boolean;
@@ -76,6 +77,7 @@ async function executeDeployment(services: OpenXiangdaApplicationServices, input
         ...(input.environmentId ? { environmentId: input.environmentId } : {}),
         ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
         ...(input.deploymentStrategy ? { deploymentStrategy: input.deploymentStrategy } : {}),
+        ...(input.appSpecChangeId ? { appSpecChangeId: input.appSpecChangeId } : {}),
       })
     : withWorkspaceOperation(realpathSync(discoverWorkspace(input.root).root), 'deploy', () => services.deploy({
         ...(input.root ? { root: input.root } : {}),
@@ -83,6 +85,7 @@ async function executeDeployment(services: OpenXiangdaApplicationServices, input
         ...(input.environmentId ? { environmentId: input.environmentId } : {}),
         ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
         ...(input.deploymentStrategy ? { deploymentStrategy: input.deploymentStrategy } : {}),
+        ...(input.appSpecChangeId ? { appSpecChangeId: input.appSpecChangeId } : {}),
         ...(input.approvalLink ? { approvalLink: true } : {}),
       }));
 }

@@ -493,6 +493,7 @@ const environment = z.enum(DEVELOPER_ENVIRONMENTS).default('test').describe('目
 const deploymentInput = z.object({
   environment,
   from: z.string().min(1).optional().describe('production 必填：成功测试 DeploymentRun ID；test 不接受'),
+  appSpecChangeId: z.string().min(1).optional().describe('本次发布关联的 AppSpec 变更 ID；多个活动变更时显式指定，缺省时使用唯一活动变更'),
   deploymentStrategy: z.enum(['rolling', 'maintenance-replace']).optional().describe('仅 TEST；显式 maintenance-replace 允许停机替换并由平台处理失败恢复，默认 rolling'),
   environmentId: z.string().optional().describe('测试环境 ID，通常由平台绑定确定'),
   idempotencyKey: z.string().optional().describe('测试部署幂等键，省略时由包摘要派生'),
@@ -643,7 +644,7 @@ export function createOpenXiangdaMcpServer(options: { services?: OpenXiangdaAppl
 }
 
 function definedDeploymentInput(input: z.output<typeof deploymentInput>) {
-  return { environment: input.environment, wait: input.wait, ...(input.deploymentStrategy ? { deploymentStrategy: input.deploymentStrategy } : {}), ...(input.from ? { from: input.from } : {}), ...(input.environmentId ? { environmentId: input.environmentId } : {}), ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}) };
+  return { environment: input.environment, wait: input.wait, ...(input.deploymentStrategy ? { deploymentStrategy: input.deploymentStrategy } : {}), ...(input.from ? { from: input.from } : {}), ...(input.appSpecChangeId ? { appSpecChangeId: input.appSpecChangeId } : {}), ...(input.environmentId ? { environmentId: input.environmentId } : {}), ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}) };
 }
 
 export async function runStdioServer(options: { root?: string } = {}) {
