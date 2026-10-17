@@ -271,17 +271,18 @@ function RichTextToolbar({ mobile, children }: { mobile: boolean; children: Reac
   </div>;
 }
 
-export function DefaultRichTextField({ value = '', onChange, disabled = false, mobile = false, onUpload, resourceCode, workflowBinding, recordId, fieldCode }: RichTextFieldProps) {
+export function DefaultRichTextField({ value, onChange, disabled = false, mobile = false, onUpload, resourceCode, workflowBinding, recordId, fieldCode }: RichTextFieldProps) {
   const [uploading, setUploading] = useState(false), [error, setError] = useState('');
   const [fullScreen, setFullScreen] = useState(false);
   const [menuValues, setMenuValues] = useState<Record<string, string>>({});
   const fieldRoot = useRef<HTMLDivElement>(null);
   const generation = useRef(0), input = useRef<HTMLInputElement>(null), uploadKind = useRef<'image' | 'video'>('image');
   const scope = JSON.stringify([resourceCode, recordId, fieldCode, workflowBinding]);
+  const initialValue = value ?? '';
   const change = useRef(onChange); change.current = onChange;
   const editor = useEditor({
     extensions: createRichTextExtensions(workflowBinding),
-    content: sanitizeRichTextHtml(value),
+    content: sanitizeRichTextHtml(initialValue),
     immediatelyRender: false,
     editorProps: { attributes: { class: 'oxa-rich-text-editor', role: 'textbox', 'aria-label': '富文本内容', 'aria-multiline': 'true' },
       transformPastedHTML: html => sanitizeRichTextHtml(html),
@@ -296,6 +297,9 @@ export function DefaultRichTextField({ value = '', onChange, disabled = false, m
   const disabledNow = useRef(disabled); disabledNow.current = disabled;
   useEffect(() => { editor?.setEditable(!locked); }, [editor, locked]);
   useEffect(() => {
+    // An uncontrolled or temporarily unbound field must not clear editor-owned
+    // input while a parent form catches up with the latest onChange value.
+    if (value === undefined) return;
     if (editor && sanitizeRichTextHtml(editor.getHTML()) !== sanitizeRichTextHtml(value)) editor.commands.setContent(sanitizeRichTextHtml(value), { emitUpdate: false });
   }, [editor, value]);
   useEffect(() => { generation.current++; setUploading(false); setError(''); setFullScreen(false); setMenuValues({}); return () => { generation.current++; }; }, [scope]);

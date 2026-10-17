@@ -184,7 +184,8 @@
     ],
     "fixes": [
       "重新发布 openxiangda-contracts 2.95.5，使平台能够用官方 registry 制品验证当前 OpenXiangda 2.0 master 提交、纯编译器摘要和 tarball 完整性。",
-      "根包、CLI、MCP 与 devkit-core 的版本发布保持同一 Changesets 发布单元，避免 CLI 模板与根包版本脱节。"
+      "根包、CLI、MCP 与 devkit-core 的版本发布保持同一 Changesets 发布单元，避免 CLI 模板与根包版本脱节。",
+      "富文本受控字段在父表单暂时未回传最新值时保留编辑器输入，避免工具栏操作触发内容清空。"
     ],
     "affectedUsers": [
       "需要在源码托管服务暂时不可用时继续进行 OpenXiangda V2 TEST 交付的应用开发者。",
@@ -206,7 +207,7 @@
       "contracts npm 发布、平台镜像部署、应用 TEST 发布和真实业务验收仍是独立证据；本版本不自动修改生产应用。"
     ],
     "issues": [],
-    "sha256": "b20e041f30d0c1fd7bd7aa9faaf68e9731daadb0a8d0902a0cc3859853972731",
+    "sha256": "df4ee4daa14549cdb2afb2bc4571a1c721f00d6d2dda6c4b3344de5a3a873750",
     "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.75.5"
   }
 }
