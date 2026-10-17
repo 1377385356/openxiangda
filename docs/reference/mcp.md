@@ -2396,6 +2396,11 @@ MCP 使用项目锁定的根包；在客户端配置下列 stdio 启动参数，
       "type": "string",
       "minLength": 1
     },
+    "appSpecChangeId": {
+      "description": "本次发布关联的 AppSpec 变更 ID；多个活动变更时显式指定，缺省时使用唯一活动变更",
+      "type": "string",
+      "minLength": 1
+    },
     "deploymentStrategy": {
       "description": "仅 TEST；显式 maintenance-replace 允许停机替换并由平台处理失败恢复，默认 rolling",
       "type": "string",
@@ -2534,6 +2539,11 @@ MCP 使用项目锁定的根包；在客户端配置下列 stdio 启动参数，
     },
     "from": {
       "description": "production 必填：成功测试 DeploymentRun ID；test 不接受",
+      "type": "string",
+      "minLength": 1
+    },
+    "appSpecChangeId": {
+      "description": "本次发布关联的 AppSpec 变更 ID；多个活动变更时显式指定，缺省时使用唯一活动变更",
       "type": "string",
       "minLength": 1
     },
