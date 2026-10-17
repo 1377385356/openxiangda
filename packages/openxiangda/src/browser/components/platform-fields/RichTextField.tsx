@@ -378,7 +378,19 @@ export function DefaultRichTextField({ value, onChange, disabled = false, mobile
       onChange={e => label === '文字颜色' ? editor?.chain().focus().setColor(e.target.value).run() : editor?.chain().focus().setBackgroundColor(e.target.value).run()} />
   </label></Tooltip>;
   return <div ref={fieldRoot} role={fullScreen ? 'region' : undefined} aria-label={fullScreen ? '富文本全屏编辑' : undefined}
-    onKeyDown={event => { if (fullScreen && event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setFullScreen(false); } }}
+    onKeyDown={event => {
+      // Chromium does not consistently collapse a ProseMirror range when the
+      // native popover keeps focus on the editor after a toolbar transition.
+      // Honour the normal End-key expectation explicitly so the next inline
+      // insertion cannot replace the whole selected document.
+      if (event.key === 'End' && !event.ctrlKey && !event.metaKey && !event.altKey && editor && !editor.state.selection.empty) {
+        event.preventDefault();
+        const end = editor.state.selection.$to.end();
+        editor.commands.setTextSelection({ from: end, to: end });
+        editor.commands.focus();
+      }
+      if (fullScreen && event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setFullScreen(false); }
+    }}
     className={`oxa-rich-text-field${mobile ? ' oxa-mobile-rich-text-field' : ''}${fullScreen ? ' oxa-rich-text-fullscreen' : ''}`}>
     <RichTextToolbar mobile={mobile}>
       <div className="oxa-rich-text-toolbar-group oxa-rich-text-toolbar-group-menus">
