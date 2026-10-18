@@ -62,3 +62,11 @@ test('unsafe template accessors are rejected without evaluating them',()=>{
  const unsafeEntry={...source};Object.defineProperty(unsafeEntry,'level',{enumerable:true,get(){reads++;return 2;}});
  assert.equal(workflowPeopleSourceTemplateAllows(unsafeEntry,[template]),false);assert.equal(reads,0);
 });
+
+test('supervisor authoring can reference declared initiating-unit context only', () => {
+ const entry:any={provider:'department_supervisor',departmentIdFrom:'organizationContext.departmentId',level:1,fallbackToAncestorSupervisor:false,min:1,max:1};
+ const def:any={...base,authoring:{peopleSources:[{code:'unit',title:'Unit supervisor',entry,parameters:{level:{values:[1,2,3]}}}]}};
+ assert.ok(validateWorkflowPeopleSourceTemplates(def).includes('WORKFLOW_PEOPLE_SOURCE_FACT_UNAVAILABLE'));
+ assert.deepEqual(validateWorkflowPeopleSourceTemplates({...def,organizationContext:{department:{source:'choose_if_multiple',required:true}}}),[]);
+ assert.ok(validateWorkflowPeopleSourceTemplates({...def,organizationContext:{department:{source:'none'}}}).includes('WORKFLOW_PEOPLE_SOURCE_FACT_UNAVAILABLE'));
+});

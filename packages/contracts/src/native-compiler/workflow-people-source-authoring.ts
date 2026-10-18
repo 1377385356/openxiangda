@@ -64,6 +64,7 @@ export function validateWorkflowPeopleSourceTemplates(definition: WorkflowDefini
   if(new Set(values.map(template=>template.code)).size!==values.length)return ['WORKFLOW_PEOPLE_SOURCE_TEMPLATE_LIMIT'];
   const schema=workflowBusinessStepFactSchema(definition);
   const fact=(path: unknown) => {
+    if (path === 'organizationContext.departmentId' && definition.organizationContext?.department && definition.organizationContext.department.source !== 'none') return { type: 'string' };
     if (typeof path!=='string' || path.split('.').some(key=>!key || ['__proto__','prototype','constructor'].includes(key))) return undefined;
     let current:any=schema;for(const key of path.split('.')) current=record(current?.properties)&&Object.hasOwn(current.properties,key)?current.properties[key]:undefined;return current;
   };

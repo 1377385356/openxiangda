@@ -34,3 +34,12 @@ test('disabled complex source keeps its correct bounds and disabled controls', (
   assert.match(html, /disabled/);
   assert.match(html, /至少 1 人，最多 10 人/);
 });
+
+test('one authorized initiating-unit source exposes levels without a redundant source picker', () => {
+  const entry: any = { provider: 'department_supervisor', departmentIdFrom: 'organizationContext.departmentId', level: 1, fallbackToAncestorSupervisor: false, min: 1, max: 1 };
+  const template: any = { code: 'initiating-unit', title: 'Initiating unit', entry, parameters: { level: { values: [1, 2, 3] } } };
+  const html = renderToStaticMarkup(createElement(WorkflowPeopleSourceEditor, { entry, sources: { head: entry }, templates: [template], principals, disabled: false, onChange: () => assert.fail('render mutated binding') }));
+  assert.match(html, /人员来源参数/);
+  assert.match(html, /主管级别/);
+  assert.doesNotMatch(html, /aria-label="其他人员来源"/);
+});

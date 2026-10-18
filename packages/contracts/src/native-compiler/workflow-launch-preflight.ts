@@ -5,7 +5,7 @@ export interface WorkflowLaunchPreflight {
   requiredApprovalNodes: string[];
 }
 
-export const WORKFLOW_LAUNCH_PREFLIGHT_PROVIDERS = ['fixed_users', 'initiator', 'app_role', 'app_role_in_scope'] as const;
+export const WORKFLOW_LAUNCH_PREFLIGHT_PROVIDERS = ['fixed_users', 'initiator', 'app_role', 'app_role_in_scope', 'department_supervisor'] as const;
 type Definition = {
   launchPreflight?: unknown;
   nodes?: Record<string, { kind: string; binding?: string }>;

@@ -8,7 +8,7 @@ test('preflight is closed, bounded and only resolves supported native participan
   for (const policy of [null, [], {}, { requiredApprovalNodes: [] }, { requiredApprovalNodes: ['college'], skipEmpty: true }, { requiredApprovalNodes: ['college', 'college'] }, { requiredApprovalNodes: ['missing'] }, { requiredApprovalNodes: ['end'] }, { requiredApprovalNodes: Array.from({ length: 21 }, (_, i) => `n${i}`) }]) {
     assert.ok(validateWorkflowLaunchPreflight({ ...definition, launchPreflight: policy }).length, JSON.stringify(policy));
   }
-  for (const provider of ['fixed_users', 'initiator', 'app_role', 'app_role_in_scope']) {
+  for (const provider of ['fixed_users', 'initiator', 'app_role', 'app_role_in_scope', 'department_supervisor']) {
     assert.deepEqual(validateWorkflowLaunchPreflight(definition, { bindings: { staff: { provider } } }), []);
   }
   for (const entry of [{ provider: 'application_provider' }, { provider: 'form_field_users' }, { provider: 'app_role', candidateField: 'future' }]) {
