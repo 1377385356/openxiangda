@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.75.5",
+  "version": "2.75.6",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -102,13 +102,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.11.17",
-    "openxiangda-contracts": "2.95.5",
-    "openxiangda-devkit-core": "2.71.6",
+    "openxiangda-cli": "2.11.18",
+    "openxiangda-contracts": "2.95.6",
+    "openxiangda-devkit-core": "2.71.7",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.2.28",
-    "openxiangda-nest": "2.22.8",
-    "openxiangda-skill-kit": "2.3.131",
+    "openxiangda-mcp": "2.2.29",
+    "openxiangda-nest": "2.22.9",
+    "openxiangda-skill-kit": "2.3.132",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -174,41 +174,37 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.75.5",
+    "version": "2.75.6",
     "status": "reviewed",
-    "title": "OpenXiangda 2.75.5：告警优先的应用交付与同源 contracts",
-    "summary": "应用 TEST 交付对源码托管和 AppSpec 资料采用告警优先策略，并重新发布当前主线 contracts 制品，保证平台消费的编译器字节与源码提交可核验配对。",
-    "newFeatures": [
-      "TEST 部署计划和发布支持显式选择 AppSpec 变更；源码托管不可用、资料就绪度或来源观察项会进入警告与发布回执，而不再阻断可继续的 TEST 交付。",
-      "生产晋级保留安全、制品完整性、准确 TEST 运行和兼容性等硬门禁，同时将可修复的资料与源码来源观察项作为可见警告。"
-    ],
+    "title": "OpenXiangda 2.75.6：同域名独立租户的浏览器会话协调",
+    "summary": "平台显式按应用路径绑定独立租户时，SDK 使用平台提供的范围隔离跨标签页会话通知，并为共享接口续期传递应用路由上下文。未绑定应用沿用原有平台会话。",
+    "newFeatures": [],
     "fixes": [
-      "重新发布 openxiangda-contracts 2.95.5，使平台能够用官方 registry 制品验证当前 OpenXiangda 2.0 master 提交、纯编译器摘要和 tarball 完整性。",
-      "根包、CLI、MCP 与 devkit-core 的版本发布保持同一 Changesets 发布单元，避免 CLI 模板与根包版本脱节。",
-      "富文本受控字段在父表单暂时未回传最新值时保留编辑器输入，避免工具栏操作触发内容清空。",
-      "全屏编辑切换后显式折叠非空选区的 End 键，避免后续表情或内联内容插入替换整段正文。"
+      "隔离路径绑定租户的 BroadcastChannel 与 localStorage 退出、组织切换通知，避免新旧租户页面互相失效。",
+      "共享平台接口请求和续期携带应用路由提示；身份与租户校验继续由服务端完成。",
+      "CLI 模板及官方 contracts 制品随同一源提交配对发布；编译器授权和业务语义未改变。"
     ],
     "affectedUsers": [
-      "需要在源码托管服务暂时不可用时继续进行 OpenXiangda V2 TEST 交付的应用开发者。",
-      "维护 OpenXiangda V2 平台配套、需要消费同源公开 contracts 制品的发布维护者。"
+      "在同一域名不同应用路径部署独立租户的站点维护者及应用用户。"
     ],
     "compatibility": {
       "node": "Node.js 24 or newer for maintained toolchain",
-      "generation": "OpenXiangda V2; V1 unchanged",
-      "platform": "平台服务端须消费 openxiangda-contracts 2.95.5 官方 archive，并通过来源提交、native compiler 摘要和锁文件完整性校验。",
-      "releaseChannels": "latest / stable-v2：V2 正式版；legacy-v1：V1 维护版；alpha：预发布。"
+      "generation": "OpenXiangda V2; unbound and V1 session coordination unchanged",
+      "platform": "需要支持应用入口绑定、独立平台 Cookie 与 openxiangda-platform-session-scope 元数据的配套平台。平台消费同源 openxiangda-contracts 2.95.6 制品。",
+      "releaseChannels": "latest / stable-v2"
     },
     "upgradeSteps": [
-      "先发布并读回同一主线提交生成的 openxiangda-contracts 2.95.5，再将平台 server 的 vendor archive、来源回执和 pnpm 锁文件同步到该版本。",
-      "应用 TEST 交付可以继续使用 warning-first 诊断；安全、制品完整性、精确运行和兼容性错误仍需修复后才能继续。",
-      "在目标测试环境分别验证 HTTP 运行健康、角色访问、发布回执和实际业务操作；包发布不代表平台部署或业务验收完成。"
+      "部署兼容 SDK 的应用前端并保留成功 TEST 运行；正式复用该不可变版本。",
+      "随后在配套平台显式配置精确 host、应用编码与租户编码绑定；不修改旧域名归属，不合并账号或目录。",
+      "分别验证新旧登录、续期、退出、跨标签页及真实钉钉回调；包发布不代表现场业务验收。"
     ],
     "knownLimitations": [
-      "告警优先只放宽源码托管和 AppSpec 资料类观察项，不放宽安全、完整性、身份、权限、运行时健康或错误目标等硬门禁。",
-      "contracts npm 发布、平台镜像部署、应用 TEST 发布和真实业务验收仍是独立证据；本版本不自动修改生产应用。"
+      "路径隔离保留独立登录态，但不同路径仍属于同一浏览器 origin，并非跨来源脚本安全隔离。",
+      "旧 SDK 会忽略新增范围元数据；必须先更新相关前端再启用独立租户入口。",
+      "免登仍要求对应租户的真实钉钉配置与用户身份，不会继承其他租户账号。"
     ],
     "issues": [],
-    "sha256": "eea400d6abfec91346f13b76ebc525b4b7e82d79e635f27dffa10d4f2d5d643c",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.75.5"
+    "sha256": "4af73277009cb3b1fbaef52ba5c5a6d626b3712ca95784fae852594f356867d8",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.75.6"
   }
 }
