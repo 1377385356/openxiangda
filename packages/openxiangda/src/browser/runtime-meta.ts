@@ -2,6 +2,7 @@ export interface RuntimeMount {
   runtimeBase: string;
   appCode: string;
   environmentKey: 'preproduction' | 'production';
+  platformSessionScope?: string;
 }
 
 interface ApplicationIdentity {
@@ -35,6 +36,8 @@ export function readRuntimeMount(
   const runtimeBase = read('openxiangda-runtime-base')?.trim();
   const appCode = read('openxiangda-app-code')?.trim();
   const environment = read('openxiangda-environment')?.trim();
+  const scope = read('openxiangda-platform-session-scope')?.trim();
+  if (scope && !/^entry-[a-f0-9]{24}$/.test(scope)) throw new Error('OPENXIANGDA_RUNTIME_META_INVALID');
   if (!runtimeBase && !appCode && !environment) return null;
   if (
     !runtimeBase ||
@@ -43,7 +46,7 @@ export function readRuntimeMount(
   ) {
     throw new Error('OPENXIANGDA_RUNTIME_META_INVALID');
   }
-  return { runtimeBase, appCode, environmentKey: environment };
+  return { runtimeBase, appCode, environmentKey: environment, ...(scope ? { platformSessionScope: scope } : {}) };
 }
 
 export function runtimeMount() {

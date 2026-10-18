@@ -20,9 +20,9 @@ test('browser runtime refreshes only the authoritative platform session', () => 
   assert.doesNotMatch(clientSource, /refreshApplicationSession/);
 });
 
-test('logout invalidation is shared by every application on the platform host', () => {
-  assert.match(clientSource, /auth-session-v2/);
-  assert.match(clientSource, /auth_session_v2:logout/);
+test('logout invalidation follows the platform-provided session scope', () => {
+  assert.match(clientSource, /platformSessionCoordination/);
+  assert.match(clientSource, /platformSessionKeys/);
   assert.doesNotMatch(clientSource, /openxiangda-platform-auth/);
   assert.match(clientSource, /subscribePlatformSessionInvalidation/);
   assert.match(runtimeSource, /subscribePlatformSessionInvalidation/);

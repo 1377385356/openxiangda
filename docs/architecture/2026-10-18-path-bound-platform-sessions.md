@@ -1,0 +1,9 @@
+# Path-bound platform session coordination
+
+Platform deployments may explicitly bind one host/application path to an independent tenant while keeping the host default unchanged. The platform owns and verifies all sessions; the SDK must not invent another identity store. Existing browser coordination currently shares auth-session-v2 and auth_session_v2:* across the host, so a scoped application logout can still redirect legacy platform pages despite independent cookies.
+
+Add optional platform-provided runtime meta openxiangda-platform-session-scope with bounded entry-<24 hex> value. It selects only coordination channels/storage keys and supplies an application routing hint on platform fetch/refresh; it grants no authentication or tenant authority. The server validates its own host/application binding and the real credential tenant. Missing meta preserves all legacy shared-platform behavior. Same scope keeps cross-tab logout/organization invalidation; other scopes/default neither publish nor listen on that scope. No new session state or permissions. A forged meta cannot create a credential.
+
+The platform must deploy a compatible frontend before activating an entry binding. The backend also suppresses host-wide Clear-Site-Data for bound logout; cookie names, refresh, callback state and logout stay platform-owned. No tenant/domain/data migration. Changes are independently disabled by removing the opt-in site binding and old unscoped applications remain unchanged.
+
+Verify malformed meta rejection, unchanged default keys, real cross-channel isolation, SDK refresh routing hints, scoped browser storage/logout notifications, and backend HTTP old-cookie preservation. Package/source, platform deployment and real provider sign-in are distinct evidence. Same-origin pages remain the same browser origin security boundary; this is independent session coordination, not XSS/origin isolation.

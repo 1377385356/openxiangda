@@ -1,3 +1,4 @@
+import { platformSessionCoordination } from './platform-session-scope';
 import { parseAnonymousPublicQueryBatch, type AnonymousPublicRecord, type AnonymousPublicQueryResult, type AnonymousPublicQueryBatchOperation, type AnonymousPublicQueryBatchResult } from './anonymous-public-query';
 export type { AnonymousPublicRecord, AnonymousPublicQueryResult, AnonymousPublicQueryBatchOperation, AnonymousPublicQueryBatchResult, AnonymousPublicQueryBatchItem, AnonymousPublicQueryBatchError } from './anonymous-public-query';
 import { createBrowserUuid } from './uuid';
@@ -261,7 +262,7 @@ async function refreshPlatformBrowserSession() {
     const response = await fetch('/service/api/auth/refresh', {
       method: 'POST',
       credentials: 'include',
-      headers: { accept: 'application/json' },
+      headers: { accept: 'application/json', ...(runtimeMount()?.platformSessionScope ? { 'x-openxiangda-application': applicationCode() } : {}) },
     });
     const payload = (await response.json().catch(() => null)) as
       | PlatformEnvelope<unknown>
@@ -279,6 +280,11 @@ async function refreshPlatformBrowserSession() {
 }
 
 async function fetchWithPlatformSession(path: string, init: RequestInit) {
+  if (runtimeMount()?.platformSessionScope) {
+    const headers = new Headers(init.headers);
+    headers.set('x-openxiangda-application', applicationCode());
+    init = { ...init, headers };
+  }
   const send = () =>
     fetch(path, {
       credentials: 'include',
@@ -534,9 +540,9 @@ const platformSessionListeners = new Set<() => void>();
 const platformOrganizationListeners = new Set<() => void>();
 let platformSessionChannel: BroadcastChannel | undefined;
 let platformSessionStorageListening = false;
-const PLATFORM_AUTH_CHANNEL = 'auth-session-v2';
-const PLATFORM_LOGOUT_STORAGE_KEY = 'auth_session_v2:logout';
-const PLATFORM_ORGANIZATION_STORAGE_KEY = 'auth_session_v2:organization';
+function platformSessionKeys() {
+  return platformSessionCoordination(runtimeMount()?.platformSessionScope);
+}
 const platformAuthOwnerId =
   createBrowserUuid();
 
@@ -597,7 +603,7 @@ function publishPlatformOrganizationInvalidation() {
   const signal: PlatformOrganizationSignal = { type: 'organization-changed',
     payload: { version: 2, ownerId: platformAuthOwnerId, at: Date.now() } };
   ensurePlatformSessionChannel()?.postMessage(signal);
-  try { window.localStorage.setItem(PLATFORM_ORGANIZATION_STORAGE_KEY, JSON.stringify(signal.payload)); }
+  try { window.localStorage.setItem(platformSessionKeys().organization, JSON.stringify(signal.payload)); }
   catch { /* Same-tab listeners still retire the previous context. */ }
 }
 
@@ -612,9 +618,9 @@ function ensurePlatformSessionChannel() {
   if (!platformSessionStorageListening) {
     platformSessionStorageListening = true;
     window.addEventListener('storage', event => {
-      if (![PLATFORM_LOGOUT_STORAGE_KEY, PLATFORM_ORGANIZATION_STORAGE_KEY].includes(event.key || '') || !event.newValue) return;
+      if (![platformSessionKeys().logout, platformSessionKeys().organization].includes(event.key || '') || !event.newValue) return;
       try {
-        if (event.key === PLATFORM_ORGANIZATION_STORAGE_KEY) {
+        if (event.key === platformSessionKeys().organization) {
           if (isPlatformOrganizationSignal({ type: 'organization-changed', payload: JSON.parse(event.newValue) })) invalidatePlatformOrganization();
           return;
         }
@@ -632,7 +638,7 @@ function ensurePlatformSessionChannel() {
   if (platformSessionChannel || !('BroadcastChannel' in window)) {
     return platformSessionChannel;
   }
-  platformSessionChannel = new window.BroadcastChannel(PLATFORM_AUTH_CHANNEL);
+  platformSessionChannel = new window.BroadcastChannel(platformSessionKeys().channel);
   platformSessionChannel.addEventListener('message', event => {
     if (isPlatformOrganizationSignal(event.data)) invalidatePlatformOrganization();
     else if (isPlatformLogoutSignal(event.data)) invalidatePlatformSession();
@@ -661,7 +667,7 @@ function publishPlatformLogout() {
   ensurePlatformSessionChannel()?.postMessage(signal);
   try {
     window.localStorage.setItem(
-      PLATFORM_LOGOUT_STORAGE_KEY,
+      platformSessionKeys().logout,
       JSON.stringify(signal.payload),
     );
   } catch {
