@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.75.7",
+  "version": "2.75.8",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -102,7 +102,7 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.11.19",
+    "openxiangda-cli": "2.11.20",
     "openxiangda-contracts": "2.95.7",
     "openxiangda-devkit-core": "2.71.8",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
@@ -174,34 +174,39 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.75.7",
+    "version": "2.75.8",
     "status": "reviewed",
-    "title": "OpenXiangda 2.75.7：发起单位主管预检与人员配置简化",
-    "summary": "部门主管支持提交事务内预检，发起单位使用平台组织上下文；单一可配置人员来源只展示必要参数。",
-    "newFeatures": [],
+    "title": "OpenXiangda 2.75.8：流程画布分组配置与部门主管取人",
+    "summary": "流程节点采用审批人、审批操作和更多设置三个分组；部门主管明确区分发起人所属部门与表单部门，退回按节点配置，普通流转在画布上修改。",
+    "newFeatures": [
+      "画布提供节点拖动移动及键盘等价操作，普通出口改接前校验循环、可达性与并行边界。"
+    ],
     "fixes": [
-      "部门主管可参与平台原生提交预检，发起单位组织上下文可用于受控人员配置。",
-      "唯一来源规则隐藏重复的来源选择器，只呈现应用允许修改的参数。"
+      "合并重复的角色来源展示，完整保留原人员范围、人数限制与未知规则。",
+      "部门主管按应用允许的部门依据、表单字段及层级配置，缺少主管不扩大人员范围。",
+      "审批操作折叠展示，退回规则归属当前节点；Tab切换保留未保存输入并定位校验错误。",
+      "打开侧栏后保留可用画布区域，防止节点被配置面板遮挡。",
+      "包含发起单位组织上下文及部门主管提交预检契约，需配套平台后端。"
     ],
     "affectedUsers": [
-      "使用发起单位主管审批的V2应用。"
+      "维护V2审批流程和部门主管节点的应用管理员。"
     ],
     "compatibility": {
       "node": "Node.js 24 or newer",
       "generation": "V2 only; V1 unchanged",
-      "platform": "Requires paired platform handling organization requirements before assignment; contracts 2.95.7.",
+      "platform": "需要配套 contracts 2.95.7 及先收集组织要求再解析审批人的平台后端。",
       "releaseChannels": "latest / stable-v2"
     },
     "upgradeSteps": [
-      "Install the paired SDK and platform.",
-      "Declare initiating-unit context and required launch node; verify TEST with real roles before production."
+      "先核对目标平台共享编译器与本发行配套，再部署应用TEST。",
+      "声明允许使用的部门字段和主管层级；真实角色验证后按原成功TEST版本晋级。"
     ],
     "knownLimitations": [
       "已受理命令保留原流程版本，不能静默迁移。",
       "缺少主管必须维护真实组织配置，不会自动指定其他人员。"
     ],
     "issues": [],
-    "sha256": "c1c00e89a721f61c01dc8f19cfe8ba79775fdc3a75f87dcbf99c60ef42796690",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.75.7"
+    "sha256": "d5367f1d66960c744d3bb55d94818a200c158e9ec3252fd0b78d9a5c2640e32e",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.75.8"
   }
 }
