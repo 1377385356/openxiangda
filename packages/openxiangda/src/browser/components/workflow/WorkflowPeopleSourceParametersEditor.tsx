@@ -4,7 +4,7 @@ import type { WorkflowGraphVariable, WorkflowNodeConfigurations, WorkflowStandar
 const titles:Record<string,string>={departmentIdFrom:'部门来源',level:'主管级别',fallbackToAncestorSupervisor:'本级无人时',from:'起点成员',until:'审批终点',continuous:'办理范围',missing:'无主管层级处理',inputPath:'表单成员来源',roleCode:'应用角色',scope:'角色范围',min:'至少人数',max:'最多人数'};
 const canonical=(v:any):any=>Array.isArray(v)?v.map(canonical):v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,canonical(v[k])])):v;
 export function workflowPeopleParameterOptionLabel(field:string,value:any,variables:readonly Pick<WorkflowGraphVariable,'path'|'label'>[],principals:WorkflowNodeConfigurations['principals']):string {
-  const fact=(path:string)=>variables.find(v=>v.path===path)?.label||'已发布的表单字段';
+  const fact=(path:string)=>path==='organizationContext.departmentId'?'发起人本次所属部门':variables.find(v=>v.path===path)?.label||'已发布的表单字段';
   const role=(code:string)=>principals.roles.find(r=>r.code===code)?.name||'已发布角色（暂无名称）';
   if(field==='level')return `第 ${value} 级主管`;
   if(field==='min'||field==='max')return `${value} 人`;
@@ -21,8 +21,20 @@ export function workflowPeopleParameterOptionLabel(field:string,value:any,variab
 /** Whole-value controlled edit. Opening never normalizes missing/unknown parameters. */
 export function WorkflowPeopleSourceParametersEditor({entry,template,variables=[],principals,disabled,onChange}:{entry:WorkflowStandardBindingEntry;template:WorkflowPeopleSourceTemplate;variables?:readonly Pick<WorkflowGraphVariable,'path'|'label'>[];principals:WorkflowNodeConfigurations['principals'];disabled:boolean;onChange:(entry:WorkflowStandardBindingEntry)=>void}) {
   const change=(field:string,value:unknown)=>{if(!disabled)onChange({...entry,[field]:value});};
+  const departmentValues = entry.provider==='department_supervisor' ? (template.parameters.departmentIdFrom?.values || [entry.departmentIdFrom]).filter((value):value is string=>typeof value==='string') : [];
+  const organizationPath='organizationContext.departmentId';
+  const fieldPaths=departmentValues.filter(path=>path!==organizationPath);
+  const departmentSource=entry.provider==='department_supervisor'&&entry.departmentIdFrom===organizationPath?'initiator':'field';
   return <section aria-label="人员来源参数" className="oxa-workflow-source-parameters" style={{display:'grid',gap:12}}><h4>{template.title}</h4>
-    {Object.entries(template.parameters).map(([field,parameter])=>{
+    {entry.provider==='department_supervisor'&&<>
+      <label style={{display:'grid',gap:6}}>部门依据<Select aria-label="部门依据" style={{width:'100%'}} disabled={disabled||!template.parameters.departmentIdFrom} value={departmentSource}
+        options={[{value:'initiator',label:'发起人所属部门',disabled:!departmentValues.includes(organizationPath)},{value:'field',label:'表单中的部门字段',disabled:!fieldPaths.length}]}
+        onChange={value=>{const path=value==='initiator'?organizationPath:fieldPaths[0];if(path&&departmentValues.includes(path))change('departmentIdFrom',path);}} /></label>
+      {departmentSource==='field'&&<label style={{display:'grid',gap:6}}>部门字段<Select aria-label="部门字段" style={{width:'100%'}} disabled={disabled||!template.parameters.departmentIdFrom} value={fieldPaths.includes(entry.departmentIdFrom||'')?entry.departmentIdFrom:'__unavailable__'}
+        options={[...fieldPaths.map(value=>({value,label:workflowPeopleParameterOptionLabel('departmentIdFrom',value,variables,principals)})),...(!fieldPaths.includes(entry.departmentIdFrom||'')?[{value:'__unavailable__',label:'当前部门来源不可用，请重新选择',disabled:true}]:[])]}
+        onChange={value=>{if(fieldPaths.includes(value))change('departmentIdFrom',value);}} /></label>}
+    </>}
+    {Object.entries(template.parameters).filter(([field])=>entry.provider!=='department_supervisor'||field!=='departmentIdFrom').map(([field,parameter])=>{
       const current=(entry as any)[field];const values=parameter.values;
       const selected=values?.findIndex(value=>JSON.stringify(canonical(value))===JSON.stringify(canonical(current)));
       return <label key={field} style={{display:'grid',gap:4}}>{titles[field]||'人员参数'}{values?<Select aria-label={titles[field]||'人员参数'} style={{width:'100%'}} disabled={disabled} showSearch optionFilterProp="label" value={selected===-1?'unknown':String(selected)}

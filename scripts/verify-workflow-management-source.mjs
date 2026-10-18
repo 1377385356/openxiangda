@@ -117,7 +117,7 @@ try {
         await page.getByRole('button',{name:mode==='save-start'?'在发起后路径新增节点':'在同意路径新增节点',exact:true}).click();
         await page.getByRole('menuitem',{name:/审批节点/}).click();
         const fresh=page.getByRole('region',{name:'新增节点办理设置',exact:true});await expect(fresh).toBeVisible();
-        await fresh.getByText('应用角色',{exact:true}).click();
+        await fresh.getByRole('combobox',{name:'审批人来源',exact:true}).click();await page.getByText('按角色',{exact:true}).last().click();
         await fresh.getByRole('combobox',{name:'应用角色',exact:true}).click();
         await page.getByText('业务审核员',{exact:true}).last().click();
         await fresh.getByRole('combobox',{name:'应用角色',exact:true}).press('Escape');
@@ -137,7 +137,7 @@ try {
         await expect(fresh).not.toBeVisible();
       }
       if(['revoked','unknown-revoked','outcome-undetermined'].includes(mode)) {
-        await page.getByRole('button',{name:/collapsed 节点名称/}).click();
+        await page.getByRole('tab',{name:'更多设置',exact:true}).click();await page.getByRole('button',{name:/collapsed 节点名称/}).click();
         await page.getByRole('textbox',{name:'节点名称',exact:true}).fill('未保存的合同审核');
         if(mode==='unknown-revoked') {
           await expect.poll(async()=>JSON.parse(await page.getByLabel('宿主离开保护状态').innerText()).unknown).toBe(true);

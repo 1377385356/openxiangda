@@ -13,6 +13,7 @@ type VariableNames = readonly Pick<WorkflowGraphVariable, 'path' | 'label'>[];
 type Principals = WorkflowNodeConfigurations['principals'];
 
 function factName(path: string | undefined, variables: VariableNames, fallback: string) {
+  if(path==='organizationContext.departmentId')return '发起人本次所属部门';
   const label = variables.find(variable => variable.path === path)?.label;
   return label && label !== path ? label : fallback;
 }

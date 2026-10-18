@@ -24,12 +24,12 @@ const open=async(query='',mode='success')=>{
   assert(!(await observe()).state.dirty,'Opening must not dirty the input');
 };
 const selectDepartment=async(level)=>{
-  await page.click('[aria-label="审批人类型"] label:has(input[value="released:department_supervisor"])',{label:'选择部门主管来源'});
+  await page.click('input[aria-label="审批人来源"]');await page.click('text="部门主管"');
   await page.fill('input[aria-label="主管级别"]',String(level));await page.press('input[aria-label="主管级别"]','Tab');
 };
 const switchMode=async(value)=>{
   await page.click(`[aria-label="已发布节点人员分派方式"] label:has(input[value="${value}"])`,{label:'切换人员分派方式'});
-  await page.waitForSelector(value==='conditional'?'[aria-label="规则 1 名称"]':'[aria-label="审批人类型"]');
+  await page.waitForSelector(value==='conditional'?'[aria-label="规则 1 名称"]':'[aria-label="审批人来源"]');
 };
 const save=async()=>{
   await page.fill('[aria-label="修改说明"]','合成HTTP：原生主管参数回归');
@@ -63,15 +63,15 @@ const conditional=await observe(),entry=conditional.http.requests[0].patch.assig
 assert(entry.provider==='conditional'&&entry.cases[0].assignee.level===2&&entry.otherwise.level===2,'Conditional save flattened or discarded native leaves');
 results.push({name:'conditional save retains native leaves',conditional});
 
-await open();await page.click('[aria-label="审批人类型"] label:has(input[value="released:supervisor_chain"])',{label:'选择逐级主管审批'});
+await open();await page.click('input[aria-label="审批人来源"]');await page.click('text="逐级主管"');
 await save();await receipt(1);const chain=await observe(),patch=chain.http.requests[0].patch;
 assert(patch.mode==='sequence'&&patch.assignee.provider==='supervisor_chain'&&patch.assignee.continuous===true,'Continuous chain must save an allowed sequence mode');
 results.push({name:'continuous chain saves sequence and complete parameters',chain});
 
 await open('&readonly');
-const readonly=await page.evaluate(()=>({disabled:Array.from(document.querySelectorAll('[aria-label="审批人类型"] input')).every(input=>input.disabled),saveButton:!!document.querySelector('button[aria-label="保存办理设置"]')}));
+const readonly=await page.evaluate(()=>({disabled:Array.from(document.querySelectorAll('input[aria-label="审批人来源"]')).every(input=>input.disabled),saveButton:!!document.querySelector('button[aria-label="保存办理设置"]')}));
 assert(readonly.disabled&&!readonly.saveButton,'Readonly controls must not permit a save');results.push({name:'readonly remains clean',readonly});
-await open('&old');assert(!await page.evaluate(()=>!!document.querySelector('[aria-label="审批人类型"]')),'Old platform must not imply native authoring support');
+await open('&old');assert(!await page.evaluate(()=>!!document.querySelector('[aria-label="审批人来源"]')),'Old platform must not imply native authoring support');
 results.push({name:'explicit native platform capability required'});
 const evidence={observedAt:new Date().toISOString(),spaceId,page:'p1',kind:'actual SDK editor and synthetic HTTP, no live roles',results};
 if(options.evidencePath){const fs=await import('node:fs/promises');await fs.writeFile(options.evidencePath,JSON.stringify(evidence,null,2));}

@@ -36,8 +36,8 @@ export function WorkflowReturnPolicyEditor({ definition, node, disabled, onChang
       const title = candidate.kind === 'correction' ? `${candidate.title || '补正'}（发起人）` : candidate.title || '办理节点';
       return <article key={candidate.id} className={`oxa-designer-return-target ${target ? 'enabled' : ''}`}>
         <header>
-          <Checkbox aria-label={`允许退回到${title}`} checked={!!target} disabled={disabled || !target && (!eligibility.allowed || targets.length >= 20)} onChange={event => onChange({ targets: event.target.checked ? [...targets, { nodeId: candidate.id, routes: ['replay','resume'], defaultRoute: 'replay' }] : targets.filter(target => target.nodeId !== candidate.id) })}>{title}</Checkbox>
-          <label>重新提交后<Select aria-label={`${title}重新提交后的方式`} disabled={disabled || !target} value={target?.defaultRoute} options={routeChoices} onChange={defaultRoute => update(candidate.id, { defaultRoute, routes: target!.routes.length > 1 ? target!.routes : [defaultRoute] })} placeholder="请选择" /></label>
+          <Checkbox aria-label={`允许退回到${title}`} checked={!!target} disabled={disabled || !target && (!eligibility.allowed || targets.length >= 20)} onChange={event => onChange({ targets: event.target.checked ? [...targets, { nodeId: candidate.id, routes: ['replay'], defaultRoute: 'replay' }] : targets.filter(target => target.nodeId !== candidate.id) })}>{title}</Checkbox>
+          {target && <label>重新提交后<Select aria-label={`${title}重新提交后的方式`} disabled={disabled || !target} value={target?.defaultRoute} options={routeChoices} onChange={defaultRoute => update(candidate.id, { defaultRoute, routes: target!.routes.length > 1 ? target!.routes : [defaultRoute] })} placeholder="请选择" /></label>}
         </header>
         {!eligibility.allowed && <p className="oxa-workflow-config-help">{eligibility.reason}{target && '（请取消此退回目标后再发布）'}</p>}
         {target && <>
@@ -47,8 +47,8 @@ export function WorkflowReturnPolicyEditor({ definition, node, disabled, onChang
         </>}
       </article>;
     })}
-    <aside className="oxa-designer-return-rule"><h3>回到本节点时由谁办理</h3><p>单人、或签：优先回到退回人；该人已不在当前可办理人选中时，由本节点当前处理人办理。</p><p>会签、依次审批：本节点全部处理人重新办理。</p></aside>
+    <details><summary>查看退回后的办理规则</summary><aside className="oxa-designer-return-rule"><h3>回到本节点时由谁办理</h3><p>单人、或签：优先回到退回人；该人已不在当前可办理人选中时，由本节点当前处理人办理。</p><p>会签、依次审批：本节点全部处理人重新办理。</p></aside>
     <aside className="oxa-designer-return-rule"><h3>自动改为重新审批的情况</h3><p>资料修改后不再经过本节点，或中间条件与业务步骤的输入发生变化时，系统会重新按流程审批并记录原因。</p></aside>
-    <p>示例路径用于解释配置；实际进入的分支在办理时判断。</p>
+    <p>示例路径用于解释配置；实际进入的分支在办理时判断。</p></details>
   </section>;
 }

@@ -3661,3 +3661,14 @@
 .oxa-workflow-designer .oxa-designer-outline { position: absolute; inset: 0 auto 0 0; z-index: 6; width: min(280px, 80%); box-shadow: 6px 0 20px #182b4814; }
 .oxa-workflow-designer .oxa-designer-desktop-inspector { position: absolute; inset: 0 0 0 auto; z-index: 7; width: min(640px, 85%); height: 100%; box-shadow: -6px 0 20px #182b4814; }
 .oxa-designer-show-outline { position: absolute; left: 16px; top: 50px; z-index: 4; }
+
+/* Keep the selected graph reachable beside the tabbed inspector. */
+@media (min-width: 900px) {
+  .oxa-workflow-designer .oxa-designer-desktop-inspector { width: min(480px, 44%); box-sizing: border-box; }
+  .oxa-workflow-designer .oxa-designer-workspace:not(.without-inspector) > main { padding-right: min(480px, 44%); box-sizing: border-box; }
+}
+.oxa-designer-desktop-inspector .ant-tabs { position: sticky; top: 0; z-index: 3; background: var(--ant-color-bg-container, #fff); }
+.oxa-workflow-config-section > .ant-collapse { border: 1px solid var(--ant-color-border-secondary, #e3e8ef); border-radius: 8px; }
+.oxa-workflow-config-section > .ant-collapse .ant-collapse-content-box { padding: 12px 16px; }
+.oxa-canvas-path-tools { min-height: 46px; background: var(--ant-color-bg-container, #fff); border-bottom: 1px solid var(--ant-color-border-secondary, #e3e8ef); }
+.oxa-workflow-node-drag-handle:hover { color: var(--ant-color-primary, #1677ff); background: var(--ant-color-primary-bg, #e6f4ff); border-radius: 4px; }
