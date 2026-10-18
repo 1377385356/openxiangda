@@ -3,6 +3,38 @@
   "releases": [
     {
       "schemaVersion": "openxiangda.release-notes/v1",
+      "version": "2.75.7",
+      "status": "reviewed",
+      "title": "OpenXiangda 2.75.7：发起单位主管预检与人员配置简化",
+      "summary": "部门主管支持提交事务内预检，发起单位使用平台组织上下文；单一可配置人员来源只展示必要参数。",
+      "newFeatures": [],
+      "fixes": [
+        "部门主管可参与平台原生提交预检，发起单位组织上下文可用于受控人员配置。",
+        "唯一来源规则隐藏重复的来源选择器，只呈现应用允许修改的参数。"
+      ],
+      "affectedUsers": [
+        "使用发起单位主管审批的V2应用。"
+      ],
+      "compatibility": {
+        "node": "Node.js 24 or newer",
+        "generation": "V2 only; V1 unchanged",
+        "platform": "Requires paired platform handling organization requirements before assignment; contracts 2.95.7.",
+        "releaseChannels": "latest / stable-v2"
+      },
+      "upgradeSteps": [
+        "Install the paired SDK and platform.",
+        "Declare initiating-unit context and required launch node; verify TEST with real roles before production."
+      ],
+      "knownLimitations": [
+        "已受理命令保留原流程版本，不能静默迁移。",
+        "缺少主管必须维护真实组织配置，不会自动指定其他人员。"
+      ],
+      "issues": [],
+      "sha256": "c1c00e89a721f61c01dc8f19cfe8ba79775fdc3a75f87dcbf99c60ef42796690",
+      "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.75.7"
+    },
+    {
+      "schemaVersion": "openxiangda.release-notes/v1",
       "version": "2.75.6",
       "status": "reviewed",
       "title": "OpenXiangda 2.75.6：同域名独立租户的浏览器会话协调",

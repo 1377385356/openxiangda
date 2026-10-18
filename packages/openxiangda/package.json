@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.75.6",
+  "version": "2.75.7",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -102,13 +102,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.11.18",
-    "openxiangda-contracts": "2.95.6",
-    "openxiangda-devkit-core": "2.71.7",
+    "openxiangda-cli": "2.11.19",
+    "openxiangda-contracts": "2.95.7",
+    "openxiangda-devkit-core": "2.71.8",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.2.29",
-    "openxiangda-nest": "2.22.9",
-    "openxiangda-skill-kit": "2.3.132",
+    "openxiangda-mcp": "2.2.30",
+    "openxiangda-nest": "2.22.10",
+    "openxiangda-skill-kit": "2.3.133",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -174,37 +174,34 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.75.6",
+    "version": "2.75.7",
     "status": "reviewed",
-    "title": "OpenXiangda 2.75.6：同域名独立租户的浏览器会话协调",
-    "summary": "平台显式按应用路径绑定独立租户时，SDK 使用平台提供的范围隔离跨标签页会话通知，并为共享接口续期传递应用路由上下文。未绑定应用沿用原有平台会话。",
+    "title": "OpenXiangda 2.75.7：发起单位主管预检与人员配置简化",
+    "summary": "部门主管支持提交事务内预检，发起单位使用平台组织上下文；单一可配置人员来源只展示必要参数。",
     "newFeatures": [],
     "fixes": [
-      "隔离路径绑定租户的 BroadcastChannel 与 localStorage 退出、组织切换通知，避免新旧租户页面互相失效。",
-      "共享平台接口请求和续期携带应用路由提示；身份与租户校验继续由服务端完成。",
-      "CLI 模板及官方 contracts 制品随同一源提交配对发布；编译器授权和业务语义未改变。"
+      "部门主管可参与平台原生提交预检，发起单位组织上下文可用于受控人员配置。",
+      "唯一来源规则隐藏重复的来源选择器，只呈现应用允许修改的参数。"
     ],
     "affectedUsers": [
-      "在同一域名不同应用路径部署独立租户的站点维护者及应用用户。"
+      "使用发起单位主管审批的V2应用。"
     ],
     "compatibility": {
-      "node": "Node.js 24 or newer for maintained toolchain",
-      "generation": "OpenXiangda V2; unbound and V1 session coordination unchanged",
-      "platform": "需要支持应用入口绑定、独立平台 Cookie 与 openxiangda-platform-session-scope 元数据的配套平台。平台消费同源 openxiangda-contracts 2.95.6 制品。",
+      "node": "Node.js 24 or newer",
+      "generation": "V2 only; V1 unchanged",
+      "platform": "Requires paired platform handling organization requirements before assignment; contracts 2.95.7.",
       "releaseChannels": "latest / stable-v2"
     },
     "upgradeSteps": [
-      "部署兼容 SDK 的应用前端并保留成功 TEST 运行；正式复用该不可变版本。",
-      "随后在配套平台显式配置精确 host、应用编码与租户编码绑定；不修改旧域名归属，不合并账号或目录。",
-      "分别验证新旧登录、续期、退出、跨标签页及真实钉钉回调；包发布不代表现场业务验收。"
+      "Install the paired SDK and platform.",
+      "Declare initiating-unit context and required launch node; verify TEST with real roles before production."
     ],
     "knownLimitations": [
-      "路径隔离保留独立登录态，但不同路径仍属于同一浏览器 origin，并非跨来源脚本安全隔离。",
-      "旧 SDK 会忽略新增范围元数据；必须先更新相关前端再启用独立租户入口。",
-      "免登仍要求对应租户的真实钉钉配置与用户身份，不会继承其他租户账号。"
+      "已受理命令保留原流程版本，不能静默迁移。",
+      "缺少主管必须维护真实组织配置，不会自动指定其他人员。"
     ],
     "issues": [],
-    "sha256": "4af73277009cb3b1fbaef52ba5c5a6d626b3712ca95784fae852594f356867d8",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.75.6"
+    "sha256": "c1c00e89a721f61c01dc8f19cfe8ba79775fdc3a75f87dcbf99c60ef42796690",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.75.7"
   }
 }
