@@ -71,7 +71,9 @@ test('scoped conditional leaves stay editable without an invalid flat scoped cho
   const flatOptions = page.locator('.oxa-workflow-provider-options');
   await expect(flatOptions.getByRole('radio', { name: '范围内的应用角色' })).toHaveCount(0);
   const firstRule = page.getByRole('region', { name: '人员规则 1', exact: true });
-  await expect(firstRule.getByRole('radio', { name: '范围内角色' })).toBeChecked();
+  await expect(firstRule.getByRole('combobox', { name: '审批人来源', exact: true })).toBeVisible();
+  await expect(firstRule.getByText('按角色', { exact: true })).toBeVisible();
+  await expect(firstRule.getByLabel('人员范围值')).toHaveValue('finance');
   await expect(page.getByLabel('配置状态')).toContainText('"dirty":false');
   await firstRule.getByLabel('人员范围值').fill('operations');
   await page.getByLabel('修改说明').fill('调整条件分支范围');
