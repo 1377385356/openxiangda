@@ -17,6 +17,7 @@ import { basename, join, relative } from "node:path";
 import { assertPublicPackagePolicy } from "./public-package-policy.mjs";
 import { releaseNpmEnvironment } from "./release-network-policy.mjs";
 import { readReleaseMetadataSnapshot } from "./release-metadata-snapshot.mjs";
+import { V2_REGISTRY } from "../../packages/openxiangda/bin/distribution/registry.js";
 
 export const RELEASE_PACKAGE_STATE_SCHEMA =
   "openxiangda.release-package-state/v1";
@@ -223,17 +224,13 @@ export function assertCandidateVersionsAvailable(
 }
 
 export function resolveReleaseRegistry(repositoryRoot, configured) {
-  const value =
-    configured ||
-    process.env.OPENXIANGDA_NPM_REGISTRY ||
-    process.env.npm_config_registry ||
-    process.env.NPM_CONFIG_REGISTRY;
-  if (value) return String(value).replace(/\/$/, "");
-  return runCaptured(
-    "npm",
-    ["config", "get", "registry"],
-    repositoryRoot
-  ).replace(/\/$/, "");
+  // A developer's unrelated npm mirror must never select our publication target.
+  const value = configured || process.env.OPENXIANGDA_NPM_REGISTRY || V2_REGISTRY;
+  const url = new URL(value);
+  if (url.username || url.password || (url.protocol !== "https:" && !["localhost", "127.0.0.1"].includes(url.hostname))) {
+    throw new Error("RELEASE_REGISTRY_INVALID");
+  }
+  return url.href.replace(/\/$/, "");
 }
 
 export function isReleaseVersionPublished(repositoryRoot, registry, spec) {

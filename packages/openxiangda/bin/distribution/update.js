@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { bundledRelease, compareVersions, registryMetadata, VERSION, GENERATION_CHANNEL } from './releases.js';
 import { fail, flagValue, readJson } from './workspace.js';
+import { defaultRegistry } from './registry.js';
 
 export function updatePlan(context, args, metadata) {
   const target = flagValue(args, '--target') || (context.workspace ? 'workspace' : 'launcher');
@@ -37,7 +38,7 @@ export function updatePlan(context, args, metadata) {
       plan.args = ['--recursive', '--include-workspace-root', 'update', '--save-exact', spec];
     }
   }
-  const registry = flagValue(args, '--registry') || 'https://registry.npmjs.org';
+  const registry = flagValue(args, '--registry') || defaultRegistry(generation);
   plan.args.push(`--registry=${registry}`);
   return plan;
 }

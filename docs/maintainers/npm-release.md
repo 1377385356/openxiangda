@@ -4,7 +4,7 @@
 
 ## 来源与职责
 
-权威源码是 GitHub `1377385356/openxiangda` 的 `master`。七个公开包独立版本化，Changesets 决定版本和内部依赖；artifact manifest 冻结 tarball 字节，原 release receipt 记录发布阶段，npm registry 拥有实际内容和 dist-tag。不在 npm 写入时临时选择包或版本。
+权威源码是 GitHub `1377385356/openxiangda` 的 `master`。七个公开包独立版本化，Changesets 决定版本和内部依赖；artifact manifest 冻结 tarball 字节，原 release receipt 记录发布阶段，`https://npm.syedu.tech`（Verdaccio）拥有 V2 正式内容和 dist-tag。不在 npm 写入时临时选择包或版本。
 
 可信维护者本机是正式默认通道。GitHub workflow 可执行同一状态机；GitLab/镜像 CI 只验证源码。CI、OIDC 配置、参考仓凭据或 Version PR 均不构成本机发布前置。跨机器由维护者保持单发行写者，Git 公共目录中的进程锁只协调同一克隆。
 
@@ -44,3 +44,7 @@
 中文开发专题在 `docs/` 单源维护，执行 `node scripts/sync-developer-guidance.mjs` 生成 Skill references，并以 `--check` 校验；变更 Skill/模板时同步入口、模板 AGENTS 和随包正文。通过仓库 `skills:install:local` 刷新本机资料并核对实际安装摘要；正式候选再验证 tarball 安装。不要只修改本机 Skill 副本。
 
 报告精确源码、包版本/integrity、原回执、通过阶段与未覆盖项。维护者的 npm 主线规则不成为应用 TEST 内循环的新增门禁。
+
+## 国内正式 registry
+
+默认发布目标固定为 https://npm.syedu.tech，不能由维护者全局 npm registry 或 npm_config_registry 意外改变。显式 OPENXIANGDA_NPM_REGISTRY 仅用于经过确认的替代目标/测试；receipt 与 frozen manifest 仍绑定目标，不修改旧回执。源码主线和版本门禁不变。发布凭据通过用户级 npmrc 或环境注入，禁止写入 Git。首次用户安装必须显式指定 registry；npm 官方已有版本不会自动重定向。历史稳定版本迁移见 registry-migration.md。

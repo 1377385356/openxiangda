@@ -65,3 +65,5 @@ pnpm release:publish
 成功发布后，原始回执、制品清单和校验摘要保存在 Git 公共目录的 `openxiangda-release-history/<源码提交>/`，命令会输出实际路径。归档失败时保留活动回执和制品，可继续原发布；归档完成后才清理临时 tarball。该目录不会随 Git push 自动传给其他克隆，正式发布执行环境应将它作为发布证据备份；GitLab/镜像 CI 仍只验证源码，GitHub release workflow 是可选的同一发布状态机执行环境。
 
 完整审计使用成对的 `verify:release:full` / `release:publish:full`。发布后的独立参考仓库依赖更新通过 `release:sync-reference` 完成。npm 发布、平台组合 gitlink、平台部署和真实业务验收分别记录；不要把其中一项成功当作全部完成。
+
+正式 V2 SDK 下载与发布使用 `https://npm.syedu.tech/`，支持匿名读取。首次安装：`npm install -g openxiangda@latest --registry=https://npm.syedu.tech/`。新应用自动生成项目级 `.npmrc`；已有应用切换参见 [国内 registry 迁移](docs/maintainers/registry-migration.md)。

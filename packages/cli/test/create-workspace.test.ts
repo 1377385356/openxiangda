@@ -361,6 +361,8 @@ test('creates in an auth-only target and preserves session bytes including templ
     writeFileSync(sessionPath, secret);
     writeFileSync(join(root, '.openxiangda/.gitignore'), '/session.json\n/session.json.*\n');
     await createWorkspace({ directory: root, appCode: 'auth-app', name: 'Auth App', templateRoot: repositoryTemplate, install: false });
+    assert.equal(readFileSync(join(root, '.npmrc'), 'utf8').trim(), 'registry=https://npm.syedu.tech/');
+    assert.equal(existsSync(join(root, '_npmrc')), false);
     assert.equal(readFileSync(sessionPath, 'utf8'), secret);
     assert.ok(existsSync(join(root, 'openxiangda.config.ts')));
   } finally {

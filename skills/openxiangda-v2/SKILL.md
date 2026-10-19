@@ -40,10 +40,10 @@ AI 接到新应用、页面或改版任务时，在同一个 OpenXiangda 工作�
 未创建工作区时使用本 Skill 随根包发布的精确版本：
 
 ```bash
-pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ auth status --cwd <应用目录> --base-url <平台地址> --json
-pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ login --cwd <应用目录> --base-url <平台地址>
-pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ create <应用目录> --base-url <同一平台地址>
-pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ skill install --force
+pnpm --registry=https://npm.syedu.tech dlx openxiangda@__OPENXIANGDA_VERSION__ auth status --cwd <应用目录> --base-url <平台地址> --json
+pnpm --registry=https://npm.syedu.tech dlx openxiangda@__OPENXIANGDA_VERSION__ login --cwd <应用目录> --base-url <平台地址>
+pnpm --registry=https://npm.syedu.tech dlx openxiangda@__OPENXIANGDA_VERSION__ create <应用目录> --base-url <同一平台地址>
+pnpm --registry=https://npm.syedu.tech dlx openxiangda@__OPENXIANGDA_VERSION__ skill install --force
 ```
 
 创建前把产品要求的目标平台明确带入命令，不从旧登录态推断站点。已有工作区从原绑定恢复，平台不一致时先解决登录与目标，不改 link 文件跨站创建。

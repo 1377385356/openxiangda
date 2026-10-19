@@ -13,7 +13,7 @@ OpenXiangda 2.0 默认生成 React 应用和共享契约。普通 CRUD、标准�
 全局统一入口适合新用户和原 V1 用户安装；Node.js 需要 24 或更高版本：
 
 ```bash
-npm install -g openxiangda@latest --registry=https://registry.npmjs.org
+npm install -g openxiangda@latest --registry=https://npm.syedu.tech
 openxiangda version --json
 ```
 
@@ -68,10 +68,10 @@ MCP 服务随项目根包一起安装，AI 客户端的 stdio 连接仍需配置
 以下命令的版本占位符由随包资料替换为该根包的精确版本。网站源码阅读者应先确认要使用的发行版本。
 
 ```bash
-pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ skill install --force
-pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ auth status --base-url <平台地址> --json
-pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ login --cwd my-app --base-url https://platform.example.com
-pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ create my-app --base-url https://platform.example.com
+pnpm --registry=https://npm.syedu.tech dlx openxiangda@__OPENXIANGDA_VERSION__ skill install --force
+pnpm --registry=https://npm.syedu.tech dlx openxiangda@__OPENXIANGDA_VERSION__ auth status --base-url <平台地址> --json
+pnpm --registry=https://npm.syedu.tech dlx openxiangda@__OPENXIANGDA_VERSION__ login --cwd my-app --base-url https://platform.example.com
+pnpm --registry=https://npm.syedu.tech dlx openxiangda@__OPENXIANGDA_VERSION__ create my-app --base-url https://platform.example.com
 cd my-app
 pnpm openxiangda context --json
 pnpm openxiangda dev
@@ -221,9 +221,9 @@ MCP 的 `docs_read` 可以读取本说明，当前没有独立的源码操作 MC
 无需本地工作区，使用本 Skill 随包精确版本或已安装的对应 CLI：
 
 ```bash
-pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ auth status --base-url <平台> --json
-pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ source resolve <仓库URL> --base-url <平台> --json
-pnpm dlx openxiangda@__OPENXIANGDA_VERSION__ source clone <仓库URL> <新目录> --base-url <平台> --json
+pnpm --registry=https://npm.syedu.tech dlx openxiangda@__OPENXIANGDA_VERSION__ auth status --base-url <平台> --json
+pnpm --registry=https://npm.syedu.tech dlx openxiangda@__OPENXIANGDA_VERSION__ source resolve <仓库URL> --base-url <平台> --json
+pnpm --registry=https://npm.syedu.tech dlx openxiangda@__OPENXIANGDA_VERSION__ source clone <仓库URL> <新目录> --base-url <平台> --json
 ```
 
 登录缺失或站点不匹配时，先按该平台执行 login。resolve 根据平台已经登记的绑定返回
