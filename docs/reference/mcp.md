@@ -1711,6 +1711,140 @@ MCP 使用项目锁定的根包；在客户端配置下列 stdio 启动参数，
       "additionalProperties": false,
       "properties": {
         "operation": {
+          "const": "notifications.configure-dingtalk-card",
+          "description": "配置钉钉互动卡片与可选的三方组织授权；仅使用 Secret 引用"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "test",
+            "production"
+          ]
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "bindingCode": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "expectedRevision": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "active",
+                "paused"
+              ]
+            },
+            "config": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "schemaVersion": {
+                  "const": "openxiangda.notification.dingtalk-card-channel/v2"
+                },
+                "corpId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "usage": {
+                  "const": "ADVANCED"
+                },
+                "authorizationMode": {
+                  "const": "THIRD_PARTY_INSTALLATION"
+                },
+                "defaultCardTemplateId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 255
+                },
+                "informationalTemplateParameters": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "content": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64,
+                      "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                    },
+                    "link": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64,
+                      "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                    }
+                  },
+                  "required": [
+                    "content",
+                    "link"
+                  ]
+                },
+                "clientIdSecretRef": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "clientSecretSecretRef": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "robotCode": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 255
+                },
+                "callbackMode": {
+                  "const": "STREAM"
+                },
+                "supportForward": {
+                  "const": false
+                },
+                "actionTokenTtlMinutes": {
+                  "type": "integer",
+                  "minimum": 5,
+                  "maximum": 43200
+                }
+              },
+              "required": [
+                "schemaVersion",
+                "corpId",
+                "usage",
+                "clientIdSecretRef",
+                "clientSecretSecretRef",
+                "callbackMode",
+                "supportForward",
+                "actionTokenTtlMinutes"
+              ]
+            }
+          },
+          "required": [
+            "bindingCode",
+            "expectedRevision",
+            "status",
+            "config"
+          ]
+        }
+      },
+      "required": [
+        "operation",
+        "environment",
+        "input"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
           "const": "notifications.configure-dingtalk-oa",
           "description": "配置钉钉 OA 工作通知通道；仅使用 Secret 引用"
         },
