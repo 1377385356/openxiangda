@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.75.10",
+  "version": "2.76.0",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -102,13 +102,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.11.22",
-    "openxiangda-contracts": "2.96.0",
-    "openxiangda-devkit-core": "2.72.1",
+    "openxiangda-cli": "2.11.23",
+    "openxiangda-contracts": "2.96.1",
+    "openxiangda-devkit-core": "2.72.2",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.2.32",
-    "openxiangda-nest": "2.22.11",
-    "openxiangda-skill-kit": "2.3.135",
+    "openxiangda-mcp": "2.2.33",
+    "openxiangda-nest": "2.22.12",
+    "openxiangda-skill-kit": "2.3.136",
     "xlsx": "https://npm.syedu.tech/vendor/xlsx/0.20.3/8dc73fc3b00203e72d176e85b50938627c7b086e607c682e8d3c22c02bb99fe8/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -174,39 +174,37 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.75.10",
+    "version": "2.76.0",
     "status": "reviewed",
-    "title": "OpenXiangda 2.75.10：国内正式下载与发布入口",
-    "summary": "V2 SDK 安装、升级、新应用和后端构建统一使用 npm.syedu.tech；xlsx 原始制品迁至同域名摘要地址，V1 更新渠道不变。",
+    "title": "OpenXiangda 2.76.0：流程画布草稿编辑与拖动升级",
+    "summary": "统一已有及新增节点的草稿权限，提供明确投放槽、分支排序与节点独立退回设置，发布默认仅影响新申请。",
     "newFeatures": [
-      "正式 V2 发布目标固定为 Verdaccio，普通 npm 镜像环境变量不再改变发包目标。",
-      "新应用自动配置项目 registry，首次安装与 AI Skill 命令显式指定国内入口。"
+      "节点原位占位、浮动副本、合法投放槽及分组整体移动，保留缩放位置。",
+      "审批人、审批操作、更多设置三个Tab；退回目标在画布选取，默认分支固定最后。"
     ],
     "fixes": [
-      "去除新版 xlsx 依赖中的 GitHub 下载地址并固定原制品 SHA512。",
-      "V2 版本查询与升级默认走国内源，V1 继续使用原渠道。"
+      "已有节点草稿编辑使用draft.edit，不再误依赖泛应用管理员或实时配置权限。",
+      "审批来源有界修改与运行覆盖按定义及绑定版本隔离，默认new_only。"
     ],
     "affectedUsers": [
-      "OpenXiangda V2 CLI、React/Nest SDK 使用者及工具链维护者。"
+      "V2流程画布使用者及平台维护者。"
     ],
     "compatibility": {
       "node": "Node.js 24 or newer",
-      "generation": "V2；V1 渠道不变",
-      "platform": "不新增平台协议要求",
-      "releaseChannels": "npm.syedu.tech: latest / stable-v2"
+      "generation": "V2",
+      "platform": "需要配套草稿编辑、版本覆盖退休及组织事实校验后端；本地已验证，站点需单独部署。",
+      "releaseChannels": "npm.syedu.tech latest / stable-v2"
     },
     "upgradeSteps": [
-      "npm install -g openxiangda@2.75.10 --registry=https://npm.syedu.tech/",
-      "已有 V2 项目在 .npmrc 设置国内 registry，运行 update install --target workspace，保留并核对锁文件。",
-      "已有后端 Dockerfile 对照官方模板增加 registry 环境配置；刷新 Skill 后完成应用自身验收。"
+      "升级配套平台后端并固定SDK2.76.0。",
+      "在TEST验证只读、草稿编辑、发布权限隔离和旧实例保持原版本后晋级。"
     ],
     "knownLimitations": [
-      "npm 官方旧入口不会自动重定向；首次安装必须指定国内 registry。",
-      "历史 SDK 原始包保持原依赖地址，不保证历史版本所有 URL 依赖均可国内下载。",
-      "本次不自动修改或部署既有业务应用；特殊安装脚本的外部下载仍需独立治理。"
+      "包测试与本地验收不证明客户站点已部署。",
+      "业务节点和取人规则仍来自各应用已发布定义，不自动恢复被删除节点。"
     ],
     "issues": [],
-    "sha256": "df69f156228d615f4c171cd6da7cd96368d1bffe4ea50094d76625b9442e9b0e",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.75.10"
+    "sha256": "064c24704b1c2589a9c1f57cd6912844b8e61958164143abc982e0251bfc59d1",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.76.0"
   }
 }
