@@ -150,6 +150,7 @@ test('workspace and launcher updates stay in their intended generation and depen
   const legacy = updatePlan(context, ['update', 'install'], { version: '1.0.268' });
   assert.equal(legacy.target, 'workspace'); assert.ok(!legacy.args.includes('--global'));
   assert.equal(legacy.channel, 'legacy-v1');
+  assert.ok(legacy.args.includes('--registry=https://registry.npmjs.org'));
   assert.ok(legacy.args.includes('--save-prod')); assert.ok(legacy.args.includes('openxiangda@1.0.268'));
   assert.throws(() => updatePlan(context, ['update', 'install'], { version: '2.0.0' }), /GENERATION_MISMATCH/);
   const global = updatePlan(context, ['update', 'install', '--target=launcher'], { version: '2.0.1' });
@@ -163,6 +164,7 @@ test('V2 pnpm upgrade updates existing consumers across the workspace, without a
   const f = fixture(t); f.put('app/openxiangda.config.ts'); f.put('app/pnpm-workspace.yaml', 'packages:\n  - apps/*\n');
   f.put('app/package.json', { packageManager: 'pnpm@10.15.1', devDependencies: { openxiangda: '2.0.0' } });
   const plan = updatePlan({ manifest: { version: '2.0.0' }, engine: { version: '2.0.0' }, workspace: discoverWorkspace(join(f.root, 'app')) }, ['update'], { version: '2.0.1' });
+  assert.ok(plan.args.includes('--registry=https://npm.syedu.tech'));
   assert.equal(plan.command, 'pnpm'); assert.ok(plan.args.includes('--recursive')); assert.ok(plan.args.includes('--include-workspace-root')); assert.ok(plan.args.includes('update')); assert.ok(!plan.args.includes('add'));
 });
 

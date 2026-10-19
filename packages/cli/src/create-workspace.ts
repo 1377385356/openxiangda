@@ -89,6 +89,8 @@ async function materializeWorkspace(input: CreateWorkspaceInput) {
   const packedGitignore = join(target, "_gitignore");
   if (existsSync(packedGitignore))
     renameSync(packedGitignore, join(target, ".gitignore"));
+  const packedNpmrc = join(target, "_npmrc");
+  if (existsSync(packedNpmrc)) renameSync(packedNpmrc, join(target, ".npmrc"));
   replaceText(target, [
     ["instrument-center", input.appCode],
     ["仪器资源管理", input.name],

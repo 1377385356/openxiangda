@@ -87,7 +87,7 @@ export async function supportOperation(packageRoot, args, overrides = {}) {
     let versionResult = await run('dws', ['--version']);
     let version = versionResult.status === 0 ? supportVersion(versionResult.stdout) : null;
     if (!version && action === 'bootstrap') {
-      const installed = await run(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['install', '--global', `dingtalk-workspace-cli@${DWS_STABLE_VERSION}`, '--registry', 'https://registry.npmjs.org', '--no-fund', '--no-audit'], { timeout: 120_000 });
+      const installed = await run(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['install', '--global', `dingtalk-workspace-cli@${DWS_STABLE_VERSION}`, '--registry', 'https://npm.syedu.tech', '--no-fund', '--no-audit'], { timeout: 120_000 });
       if (installed.status !== 0) return pending(result, 'dws_unavailable', 'SUPPORT_DWS_INSTALL_FAILED', 'openxiangda support bootstrap');
       versionResult = await run('dws', ['--version']);
       version = versionResult.status === 0 ? supportVersion(versionResult.stdout) : null;

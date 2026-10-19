@@ -1,5 +1,8 @@
 FROM docker.xuanyuan.run/node:22-alpine AS build
+ARG NPM_REGISTRY=https://npm.syedu.tech/
 ENV COREPACK_HOME=/pnpm/corepack
+ENV npm_config_registry=${NPM_REGISTRY}
+ENV COREPACK_NPM_REGISTRY=${NPM_REGISTRY}
 WORKDIR /workspace
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./

@@ -647,7 +647,7 @@ function npm(args) {
   run("npm", [...args, "--registry", receipt.registry]);
 }
 
-function npmJson(args, fallback, registry = receipt?.registry || "https://registry.npmjs.org") {
+function npmJson(args, fallback, registry = receipt?.registry || resolveReleaseRegistry(repositoryRoot)) {
   // 全部调用点都是 registry 读回（view）；--prefer-online 禁止陈旧缓存应答。
   const result = spawnSync("npm", [...args, "--prefer-online", "--registry", registry], {
     cwd: repositoryRoot,

@@ -33,7 +33,7 @@ auth:
     max_users: 1
 uplinks:
   npmjs:
-    url: https://registry.npmjs.org/
+    url: https://npm.syedu.tech/
 ${proxyConfiguration}packages:
 ${candidateRules ? `${candidateRules}\n` : ""}  # Exact candidate rules are local-only; every other package may use npmjs.
   '**':

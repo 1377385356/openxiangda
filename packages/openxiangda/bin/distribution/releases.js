@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fail, readJson } from './workspace.js';
+import { defaultRegistry } from './registry.js';
 
 export const VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
 export const RELEASE_REPOSITORY = 'https://github.com/1377385356/openxiangda';
@@ -17,7 +18,7 @@ export function bundledRelease(packageRoot, version) {
   };
 }
 
-export function registryMetadata(selector, registry = 'https://registry.npmjs.org') {
+export function registryMetadata(selector, registry = defaultRegistry(selector)) {
   selector = GENERATION_CHANNEL[selector] || selector;
   if (!VERSION.test(selector) && !['legacy-v1', 'stable-v2', 'latest', 'alpha'].includes(selector)) fail('DISTRIBUTION_VERSION_INVALID', selector);
   const url = new URL(registry);

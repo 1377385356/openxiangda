@@ -36,13 +36,13 @@ importers:
         specifier: 2.96.0
         version: link:../contracts
       openxiangda-devkit-core:
-        specifier: 2.72.0
+        specifier: 2.72.1
         version: link:../devkit-core
       openxiangda-mcp:
-        specifier: 2.2.31
+        specifier: 2.2.32
         version: link:../mcp
       openxiangda-skill-kit:
-        specifier: 2.3.134
+        specifier: 2.3.135
         version: link:../skill-kit
     devDependencies:
       tsx:
@@ -114,7 +114,7 @@ importers:
         specifier: 2.96.0
         version: link:../contracts
       openxiangda-devkit-core:
-        specifier: 2.72.0
+        specifier: 2.72.1
         version: link:../devkit-core
       zod:
         specifier: 4.4.3
@@ -218,29 +218,29 @@ importers:
         specifier: 0.12.0
         version: 0.12.0
       openxiangda-cli:
-        specifier: 2.11.21
+        specifier: 2.11.22
         version: link:../cli
       openxiangda-contracts:
         specifier: 2.96.0
         version: link:../contracts
       openxiangda-devkit-core:
-        specifier: 2.72.0
+        specifier: 2.72.1
         version: link:../devkit-core
       openxiangda-legacy:
         specifier: npm:openxiangda@1.0.269
         version: openxiangda@1.0.269(@floating-ui/dom@1.8.0)(@tiptap/extensions@3.31.4(@tiptap/core@3.31.4(@tiptap/pm@3.31.4))(@tiptap/pm@3.31.4))(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(date-fns@2.30.0)(highlight.js@11.11.2)(jiti@1.21.7)(less@4.9.0)(lightningcss@1.33.0)(luxon@3.7.2)(moment@2.30.1)(postcss@8.5.26)(sass@1.54.0)(terser@5.50.0)(yaml@2.9.1)
       openxiangda-mcp:
-        specifier: 2.2.31
+        specifier: 2.2.32
         version: link:../mcp
       openxiangda-nest:
         specifier: 2.22.11
         version: link:../nest
       openxiangda-skill-kit:
-        specifier: 2.3.134
+        specifier: 2.3.135
         version: link:../skill-kit
       xlsx:
-        specifier: https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz
-        version: https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz
+        specifier: https://npm.syedu.tech/vendor/xlsx/0.20.3/8dc73fc3b00203e72d176e85b50938627c7b086e607c682e8d3c22c02bb99fe8/xlsx-0.20.3.tgz
+        version: https://npm.syedu.tech/vendor/xlsx/0.20.3/8dc73fc3b00203e72d176e85b50938627c7b086e607c682e8d3c22c02bb99fe8/xlsx-0.20.3.tgz
     devDependencies:
       '@ant-design/icons':
         specifier: 6.2.3
@@ -294,7 +294,7 @@ importers:
   packages/skill-kit:
     dependencies:
       openxiangda-devkit-core:
-        specifier: 2.72.0
+        specifier: 2.72.1
         version: link:../devkit-core
     devDependencies:
       tsx:
@@ -4655,8 +4655,8 @@ packages:
   wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
 
-  xlsx@https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz:
-    resolution: {tarball: https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz}
+  xlsx@https://npm.syedu.tech/vendor/xlsx/0.20.3/8dc73fc3b00203e72d176e85b50938627c7b086e607c682e8d3c22c02bb99fe8/xlsx-0.20.3.tgz:
+    resolution: {integrity: sha512-oLDq3jw7AcLqKWH2AhCpVTZl8mf6X2YReP+Neh0SJUzV/BdZYjth94tG5toiMB1PPrYtxOCfaoUCkvtuH+3AJA==, tarball: https://npm.syedu.tech/vendor/xlsx/0.20.3/8dc73fc3b00203e72d176e85b50938627c7b086e607c682e8d3c22c02bb99fe8/xlsx-0.20.3.tgz}
     version: 0.20.3
     engines: {node: '>=0.8'}
     hasBin: true
@@ -9734,7 +9734,7 @@ snapshots:
 
   wrappy@1.0.2: {}
 
-  xlsx@https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz: {}
+  xlsx@https://npm.syedu.tech/vendor/xlsx/0.20.3/8dc73fc3b00203e72d176e85b50938627c7b086e607c682e8d3c22c02bb99fe8/xlsx-0.20.3.tgz: {}
 
   xml2js@0.6.2:
     dependencies:

@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.75.9",
+  "version": "2.75.10",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -102,14 +102,14 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.11.21",
+    "openxiangda-cli": "2.11.22",
     "openxiangda-contracts": "2.96.0",
-    "openxiangda-devkit-core": "2.72.0",
+    "openxiangda-devkit-core": "2.72.1",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.2.31",
+    "openxiangda-mcp": "2.2.32",
     "openxiangda-nest": "2.22.11",
-    "openxiangda-skill-kit": "2.3.134",
-    "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
+    "openxiangda-skill-kit": "2.3.135",
+    "xlsx": "https://npm.syedu.tech/vendor/xlsx/0.20.3/8dc73fc3b00203e72d176e85b50938627c7b086e607c682e8d3c22c02bb99fe8/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
     "@ant-design/icons": ">=6 <7",
@@ -174,35 +174,39 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.75.9",
+    "version": "2.75.10",
     "status": "reviewed",
-    "title": "OpenXiangda 2.75.9: organization-scoped third-party cards",
-    "summary": "Generic event contracts retain application-owned content and targets while the platform resolves enterprise authorization and class recipients.",
+    "title": "OpenXiangda 2.75.10：国内正式下载与发布入口",
+    "summary": "V2 SDK 安装、升级、新应用和后端构建统一使用 npm.syedu.tech；xlsx 原始制品迁至同域名摘要地址，V1 更新渠道不变。",
     "newFeatures": [
-      "Declared class-role notification audiences and verified related delivery organizations.",
-      "Managed configuration for third-party card channels and custom content/link parameter names.",
-      "Explicit read-only organization_id metadata for event workers; no wider row authority."
+      "正式 V2 发布目标固定为 Verdaccio，普通 npm 镜像环境变量不再改变发包目标。",
+      "新应用自动配置项目 registry，首次安装与 AI Skill 命令显式指定国内入口。"
     ],
-    "fixes": [],
+    "fixes": [
+      "去除新版 xlsx 依赖中的 GitHub 下载地址并固定原制品 SHA512。",
+      "V2 版本查询与升级默认走国内源，V1 继续使用原渠道。"
+    ],
     "affectedUsers": [
-      "V2 application developers sending cards through third-party school installations."
+      "OpenXiangda V2 CLI、React/Nest SDK 使用者及工具链维护者。"
     ],
     "compatibility": {
       "node": "Node.js 24 or newer",
-      "generation": "V2 only; V1 unchanged",
-      "platform": "Requires matching notification platform services and compiler.",
-      "releaseChannels": "latest / stable-v2"
+      "generation": "V2；V1 渠道不变",
+      "platform": "不新增平台协议要求",
+      "releaseChannels": "npm.syedu.tech: latest / stable-v2"
     },
     "upgradeSteps": [
-      "Upgrade the matching backend and configure published templates with encrypted credential references.",
-      "Pin the SDK, verify organization isolation and detail permissions on TEST, then promote."
+      "npm install -g openxiangda@2.75.10 --registry=https://npm.syedu.tech/",
+      "已有 V2 项目在 .npmrc 设置国内 registry，运行 update install --target workspace，保留并核对锁文件。",
+      "已有后端 Dockerfile 对照官方模板增加 registry 环境配置；刷新 Skill 后完成应用自身验收。"
     ],
     "knownLimitations": [
-      "Package tests do not prove real DingTalk receipt, placeholder substitution or login return.",
-      "No automatic historical resend; recover uncertain results with original keys."
+      "npm 官方旧入口不会自动重定向；首次安装必须指定国内 registry。",
+      "历史 SDK 原始包保持原依赖地址，不保证历史版本所有 URL 依赖均可国内下载。",
+      "本次不自动修改或部署既有业务应用；特殊安装脚本的外部下载仍需独立治理。"
     ],
     "issues": [],
-    "sha256": "3c215aa49c0d416cb2f5cb1b73cb8914810048ee54b1474fae49e20c877682bf",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.75.9"
+    "sha256": "df69f156228d615f4c171cd6da7cd96368d1bffe4ea50094d76625b9442e9b0e",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.75.10"
   }
 }
