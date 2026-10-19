@@ -3217,6 +3217,7 @@ export async function loadWorkflowInstanceGraph(instanceId: string) {
 export async function loadApplicationAdministrationContext() {
   return requestRead<import('openxiangda-contracts/browser').ApplicationAdministrationContext>(
     `${applicationServiceBase()}/admin/context?${new URLSearchParams({ environmentKey: currentEnvironmentKey() })}`,
+    { headers: workflowDesignerHeaders },
   );
 }
 

@@ -137,6 +137,10 @@ function reachable(definition: WorkflowDefinition, target: string, excluded?: st
 /** Synthetic steps prefixes do not make a required output optional; its producer must dominate the consumer. */
 export function workflowConditionalAssignmentFact(definition: WorkflowDefinition, nodeId: string, factPath: string): { schema: Record<string, unknown>; required: boolean } | undefined {
   if (!path(factPath) || Object.keys(definition.nodes).length > 200 || !definition.nodes[nodeId] || !reachable(definition, nodeId)) return undefined;
+  // The platform owns the submission department snapshot. It is admitted only
+  // by the explicit organizationContext declaration, never by a form field.
+  if(factPath==='organizationContext.departmentId'&&definition.organizationContext?.department)
+    return {schema:{type:'string'},required:definition.organizationContext.department.required===true};
   let schema: any = definition.inputSchema, segments = factPath.split('.'), required = true;
   if (segments[0] === 'steps') {
     const producerId = segments[1]!, producer = definition.nodes[producerId];

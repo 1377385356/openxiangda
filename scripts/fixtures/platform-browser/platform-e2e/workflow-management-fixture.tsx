@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { App, ConfigProvider } from 'antd';
 import { WorkflowDesigner } from '../../../../packages/openxiangda/src/browser/components/workflow/WorkflowDesigner';
 import '../../../../packages/openxiangda/dist/browser/styles.css';
+import '../../../../packages/openxiangda/src/browser/workflow-canvas.css';
 // Real SDK, intercepted test HTTP only; never a live role or application.
 function Fixture() {
   const [state,setState] = useState({dirty:false,busy:false,unknown:false});

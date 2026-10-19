@@ -1,3 +1,4 @@
+import { workflowAssignmentLeaves } from './workflow-conditional-assignment.js';
 import { validateWorkflowReturnEligibility } from './workflow-return-eligibility.js';
 import { workflowAuthoringCatalog, workflowCanvasBindingKey, validateWorkflowCanvasHuman, validateWorkflowCanvasBinding, type WorkflowDesignerCatalog } from "./workflow-authoring.js";
 import { inspectWorkflowParallel, validateWorkflowParallel } from './workflow-parallel.js';
@@ -7,7 +8,7 @@ import { isWorkflowPlatformNotify, validateWorkflowPlatformNotify } from './work
 import { validateWorkflowReturnPolicies } from './workflow-return-policy.js';
 import { validateWorkflowHandlingNodes } from './workflow-handle.js';
 import type { WorkflowBinding, WorkflowDefinition, WorkflowExpression, WorkflowNode } from '../types.js';
-import { workflowOperationMinimumOpinion,workflowOperationOpinion } from './workflow-node-administration.js';
+import { validateWorkflowNodeConfigurationPatch,workflowOperationMinimumOpinion,workflowOperationOpinion } from './workflow-node-administration.js';
 import { projectWorkflowGraph, workflowExpressionPaths, type WorkflowGraphProjection } from './workflow-graph.js';
 
 export type WorkflowPublicationScope = 'running_and_new' | 'new_only';
@@ -122,7 +123,16 @@ export function validateWorkflowDesignerCapabilities(base: WorkflowDefinition, n
     const owner = Object.values(next.nodes).find(node => 'binding' in node && node.binding === key && key === workflowCanvasBindingKey(node.id));
     if (!original && owner && !base.nodes[owner.id]) errors.push(...validateWorkflowCanvasBinding(entry, catalog, options.allowIncomplete, { definition: next, nodeId: owner.id }).map(error => `${error}:${key}`));
     else if (!original && !Object.values(baseBinding.bindings).some(value => same(value, entry))) errors.push(`WORKFLOW_DESIGNER_BINDING_UNRELEASED:${key}`);
-    if (original && !same(original, entry)) errors.push(`WORKFLOW_DESIGNER_BINDING_CODE_OWNED:${key}`);
+    if (original && !same(original, entry)) {
+      const owners=Object.values(base.nodes).filter(node=>'binding' in node&&node.binding===key);
+      if(!owners.length)errors.push(`WORKFLOW_DESIGNER_BINDING_CODE_OWNED:${key}`);
+      for(const owner of owners){
+        if(!['approval','handle','cc'].includes(owner.kind)){errors.push(`WORKFLOW_DESIGNER_BINDING_CODE_OWNED:${key}`);continue;}
+        const target=next.nodes[owner.id];
+        const context={definition:base,nodeId:owner.id,releasedSources:Object.fromEntries(Object.entries(catalog.peopleSources).flatMap(([code,source])=>workflowAssignmentLeaves(source).map((leaf,index)=>[`${code}/${index}`,leaf]))),peopleSourceTemplates:catalog.nativePeopleAuthoring?catalog.peopleSourceTemplates:undefined};
+        errors.push(...validateWorkflowNodeConfigurationPatch(owner,original,{assignee:entry,...(target&&'mode' in target&&'mode' in owner&&target.mode!==owner.mode?{mode:target.mode}:{})},base.taskPages,context).map(error=>`${error}:${key}`));
+      }
+    }
   }
   errors.push(...validateWorkflowDesignerDocument(next));
   return [...new Set(errors)];

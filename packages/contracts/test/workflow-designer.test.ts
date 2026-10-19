@@ -95,3 +95,25 @@ test('published node cannot replace its code-owned binding with a canvas-owned k
   assert.ok(errors.includes('WORKFLOW_DESIGNER_BINDING_CODE_OWNED:review'));
   assert.ok(errors.includes('WORKFLOW_DESIGNER_BINDING_UNRELEASED:canvas_review'));
 });
+
+test('existing node draft bindings use declared administration and released parameter bounds',()=>{
+  const source=definition();const human=source.nodes.review as any;human.administration={assigneeProviders:['fixed_users','app_role'],modes:['single'],operations:['approve','reject']};
+  const bindings:any={schemaVersion:'openxiangda.workflow-binding/v2',workflowCode:'test',bindings:{people:{provider:'fixed_users',users:['first']}}};
+  const next=structuredClone(bindings);next.bindings.people={provider:'fixed_users',users:['second']};
+  assert.deepEqual(validateWorkflowDesignerCapabilities(source,source,bindings,next),[]);
+  next.bindings.people={provider:'department_supervisor',departmentIdFrom:'unknown',level:3};
+  assert.ok(validateWorkflowDesignerCapabilities(source,source,bindings,next).length);
+  human.administration.assigneeProviders=['app_role'];next.bindings.people={provider:'fixed_users',users:['second']};
+  assert.ok(validateWorkflowDesignerCapabilities(source,source,bindings,next).some(error=>error.includes('PROVIDER_READONLY')));
+});
+
+test('department supervisor draft parameters admit declared platform department facts only',()=>{
+  const source=definition() as any;source.organizationContext={department:{source:'choose_if_multiple',required:true}};
+  source.authoring={peopleSources:[{code:'department',title:'Department',entry:{provider:'department_supervisor',departmentIdFrom:'organizationContext.departmentId',level:1,min:1,max:1,fallbackToAncestorSupervisor:false},parameters:{level:{values:[1,2,3]}}}]};
+  const bindings:any={schemaVersion:'openxiangda.workflow-binding/v2',workflowCode:'test',bindings:{people:structuredClone(source.authoring.peopleSources[0].entry)}};
+  const next=structuredClone(bindings);next.bindings.people.level=2;
+  const catalog:any={appVersionId:'test',digest:'test',steps:[],taskPages:{},peopleSources:bindings.bindings,nativePeopleAuthoring:true,peopleSourceTemplates:source.authoring.peopleSources};
+  assert.deepEqual(validateWorkflowDesignerCapabilities(source,source,bindings,next,{catalog}),[]);
+  delete source.organizationContext;
+  assert.ok(validateWorkflowDesignerCapabilities(source,source,bindings,next,{catalog}).some(error=>error.includes('FACT_UNAVAILABLE')));
+});

@@ -1,4 +1,4 @@
-import { Checkbox, Select } from 'antd';
+import { Button, Checkbox, Select } from 'antd';
 import { RightOutlined, WarningOutlined } from '@ant-design/icons';
 import type { WorkflowReturnPolicy, WorkflowReturnTargetPolicy, WorkflowDefinition, WorkflowHumanNode } from 'openxiangda-contracts/browser';
 import { workflowReturnEligibility, projectWorkflowGraph, workflowReturnTargets, workflowReturnTargetPolicy } from 'openxiangda-contracts/browser';
@@ -19,7 +19,8 @@ function examplePath(definition: WorkflowDefinition, target: string, destination
   return [];
 }
 
-export function WorkflowReturnPolicyEditor({ definition, node, disabled, onChange }: {
+export function WorkflowReturnPolicyEditor({ definition, node, disabled, onChange, onPickTarget }: {
+  onPickTarget?:()=>void;
   definition: WorkflowDefinition; node: WorkflowHumanNode; disabled: boolean; onChange: (policy: WorkflowReturnPolicy) => void;
 }) {
   const targets = workflowReturnTargets(node).map(id => workflowReturnTargetPolicy(definition, node, id)!).filter(Boolean);
@@ -29,7 +30,8 @@ export function WorkflowReturnPolicyEditor({ definition, node, disabled, onChang
     <div className="oxa-designer-return-notice">退回设置 · 属于草稿，发布并启用后生效</div>
     <p>退回后申请继续，并开启新一轮办理。为每个目标选择重新提交后的继续方式。</p>
     {!candidates.length && <p>当前流程没有可配置的退回目标。</p>}
-    {candidates.map(candidate => {
+    {onPickTarget&&<Button disabled={disabled} onClick={onPickTarget}>在画布选择退回目标</Button>}
+    {candidates.filter(candidate=>!onPickTarget||targets.some(target=>target.nodeId===candidate.id)).map(candidate => {
       const eligibility=workflowReturnEligibility(definition,node.id,candidate.id);
       const target = targets.find(target => target.nodeId === candidate.id);
       const path = target ? examplePath(definition, candidate.id, node.id) : [];

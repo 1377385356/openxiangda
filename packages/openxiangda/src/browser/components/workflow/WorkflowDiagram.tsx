@@ -45,6 +45,10 @@ export interface WorkflowDiagramProps {
   summaries?: Record<string, string>;
   visits?: readonly WorkflowGraphVisit[];
   selectedEdgeId?: string;
+  groupRegions?:Record<string,{members:string[];exit:string}>;
+  onBeginReconnect?: (edgeId:string)=>void;
+  onReorderBranch?: (nodeId:string,from:number,to:number)=>void;
+  isMoveAllowed?: (nodeId:string,edgeId:string)=>boolean;
   onMoveNode?: (nodeId:string,edgeId:string)=>void;
   onSelectEdge?: (edgeId: string) => void;
   onInsertEdge?: (edgeId: string, template?: string) => void;
@@ -62,7 +66,7 @@ class CanvasBoundary extends Component<{ children: ReactNode; onList: () => void
 }
 
 /** Read-only graph and accessible list share the platform's immutable projection. */
-export function WorkflowDiagram({ graph: sourceGraph, variableChoices, selectedNodeId, onSelectNode, titles = emptyTitles, summaries, visits = emptyVisits, selectedEdgeId, onSelectEdge, onMoveNode, onInsertEdge, insertionOptions, presentation = 'embedded' }: WorkflowDiagramProps) {
+export function WorkflowDiagram({ graph: sourceGraph, variableChoices, selectedNodeId, onSelectNode, titles = emptyTitles, summaries, visits = emptyVisits, selectedEdgeId, onSelectEdge, groupRegions, onBeginReconnect, onReorderBranch, isMoveAllowed, onMoveNode, onInsertEdge, insertionOptions, presentation = 'embedded' }: WorkflowDiagramProps) {
   const graph = useMemo(() => workflowGraphWithChoices(sourceGraph, variableChoices), [sourceGraph, variableChoices]);
   const [canvas, setCanvas] = useState<{ graph: WorkflowGraphProjection; controller: WorkflowFlowCanvasController } | null>(null);
   const list = useRef<HTMLOListElement>(null);
@@ -163,7 +167,7 @@ export function WorkflowDiagram({ graph: sourceGraph, variableChoices, selectedN
     </details>}
     {effectiveView === 'graph' ? <div className="oxa-workflow-canvas">
       {!shownGraph.nodes.length ? <Empty description="尚无已执行节点" /> : <CanvasBoundary onList={() => setView('list')}><Suspense fallback={<div className="oxa-workflow-canvas-loading"><Skeleton active title paragraph={{ rows: 4 }} /></div>}>
-        <FlowCanvas onMoveNode={onMoveNode} graph={shownGraph} startAtTop={presentation !== 'embedded'} designer={presentation === 'designer'} selectedNodeId={selectedNodeId} selectedEdgeId={selectedEdgeId || localEdge} onSelectNode={onSelectNode} onSelectEdge={selectEdge} onInsertEdge={onInsertEdge} insertionOptions={insertionOptions} titles={titles} summaries={nodeSummaries} visits={visits} executedEdges={executedEdges} onNavigate={navigate} onReady={value => setCanvas(value ? { graph: shownGraph, controller: value } : null)} onZoom={setZoom} />
+        <FlowCanvas groupRegions={groupRegions} onBeginReconnect={onBeginReconnect} onReorderBranch={onReorderBranch} isMoveAllowed={isMoveAllowed} onMoveNode={onMoveNode} graph={shownGraph} startAtTop={presentation !== 'embedded'} designer={presentation === 'designer'} selectedNodeId={selectedNodeId} selectedEdgeId={selectedEdgeId || localEdge} onSelectNode={onSelectNode} onSelectEdge={selectEdge} onInsertEdge={onInsertEdge} insertionOptions={insertionOptions} titles={titles} summaries={nodeSummaries} visits={visits} executedEdges={executedEdges} onNavigate={navigate} onReady={value => setCanvas(value ? { graph: shownGraph, controller: value } : null)} onZoom={setZoom} />
       </Suspense></CanvasBoundary>}
       <div className="oxa-workflow-viewport-tools" aria-label="画布导航"><Tooltip title="缩小"><Button aria-label="缩小流程图" icon={<MinusOutlined />} disabled={!controller || zoom <= .025} onClick={() => controller?.zoomBy(-1)} /></Tooltip><span>{Math.round(zoom * 100)}%</span><Tooltip title="放大"><Button aria-label="放大流程图" icon={<PlusOutlined />} disabled={!controller || zoom >= 1.6} onClick={() => controller?.zoomBy(1)} /></Tooltip>
         <Tooltip title="适应全图"><Button aria-label="适应全图" icon={<BorderOutlined />} disabled={!controller} onClick={() => controller?.fit()} /></Tooltip><Tooltip title="聚焦选中节点"><Button aria-label="聚焦选中节点" icon={<AimOutlined />} disabled={!controller} onClick={() => locate(selectedNodeId)} /></Tooltip></div>

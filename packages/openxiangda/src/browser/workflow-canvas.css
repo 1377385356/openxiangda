@@ -1,0 +1,65 @@
+/* Draft canvas drag feedback. Presentation only; semantic move validation owns execution. */
+.oxa-workflow-drag-origin{width:100%;height:100%;border:1px dashed #93a3b8;border-radius:8px;background:#f3f6fa;color:#66778c;display:grid;place-items:center;opacity:.7;pointer-events:none}
+.oxa-workflow-drop-slot{position:absolute;width:220px;box-sizing:border-box;border:1px dashed #9ebbe9;border-radius:8px;background:#f2f7ffba;color:#6785ad;display:grid;place-items:center;font-size:12px;pointer-events:none;z-index:8}
+.oxa-workflow-drop-slot.active{border:2px dashed #1677ff;background:#e6f2ff;color:#0958d9;font-weight:600}
+.oxa-workflow-reactflow .react-flow__node.dragging{z-index:100!important;filter:drop-shadow(0 12px 16px #102b4d33);opacity:.94}
+.oxa-workflow-designer .oxa-designer-show-outline{z-index:9}
+.oxa-canvas-path-tools{padding:10px 16px;display:flex;align-items:center;gap:12px;background:#fff8e6}
+.oxa-designer-condition-path{padding:12px;background:#f6f8fb;border-radius:8px}
+
+.oxa-workflow-keyboard-move{position:absolute;left:16px;top:48px;z-index:20;max-width:340px;padding:16px;border:1px solid #b8ccef;background:white;border-radius:8px;box-shadow:0 8px 24px #243a5522}
+.oxa-workflow-keyboard-move>div{display:flex;flex-direction:column;gap:8px;margin-top:12px;max-height:300px;overflow:auto}
+.oxa-workflow-keyboard-move button{padding:8px 12px;border:1px solid #c9d5e6;border-radius:6px;background:white;color:#174b91;cursor:pointer}
+.oxa-workflow-node.designer-node.kind-condition{border-color:#edc080;background:#fffaf2;border-left:3px solid #e5a442;box-shadow:none}
+.oxa-workflow-node.designer-node.kind-condition .oxa-workflow-node-icon{color:#bc791e}
+.oxa-workflow-edge-label.designer-branch[draggable=true]{cursor:grab}
+
+.oxa-workflow-node-menu{position:absolute;right:8px;bottom:3px;z-index:5;border:0;background:transparent;color:#64748b;cursor:pointer;font-weight:700;line-height:20px}
+
+.oxa-workflow-minimap-toggle{position:absolute;bottom:14px;right:14px;z-index:12;padding:6px 10px;background:white;border:1px solid #dbe3ed;color:#53647e;border-radius:6px;cursor:pointer;font-size:12px}
+
+.oxa-workflow-drag-status{position:absolute;bottom:60px;left:16px;z-index:20;background:#173657eF;color:white;padding:8px 14px;border-radius:6px;font-size:12px;pointer-events:none}
+
+/* UI reference 2026-10-19: restrained desktop administration, scoped to the designer. */
+.oxa-workflow-designer .oxa-workflow-node.designer-node:is(.kind-approval,.kind-handle,.kind-cc,.kind-action,.kind-condition,.kind-notification,.kind-correction){border:1px solid #dce4ee;border-radius:6px;background:#fff;padding:12px;gap:12px;box-shadow:none}
+.oxa-workflow-designer .oxa-workflow-node.designer-node.selected{border-color:#1677ff;background:#f7faff;box-shadow:0 0 0 2px #1677ff1a}
+.oxa-workflow-designer .oxa-workflow-node.designer-node .oxa-workflow-node-copy{min-width:0;padding-right:20px}
+.oxa-workflow-designer .oxa-workflow-node.designer-node .oxa-workflow-node-copy strong{font-size:14px;line-height:20px;font-weight:600;margin-bottom:3px}
+.oxa-workflow-designer .oxa-workflow-node.designer-node .oxa-workflow-node-copy small{font-size:12px;line-height:18px;color:#64748b}
+.oxa-workflow-designer .oxa-workflow-node.designer-node .oxa-workflow-node-icon{width:32px;height:32px;flex-basis:32px;background:#edf4ff;color:#1677ff;border-radius:50%;font-size:20px}
+.oxa-workflow-designer .oxa-workflow-node.designer-node.kind-condition{border-color:#f0cf9f;background:#fffaf3}
+.oxa-workflow-designer .oxa-workflow-node.designer-node.kind-condition .oxa-workflow-node-icon{background:#fff1da;color:#c98219}
+.oxa-workflow-designer .oxa-workflow-node.designer-node.kind-start,.oxa-workflow-designer .oxa-workflow-node.designer-node.kind-end{background:#475569;border:1px solid #475569;color:#fff}
+.oxa-workflow-designer .oxa-workflow-node.designer-node.kind-start .oxa-workflow-node-icon,.oxa-workflow-designer .oxa-workflow-node.designer-node.kind-end .oxa-workflow-node-icon{width:20px;height:20px;flex-basis:20px;background:none;color:#fff;font-size:16px}
+.oxa-workflow-designer .oxa-workflow-node.designer-node.kind-start .oxa-workflow-node-copy,.oxa-workflow-designer .oxa-workflow-node.designer-node.kind-end .oxa-workflow-node-copy{padding-right:0}
+.oxa-workflow-designer .oxa-workflow-node-menu{top:3px;bottom:auto;right:4px;width:24px;height:24px;padding:0;border-radius:4px;font-size:15px}
+.oxa-workflow-designer .oxa-workflow-node-menu:hover{background:#edf4ff;color:#1677ff}
+.oxa-workflow-designer .oxa-workflow-node-drag-handle{color:#94a3b8}
+.oxa-workflow-designer .oxa-workflow-designer-inspector{padding:20px 20px 32px;font-size:14px}
+.oxa-workflow-designer .oxa-workflow-designer-inspector>header h2{font-size:16px;line-height:24px}
+.oxa-workflow-designer .oxa-workflow-designer-inspector>header .oxa-designer-inspector-icon{display:none}
+.oxa-workflow-designer .oxa-workflow-designer-inspector>header .ant-tag{display:none}
+.oxa-workflow-designer .oxa-designer-defaults-notice{background:#f0f6ff;color:#536b91;border:0;border-radius:4px;padding:10px 12px;font-size:12px;line-height:18px;margin:4px 0 20px}
+.oxa-workflow-designer .oxa-workflow-config-inline .oxa-workflow-config-section{margin:0 0 24px}
+.oxa-workflow-designer .oxa-workflow-config-inline label:not(.ant-radio-wrapper):not(.ant-checkbox-wrapper){display:flex;flex-direction:column;align-items:stretch;gap:8px;margin:0 0 16px;line-height:20px;font-size:14px;min-width:0}
+.oxa-workflow-designer .oxa-workflow-people-sources>label:only-child{margin-bottom:0}
+.oxa-workflow-designer .oxa-workflow-config-inline .ant-select{max-width:100%;min-width:0}
+.oxa-workflow-designer .oxa-workflow-config-section>.ant-collapse{border:0;border-radius:0}
+.oxa-workflow-designer .oxa-workflow-config-section>.ant-collapse>.ant-collapse-item{border:1px solid #e2e8f0;border-radius:6px;margin-bottom:8px;overflow:hidden}
+.oxa-workflow-designer .oxa-workflow-config-section>.ant-collapse .ant-collapse-header{padding:12px 14px;font-size:14px;align-items:center}
+.oxa-workflow-designer .oxa-workflow-config-section>.ant-collapse .ant-collapse-content-box{padding:4px 14px 16px}
+.oxa-workflow-designer .oxa-workflow-config-section h3{font-size:14px;margin:0 0 12px}
+.oxa-workflow-designer .oxa-workflow-config-section h4{font-size:14px;margin:16px 0 8px}
+.oxa-workflow-designer .oxa-designer-desktop-inspector{box-shadow:none}
+.oxa-workflow-designer .oxa-workflow-drag-origin{border-radius:6px}
+.oxa-workflow-designer .oxa-workflow-reactflow .react-flow__node.dragging{filter:drop-shadow(0 4px 8px #102b4d22)}
+@media(min-width:900px){
+ .oxa-workflow-designer .oxa-designer-workspace .oxa-designer-desktop-inspector{width:min(420px,42%)}
+ .oxa-workflow-designer .oxa-designer-workspace:not(.without-inspector)>main{padding-right:min(420px,42%)}
+}
+
+.oxa-workflow-designer .oxa-workflow-people-sources>label,.oxa-workflow-designer .oxa-workflow-source-parameters>label{margin:0}
+.oxa-workflow-designer .oxa-workflow-source-parameters>h4,.oxa-workflow-designer .oxa-workflow-config-section>h3:first-child{display:none}
+.oxa-workflow-designer .oxa-workflow-people-sources{gap:10px}
+.oxa-workflow-designer .oxa-workflow-people-sources+.oxa-workflow-mode-options{margin-top:16px}
+.oxa-workflow-designer .oxa-workflow-node.designer-node.kind-condition.selected{border-color:#1677ff}

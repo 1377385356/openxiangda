@@ -24,11 +24,13 @@ export function WorkflowConditionConfigurationEditor({ node, variables, targets,
     [branches[active], branches[next]] = [branches[next]!, branches[active]!];
     onChange({ ...node, branches }); setIndex(next);
   };
+  if (index===-1) return <section className="oxa-designer-condition-editor" aria-label="默认分支设置"><Alert type="info" showIcon title="其他情况（默认）" description="所有条件均不满足时进入此分支。默认分支始终在最后，不填写判断条件。" /><nav className="oxa-designer-branch-selector">{node.branches.map((branch,i)=><Button key={i} onClick={()=>setIndex(i)}>{branch.label||`条件 ${i+1}`}</Button>)}</nav><h3>分支路径</h3><p>{targets.find(target=>target.value===node.otherwise)?.label || '后续节点'}</p><p>在画布插入或移动节点来调整默认分支路径。</p></section>;
   if (!branch) return null;
   return <section className="oxa-designer-condition-editor" aria-label="条件分支设置">
     <Alert type="info" showIcon title="按优先级依次判断，进入第一个满足的分支；都不满足时进入「其他情况」" />
     <nav className="oxa-designer-branch-selector" aria-label="选择条件分支">
       {node.branches.map((value, i) => <Button key={i} aria-pressed={active === i} type={active === i ? 'primary' : 'default'} onClick={() => setIndex(i)}>{value.label || `条件 ${i + 1}`}</Button>)}
+      <Button onClick={()=>setIndex(-1)}>其他情况（默认）</Button>
       <Button icon={<PlusOutlined />} disabled={disabled || !variables.length || node.branches.length >= 32} onClick={() => {
         onChange({ ...node, branches: [...node.branches, { label: `条件 ${node.branches.length + 1}`, when: defaultWorkflowCondition(variables), target: node.otherwise }] }); setIndex(node.branches.length);
       }}>添加条件分支</Button>
@@ -45,8 +47,7 @@ export function WorkflowConditionConfigurationEditor({ node, variables, targets,
     <fieldset disabled={disabled} className="oxa-designer-condition-surface"><WorkflowConditionEditor value={branch.when} variables={variables} onChange={when => patchBranch({ when })} /></fieldset>
     <h3>条件说明</h3>
     <p className="oxa-designer-condition-description">{formatWorkflowCondition(branch.when, variables)}</p>
-    <label>满足条件后进入<Select aria-label={`分支 ${active + 1} 目标`} disabled={disabled} value={branch.target} options={targets} onChange={target => patchBranch({ target })} /></label>
-    <label>其他情况<Select aria-label="其他情况目标" disabled={disabled} value={node.otherwise} options={targets} onChange={otherwise => onChange({ ...node, otherwise })} /></label>
+    <div className="oxa-designer-condition-path"><h3>分支路径</h3><p>满足条件：{targets.find(target=>target.value===branch.target)?.label || '后续节点'}</p><p>其他情况：{targets.find(target=>target.value===node.otherwise)?.label || '后续节点'}</p><small>在画布插入、拖动节点来调整路径。</small></div>
     <WorkflowConditionExamples node={node} variables={variables} />
     <p>此配置属于流程草稿，发布并启用后生效。</p>
   </section>;
