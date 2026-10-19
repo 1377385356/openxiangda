@@ -1,6 +1,6 @@
 {
   "name": "openxiangda",
-  "version": "2.75.8",
+  "version": "2.75.9",
   "description": "OpenXiangda 2.0 的统一命令、应用 SDK、MCP 与中文 AI 技能资料。",
   "type": "module",
   "main": "./dist/index.js",
@@ -102,13 +102,13 @@
     "dayjs": "1.11.18",
     "docx-preview": "0.3.7",
     "elkjs": "0.12.0",
-    "openxiangda-cli": "2.11.20",
-    "openxiangda-contracts": "2.95.7",
-    "openxiangda-devkit-core": "2.71.8",
+    "openxiangda-cli": "2.11.21",
+    "openxiangda-contracts": "2.96.0",
+    "openxiangda-devkit-core": "2.72.0",
     "openxiangda-legacy": "npm:openxiangda@1.0.269",
-    "openxiangda-mcp": "2.2.30",
-    "openxiangda-nest": "2.22.10",
-    "openxiangda-skill-kit": "2.3.133",
+    "openxiangda-mcp": "2.2.31",
+    "openxiangda-nest": "2.22.11",
+    "openxiangda-skill-kit": "2.3.134",
     "xlsx": "https://github.com/1377385356/openxiangda/releases/download/vendor-mirror/xlsx-0.20.3.tgz"
   },
   "peerDependencies": {
@@ -174,39 +174,35 @@
   },
   "openxiangdaRelease": {
     "schemaVersion": "openxiangda.release-notes/v1",
-    "version": "2.75.8",
+    "version": "2.75.9",
     "status": "reviewed",
-    "title": "OpenXiangda 2.75.8：流程画布分组配置与部门主管取人",
-    "summary": "流程节点采用审批人、审批操作和更多设置三个分组；部门主管明确区分发起人所属部门与表单部门，退回按节点配置，普通流转在画布上修改。",
+    "title": "OpenXiangda 2.75.9: organization-scoped third-party cards",
+    "summary": "Generic event contracts retain application-owned content and targets while the platform resolves enterprise authorization and class recipients.",
     "newFeatures": [
-      "画布提供节点拖动移动及键盘等价操作，普通出口改接前校验循环、可达性与并行边界。"
+      "Declared class-role notification audiences and verified related delivery organizations.",
+      "Managed configuration for third-party card channels and custom content/link parameter names.",
+      "Explicit read-only organization_id metadata for event workers; no wider row authority."
     ],
-    "fixes": [
-      "合并重复的角色来源展示，完整保留原人员范围、人数限制与未知规则。",
-      "部门主管按应用允许的部门依据、表单字段及层级配置，缺少主管不扩大人员范围。",
-      "审批操作折叠展示，退回规则归属当前节点；Tab切换保留未保存输入并定位校验错误。",
-      "打开侧栏后保留可用画布区域，防止节点被配置面板遮挡。",
-      "包含发起单位组织上下文及部门主管提交预检契约，需配套平台后端。"
-    ],
+    "fixes": [],
     "affectedUsers": [
-      "维护V2审批流程和部门主管节点的应用管理员。"
+      "V2 application developers sending cards through third-party school installations."
     ],
     "compatibility": {
       "node": "Node.js 24 or newer",
       "generation": "V2 only; V1 unchanged",
-      "platform": "需要配套 contracts 2.95.7 及先收集组织要求再解析审批人的平台后端。",
+      "platform": "Requires matching notification platform services and compiler.",
       "releaseChannels": "latest / stable-v2"
     },
     "upgradeSteps": [
-      "先核对目标平台共享编译器与本发行配套，再部署应用TEST。",
-      "声明允许使用的部门字段和主管层级；真实角色验证后按原成功TEST版本晋级。"
+      "Upgrade the matching backend and configure published templates with encrypted credential references.",
+      "Pin the SDK, verify organization isolation and detail permissions on TEST, then promote."
     ],
     "knownLimitations": [
-      "已受理命令保留原流程版本，不能静默迁移。",
-      "缺少主管必须维护真实组织配置，不会自动指定其他人员。"
+      "Package tests do not prove real DingTalk receipt, placeholder substitution or login return.",
+      "No automatic historical resend; recover uncertain results with original keys."
     ],
     "issues": [],
-    "sha256": "d5367f1d66960c744d3bb55d94818a200c158e9ec3252fd0b78d9a5c2640e32e",
-    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.75.8"
+    "sha256": "3c215aa49c0d416cb2f5cb1b73cb8914810048ee54b1474fae49e20c877682bf",
+    "url": "https://github.com/1377385356/openxiangda/releases/tag/v2.75.9"
   }
 }
