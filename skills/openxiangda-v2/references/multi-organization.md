@@ -29,7 +29,8 @@
 | 应用角色 `self` / `subtree` | V2 声明、组织维度角色绑定和实时 SQL 准入已接通 | 声明每个角色的覆盖意图；旧应用未声明继续沿用原行为 |
 | 家校事实到应用角色、班级范围的消费 | `authz.directoryRoleSources` 由平台投影到应用角色和字符串 scope | 使用真实来源角色事实，目录派生绑定不能手工覆盖；事实退休立即拒绝旧投影 |
 | 组织数据归属、隔离、后代可见与内容下发 | `organization.mode=owned/inherited-down`、不可改归属及 RLS 已实现 | 声明策略并核验目标站点的配套能力，按真实组织角色验收允许和拒绝 |
-| 安装回调、每校自动定时同步、组织通知路由与链接生成 | 尚未完成整条自动接入 | 不假定安装完成后立即能登录，不假定消息自动选中正确安装 |
+| 安装回调、每校自动定时同步 | 尚未完成整条自动接入 | 不假定安装完成后立即能登录 |
+| 三方互动卡片按组织授权与身份路由 | 配套平台支持显式启用的THIRD_PARTY_INSTALLATION渠道 | 核对可信来源组织、有效安装及企业身份；应用控制内容、模板、接收范围和详情目标，实际投递与点击分别验证 |
 
 平台管理组织的授权与应用业务授权是两种事实。能开通学校或查询组织树，不会自动获得该学校的业务数据权限；看到一条成员关系，也不会自动成为应用管理员。
 
@@ -181,7 +182,7 @@ data: {
 
 组织已开通但尚未安装，或安装已匹配但成员尚未同步，均不等于用户已获得应用访问权限。提示“账号信息尚未同步，请稍后再试”等状态可以使用实际平台结果，不能假装登录成功。自动安装事件、逐组织定时同步、应用可触发的有界同步请求尚未接通，不应在应用里开启无界轮询或用管理员凭据调用修复接口。
 
-平台组织 registry 支持每企业安装信息，但尚未完成 Notification Hub 按目标组织选择安装、corp-bound 详情链接的完整接入。消息到人、消息点击进入正确学校和该用户有业务权限是三个独立条件，需分别验收；不能仅凭 unionId 就认定通知会路由到正确学校。
+配套平台版本的 Notification Hub 支持通过THIRD_PARTY_INSTALLATION卡片渠道按持久化来源组织选择有效Suite安装与企业身份，首次接受通知时固定接收范围及目标安装，发送前复核身份。应用通过正式事件通知契约声明内容和目标；需要班级来源角色时可声明directoryRecipients，平台仅在事件所属组织中有界解析，不导出通讯录。信息模板的变量名由应用配置，链接封装保留应用业务参数和corpId占位符，详见[工作流与事件](workflow-events.md)。管理员必须先核对目标站点的配套版本、渠道、安装与权限。消息到人、消息点击进入正确学校和该用户有业务权限是三个独立条件，需分别验收；不能仅凭 unionId 或SDK接口存在就认定实际路由通过。
 
 ## 开发前核对与验收 {#verification}
 
@@ -202,3 +203,5 @@ DirectoryClassSummary.directoryClassId 是平台目录 UUID，sourceClassId 是�
 具名后端动作声明 platformAccess: { directoryClasses: { maxIds: 20 } }，调用 OpenXiangdaBusinessDirectoryService.currentClasses(sourceClassIds) 精确解析1..maxIds个来源班级。同一动作证明中的人和工作组织由平台决定，不能传入其他userId/corpId/organizationId。缺少来源事实、工作组织、活动成员或任一选择不可读时整体拒绝；事务还需 actor-authority 和业务行边界复核。该能力是只读目录，无目录同步/管理授权。
 
 HTTP GET /openxiangda-api/v2/platform/organizations/me/directory-classes 只接受limit/after；POST /openxiangda-api/v2/applications/:appCode/directory/current-classes 的 schemaVersion 为 openxiangda.current-classes-directory-request/v1、字段为sourceClassIds。返回 openxiangda.directory-class-page/v1，绑定userId和organizationId。未部署此能力的站点不能仅凭SDK方法存在就报告接入完成。
+
+通知事件可用 `targetOrganizationPath` 指向不可变业务事实中的目标组织ID（例如区级规则所属组织）。平台核验同租户有效组织及来源的祖先/后代关系，按目标组织核验接收人及安装；URL或浏览器输入不授予权限。`directoryRecipients` 始终限原学校，不允许借此跨组织展开班级成员。来源组织归属保留，接受后的目标与接收人冻结，原键重试不重新展开。

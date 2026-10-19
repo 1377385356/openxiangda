@@ -36,6 +36,13 @@ export interface ApplicationOperationInputs {
     callback: { enabled: boolean; hmacKeyId?: string; hmacSecretRef?: string; maxSkewSeconds: number; actionTokenTtlMinutes: number };
     features: { interactiveActions: boolean; readReceipt: boolean; todoSemantics: boolean }; requestTimeoutMs: number;
   } };
+  'notifications.configure-dingtalk-card': { bindingCode: string; expectedRevision: number; status: 'active' | 'paused'; config: {
+    schemaVersion: 'openxiangda.notification.dingtalk-card-channel/v2'; corpId: string; usage: 'ADVANCED';
+    authorizationMode?: 'THIRD_PARTY_INSTALLATION'; defaultCardTemplateId?: string;
+    informationalTemplateParameters?: { content: string; link: string };
+    clientIdSecretRef: string; clientSecretSecretRef: string; robotCode?: string;
+    callbackMode: 'STREAM'; supportForward: false; actionTokenTtlMinutes: number;
+  } };
   'notifications.configure-dingtalk-oa': { bindingCode: string; expectedRevision: number; status: 'active' | 'paused'; config: {
     schemaVersion: 'openxiangda.notification.dingtalk-work-notice-oa-channel/v2'; corpId: string; agentId: string;
     clientIdSecretRef: string; clientSecretSecretRef: string; requestTimeoutMs: number; decorationImage: 'NONE' | 'PLATFORM_WORKFLOW';
@@ -121,6 +128,13 @@ export const APPLICATION_OPERATIONS: readonly Definition[] = [
   operation('notifications.rules', '读取通知规则及修订', 'read', object(), '/notification-hub/management/rules', readRecovery),
   operation('notifications.bootstrap', '初始化缺少的标准通知模板和规则', 'configure', object(), '/notification-hub/bootstrap', '先读取 rules；初始化不发送收件人通知，完成后读取规则及渠道再选择默认。'),
   operation('notifications.configure-external-http', '配置 External HTTP 通道；鉴权仅接受 Secret 引用', 'configure', object({ ...channelFields, confirmProduction: bool, config: httpConfig }, [...Object.keys(channelFields), 'config']), '/notification-hub/management/channels/external-http', casRecovery),
+  operation('notifications.configure-dingtalk-card', '配置钉钉互动卡片与可选的三方组织授权；仅使用 Secret 引用', 'configure', object({ ...channelFields, config: object({
+    schemaVersion: { const: 'openxiangda.notification.dingtalk-card-channel/v2' }, corpId: text(128), usage: { const: 'ADVANCED' },
+    authorizationMode: { const: 'THIRD_PARTY_INSTALLATION' }, defaultCardTemplateId: text(255),
+    informationalTemplateParameters: object({content: {...text(64), pattern:'^[A-Za-z][A-Za-z0-9_]{0,63}$'}, link: {...text(64), pattern:'^[A-Za-z][A-Za-z0-9_]{0,63}$'}}),
+    clientIdSecretRef: text(), clientSecretSecretRef: text(), robotCode: text(255), callbackMode: { const: 'STREAM' },
+    supportForward: { const: false }, actionTokenTtlMinutes: integer(5, 43200),
+  }, ['schemaVersion','corpId','usage','clientIdSecretRef','clientSecretSecretRef','callbackMode','supportForward','actionTokenTtlMinutes']) }), '/notification-hub/management/channels/dingtalk-card', casRecovery),
   operation('notifications.configure-dingtalk-oa', '配置钉钉 OA 工作通知通道；仅使用 Secret 引用', 'configure', object({ ...channelFields, config: object({ schemaVersion: { const: 'openxiangda.notification.dingtalk-work-notice-oa-channel/v2' }, corpId: text(255), agentId: text(255), clientIdSecretRef: text(), clientSecretSecretRef: text(), requestTimeoutMs: integer(1, 60000), decorationImage: enumeration('NONE', 'PLATFORM_WORKFLOW') }) }), '/notification-hub/management/channels/dingtalk-work-notice-oa', casRecovery),
   operation('notifications.test', '检查渠道凭据与外部协议健康；不发送实际收件通知', 'health', object({ bindingCode: text(), channel: enumeration('external-http', 'dingtalk-work-notice-oa', 'dingtalk-card') }), '/notification-hub/management/channels/:channel/test', '健康成功只证明协议及凭据有效；实际投递状态需读原消息详情。'),
   operation('notifications.set-default', '为当前环境 workflow.standard 规则选择默认渠道', 'configure', object({ bindingCode: text(), expectedRevision: integer(1), expectedBindingRevision: integer(1) }), '/notification-hub/management/channels/default', casRecovery),

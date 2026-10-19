@@ -135,6 +135,13 @@ export interface EventBusinessNotificationSendV2 {
   sourceSequence?: number;
   state?: Exclude<NotificationMessageStateV2, "action_required">;
   recipientPaths: string[];
+  /** Resolved only from the immutable event and its persisted source organization. */
+  directoryRecipients?: Array<{
+    classIdPath: string;
+    roleCodes: Array<'guardian' | 'head_teacher' | 'teacher'>;
+  }>;
+  /** Immutable target org fact; platform validates source lineage and delivery membership. */
+  targetOrganizationPath?: string;
   titlePath: string;
   summaryPath?: string;
   navigationTarget: NotificationNavigationTargetV2;

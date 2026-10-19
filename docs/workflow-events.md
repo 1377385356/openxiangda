@@ -1310,3 +1310,18 @@ generationPath、sequencePath、statePath、recipientPaths、titlePath 和可选
 并创建下一轮，不因管理员变化覆盖旧任务。此能力复用平台任务中心、通知发件箱、
 供应方关闭和审计；普通 informational 通知仍不能创建待办。业务提交成功不等于
 供应方投递或用户收到，分别核对业务回执、事件投递和消息详情。
+
+
+### 三方应用互动卡片与班级接收范围
+
+应用通过 `notifications.configure-dingtalk-card` 配置模板、Secret引用和可选的 `authorizationMode: THIRD_PARTY_INSTALLATION`。三方模式按消息持久化来源组织核对Suite安装及企业身份；配置corpId仅供管理员检查渠道，不作为未知消息的默认投递企业。应用决定内容、模板和PC/移动详情目标，平台统一校验、投递并维护回执。
+
+信息模板可以声明 `informationalTemplateParameters: { content: 'content', link: 'link' }`：变量名属于应用；内容来自应用的summary，链接从应用声明的navigationTarget封装，保留路由、业务参数与字面量corpId占位符。该模式不能隐藏审批办理动作，原标准模板默认不变。高级显式卡片继续使用应用提供的cardParamMap。
+
+事件通知的可选 `directoryRecipients: [{ classIdPath: 'projection.classId', roleCodes: ['guardian'] }]` 按不可变事件所属组织解析已同步班级身份，可与recipientPaths合并去重；recipientPaths可在有目录范围时传空数组。角色限guardian/head_teacher/teacher，最多20个范围，合计最多1000人；无有效人员、无来源组织、超限、失效身份均拒绝。此能力不导出通讯录、不依据URL的corpId授权、不推断其他组织。
+
+上线渠道不会补发历史通知；真实金丝雀投递仅使用指定新业务和接收人。渠道健康、消息收到、点击打开正确组织以及业务详情权限需分别验收。
+
+通知事件可用 `targetOrganizationPath` 指向不可变业务事实中的目标组织ID（例如区级规则所属组织）。平台核验同租户有效组织及来源的祖先/后代关系，按目标组织核验接收人及安装；URL或浏览器输入不授予权限。`directoryRecipients` 始终限原学校，不允许借此跨组织展开班级成员。来源组织归属保留，接受后的目标与接收人冻结，原键重试不重新展开。
+
+worker-effect在readFields中可显式声明系统只读元数据 `organization_id`，用于冻结继承规则的真实所有者；行授权不变，未授予不能选择，写入始终拒绝。

@@ -150,3 +150,19 @@ test('managed cleanup accepts only TEST and the original run/digest on fixed rou
     assert.throws(() => parseApplicationOperation(invalid), /INPUT_INVALID/);
   assert.match(applicationOperationCatalog().operations.find(item => item.operation === execute.operation)!.permission, /平台管理员/);
 });
+
+
+test('interactive card configuration uses the managed endpoint and rejects inline credentials', () => {
+  const config = {schemaVersion:'openxiangda.notification.dingtalk-card-channel/v2',corpId:'health-corp',usage:'ADVANCED',
+    authorizationMode:'THIRD_PARTY_INSTALLATION',defaultCardTemplateId:'fixture.schema',
+    informationalTemplateParameters:{content:'body',link:'details'},clientIdSecretRef:'fixture-id',clientSecretSecretRef:'fixture-secret',
+    callbackMode:'STREAM',supportForward:false,actionTokenTtlMinutes:60};
+  const value={operation:'notifications.configure-dingtalk-card',environment:'test',input:{bindingCode:'fixture-card',expectedRevision:0,status:'paused',config}};
+  parseApplicationOperation(value);
+  const transport=applicationOperationTransport('fixture-app',value);
+  assert.ok(transport.path.endsWith('/notification-hub/management/channels/dingtalk-card'));
+  assert.deepEqual(JSON.parse(transport.init.body!),{...value.input,environmentKey:'preproduction'});
+  for(const patch of [{clientSecret:'forbidden'},{authorizationMode:'arbitrary'},{informationalTemplateParameters:{content:'body',link:'details',extra:'forbidden'}},{actionTokenTtlMinutes:0}])
+    assert.throws(()=>parseApplicationOperation({...value,input:{...value.input,config:{...config,...patch}}}),/INVALID/);
+  parseApplicationOperation({...value,input:{...value.input,config:{...config,authorizationMode:undefined,informationalTemplateParameters:undefined}}});
+});

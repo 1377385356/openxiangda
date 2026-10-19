@@ -118,7 +118,8 @@ Native记录事件才能使用 `ordering:record`。订阅错误先修正应用�
 
 先读 `notifications.diagnostics/channels/rules`。缺少标准模板/规则时执行
 `notifications.bootstrap` 再回读。已有健康渠道可直接选默认，不必重新配置或获取密码。
-新增/更新分别用 `notifications.configure-external-http` 和 `notifications.configure-dingtalk-oa`。
+新增/更新使用 `notifications.configure-external-http`、`notifications.configure-dingtalk-oa` 或 `notifications.configure-dingtalk-card`。
+互动卡片可显式启用 `authorizationMode: THIRD_PARTY_INSTALLATION`，由平台按可信消息所属组织核对三方安装；内容、模板和详情目标由应用控制。OA工作通知配置不能代替互动卡片渠道。
 完整参数见目录inputSchema；新渠道revision用0，更新用实时revision。配置只接受Secret引用，
 不接受token、明文clientSecret或收件身份。External HTTP支持HMAC、OAuth2客户端凭据和mTLS。
 正式启用沿用服务器 `confirmProduction:true`，表示该请求明确选择正式环境，无需管理页。
