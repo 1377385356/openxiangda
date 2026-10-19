@@ -12,7 +12,7 @@ npm install -g openxiangda@latest --registry=https://npm.syedu.tech/
 
 ## 一次性导入
 
-`scripts/migrate-registry.mjs <snapshot-directory>` 冻结七包最新 stable-v2/latest 元数据与精确内部依赖闭包。输入为 npm 官方 `<包名>-metadata.json` 快照；`--apply` 要求专用 `OPENXIANGDA_MIGRATION_TOKEN` 环境凭据。读取最多三并发，上传串行；回读 metadata 与原 tarball SRI 后记录无凭据回执。已存在不同摘要/渠道即停止，写入异常只回读不盲目重发。全部版本就绪才切换 stable-v2/latest。
+`scripts/migrate-registry.mjs <snapshot-directory>` 冻结七包最新 stable-v2/latest 元数据与精确内部依赖闭包（包含统一入口的 npm alias：openxiangda@1.0.269）。输入为 npm 官方 `<包名>-metadata.json` 快照；`--apply` 要求专用 `OPENXIANGDA_MIGRATION_TOKEN` 环境凭据。读取最多三并发，上传串行；回读 metadata 与原 tarball SRI 后记录无凭据回执。已存在不同摘要/渠道即停止，写入异常只回读不盲目重发。全部版本就绪才切换 stable-v2/latest。
 
 用户已明确无需历史，仅迁移最新正式版本。此前已导入的部分旧版本保持不变，旧计划和回执留在运维证据中，不补齐或删除重发。内部包各自独立版本，不能给七包统一指定根包版本。
 

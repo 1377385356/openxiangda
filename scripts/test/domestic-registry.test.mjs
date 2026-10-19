@@ -23,3 +23,8 @@ test('migration verifies original tarball bytes and rejects corruption',()=>{
  const bytes=Buffer.from('immutable package');const sri='sha512-'+createHash('sha512').update(bytes).digest('base64');
  verifyIntegrity(bytes,sri);assert.throws(()=>verifyIntegrity(Buffer.from('tampered'),sri),/INTEGRITY_MISMATCH/);
 });
+
+test('latest root includes exact legacy alias without selecting unrelated history',()=>{
+ const m={openxiangda:{'dist-tags':{latest:'2.1.0'},versions:{'2.1.0':{name:'openxiangda',version:'2.1.0',dependencies:{'openxiangda-legacy':'npm:openxiangda@1.0.269'}},'1.0.269':{name:'openxiangda',version:'1.0.269'},'1.0.268':{name:'openxiangda',version:'1.0.268'}}}};
+ assert.deepEqual(migrationPlan(m).map(x=>x.version),['1.0.269','2.1.0']);
+});

@@ -12,7 +12,11 @@ export function migrationPlan(metadata) {
     const key=`${name}@${version}`;if(selected.has(key))return;
     const m=metadata[name]?.versions?.[version];if(!m)throw Error(`MIGRATION_SOURCE_MISSING ${key}`);
     selected.set(key,m);
-    for(const [dep,v] of Object.entries(m.dependencies||{})) if(metadata[dep])add(dep,v);
+    for(const [dep,v] of Object.entries(m.dependencies||{})) {
+      const alias=/^npm:([^@]+)@(.+)$/.exec(v);
+      if(alias && metadata[alias[1]])add(alias[1],alias[2]);
+      else if(metadata[dep])add(dep,v);
+    }
   };
   for(const [name,m] of Object.entries(metadata)){const v=m['dist-tags']?.['stable-v2']||m['dist-tags']?.latest;if(!/^2\.\d+\.\d+$/.test(v))throw Error('MIGRATION_STABLE_VERSION_REQUIRED');add(name,v);}
   return [...selected.values()].sort((a,b)=>(a.name==='openxiangda')-(b.name==='openxiangda')||a.name.localeCompare(b.name)||a.version.localeCompare(b.version,undefined,{numeric:true}));
