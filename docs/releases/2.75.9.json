@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "openxiangda.release-notes/v1",
+  "version": "2.75.9",
+  "status": "reviewed",
+  "title": "OpenXiangda 2.75.9: organization-scoped third-party cards",
+  "summary": "Generic event contracts retain application-owned content and targets while the platform resolves enterprise authorization and class recipients.",
+  "newFeatures": [
+    "Declared class-role notification audiences and verified related delivery organizations.",
+    "Managed configuration for third-party card channels and custom content/link parameter names.",
+    "Explicit read-only organization_id metadata for event workers; no wider row authority."
+  ],
+  "fixes": [],
+  "affectedUsers": [
+    "V2 application developers sending cards through third-party school installations."
+  ],
+  "compatibility": {
+    "node": "Node.js 24 or newer",
+    "generation": "V2 only; V1 unchanged",
+    "platform": "Requires matching notification platform services and compiler.",
+    "releaseChannels": "latest / stable-v2"
+  },
+  "upgradeSteps": [
+    "Upgrade the matching backend and configure published templates with encrypted credential references.",
+    "Pin the SDK, verify organization isolation and detail permissions on TEST, then promote."
+  ],
+  "knownLimitations": [
+    "Package tests do not prove real DingTalk receipt, placeholder substitution or login return.",
+    "No automatic historical resend; recover uncertain results with original keys."
+  ],
+  "issues": []
+}
