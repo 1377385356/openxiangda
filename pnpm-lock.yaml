@@ -4656,7 +4656,7 @@ packages:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
 
   xlsx@https://npm.syedu.tech/vendor/xlsx/0.20.3/8dc73fc3b00203e72d176e85b50938627c7b086e607c682e8d3c22c02bb99fe8/xlsx-0.20.3.tgz:
-    resolution: {tarball: https://npm.syedu.tech/vendor/xlsx/0.20.3/8dc73fc3b00203e72d176e85b50938627c7b086e607c682e8d3c22c02bb99fe8/xlsx-0.20.3.tgz}
+    resolution: {integrity: sha512-oLDq3jw7AcLqKWH2AhCpVTZl8mf6X2YReP+Neh0SJUzV/BdZYjth94tG5toiMB1PPrYtxOCfaoUCkvtuH+3AJA==, tarball: https://npm.syedu.tech/vendor/xlsx/0.20.3/8dc73fc3b00203e72d176e85b50938627c7b086e607c682e8d3c22c02bb99fe8/xlsx-0.20.3.tgz}
     version: 0.20.3
     engines: {node: '>=0.8'}
     hasBin: true
